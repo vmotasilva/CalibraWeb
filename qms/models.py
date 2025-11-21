@@ -293,3 +293,26 @@ class RegistroTreinamento(models.Model):
         if str(self.revisao_treinada).strip() == str(self.procedimento.revisao_atual).strip(): return "VIGENTE"
         return "PENDENTE"
     class Meta: verbose_name_plural = "7.2 Matriz de Treinamentos"; unique_together = ('colaborador', 'procedimento')
+
+    @receiver([post_save, models.signals.post_delete], sender=HistoricoCalibracao)
+    def atualizar_datas_instrumento(sender, instance, **kwargs):
+    inst = instance.instrumento
+    
+    # Busca a calibração mais recente deste instrumento
+    ultima_calib = inst.historico_calibracoes.order_by('-data_calibracao').first()
+    
+    if ultima_calib:
+        inst.data_ultima_calibracao = ultima_calib.data_calibracao
+        inst.data_proxima_calibracao = ultima_calib.proxima_calibracao
+        
+        # Atualiza status baseado no resultado do último certificado
+        if ultima_calib.resultado == 'REPROVADO':
+            inst.ativo = False # Ou criar um status 'MANUTENCAO' se preferir
+        else:
+            inst.ativo = True
+    else:
+        # Se apagou todos os históricos, limpa as datas
+        inst.data_ultima_calibracao = None
+        inst.data_proxima_calibracao = None
+    
+    inst.save()

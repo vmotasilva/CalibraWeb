@@ -184,13 +184,17 @@
                                     <td><small>{{ item.proxima_calibracao|date:"d/m/Y"|default:"-" }}</small></td>
                                     <td><small>{{ item.responsavel.nome_completo|default:"-"|truncatechars:15 }}</small></td>
                                     <td class="text-end">
-                                        {% if item.certificado %}
-                                            <a href="{{ item.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-danger" title="Baixar PDF">
-                                                <i class="bi bi-file-earmark-pdf"></i>
+                                        <div class="d-flex justify-content-end gap-2">
+                                            {% if item.certificado %}
+                                                <a href="{{ item.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Baixar PDF">
+                                                    <i class="bi bi-file-earmark-pdf"></i>
+                                                </a>
+                                            {% endif %}
+                                            
+                                            <a href="{% url 'remover_historico' item.id %}" class="btn btn-sm btn-outline-danger" title="Excluir Registro" onclick="return confirm('Tem certeza que deseja excluir este certificado? Essa ação vai recalcular as datas do instrumento.')">
+                                                <i class="bi bi-trash"></i>
                                             </a>
-                                        {% else %}
-                                            <span class="text-muted">-</span>
-                                        {% endif %}
+                                        </div>
                                     </td>
                                 </tr>
                                 {% empty %}

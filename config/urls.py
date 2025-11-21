@@ -40,6 +40,10 @@ urlpatterns = [
     path('imp-colab/', views.imp_colab_view, name='importar_colaboradores'),
     path('imp-hist/', views.imp_historico_view, name='importar_historico'),    
     path('imp-hierarquia/', views.imp_hierarquia_view, name='importar_hierarquia'),
+
+    # ... outras urls ...
+    path('remover-historico/<int:historico_id>/', views.remover_historico_view, name='remover_historico'),
+    # ...
 ]
 
 # Configuração para servir arquivos de mídia/estáticos em modo Debug
