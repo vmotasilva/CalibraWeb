@@ -132,3 +132,8 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Configurações de Login e Redirecionamento
+LOGIN_URL = 'login'            # Avisa que sua URL se chama apenas 'login' e não 'accounts/login'
+LOGIN_REDIRECT_URL = 'home'    # Para onde vai depois de logar (vi que você tem uma url chamada 'home')
+LOGOUT_REDIRECT_URL = 'login'  # Para onde vai depois de sair
