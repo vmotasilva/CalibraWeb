@@ -255,6 +255,8 @@ class Fornecedor(models.Model):
     def __str__(self): return f"{self.nome_fantasia}"
     class Meta: verbose_name_plural = "5. Fornecedores"
 
+# [Substituir no MÓDULO 5]
+
 class AvaliacaoFornecedor(models.Model):
     fornecedor = models.ForeignKey(Fornecedor, on_delete=models.CASCADE, related_name='avaliacoes')
     data_avaliacao = models.DateField(auto_now_add=True)
@@ -263,13 +265,15 @@ class AvaliacaoFornecedor(models.Model):
     observacao = models.TextField(null=True, blank=True)
     def media(self): return round((self.nota_tecnica + self.nota_pontualidade + self.nota_atendimento) / 3, 1)
 
+# Usamos a string 'qms.AvaliacaoFornecedor' para evitar o NameError
 @receiver(post_save, sender='qms.AvaliacaoFornecedor')
 def update_fornecedor_score(sender, instance, **kwargs):
     f = instance.fornecedor
     avgs = f.avaliacoes.all()
     if avgs:
         f.nota_media = round(sum([a.media() for a in avgs]) / len(avgs), 1)
-    f.save()
+    f.save() 
+# Fim do bloco AvaliacaoFornecedor
 
 class ProcessoCotacao(models.Model):
     STATUS = [('ABERTO', 'Aberto'), ('FECHADO', 'Fechado'), ('CANCELADO', 'Cancelado')]
@@ -297,27 +301,30 @@ class RegistroTreinamento(models.Model):
         return "PENDENTE"
     class Meta: verbose_name_plural = "7.2 Matriz de Treinamentos"; unique_together = ('colaborador', 'procedimento')
 
-    # --- LÓGICA AUTOMÁTICA: ATUALIZAR INSTRUMENTO QUANDO MEXER NO HISTÓRICO ---
-    @receiver([post_save, models.signals.post_delete], sender=HistoricoCalibracao)
-    def atualizar_datas_instrumento(sender, instance, **kwargs):
-        # O código começa aqui, com 4 espaços de indentação.
-        inst = instance.instrumento
+    # [Substituir no final do MÓDULO 2]
+
+# --- LÓGICA AUTOMÁTICA: ATUALIZAR INSTRUMENTO QUANDO MEXER NO HISTÓRICO ---
+@receiver([post_save, models.signals.post_delete], sender=HistoricoCalibracao)
+def atualizar_datas_instrumento(sender, instance, **kwargs):
+    # Todo o código aqui DENTRO deve ser INDENTADO.
+    inst = instance.instrumento
+    
+    # Busca a calibração mais recente deste instrumento
+    ultima_calib = inst.historico_calibracoes.order_by('-data_calibracao').first()
+    
+    if ultima_calib:
+        inst.data_ultima_calibracao = ultima_calib.data_calibracao
+        inst.data_proxima_calibracao = ultima_calib.proxima_calibracao
         
-        # Busca a calibração mais recente deste instrumento
-        ultima_calib = inst.historico_calibracoes.order_by('-data_calibracao').first()
-        
-        if ultima_calib:
-            inst.data_ultima_calibracao = ultima_calib.data_calibracao
-            inst.data_proxima_calibracao = ultima_calib.proxima_calibracao
-            
-            # Atualiza status baseado no resultado do último certificado
-            if ultima_calib.resultado == 'REPROVADO':
-                inst.ativo = False
-            else:
-                inst.ativo = True
+        # Atualiza status baseado no resultado do último certificado
+        if ultima_calib.resultado == 'REPROVADO':
+            inst.ativo = False
         else:
-            # Se apagou todos os históricos, limpa as datas
-            inst.data_ultima_calibracao = None
-            inst.data_proxima_calibracao = None
-        
-        inst.save()
+            inst.ativo = True
+    else:
+        # Se apagou todos os históricos, limpa as datas
+        inst.data_ultima_calibracao = None
+        inst.data_proxima_calibracao = None
+    
+    inst.save()
+# Fim do bloco atualizar_datas_instrumento
