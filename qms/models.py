@@ -157,33 +157,59 @@ class DocumentoPessoal(models.Model):
 # MÓDULO 2: METROLOGIA
 # ==============================================================================
 
+class UnidadeMedida(models.Model):
+    nome = models.CharField(max_length=50) # Ex: Quilograma
+    sigla = models.CharField(max_length=10) # Ex: kg
+
+    def __str__(self):
+        return f"{self.nome} ({self.sigla})"
+    class Meta: verbose_name_plural = "2.1 Unidades de Medida"
+
+class CategoriaInstrumento(models.Model):
+    nome = models.CharField(max_length=100) # Ex: Manômetro
+    descricao = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.nome
+    class Meta: verbose_name_plural = "2.2 Categorias de Instrumentos"
+
+class FaixaMedicao(models.Model):
+    categoria = models.ForeignKey(CategoriaInstrumento, on_delete=models.CASCADE, related_name='faixas')
+    unidade = models.ForeignKey(UnidadeMedida, on_delete=models.PROTECT)
+    valor_minimo = models.DecimalField(max_digits=10, decimal_places=4)
+    valor_maximo = models.DecimalField(max_digits=10, decimal_places=4)
+    resolucao = models.DecimalField(max_digits=10, decimal_places=4, help_text="Menor divisão", null=True, blank=True)
+    incerteza_padrao = models.DecimalField(max_digits=10, decimal_places=4, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.valor_minimo} a {self.valor_maximo} {self.unidade.sigla}"
+    class Meta: verbose_name_plural = "2.3 Faixas de Medição"
+
 class Instrumento(models.Model):
-    codigo = models.CharField(max_length=50, unique=True, verbose_name="Código")
-    equipamento = models.CharField(max_length=200, verbose_name="Equipamento")
-    fabricante = models.CharField(max_length=100, null=True, blank=True, verbose_name="Fabricante")
-    modelo = models.CharField(max_length=100, null=True, blank=True, verbose_name="Modelo")
-    numero_serie = models.CharField(max_length=100, null=True, blank=True, verbose_name="N° de Série")
-    status = models.CharField(max_length=50, default='Ativo', verbose_name="Status")
-    setor = models.CharField(max_length=100, null=True, blank=True, verbose_name="Setor")
-    localizacao = models.CharField(max_length=100, null=True, blank=True, verbose_name="Localização/Area")
-    frequencia = models.IntegerField(help_text="Em meses", null=True, blank=True, verbose_name="Frequência")
+    tag = models.CharField(max_length=50, unique=True, verbose_name="TAG / Identificação")
+    codigo = models.CharField(max_length=50, blank=True, null=True, verbose_name="Código Interno")
+    descricao = models.CharField(max_length=200, verbose_name="Descrição")
+    fabricante = models.CharField(max_length=100, blank=True, null=True)
+    modelo = models.CharField(max_length=100, blank=True, null=True)
+    serie = models.CharField(max_length=100, blank=True, null=True)
     
-    unidade01 = models.CharField(max_length=50, null=True, blank=True, verbose_name="Unidade 01")
-    faixa01 = models.CharField(max_length=100, null=True, blank=True, verbose_name="Faixa 01")
-    data01_ultima_calibracao = models.DateField(null=True, blank=True, verbose_name="Data 01 - Última Calibração")
-    data01_prox_calibracao = models.DateField(null=True, blank=True, verbose_name="Data 01 - Próxima Calibração")
+    categoria = models.ForeignKey(CategoriaInstrumento, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Categoria / Família")
     
-    unidade02 = models.CharField(max_length=50, null=True, blank=True, verbose_name="Unidade 02")
-    faixa02 = models.CharField(max_length=100, null=True, blank=True, verbose_name="Faixa 02")
-    data02_ultima_calibracao = models.DateField(null=True, blank=True, verbose_name="Data 02 - Última Calibração")
-    data02_prox_calibracao = models.DateField(null=True, blank=True, verbose_name="Data 02 - Próxima Calibração")
+    ativo = models.BooleanField(default=True)
+    data_ultima_calibracao = models.DateField(blank=True, null=True)
+    data_proxima_calibracao = models.DateField(blank=True, null=True)
+    frequencia_meses = models.IntegerField(default=12, verbose_name="Frequência (Meses)")
+    
+    responsavel = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True)
+    setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True, blank=True)
+    localizacao = models.CharField(max_length=100, blank=True, null=True)
 
     class Meta: 
         verbose_name = "Instrumento"
         verbose_name_plural = "2. Instrumentos"
 
     def __str__(self):
-        return f"{self.codigo} - {self.equipamento}"
+        return f"{self.tag} - {self.descricao}"
 
 class HistoricoCalibracao(models.Model):
     instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='historico_calibracoes', verbose_name="Instrumento")
@@ -195,7 +221,6 @@ class HistoricoCalibracao(models.Model):
     proxima_calibracao = models.DateField(null=True, blank=True, verbose_name="Vencimento")
     certificado = models.FileField(upload_to='certificados/', null=True, blank=True, verbose_name="Certificado (PDF)")
     
-    # OPÇÕES ATUALIZADAS CONFORME PEDIDO
     RESULTADO_CHOICES = [
         ('APROVADO', 'Aprovado sem correções'),
         ('CONDICIONAL', 'Aprovado com correções'),
@@ -214,7 +239,7 @@ class HistoricoCalibracao(models.Model):
         unique_together = ('instrumento', 'data_calibracao', 'data_aprovacao', 'numero_certificado')
     
     def __str__(self):
-        return f"{self.instrumento.codigo} - {self.data_calibracao}"
+        return f"{self.instrumento.tag} - {self.data_calibracao}"
 
 # ==============================================================================
 # MÓDULO 5: SUPRIMENTOS

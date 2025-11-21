@@ -148,9 +148,13 @@ class InstrumentoAdmin(admin.ModelAdmin):
 
 @admin.register(HistoricoCalibracao)
 class HistoricoCalibracaoAdmin(admin.ModelAdmin):
-    list_display = ('instrumento', 'certificado', 'data_calibracao', 'aprovado')
+    # CORRIGIDO: De 'aprovado' para 'resultado'
+    list_display = ('instrumento', 'certificado', 'data_calibracao', 'resultado')
     search_fields = ('instrumento__tag', 'instrumento__descricao', 'certificado')
-    list_filter = ('aprovado', 'data_calibracao')
+    
+    # CORRIGIDO: De 'aprovado' para 'resultado'
+    list_filter = ('resultado', 'data_calibracao')
+    
     autocomplete_fields = ['instrumento']
 
 
