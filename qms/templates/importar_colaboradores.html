@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Importar Colaboradores - Calibra QMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>body { background-color: #071526; color: #e8f4ff; height: 100vh; display: flex; align-items: center; justify-content: center; }</style>
+</head>
+<body>
+    <div class="card bg-dark border-secondary shadow" style="width: 500px;">
+        <div class="card-header border-secondary text-center">
+            <h4 class="text-white mb-0">👥 Importar Colaboradores</h4>
+        </div>
+        <div class="card-body">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <p class="text-muted small">Use esta ferramenta para cadastrar ou atualizar dados de funcionários em massa.</p>
+
+            <div class="d-grid gap-2 mb-4">
+                <a href="{% url 'template_colaboradores' %}" class="btn btn-outline-info">
+                    📥 Baixar Modelo (Excel)
+                </a>
+            </div>
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label text-white">Selecione o arquivo preenchido:</label>
+                    {{ form.arquivo_excel }}
+                </div>
+                <button type="submit" class="btn btn-success w-100 fw-bold">Processar Arquivo</button>
+            </form>
+        </div>
+        <div class="card-footer border-secondary text-center">
+            <a href="/" class="text-decoration-none text-light">← Voltar ao Painel</a>
+        </div>
+    </div>
+</body>
+</html>

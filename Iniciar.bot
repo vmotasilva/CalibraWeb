@@ -1,0 +1,20 @@
+@echo off
+echo --- INICIANDO CALIBRA QMS ---
+echo.
+
+IF NOT EXIST "venv" (
+    echo [AVISO] Ambiente virtual nao encontrado. Criando agora...
+    python -m venv venv
+    call .\venv\Scripts\activate
+    echo [INFO] Instalando dependencias...
+    pip install -r requirements.txt
+) ELSE (
+    call .\venv\Scripts\activate
+)
+
+echo.
+echo [SUCESSO] Ambiente ativado. Iniciando servidor...
+echo Acesse em: http://127.0.0.1:8000/
+echo.
+python manage.py runserver
+pause

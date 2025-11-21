@@ -1,0 +1,19 @@
+{
+    "EMP_ADMIN_01": {
+        "name": "VINICIUS MOTA SILVA",
+        "job_title": "Coordenador de Qualidade",
+        "department": "ADMINISTRA\u00c7\u00c3O",
+        "active": true
+    },
+    "EMPADMIN01": {
+        "matricula": "EMPADMIN01",
+        "name": "VINICIUS MOTA SILVA",
+        "group": "PRODUCAO",
+        "job_title": "COORDENADOR DE QUALIDADE",
+        "sector": "QUALIDADE",
+        "cost_center": "",
+        "turno": "1 TURNO",
+        "status": "ATIVO",
+        "active": true
+    }
+}

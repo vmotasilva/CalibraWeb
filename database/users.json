@@ -1,0 +1,11 @@
+{
+    "VMOTAS": {
+        "password": "d4584547c7f6a01a40bb8d863ab2c134e0c51ce353c0ca2fd93857961d750658",
+        "employee_id": "EMP_ADMIN_01",
+        "full_name": "VINICIUS MOTA SILVA",
+        "function": "Coordenador de Qualidade",
+        "is_active": true,
+        "is_admin": true,
+        "password_last_changed": "2025-11-18"
+    }
+}

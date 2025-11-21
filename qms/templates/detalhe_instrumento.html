@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ instrumento.tag }} - Detalhes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; }
+        .header-card { background: #0b2a3a; color: white; border-radius: 8px 8px 0 0; padding: 20px; }
+        .status-badge { font-size: 1rem; padding: 8px 15px; border-radius: 20px; }
+        .table-history th { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5 mb-5">
+    <a href="{% url 'home' %}" class="btn btn-outline-secondary mb-3">← Voltar ao Painel</a>
+
+    <div class="card shadow">
+        <div class="header-card d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="mb-0">{{ instrumento.tag }}</h2>
+                <p class="mb-0 opacity-75">{{ instrumento.descricao }}</p>
+            </div>
+            <div>
+                {% if instrumento.status == 'ATIVO' %}
+                    <span class="badge bg-success status-badge">ATIVO</span>
+                {% else %}
+                    <span class="badge bg-danger status-badge">{{ instrumento.status }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 border-end">
+                    <h5 class="text-primary mb-3">📋 Dados Técnicos</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item"><strong>Fabricante:</strong> {{ instrumento.marca|default:"-" }}</li>
+                        <li class="list-group-item"><strong>Modelo:</strong> {{ instrumento.modelo|default:"-" }}</li>
+                        <li class="list-group-item"><strong>Nº Série:</strong> {{ instrumento.serie|default:"-" }}</li>
+                        
+                        <li class="list-group-item">
+                            <strong>Setor:</strong> {{ instrumento.setor.nome|default:"-" }}
+                            {% if instrumento.setor.centro_custo %}
+                                <br><small class="text-muted">CC: {{ instrumento.setor.centro_custo }}</small>
+                            {% endif %}
+                        </li>
+                    </ul>
+                    <div class="mt-4 d-grid">
+                        <a href="/admin/qms/instrumento/{{ instrumento.id }}/change/" class="btn btn-sm btn-primary">✏️ Editar Cadastro</a>
+                    </div>
+                </div>
+
+                <div class="col-md-8 ps-md-4">
+                    <h5 class="text-primary mb-3">📅 Controle de Vencimento</h5>
+                    
+                    {% for medicao in medicoes %}
+                    <div class="card mb-3 border-light bg-light">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="card-title fw-bold">{{ medicao.grandeza }}</h6>
+                                <small>Freq: {{ medicao.periodicidade_meses }} meses</small>
+                            </div>
+                            <hr class="my-2">
+                            <div class="row text-center">
+                                <div class="col">
+                                    <small class="text-muted">Última Calibração</small><br>
+                                    <strong>{{ medicao.data_ultima_calibracao|date:"d/m/Y"|default:"--" }}</strong>
+                                </div>
+                                <div class="col">
+                                    <small class="text-muted">Vencimento</small><br>
+                                    {% if medicao.data_proxima_calibracao %}
+                                        {% if medicao.data_proxima_calibracao < today %}
+                                            <strong class="text-danger">{{ medicao.data_proxima_calibracao|date:"d/m/Y" }} (VENCIDO)</strong>
+                                        {% else %}
+                                            <strong class="text-success">{{ medicao.data_proxima_calibracao|date:"d/m/Y" }}</strong>
+                                        {% endif %}
+                                    {% else %}
+                                        <strong>--</strong>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <h5 class="text-primary mt-4 mb-3">📂 Histórico de Certificados</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-history">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Grandeza</th>
+                                    <th>Resultado</th>
+                                    <th>Certificado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hist in historico %}
+                                <tr>
+                                    <td>{{ hist.data_calibracao|date:"d/m/Y" }}</td>
+                                    <td>{{ hist.tipo_medicao.grandeza }}</td>
+                                    <td>
+                                        {% if hist.resultado == 'APROVADO' %}
+                                            <span class="text-success">✔ Aprovado</span>
+                                        {% elif hist.resultado == 'REPROVADO' %}
+                                            <span class="text-danger">✖ Reprovado</span>
+                                        {% else %}
+                                            <span class="text-warning">⚠ Com Restrição</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if hist.certificado_pdf %}
+                                            <a href="{{ hist.certificado_pdf.url }}" target="_blank" class="btn btn-sm btn-outline-dark">📄 Baixar PDF</a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">Nenhum histórico registrado.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

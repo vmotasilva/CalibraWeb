@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestão Eletrônica de Documentos (GED)</h2>
+    
+    {% if can_edit %}
+    <div>
+        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#importModal">📂 Importar Lista Mestra</button>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Título</th>
+                    <th>Rev.</th>
+                    <th>Data</th>
+                    <th>Matriz/Setor</th>
+                    <th>Treinamento?</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in documentos %}
+                <tr>
+                    <td><strong>{{ doc.codigo }}</strong></td>
+                    <td>{{ doc.titulo }}</td>
+                    <td>{{ doc.revisao_atual }}</td>
+                    <td>{{ doc.data_revisao|date:"d/m/Y" }}</td>
+                    <td>{{ doc.setor.nome|default:"-" }}</td>
+                    <td>
+                        {% if doc.aplica_treinamento %}
+                            <span class="badge bg-primary">SIM</span>
+                        {% else %}
+                            <span class="badge bg-secondary">NÃO</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center">Nenhum documento cadastrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if can_edit %}
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Importar Documentos (Excel)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{% url 'importar_documentos' %}" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="file" name="arquivo_excel" class="form-control mb-3" required accept=".xlsx,.xls,.csv">
+                    <button type="submit" class="btn btn-success w-100">Processar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,54 @@
+============================================================
+MANUAL DE INICIALIZAÇÃO - CALIBRA QMS WEB
+============================================================
+
+LOCALIZAÇÃO DO PROJETO:
+Certifique-se de estar na pasta correta (Ex: C:\CalibraWeb)
+Abra o terminal (CMD ou PowerShell) dentro desta pasta.
+
+------------------------------------------------------------
+CENÁRIO A: PRIMEIRA VEZ NO COMPUTADOR (CONFIGURAÇÃO)
+------------------------------------------------------------
+Faça isso apenas se acabou de copiar a pasta ou mudou de PC.
+
+1. Limpar ambiente antigo (se existir):
+   > rmdir /s /q venv
+
+2. Criar a Máquina Virtual (Ambiente Isolado):
+   > python -m venv venv
+
+3. Ativar o Ambiente:
+   > .\venv\Scripts\activate
+   (Deve aparecer "(venv)" no começo da linha)
+
+4. Instalar os Pacotes Necessários:
+   > pip install -r requirements.txt
+
+5. Criar o Banco de Dados (Apenas se o arquivo db.sqlite3 não existir):
+   > python manage.py migrate
+   > python manage.py createsuperuser
+
+------------------------------------------------------------
+CENÁRIO B: USO DIÁRIO (LIGAR O SISTEMA)
+------------------------------------------------------------
+Faça isso toda vez que for trabalhar.
+
+1. Abra o terminal na pasta do projeto.
+
+2. Ative o ambiente:
+   > .\venv\Scripts\activate
+
+3. Inicie o Servidor:
+   > python manage.py runserver
+
+4. Acesse no Navegador:
+   http://127.0.0.1:8000/
+
+------------------------------------------------------------
+COMANDOS ÚTEIS
+------------------------------------------------------------
+- Parar o servidor: Ctrl + C
+- Criar novo admin: python manage.py createsuperuser
+- Atualizar banco após mudar código: 
+    1. python manage.py makemigrations
+    2. python manage.py migrate
