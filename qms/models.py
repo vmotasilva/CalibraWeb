@@ -262,8 +262,8 @@ class AvaliacaoFornecedor(models.Model):
     nota_tecnica = models.IntegerField(default=10); nota_pontualidade = models.IntegerField(default=10); nota_atendimento = models.IntegerField(default=10)
     observacao = models.TextField(null=True, blank=True)
     def media(self): return round((self.nota_tecnica + self.nota_pontualidade + self.nota_atendimento) / 3, 1)
-@receiver(post_save, sender=AvaliacaoFornecedor)
-def update_fornecedor_score(sender, instance, **kwargs):
+    @receiver(post_save, sender=AvaliacaoFornecedor)
+    def update_fornecedor_score(sender, instance, **kwargs):
     f = instance.fornecedor; avgs = f.avaliacoes.all()
     if avgs: f.nota_media = round(sum([a.media() for a in avgs]) / len(avgs), 1)
     f.save()
