@@ -4,9 +4,10 @@ from django.contrib.auth import views as auth_views
 from django.conf import settings 
 from django.conf.urls.static import static
 from qms import views
+from django.views.generic.base import RedirectView
 
 urlpatterns = [
-    path('', RedirectView.as_view(url='/login/'))
+    path('', RedirectView.as_view(url='/login/')),
     path('admin/', admin.site.urls),
     path('qms/', include('qms.urls')),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
