@@ -338,3 +338,19 @@ def imp_historico_view(request):
             except Exception as e: messages.error(request, str(e))
     else: form = ImportacaoHistoricoForm()
     return render(request, 'importar_historico.html', {'form': form, 'colaborador': get_colab(request)})
+
+@login_required
+def remover_historico_view(request, historico_id):
+    # Busca o histórico ou dá erro 404
+    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    instrumento_id = hist.instrumento.id
+    
+    # Se tiver arquivo de PDF, deleta ele do sistema de arquivos
+    if hist.certificado:
+        hist.certificado.delete(save=False)
+        
+    hist.delete()
+    
+    # O Signal que criamos no models.py vai rodar automaticamente e arrumar as datas
+    messages.success(request, "Certificado removido e datas atualizadas com sucesso.")
+    return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
