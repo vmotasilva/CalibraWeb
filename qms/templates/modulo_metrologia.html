@@ -1,178 +1,146 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Metrologia | Calibra QMS</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    
-    <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .table-hover tbody tr:hover { background-color: #e9ecef; cursor: pointer; transition: 0.2s; }
-        .status-badge { width: 100px; }
-        
-        /* Cabeçalho da Tabela */
-        .table thead th {
-            background-color: #ffffff;
-            border-bottom: 2px solid #dee2e6;
-            color: #495057;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-        }
-    </style>
-</head>
-<body>
+{% extends 'base.html' %}
 
-<nav class="navbar navbar-dark bg-dark mb-4 shadow">
-    <div class="container-fluid">
-        <a class="navbar-brand mb-0 h1 ms-3" href="{% url 'home' %}">🏭 Calibra QMS</a>
-        <div class="d-flex gap-2 align-items-center">
-            <span class="navbar-text text-white me-3 d-none d-md-block">
-                {% if colaborador %}Olá, {{ colaborador.nome_completo }}{% else %}Olá, Usuário{% endif %}
-            </span>
-            <a href="{% url 'home' %}" class="btn btn-outline-light btn-sm">
-                <i class="bi bi-speedometer2"></i> Dashboard
-            </a>
-            <a href="/admin" class="btn btn-outline-light btn-sm">Admin</a>
-            <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Sair</a>
-        </div>
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-0 fw-bold text-secondary">📏 Metrologia & Instrumentos</h2>
+        <p class="text-muted mb-0">Gerencie o inventário e o status de calibração.</p>
     </div>
-</nav>
-
-<div class="container-fluid px-4">
     
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
-                {% if message.tags == 'success' %}✅{% elif message.tags == 'error' %}⚠️{% endif %} 
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="mb-0 fw-bold text-secondary">📏 Metrologia & Instrumentos</h2>
-            <p class="text-muted mb-0">Gerencie o inventário e o status de calibração.</p>
-        </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'template_instrumentos' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-download"></i> Modelo Excel
+        </a>
         
-        <div class="d-flex gap-2">
-            <a href="{% url 'template_instrumentos' %}" class="btn btn-outline-secondary">
-                <i class="bi bi-download"></i> Modelo Excel
-            </a>
-            
-            {% if can_edit %}
-            <a href="{% url 'carimbar' %}" class="btn btn-primary">
-                <i class="bi bi-patch-check"></i> Validar Certificado
-            </a>
-            <a href="{% url 'importar_instrumentos' %}" class="btn btn-success text-white">
-                <i class="bi bi-file-earmark-excel"></i> Importar Excel
-            </a>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-white py-3 border-bottom">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h5 class="mb-0 text-primary"><i class="bi bi-list-ul"></i> Inventário Geral</h5>
-                    <span class="text-muted small">Total: {{ instrumentos.count }} registros</span>
-                </div>
-                <div class="col-md-6">
-                    <div class="input-group">
-                        <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
-                        <input type="text" id="searchInput" class="form-control" placeholder="Pesquisar por Código, Equipamento, Série ou Setor...">
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card-body p-0 table-responsive">
-            <table class="table table-hover mb-0 align-middle" id="tabelaInstrumentos">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 10%;">Código</th>
-                        <th style="width: 30%;">Equipamento</th>
-                        <th style="width: 20%;">Fabricante / Modelo</th>
-                        <th style="width: 15%;">Setor</th>
-                        <th style="width: 10%;" class="text-center">Próx. Calibração</th>
-                        <th style="width: 10%;" class="text-center">Status</th>
-                        <th style="width: 5%;" class="text-end"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for inst in instrumentos %}
-                    <tr>
-                        <td class="fw-bold">
-                            <a href="{% url 'detalhe_instrumento' inst.id %}" class="text-decoration-none text-primary">
-                                {{ inst.codigo }}
-                            </a>
-                        </td>
-                        
-                        <td>{{ inst.equipamento }}</td>
-                        
-                        <td>
-                            <div class="fw-semibold">{{ inst.fabricante|default:"-" }}</div>
-                            <div class="text-muted small">{{ inst.modelo|default:"" }}</div>
-                        </td>
-                        
-                        <td>
-                            <div>{{ inst.setor|default:"-" }}</div>
-                            <small class="text-muted">Série: {{ inst.numero_serie|default:"-" }}</small>
-                        </td>
-                        
-                        <td class="text-center">
-                            {% if inst.data01_prox_calibracao %}
-                                <span class="badge border {% if inst.data01_prox_calibracao|date:'Y-m-d' < today|date:'Y-m-d' %}bg-danger text-white{% else %}bg-light text-dark{% endif %}">
-                                    {{ inst.data01_prox_calibracao|date:"d/m/Y" }}
-                                </span>
-                            {% else %}
-                                <span class="text-muted small">-</span>
-                            {% endif %}
-                        </td>
-
-                        <td class="text-center">
-                            {% if inst.status|upper == 'ATIVO' %}
-                                <span class="badge bg-success bg-opacity-75 status-badge">ATIVO</span>
-                            {% elif inst.status|upper == 'INATIVO' %}
-                                <span class="badge bg-secondary status-badge">INATIVO</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark status-badge">{{ inst.status }}</span>
-                            {% endif %}
-                        </td>
-                        
-                        <td class="text-end">
-                            <a href="{% url 'detalhe_instrumento' inst.id %}" class="btn btn-sm btn-light text-primary" title="Ver Detalhes">
-                                <i class="bi bi-chevron-right"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center py-5">
-                            <div class="text-muted opacity-50">
-                                <i class="bi bi-inbox display-1"></i>
-                                <p class="mt-3 fs-5">Nenhum instrumento encontrado.</p>
-                                <a href="{% url 'importar_instrumentos' %}" class="btn btn-primary btn-sm mt-2">
-                                    Fazer Importação Agora
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="card-footer bg-white py-3">
-            <small class="text-muted">Exibindo todos os {{ instrumentos.count }} instrumentos.</small>
-        </div>
+        {% if can_edit %}
+        <a href="{% url 'carimbar' %}" class="btn btn-primary">
+            <i class="bi bi-patch-check"></i> Validar Certificado
+        </a>
+        <a href="{% url 'importar_instrumentos' %}" class="btn btn-success text-white">
+            <i class="bi bi-file-earmark-excel"></i> Importar Excel
+        </a>
+        {% endif %}
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 border-bottom">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h5 class="mb-0 text-primary"><i class="bi bi-list-ul"></i> Inventário Geral</h5>
+                <span class="text-muted small">Total: {{ instrumentos.count }} registros</span>
+            </div>
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Pesquisar por TAG, Código, Equipamento, Série ou Setor...">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body p-0 table-responsive">
+        <table class="table table-hover mb-0 align-middle table-sm" id="tabelaInstrumentos" style="font-size: 0.9rem;">
+            <thead class="table-dark">
+                <tr>
+                    <th class="ps-3">Status</th>
+                    <th>TAG / Código</th>
+                    <th>Equipamento</th>
+                    <th>Fabricante / Modelo</th>
+                    <th>Nº Série</th>
+                    <th>Setor / Local</th>
+                    <th class="text-center">Freq.</th>
+                    <th class="text-center">Última Calib.</th>
+                    <th class="text-center">Próxima Calib.</th>
+                    <th class="text-end pe-3">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inst in instrumentos %}
+                <tr>
+                    <td class="ps-3">
+                        {% if inst.ativo %}
+                            <i class="bi bi-check-circle-fill text-success" title="Ativo"></i>
+                        {% else %}
+                            <i class="bi bi-x-circle-fill text-danger" title="Inativo/Manutenção"></i>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="fw-bold">
+                        <a href="{% url 'detalhe_instrumento' inst.id %}" class="text-decoration-none text-primary">
+                            {{ inst.tag }}
+                        </a>
+                        {% if inst.codigo and inst.codigo != inst.tag %}
+                            <div class="text-muted small" style="font-size: 0.75rem;">{{ inst.codigo }}</div>
+                        {% endif %}
+                    </td>
+                    
+                    <td>
+                        {{ inst.descricao|truncatechars:40 }}
+                        <div class="text-muted small">{{ inst.categoria.nome|default:"" }}</div>
+                    </td>
+                    
+                    <td>
+                        <div class="fw-semibold">{{ inst.fabricante|default:"-" }}</div>
+                        <div class="text-muted small">{{ inst.modelo|default:"" }}</div>
+                    </td>
+                    
+                    <td>{{ inst.serie|default:"-" }}</td>
+                    
+                    <td>
+                        <div class="fw-semibold">{{ inst.setor.nome|default:"-" }}</div>
+                        <div class="text-muted small">{{ inst.localizacao|default:"" }}</div>
+                    </td>
+                    
+                    <td class="text-center">{{ inst.frequencia_meses }} m</td>
+
+                    <td class="text-center text-muted">
+                        {{ inst.data_ultima_calibracao|date:"d/m/Y"|default:"-" }}
+                    </td>
+                    
+                    <td class="text-center">
+                        {% if inst.data_proxima_calibracao %}
+                            {% now "Y-m-d" as hoje_str %}
+                            {% if inst.data_proxima_calibracao|date:"Y-m-d" < hoje_str %}
+                                <span class="badge bg-danger">{{ inst.data_proxima_calibracao|date:"d/m/Y" }}</span>
+                            {% elif inst.data_proxima_calibracao|date:"Y-m-d" == hoje_str %}
+                                <span class="badge bg-warning text-dark">HOJE</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ inst.data_proxima_calibracao|date:"d/m/Y" }}</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted small">-</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="text-end pe-3">
+                        <a href="{% url 'detalhe_instrumento' inst.id %}" class="btn btn-sm btn-light text-primary border" title="Ver Detalhes">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center py-5">
+                        <div class="text-muted opacity-50">
+                            <i class="bi bi-inbox display-1"></i>
+                            <p class="mt-3 fs-5">Nenhum instrumento encontrado.</p>
+                            {% if can_edit %}
+                            <a href="{% url 'importar_instrumentos' %}" class="btn btn-primary btn-sm mt-2">
+                                Fazer Importação Agora
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white py-3">
+        <small class="text-muted">Exibindo todos os {{ instrumentos.count }} instrumentos.</small>
+    </div>
+</div>
 
 <script>
     document.getElementById('searchInput').addEventListener('keyup', function() {
@@ -196,6 +164,4 @@
         }
     });
 </script>
-
-</body>
-</html>
+{% endblock %}
