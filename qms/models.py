@@ -173,18 +173,6 @@ class CategoriaInstrumento(models.Model):
         return self.nome
     class Meta: verbose_name_plural = "2.2 Categorias de Instrumentos"
 
-class FaixaMedicao(models.Model):
-    categoria = models.ForeignKey(CategoriaInstrumento, on_delete=models.CASCADE, related_name='faixas')
-    unidade = models.ForeignKey(UnidadeMedida, on_delete=models.PROTECT)
-    valor_minimo = models.DecimalField(max_digits=10, decimal_places=4)
-    valor_maximo = models.DecimalField(max_digits=10, decimal_places=4)
-    resolucao = models.DecimalField(max_digits=10, decimal_places=4, help_text="Menor divisão", null=True, blank=True)
-    incerteza_padrao = models.DecimalField(max_digits=10, decimal_places=4, blank=True, null=True)
-
-    def __str__(self):
-        return f"{self.valor_minimo} a {self.valor_maximo} {self.unidade.sigla}"
-    class Meta: verbose_name_plural = "2.3 Faixas de Medição"
-
 class Instrumento(models.Model):
     tag = models.CharField(max_length=50, unique=True, verbose_name="TAG / Identificação")
     codigo = models.CharField(max_length=50, blank=True, null=True, verbose_name="Código Interno")
@@ -210,6 +198,19 @@ class Instrumento(models.Model):
 
     def __str__(self):
         return f"{self.tag} - {self.descricao}"
+
+# FAIXA AGORA LIGADA AO INSTRUMENTO (ESPECÍFICA DELE)
+class FaixaMedicao(models.Model):
+    instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='faixas')
+    unidade = models.ForeignKey(UnidadeMedida, on_delete=models.PROTECT)
+    valor_minimo = models.DecimalField(max_digits=10, decimal_places=4)
+    valor_maximo = models.DecimalField(max_digits=10, decimal_places=4)
+    resolucao = models.DecimalField(max_digits=10, decimal_places=4, help_text="Menor divisão", null=True, blank=True)
+    incerteza_padrao = models.DecimalField(max_digits=10, decimal_places=4, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.valor_minimo} a {self.valor_maximo} {self.unidade.sigla}"
+    class Meta: verbose_name_plural = "2.3 Faixas de Medição"
 
 class HistoricoCalibracao(models.Model):
     instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='historico_calibracoes', verbose_name="Instrumento")

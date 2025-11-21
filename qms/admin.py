@@ -5,17 +5,13 @@ from django.urls import reverse
 from django.utils.http import urlencode
 from datetime import date
 
-# Importando TODOS os modelos (Antigos e Novos)
 from .models import (
     Colaborador, Instrumento, HistoricoCalibracao, 
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento, 
     Setor, CentroCusto, HierarquiaSetor,
     Procedimento, RegistroTreinamento, Ferias, Ocorrencia, PacoteTreinamento, DocumentoPessoal,
-    # Novos Modelos de Metrologia:
     UnidadeMedida, CategoriaInstrumento, FaixaMedicao
 )
-
-# --- 1. CONFIGURAÇÕES DE APOIO (RH / FINANCEIRO) ---
 
 class CentroCustoInline(admin.TabularInline): 
     model = CentroCusto
@@ -59,14 +55,12 @@ class SetorPorGrupoFilter(admin.SimpleListFilter):
 class ColaboradorAdmin(admin.ModelAdmin):
     def get_setor_nome(self, obj): return obj.setor.nome if obj.setor else "-"
     def get_cc_code(self, obj): return obj.centro_custo.codigo if obj.centro_custo else "-"
-    
     list_display = ('matricula', 'cpf', 'nome_completo', 'cargo', 'grupo', 'get_setor_nome', 'salario', 'em_ferias', 'is_active')
     search_fields = ('matricula', 'cpf', 'nome_completo', 'cargo')
     list_filter = ('is_active', 'em_ferias', 'grupo', SetorPorGrupoFilter, 'turno')
     autocomplete_fields = ['setor', 'centro_custo'] 
     filter_horizontal = ('pacotes_treinamento',)
     inlines = [FeriasInline, OcorrenciaInline, DocumentoPessoalInline, TreinamentoInline]
-    
     fieldsets = (
         ("Identificação", {'fields': (('matricula', 'cpf'), 'nome_completo')}),
         ("Lotação e Cargo", {'fields': (('cargo', 'salario'), ('grupo', 'turno'), ('setor', 'centro_custo'))}),
@@ -80,7 +74,6 @@ class HierarquiaSetorAdmin(admin.ModelAdmin):
     list_filter = ('setor', 'turno')
     autocomplete_fields = ['lider', 'supervisor', 'gerente', 'diretor', 'setor']
     actions = ['duplicar_hierarquia']
-    
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         for c in ['lider', 'supervisor', 'gerente', 'diretor', 'setor']:
@@ -90,7 +83,6 @@ class HierarquiaSetorAdmin(admin.ModelAdmin):
                 w.can_change_related = False
                 w.can_delete_related = False
         return form
-
     @admin.action(description='Duplicar')
     def duplicar_hierarquia(self, request, queryset):
         if queryset.count() != 1:
@@ -107,39 +99,37 @@ class HierarquiaSetorAdmin(admin.ModelAdmin):
         })
         return redirect(f'{base}?{qs}')
 
-
-# --- 2. NOVAS CONFIGURAÇÕES DE METROLOGIA (INSTRUMENTOS) ---
+# --- CONFIGURAÇÕES DE METROLOGIA ---
 
 @admin.register(UnidadeMedida)
 class UnidadeMedidaAdmin(admin.ModelAdmin):
     list_display = ('nome', 'sigla')
     search_fields = ('nome', 'sigla')
 
-# Inline para cadastrar faixas DENTRO da categoria
-class FaixaMedicaoInline(admin.TabularInline):
-    model = FaixaMedicao
-    extra = 1
-
 @admin.register(CategoriaInstrumento)
 class CategoriaInstrumentoAdmin(admin.ModelAdmin):
     list_display = ('nome', 'descricao')
     search_fields = ('nome',)
-    inlines = [FaixaMedicaoInline] # <--- Aqui está o segredo: Faixas dentro da Categoria
+
+# Agora a faixa fica DENTRO do Instrumento
+class FaixaMedicaoInline(admin.TabularInline):
+    model = FaixaMedicao
+    extra = 1
 
 @admin.register(Instrumento)
 class InstrumentoAdmin(admin.ModelAdmin):
-    # Atualizado para os novos campos (Tag, Categoria, etc)
     list_display = ('tag', 'descricao', 'categoria', 'responsavel', 'data_proxima_calibracao', 'ativo')
     search_fields = ('tag', 'codigo', 'descricao', 'modelo', 'serie')
     list_filter = ('categoria', 'ativo', 'setor')
     autocomplete_fields = ['responsavel', 'setor', 'categoria']
+    inlines = [FaixaMedicaoInline] # <--- Faixas aparecem aqui agora
     
     fieldsets = (
         ('Identificação', {
             'fields': ('tag', 'codigo', 'descricao', 'fabricante', 'modelo', 'serie', 'categoria')
         }),
         ('Localização e Responsável', {
-            'fields': ('setor', 'responsavel')
+            'fields': ('setor', 'responsavel', 'localizacao')
         }),
         ('Calibração', {
             'fields': ('frequencia_meses', 'data_ultima_calibracao', 'data_proxima_calibracao', 'ativo')
@@ -148,18 +138,12 @@ class InstrumentoAdmin(admin.ModelAdmin):
 
 @admin.register(HistoricoCalibracao)
 class HistoricoCalibracaoAdmin(admin.ModelAdmin):
-    # CORRIGIDO: De 'aprovado' para 'resultado'
     list_display = ('instrumento', 'certificado', 'data_calibracao', 'resultado')
     search_fields = ('instrumento__tag', 'instrumento__descricao', 'certificado')
-    
-    # CORRIGIDO: De 'aprovado' para 'resultado'
     list_filter = ('resultado', 'data_calibracao')
-    
     autocomplete_fields = ['instrumento']
 
-
-# --- 3. OUTROS CADASTROS ---
-
+# --- OUTROS CADASTROS ---
 admin.site.register(Fornecedor)
 admin.site.register(ProcessoCotacao)
 admin.site.register(Orcamento)
@@ -175,7 +159,6 @@ class ProcedimentoAdmin(admin.ModelAdmin):
 class RegistroTreinamentoAdmin(admin.ModelAdmin):
     def procedimento_info(self, obj): return f"{obj.procedimento.codigo} (Rev. {obj.procedimento.revisao_atual})"
     def status_visual(self, obj): return format_html('<span style="color:green">VIGENTE</span>') if obj.status_treinamento == "VIGENTE" else format_html('<span style="color:red">PENDENTE</span>')
-    
     list_display = ('colaborador', 'procedimento_info', 'revisao_treinada', 'status_visual')
     search_fields = ('colaborador__nome_completo', 'procedimento__codigo')
     list_filter = ('procedimento__codigo', 'revisao_treinada')
