@@ -221,15 +221,27 @@ def imp_instr_view(request):
                             val = get_val(k_list)
                             return pd.to_datetime(val).date() if val else None
 
+                        # --- NOVO: TRADUTOR DE FREQUÊNCIA ---
+                        def traduzir_frequencia(valor):
+                            if not valor: return 12 # Padrão 1 ano
+                            s = str(valor).upper()
+                            if 'ANUAL' in s: return 12
+                            if 'SEMESTRAL' in s: return 6
+                            if 'TRIMESTRAL' in s: return 3
+                            if 'BIENAL' in s: return 24
+                            if 'MENSAL' in s: return 1
+                            # Tenta converter número (ex: "6" ou "6.0")
+                            try: return int(float(valor))
+                            except: return 12 
+
                         # 1. Resolve a TAG e o CÓDIGO
-                        # Se não achar código, usa a tag. Se não achar tag, usa o código.
                         tag = get_val(['TAG', 'IDENTIFICACAO'])
                         codigo = get_val(['CODIGO', 'CÓDIGO'])
                         
                         if not tag and codigo: tag = codigo
                         if not codigo and tag: codigo = tag
                         
-                        if not tag: continue # Se não tem nem tag nem código, pula
+                        if not tag: continue 
 
                         # 2. Busca ou Cria a Categoria
                         cat_nome = get_val(['CATEGORIA', 'FAMILIA', 'TIPO'])
@@ -243,7 +255,10 @@ def imp_instr_view(request):
                         if setor_nome:
                             setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
 
-                        # 4. Dados para Salvar
+                        # 4. Calcula Frequência Corretamente
+                        freq_meses = traduzir_frequencia(get_val(['FREQUENCIA', 'PERIODICIDADE']))
+
+                        # 5. Dados para Salvar
                         dados = {
                             'codigo': codigo,
                             'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição',
@@ -253,16 +268,16 @@ def imp_instr_view(request):
                             'numero_serie': get_val(['N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']),
                             'setor': setor_obj,
                             'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']),
-                            'frequencia_meses': int(float(get_val(['FREQUENCIA', 'PERIODICIDADE']) or 12)),
+                            'frequencia_meses': freq_meses, # Usa o valor traduzido
                             'data_ultima_calibracao': get_date(['DATA ÚLTIMA CALIBRAÇÃO', 'ULTIMA CALIBRACAO']),
                             'ativo': True
                         }
                         
                         # Calcula próxima calibração
                         if dados['data_ultima_calibracao']:
-                            dados['data_proxima_calibracao'] = dados['data_ultima_calibracao'] + timedelta(days=dados['frequencia_meses']*30)
+                            dados['data_proxima_calibracao'] = dados['data_ultima_calibracao'] + timedelta(days=freq_meses*30)
 
-                        # Salva no Banco (Cria ou Atualiza)
+                        # Salva no Banco
                         obj, created = Instrumento.objects.update_or_create(tag=tag, defaults=dados)
                         
                         if created: count_new += 1
