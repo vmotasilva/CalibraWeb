@@ -70,7 +70,7 @@ def modulo_rh_view(request):
 def detalhe_instrumento_view(request, instrumento_id):
     inst = get_object_or_404(Instrumento, id=instrumento_id)
     historico = inst.historico_calibracoes.all().order_by('-data_calibracao')
-    faixas = inst.faixas.all() # Pega as faixas específicas desse instrumento
+    faixas = inst.faixas.all()
     return render(request, 'detalhe_instrumento.html', {'colaborador': get_colab(request), 'instrumento': inst, 'historico': historico, 'faixas': faixas, 'today': date.today()})
 
 @login_required
@@ -146,10 +146,24 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
         for pg in ipdf.pages[1:]: o.add_page(pg)
     out = io.BytesIO(); o.write(out); out.seek(0); return out
 
-# ... (Templates mantidos iguais) ...
+# ==============================================================================
+# TEMPLATE DE DOWNLOAD ATUALIZADO (COM MULTIPLAS FAIXAS)
+# ==============================================================================
 def dl_template_instr(request):
-    colunas = ["TAG", "CODIGO", "CATEGORIA", "EQUIPAMENTO", "STATUS", "FABRICANTE", "MODELO", "N SERIE", "SETOR", "LOCALIZACAO", "FREQUENCIA_MESES", "DATA_ULTIMA_CALIBRACAO", "UNIDADE 01", "FAIXA 01"]
-    df = pd.DataFrame(columns=colunas); r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_instrumentos.xlsx"'; df.to_excel(r, index=False); return r
+    colunas = [
+        "TAG", "CODIGO", "CATEGORIA", "EQUIPAMENTO", "STATUS", 
+        "FABRICANTE", "MODELO", "N SERIE", "SETOR", "LOCALIZACAO", 
+        "FREQUENCIA_MESES", "DATA_ULTIMA_CALIBRACAO", 
+        "UNIDADE 01", "FAIXA 01", 
+        "UNIDADE 02", "FAIXA 02", 
+        "UNIDADE 03", "FAIXA 03"
+    ]
+    df = pd.DataFrame(columns=colunas)
+    r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    r['Content-Disposition'] = 'attachment; filename="template_instrumentos.xlsx"'
+    df.to_excel(r, index=False)
+    return r
+
 def dl_template_colab(request):
     df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
 def dl_template_hierarquia(request):
@@ -159,7 +173,7 @@ def dl_template_historico(request):
     df = pd.DataFrame(columns=colunas); r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_historico_calibracao.xlsx"'; df.to_excel(r, index=False); return r
 
 # ==============================================================================
-# FUNÇÃO DE IMPORTAÇÃO ATUALIZADA (FAIXAS LIGADAS AO INSTRUMENTO)
+# IMPORTAÇÃO DE INSTRUMENTOS (LÓGICA HORIZONTAL: U1, F1, U2, F2...)
 # ==============================================================================
 @login_required
 def imp_instr_view(request):
@@ -168,21 +182,17 @@ def imp_instr_view(request):
         if form.is_valid():
             try:
                 f = request.FILES['arquivo_excel']
-                # Tenta ler com ; (CSV comum no Brasil) ou Excel
                 try:
                     df = pd.read_csv(f, sep=';', encoding='latin1') if f.name.endswith('.csv') else pd.read_excel(f)
                 except:
-                    # Fallback para CSV com vírgula se falhar
-                    f.seek(0)
-                    df = pd.read_csv(f, sep=',', encoding='utf-8')
+                    f.seek(0); df = pd.read_csv(f, sep=',', encoding='utf-8')
 
-                # Padroniza colunas (maiúsculas e sem espaços nas pontas)
                 df.columns = df.columns.str.strip().str.upper()
                 count_new = 0; count_upd = 0; count_faixas = 0
                 
                 with transaction.atomic():
                     for _, row in df.iterrows():
-                        # --- FUNÇÕES AUXILIARES DENTRO DO LOOP ---
+                        # --- HELPERS INTERNOS ---
                         def get_val(k_list): 
                             for key in k_list:
                                 if key in df.columns and pd.notna(row[key]): return str(row[key]).strip()
@@ -201,48 +211,33 @@ def imp_instr_view(request):
                             if 'BIENAL' in s: return 24
                             if 'MENSAL' in s: return 1
                             try: return int(float(valor))
-                            except: return 12
+                            except: return 12 
                         
                         def extrair_min_max(texto_faixa):
-                            """
-                            Tenta extrair dois números de uma string.
-                            Ex: "0 a 100" -> (0.0, 100.0)
-                            Ex: "-1...1" -> (-1.0, 1.0)
-                            """
                             if not texto_faixa: return 0, 0
-                            # Troca vírgula por ponto para conversão
                             txt = texto_faixa.replace(',', '.')
-                            # Regex para encontrar números (incluindo negativos e decimais)
                             numeros = re.findall(r'-?\d+\.?\d*', txt)
-                            
-                            if len(numeros) >= 2:
-                                return float(numeros[0]), float(numeros[1])
-                            elif len(numeros) == 1:
-                                return 0, float(numeros[0]) # Assume 0 até X
+                            if len(numeros) >= 2: return float(numeros[0]), float(numeros[1])
+                            elif len(numeros) == 1: return 0, float(numeros[0])
                             return 0, 0
 
-                        # --- 1. IDENTIFICA O INSTRUMENTO ---
+                        # --- 1. DADOS DO INSTRUMENTO ---
                         tag = get_val(['TAG', 'IDENTIFICACAO'])
                         codigo = get_val(['CODIGO', 'CÓDIGO'])
-                        
                         if not tag and codigo: tag = codigo
                         if not codigo and tag: codigo = tag
-                        if not tag: continue # Sem identificador, pula a linha
+                        if not tag: continue 
 
-                        # --- 2. CATEGORIA E SETOR ---
                         cat_nome = get_val(['CATEGORIA', 'FAMILIA', 'TIPO'])
                         categoria_obj = None
-                        if cat_nome:
-                            categoria_obj, _ = CategoriaInstrumento.objects.get_or_create(nome=cat_nome.title())
+                        if cat_nome: categoria_obj, _ = CategoriaInstrumento.objects.get_or_create(nome=cat_nome.title())
 
                         setor_nome = get_val(['SETOR', 'DEPARTAMENTO'])
                         setor_obj = None
-                        if setor_nome:
-                            setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+                        if setor_nome: setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
 
-                        # --- 3. DADOS DO INSTRUMENTO ---
                         freq_meses = traduzir_frequencia(get_val(['FREQUENCIA', 'PERIODICIDADE']))
-                        
+
                         dados = {
                             'codigo': codigo,
                             'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição',
@@ -256,41 +251,31 @@ def imp_instr_view(request):
                             'data_ultima_calibracao': get_date(['DATA ÚLTIMA CALIBRAÇÃO', 'ULTIMA CALIBRACAO', 'DATA CALIBRAÇÃO']),
                             'ativo': True
                         }
-                        
                         if dados['data_ultima_calibracao']:
                             dados['data_proxima_calibracao'] = dados['data_ultima_calibracao'] + timedelta(days=freq_meses*30)
 
-                        # update_or_create garante que linhas repetidas não dupliquem o instrumento
                         obj, created = Instrumento.objects.update_or_create(tag=tag, defaults=dados)
-                        
                         if created: count_new += 1
                         else: count_upd += 1
 
-                        # --- 4. IMPORTAÇÃO DA FAIXA (LINHA A LINHA) ---
-                        # Agora ele lê a faixa específica DESTA linha do Excel e adiciona ao instrumento
-                        faixa_txt = get_val(['FAIXA', 'FAIXA DE MEDIÇÃO', 'CAPACIDADE', 'RANGE'])
-                        unidade_txt = get_val(['UNIDADE', 'UNIDADE DE MEDIDA', 'U.M.'])
-                        
-                        if faixa_txt and unidade_txt:
-                            # Cria a unidade se não existir
-                            und_obj, _ = UnidadeMedida.objects.get_or_create(sigla=unidade_txt, defaults={'nome': unidade_txt})
+                        # --- 2. DADOS DAS FAIXAS (LOOP HORIZONTAL) ---
+                        # Varre as colunas UNIDADE 01, UNIDADE 02, UNIDADE 03... até 5
+                        for i in range(1, 6):
+                            und_nome = get_val([f'UNIDADE {i:02d}', f'UNIDADE{i}', f'UNIDADE {i}'])
+                            faixa_txt = get_val([f'FAIXA {i:02d}', f'FAIXA{i}', f'FAIXA {i}'])
                             
-                            # Tenta extrair min e max do texto (ex: "0 a 100")
-                            v_min, v_max = extrair_min_max(faixa_txt)
-                            
-                            # Cria a faixa vinculada ao instrumento
-                            # get_or_create evita duplicar a MESMA faixa se rodar a importação 2 vezes
-                            FaixaMedicao.objects.get_or_create(
-                                instrumento=obj,
-                                unidade=und_obj,
-                                valor_minimo=v_min,
-                                valor_maximo=v_max,
-                                defaults={
-                                    'resolucao': 0, # Padrão se não tiver coluna de resolução
-                                    # Se quiser salvar o texto original em algum lugar, pode customizar aqui
-                                }
-                            )
-                            count_faixas += 1
+                            if und_nome and faixa_txt:
+                                und_obj, _ = UnidadeMedida.objects.get_or_create(sigla=und_nome, defaults={'nome': und_nome})
+                                v_min, v_max = extrair_min_max(faixa_txt)
+                                
+                                FaixaMedicao.objects.get_or_create(
+                                    instrumento=obj, 
+                                    unidade=und_obj,
+                                    valor_minimo=v_min,
+                                    valor_maximo=v_max,
+                                    defaults={'resolucao': 0} 
+                                )
+                                count_faixas += 1
 
                 messages.success(request, f"Importação: {count_new} Novos, {count_upd} Atualizados. {count_faixas} Faixas processadas.")
                 return redirect('modulo_metrologia')
@@ -302,6 +287,7 @@ def imp_instr_view(request):
         form = ImportacaoInstrumentosForm()
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
+# ... (Demais funções mantidas) ...
 @login_required
 def imp_colab_view(request):
     if request.method == 'POST':
