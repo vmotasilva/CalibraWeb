@@ -13,10 +13,12 @@ from django.urls import reverse
 from django.db.models import Q
 from django.core.files.base import ContentFile
 
+# Importando modelos novos e antigos
 from .models import (
     Instrumento, Colaborador, ProcessoCotacao, Procedimento,
     Fornecedor, HistoricoCalibracao, Setor, CentroCusto,
-    RegistroTreinamento, Ferias, Ocorrencia, HierarquiaSetor
+    RegistroTreinamento, Ferias, Ocorrencia, HierarquiaSetor,
+    CategoriaInstrumento  # <--- IMPORTANTE: Importando a nova model
 )
 from .forms import (
     CarimboForm, ImportacaoInstrumentosForm, ImportacaoColaboradoresForm, 
@@ -42,21 +44,39 @@ def excel_date_to_datetime(serial):
 
 @login_required
 def dashboard_view(request):
-    colab = get_colab(request); nome_display = colab.nome_completo if colab else request.user.username; hoje = date.today(); trinta_dias = hoje + timedelta(days=30)
-    qtd_vencidos = Instrumento.objects.filter(Q(data01_prox_calibracao__lt=hoje) | Q(data02_prox_calibracao__lt=hoje), status='Ativo').count()
-    qtd_avencer = Instrumento.objects.filter((Q(data01_prox_calibracao__range=[hoje, trinta_dias]) | Q(data02_prox_calibracao__range=[hoje, trinta_dias])), status='Ativo').count()
-    lista_urgentes = Instrumento.objects.filter(data01_prox_calibracao__lte=trinta_dias, status='Ativo').order_by('data01_prox_calibracao')[:5]
-    ctx = {'colaborador': colab, 'nome_display': nome_display, 'qtd_vencidos': qtd_vencidos, 'qtd_avencer': qtd_avencer, 'lista_urgentes': lista_urgentes, 'qtd_cotacoes': ProcessoCotacao.objects.filter(status='ABERTO').count(), 'today': hoje}
+    colab = get_colab(request)
+    nome_display = colab.nome_completo if colab else request.user.username
+    hoje = date.today()
+    trinta_dias = hoje + timedelta(days=30)
+    
+    # CORREÇÃO: Usando o nome novo 'data_proxima_calibracao'
+    # Como removemos a data02, focamos apenas na data principal
+    qtd_vencidos = Instrumento.objects.filter(data_proxima_calibracao__lt=hoje, ativo=True).count()
+    qtd_avencer = Instrumento.objects.filter(data_proxima_calibracao__range=[hoje, trinta_dias], ativo=True).count()
+    lista_urgentes = Instrumento.objects.filter(data_proxima_calibracao__lte=trinta_dias, ativo=True).order_by('data_proxima_calibracao')[:5]
+    
+    ctx = {
+        'colaborador': colab, 
+        'nome_display': nome_display, 
+        'qtd_vencidos': qtd_vencidos, 
+        'qtd_avencer': qtd_avencer, 
+        'lista_urgentes': lista_urgentes, 
+        'qtd_cotacoes': ProcessoCotacao.objects.filter(status='ABERTO').count(), 
+        'today': hoje
+    }
     return render(request, 'dashboard.html', ctx)
 
 @login_required
 def modulo_metrologia_view(request):
-    colab = get_colab(request); ctx = {'colaborador': colab, 'instrumentos': Instrumento.objects.all().order_by('codigo'), 'can_edit': True}
+    # CORREÇÃO: Ordenando por tag ou codigo
+    colab = get_colab(request)
+    ctx = {'colaborador': colab, 'instrumentos': Instrumento.objects.all().order_by('tag'), 'can_edit': True}
     return render(request, 'modulo_metrologia.html', ctx)
 
 @login_required
 def modulo_rh_view(request):
-    colab = get_colab(request); ctx = {'colaborador': colab, 'funcionarios': Colaborador.objects.all().order_by('nome_completo'), 'can_edit': True}
+    colab = get_colab(request)
+    ctx = {'colaborador': colab, 'funcionarios': Colaborador.objects.all().order_by('nome_completo'), 'can_edit': True}
     return render(request, 'modulo_rh.html', ctx)
 
 @login_required
@@ -68,9 +88,8 @@ def detalhe_instrumento_view(request, instrumento_id):
 @login_required
 def carimbar_view(request):
     colab = get_colab(request)
-    instrumentos_disponiveis = Instrumento.objects.filter(status='Ativo').order_by('codigo')
+    instrumentos_disponiveis = Instrumento.objects.filter(ativo=True).order_by('tag')
     
-    # Pega nome do usuário logado
     user_full_name = f"{request.user.first_name} {request.user.last_name}".strip()
     if not user_full_name: user_full_name = request.user.username.upper()
     
@@ -81,14 +100,9 @@ def carimbar_view(request):
             dt_validacao = form.cleaned_data['data_validacao']
             status_txt = form.cleaned_data['status_validacao']
             
-            # Mapeamento exato do status
             resultado_banco = 'APROVADO'
-            if status_txt == 'Reprovado':
-                resultado_banco = 'REPROVADO'
-            elif status_txt == 'Aprovado com correções':
-                resultado_banco = 'CONDICIONAL'
-            else:
-                resultado_banco = 'APROVADO' # Aprovado sem correções
+            if status_txt == 'Reprovado': resultado_banco = 'REPROVADO'
+            elif status_txt == 'Aprovado com correções': resultado_banco = 'CONDICIONAL'
             
             fs = request.FILES.getlist('arquivo_pdf')
             try: screen_w = float(request.POST.get('page_width', 0)); screen_h = float(request.POST.get('page_height', 0))
@@ -99,7 +113,6 @@ def carimbar_view(request):
                 raw_x = request.POST.get(f'x_{i}', 0); raw_y = request.POST.get(f'y_{i}', 0); raw_w = request.POST.get(f'w_{i}', 0); raw_h = request.POST.get(f'h_{i}', 0)
                 ui = (float(raw_x), float(raw_y), float(raw_w), float(raw_h), screen_w, screen_h)
 
-                # Passa nome do usuário para o carimbo
                 pdf_buffer = apply_stamp_logic(f, user_full_name, status_txt, ui, dt_validacao)
                 
                 inst_id = request.POST.get(f'instrument_id_{i}')
@@ -111,7 +124,9 @@ def carimbar_view(request):
                         instrumento = Instrumento.objects.get(id=inst_id)
                         dt_calibracao = datetime.strptime(calib_date_str, '%Y-%m-%d').date()
                         prox_calib = None
-                        if instrumento.frequencia: dias = instrumento.frequencia * 30; prox_calib = dt_calibracao + timedelta(days=dias)
+                        if instrumento.frequencia_meses: 
+                            dias = instrumento.frequencia_meses * 30
+                            prox_calib = dt_calibracao + timedelta(days=dias)
                         
                         hist, created = HistoricoCalibracao.objects.get_or_create(
                             instrumento=instrumento, data_calibracao=dt_calibracao, data_aprovacao=dt_validacao, numero_certificado=cert_num,
@@ -119,13 +134,15 @@ def carimbar_view(request):
                         )
                         if not created: hist.resultado = resultado_banco; hist.observacoes = f"Revalidado por {user_full_name}: {status_txt}"
                         
-                        filename = f"Cert_{cert_num}_{instrumento.codigo}.pdf"
+                        filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"
                         hist.certificado.save(filename, ContentFile(pdf_buffer.getvalue())); hist.save()
                         
-                        if not instrumento.data01_ultima_calibracao or dt_calibracao >= instrumento.data01_ultima_calibracao:
-                            instrumento.data01_ultima_calibracao = dt_calibracao; instrumento.data01_prox_calibracao = prox_calib
-                            if resultado_banco == 'REPROVADO': instrumento.status = 'Manutenção'
-                            elif resultado_banco in ['APROVADO', 'CONDICIONAL']: instrumento.status = 'Ativo'
+                        # Atualiza datas no instrumento
+                        if not instrumento.data_ultima_calibracao or dt_calibracao >= instrumento.data_ultima_calibracao:
+                            instrumento.data_ultima_calibracao = dt_calibracao
+                            instrumento.data_proxima_calibracao = prox_calib
+                            if resultado_banco == 'REPROVADO': instrumento.ativo = False
+                            else: instrumento.ativo = True
                             instrumento.save()
                     except Exception as e: print(f"Erro: {e}")
                 pdf_buffer.seek(0); processed_files.append((f.name, pdf_buffer))
@@ -159,65 +176,106 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
         for pg in ipdf.pages[1:]: o.add_page(pg)
     out = io.BytesIO(); o.write(out); out.seek(0); return out
 
-# ... (Funções de Template e Importação mantidas iguais) ...
+# ... Templates de Download ...
 def dl_template_instr(request):
-    colunas = ["Código", "Equipamento", "Status", "Fabricante", "Modelo", "N° de Série", "Setor", "Localização/Area", "Frequencia", "Unidade 01", "Faixa 01", "Data 01 - Última Calibração", "Data 01 - Próxima Calibração", "Unidade 02", "Faixa 02", "Data 02 - Última Calibração", "Data 02 - Próxima Calibração"]
-    df = pd.DataFrame(columns=colunas); r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_instrumentos.xlsx"'; df.to_excel(r, index=False); return r
+    colunas = ["TAG", "CODIGO", "CATEGORIA", "EQUIPAMENTO", "STATUS", "FABRICANTE", "MODELO", "N SERIE", "SETOR", "LOCALIZACAO", "FREQUENCIA_MESES", "DATA_ULTIMA_CALIBRACAO"]
+    df = pd.DataFrame(columns=colunas)
+    r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    r['Content-Disposition'] = 'attachment; filename="template_instrumentos.xlsx"'
+    df.to_excel(r, index=False)
+    return r
+
 def dl_template_colab(request):
     df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
 def dl_template_hierarquia(request):
     df = pd.DataFrame({'SETOR': ['MANUTENCAO'], 'TURNO': ['TURNO 1'], 'MAT_LIDER': ['1001'], 'MAT_SUPERVISOR': [''], 'MAT_GERENTE': [''], 'MAT_DIRETOR': ['']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_hierarquia.xlsx"'; return r
 def dl_template_historico(request):
-    colunas = ["CÓDIGO", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", "RESULTADO (APROVADO/REPROVADO)", "OBSERVAÇÕES"]
+    colunas = ["TAG", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", "RESULTADO", "OBSERVAÇÕES"]
     df = pd.DataFrame(columns=colunas); r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_historico_calibracao.xlsx"'; df.to_excel(r, index=False); return r
 
+# ==============================================================================
+# FUNÇÃO DE IMPORTAÇÃO DE INSTRUMENTOS (CORRIGIDA E INTELIGENTE)
+# ==============================================================================
 @login_required
 def imp_instr_view(request):
     if request.method == 'POST':
         form = ImportacaoInstrumentosForm(request.POST, request.FILES)
         if form.is_valid():
             try:
-                f = request.FILES['arquivo_excel']; df = pd.read_csv(f, sep=';', encoding='latin1') if f.name.endswith('.csv') else pd.read_excel(f); df.columns = df.columns.str.strip().str.upper(); count_new = 0; count_upd = 0
+                f = request.FILES['arquivo_excel']
+                # Lê Excel ou CSV
+                df = pd.read_csv(f, sep=';', encoding='latin1') if f.name.endswith('.csv') else pd.read_excel(f)
+                
+                # Padroniza colunas (maiúsculas e sem espaços nas pontas)
+                df.columns = df.columns.str.strip().str.upper()
+                count_new = 0; count_upd = 0
+                
                 with transaction.atomic():
                     for _, row in df.iterrows():
-                        def get_val(k): 
-                            for key in k:
-                                if key.upper() in df.columns and pd.notna(row[key.upper()]): return str(row[k]).strip()
+                        def get_val(k_list): 
+                            for key in k_list:
+                                if key in df.columns and pd.notna(row[key]): return str(row[key]).strip()
                             return None
-                        def get_freq_meses(val):
-                            if not val: return None
-                            s = str(val).upper(); 
-                            if 'ANUAL' in s: return 12
-                            if 'SEMESTRAL' in s: return 6
-                            if 'TRIMESTRAL' in s: return 3
-                            if 'BIENAL' in s: return 24
-                            try: return int(float(val))
-                            except: return None
-                        def get_date(k):
-                            val = get_val(k); return pd.to_datetime(val).date() if val else None
                         
-                        codigo = get_val(['CÓDIGO', 'CODIGO', 'TAG'])
-                        if not codigo: continue
+                        def get_date(k_list):
+                            val = get_val(k_list)
+                            return pd.to_datetime(val).date() if val else None
+
+                        # 1. Resolve a TAG e o CÓDIGO
+                        # Se não achar código, usa a tag. Se não achar tag, usa o código.
+                        tag = get_val(['TAG', 'IDENTIFICACAO'])
+                        codigo = get_val(['CODIGO', 'CÓDIGO'])
+                        
+                        if not tag and codigo: tag = codigo
+                        if not codigo and tag: codigo = tag
+                        
+                        if not tag: continue # Se não tem nem tag nem código, pula
+
+                        # 2. Busca ou Cria a Categoria
+                        cat_nome = get_val(['CATEGORIA', 'FAMILIA', 'TIPO'])
+                        categoria_obj = None
+                        if cat_nome:
+                            categoria_obj, _ = CategoriaInstrumento.objects.get_or_create(nome=cat_nome.title())
+
+                        # 3. Busca ou Cria o Setor
+                        setor_nome = get_val(['SETOR', 'DEPARTAMENTO'])
+                        setor_obj = None
+                        if setor_nome:
+                            setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+
+                        # 4. Dados para Salvar
                         dados = {
-                            'equipamento': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Nome',
-                            'status': get_val(['STATUS', 'SITUAÇÃO']) or 'Ativo',
-                            'fabricante': get_val(['FABRICANTE', 'MARCA']), 'modelo': get_val(['MODELO']),
-                            'numero_serie': get_val(['N° DE SÉRIE', 'N DE SERIE', 'SÉRIE']),
-                            'setor': get_val(['SETOR', 'DEPARTAMENTO']), 'localizacao': get_val(['LOCALIZAÇÃO/AREA', 'LOCALIZACAO']),
-                            'frequencia': get_freq_meses(get_val(['FREQUENCIA', 'PERIODICIDADE'])),
-                            'unidade01': get_val(['UNIDADE 01']), 'faixa01': get_val(['FAIXA 01']),
-                            'data01_ultima_calibracao': get_date(['DATA 01 - ÚLTIMA CALIBRAÇÃO', 'DATA ULTIMA']),
-                            'data01_prox_calibracao': get_date(['DATA 01 - PRÓXIMA CALIBRAÇÃO', 'DATA PROXIMA']),
-                            'unidade02': get_val(['UNIDADE 02']), 'faixa02': get_val(['FAIXA 02']),
-                            'data02_ultima_calibracao': get_date(['DATA 02 - ÚLTIMA CALIBRAÇÃO']),
-                            'data02_prox_calibracao': get_date(['DATA 02 - PRÓXIMA CALIBRAÇÃO']),
+                            'codigo': codigo,
+                            'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição',
+                            'categoria': categoria_obj,
+                            'fabricante': get_val(['FABRICANTE', 'MARCA']),
+                            'modelo': get_val(['MODELO']),
+                            'numero_serie': get_val(['N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']),
+                            'setor': setor_obj,
+                            'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']),
+                            'frequencia_meses': int(float(get_val(['FREQUENCIA', 'PERIODICIDADE']) or 12)),
+                            'data_ultima_calibracao': get_date(['DATA ÚLTIMA CALIBRAÇÃO', 'ULTIMA CALIBRACAO']),
+                            'ativo': True
                         }
-                        obj, created = Instrumento.objects.update_or_create(codigo=codigo, defaults=dados)
+                        
+                        # Calcula próxima calibração
+                        if dados['data_ultima_calibracao']:
+                            dados['data_proxima_calibracao'] = dados['data_ultima_calibracao'] + timedelta(days=dados['frequencia_meses']*30)
+
+                        # Salva no Banco (Cria ou Atualiza)
+                        obj, created = Instrumento.objects.update_or_create(tag=tag, defaults=dados)
+                        
                         if created: count_new += 1
                         else: count_upd += 1
-                messages.success(request, "Importação OK"); return redirect('modulo_metrologia')
-            except Exception as e: messages.error(request, str(e)); return redirect('importar_instrumentos')
-    else: form = ImportacaoInstrumentosForm()
+                        
+                messages.success(request, f"Importação Concluída! Criados: {count_new}, Atualizados: {count_upd}")
+                return redirect('modulo_metrologia')
+            
+            except Exception as e:
+                messages.error(request, f"Erro ao importar: {str(e)}")
+                return redirect('importar_instrumentos')
+    else:
+        form = ImportacaoInstrumentosForm()
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
 @login_required
@@ -227,11 +285,6 @@ def imp_colab_view(request):
         if form.is_valid(): messages.success(request, "Importação OK"); return redirect('modulo_rh')
     else: form = ImportacaoColaboradoresForm()
     return render(request, 'importar_colaboradores.html', {'form': form, 'colaborador': get_colab(request)})
-
-@login_required
-def imp_docs_view(request):
-    if request.method == 'POST': messages.success(request, "Docs OK"); return redirect('modulo_metrologia')
-    return render(request, 'importar_documentos.html', {'form': ImportacaoProcedimentosForm(), 'colaborador': get_colab(request)})
 
 @login_required
 def imp_hierarquia_view(request):
@@ -249,24 +302,31 @@ def imp_historico_view(request):
                     for _, row in df.iterrows():
                         def get_val(k): return str(row[k]).strip() if k in df.columns and pd.notna(row[k]) else None
                         def get_date_val(k): return pd.to_datetime(row[k]).date() if k in df.columns and pd.notna(row[k]) else None
-                        cod = get_val('CÓDIGO'); dt_cal = get_date_val('DATA CALIBRAÇÃO')
-                        if not cod or not dt_cal: continue
-                        try: inst = Instrumento.objects.get(codigo=cod)
-                        except: continue
-                        dt_apr = get_date_val('DATA APROVAÇÃO') or dt_cal; num_cert = get_val('N CERTIFICADO') or 'S/N'
                         
-                        # CORREÇÃO NA IMPORTAÇÃO: Mapeia texto do Excel para o DB
+                        # Alterado para buscar por TAG
+                        tag = get_val('TAG') or get_val('CÓDIGO')
+                        dt_cal = get_date_val('DATA CALIBRAÇÃO')
+                        
+                        if not tag or not dt_cal: continue
+                        try: inst = Instrumento.objects.get(tag=tag)
+                        except: continue
+                        
+                        dt_apr = get_date_val('DATA APROVAÇÃO') or dt_cal
+                        num_cert = get_val('N CERTIFICADO') or 'S/N'
                         res_raw = str(get_val('RESULTADO')).upper()
                         res = 'APROVADO'
                         if 'REPROVADO' in res_raw: res = 'REPROVADO'
                         elif 'CORRE' in res_raw or 'RESTRI' in res_raw: res = 'CONDICIONAL'
                         
-                        prox = dt_cal + timedelta(days=inst.frequencia*30) if inst.frequencia else None
-                        obj, cr = HistoricoCalibracao.objects.get_or_create(instrumento=inst, data_calibracao=dt_cal, data_aprovacao=dt_apr, numero_certificado=num_cert, defaults={'resultado': res, 'proxima_calibracao': prox, 'observacoes': get_val('OBSERVAÇÕES')})
+                        prox = dt_cal + timedelta(days=inst.frequencia_meses*30) if inst.frequencia_meses else None
+                        obj, cr = HistoricoCalibracao.objects.get_or_create(
+                            instrumento=inst, data_calibracao=dt_cal, data_aprovacao=dt_apr, numero_certificado=num_cert, 
+                            defaults={'resultado': res, 'proxima_calibracao': prox, 'observacoes': get_val('OBSERVAÇÕES')}
+                        )
                         if cr: count_new += 1
-                        if not inst.data01_ultima_calibracao or dt_cal >= inst.data01_ultima_calibracao:
-                            inst.data01_ultima_calibracao = dt_cal; inst.data01_prox_calibracao = prox; inst.save()
-                messages.success(request, f"Importados: {count_new}"); return redirect('modulo_metrologia')
+                        if not inst.data_ultima_calibracao or dt_cal >= inst.data_ultima_calibracao:
+                            inst.data_ultima_calibracao = dt_cal; inst.data_proxima_calibracao = prox; inst.save()
+                messages.success(request, f"Histórico Importado: {count_new} registros"); return redirect('modulo_metrologia')
             except Exception as e: messages.error(request, str(e))
     else: form = ImportacaoHistoricoForm()
     return render(request, 'importar_historico.html', {'form': form, 'colaborador': get_colab(request)})
