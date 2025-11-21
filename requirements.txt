@@ -9,6 +9,5 @@ crispy-bootstrap5>=2024.10
 whitenoise>=6.6
 pandas>=2.2
 PyPDF2>=3.0
-pandas
-PyPDF2
 reportlab
+dj-database-url
