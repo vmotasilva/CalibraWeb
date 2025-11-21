@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path, include  # <--- ADICIONADO 'include' AQUI
+from django.urls import path
 from django.contrib.auth import views as auth_views
 from django.conf import settings 
 from django.conf.urls.static import static
@@ -10,15 +10,15 @@ urlpatterns = [
     # 1. Redireciona a raiz do site direto para o login
     path('', RedirectView.as_view(url='/login/')),
 
-    # 2. Admin e Includes
+    # 2. Admin
     path('admin/', admin.site.urls),
-    path('qms/', include('qms.urls')),
+    # REMOVIDO: path('qms/', include('qms.urls')) <- Essa linha causava o erro
 
     # 3. Autenticação
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
-    # 4. Dashboard (MUDADO PARA 'home/' PARA EVITAR LOOP INFINITO)
+    # 4. Dashboard
     path('home/', views.dashboard_view, name='home'),
 
     # 5. Módulos Principais
