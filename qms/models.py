@@ -255,20 +255,29 @@ class Fornecedor(models.Model):
     def __str__(self): return f"{self.nome_fantasia}"
     class Meta: verbose_name_plural = "5. Fornecedores"
 
+# ... (código acima permanece igual, incluindo a classe Fornecedor)
+
 class AvaliacaoFornecedor(models.Model):
     fornecedor = models.ForeignKey(Fornecedor, on_delete=models.CASCADE, related_name='avaliacoes')
     data_avaliacao = models.DateField(auto_now_add=True)
     avaliador = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True)
-    nota_tecnica = models.IntegerField(default=10); nota_pontualidade = models.IntegerField(default=10); nota_atendimento = models.IntegerField(default=10)
+    nota_tecnica = models.IntegerField(default=10)
+    nota_pontualidade = models.IntegerField(default=10)
+    nota_atendimento = models.IntegerField(default=10)
     observacao = models.TextField(null=True, blank=True)
     def media(self): return round((self.nota_tecnica + self.nota_pontualidade + self.nota_atendimento) / 3, 1)
-    @receiver(post_save, sender=AvaliacaoFornecedor)
-    def update_fornecedor_score(sender, instance, **kwargs):
-        f = instance.fornecedor
-        avgs = f.avaliacoes.all()
-        if avgs:
-            f.nota_media = round(sum([a.media() for a in avgs]) / len(avgs), 1)
-        f.save()
+
+# O sinal é movido e usa a string literal para referenciar a classe:
+@receiver(post_save, sender='qms.AvaliacaoFornecedor') # <--- CORREÇÃO AQUI
+def update_fornecedor_score(sender, instance, **kwargs):
+    f = instance.fornecedor
+    avgs = f.avaliacoes.all()
+    if avgs:
+        f.nota_media = round(sum([a.media() for a in avgs]) / len(avgs), 1)
+    f.save()
+
+class ProcessoCotacao(models.Model):
+# ... (o resto do código continua igual)
 
 class ProcessoCotacao(models.Model):
     STATUS = [('ABERTO', 'Aberto'), ('FECHADO', 'Fechado'), ('CANCELADO', 'Cancelado')]
