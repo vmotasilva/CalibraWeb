@@ -2,125 +2,233 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>{{ instrumento.tag }} - Detalhes</title>
+    <title>{{ instrumento.codigo }} | Detalhes</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; }
-        .header-card { background: #0b2a3a; color: white; border-radius: 8px 8px 0 0; padding: 20px; }
-        .status-badge { font-size: 1rem; padding: 8px 15px; border-radius: 20px; }
-        .table-history th { background-color: #f8f9fa; }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card-header { font-weight: 600; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 0.5px; }
+        .label-detail { font-size: 0.8rem; color: #6c757d; text-transform: uppercase; margin-bottom: 2px; }
+        .value-detail { font-size: 1.1rem; font-weight: 500; color: #212529; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-<div class="container mt-5 mb-5">
-    <a href="{% url 'home' %}" class="btn btn-outline-secondary mb-3">← Voltar ao Painel</a>
+<nav class="navbar navbar-dark bg-dark mb-4 shadow">
+    <div class="container-fluid">
+        <a class="navbar-brand mb-0 h1 ms-3" href="{% url 'modulo_metrologia' %}">🏭 Calibra QMS</a>
+        <div class="d-flex gap-2">
+            <a href="{% url 'modulo_metrologia' %}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+</nav>
 
-    <div class="card shadow">
-        <div class="header-card d-flex justify-content-between align-items-center">
-            <div>
-                <h2 class="mb-0">{{ instrumento.tag }}</h2>
-                <p class="mb-0 opacity-75">{{ instrumento.descricao }}</p>
-            </div>
-            <div>
-                {% if instrumento.status == 'ATIVO' %}
-                    <span class="badge bg-success status-badge">ATIVO</span>
-                {% else %}
-                    <span class="badge bg-danger status-badge">{{ instrumento.status }}</span>
-                {% endif %}
+<div class="container">
+    
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0 fw-bold">{{ instrumento.equipamento }}</h2>
+            <p class="text-muted mb-0">Código: <span class="text-primary fw-bold">{{ instrumento.codigo }}</span></p>
+        </div>
+        <div>
+            {% if instrumento.status|upper == 'ATIVO' %}
+                <span class="badge bg-success fs-6 px-3 py-2">ATIVO</span>
+            {% elif instrumento.status|upper == 'INATIVO' %}
+                <span class="badge bg-secondary fs-6 px-3 py-2">INATIVO</span>
+            {% else %}
+                <span class="badge bg-warning text-dark fs-6 px-3 py-2">{{ instrumento.status }}</span>
+            {% endif %}
+            
+            <a href="/admin/qms/instrumento/{{ instrumento.id }}/change/" class="btn btn-outline-secondary ms-2">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Coluna Esquerda: Identificação -->
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4 h-100">
+                <div class="card-header bg-light text-secondary">
+                    <i class="bi bi-box-seam"></i> Identificação & Localização
+                </div>
+                <div class="card-body">
+                    
+                    <div class="label-detail">Fabricante</div>
+                    <div class="value-detail">{{ instrumento.fabricante|default:"-" }}</div>
+                    
+                    <div class="label-detail">Modelo</div>
+                    <div class="value-detail">{{ instrumento.modelo|default:"-" }}</div>
+                    
+                    <div class="label-detail">Nº de Série</div>
+                    <div class="value-detail">{{ instrumento.numero_serie|default:"-" }}</div>
+                    
+                    <hr>
+                    
+                    <div class="label-detail">Setor Responsável</div>
+                    <div class="value-detail">{{ instrumento.setor|default:"-" }}</div>
+                    
+                    <div class="label-detail">Localização Física</div>
+                    <div class="value-detail">{{ instrumento.localizacao|default:"-" }}</div>
+
+                    <hr>
+                    
+                    <div class="label-detail">Frequência de Calibração</div>
+                    <div class="value-detail">
+                        {% if instrumento.frequencia %}
+                            {{ instrumento.frequencia }} Meses
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4 border-end">
-                    <h5 class="text-primary mb-3">📋 Dados Técnicos</h5>
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item"><strong>Fabricante:</strong> {{ instrumento.marca|default:"-" }}</li>
-                        <li class="list-group-item"><strong>Modelo:</strong> {{ instrumento.modelo|default:"-" }}</li>
-                        <li class="list-group-item"><strong>Nº Série:</strong> {{ instrumento.serie|default:"-" }}</li>
-                        
-                        <li class="list-group-item">
-                            <strong>Setor:</strong> {{ instrumento.setor.nome|default:"-" }}
-                            {% if instrumento.setor.centro_custo %}
-                                <br><small class="text-muted">CC: {{ instrumento.setor.centro_custo }}</small>
-                            {% endif %}
-                        </li>
-                    </ul>
-                    <div class="mt-4 d-grid">
-                        <a href="/admin/qms/instrumento/{{ instrumento.id }}/change/" class="btn btn-sm btn-primary">✏️ Editar Cadastro</a>
-                    </div>
+        <!-- Coluna Direita: Faixas -->
+        <div class="col-md-8">
+            
+            <!-- Faixa 01 -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between">
+                    <span><i class="bi bi- rulers"></i> Faixa de Calibração 01</span>
+                    {% if instrumento.data01_prox_calibracao %}
+                        {% if instrumento.data01_prox_calibracao < today %}
+                            <span class="badge bg-danger">VENCIDO</span>
+                        {% else %}
+                            <span class="badge bg-light text-dark">VIGENTE</span>
+                        {% endif %}
+                    {% endif %}
                 </div>
-
-                <div class="col-md-8 ps-md-4">
-                    <h5 class="text-primary mb-3">📅 Controle de Vencimento</h5>
-                    
-                    {% for medicao in medicoes %}
-                    <div class="card mb-3 border-light bg-light">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <h6 class="card-title fw-bold">{{ medicao.grandeza }}</h6>
-                                <small>Freq: {{ medicao.periodicidade_meses }} meses</small>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="label-detail">Faixa Nominal</div>
+                            <div class="value-detail">{{ instrumento.faixa01|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="label-detail">Unidade</div>
+                            <div class="value-detail">{{ instrumento.unidade01|default:"-" }}</div>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <div class="label-detail">Última Calibração</div>
+                            <div class="value-detail text-secondary">
+                                <i class="bi bi-calendar-check"></i> {{ instrumento.data01_ultima_calibracao|date:"d/m/Y"|default:"-" }}
                             </div>
-                            <hr class="my-2">
-                            <div class="row text-center">
-                                <div class="col">
-                                    <small class="text-muted">Última Calibração</small><br>
-                                    <strong>{{ medicao.data_ultima_calibracao|date:"d/m/Y"|default:"--" }}</strong>
-                                </div>
-                                <div class="col">
-                                    <small class="text-muted">Vencimento</small><br>
-                                    {% if medicao.data_proxima_calibracao %}
-                                        {% if medicao.data_proxima_calibracao < today %}
-                                            <strong class="text-danger">{{ medicao.data_proxima_calibracao|date:"d/m/Y" }} (VENCIDO)</strong>
-                                        {% else %}
-                                            <strong class="text-success">{{ medicao.data_proxima_calibracao|date:"d/m/Y" }}</strong>
-                                        {% endif %}
-                                    {% else %}
-                                        <strong>--</strong>
-                                    {% endif %}
-                                </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="label-detail">Próxima Calibração</div>
+                            <div class="value-detail {% if instrumento.data01_prox_calibracao < today %}text-danger{% else %}text-success{% endif %}">
+                                <i class="bi bi-calendar-event"></i> <strong>{{ instrumento.data01_prox_calibracao|date:"d/m/Y"|default:"-" }}</strong>
                             </div>
                         </div>
                     </div>
-                    {% endfor %}
+                </div>
+            </div>
 
-                    <h5 class="text-primary mt-4 mb-3">📂 Histórico de Certificados</h5>
+            <!-- Faixa 02 -->
+            {% if instrumento.faixa02 or instrumento.data02_prox_calibracao %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white d-flex justify-content-between">
+                    <span><i class="bi bi-rulers"></i> Faixa de Calibração 02</span>
+                    {% if instrumento.data02_prox_calibracao %}
+                        {% if instrumento.data02_prox_calibracao < today %}
+                            <span class="badge bg-danger">VENCIDO</span>
+                        {% else %}
+                            <span class="badge bg-light text-dark">VIGENTE</span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="label-detail">Faixa Nominal</div>
+                            <div class="value-detail">{{ instrumento.faixa02|default:"-" }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="label-detail">Unidade</div>
+                            <div class="value-detail">{{ instrumento.unidade02|default:"-" }}</div>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-6">
+                            <div class="label-detail">Última Calibração</div>
+                            <div class="value-detail text-secondary">
+                                <i class="bi bi-calendar-check"></i> {{ instrumento.data02_ultima_calibracao|date:"d/m/Y"|default:"-" }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="label-detail">Próxima Calibração</div>
+                            <div class="value-detail {% if instrumento.data02_prox_calibracao < today %}text-danger{% else %}text-success{% endif %}">
+                                <i class="bi bi-calendar-event"></i> <strong>{{ instrumento.data02_prox_calibracao|date:"d/m/Y"|default:"-" }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <!-- SEÇÃO: Histórico de Calibrações -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm mb-5">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 text-secondary"><i class="bi bi-clock-history"></i> Histórico de Calibrações</h5>
+                </div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover table-history">
-                            <thead>
+                        <table class="table table-striped mb-0 align-middle">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Data</th>
-                                    <th>Grandeza</th>
+                                    <th>Data Calibração</th>
                                     <th>Resultado</th>
-                                    <th>Certificado</th>
+                                    <th>Vencimento</th>
+                                    <th>Responsável</th>
+                                    <th>Observações</th>
+                                    <th class="text-end">Certificado</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for hist in historico %}
+                                {% for item in historico %}
                                 <tr>
-                                    <td>{{ hist.data_calibracao|date:"d/m/Y" }}</td>
-                                    <td>{{ hist.tipo_medicao.grandeza }}</td>
+                                    <td class="fw-bold">{{ item.data_calibracao|date:"d/m/Y" }}</td>
                                     <td>
-                                        {% if hist.resultado == 'APROVADO' %}
-                                            <span class="text-success">✔ Aprovado</span>
-                                        {% elif hist.resultado == 'REPROVADO' %}
-                                            <span class="text-danger">✖ Reprovado</span>
+                                        <!-- Exibição correta do status -->
+                                        {% if item.resultado == 'APROVADO' %}
+                                            <span class="badge bg-success">APROVADO</span>
+                                        {% elif item.resultado == 'REPROVADO' %}
+                                            <span class="badge bg-danger">REPROVADO</span>
                                         {% else %}
-                                            <span class="text-warning">⚠ Com Restrição</span>
+                                            <!-- Aqui exibe "Aprovado Condicionalmente" em vez de CONDICIONAL -->
+                                            <span class="badge bg-warning text-dark">{{ item.get_resultado_display }}</span>
                                         {% endif %}
                                     </td>
-                                    <td>
-                                        {% if hist.certificado_pdf %}
-                                            <a href="{{ hist.certificado_pdf.url }}" target="_blank" class="btn btn-sm btn-outline-dark">📄 Baixar PDF</a>
+                                    <td>{{ item.proxima_calibracao|date:"d/m/Y"|default:"-" }}</td>
+                                    <td>{{ item.responsavel.nome_completo|default:"Externo" }}</td>
+                                    <td style="max-width: 300px;"><small class="text-muted">{{ item.observacoes|default:"-" }}</small></td>
+                                    <td class="text-end">
+                                        {% if item.certificado %}
+                                            <a href="{{ item.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                                            </a>
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                            <span class="text-muted small">-</span>
                                         {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted">Nenhum histórico registrado.</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        Nenhum histórico de calibração registrado para este instrumento.
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -130,6 +238,9 @@
             </div>
         </div>
     </div>
+
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
