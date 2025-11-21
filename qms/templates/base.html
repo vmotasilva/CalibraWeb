@@ -1,0 +1,16 @@
+{% if colaborador.is_admin %}
+        <a href="/admin" target="_blank" class="text-warning">⚙️ Administração Avançada</a>
+    {% endif %}
+    
+    <form action="{% url 'logout' %}" method="post" style="margin-top: auto;">
+        {% csrf_token %}
+        <button type="submit" style="background:none; border:none; color:#ef5350; padding:15px 20px; width:100%; text-align:left; cursor:pointer; border-top: 1px solid rgba(255,255,255,0.1);">
+            🚪 Sair do Sistema
+        </button>
+    </form>
+
+    <div class="user-info" style="margin-top: 0;"> Logado como:<br>
+        <strong>{{ colaborador.nome_completo }}</strong><br>
+        <small>{{ colaborador.cargo }}</small>
+    </div>
+</div>

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-0">👥 Gestão de RH & Competências</h2>
+        <p class="text-muted">Controle de Colaboradores e Treinamentos</p>
+    </div>
+    
+    {% if can_edit %}
+    <div class="d-flex gap-2">
+        <a href="{% url 'importar_colaboradores' %}" class="btn btn-success text-white fw-bold">
+            📥 Importar Colaboradores (Excel)
+        </a>
+        <a href="/admin/qms/colaborador/add/" class="btn btn-primary">
+            + Novo Colaborador
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm bg-white">
+            <div class="card-body text-center">
+                <h3 class="text-primary fw-bold">{{ funcionarios.count }}</h3>
+                <small class="text-muted text-uppercase">Total de Colaboradores</small>
+            </div>
+        </div>
+    </div>
+    </div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 text-secondary">Lista de Colaboradores</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Matrícula</th>
+                        <th>Nome Completo</th>
+                        <th>Cargo</th>
+                        <th>Setor</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for func in funcionarios %}
+                    <tr>
+                        <td><strong>{{ func.matricula }}</strong></td>
+                        <td>{{ func.nome_completo }}</td>
+                        <td>{{ func.cargo }}</td>
+                        <td>{{ func.setor.nome|default:"-" }}</td>
+                        <td>
+                            {% if func.is_active %}
+                                <span class="badge bg-success-subtle text-success border border-success">ATIVO</span>
+                            {% else %}
+                                <span class="badge bg-secondary">INATIVO</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="/admin/qms/colaborador/{{ func.id }}/change/" class="btn btn-sm btn-outline-secondary">
+                                ✏️ Editar
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center p-5 text-muted">
+                            Nenhum colaborador encontrado.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

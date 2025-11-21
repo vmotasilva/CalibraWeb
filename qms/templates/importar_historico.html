@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow border-0">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0"><i class="bi bi-clock-history"></i> Importar Histórico em Massa</h4>
+                </div>
+                <div class="card-body p-4">
+                    <p class="lead">Carregue uma planilha para alimentar o histórico de calibrações antigas.</p>
+                    
+                    <div class="alert alert-light border mb-4">
+                        <strong><i class="bi bi-info-circle"></i> Como funciona a Unicidade:</strong><br>
+                        O sistema verificará automaticamente se já existe um registro com o mesmo:
+                        <ul class="mb-0 mt-2">
+                            <li>Código do Instrumento</li>
+                            <li>Data de Calibração</li>
+                            <li>Data de Aprovação</li>
+                            <li>N° do Certificado</li>
+                        </ul>
+                        <small class="text-muted">Se existir, o registro será ignorado (não duplicado).</small>
+                    </div>
+
+                    <div class="mb-4">
+                        <a href="{% url 'template_historico' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-download"></i> Baixar Modelo de Planilha
+                        </a>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Selecione o Arquivo Excel (.xlsx)</label>
+                            {{ form.arquivo_excel }}
+                            <div class="form-text">{{ form.arquivo_excel.help_text }}</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-info text-white w-100 py-2 fw-bold">
+                            <i class="bi bi-upload"></i> Iniciar Importação
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
