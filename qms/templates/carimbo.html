@@ -2,142 +2,85 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Calibra QMS - Validação</title>
-    
+    <title>Calibra QMS - Validação em Lote</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';</script>
     
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #071526; 
-            color: #e8f4ff; 
-            margin: 0; 
-            padding: 20px; 
-            display: flex; 
-            gap: 20px; 
-            height: 100vh; 
-            box-sizing: border-box; 
+        /* --- TEMA LIGHT BLUE --- */
+        :root {
+            --bg-body: #e3f2fd; --bg-sidebar: #ffffff; --text-main: #37474f;
+            --text-label: #0277bd; --border-input: #90caf9; --bg-input: #ffffff;
+            --accent-color: #0288d1; --success-color: #2e7d32; --warning-bg: #fff3e0;
+            --selected-item: #e1f5fe;
         }
-        
-        /* Painel Esquerdo (Controles) */
-        .sidebar { 
-            background-color: #0b2a3a; 
-            padding: 20px; 
-            border-radius: 8px; 
-            width: 350px; 
-            min-width: 350px;
-            display: flex; 
-            flex-direction: column; 
-            gap: 15px; 
-            box-shadow: 2px 0 10px rgba(0,0,0,0.5); 
-            overflow-y: auto; 
-        }
-        
-        /* Painel Direito (Canvas do PDF) */
-        .preview-area { 
-            flex-grow: 1; 
-            background-color: #333; 
-            border-radius: 8px; 
-            display: flex; 
-            justify-content: center; 
-            overflow: auto; 
-            position: relative; 
-            padding: 20px; 
-        }
-        
-        /* Estilos de Formulário */
-        label { font-weight: bold; font-size: 0.9rem; color: #4ea8ff; display: block; margin-bottom: 5px; }
-        .form-control { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #4ea8ff; background-color: #071526; color: white; box-sizing: border-box; }
-        select.form-control { cursor: pointer; }
-        
-        button.btn-primary { 
-            background-color: #2d6a4f; 
-            color: white; 
-            border: none; 
-            padding: 15px; 
-            border-radius: 4px; 
-            font-size: 1.1rem; 
-            font-weight: bold; 
-            cursor: pointer; 
-            width: 100%; 
-            transition: 0.3s; 
-            margin-top: 20px; 
-        }
-        button.btn-primary:hover { background-color: #24553f; transform: scale(1.02); }
-
-        /* Canvas Container */
-        #canvas-container { position: relative; border: 1px solid #999; box-shadow: 0 0 20px black; height: fit-content; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-body); color: var(--text-main); margin: 0; padding: 20px; display: flex; gap: 20px; height: 100vh; box-sizing: border-box; }
+        .sidebar { background-color: var(--bg-sidebar); padding: 20px; border-radius: 8px; width: 420px; min-width: 420px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-y: auto; border: 1px solid #bbdefb; }
+        .preview-area { flex-grow: 1; background-color: #546e7a; border-radius: 8px; display: flex; justify-content: center; overflow: auto; position: relative; padding: 20px; box-shadow: inset 0 0 20px rgba(0,0,0,0.2); }
+        label { font-weight: 600; font-size: 0.85rem; color: var(--text-label); display: block; margin-bottom: 5px; margin-top: 10px; }
+        .form-control, .form-select, input[type="text"], input[type="date"], select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-input); background-color: var(--bg-input); color: #333; box-sizing: border-box; transition: 0.2s; }
+        .file-item { background: #f9f9f9; padding: 10px; border-radius: 6px; border: 1px solid #eee; border-left: 4px solid #ccc; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
+        .file-item:hover { background-color: #f0f0f0; }
+        .file-item.active { background-color: var(--selected-item); border-left-color: var(--accent-color); border: 1px solid var(--accent-color); }
+        .file-name { font-size: 0.85rem; font-weight: bold; color: #263238; margin-bottom: 8px; word-break: break-all; display: flex; justify-content: space-between; }
+        .status-indicator { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: #eee; color: #666; }
+        .status-indicator.ok { background: #c8e6c9; color: #2e7d32; }
+        #canvas-container { position: relative; border: 1px solid #cfd8dc; box-shadow: 0 5px 15px rgba(0,0,0,0.3); height: fit-content; background-color: white; }
         canvas { display: block; }
-        
-        /* Caixa de Seleção (Overlay) */
-        #selection-box {
-            position: absolute;
-            border: 2px solid #4ea8ff;
-            background-color: rgba(78, 168, 255, 0.3);
-            display: none;
-            pointer-events: none; /* Deixa o mouse passar para o canvas */
-        }
-        
-        h2 { margin-top: 0; border-bottom: 1px solid #4ea8ff; padding-bottom: 10px; }
-        
-        /* Bloco de Erro */
-        .error-box {
-            background-color: #ff4444; 
-            color: white; 
-            padding: 10px; 
-            border-radius: 4px; 
-            font-size: 0.9rem;
-        }
+        #selection-box { position: absolute; border: 2px solid #d32f2f; background-color: rgba(211, 47, 47, 0.1); display: none; pointer-events: none; }
+        .pdf-toolbar { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: rgba(38, 50, 56, 0.9); padding: 8px 20px; border-radius: 30px; display: flex; gap: 15px; z-index: 100; }
+        .btn-icon { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5); color: white; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 1.1rem; }
+        button.btn-primary { background-color: var(--accent-color); color: white; border: none; padding: 15px; border-radius: 6px; font-size: 1.1rem; font-weight: bold; cursor: pointer; width: 100%; margin-top: 20px; }
+        .btn-back { color: #546e7a; text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; margin-bottom: 10px; }
+        .btn-replicate { font-size: 0.7rem; padding: 2px 8px; background: #e3f2fd; color: #0277bd; border: 1px solid #bbdefb; border-radius: 4px; cursor: pointer; margin-left: 5px; }
     </style>
 </head>
 <body>
 
+    <select id="template-instrument-select" style="display: none;">
+        <option value="">-- Selecione a TAG --</option>
+        {% for inst in instrumentos %}
+            <option value="{{ inst.id }}">{{ inst.codigo }} - {{ inst.equipamento|truncatechars:20 }}</option>
+        {% endfor %}
+    </select>
+
     <div class="sidebar">
-        <h2>Calibra QMS Web</h2>
-        <p style="font-size: 0.8rem; color: #aaa;">Selecione os arquivos, escolha o responsável e desenhe a área do carimbo na imagem.</p>
+        <a href="{% url 'home' %}" class="btn-back"><span>&#8592;</span> Voltar para Dashboard</a>
+        <h2 style="margin:0 0 10px 0; color:#0277bd; border-bottom:2px solid #e3f2fd; font-size:1.4rem;">Validação em Lote</h2>
         
         <form method="post" enctype="multipart/form-data" id="stampForm">
             {% csrf_token %}
+            <div style="background: #f1f8e9; padding: 10px; border-radius: 6px; border: 1px solid #c5e1a5;">
+                
+                <!-- RESPONSÁVEL TÉCNICO (USER LOGADO) -->
+                <label style="margin-top:0">Responsável Técnico:</label> 
+                <input type="text" class="form-control" value="{{ user_full_name }}" disabled 
+                       style="background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; font-weight: bold;">
+                
+                <label>Texto:</label> {{ form.status_validacao }}
+                <label style="color:#e65100">Data:</label> {{ form.data_validacao }}
+            </div>
+
+            <hr style="border-color: #e0e0e0; margin: 15px 0;">
+            <label>Certificados (PDF):</label> {{ form.arquivo_pdf }}
             
-            {% if form.errors %}
-                <div class="error-box">
-                    <strong>Corrija os erros:</strong>
-                    <ul style="margin: 5px 0; padding-left: 20px;">
-                    {% for field in form %}
-                        {% for error in field.errors %}
-                            <li>{{ field.label }}: {{ error }}</li>
-                        {% endfor %}
-                    {% endfor %}
-                    {% for error in form.non_field_errors %}
-                        <li>{{ error }}</li>
-                    {% endfor %}
-                    </ul>
-                </div>
-            {% endif %}
-            <div style="margin-top: 10px;">
-                <label>{{ form.colaborador.label }}</label>
-                {{ form.colaborador }}
+            <div id="file-list-container" style="margin-top: 15px;">
+                <p style="color: #90a4ae; text-align: center; padding: 20px; border: 2px dashed #cfd8dc;">Selecione arquivos...</p>
             </div>
-            <div style="margin-top: 10px;">
-                <label>{{ form.status_validacao.label }}</label>
-                {{ form.status_validacao }}
-            </div>
-            <div style="margin-top: 10px;">
-                <label>{{ form.arquivo_pdf.label }}</label>
-                {{ form.arquivo_pdf }}
-            </div>
-
-            {{ form.x }} {{ form.y }} {{ form.w }} {{ form.h }}
+            
             {{ form.page_width }} {{ form.page_height }}
+            {{ form.x }} {{ form.y }} {{ form.w }} {{ form.h }}
 
-            <button type="submit" class="btn-primary">Carimbar e Baixar</button>
+            <button type="submit" class="btn-primary">PROCESSAR TODOS</button>
         </form>
-        
-        <div id="status-msg" style="color: yellow; font-size: 0.9rem; margin-top: 10px;"></div>
     </div>
 
     <div class="preview-area">
+        <div class="pdf-toolbar">
+            <button type="button" class="btn-icon" onclick="rotatePDF(-90)">↺</button>
+            <button type="button" class="btn-icon" onclick="replicatePosition()" title="Aplicar esta posição em todos">📍 Replicar Posição</button>
+            <button type="button" class="btn-icon" onclick="rotatePDF(90)">↻</button>
+        </div>
         <div id="canvas-container">
             <canvas id="pdf-render"></canvas>
             <div id="selection-box"></div>
@@ -145,133 +88,167 @@
     </div>
 
     <script>
-        let pdfDoc = null;
-        let pageNum = 1;
-        let scale = 1.5; // Zoom inicial
+        let pdfDoc = null; let pageNum = 1; let scale = 1.2; let rotation = 0; 
+        let currentFileIndex = -1; let filesData = [];
         const canvas = document.getElementById('pdf-render');
         const ctx = canvas.getContext('2d');
         const selectionBox = document.getElementById('selection-box');
         const container = document.getElementById('canvas-container');
+        const fileInput = document.querySelector('input[type="file"]');
+        const globalPW = document.getElementsByName('page_width')[0];
+        const globalPH = document.getElementsByName('page_height')[0];
 
-        // Variáveis de Arrastar
-        let isDragging = false;
-        let startX, startY;
+        if(fileInput) fileInput.addEventListener('change', handleFileSelect);
 
-        // inputs ocultos
-        const inputX = document.getElementsByName('x')[0];
-        const inputY = document.getElementsByName('y')[0];
-        const inputW = document.getElementsByName('w')[0];
-        const inputH = document.getElementsByName('h')[0];
-        const inputPW = document.getElementsByName('page_width')[0];
-        const inputPH = document.getElementsByName('page_height')[0];
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            const listContainer = document.getElementById('file-list-container');
+            const templateSelect = document.getElementById('template-instrument-select');
+            listContainer.innerHTML = ''; filesData = []; currentFileIndex = -1;
+            if (files.length === 0) return;
 
-        // Função chamada quando o usuário escolhe arquivos
-        function carregarPreview(event) {
-            // Pega a lista de arquivos
-            const fileList = event.target.files;
-            
-            if (fileList.length > 0) {
-                // Pega SEMPRE o primeiro arquivo para preview
-                const file = fileList[0];
-                
-                // Feedback visual se for lote
-                const statusMsg = document.getElementById('status-msg');
-                if (fileList.length > 1) {
-                    statusMsg.innerText = `Lote detectado: ${fileList.length} arquivos selecionados. Use a imagem ao lado para posicionar o carimbo em TODOS eles.`;
-                    statusMsg.style.color = "#4ea8ff"; // Azul
-                } else {
-                    statusMsg.innerText = "Desenhe a área do carimbo na imagem ->";
-                    statusMsg.style.color = "yellow";
-                }
+            files.forEach((file, index) => {
+                filesData.push({ file: file, x: 0, y: 0, w: 0, h: 0 });
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.dataset.index = index;
+                div.onclick = (e) => {
+                    if(e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+                    loadFilePreview(index);
+                };
+                const selectClone = templateSelect.cloneNode(true);
+                selectClone.id = ''; selectClone.style.display = 'block';
+                selectClone.name = `instrument_id_${index}`;
+                selectClone.className = 'form-select'; selectClone.required = true;
+                const certName = file.name.replace('.pdf', '').substring(0, 20);
 
-                if (file.type === "application/pdf") {
-                    const fileReader = new FileReader();
-                    fileReader.onload = function() {
-                        const typedarray = new Uint8Array(this.result);
-                        pdfjsLib.getDocument(typedarray).promise.then(pdf => {
-                            pdfDoc = pdf;
-                            renderPage(pageNum);
-                        });
-                    };
-                    fileReader.readAsArrayBuffer(file);
-                }
+                div.innerHTML = `
+                    <div class="file-name">
+                        <span>📄 ${file.name.substring(0, 20)}...</span>
+                        <span class="status-indicator" id="status-${index}">Sem Posição</span>
+                    </div>
+                    <div class="item-row">
+                        <span class="item-label">Instrumento:</span> ${selectClone.outerHTML}
+                    </div>
+                    <div class="item-row">
+                        <span class="item-label" style="color: #e65100;">
+                            Data Calibração: 
+                            <button type="button" class="btn-replicate" onclick="replicateDate(${index})">Replicar</button>
+                        </span>
+                        <input type="date" name="calib_date_${index}" id="date-input-${index}" required class="form-control" style="padding:5px;">
+                    </div>
+                    <div class="item-row">
+                        <span class="item-label">N° Certificado:</span>
+                        <input type="text" name="cert_num_${index}" value="${certName}" required class="form-control" style="padding:5px;">
+                    </div>
+                    <input type="hidden" name="x_${index}" id="input-x-${index}">
+                    <input type="hidden" name="y_${index}" id="input-y-${index}">
+                    <input type="hidden" name="w_${index}" id="input-w-${index}">
+                    <input type="hidden" name="h_${index}" id="input-h-${index}">
+                `;
+                listContainer.appendChild(div);
+            });
+            loadFilePreview(0);
+        }
+
+        function loadFilePreview(index) {
+            document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+            const activeItem = document.querySelector(`.file-item[data-index="${index}"]`);
+            if(activeItem) activeItem.classList.add('active');
+            currentFileIndex = index;
+            const file = filesData[index].file;
+            if (file.type === "application/pdf") {
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const typedarray = new Uint8Array(this.result);
+                    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                        pdfDoc = pdf; rotation = 0; renderPage(pageNum);
+                    });
+                };
+                reader.readAsArrayBuffer(file);
             }
         }
 
         function renderPage(num) {
             pdfDoc.getPage(num).then(page => {
-                const viewport = page.getViewport({ scale: scale });
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-
-                // IMPORTANTE: Salva dimensões reais do canvas para enviar ao backend
-                // O backend precisa saber o tamanho da tela para calcular a proporção
-                if(inputPW) inputPW.value = viewport.width;
-                if(inputPH) inputPH.value = viewport.height;
-
-                const renderContext = {
-                    canvasContext: ctx,
-                    viewport: viewport
-                };
-                page.render(renderContext);
+                const viewport = page.getViewport({ scale: scale, rotation: rotation % 360 });
+                canvas.height = viewport.height; canvas.width = viewport.width;
+                if(globalPW) globalPW.value = viewport.width;
+                if(globalPH) globalPH.value = viewport.height;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                page.render({ canvasContext: ctx, viewport: viewport }).promise.then(() => { drawSavedBox(); });
             });
         }
 
-        // --- Lógica do Mouse (Arrastar para desenhar) ---
-        
-        container.addEventListener('mousedown', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            startX = e.clientX - rect.left;
-            startY = e.clientY - rect.top;
-            isDragging = true;
-            
-            // Reseta caixa visual
-            selectionBox.style.width = '0px';
-            selectionBox.style.height = '0px';
-            selectionBox.style.display = 'block';
-            selectionBox.style.left = startX + 'px';
-            selectionBox.style.top = startY + 'px';
-        });
+        function drawSavedBox() {
+            if(currentFileIndex === -1) return;
+            const data = filesData[currentFileIndex];
+            if (data.w > 0 && data.h > 0) {
+                selectionBox.style.left = data.x + 'px'; selectionBox.style.top = data.y + 'px';
+                selectionBox.style.width = data.w + 'px'; selectionBox.style.height = data.h + 'px';
+                selectionBox.style.display = 'block';
+            } else { selectionBox.style.display = 'none'; }
+        }
 
+        window.replicatePosition = function() {
+            if(currentFileIndex === -1) return;
+            const srcData = filesData[currentFileIndex];
+            if(srcData.w === 0) { alert("Defina uma posição primeiro!"); return; }
+            filesData.forEach((data, idx) => {
+                data.x = srcData.x; data.y = srcData.y; data.w = srcData.w; data.h = srcData.h;
+                document.getElementById(`input-x-${idx}`).value = srcData.x;
+                document.getElementById(`input-y-${idx}`).value = srcData.y;
+                document.getElementById(`input-w-${idx}`).value = srcData.w;
+                document.getElementById(`input-h-${idx}`).value = srcData.h;
+                const ind = document.getElementById(`status-${idx}`);
+                if(ind) { ind.innerText = "Posição OK"; ind.classList.add('ok'); }
+            });
+            alert("Posição aplicada a todos!");
+        }
+
+        window.replicateDate = function(srcIndex) {
+            const srcVal = document.getElementById(`date-input-${srcIndex}`).value;
+            if(!srcVal) { alert("Preencha uma data primeiro!"); return; }
+            document.querySelectorAll('input[type="date"][name^="calib_date_"]').forEach(input => input.value = srcVal);
+            alert("Data replicada!");
+        }
+
+        window.rotatePDF = function(deg) { if(!pdfDoc) return; rotation += deg; renderPage(pageNum); }
+
+        let isDragging = false; let startX, startY;
+        container.addEventListener('mousedown', (e) => {
+            if(currentFileIndex === -1) return;
+            const rect = canvas.getBoundingClientRect();
+            startX = e.clientX - rect.left; startY = e.clientY - rect.top;
+            isDragging = true; selectionBox.style.display = 'block';
+            selectionBox.style.width = '0px'; selectionBox.style.height = '0px';
+            selectionBox.style.left = startX + 'px'; selectionBox.style.top = startY + 'px';
+        });
         container.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            
             const rect = canvas.getBoundingClientRect();
-            const currentX = e.clientX - rect.left;
-            const currentY = e.clientY - rect.top;
-            
-            const width = currentX - startX;
-            const height = currentY - startY;
-            
-            selectionBox.style.width = Math.abs(width) + 'px';
-            selectionBox.style.height = Math.abs(height) + 'px';
-            
-            // Lidar com arrastar para trás (valores negativos)
+            const currentX = e.clientX - rect.left; const currentY = e.clientY - rect.top;
+            const width = currentX - startX; const height = currentY - startY;
+            selectionBox.style.width = Math.abs(width) + 'px'; selectionBox.style.height = Math.abs(height) + 'px';
             selectionBox.style.left = (width < 0 ? currentX : startX) + 'px';
             selectionBox.style.top = (height < 0 ? currentY : startY) + 'px';
         });
-
         container.addEventListener('mouseup', (e) => {
             if (!isDragging) return;
             isDragging = false;
-            
-            // Pega valores finais CSS
             const rect = selectionBox.getBoundingClientRect();
             const canvasRect = canvas.getBoundingClientRect();
-            
-            // Calcula posição relativa ao Canvas
-            const x = rect.left - canvasRect.left;
-            const y = rect.top - canvasRect.top;
-            
-            // Preenche formulário oculto com valores numéricos
-            if(inputX) inputX.value = x;
-            if(inputY) inputY.value = y;
-            if(inputW) inputW.value = rect.width;
-            if(inputH) inputH.value = rect.height;
-            
-            document.getElementById('status-msg').innerText = "Área definida! Pode clicar em Carimbar.";
+            const x = rect.left - canvasRect.left; const y = rect.top - canvasRect.top;
+            filesData[currentFileIndex].x = x; filesData[currentFileIndex].y = y;
+            filesData[currentFileIndex].w = rect.width; filesData[currentFileIndex].h = rect.height;
+            document.getElementById(`input-x-${currentFileIndex}`).value = x;
+            document.getElementById(`input-y-${currentFileIndex}`).value = y;
+            document.getElementById(`input-w-${currentFileIndex}`).value = rect.width;
+            document.getElementById(`input-h-${currentFileIndex}`).value = rect.height;
+            const ind = document.getElementById(`status-${currentFileIndex}`);
+            if(ind) { ind.innerText = "Posição OK"; ind.classList.add('ok'); }
         });
-
     </script>
 </body>
 </html>

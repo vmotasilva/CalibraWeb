@@ -9,8 +9,10 @@
         </button>
     </form>
 
-    <div class="user-info" style="margin-top: 0;"> Logado como:<br>
-        <strong>{{ colaborador.nome_completo }}</strong><br>
-        <small>{{ colaborador.cargo }}</small>
+   <div class="mt-auto user-info">
+        Logado como:<br>
+        <strong>{{ nome_display|default:user.username|upper }}</strong><br>
+        
+        <small>{{ cargo_display|default:"Administrador do Sistema" }}</small>
     </div>
 </div>

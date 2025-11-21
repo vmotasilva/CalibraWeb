@@ -1,32 +1,33 @@
 from django.contrib import admin
 from django.urls import path
+from django.contrib.auth import views as auth_views
 from django.conf import settings 
 from django.conf.urls.static import static
-from qms.views import (
-    carimbar_view, 
-    importar_instrumentos_view, 
-    importar_colaboradores_view, # Nova
-    dashboard_view, 
-    detalhe_instrumento_view,
-    download_template_instrumentos, # Nova
-    download_template_colaboradores # Nova
-)
+from qms import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', dashboard_view, name='home'),
-    
-    # Carimbo
-    path('carimbar/', carimbar_view, name='carimbar'),
-    
-    # Instrumentos
-    path('importar-instrumentos/', importar_instrumentos_view, name='importar_instrumentos'),
-    path('template-instrumentos/', download_template_instrumentos, name='template_instrumentos'),
-    path('instrumento/<int:instrumento_id>/', detalhe_instrumento_view, name='detalhe_instrumento'),
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
-    # Colaboradores
-    path('importar-colaboradores/', importar_colaboradores_view, name='importar_colaboradores'),
-    path('template-colaboradores/', download_template_colaboradores, name='template_colaboradores'),
+    path('', views.dashboard_view, name='home'),
+    path('metrologia/', views.modulo_metrologia_view, name='modulo_metrologia'),
+    path('rh/', views.modulo_rh_view, name='modulo_rh'),
+    
+    path('carimbar/', views.carimbar_view, name='carimbar'),
+    path('detalhe/<int:instrumento_id>/', views.detalhe_instrumento_view, name='detalhe_instrumento'),
+    
+    path('dl-template-inst/', views.dl_template_instr, name='template_instrumentos'),
+    path('dl-template-colab/', views.dl_template_colab, name='template_colaboradores'),
+    path('dl-template-hier/', views.dl_template_hierarquia, name='template_hierarquia'),
+
+    path('imp-inst/', views.imp_instr_view, name='importar_instrumentos'),
+    path('imp-colab/', views.imp_colab_view, name='importar_colaboradores'),
+
+    path('imp-hist/', views.imp_historico_view, name='importar_historico'),
+    path('dl-template-hist/', views.dl_template_historico, name='template_historico'),
+        
+    path('imp-hierarquia/', views.imp_hierarquia_view, name='importar_hierarquia'),
 ]
 
 if settings.DEBUG:

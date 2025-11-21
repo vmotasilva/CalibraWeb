@@ -1,318 +1,269 @@
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver
+from django.contrib.auth.models import User
 from datetime import date, timedelta
 
 # ==============================================================================
-# OPÇÕES E CONSTANTES GERAIS
+# CONSTANTES E OPÇÕES
 # ==============================================================================
-STATUS_CHOICES = [
-    ('ATIVO', 'Ativo'),
-    ('INATIVO', 'Inativo'),
-    ('INSS', 'Afastado INSS')
-]
-
-# Atualizado conforme solicitado
+STATUS_CHOICES = [('ATIVO', 'Ativo'), ('INATIVO', 'Inativo'), ('INSS', 'Afastado INSS')]
 TURNOS_CHOICES = [
-    ('ADM', 'Administrativo'),
-    ('TURNO_1', 'Turno 1'),
-    ('TURNO_2', 'Turno 2'),
-    ('TURNO_3', 'Turno 3'),
-    ('12X36', '12x36') # Mantido como opção extra comum
-]
-
-RESULTADO_CALIBRA = [
-    ('APROVADO', 'Aprovado'),
-    ('COM_RESTricao', 'Aprovado c/ Restrição'),
-    ('REPROVADO', 'Reprovado')
+    ('ADM', 'Administrativo'), 
+    ('TURNO_1', 'Turno 1'), 
+    ('TURNO_2', 'Turno 2'), 
+    ('TURNO_3', 'Turno 3'), 
+    ('12X36', '12x36')
 ]
 
 # ==============================================================================
-# 0. ESTRUTURA ORGANIZACIONAL (SETORES E CUSTOS)
+# MÓDULO 0: ESTRUTURA
 # ==============================================================================
 class Setor(models.Model):
     nome = models.CharField(max_length=100, unique=True, verbose_name="Nome do Setor")
-    # Responsável genérico (texto), a hierarquia real fica em HierarquiaSetor
     responsavel = models.CharField(max_length=100, null=True, blank=True, verbose_name="Responsável Genérico")
-
-    def __str__(self):
-        return self.nome
-
-    class Meta:
-        verbose_name = "Setor"
-        verbose_name_plural = "0.1 Cadastro de Setores"
-        ordering = ['nome']
+    def __str__(self): return self.nome
+    class Meta: verbose_name = "Setor"; verbose_name_plural = "0.1 Cadastro de Setores"; ordering = ['nome']
 
 class CentroCusto(models.Model):
     setor = models.ForeignKey(Setor, on_delete=models.CASCADE, related_name='centros_custo', verbose_name="Setor Pertencente")
-    codigo = models.CharField(max_length=20, verbose_name="Código (Ex: 2050)")
-    descricao = models.CharField(max_length=100, null=True, blank=True, verbose_name="Descrição (Opcional)")
-
-    def __str__(self):
-        return f"{self.codigo} - {self.descricao or self.setor.nome}"
-
-    class Meta:
-        verbose_name = "Centro de Custo"
-        verbose_name_plural = "0.2 Centros de Custo"
-        unique_together = ('setor', 'codigo')
+    codigo = models.CharField(max_length=20, verbose_name="Código")
+    descricao = models.CharField(max_length=100, null=True, blank=True, verbose_name="Descrição")
+    def __str__(self): return f"{self.codigo} - {self.descricao or self.setor.nome}"
+    class Meta: verbose_name = "Centro de Custo"; verbose_name_plural = "0.2 Centros de Custo"; unique_together = ('setor', 'codigo')
 
 # ==============================================================================
-# 1. GESTÃO DE PESSOAS (RH)
+# MÓDULO 7: DOCUMENTOS (GED)
 # ==============================================================================
-class Colaborador(models.Model):
-    # Identificação
-    matricula = models.CharField(max_length=20, unique=True, verbose_name="Matrícula")
-    username = models.CharField(max_length=50, unique=True, verbose_name="Login (Caixa Alta)")
-    
-    # Dados Pessoais/Profissionais
-    nome_completo = models.CharField(max_length=100, verbose_name="Nome Completo")
-    cargo = models.CharField(max_length=100, verbose_name="Cargo/Função")
-    grupo = models.CharField(max_length=50, verbose_name="Grupo (Macro)")
-    
-    # Vínculos
-    setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True, verbose_name="Setor")
-    centro_custo = models.ForeignKey(CentroCusto, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Centro de Custo")
-    turno = models.CharField(max_length=20, choices=TURNOS_CHOICES, default='ADM', verbose_name="Turno")
-
-    # Controle de Acesso
-    is_active = models.BooleanField(default=True, verbose_name="Ativo")
-    is_admin = models.BooleanField(default=False, verbose_name="Administrador")
-    password_last_changed = models.DateField(null=True, blank=True, verbose_name="Última Troca de Senha")
-    criado_em = models.DateTimeField(auto_now_add=True)
-
-    def save(self, *args, **kwargs):
-        self.matricula = self.matricula.upper().strip()
-        self.username = self.username.upper().strip()
-        self.nome_completo = self.nome_completo.upper().strip()
-        self.cargo = self.cargo.upper().strip()
-        self.grupo = self.grupo.upper().strip()
-        super().save(*args, **kwargs)
-
-    def get_chefia(self):
-        """Retorna o objeto de Hierarquia correspondente ao Setor/Turno deste colaborador."""
-        if not self.setor: return None
-        try:
-            return HierarquiaSetor.objects.get(setor=self.setor, turno=self.turno)
-        except HierarquiaSetor.DoesNotExist:
-            return None
-
-    def __str__(self):
-        return self.nome_completo
-    
-    class Meta:
-        verbose_name = "Colaborador"
-        verbose_name_plural = "1. Colaboradores (RH)"
-
-class HierarquiaSetor(models.Model):
-    setor = models.ForeignKey(Setor, on_delete=models.CASCADE, verbose_name="Setor")
-    turno = models.CharField(max_length=20, choices=TURNOS_CHOICES, verbose_name="Turno")
-    
-    # Cadeia de Comando
-    lider = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name='liderados_setor', verbose_name="Líder")
-    supervisor = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name='supervisionados_setor', verbose_name="Supervisor")
-    gerente = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name='gerenciados_setor', verbose_name="Gerente")
-    diretor = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name='diretoria_setor', verbose_name="Diretor")
-
-    def __str__(self):
-        return f"Hierarquia: {self.setor.nome} - {self.get_turno_display()}"
-
-    class Meta:
-        verbose_name = "Definição de Hierarquia"
-        verbose_name_plural = "1.1 Hierarquia (Setor x Turno)"
-        unique_together = ('setor', 'turno')
-
-# ==============================================================================
-# 2. METROLOGIA (INSTRUMENTOS)
-# ==============================================================================
-class Instrumento(models.Model):
-    STATUS_INSTRUMENTO = [('ATIVO', 'Ativo'), ('INATIVO', 'Inativo'), ('SUCATA', 'Sucata')]
-
-    tag = models.CharField(max_length=50, unique=True, verbose_name="Identificação/Tag")
-    descricao = models.CharField(max_length=200, verbose_name="Descrição do Equipamento")
-    marca = models.CharField(max_length=100, null=True, blank=True, verbose_name="Fabricante")
-    modelo = models.CharField(max_length=100, null=True, blank=True, verbose_name="Modelo")
-    serie = models.CharField(max_length=100, null=True, blank=True, verbose_name="Nº de Série")
-    
-    # Localização vinculada ao Setor
-    setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True, verbose_name="Setor de Instalação")
-    status = models.CharField(max_length=20, choices=STATUS_INSTRUMENTO, default='ATIVO')
-
-    def __str__(self):
-        return f"{self.tag} - {self.descricao}"
-    
-    class Meta:
-        verbose_name = "Instrumento"
-        verbose_name_plural = "2. Instrumentos (Cadastro Físico)"
-
-class TipoMedicao(models.Model):
-    instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='medicoes', verbose_name="Instrumento")
-    grandeza = models.CharField(max_length=100, verbose_name="Grandeza (Ex: Temperatura)")
-    faixa = models.CharField(max_length=100, verbose_name="Faixa de Medição", null=True, blank=True)
-    resolucao = models.CharField(max_length=100, verbose_name="Resolução", null=True, blank=True)
-    
-    # Controle de Vencimento
-    periodicidade_meses = models.IntegerField(default=12, verbose_name="Freq. (Meses)")
-    data_ultima_calibracao = models.DateField(null=True, blank=True, verbose_name="Última Calibração")
-    data_proxima_calibracao = models.DateField(null=True, blank=True, verbose_name="Vencimento")
-
-    def save(self, *args, **kwargs):
-        if self.data_ultima_calibracao and self.periodicidade_meses:
-            dias = self.periodicidade_meses * 30
-            self.data_proxima_calibracao = self.data_ultima_calibracao + timedelta(days=dias)
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.instrumento.tag} | {self.grandeza}"
-    
-    class Meta:
-        verbose_name = "Monitoramento de Vencimento"
-        verbose_name_plural = "3. Painel de Vencimentos (Tipos de Medição)"
-        unique_together = ('instrumento', 'grandeza')
-
-class HistoricoCalibracao(models.Model):
-    tipo_medicao = models.ForeignKey(TipoMedicao, on_delete=models.CASCADE, related_name='historico', verbose_name="Tipo de Medição")
-    data_calibracao = models.DateField(verbose_name="Data da Calibração")
-    certificado_pdf = models.FileField(upload_to='certificados/', verbose_name="Certificado (PDF)", null=True, blank=True)
-    resultado = models.CharField(max_length=20, choices=RESULTADO_CALIBRA, default='APROVADO')
-    observacoes = models.TextField(null=True, blank=True, verbose_name="Observações")
-    responsavel = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Responsável Validação")
-    criado_em = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = "Histórico"
-        verbose_name_plural = "4. Histórico de Calibrações"
-        ordering = ['-data_calibracao']
-
-@receiver(post_save, sender=HistoricoCalibracao)
-def atualizar_datas_instrumento(sender, instance, created, **kwargs):
-    if created:
-        medicao = instance.tipo_medicao
-        if not medicao.data_ultima_calibracao or instance.data_calibracao > medicao.data_ultima_calibracao:
-            medicao.data_ultima_calibracao = instance.data_calibracao
-            medicao.save()
-
-# ==============================================================================
-# 5. SUPRIMENTOS (FORNECEDORES E COTAÇÕES)
-# ==============================================================================
-class Fornecedor(models.Model):
-    STATUS_HOMOLOGACAO = [('HOMOLOGADO', 'Homologado'), ('BLOQUEADO', 'Bloqueado'), ('EM_ANALISE', 'Em Análise')]
-    
-    nome_fantasia = models.CharField(max_length=100, verbose_name="Nome Fantasia")
-    razao_social = models.CharField(max_length=150, verbose_name="Razão Social", null=True, blank=True)
-    cnpj = models.CharField(max_length=20, unique=True, verbose_name="CNPJ")
-    contato = models.CharField(max_length=100, verbose_name="Nome do Contato")
-    email = models.EmailField(verbose_name="E-mail")
-    telefone = models.CharField(max_length=20, verbose_name="Telefone")
-    escopo_servico = models.TextField(verbose_name="Escopo de Serviço")
-    status = models.CharField(max_length=20, choices=STATUS_HOMOLOGACAO, default='EM_ANALISE')
-    nota_media = models.DecimalField(max_digits=3, decimal_places=1, default=0.0, verbose_name="Nota Média (0-10)")
-
-    def __str__(self):
-        return f"{self.nome_fantasia} (Nota: {self.nota_media})"
-    
-    class Meta:
-        verbose_name = "Fornecedor"
-        verbose_name_plural = "5. Fornecedores"
-
-class AvaliacaoFornecedor(models.Model):
-    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.CASCADE, related_name='avaliacoes')
-    data_avaliacao = models.DateField(auto_now_add=True)
-    avaliador = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True)
-    nota_tecnica = models.IntegerField(verbose_name="Capacidade Técnica (0-10)", default=10)
-    nota_pontualidade = models.IntegerField(verbose_name="Pontualidade (0-10)", default=10)
-    nota_atendimento = models.IntegerField(verbose_name="Atendimento (0-10)", default=10)
-    observacao = models.TextField(null=True, blank=True, verbose_name="Ocorrências/Obs")
-    
-    def media_final(self):
-        return round((self.nota_tecnica + self.nota_pontualidade + self.nota_atendimento) / 3, 1)
-
-    class Meta:
-        verbose_name = "Avaliação"
-        verbose_name_plural = "Avaliações de Fornecedores"
-
-@receiver(post_save, sender=AvaliacaoFornecedor)
-def atualizar_nota_fornecedor(sender, instance, **kwargs):
-    fornecedor = instance.fornecedor
-    avaliacoes = fornecedor.avaliacoes.all()
-    if avaliacoes:
-        soma = sum([a.media_final() for a in avaliacoes])
-        fornecedor.nota_media = round(soma / len(avaliacoes), 1)
-        fornecedor.save()
-
-class ProcessoCotacao(models.Model):
-    STATUS_PROCESSO = [('ABERTO', 'Cotação Aberta'), ('FECHADO', 'Finalizado/Aprovado'), ('CANCELADO', 'Cancelado')]
-    
-    titulo = models.CharField(max_length=100, verbose_name="Título")
-    data_abertura = models.DateField(auto_now_add=True)
-    prazo_limite = models.DateField(verbose_name="Prazo para envio")
-    instrumentos = models.ManyToManyField(Instrumento, verbose_name="Instrumentos do Lote")
-    status = models.CharField(max_length=20, choices=STATUS_PROCESSO, default='ABERTO')
-    responsavel = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True)
-
-    def __str__(self):
-        return f"{self.titulo} ({self.status})"
-    
-    class Meta:
-        verbose_name = "Processo de Cotação"
-        verbose_name_plural = "6. Processos de Cotação"
-
-class Orcamento(models.Model):
-    processo = models.ForeignKey(ProcessoCotacao, on_delete=models.CASCADE, related_name='orcamentos')
-    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.CASCADE)
-    valor_total = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor Total (R$)")
-    prazo_execucao_dias = models.IntegerField(verbose_name="Prazo Execução (Dias)")
-    arquivo_proposta = models.FileField(upload_to='orcamentos/', verbose_name="PDF da Proposta")
-    vencedor = models.BooleanField(default=False, verbose_name="Vencedor?")
-    observacoes = models.TextField(null=True, blank=True)
-
-    def __str__(self):
-        return f"R$ {self.valor_total} - {self.fornecedor}"
-
-# ==============================================================================
-# 7. GESTÃO DE DOCUMENTOS (GED) E TREINAMENTOS
-# ==============================================================================
-class Documento(models.Model):
-    codigo = models.CharField(max_length=50, unique=True, verbose_name="Código (Ex: POP-01)")
-    titulo = models.CharField(max_length=200, verbose_name="Título do Procedimento")
-    revisao_atual = models.CharField(max_length=10, verbose_name="Revisão Atual (Ex: 05)")
-    data_revisao = models.DateField(verbose_name="Data da Revisão")
+class Procedimento(models.Model): 
+    codigo = models.CharField(max_length=50, unique=True, verbose_name="Código")
+    titulo = models.CharField(max_length=200, verbose_name="Título")
+    revisao_atual = models.CharField(max_length=10, verbose_name="Revisão Atual")
+    data_revisao = models.DateField(verbose_name="Data Rev.", null=True, blank=True)
     setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Setor Aplicável")
-    link_externo = models.URLField(null=True, blank=True, verbose_name="Link para Qualiex (Opcional)")
-    
-    criado_em = models.DateTimeField(auto_now_add=True)
-    atualizado_em = models.DateTimeField(auto_now=True)
+    prioridade = models.CharField(max_length=50, null=True, blank=True)
+    habilidade_vinculada = models.CharField(max_length=100, null=True, blank=True)
+    tem_copia_fisica = models.BooleanField(default=False)
+    aplica_treinamento = models.BooleanField(default=False)
+    link_externo = models.URLField(null=True, blank=True)
 
     def save(self, *args, **kwargs):
         self.codigo = self.codigo.upper().strip()
         self.titulo = self.titulo.upper().strip()
         super().save(*args, **kwargs)
 
-    def __str__(self):
-        return f"{self.codigo} - Rev. {self.revisao_atual}"
+    def __str__(self): return f"{self.codigo} - {self.titulo}"
+    class Meta: verbose_name = "Procedimento"; verbose_name_plural = "7.1 Procedimentos (GED)"; ordering = ['codigo']
 
-    class Meta:
-        verbose_name = "Documento (POP/IT)"
-        verbose_name_plural = "7.1 Cadastro de Documentos"
-        ordering = ['codigo']
+class PacoteTreinamento(models.Model):
+    nome = models.CharField(max_length=100, unique=True, verbose_name="Nome do Pacote")
+    descricao = models.TextField(null=True, blank=True, verbose_name="Descrição")
+    procedimentos = models.ManyToManyField(Procedimento, verbose_name="Procedimentos Incluídos", related_name="pacotes")
+    def __str__(self): return self.nome
+    class Meta: verbose_name = "Pacote de Treinamento"; verbose_name_plural = "7.3 Pacotes de Treinamento"
+
+# ==============================================================================
+# MÓDULO 1: COLABORADORES (RH)
+# ==============================================================================
+class Colaborador(models.Model):
+    user_django = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuário de Acesso (Login)")
+    matricula = models.CharField(max_length=20, unique=True, verbose_name="Matrícula")
+    cpf = models.CharField(max_length=14, unique=True, null=True, blank=True, verbose_name="CPF")
+    nome_completo = models.CharField(max_length=100, verbose_name="Nome Completo")
+    cargo = models.CharField(max_length=100, verbose_name="Cargo/Função")
+    grupo = models.CharField(max_length=50, verbose_name="Grupo (Macro)")
+    setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True, verbose_name="Setor")
+    centro_custo = models.ForeignKey(CentroCusto, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Centro de Custo")
+    turno = models.CharField(max_length=20, choices=TURNOS_CHOICES, default='ADM', verbose_name="Turno")
+    salario = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Salário (R$)")
+    em_ferias = models.BooleanField(default=False, verbose_name="Está de Férias?")
+    
+    pacotes_treinamento = models.ManyToManyField(PacoteTreinamento, blank=True, verbose_name="Pacotes Atribuídos", related_name="colaboradores")
+    is_active = models.BooleanField(default=True, verbose_name="Colaborador Ativo (RH)")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        self.matricula = self.matricula.upper().strip()
+        self.nome_completo = self.nome_completo.upper().strip()
+        if self.cpf: self.cpf = self.cpf.replace('.', '').replace('-', '').strip()
+        super().save(*args, **kwargs)
+
+    def get_chefia(self):
+        if not self.setor: return None
+        try: return HierarquiaSetor.objects.get(setor=self.setor, turno=self.turno)
+        except HierarquiaSetor.DoesNotExist: return None
+
+    def __str__(self): return f"{self.nome_completo} ({self.matricula})"
+    class Meta: verbose_name = "Colaborador"; verbose_name_plural = "1. Colaboradores (RH)"
+
+@receiver(m2m_changed, sender=Colaborador.pacotes_treinamento.through)
+def aplicar_pacotes_treinamento(sender, instance, action, pk_set, **kwargs):
+    if action == "post_add":
+        pacotes = PacoteTreinamento.objects.filter(pk__in=pk_set)
+        for pacote in pacotes:
+            for proc in pacote.procedimentos.all():
+                RegistroTreinamento.objects.get_or_create(
+                    colaborador=instance,
+                    procedimento=proc,
+                    defaults={'revisao_treinada': 'PENDENTE', 'data_treinamento': date.today()}
+                )
+
+class HierarquiaSetor(models.Model):
+    setor = models.ForeignKey(Setor, on_delete=models.CASCADE, verbose_name="Setor")
+    turno = models.CharField(max_length=20, choices=TURNOS_CHOICES, verbose_name="Turno")
+    lider = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name='liderados_setor', verbose_name="Líder")
+    supervisor = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name='supervisionados_setor', verbose_name="Supervisor")
+    gerente = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name='gerenciados_setor', verbose_name="Gerente")
+    diretor = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name='diretoria_setor', verbose_name="Diretor")
+    def __str__(self): return f"Hierarquia: {self.setor.nome} - {self.get_turno_display()}"
+    class Meta: verbose_name = "Hierarquia"; verbose_name_plural = "1.1 Hierarquia (Setor x Turno)"; unique_together = ('setor', 'turno')
+
+class Ferias(models.Model):
+    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='historico_ferias')
+    data_inicio = models.DateField(verbose_name="Início")
+    data_fim = models.DateField(verbose_name="Fim")
+    observacao = models.CharField(max_length=200, null=True, blank=True, verbose_name="Obs")
+    class Meta: verbose_name = "Férias"; verbose_name_plural = "1.2 Controle de Férias"; ordering = ['-data_inicio']
+
+@receiver(post_save, sender=Ferias)
+def atualizar_status_ferias(sender, instance, **kwargs):
+    c = instance.colaborador; h = date.today()
+    em = c.historico_ferias.filter(data_inicio__lte=h, data_fim__gte=h).exists()
+    if c.em_ferias != em: c.em_ferias = em; c.save()
+
+class Ocorrencia(models.Model):
+    TIPO = [('FALTA', 'Falta'), ('ATRASO', 'Atraso'), ('ADV', 'Advertência'), ('ELOGIO', 'Elogio'), ('OUTRO', 'Outro')]
+    NATUREZA = [('NEGATIVA', '🔴 Negativa'), ('POSITIVA', '🟢 Positiva'), ('NEUTRA', '⚪ Neutra')]
+    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='ocorrencias')
+    data_ocorrencia = models.DateField(verbose_name="Data"); tipo = models.CharField(max_length=20, choices=TIPO)
+    natureza = models.CharField(max_length=10, choices=NATUREZA, default='NEGATIVA')
+    titulo = models.CharField(max_length=100, verbose_name="Resumo"); descricao = models.TextField(verbose_name="Detalhes")
+    arquivo_evidencia = models.FileField(upload_to='ocorrencias/', null=True, blank=True)
+    def save(self, *args, **kwargs):
+        if self.tipo in ['FALTA', 'ATRASO', 'ADV']: self.natureza = 'NEGATIVA'
+        elif self.tipo == 'ELOGIO': self.natureza = 'POSITIVA'
+        super().save(*args, **kwargs)
+    class Meta: verbose_name = "Ocorrência"; verbose_name_plural = "1.3 Ocorrências"
+
+class DocumentoPessoal(models.Model):
+    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='documentos_pessoais')
+    tipo = models.CharField(max_length=50, verbose_name="Tipo")
+    arquivo = models.FileField(upload_to='rh_docs/', verbose_name="Arquivo")
+    descricao = models.CharField(max_length=100, null=True, blank=True)
+    data_upload = models.DateField(auto_now_add=True)
+    class Meta: verbose_name = "Documento Pessoal"; verbose_name_plural = "Documentos Pessoais"
+
+# ==============================================================================
+# MÓDULO 2: METROLOGIA
+# ==============================================================================
+
+class Instrumento(models.Model):
+    codigo = models.CharField(max_length=50, unique=True, verbose_name="Código")
+    equipamento = models.CharField(max_length=200, verbose_name="Equipamento")
+    fabricante = models.CharField(max_length=100, null=True, blank=True, verbose_name="Fabricante")
+    modelo = models.CharField(max_length=100, null=True, blank=True, verbose_name="Modelo")
+    numero_serie = models.CharField(max_length=100, null=True, blank=True, verbose_name="N° de Série")
+    status = models.CharField(max_length=50, default='Ativo', verbose_name="Status")
+    setor = models.CharField(max_length=100, null=True, blank=True, verbose_name="Setor")
+    localizacao = models.CharField(max_length=100, null=True, blank=True, verbose_name="Localização/Area")
+    frequencia = models.IntegerField(help_text="Em meses", null=True, blank=True, verbose_name="Frequência")
+    
+    unidade01 = models.CharField(max_length=50, null=True, blank=True, verbose_name="Unidade 01")
+    faixa01 = models.CharField(max_length=100, null=True, blank=True, verbose_name="Faixa 01")
+    data01_ultima_calibracao = models.DateField(null=True, blank=True, verbose_name="Data 01 - Última Calibração")
+    data01_prox_calibracao = models.DateField(null=True, blank=True, verbose_name="Data 01 - Próxima Calibração")
+    
+    unidade02 = models.CharField(max_length=50, null=True, blank=True, verbose_name="Unidade 02")
+    faixa02 = models.CharField(max_length=100, null=True, blank=True, verbose_name="Faixa 02")
+    data02_ultima_calibracao = models.DateField(null=True, blank=True, verbose_name="Data 02 - Última Calibração")
+    data02_prox_calibracao = models.DateField(null=True, blank=True, verbose_name="Data 02 - Próxima Calibração")
+
+    class Meta: 
+        verbose_name = "Instrumento"
+        verbose_name_plural = "2. Instrumentos"
+
+    def __str__(self):
+        return f"{self.codigo} - {self.equipamento}"
+
+class HistoricoCalibracao(models.Model):
+    instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='historico_calibracoes', verbose_name="Instrumento")
+    
+    data_calibracao = models.DateField(verbose_name="Data da Calibração")
+    data_aprovacao = models.DateField(verbose_name="Data de Aprovação/Validação", default=date.today)
+    numero_certificado = models.CharField(max_length=100, verbose_name="N° do Certificado", default="S/N")
+    
+    proxima_calibracao = models.DateField(null=True, blank=True, verbose_name="Vencimento")
+    certificado = models.FileField(upload_to='certificados/', null=True, blank=True, verbose_name="Certificado (PDF)")
+    
+    # OPÇÕES ATUALIZADAS CONFORME PEDIDO
+    RESULTADO_CHOICES = [
+        ('APROVADO', 'Aprovado sem correções'),
+        ('CONDICIONAL', 'Aprovado com correções'),
+        ('REPROVADO', 'Reprovado')
+    ]
+    resultado = models.CharField(max_length=50, choices=RESULTADO_CHOICES, default='APROVADO', verbose_name="Resultado")
+    
+    responsavel = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Responsável Interno")
+    observacoes = models.TextField(null=True, blank=True, verbose_name="Observações")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta: 
+        verbose_name = "Histórico de Calibração"
+        verbose_name_plural = "4. Histórico de Calibrações"
+        ordering = ['-data_calibracao']
+        unique_together = ('instrumento', 'data_calibracao', 'data_aprovacao', 'numero_certificado')
+    
+    def __str__(self):
+        return f"{self.instrumento.codigo} - {self.data_calibracao}"
+
+# ==============================================================================
+# MÓDULO 5: SUPRIMENTOS
+# ==============================================================================
+class Fornecedor(models.Model):
+    STATUS = [('HOMOLOGADO', 'Homologado'), ('BLOQUEADO', 'Bloqueado'), ('EM_ANALISE', 'Em Análise')]
+    nome_fantasia = models.CharField(max_length=100); razao_social = models.CharField(max_length=150, null=True, blank=True)
+    cnpj = models.CharField(max_length=20, unique=True); contato = models.CharField(max_length=100)
+    email = models.EmailField(); telefone = models.CharField(max_length=20); escopo_servico = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS, default='EM_ANALISE')
+    nota_media = models.DecimalField(max_digits=3, decimal_places=1, default=0.0)
+    def __str__(self): return f"{self.nome_fantasia}"
+    class Meta: verbose_name_plural = "5. Fornecedores"
+
+class AvaliacaoFornecedor(models.Model):
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.CASCADE, related_name='avaliacoes')
+    data_avaliacao = models.DateField(auto_now_add=True)
+    avaliador = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True)
+    nota_tecnica = models.IntegerField(default=10); nota_pontualidade = models.IntegerField(default=10); nota_atendimento = models.IntegerField(default=10)
+    observacao = models.TextField(null=True, blank=True)
+    def media(self): return round((self.nota_tecnica + self.nota_pontualidade + self.nota_atendimento) / 3, 1)
+@receiver(post_save, sender=AvaliacaoFornecedor)
+def update_fornecedor_score(sender, instance, **kwargs):
+    f = instance.fornecedor; avgs = f.avaliacoes.all()
+    if avgs: f.nota_media = round(sum([a.media() for a in avgs]) / len(avgs), 1)
+    f.save()
+
+class ProcessoCotacao(models.Model):
+    STATUS = [('ABERTO', 'Aberto'), ('FECHADO', 'Fechado'), ('CANCELADO', 'Cancelado')]
+    titulo = models.CharField(max_length=100); data_abertura = models.DateField(auto_now_add=True); prazo_limite = models.DateField()
+    instrumentos = models.ManyToManyField(Instrumento); status = models.CharField(max_length=20, choices=STATUS, default='ABERTO')
+    responsavel = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True)
+    def __str__(self): return f"{self.titulo} ({self.status})"
+    class Meta: verbose_name_plural = "6. Processos de Cotação"
+
+class Orcamento(models.Model):
+    processo = models.ForeignKey(ProcessoCotacao, on_delete=models.CASCADE, related_name='orcamentos')
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.CASCADE)
+    valor_total = models.DecimalField(max_digits=10, decimal_places=2); prazo_execucao_dias = models.IntegerField()
+    arquivo_proposta = models.FileField(upload_to='orcamentos/'); vencedor = models.BooleanField(default=False); observacoes = models.TextField(null=True, blank=True)
+    def __str__(self): return f"R$ {self.valor_total} - {self.fornecedor}"
 
 class RegistroTreinamento(models.Model):
-    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='treinamentos', verbose_name="Colaborador")
-    documento = models.ForeignKey(Documento, on_delete=models.CASCADE, related_name='registros_treinamento', verbose_name="Documento")
-    revisao_treinada = models.CharField(max_length=10, verbose_name="Revisão Treinada")
-    data_treinamento = models.DateField(verbose_name="Data do Treinamento")
-    validade_treinamento = models.DateField(null=True, blank=True, verbose_name="Validade (Opcional)")
-    observacoes = models.TextField(null=True, blank=True)
-
+    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='treinamentos')
+    procedimento = models.ForeignKey(Procedimento, on_delete=models.CASCADE, related_name='registros_treinamento')
+    revisao_treinada = models.CharField(max_length=10); data_treinamento = models.DateField()
+    validade_treinamento = models.DateField(null=True, blank=True); observacoes = models.TextField(null=True, blank=True)
     @property
-    def status_treinamento(self):
-        if str(self.revisao_treinada).strip() == str(self.documento.revisao_atual).strip():
-            return "VIGENTE"
-        return "PENDENTE (Atualizar)"
-
-    def __str__(self):
-        return f"{self.colaborador} - {self.documento.codigo}"
-
-    class Meta:
-        verbose_name = "Registro de Treinamento"
-        verbose_name_plural = "7.2 Matriz de Treinamentos"
-        unique_together = ('colaborador', 'documento')
+    def status_treinamento(self): 
+        if str(self.revisao_treinada).strip() == str(self.procedimento.revisao_atual).strip(): return "VIGENTE"
+        return "PENDENTE"
+    class Meta: verbose_name_plural = "7.2 Matriz de Treinamentos"; unique_together = ('colaborador', 'procedimento')
