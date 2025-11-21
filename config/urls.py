@@ -6,7 +6,9 @@ from django.conf.urls.static import static
 from qms import views
 
 urlpatterns = [
+    path('', RedirectView.as_view(url='/login/'))
     path('admin/', admin.site.urls),
+    path('qms/', include('qms.urls')),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
@@ -31,4 +33,5 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
