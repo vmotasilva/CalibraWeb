@@ -221,16 +221,14 @@ def imp_instr_view(request):
                             val = get_val(k_list)
                             return pd.to_datetime(val).date() if val else None
 
-                        # --- NOVO: TRADUTOR DE FREQUÊNCIA ---
                         def traduzir_frequencia(valor):
-                            if not valor: return 12 # Padrão 1 ano
+                            if not valor: return 12
                             s = str(valor).upper()
                             if 'ANUAL' in s: return 12
                             if 'SEMESTRAL' in s: return 6
                             if 'TRIMESTRAL' in s: return 3
                             if 'BIENAL' in s: return 24
                             if 'MENSAL' in s: return 1
-                            # Tenta converter número (ex: "6" ou "6.0")
                             try: return int(float(valor))
                             except: return 12 
 
@@ -255,20 +253,20 @@ def imp_instr_view(request):
                         if setor_nome:
                             setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
 
-                        # 4. Calcula Frequência Corretamente
+                        # 4. Calcula Frequência
                         freq_meses = traduzir_frequencia(get_val(['FREQUENCIA', 'PERIODICIDADE']))
 
-                        # 5. Dados para Salvar
+                        # 5. Dados para Salvar (CORRIGIDO AQUI: 'serie' em vez de 'numero_serie')
                         dados = {
                             'codigo': codigo,
                             'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição',
                             'categoria': categoria_obj,
                             'fabricante': get_val(['FABRICANTE', 'MARCA']),
                             'modelo': get_val(['MODELO']),
-                            'numero_serie': get_val(['N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']),
+                            'serie': get_val(['N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']), # <--- CORREÇÃO
                             'setor': setor_obj,
                             'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']),
-                            'frequencia_meses': freq_meses, # Usa o valor traduzido
+                            'frequencia_meses': freq_meses,
                             'data_ultima_calibracao': get_date(['DATA ÚLTIMA CALIBRAÇÃO', 'ULTIMA CALIBRACAO']),
                             'ativo': True
                         }
