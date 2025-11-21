@@ -256,14 +256,15 @@ def imp_instr_view(request):
                         # 4. Calcula Frequência
                         freq_meses = traduzir_frequencia(get_val(['FREQUENCIA', 'PERIODICIDADE']))
 
-                        # 5. Dados para Salvar (CORRIGIDO AQUI: 'serie' em vez de 'numero_serie')
+                        # 5. Dados para Salvar
                         dados = {
                             'codigo': codigo,
                             'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição',
                             'categoria': categoria_obj,
                             'fabricante': get_val(['FABRICANTE', 'MARCA']),
                             'modelo': get_val(['MODELO']),
-                            'serie': get_val(['N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']), # <--- CORREÇÃO
+                            # CORREÇÃO AQUI: O nome do campo no banco é 'serie', não 'numero_serie'
+                            'serie': get_val(['N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']), 
                             'setor': setor_obj,
                             'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']),
                             'frequencia_meses': freq_meses,
