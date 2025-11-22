@@ -28,25 +28,12 @@ from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import Color as RColor
 
-# --- FUNÇÕES AUXILIARES GERAIS ---
+# --- FUNÇÕES AUXILIARES ---
 def get_colab(request):
-    """Retorna o colaborador logado ou None."""
     try: return Colaborador.objects.get(user_django=request.user)
     except: return None
 
-def excel_date_to_datetime(serial):
-    if pd.isnull(serial) or str(serial).strip() == '' or str(serial).strip() == '-': return None
-    try:
-        serial_str = str(serial).strip()
-        if '/' in serial_str: return pd.to_datetime(serial_str, dayfirst=True).date()
-        serial_float = float(serial)
-        return (datetime(1899, 12, 30) + timedelta(days=serial_float)).date()
-    except: return None
-
-# ==============================================================================
-# VIEWS DE TELA (DASHBOARD E MÓDULOS)
-# ==============================================================================
-
+# --- VIEWS DE TELA ---
 @login_required
 def dashboard_view(request):
     colab = get_colab(request)
@@ -92,15 +79,12 @@ def detalhe_instrumento_view(request, instrumento_id):
 def remover_historico_view(request, historico_id):
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
     instrumento_id = hist.instrumento.id
-    if hist.certificado:
-        hist.certificado.delete(save=False)
+    if hist.certificado: hist.certificado.delete(save=False)
     hist.delete()
     messages.success(request, "Certificado removido e datas atualizadas.")
     return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
 
-# ==============================================================================
-# FUNÇÃO DE CARIMBO
-# ==============================================================================
+# --- CARIMBO ---
 @login_required
 def carimbar_view(request):
     colab = get_colab(request)
@@ -111,46 +95,33 @@ def carimbar_view(request):
     if request.method == 'POST':
         form = CarimboForm(request.POST, request.FILES)
         if form.is_valid():
-            c_resp = colab 
-            dt_validacao = form.cleaned_data['data_validacao']
-            status_txt = form.cleaned_data['status_validacao']
-            
+            c_resp = colab; dt_validacao = form.cleaned_data['data_validacao']; status_txt = form.cleaned_data['status_validacao']
             resultado_banco = 'APROVADO'
             if status_txt == 'Reprovado': resultado_banco = 'REPROVADO'
             elif status_txt == 'Aprovado com correções': resultado_banco = 'CONDICIONAL'
             
-            fs = request.FILES.getlist('arquivo_pdf')
+            fs = request.FILES.getlist('arquivo_pdf'); processed_files = []
             try: screen_w = float(request.POST.get('page_width', 0)); screen_h = float(request.POST.get('page_height', 0))
             except: screen_w = 0; screen_h = 0
-            processed_files = []
 
             for i, f in enumerate(fs):
                 raw_x = request.POST.get(f'x_{i}', 0); raw_y = request.POST.get(f'y_{i}', 0); raw_w = request.POST.get(f'w_{i}', 0); raw_h = request.POST.get(f'h_{i}', 0)
                 ui = (float(raw_x), float(raw_y), float(raw_w), float(raw_h), screen_w, screen_h)
-
                 pdf_buffer = apply_stamp_logic(f, user_full_name, status_txt, ui, dt_validacao)
-                
-                inst_id = request.POST.get(f'instrument_id_{i}')
-                calib_date_str = request.POST.get(f'calib_date_{i}')
-                cert_num = request.POST.get(f'cert_num_{i}', f.name)
-                
+                inst_id = request.POST.get(f'instrument_id_{i}'); calib_date_str = request.POST.get(f'calib_date_{i}'); cert_num = request.POST.get(f'cert_num_{i}', f.name)
                 if inst_id and calib_date_str:
                     try:
                         instrumento = Instrumento.objects.get(id=inst_id)
                         dt_calibracao = datetime.strptime(calib_date_str, '%Y-%m-%d').date()
                         prox_calib = None
-                        if instrumento.frequencia_meses: 
-                            prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
+                        if instrumento.frequencia_meses: prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
                         
                         hist, created = HistoricoCalibracao.objects.get_or_create(
                             instrumento=instrumento, data_calibracao=dt_calibracao, data_aprovacao=dt_validacao, numero_certificado=cert_num,
                             defaults={'proxima_calibracao': prox_calib, 'resultado': resultado_banco, 'responsavel': c_resp, 'observacoes': f"Validado por {user_full_name}: {status_txt}"}
                         )
                         if not created: hist.resultado = resultado_banco; hist.observacoes = f"Revalidado por {user_full_name}: {status_txt}"
-                        
-                        filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"
-                        hist.certificado.save(filename, ContentFile(pdf_buffer.getvalue())); hist.save()
-                        
+                        filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"; hist.certificado.save(filename, ContentFile(pdf_buffer.getvalue())); hist.save()
                     except Exception as e: print(f"Erro: {e}")
                 pdf_buffer.seek(0); processed_files.append((f.name, pdf_buffer))
             
@@ -172,10 +143,8 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
         if screen_w > 0 and screen_h > 0: scale_x = pdf_w / screen_w; scale_y = pdf_h / screen_h; final_x = screen_x * scale_x; final_y = pdf_h - (screen_y * scale_y) - (screen_box_h * scale_y)
         else: final_x = pdf_w - 150; final_y = 50
         b = io.BytesIO(); c = canvas.Canvas(b, pagesize=(pdf_w, pdf_h))
-        
         if 'Reprovado' in status: main_color = RColor(0.8, 0, 0)
         else: main_color = RColor(0, 0.5, 0)
-        
         c.setFillColor(main_color); c.setFont("Helvetica-Bold", 10); c.drawString(final_x, final_y + 20, status)
         c.setFillColor(RColor(0, 0, 0)); c.setFont("Helvetica", 9); c.drawString(final_x, final_y + 10, f"{data_validacao.strftime('%d/%m/%Y')}")
         c.drawString(final_x, final_y, f"{user_name}")
@@ -183,40 +152,22 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
         for pg in ipdf.pages[1:]: o.add_page(pg)
     out = io.BytesIO(); o.write(out); out.seek(0); return out
 
-
-# ==============================================================================
-# TEMPLATES DE DOWNLOAD
-# ==============================================================================
+# --- TEMPLATES ---
 def dl_template_instr(request):
-    colunas = [
-        "TAG", "EQUIPAMENTO", "STATUS", "FABRICANTE", "MODELO", "N SERIE", 
-        "SETOR", "LOCALIZACAO", "FREQUENCIA_MESES", "DATA_ULTIMA_CALIBRACAO", 
-        "FAIXA", "UNIDADE"
-    ]
+    colunas = ["TAG", "EQUIPAMENTO", "STATUS", "FABRICANTE", "MODELO", "N SERIE", "SETOR", "LOCALIZACAO", "FREQUENCIA_MESES", "DATA_ULTIMA_CALIBRACAO", "FAIXA", "UNIDADE"]
     df = pd.DataFrame(columns=colunas)
     r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    r['Content-Disposition'] = 'attachment; filename="template_instrumentos_v2.xlsx"'
-    df.to_excel(r, index=False)
-    return r
+    r['Content-Disposition'] = 'attachment; filename="template_instrumentos_v2.xlsx"'; df.to_excel(r, index=False); return r
 
 def dl_template_colab(request):
     df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
-
 def dl_template_hierarquia(request):
     df = pd.DataFrame({'SETOR': ['MANUTENCAO'], 'TURNO': ['TURNO 1'], 'MAT_LIDER': ['1001'], 'MAT_SUPERVISOR': [''], 'MAT_GERENTE': [''], 'MAT_DIRETOR': ['']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_hierarquia.xlsx"'; return r
-
 def dl_template_historico(request):
-    colunas = ["TAG", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", "ERRO ENCONTRADO", "INCERTEZA", "TOLERANCIA PROCESSO (+/-)", "OBSERVAÇÕES"]
-    df = pd.DataFrame(columns=colunas)
-    r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    r['Content-Disposition'] = 'attachment; filename="template_historico_calibracao.xlsx"'
-    df.to_excel(r, index=False)
-    return r
+    colunas = ["TAG", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", "ERRO ENCONTRADO", "INCERTEZA", "TOLERANCIA PROCESSO (+/-)", "RESULTADO", "RESPONSÁVEL", "OBSERVAÇÕES"]
+    df = pd.DataFrame(columns=colunas); r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_historico_calibracao.xlsx"'; df.to_excel(r, index=False); return r
 
-
-# ==============================================================================
-# IMPORTAÇÃO DE INSTRUMENTOS
-# ==============================================================================
+# --- IMPORTAÇÕES INSTRUMENTOS ---
 @login_required
 def imp_instr_view(request):
     if request.method == 'POST':
@@ -224,35 +175,29 @@ def imp_instr_view(request):
         if form.is_valid():
             try:
                 f = request.FILES['arquivo_excel']
-                try:
-                    df = pd.read_csv(f, sep=';', encoding='latin1') if f.name.endswith('.csv') else pd.read_excel(f)
-                except:
-                    f.seek(0); df = pd.read_csv(f, sep=',', encoding='utf-8')
-
+                try: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
+                except: 
+                    f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8') if f.name.endswith('.csv') else pd.read_excel(f)
                 df.columns = df.columns.str.strip().str.upper()
                 count_new = 0; count_upd = 0; count_faixas = 0
-                
                 with transaction.atomic():
                     for _, row in df.iterrows():
                         def get_val(k_list): 
                             for key in k_list:
                                 if key in df.columns and pd.notna(row[key]): return str(row[key]).strip()
                             return None
-                        
                         def get_date(k_list):
                             val = get_val(k_list)
                             if not val or val == '-' or val == 'NaT': return None
                             try: return pd.to_datetime(val, dayfirst=True).date()
                             except: return None
-
                         def traduzir_frequencia(valor):
                             if not valor: return 12
                             s = str(valor).upper().replace(',', '.')
                             numeros = re.findall(r'\d+', s)
                             if numeros: return int(numeros[0])
                             try: return int(float(valor))
-                            except: return 12 
-                        
+                            except: return 12
                         def extrair_min_max(texto_faixa):
                             if not texto_faixa: return 0, 0
                             txt = str(texto_faixa).replace(',', '.')
@@ -274,9 +219,7 @@ def imp_instr_view(request):
 
                         freq_meses = traduzir_frequencia(get_val(['FREQUENCIA_MESES', 'FREQUENCIA', 'PERIODICIDADE']))
                         dt_ultima = get_date(['DATA_ULTIMA_CALIBRACAO', 'DATA ÚLTIMA CALIBRAÇÃO', 'ULTIMA CALIBRACAO', 'DATA CALIBRAÇÃO'])
-                        
-                        dt_proxima = None
-                        if dt_ultima: dt_proxima = dt_ultima + timedelta(days=freq_meses*30)
+                        dt_proxima = dt_ultima + timedelta(days=freq_meses*30) if dt_ultima else None
 
                         dados = {
                             'codigo': tag,
@@ -292,30 +235,19 @@ def imp_instr_view(request):
                             'data_proxima_calibracao': dt_proxima,
                             'ativo': True
                         }
-
                         obj, created = Instrumento.objects.update_or_create(tag=tag, defaults=dados)
                         if created: count_new += 1
                         else: count_upd += 1
 
                         faixa_txt = get_val(['FAIXA', 'RANGE', 'CAPACIDADE', 'FAIXA DE MEDICAO'])
                         unidade_txt = get_val(['UNIDADE', 'U.M.', 'UNIDADE DE MEDIDA'])
-                        
                         if faixa_txt and unidade_txt:
                             und_obj, _ = UnidadeMedida.objects.get_or_create(sigla=unidade_txt, defaults={'nome': unidade_txt})
                             v_min, v_max = extrair_min_max(faixa_txt)
-                            
-                            FaixaMedicao.objects.get_or_create(
-                                instrumento=obj, 
-                                unidade=und_obj,
-                                valor_minimo=v_min,
-                                valor_maximo=v_max,
-                                defaults={'resolucao': 0} 
-                            )
+                            FaixaMedicao.objects.get_or_create(instrumento=obj, unidade=und_obj, valor_minimo=v_min, valor_maximo=v_max, defaults={'resolucao': 0})
                             count_faixas += 1
-
                 messages.success(request, f"Importação: {count_new} Novos, {count_upd} Atualizados. {count_faixas} Faixas processadas.")
                 return redirect('modulo_metrologia')
-            
             except Exception as e:
                 messages.error(request, f"Erro ao importar: {str(e)}")
                 return redirect('importar_instrumentos')
@@ -324,7 +256,7 @@ def imp_instr_view(request):
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
 # ==============================================================================
-# IMPORTAÇÃO DE HISTÓRICO (BLINDADA E INTELIGENTE)
+# IMPORTAÇÃO DE HISTÓRICO (BLINDADA E UNIVERSAL)
 # ==============================================================================
 @login_required
 def imp_historico_view(request):
@@ -334,7 +266,6 @@ def imp_historico_view(request):
             try:
                 f = request.FILES['arquivo_excel']
                 df = None
-                # 1. Leitura Universal
                 try:
                     if f.name.endswith('.csv'):
                         try: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
@@ -345,7 +276,7 @@ def imp_historico_view(request):
                     messages.error(request, f"Erro ao ler arquivo: {e}")
                     return redirect('importar_historico')
 
-                # 2. Limpeza de Cabeçalho
+                # LIMPEZA DE CABEÇALHO
                 if df is not None:
                     df.columns = df.columns.str.strip().str.upper()
                     df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
@@ -355,12 +286,10 @@ def imp_historico_view(request):
                     return redirect('importar_historico')
 
                 count_new = 0; relatorio_erros = []
-
                 with transaction.atomic():
                     for index, row in df.iterrows():
                         linha = index + 2
                         
-                        # --- HELPERS ---
                         def encontrar_coluna(palavras_chave, evitar=[]):
                             for col in df.columns:
                                 match = False
@@ -380,10 +309,15 @@ def imp_historico_view(request):
 
                         def converter_data(valor):
                             if not valor or str(valor).strip() in ['-', 'NaT', 'nan', 'None', '']: return None
-                            try: return pd.to_datetime(str(valor).strip(), dayfirst=True).date()
+                            # Suporte para formato ISO YYYY-MM-DD
+                            try: return pd.to_datetime(str(valor).strip()).date()
                             except:
-                                try: return (datetime(1899, 12, 30) + timedelta(days=float(valor))).date()
-                                except: return None
+                                # Suporte para formato BR DD/MM/YYYY
+                                try: return pd.to_datetime(str(valor).strip(), dayfirst=True).date()
+                                except:
+                                    # Suporte para Serial do Excel
+                                    try: return (datetime(1899, 12, 30) + timedelta(days=float(valor))).date()
+                                    except: return None
 
                         def get_float_by_col(col_name):
                             val = get_val_by_col(col_name)
@@ -391,7 +325,6 @@ def imp_historico_view(request):
                             try: return float(re.sub(r'[^\d,.-]', '', val).replace(',', '.'))
                             except: return None
 
-                        # 1. Identificação
                         col_tag = encontrar_coluna(['TAG', 'CODIGO', 'IDENTIFICACAO'])
                         col_dt_cal = encontrar_coluna(['DATA CALIB', 'DATA ULTIMA', 'REALIZADO', 'CALIBRACAO'], evitar=['PROXIMA', 'VENCIMENTO', 'VALIDADE'])
                         
@@ -405,12 +338,13 @@ def imp_historico_view(request):
                         
                         try: inst = Instrumento.objects.get(tag=tag)
                         except: 
-                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não cadastrado.")
+                            relatorio_erros.append(f"L.{linha}: Instrumento não cadastrado.")
                             continue
 
-                        # 2. Dados
                         col_dt_apr = encontrar_coluna(['DATA APROVACAO', 'DATA VALIDACAO', 'AVALIACAO'])
-                        dt_apr = converter_data(row.get(col_dt_apr)) if col_dt_apr else dt_cal
+                        # CORREÇÃO AQUI: Se a coluna de aprovação não existir ou estiver vazia, usa a data de calibração
+                        val_apr = converter_data(row.get(col_dt_apr)) if col_dt_apr else None
+                        dt_apr = val_apr if val_apr else dt_cal
                         
                         col_cert = encontrar_coluna(['CERTIFICADO', 'N DOC'], evitar=['DATA'])
                         num_cert = get_val_by_col(col_cert) or 'S/N'
@@ -435,15 +369,13 @@ def imp_historico_view(request):
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
                         elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
                         
-                        # 3. Próxima Calibração (Trava de segurança no cálculo)
-                        col_prox = encontrar_coluna(['PROXIMA', 'VENCIMENTO', 'VALIDADE'])
+                        col_prox = encontrar_coluna(['PROXIMA', 'VENCIMENTO'])
                         prox = converter_data(row.get(col_prox)) if col_prox else None
                         
                         if not prox and inst.frequencia_meses and dt_cal:
                             try: prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
                             except: prox = None
 
-                        # 4. Salvar
                         obj, cr = HistoricoCalibracao.objects.update_or_create(
                             instrumento=inst, data_calibracao=dt_cal, numero_certificado=num_cert, 
                             defaults={
@@ -458,18 +390,15 @@ def imp_historico_view(request):
 
                 if relatorio_erros:
                     msg = " | ".join(relatorio_erros[:3])
-                    if len(relatorio_erros) > 3: msg += f" ... e mais {len(relatorio_erros)-3}."
-                    messages.warning(request, f"Importados: {count_new}. Erros: {msg}")
+                    messages.warning(request, f"Importados: {count_new}. Alertas: {msg}")
                 else:
                     messages.success(request, f"Sucesso! {count_new} registros importados.")
-                
                 return redirect('modulo_metrologia')
-
             except Exception as e: messages.error(request, f"Erro Crítico: {str(e)}")
     else: form = ImportacaoHistoricoForm()
     return render(request, 'importar_historico.html', {'form': form, 'colaborador': get_colab(request)})
 
-# --- OUTRAS IMPORTAÇÕES (RH) ---
+# --- OUTRAS IMPORTAÇÕES ---
 @login_required
 def imp_colab_view(request):
     if request.method == 'POST':
