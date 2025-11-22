@@ -19,7 +19,7 @@ from .models import (
     Instrumento, Colaborador, ProcessoCotacao, Procedimento,
     Fornecedor, HistoricoCalibracao, Setor, CentroCusto,
     RegistroTreinamento, Ferias, Ocorrencia, HierarquiaSetor,
-    CategoriaInstrumento, UnidadeMedida, FaixaMedicao
+    CategoriaInstrumento, UnidadeMedida, FaixaMedicao, Padrao # <--- Importe Padrao
 )
 from .forms import (
     CarimboForm, ImportacaoInstrumentosForm, ImportacaoColaboradoresForm, 
@@ -116,7 +116,14 @@ def carimbar_view(request):
     if request.method == 'POST':
         form = CarimboForm(request.POST, request.FILES)
         if form.is_valid():
-            c_resp = colab; dt_validacao = form.cleaned_data['data_validacao']; status_txt = form.cleaned_data['status_validacao']
+            c_resp = colab 
+            dt_validacao = form.cleaned_data['data_validacao']
+            status_txt = form.cleaned_data['status_validacao']
+            
+            # Novos Campos
+            is_rbc = form.cleaned_data.get('is_rbc', False)
+            padroes_selecionados = form.cleaned_data.get('padroes', [])
+            
             resultado_banco = 'APROVADO'
             if status_txt == 'Reprovado': resultado_banco = 'REPROVADO'
             elif status_txt == 'Aprovado com correções': resultado_banco = 'CONDICIONAL'
@@ -140,12 +147,23 @@ def carimbar_view(request):
                         if instrumento.frequencia_meses: 
                             prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
                         
-                        # Salva como EXTERNA por padrão ao validar PDF
                         hist, created = HistoricoCalibracao.objects.get_or_create(
-                            instrumento=instrumento, data_calibracao=dt_calibracao, data_aprovacao=dt_validacao, numero_certificado=cert_num,
-                            defaults={'proxima_calibracao': prox_calib, 'resultado': resultado_banco, 'responsavel': str(c_resp), 'observacoes': f"Validado por {user_full_name}: {status_txt}", 'tipo_calibracao': 'EXTERNA'}
+                            instrumento=instrumento, data_calibracao=dt_calibracao, numero_certificado=cert_num,
+                            defaults={
+                                'proxima_calibracao': prox_calib, 
+                                'resultado': resultado_banco, 
+                                'responsavel': str(c_resp), 
+                                'observacoes': f"Validado por {user_full_name}: {status_txt}",
+                                'tem_selo_rbc': is_rbc,
+                                'tipo_calibracao': 'EXTERNA' # Padrão carimbo é externo
+                            }
                         )
                         if not created: hist.resultado = resultado_banco; hist.observacoes = f"Revalidado por {user_full_name}: {status_txt}"
+                        
+                        # Vincula Padrões
+                        if not is_rbc and padroes_selecionados:
+                            hist.padroes_utilizados.set(padroes_selecionados)
+                            
                         filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"; hist.certificado.save(filename, ContentFile(pdf_buffer.getvalue())); hist.save()
                     except Exception as e: print(f"Erro: {e}")
                 pdf_buffer.seek(0); processed_files.append((f.name, pdf_buffer))
@@ -183,24 +201,14 @@ def dl_template_instr(request):
     df = pd.DataFrame(columns=colunas)
     r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     r['Content-Disposition'] = 'attachment; filename="template_instrumentos_v2.xlsx"'; df.to_excel(r, index=False); return r
+
 def dl_template_colab(request):
     df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
 def dl_template_hierarquia(request):
     df = pd.DataFrame({'SETOR': ['MANUTENCAO'], 'TURNO': ['TURNO 1'], 'MAT_LIDER': ['1001'], 'MAT_SUPERVISOR': [''], 'MAT_GERENTE': [''], 'MAT_DIRETOR': ['']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_hierarquia.xlsx"'; return r
-
-# TEMPLATE ATUALIZADO COM RBC E TIPO
 def dl_template_historico(request):
-    colunas = [
-        "TAG", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", 
-        "ERRO ENCONTRADO", "INCERTEZA", "TOLERANCIA PROCESSO (+/-)", 
-        "TIPO (INTERNA/EXTERNA)", "TEM SELO RBC (SIM/NAO)",
-        "RESULTADO", "RESPONSÁVEL", "OBSERVAÇÕES"
-    ]
-    df = pd.DataFrame(columns=colunas)
-    r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    r['Content-Disposition'] = 'attachment; filename="template_historico_calibracao.xlsx"'
-    df.to_excel(r, index=False)
-    return r
+    colunas = ["TAG", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", "ERRO ENCONTRADO", "INCERTEZA", "TOLERANCIA PROCESSO (+/-)", "TIPO (INTERNA/EXTERNA)", "TEM SELO RBC (SIM/NAO)", "RESULTADO", "RESPONSÁVEL", "OBSERVAÇÕES"]
+    df = pd.DataFrame(columns=colunas); r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_historico_calibracao.xlsx"'; df.to_excel(r, index=False); return r
 
 # --- IMPORTAÇÕES INSTRUMENTOS ---
 @login_required
@@ -287,7 +295,7 @@ def imp_instr_view(request):
     else: form = ImportacaoInstrumentosForm()
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
-# --- IMPORTAÇÃO DE HISTÓRICO (COM RBC E TIPO) ---
+# --- IMPORTAÇÃO DE HISTÓRICO (BLINDADA) ---
 @login_required
 def imp_historico_view(request):
     if request.method == 'POST':
@@ -304,10 +312,6 @@ def imp_historico_view(request):
                     else: df = pd.read_excel(f)
                 except Exception as e:
                     messages.error(request, f"Erro ao ler arquivo: {e}")
-                    return redirect('importar_historico')
-
-                if df is None or len(df.columns) < 2:
-                    messages.error(request, "Arquivo inválido ou vazio.")
                     return redirect('importar_historico')
 
                 df.columns = df.columns.str.strip().str.upper()
@@ -340,7 +344,7 @@ def imp_historico_view(request):
                             except:
                                 try: return (datetime(1899, 12, 30) + timedelta(days=float(valor))).date()
                                 except: return None
-                        
+
                         def get_float_by_col(col_name):
                             val = get_val_by_col(col_name)
                             if not val: return None
@@ -360,7 +364,7 @@ def imp_historico_view(request):
                         
                         try: inst = Instrumento.objects.get(tag=tag)
                         except: 
-                            relatorio_erros.append(f"L.{linha}: Instrumento não cadastrado.")
+                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não cadastrado.")
                             continue
 
                         col_dt_apr = encontrar_coluna(['DATA APROVACAO', 'DATA VALIDACAO', 'AVALIACAO'])
@@ -388,15 +392,15 @@ def imp_historico_view(request):
                         res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
                         elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
-
-                        # --- CAMPOS NOVOS: TIPO e RBC ---
-                        col_tipo = encontrar_coluna(['TIPO CALIB', 'INTERNA/EXTERNA'])
+                        
+                        # NOVOS CAMPOS: TIPO e RBC
+                        col_tipo = encontrar_coluna(['TIPO', 'INTERNA/EXTERNA'])
                         val_tipo = str(get_val_by_col(col_tipo) or '').upper()
                         tipo = 'INTERNA' if 'INTERNA' in val_tipo else 'EXTERNA'
                         
-                        col_rbc = encontrar_coluna(['SELO RBC', 'RBC', 'ACREDITADO'])
+                        col_rbc = encontrar_coluna(['RBC', 'ACREDITADO', 'SELO'])
                         val_rbc = str(get_val_by_col(col_rbc) or '').upper()
-                        tem_rbc = True if val_rbc in ['SIM', 'S', 'YES'] else False
+                        tem_rbc = True if val_rbc in ['SIM', 'S', 'YES', 'RBC'] else False
 
                         col_prox = encontrar_coluna(['PROXIMA', 'VENCIMENTO'])
                         prox = converter_data(row.get(col_prox)) if col_prox else None
@@ -410,7 +414,7 @@ def imp_historico_view(request):
                                 'data_aprovacao': dt_apr, 'resultado': res, 'proxima_calibracao': prox, 
                                 'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 
                                 'responsavel': resp_txt, 'fornecedor': forn_txt,
-                                'tipo_calibracao': tipo, 'tem_selo_rbc': tem_rbc, # <--- Salva novos campos
+                                'tipo_calibracao': tipo, 'tem_selo_rbc': tem_rbc,
                                 'observacoes': get_val_by_col(encontrar_coluna(['OBSERVACOES', 'OBS']))
                             }
                         )
@@ -427,6 +431,7 @@ def imp_historico_view(request):
     else: form = ImportacaoHistoricoForm()
     return render(request, 'importar_historico.html', {'form': form, 'colaborador': get_colab(request)})
 
+# --- OUTRAS IMPORTAÇÕES ---
 @login_required
 def imp_colab_view(request):
     if request.method == 'POST':
