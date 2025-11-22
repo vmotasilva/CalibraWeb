@@ -1,11 +1,12 @@
 from django.db import models
-from django.db.models.signals import post_save, m2m_changed
+from django.db.models.signals import post_save, m2m_changed, post_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from datetime import date, timedelta
+from decimal import Decimal
 
 # ==============================================================================
-# CONSTANTES E OPÇÕES
+# CONSTANTES E OPÇÕES GERAIS
 # ==============================================================================
 STATUS_CHOICES = [('ATIVO', 'Ativo'), ('INATIVO', 'Inativo'), ('INSS', 'Afastado INSS')]
 TURNOS_CHOICES = [
@@ -17,7 +18,7 @@ TURNOS_CHOICES = [
 ]
 
 # ==============================================================================
-# MÓDULO 0: ESTRUTURA
+# MÓDULO 0: ESTRUTURA ORGANIZACIONAL
 # ==============================================================================
 class Setor(models.Model):
     nome = models.CharField(max_length=100, unique=True, verbose_name="Nome do Setor")
@@ -33,38 +34,9 @@ class CentroCusto(models.Model):
     class Meta: verbose_name = "Centro de Custo"; verbose_name_plural = "0.2 Centros de Custo"; unique_together = ('setor', 'codigo')
 
 # ==============================================================================
-# MÓDULO 7: DOCUMENTOS (GED)
+# MÓDULO 1: RECURSOS HUMANOS (COLABORADORES)
 # ==============================================================================
-class Procedimento(models.Model): 
-    codigo = models.CharField(max_length=50, unique=True, verbose_name="Código")
-    titulo = models.CharField(max_length=200, verbose_name="Título")
-    revisao_atual = models.CharField(max_length=10, verbose_name="Revisão Atual")
-    data_revisao = models.DateField(verbose_name="Data Rev.", null=True, blank=True)
-    setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Setor Aplicável")
-    prioridade = models.CharField(max_length=50, null=True, blank=True)
-    habilidade_vinculada = models.CharField(max_length=100, null=True, blank=True)
-    tem_copia_fisica = models.BooleanField(default=False)
-    aplica_treinamento = models.BooleanField(default=False)
-    link_externo = models.URLField(null=True, blank=True)
-
-    def save(self, *args, **kwargs):
-        self.codigo = self.codigo.upper().strip()
-        self.titulo = self.titulo.upper().strip()
-        super().save(*args, **kwargs)
-
-    def __str__(self): return f"{self.codigo} - {self.titulo}"
-    class Meta: verbose_name = "Procedimento"; verbose_name_plural = "7.1 Procedimentos (GED)"; ordering = ['codigo']
-
-class PacoteTreinamento(models.Model):
-    nome = models.CharField(max_length=100, unique=True, verbose_name="Nome do Pacote")
-    descricao = models.TextField(null=True, blank=True, verbose_name="Descrição")
-    procedimentos = models.ManyToManyField(Procedimento, verbose_name="Procedimentos Incluídos", related_name="pacotes")
-    def __str__(self): return self.nome
-    class Meta: verbose_name = "Pacote de Treinamento"; verbose_name_plural = "7.3 Pacotes de Treinamento"
-
-# ==============================================================================
-# MÓDULO 1: COLABORADORES (RH)
-# ==============================================================================
+# Definido antes para evitar problemas de chave estrangeira circular
 class Colaborador(models.Model):
     user_django = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuário de Acesso (Login)")
     matricula = models.CharField(max_length=20, unique=True, verbose_name="Matrícula")
@@ -78,7 +50,8 @@ class Colaborador(models.Model):
     salario = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Salário (R$)")
     em_ferias = models.BooleanField(default=False, verbose_name="Está de Férias?")
     
-    pacotes_treinamento = models.ManyToManyField(PacoteTreinamento, blank=True, verbose_name="Pacotes Atribuídos", related_name="colaboradores")
+    # Relação ManyToMany definida abaixo (PacoteTreinamento)
+    pacotes_treinamento = models.ManyToManyField('PacoteTreinamento', blank=True, verbose_name="Pacotes Atribuídos", related_name="colaboradores")
     is_active = models.BooleanField(default=True, verbose_name="Colaborador Ativo (RH)")
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -95,18 +68,6 @@ class Colaborador(models.Model):
 
     def __str__(self): return f"{self.nome_completo} ({self.matricula})"
     class Meta: verbose_name = "Colaborador"; verbose_name_plural = "1. Colaboradores (RH)"
-
-@receiver(m2m_changed, sender=Colaborador.pacotes_treinamento.through)
-def aplicar_pacotes_treinamento(sender, instance, action, pk_set, **kwargs):
-    if action == "post_add":
-        pacotes = PacoteTreinamento.objects.filter(pk__in=pk_set)
-        for pacote in pacotes:
-            for proc in pacote.procedimentos.all():
-                RegistroTreinamento.objects.get_or_create(
-                    colaborador=instance,
-                    procedimento=proc,
-                    defaults={'revisao_treinada': 'PENDENTE', 'data_treinamento': date.today()}
-                )
 
 class HierarquiaSetor(models.Model):
     setor = models.ForeignKey(Setor, on_delete=models.CASCADE, verbose_name="Setor")
@@ -154,23 +115,19 @@ class DocumentoPessoal(models.Model):
     class Meta: verbose_name = "Documento Pessoal"; verbose_name_plural = "Documentos Pessoais"
 
 # ==============================================================================
-# MÓDULO 2: METROLOGIA
+# MÓDULO 2: METROLOGIA (INSTRUMENTOS E CALIBRAÇÃO)
 # ==============================================================================
 
 class UnidadeMedida(models.Model):
-    nome = models.CharField(max_length=50) # Ex: Quilograma
-    sigla = models.CharField(max_length=10) # Ex: kg
-
-    def __str__(self):
-        return f"{self.nome} ({self.sigla})"
+    nome = models.CharField(max_length=50)
+    sigla = models.CharField(max_length=10)
+    def __str__(self): return f"{self.nome} ({self.sigla})"
     class Meta: verbose_name_plural = "2.1 Unidades de Medida"
 
 class CategoriaInstrumento(models.Model):
-    nome = models.CharField(max_length=100) # Ex: Manômetro
+    nome = models.CharField(max_length=100)
     descricao = models.TextField(blank=True, null=True)
-
-    def __str__(self):
-        return self.nome
+    def __str__(self): return self.nome
     class Meta: verbose_name_plural = "2.2 Categorias de Instrumentos"
 
 class Instrumento(models.Model):
@@ -181,56 +138,60 @@ class Instrumento(models.Model):
     modelo = models.CharField(max_length=100, blank=True, null=True)
     serie = models.CharField(max_length=100, blank=True, null=True)
     
-    categoria = models.ForeignKey(CategoriaInstrumento, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Categoria / Família")
+    categoria = models.ForeignKey(CategoriaInstrumento, on_delete=models.SET_NULL, null=True, blank=True)
     
     ativo = models.BooleanField(default=True)
     data_ultima_calibracao = models.DateField(blank=True, null=True)
     data_proxima_calibracao = models.DateField(blank=True, null=True)
-    frequencia_meses = models.IntegerField(default=12, verbose_name="Frequência (Meses)")
+    frequencia_meses = models.IntegerField(default=12)
     
     responsavel = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True)
     setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True, blank=True)
     localizacao = models.CharField(max_length=100, blank=True, null=True)
 
-    class Meta: 
-        verbose_name = "Instrumento"
-        verbose_name_plural = "2. Instrumentos"
+    class Meta: verbose_name = "Instrumento"; verbose_name_plural = "2. Instrumentos"
+    def __str__(self): return f"{self.tag} - {self.descricao}"
 
-    def __str__(self):
-        return f"{self.tag} - {self.descricao}"
-
-# FAIXA AGORA LIGADA AO INSTRUMENTO (ESPECÍFICA DELE)
 class FaixaMedicao(models.Model):
     instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='faixas')
     unidade = models.ForeignKey(UnidadeMedida, on_delete=models.PROTECT)
+    
     valor_minimo = models.DecimalField(max_digits=10, decimal_places=4)
     valor_maximo = models.DecimalField(max_digits=10, decimal_places=4)
-    resolucao = models.DecimalField(max_digits=10, decimal_places=4, help_text="Menor divisão", null=True, blank=True)
-    incerteza_padrao = models.DecimalField(max_digits=10, decimal_places=4, blank=True, null=True)
+    resolucao = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    
+    # Critérios do Processo para Cálculo Automático
+    nominal = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="Valor central/nominal do processo")
+    tolerancia_mais_menos = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="Variação aceitável (+/-)")
 
     def __str__(self):
         return f"{self.valor_minimo} a {self.valor_maximo} {self.unidade.sigla}"
     class Meta: verbose_name_plural = "2.3 Faixas de Medição"
 
 class HistoricoCalibracao(models.Model):
-    instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='historico_calibracoes', verbose_name="Instrumento")
+    instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='historico_calibracoes')
     
-    data_calibracao = models.DateField(verbose_name="Data da Calibração")
-    data_aprovacao = models.DateField(verbose_name="Data de Aprovação/Validação", default=date.today)
-    numero_certificado = models.CharField(max_length=100, verbose_name="N° do Certificado", default="S/N")
+    data_calibracao = models.DateField()
+    data_aprovacao = models.DateField(default=date.today)
+    numero_certificado = models.CharField(max_length=100, default="S/N")
     
-    proxima_calibracao = models.DateField(null=True, blank=True, verbose_name="Vencimento")
-    certificado = models.FileField(upload_to='certificados/', null=True, blank=True, verbose_name="Certificado (PDF)")
+    # DADOS MATEMÁTICOS
+    erro_encontrado = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name="Erro (E)")
+    incerteza = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name="Incerteza (U)")
+    tolerancia_usada = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name="Tol. Processo (+/-)")
+
+    proxima_calibracao = models.DateField(null=True, blank=True)
+    certificado = models.FileField(upload_to='certificados/', null=True, blank=True)
     
     RESULTADO_CHOICES = [
         ('APROVADO', 'Aprovado sem correções'),
         ('CONDICIONAL', 'Aprovado com correções'),
         ('REPROVADO', 'Reprovado')
     ]
-    resultado = models.CharField(max_length=50, choices=RESULTADO_CHOICES, default='APROVADO', verbose_name="Resultado")
+    resultado = models.CharField(max_length=50, choices=RESULTADO_CHOICES, default='APROVADO')
     
-    responsavel = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Responsável Interno")
-    observacoes = models.TextField(null=True, blank=True, verbose_name="Observações")
+    responsavel = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True)
+    observacoes = models.TextField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta: 
@@ -239,11 +200,53 @@ class HistoricoCalibracao(models.Model):
         ordering = ['-data_calibracao']
         unique_together = ('instrumento', 'data_calibracao', 'data_aprovacao', 'numero_certificado')
     
-    def __str__(self):
-        return f"{self.instrumento.tag} - {self.data_calibracao}"
+    def __str__(self): return f"{self.instrumento.tag} - {self.data_calibracao}"
+
+    def save(self, *args, **kwargs):
+        # CÁLCULO AUTOMÁTICO DE APROVAÇÃO
+        if self.erro_encontrado is not None and self.incerteza is not None and self.tolerancia_usada is not None:
+            try:
+                erro = abs(Decimal(str(self.erro_encontrado)))
+                inc = abs(Decimal(str(self.incerteza)))
+                tol = abs(Decimal(str(self.tolerancia_usada)))
+
+                # Regra de Decisão (Guard Band / TUR)
+                # EMA (Erro Máximo Admissível) = Tolerância / 2
+                ema = tol / Decimal(2)
+                # EME (Erro Máximo do Equipamento) = Erro + Incerteza
+                eme = erro + inc
+
+                if eme <= ema:
+                    self.resultado = 'APROVADO'
+                elif eme > (ema * Decimal(3)):
+                    self.resultado = 'REPROVADO'
+                else:
+                    self.resultado = 'CONDICIONAL'
+            except:
+                pass # Se der erro de conversão, mantém o manual
+        
+        super().save(*args, **kwargs)
+
+# --- SIGNAL: ATUALIZAR INSTRUMENTO AUTOMATICAMENTE ---
+@receiver([post_save, post_delete], sender=HistoricoCalibracao)
+def atualizar_datas_instrumento(sender, instance, **kwargs):
+    inst = instance.instrumento
+    ultima_calib = inst.historico_calibracoes.order_by('-data_calibracao').first()
+    
+    if ultima_calib:
+        inst.data_ultima_calibracao = ultima_calib.data_calibracao
+        inst.data_proxima_calibracao = ultima_calib.proxima_calibracao
+        # Se o último certificado foi REPROVADO, inativa o instrumento
+        inst.ativo = False if ultima_calib.resultado == 'REPROVADO' else True
+    else:
+        # Se não tem histórico, zera as datas
+        inst.data_ultima_calibracao = None
+        inst.data_proxima_calibracao = None
+    
+    inst.save()
 
 # ==============================================================================
-# MÓDULO 5: SUPRIMENTOS
+# MÓDULO 5: SUPRIMENTOS (FORNECEDORES)
 # ==============================================================================
 class Fornecedor(models.Model):
     STATUS = [('HOMOLOGADO', 'Homologado'), ('BLOQUEADO', 'Bloqueado'), ('EM_ANALISE', 'Em Análise')]
@@ -255,8 +258,6 @@ class Fornecedor(models.Model):
     def __str__(self): return f"{self.nome_fantasia}"
     class Meta: verbose_name_plural = "5. Fornecedores"
 
-# [Substituir no MÓDULO 5]
-
 class AvaliacaoFornecedor(models.Model):
     fornecedor = models.ForeignKey(Fornecedor, on_delete=models.CASCADE, related_name='avaliacoes')
     data_avaliacao = models.DateField(auto_now_add=True)
@@ -265,15 +266,14 @@ class AvaliacaoFornecedor(models.Model):
     observacao = models.TextField(null=True, blank=True)
     def media(self): return round((self.nota_tecnica + self.nota_pontualidade + self.nota_atendimento) / 3, 1)
 
-# Usamos a string 'qms.AvaliacaoFornecedor' para evitar o NameError
+# CORREÇÃO DO SIGNAL: Usando string literal para evitar NameError na inicialização
 @receiver(post_save, sender='qms.AvaliacaoFornecedor')
 def update_fornecedor_score(sender, instance, **kwargs):
     f = instance.fornecedor
     avgs = f.avaliacoes.all()
     if avgs:
         f.nota_media = round(sum([a.media() for a in avgs]) / len(avgs), 1)
-    f.save() 
-# Fim do bloco AvaliacaoFornecedor
+    f.save()
 
 class ProcessoCotacao(models.Model):
     STATUS = [('ABERTO', 'Aberto'), ('FECHADO', 'Fechado'), ('CANCELADO', 'Cancelado')]
@@ -290,6 +290,36 @@ class Orcamento(models.Model):
     arquivo_proposta = models.FileField(upload_to='orcamentos/'); vencedor = models.BooleanField(default=False); observacoes = models.TextField(null=True, blank=True)
     def __str__(self): return f"R$ {self.valor_total} - {self.fornecedor}"
 
+# ==============================================================================
+# MÓDULO 7: DOCUMENTOS E TREINAMENTOS (CONECTADOS)
+# ==============================================================================
+class Procedimento(models.Model): 
+    codigo = models.CharField(max_length=50, unique=True, verbose_name="Código")
+    titulo = models.CharField(max_length=200, verbose_name="Título")
+    revisao_atual = models.CharField(max_length=10, verbose_name="Revisão Atual")
+    data_revisao = models.DateField(verbose_name="Data Rev.", null=True, blank=True)
+    setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Setor Aplicável")
+    prioridade = models.CharField(max_length=50, null=True, blank=True)
+    habilidade_vinculada = models.CharField(max_length=100, null=True, blank=True)
+    tem_copia_fisica = models.BooleanField(default=False)
+    aplica_treinamento = models.BooleanField(default=False)
+    link_externo = models.URLField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        self.codigo = self.codigo.upper().strip()
+        self.titulo = self.titulo.upper().strip()
+        super().save(*args, **kwargs)
+
+    def __str__(self): return f"{self.codigo} - {self.titulo}"
+    class Meta: verbose_name = "Procedimento"; verbose_name_plural = "7.1 Procedimentos (GED)"; ordering = ['codigo']
+
+class PacoteTreinamento(models.Model):
+    nome = models.CharField(max_length=100, unique=True, verbose_name="Nome do Pacote")
+    descricao = models.TextField(null=True, blank=True, verbose_name="Descrição")
+    procedimentos = models.ManyToManyField(Procedimento, verbose_name="Procedimentos Incluídos", related_name="pacotes")
+    def __str__(self): return self.nome
+    class Meta: verbose_name = "Pacote de Treinamento"; verbose_name_plural = "7.3 Pacotes de Treinamento"
+
 class RegistroTreinamento(models.Model):
     colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='treinamentos')
     procedimento = models.ForeignKey(Procedimento, on_delete=models.CASCADE, related_name='registros_treinamento')
@@ -301,30 +331,15 @@ class RegistroTreinamento(models.Model):
         return "PENDENTE"
     class Meta: verbose_name_plural = "7.2 Matriz de Treinamentos"; unique_together = ('colaborador', 'procedimento')
 
-    # [Substituir no final do MÓDULO 2]
-
-# --- LÓGICA AUTOMÁTICA: ATUALIZAR INSTRUMENTO QUANDO MEXER NO HISTÓRICO ---
-@receiver([post_save, models.signals.post_delete], sender=HistoricoCalibracao)
-def atualizar_datas_instrumento(sender, instance, **kwargs):
-    # Todo o código aqui DENTRO deve ser INDENTADO.
-    inst = instance.instrumento
-    
-    # Busca a calibração mais recente deste instrumento
-    ultima_calib = inst.historico_calibracoes.order_by('-data_calibracao').first()
-    
-    if ultima_calib:
-        inst.data_ultima_calibracao = ultima_calib.data_calibracao
-        inst.data_proxima_calibracao = ultima_calib.proxima_calibracao
-        
-        # Atualiza status baseado no resultado do último certificado
-        if ultima_calib.resultado == 'REPROVADO':
-            inst.ativo = False
-        else:
-            inst.ativo = True
-    else:
-        # Se apagou todos os históricos, limpa as datas
-        inst.data_ultima_calibracao = None
-        inst.data_proxima_calibracao = None
-    
-    inst.save()
-# Fim do bloco atualizar_datas_instrumento
+# --- SIGNAL: VINCULAR PACOTES AO REGISTRO DE TREINAMENTO ---
+@receiver(m2m_changed, sender=Colaborador.pacotes_treinamento.through)
+def aplicar_pacotes_treinamento(sender, instance, action, pk_set, **kwargs):
+    if action == "post_add":
+        pacotes = PacoteTreinamento.objects.filter(pk__in=pk_set)
+        for pacote in pacotes:
+            for proc in pacote.procedimentos.all():
+                RegistroTreinamento.objects.get_or_create(
+                    colaborador=instance,
+                    procedimento=proc,
+                    defaults={'revisao_treinada': 'PENDENTE', 'data_treinamento': date.today()}
+                )
