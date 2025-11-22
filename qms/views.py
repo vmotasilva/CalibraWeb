@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.db.models import Q
 from django.core.files.base import ContentFile
 
+# IMPORTA TODOS OS MODELOS NECESSÁRIOS
 from .models import (
     Instrumento, Colaborador, ProcessoCotacao, Procedimento,
     Fornecedor, HistoricoCalibracao, Setor, CentroCusto,
@@ -27,7 +28,9 @@ from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import Color as RColor
 
+# --- FUNÇÕES AUXILIARES ---
 def get_colab(request):
+    """Retorna o colaborador logado ou None."""
     try: return Colaborador.objects.get(user_django=request.user)
     except: return None
 
@@ -40,6 +43,8 @@ def excel_date_to_datetime(serial):
         return (datetime(1899, 12, 30) + timedelta(days=serial_float)).date()
     except: return None
 
+# --- VIEWS DE TELA (DASHBOARD E MÓDULOS) ---
+
 @login_required
 def dashboard_view(request):
     colab = get_colab(request)
@@ -51,7 +56,15 @@ def dashboard_view(request):
     qtd_avencer = Instrumento.objects.filter(data_proxima_calibracao__range=[hoje, trinta_dias], ativo=True).count()
     lista_urgentes = Instrumento.objects.filter(data_proxima_calibracao__lte=trinta_dias, ativo=True).order_by('data_proxima_calibracao')[:5]
     
-    ctx = {'colaborador': colab, 'nome_display': nome_display, 'qtd_vencidos': qtd_vencidos, 'qtd_avencer': qtd_avencer, 'lista_urgentes': lista_urgentes, 'qtd_cotacoes': ProcessoCotacao.objects.filter(status='ABERTO').count(), 'today': hoje}
+    ctx = {
+        'colaborador': colab, 
+        'nome_display': nome_display, 
+        'qtd_vencidos': qtd_vencidos, 
+        'qtd_avencer': qtd_avencer, 
+        'lista_urgentes': lista_urgentes, 
+        'qtd_cotacoes': ProcessoCotacao.objects.filter(status='ABERTO').count(), 
+        'today': hoje
+    }
     return render(request, 'dashboard.html', ctx)
 
 @login_required
@@ -74,6 +87,23 @@ def detalhe_instrumento_view(request, instrumento_id):
     return render(request, 'detalhe_instrumento.html', {'colaborador': get_colab(request), 'instrumento': inst, 'historico': historico, 'faixas': faixas, 'today': date.today()})
 
 @login_required
+def remover_historico_view(request, historico_id):
+    # Busca o histórico ou dá erro 404
+    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    instrumento_id = hist.instrumento.id
+    
+    # Se tiver arquivo de PDF, deleta ele do sistema de arquivos
+    if hist.certificado:
+        hist.certificado.delete(save=False)
+        
+    hist.delete()
+    # O Signal no models.py vai rodar automaticamente e arrumar as datas
+    messages.success(request, "Certificado removido e datas atualizadas com sucesso.")
+    return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
+
+# --- FUNÇÃO DE CARIMBO ---
+
+@login_required
 def carimbar_view(request):
     colab = get_colab(request)
     instrumentos_disponiveis = Instrumento.objects.filter(ativo=True).order_by('tag')
@@ -83,39 +113,47 @@ def carimbar_view(request):
     if request.method == 'POST':
         form = CarimboForm(request.POST, request.FILES)
         if form.is_valid():
-            c_resp = colab; dt_validacao = form.cleaned_data['data_validacao']; status_txt = form.cleaned_data['status_validacao']
+            c_resp = colab 
+            dt_validacao = form.cleaned_data['data_validacao']
+            status_txt = form.cleaned_data['status_validacao']
+            
             resultado_banco = 'APROVADO'
             if status_txt == 'Reprovado': resultado_banco = 'REPROVADO'
             elif status_txt == 'Aprovado com correções': resultado_banco = 'CONDICIONAL'
             
-            fs = request.FILES.getlist('arquivo_pdf'); processed_files = []
+            fs = request.FILES.getlist('arquivo_pdf')
             try: screen_w = float(request.POST.get('page_width', 0)); screen_h = float(request.POST.get('page_height', 0))
             except: screen_w = 0; screen_h = 0
+            processed_files = []
 
             for i, f in enumerate(fs):
                 raw_x = request.POST.get(f'x_{i}', 0); raw_y = request.POST.get(f'y_{i}', 0); raw_w = request.POST.get(f'w_{i}', 0); raw_h = request.POST.get(f'h_{i}', 0)
                 ui = (float(raw_x), float(raw_y), float(raw_w), float(raw_h), screen_w, screen_h)
+
                 pdf_buffer = apply_stamp_logic(f, user_full_name, status_txt, ui, dt_validacao)
                 
-                inst_id = request.POST.get(f'instrument_id_{i}'); calib_date_str = request.POST.get(f'calib_date_{i}'); cert_num = request.POST.get(f'cert_num_{i}', f.name)
+                inst_id = request.POST.get(f'instrument_id_{i}')
+                calib_date_str = request.POST.get(f'calib_date_{i}')
+                cert_num = request.POST.get(f'cert_num_{i}', f.name)
+                
                 if inst_id and calib_date_str:
                     try:
                         instrumento = Instrumento.objects.get(id=inst_id)
                         dt_calibracao = datetime.strptime(calib_date_str, '%Y-%m-%d').date()
                         prox_calib = None
-                        if instrumento.frequencia_meses: prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
+                        if instrumento.frequencia_meses: 
+                            prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
                         
                         hist, created = HistoricoCalibracao.objects.get_or_create(
                             instrumento=instrumento, data_calibracao=dt_calibracao, data_aprovacao=dt_validacao, numero_certificado=cert_num,
                             defaults={'proxima_calibracao': prox_calib, 'resultado': resultado_banco, 'responsavel': c_resp, 'observacoes': f"Validado por {user_full_name}: {status_txt}"}
                         )
                         if not created: hist.resultado = resultado_banco; hist.observacoes = f"Revalidado por {user_full_name}: {status_txt}"
-                        filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"; hist.certificado.save(filename, ContentFile(pdf_buffer.getvalue())); hist.save()
                         
-                        if not instrumento.data_ultima_calibracao or dt_calibracao >= instrumento.data_ultima_calibracao:
-                            instrumento.data_ultima_calibracao = dt_calibracao; instrumento.data_proxima_calibracao = prox_calib
-                            instrumento.ativo = False if resultado_banco == 'REPROVADO' else True
-                            instrumento.save()
+                        filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"
+                        hist.certificado.save(filename, ContentFile(pdf_buffer.getvalue())); hist.save()
+                        
+                        # Atualização automática das datas é feita pelo Signal agora
                     except Exception as e: print(f"Erro: {e}")
                 pdf_buffer.seek(0); processed_files.append((f.name, pdf_buffer))
             
@@ -137,8 +175,10 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
         if screen_w > 0 and screen_h > 0: scale_x = pdf_w / screen_w; scale_y = pdf_h / screen_h; final_x = screen_x * scale_x; final_y = pdf_h - (screen_y * scale_y) - (screen_box_h * scale_y)
         else: final_x = pdf_w - 150; final_y = 50
         b = io.BytesIO(); c = canvas.Canvas(b, pagesize=(pdf_w, pdf_h))
+        
         if 'Reprovado' in status: main_color = RColor(0.8, 0, 0)
         else: main_color = RColor(0, 0.5, 0)
+        
         c.setFillColor(main_color); c.setFont("Helvetica-Bold", 10); c.drawString(final_x, final_y + 20, status)
         c.setFillColor(RColor(0, 0, 0)); c.setFont("Helvetica", 9); c.drawString(final_x, final_y + 10, f"{data_validacao.strftime('%d/%m/%Y')}")
         c.drawString(final_x, final_y, f"{user_name}")
@@ -146,34 +186,35 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
         for pg in ipdf.pages[1:]: o.add_page(pg)
     out = io.BytesIO(); o.write(out); out.seek(0); return out
 
+
 # ==============================================================================
-# TEMPLATE DE DOWNLOAD ATUALIZADO (COM MULTIPLAS FAIXAS)
+# TEMPLATES DE DOWNLOAD
 # ==============================================================================
 def dl_template_instr(request):
     colunas = [
-        "TAG", "CODIGO", "CATEGORIA", "EQUIPAMENTO", "STATUS", 
-        "FABRICANTE", "MODELO", "N SERIE", "SETOR", "LOCALIZACAO", 
-        "FREQUENCIA_MESES", "DATA_ULTIMA_CALIBRACAO", 
-        "UNIDADE 01", "FAIXA 01", 
-        "UNIDADE 02", "FAIXA 02", 
-        "UNIDADE 03", "FAIXA 03"
+        "TAG", "EQUIPAMENTO", "STATUS", "FABRICANTE", "MODELO", "N SERIE", 
+        "SETOR", "LOCALIZACAO", "FREQUENCIA_MESES", "DATA_ULTIMA_CALIBRACAO", 
+        "FAIXA", "UNIDADE"
     ]
     df = pd.DataFrame(columns=colunas)
     r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    r['Content-Disposition'] = 'attachment; filename="template_instrumentos.xlsx"'
+    r['Content-Disposition'] = 'attachment; filename="template_instrumentos_v2.xlsx"'
     df.to_excel(r, index=False)
     return r
 
 def dl_template_colab(request):
     df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
+
 def dl_template_hierarquia(request):
     df = pd.DataFrame({'SETOR': ['MANUTENCAO'], 'TURNO': ['TURNO 1'], 'MAT_LIDER': ['1001'], 'MAT_SUPERVISOR': [''], 'MAT_GERENTE': [''], 'MAT_DIRETOR': ['']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_hierarquia.xlsx"'; return r
+
 def dl_template_historico(request):
     colunas = ["TAG", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", "RESULTADO", "OBSERVAÇÕES"]
     df = pd.DataFrame(columns=colunas); r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_historico_calibracao.xlsx"'; df.to_excel(r, index=False); return r
 
+
 # ==============================================================================
-# IMPORTAÇÃO DE INSTRUMENTOS (LÓGICA HORIZONTAL: U1, F1, U2, F2...)
+# IMPORTAÇÃO INTELIGENTE (LINHA A LINHA)
 # ==============================================================================
 @login_required
 def imp_instr_view(request):
@@ -222,13 +263,10 @@ def imp_instr_view(request):
                             return 0, 0
 
                         # --- 1. DADOS DO INSTRUMENTO ---
-                        tag = get_val(['TAG', 'IDENTIFICACAO'])
-                        codigo = get_val(['CODIGO', 'CÓDIGO'])
-                        if not tag and codigo: tag = codigo
-                        if not codigo and tag: codigo = tag
+                        tag = get_val(['TAG', 'IDENTIFICACAO', 'CÓDIGO', 'CODIGO'])
                         if not tag: continue 
 
-                        cat_nome = get_val(['CATEGORIA', 'FAMILIA', 'TIPO'])
+                        cat_nome = get_val(['CATEGORIA', 'FAMILIA', 'TIPO', 'EQUIPAMENTO']) # Equipamento = Categoria
                         categoria_obj = None
                         if cat_nome: categoria_obj, _ = CategoriaInstrumento.objects.get_or_create(nome=cat_nome.title())
 
@@ -239,12 +277,12 @@ def imp_instr_view(request):
                         freq_meses = traduzir_frequencia(get_val(['FREQUENCIA', 'PERIODICIDADE']))
 
                         dados = {
-                            'codigo': codigo,
-                            'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição',
+                            'codigo': tag, # Codigo igual a TAG
+                            'descricao': get_val(['DESCRIÇÃO', 'DESCRICAO']) or cat_nome or 'Sem Descrição',
                             'categoria': categoria_obj,
                             'fabricante': get_val(['FABRICANTE', 'MARCA']),
                             'modelo': get_val(['MODELO']),
-                            'serie': get_val(['N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']),
+                            'serie': get_val(['N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE', 'N SERIE']),
                             'setor': setor_obj,
                             'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']),
                             'frequencia_meses': freq_meses,
@@ -254,30 +292,29 @@ def imp_instr_view(request):
                         if dados['data_ultima_calibracao']:
                             dados['data_proxima_calibracao'] = dados['data_ultima_calibracao'] + timedelta(days=freq_meses*30)
 
+                        # update_or_create evita duplicar se a TAG repetir no Excel
                         obj, created = Instrumento.objects.update_or_create(tag=tag, defaults=dados)
                         if created: count_new += 1
                         else: count_upd += 1
 
-                        # --- 2. DADOS DAS FAIXAS (LOOP HORIZONTAL) ---
-                        # Varre as colunas UNIDADE 01, UNIDADE 02, UNIDADE 03... até 5
-                        for i in range(1, 6):
-                            und_nome = get_val([f'UNIDADE {i:02d}', f'UNIDADE{i}', f'UNIDADE {i}'])
-                            faixa_txt = get_val([f'FAIXA {i:02d}', f'FAIXA{i}', f'FAIXA {i}'])
+                        # --- 2. DADOS DA FAIXA DESTA LINHA ---
+                        faixa_txt = get_val(['FAIXA', 'RANGE', 'CAPACIDADE'])
+                        unidade_txt = get_val(['UNIDADE', 'U.M.', 'UNIDADE DE MEDIDA'])
+                        
+                        if faixa_txt and unidade_txt:
+                            und_obj, _ = UnidadeMedida.objects.get_or_create(sigla=unidade_txt, defaults={'nome': unidade_txt})
+                            v_min, v_max = extrair_min_max(faixa_txt)
                             
-                            if und_nome and faixa_txt:
-                                und_obj, _ = UnidadeMedida.objects.get_or_create(sigla=und_nome, defaults={'nome': und_nome})
-                                v_min, v_max = extrair_min_max(faixa_txt)
-                                
-                                FaixaMedicao.objects.get_or_create(
-                                    instrumento=obj, 
-                                    unidade=und_obj,
-                                    valor_minimo=v_min,
-                                    valor_maximo=v_max,
-                                    defaults={'resolucao': 0} 
-                                )
-                                count_faixas += 1
+                            FaixaMedicao.objects.get_or_create(
+                                instrumento=obj, 
+                                unidade=und_obj,
+                                valor_minimo=v_min,
+                                valor_maximo=v_max,
+                                defaults={'resolucao': 0} 
+                            )
+                            count_faixas += 1
 
-                messages.success(request, f"Importação: {count_new} Novos, {count_upd} Atualizados. {count_faixas} Faixas processadas.")
+                messages.success(request, f"Importação: {count_new} Novos. {count_faixas} Faixas processadas.")
                 return redirect('modulo_metrologia')
             
             except Exception as e:
@@ -287,7 +324,6 @@ def imp_instr_view(request):
         form = ImportacaoInstrumentosForm()
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
-# ... (Demais funções mantidas) ...
 @login_required
 def imp_colab_view(request):
     if request.method == 'POST':
@@ -332,25 +368,8 @@ def imp_historico_view(request):
                             defaults={'resultado': res, 'proxima_calibracao': prox, 'observacoes': get_val('OBSERVAÇÕES')}
                         )
                         if cr: count_new += 1
-                        if not inst.data_ultima_calibracao or dt_cal >= inst.data_ultima_calibracao:
-                            inst.data_ultima_calibracao = dt_cal; inst.data_proxima_calibracao = prox; inst.save()
+                        # A atualização do instrumento acontece pelo Signal no models.py
                 messages.success(request, f"Histórico Importado: {count_new} registros"); return redirect('modulo_metrologia')
             except Exception as e: messages.error(request, str(e))
     else: form = ImportacaoHistoricoForm()
     return render(request, 'importar_historico.html', {'form': form, 'colaborador': get_colab(request)})
-
-@login_required
-def remover_historico_view(request, historico_id):
-    # Busca o histórico ou dá erro 404
-    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
-    instrumento_id = hist.instrumento.id
-    
-    # Se tiver arquivo de PDF, deleta ele do sistema de arquivos
-    if hist.certificado:
-        hist.certificado.delete(save=False)
-        
-    hist.delete()
-    
-    # O Signal que criamos no models.py vai rodar automaticamente e arrumar as datas
-    messages.success(request, "Certificado removido e datas atualizadas com sucesso.")
-    return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
