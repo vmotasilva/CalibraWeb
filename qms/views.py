@@ -67,11 +67,119 @@ def modulo_metrologia_view(request):
     }
     return render(request, 'modulo_metrologia.html', ctx)
 
+# --- VIEWS DE RH COM HIERARQUIA ---
+
 @login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
-    ctx = {'colaborador': colab, 'funcionarios': Colaborador.objects.all().order_by('nome_completo'), 'can_edit': True}
+    
+    # 1. Definição de Permissões Iniciais
+    can_see_salary = False
+    funcionarios = Colaborador.objects.none() # Começa vazio por segurança
+    
+    if request.user.is_superuser:
+        # Superusuário vê tudo
+        funcionarios = Colaborador.objects.all().order_by('nome_completo')
+        can_see_salary = True
+        
+    elif colab:
+        cargo = str(colab.cargo).upper()
+        grupo = str(colab.grupo).upper()
+        
+        # Verifica Hierarquia no Banco
+        is_gerente = HierarquiaSetor.objects.filter(gerente=colab).exists()
+        is_supervisor = HierarquiaSetor.objects.filter(supervisor=colab).exists()
+        is_lider = HierarquiaSetor.objects.filter(lider=colab).exists()
+        is_qualidade = 'QUALIDADE' in cargo or 'QUALIDADE' in grupo
+
+        # --- REGRAS DE VISUALIZAÇÃO (QUEM EU VEJO?) ---
+        if is_gerente or 'GERENTE' in cargo:
+            # Gerente vê todo mundo
+            funcionarios = Colaborador.objects.all().order_by('nome_completo')
+            can_see_salary = True # Gerente vê salário
+            
+        elif is_qualidade:
+            # Qualidade vê todo mundo
+            funcionarios = Colaborador.objects.all().order_by('nome_completo')
+            can_see_salary = False # Qualidade NÃO vê salário
+            
+        elif is_supervisor:
+            # Supervisor vê apenas o SEU TURNO (de qualquer setor ou só do dele)
+            # Aqui assumi que vê do turno dele geral. Se for só do setor, adicione filter(setor=colab.setor)
+            funcionarios = Colaborador.objects.filter(turno=colab.turno).order_by('nome_completo')
+            can_see_salary = False
+            
+        elif is_lider:
+             # Líder vê seu turno e setor
+            funcionarios = Colaborador.objects.filter(turno=colab.turno, setor=colab.setor).order_by('nome_completo')
+            can_see_salary = False
+            
+        else:
+            # Colaborador comum vê apenas a si mesmo (ou ninguém)
+            funcionarios = Colaborador.objects.filter(id=colab.id)
+            can_see_salary = False
+
+    ctx = {
+        'colaborador': colab, 
+        'funcionarios': funcionarios, 
+        'can_see_salary': can_see_salary, # Envia a permissão para o template
+        'can_edit': True # Pode refinar isso depois
+    }
     return render(request, 'modulo_rh.html', ctx)
+
+@login_required
+def detalhe_colaborador_view(request, colab_id):
+    usuario_logado = get_colab(request)
+    
+    # Busca o colaborador alvo ou 404
+    alvo = get_object_or_404(Colaborador, id=colab_id)
+    
+    # --- REPETE A LÓGICA DE SEGURANÇA (Para evitar acesso direto via URL) ---
+    can_see_salary = False
+    acesso_permitido = False
+    
+    if request.user.is_superuser:
+        acesso_permitido = True; can_see_salary = True
+    elif usuario_logado:
+        cargo = str(usuario_logado.cargo).upper()
+        grupo = str(usuario_logado.grupo).upper()
+        is_gerente = HierarquiaSetor.objects.filter(gerente=usuario_logado).exists()
+        is_qualidade = 'QUALIDADE' in cargo or 'QUALIDADE' in grupo
+        is_supervisor = HierarquiaSetor.objects.filter(supervisor=usuario_logado).exists()
+
+        if is_gerente or 'GERENTE' in cargo:
+            acesso_permitido = True
+            can_see_salary = True
+        elif is_qualidade:
+            acesso_permitido = True
+            can_see_salary = False
+        elif is_supervisor:
+            # Só acessa se for do mesmo turno
+            if alvo.turno == usuario_logado.turno:
+                acesso_permitido = True
+            else:
+                acesso_permitido = False # Bloqueia acesso a turnos diferentes
+        elif alvo.id == usuario_logado.id:
+            acesso_permitido = True # Vê o próprio perfil
+    
+    if not acesso_permitido:
+        messages.error(request, "Você não tem permissão para visualizar este colaborador.")
+        return redirect('modulo_rh')
+    
+    # Busca ocorrências e treinamentos
+    ocorrencias = alvo.ocorrencias.all().order_by('-data_ocorrencia')
+    treinamentos = alvo.treinamentos.all().order_by('-data_treinamento')
+    documentos = alvo.documentos_pessoais.all().order_by('-data_upload')
+
+    ctx = {
+        'colaborador': usuario_logado,
+        'alvo': alvo, # 'alvo' é o colaborador que estamos vendo
+        'can_see_salary': can_see_salary,
+        'ocorrencias': ocorrencias,
+        'treinamentos': treinamentos,
+        'documentos': documentos
+    }
+    return render(request, 'detalhe_colaborador.html', ctx)
 
 @login_required
 def detalhe_instrumento_view(request, instrumento_id):
