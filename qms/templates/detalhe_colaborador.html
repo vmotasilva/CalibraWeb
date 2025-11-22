@@ -4,51 +4,71 @@
 <div class="container-fluid">
     
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="text-primary fw-bold mb-0">{{ alvo.nome_completo }}</h2>
-            <p class="text-muted mb-0">{{ alvo.cargo }} | {{ alvo.setor.nome }}</p>
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 24px;">
+                {{ alvo.nome_completo|slice:":1" }}
+            </div>
+            <div>
+                <h2 class="fw-bold mb-0">{{ alvo.nome_completo }}</h2>
+                <p class="text-muted mb-0">{{ alvo.cargo }} | {{ alvo.matricula }}</p>
+            </div>
         </div>
-        <a href="{% url 'modulo_rh' %}" class="btn btn-outline-secondary">
-            ⬅ Voltar para Lista
-        </a>
+        
+        <div>
+            {% if can_edit %}
+            <a href="/admin/qms/colaborador/{{ alvo.id }}/change/" target="_blank" class="btn btn-outline-secondary">
+                <i class="bi bi-pencil"></i> Editar Dados
+            </a>
+            {% endif %}
+            <a href="{% url 'modulo_rh' %}" class="btn btn-outline-dark ms-2">
+                ⬅ Voltar
+            </a>
+        </div>
     </div>
 
     <div class="row">
         <div class="col-md-4">
             <div class="card shadow-sm mb-4 border-0">
                 <div class="card-header bg-dark text-white fw-bold">
-                    <i class="bi bi-person-badge"></i> Dados Cadastrais
+                    <i class="bi bi-person-badge"></i> Ficha Cadastral
                 </div>
                 <div class="card-body">
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Matrícula:</span> <strong>{{ alvo.matricula }}</strong>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">CPF:</span> <span>{{ alvo.cpf|default:"-" }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Centro de Custo:</span> <span>{{ alvo.centro_custo.codigo|default:"-" }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Turno:</span> 
-                            <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span class="text-muted">Status:</span> 
+                            <span class="text-muted">Status:</span>
                             {% if alvo.is_active %}
                                 <span class="badge bg-success">ATIVO</span>
                             {% else %}
-                                <span class="badge bg-danger">INATIVO</span>
+                                <span class="badge bg-danger">DESLIGADO</span>
                             {% endif %}
                         </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Setor:</span>
+                            <strong>{{ alvo.setor.nome|default:"-" }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Centro de Custo:</span>
+                            <span>{{ alvo.centro_custo.codigo|default:"-" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Turno:</span>
+                            <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Grupo:</span>
+                            <span>{{ alvo.grupo|default:"-" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">CPF:</span>
+                            <span style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
+                        </li>
                         
-                        <li class="list-group-item d-flex justify-content-between bg-light">
-                            <span class="text-muted fw-bold">Salário:</span>
+                        <li class="list-group-item d-flex justify-content-between align-items-center bg-light mt-2 border">
+                            <span class="fw-bold text-dark"><i class="bi bi-cash"></i> Salário Base:</span>
                             {% if can_see_salary %}
-                                <span class="text-success fw-bold">R$ {{ alvo.salario|floatformat:2 }}</span>
+                                <span class="text-success fw-bold fs-5">R$ {{ alvo.salario|floatformat:2 }}</span>
                             {% else %}
-                                <span class="text-muted fst-italic">🔒 Restrito</span>
+                                <span class="badge bg-secondary"><i class="bi bi-lock-fill"></i> RESTRITO</span>
                             {% endif %}
                         </li>
                     </ul>
@@ -56,17 +76,24 @@
             </div>
 
             <div class="card shadow-sm mb-4 border-0">
-                <div class="card-header bg-secondary text-white">
-                    <i class="bi bi-folder"></i> Documentos
+                <div class="card-header bg-secondary text-white fw-bold">
+                    <i class="bi bi-folder"></i> Documentos Pessoais
                 </div>
                 <ul class="list-group list-group-flush">
                     {% for doc in documentos %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <small>{{ doc.tipo }}</small>
-                            <a href="{{ doc.arquivo.url }}" target="_blank" class="btn btn-sm btn-light border"><i class="bi bi-download"></i></a>
+                            <div>
+                                <i class="bi bi-file-earmark-text text-primary"></i> {{ doc.tipo }}
+                                <br><small class="text-muted">{{ doc.data_upload|date:"d/m/Y" }}</small>
+                            </div>
+                            <a href="{{ doc.arquivo.url }}" target="_blank" class="btn btn-sm btn-light border">
+                                <i class="bi bi-download"></i>
+                            </a>
                         </li>
                     {% empty %}
-                        <li class="list-group-item text-center text-muted small">Nenhum documento anexado.</li>
+                        <li class="list-group-item text-center text-muted py-3">
+                            <small>Nenhum documento anexado.</small>
+                        </li>
                     {% endfor %}
                 </ul>
             </div>
@@ -75,26 +102,32 @@
         <div class="col-md-8">
             
             <div class="card shadow-sm mb-4 border-0">
-                <div class="card-header bg-primary text-white">
-                    <i class="bi bi-mortarboard"></i> Treinamentos e Competências
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-mortarboard"></i> Matriz de Treinamentos</span>
+                    <span class="badge bg-light text-primary">{{ treinamentos.count }}</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0 text-center table-sm" style="font-size: 0.9rem;">
+                        <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.9rem;">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Procedimento</th>
-                                    <th>Rev. Treinada</th>
-                                    <th>Data</th>
+                                    <th class="text-start ps-3">Procedimento / Treinamento</th>
+                                    <th>Revisão</th>
+                                    <th>Data Realização</th>
+                                    <th>Validade</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for t in treinamentos %}
                                 <tr>
-                                    <td class="text-start ps-3">{{ t.procedimento.codigo }} - {{ t.procedimento.titulo|truncatechars:30 }}</td>
+                                    <td class="text-start ps-3 fw-semibold">
+                                        {{ t.procedimento.codigo }}<br>
+                                        <small class="text-muted fw-normal">{{ t.procedimento.titulo }}</small>
+                                    </td>
                                     <td>{{ t.revisao_treinada }}</td>
                                     <td>{{ t.data_treinamento|date:"d/m/Y" }}</td>
+                                    <td>{{ t.validade_treinamento|date:"d/m/Y"|default:"-" }}</td>
                                     <td>
                                         {% if t.status_treinamento == 'VIGENTE' %}
                                             <span class="badge bg-success">VIGENTE</span>
@@ -104,7 +137,7 @@
                                     </td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="4" class="p-3 text-muted">Nenhum registro de treinamento.</td></tr>
+                                <tr><td colspan="5" class="p-4 text-muted">Nenhum treinamento registrado.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -113,25 +146,27 @@
             </div>
 
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-warning text-dark">
-                    <i class="bi bi-exclamation-triangle"></i> Ocorrências (Disciplinar)
+                <div class="card-header bg-warning text-dark fw-bold d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-exclamation-triangle"></i> Ocorrências / Feedback</span>
+                    <span class="badge bg-dark text-warning">{{ ocorrencias.count }}</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0 align-middle table-sm">
+                        <table class="table table-hover mb-0 align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Data</th>
+                                    <th class="ps-3">Data</th>
                                     <th>Tipo</th>
-                                    <th>Resumo</th>
+                                    <th>Resumo do Evento</th>
                                     <th>Natureza</th>
+                                    <th>Evidência</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for o in ocorrencias %}
                                 <tr>
-                                    <td>{{ o.data_ocorrencia|date:"d/m/Y" }}</td>
-                                    <td>{{ o.get_tipo_display }}</td>
+                                    <td class="ps-3">{{ o.data_ocorrencia|date:"d/m/Y" }}</td>
+                                    <td><span class="fw-bold">{{ o.get_tipo_display }}</span></td>
                                     <td>{{ o.titulo }}</td>
                                     <td>
                                         {% if o.natureza == 'NEGATIVA' %}
@@ -142,9 +177,14 @@
                                             <span class="badge bg-secondary">NEUTRA</span>
                                         {% endif %}
                                     </td>
+                                    <td>
+                                        {% if o.arquivo_evidencia %}
+                                            <a href="{{ o.arquivo_evidencia.url }}" target="_blank" class="btn btn-sm btn-outline-dark"><i class="bi bi-paperclip"></i></a>
+                                        {% else %} - {% endif %}
+                                    </td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="4" class="p-3 text-center text-muted">Nenhuma ocorrência registrada.</td></tr>
+                                <tr><td colspan="5" class="p-4 text-center text-muted">Nenhuma ocorrência registrada.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
