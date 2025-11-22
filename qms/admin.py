@@ -10,7 +10,7 @@ from .models import (
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento, 
     Setor, CentroCusto, HierarquiaSetor,
     Procedimento, RegistroTreinamento, Ferias, Ocorrencia, PacoteTreinamento, DocumentoPessoal,
-    UnidadeMedida, CategoriaInstrumento, FaixaMedicao
+    UnidadeMedida, CategoriaInstrumento, FaixaMedicao, Padrao # <--- Importei Padrao
 )
 
 class CentroCustoInline(admin.TabularInline): 
@@ -111,7 +111,19 @@ class CategoriaInstrumentoAdmin(admin.ModelAdmin):
     list_display = ('nome', 'descricao')
     search_fields = ('nome',)
 
-# Agora a faixa fica DENTRO do Instrumento
+# NOVO: Admin de Padrões (Kits)
+@admin.register(Padrao)
+class PadraoAdmin(admin.ModelAdmin):
+    list_display = ('codigo', 'descricao', 'data_validade', 'status_validade', 'ativo')
+    search_fields = ('codigo', 'descricao', 'numero_certificado')
+    list_filter = ('ativo',)
+    
+    def status_validade(self, obj):
+        if obj.esta_vencido:
+            return format_html('<span style="color:red; font-weight:bold;">VENCIDO</span>')
+        return format_html('<span style="color:green;">VIGENTE</span>')
+    status_validade.short_description = "Validade"
+
 class FaixaMedicaoInline(admin.TabularInline):
     model = FaixaMedicao
     extra = 1
@@ -122,7 +134,7 @@ class InstrumentoAdmin(admin.ModelAdmin):
     search_fields = ('tag', 'codigo', 'descricao', 'modelo', 'serie')
     list_filter = ('categoria', 'ativo', 'setor')
     autocomplete_fields = ['responsavel', 'setor', 'categoria']
-    inlines = [FaixaMedicaoInline] # <--- Faixas aparecem aqui agora
+    inlines = [FaixaMedicaoInline]
     
     fieldsets = (
         ('Identificação', {
@@ -138,10 +150,11 @@ class InstrumentoAdmin(admin.ModelAdmin):
 
 @admin.register(HistoricoCalibracao)
 class HistoricoCalibracaoAdmin(admin.ModelAdmin):
-    list_display = ('instrumento', 'certificado', 'data_calibracao', 'resultado', 'fornecedor') # Adicionei fornecedor
-    search_fields = ('instrumento__tag', 'numero_certificado', 'responsavel', 'fornecedor') # Busca por texto agora
-    list_filter = ('resultado', 'data_calibracao')
+    list_display = ('instrumento', 'certificado', 'data_calibracao', 'resultado', 'fornecedor', 'tem_selo_rbc')
+    search_fields = ('instrumento__tag', 'numero_certificado', 'responsavel', 'fornecedor')
+    list_filter = ('resultado', 'data_calibracao', 'tem_selo_rbc', 'tipo_calibracao')
     autocomplete_fields = ['instrumento']
+    filter_horizontal = ('padroes_utilizados',) # Facilita selecionar múltiplos padrões
 
 # --- OUTROS CADASTROS ---
 admin.site.register(Fornecedor)

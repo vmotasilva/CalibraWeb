@@ -14,6 +14,7 @@ TURNOS_CHOICES = [
     ('TURNO_1', 'Turno 1'), 
     ('TURNO_2', 'Turno 2'), 
     ('TURNO_3', 'Turno 3'), 
+    ('12X36', '12x36')
 ]
 
 # ==============================================================================
@@ -35,7 +36,6 @@ class CentroCusto(models.Model):
 # ==============================================================================
 # MÓDULO 1: RECURSOS HUMANOS (COLABORADORES)
 # ==============================================================================
-# Definido antes para evitar problemas de chave estrangeira circular
 class Colaborador(models.Model):
     user_django = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuário de Acesso (Login)")
     matricula = models.CharField(max_length=20, unique=True, verbose_name="Matrícula")
@@ -49,7 +49,6 @@ class Colaborador(models.Model):
     salario = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Salário (R$)")
     em_ferias = models.BooleanField(default=False, verbose_name="Está de Férias?")
     
-    # Relação ManyToMany definida abaixo (PacoteTreinamento)
     pacotes_treinamento = models.ManyToManyField('PacoteTreinamento', blank=True, verbose_name="Pacotes Atribuídos", related_name="colaboradores")
     is_active = models.BooleanField(default=True, verbose_name="Colaborador Ativo (RH)")
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -114,6 +113,30 @@ class DocumentoPessoal(models.Model):
     class Meta: verbose_name = "Documento Pessoal"; verbose_name_plural = "Documentos Pessoais"
 
 # ==============================================================================
+# MÓDULO 3: RASTREABILIDADE (PADRÕES DE REFERÊNCIA) - NOVO!
+# ==============================================================================
+class Padrao(models.Model):
+    codigo = models.CharField(max_length=50, unique=True, verbose_name="Código do Padrão")
+    descricao = models.CharField(max_length=200, verbose_name="Descrição")
+    fabricante = models.CharField(max_length=100, null=True, blank=True)
+    numero_certificado = models.CharField(max_length=100, verbose_name="Nº Certificado")
+    
+    data_calibracao = models.DateField(verbose_name="Data Calib.")
+    data_validade = models.DateField(verbose_name="Validade do Padrão")
+    
+    certificado = models.FileField(upload_to='padroes/', null=True, blank=True, verbose_name="PDF do Certificado")
+    ativo = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.codigo} - {self.descricao} (Val: {self.data_validade})"
+    
+    @property
+    def esta_vencido(self):
+        return self.data_validade < date.today()
+
+    class Meta: verbose_name = "Padrão / Kit"; verbose_name_plural = "3. Padrões de Rastreabilidade"
+
+# ==============================================================================
 # MÓDULO 2: METROLOGIA (INSTRUMENTOS E CALIBRAÇÃO)
 # ==============================================================================
 
@@ -159,7 +182,6 @@ class FaixaMedicao(models.Model):
     valor_maximo = models.DecimalField(max_digits=10, decimal_places=4)
     resolucao = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
     
-    # Critérios do Processo para Cálculo Automático
     nominal = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="Valor central/nominal do processo")
     tolerancia_mais_menos = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="Variação aceitável (+/-)")
 
@@ -174,10 +196,19 @@ class HistoricoCalibracao(models.Model):
     data_aprovacao = models.DateField(default=date.today)
     numero_certificado = models.CharField(max_length=100, default="S/N")
     
-    # NOVOS CAMPOS TEXTO LIVRE (Para facilitar a importação)
+    # --- RASTREABILIDADE ---
+    tem_selo_rbc = models.BooleanField(default=False, verbose_name="Possui Selo RBC?")
+    padroes_utilizados = models.ManyToManyField(Padrao, blank=True, verbose_name="Padrões Utilizados (Kits)")
+    
+    TIPO_CALIBRACAO_CHOICES = [
+        ('EXTERNA', 'Externa (Fornecedor)'),
+        ('INTERNA', 'Interna (Equipe Própria)')
+    ]
+    tipo_calibracao = models.CharField(max_length=20, choices=TIPO_CALIBRACAO_CHOICES, default='EXTERNA', verbose_name="Tipo")
+    
     responsavel = models.CharField(max_length=150, null=True, blank=True, verbose_name="Responsável Técnica")
     fornecedor = models.CharField(max_length=150, null=True, blank=True, verbose_name="Laboratório/Fornecedor")
-
+    
     # DADOS MATEMÁTICOS
     erro_encontrado = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name="Erro (E)")
     incerteza = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name="Incerteza (U)")
@@ -204,6 +235,14 @@ class HistoricoCalibracao(models.Model):
     
     def __str__(self): return f"{self.instrumento.tag} - {self.data_calibracao}"
 
+    # Propriedade para alertas visuais
+    @property
+    def pendencia_rastreabilidade(self):
+        # Se NÃO é RBC e NÃO tem padrões vinculados -> Alerta!
+        if not self.tem_selo_rbc and not self.padroes_utilizados.exists():
+            return True
+        return False
+
     def save(self, *args, **kwargs):
         # CÁLCULO AUTOMÁTICO
         if self.erro_encontrado is not None and self.incerteza is not None and self.tolerancia_usada is not None:
@@ -219,7 +258,6 @@ class HistoricoCalibracao(models.Model):
             except: pass
         super().save(*args, **kwargs)
 
-# --- SIGNAL (Mantido igual, apenas garantindo que está aqui) ---
 @receiver([post_save, post_delete], sender=HistoricoCalibracao)
 def atualizar_datas_instrumento(sender, instance, **kwargs):
     inst = instance.instrumento
@@ -227,7 +265,6 @@ def atualizar_datas_instrumento(sender, instance, **kwargs):
     if ultima_calib:
         inst.data_ultima_calibracao = ultima_calib.data_calibracao
         inst.data_proxima_calibracao = ultima_calib.proxima_calibracao
-        inst.ativo = False if ultima_calib.resultado == 'REPROVADO' else True
     else:
         inst.data_ultima_calibracao = None
         inst.data_proxima_calibracao = None
@@ -254,7 +291,6 @@ class AvaliacaoFornecedor(models.Model):
     observacao = models.TextField(null=True, blank=True)
     def media(self): return round((self.nota_tecnica + self.nota_pontualidade + self.nota_atendimento) / 3, 1)
 
-# CORREÇÃO DO SIGNAL: Usando string literal para evitar NameError na inicialização
 @receiver(post_save, sender='qms.AvaliacaoFornecedor')
 def update_fornecedor_score(sender, instance, **kwargs):
     f = instance.fornecedor
@@ -279,7 +315,7 @@ class Orcamento(models.Model):
     def __str__(self): return f"R$ {self.valor_total} - {self.fornecedor}"
 
 # ==============================================================================
-# MÓDULO 7: DOCUMENTOS E TREINAMENTOS (CONECTADOS)
+# MÓDULO 7: DOCUMENTOS E TREINAMENTOS
 # ==============================================================================
 class Procedimento(models.Model): 
     codigo = models.CharField(max_length=50, unique=True, verbose_name="Código")
@@ -319,7 +355,6 @@ class RegistroTreinamento(models.Model):
         return "PENDENTE"
     class Meta: verbose_name_plural = "7.2 Matriz de Treinamentos"; unique_together = ('colaborador', 'procedimento')
 
-# --- SIGNAL: VINCULAR PACOTES AO REGISTRO DE TREINAMENTO ---
 @receiver(m2m_changed, sender=Colaborador.pacotes_treinamento.through)
 def aplicar_pacotes_treinamento(sender, instance, action, pk_set, **kwargs):
     if action == "post_add":
