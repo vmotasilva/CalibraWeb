@@ -23,7 +23,7 @@
     <div class="card-header bg-white py-3 border-bottom">
         <div class="row g-2 align-items-center">
             <div class="col-md-12 mb-2 d-flex justify-content-between">
-                <h5 class="mb-0 text-primary"><i class="bi bi-funnel"></i> Filtros</h5>
+                <h5 class="mb-0 text-primary"><i class="bi bi-funnel"></i> Filtros de RH</h5>
                 <span class="badge bg-primary fs-6" id="contadorBadge">Exibindo {{ funcionarios.count }}</span>
             </div>
 
@@ -32,8 +32,8 @@
             </div>
 
             <div class="col-md-3">
-                <select id="filtroSetor" class="form-select">
-                    <option value="">🏢 Todos os Setores</option>
+                <select id="filtroSetor" class="form-select" multiple style="height: 100px;"> 
+                    <option value="" selected>🏢 Todos os Setores</option>
                     {% for s in setores %}
                         <option value="{{ s.nome }}">{{ s.nome }}</option>
                     {% endfor %}
@@ -94,7 +94,11 @@
                     data-status="{% if func.is_active %}ATIVO{% else %}INATIVO{% endif %}">
                     
                     <td class="ps-3">
-                        {% if func.is_active %}<i class="bi bi-check-circle-fill text-success" title="Ativo"></i>{% else %}<i class="bi bi-x-circle-fill text-danger" title="Desligado/Inativo"></i>{% endif %}
+                        {% if func.is_active %}
+                            <i class="bi bi-check-circle-fill text-success" title="Ativo"></i>
+                        {% else %}
+                            <i class="bi bi-x-circle-fill text-danger" title="Desligado/Inativo"></i>
+                        {% endif %}
                     </td>
                     
                     <td class="fw-bold">{{ func.matricula }}</td>
@@ -131,7 +135,11 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7" class="text-center py-5 text-muted">Nenhum colaborador encontrado.</td></tr>
+                <tr>
+                    <td colspan="7" class="text-center py-5 text-muted">
+                        Nenhum colaborador encontrado.
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -151,10 +159,17 @@
         const contador = document.getElementById('contadorBadge');
         const totalInicial = linhas.length;
 
+        function getSelectedValues(selectElement) {
+            // Pega uma array dos valores selecionados no dropdown (ou vazio)
+            return Array.from(selectElement.selectedOptions)
+                        .filter(opt => opt.value !== "") // Exclui a opção "Todos"
+                        .map(opt => opt.value);
+        }
+
         function filtrar() {
             const termo = inputs[0].value.toUpperCase();
-            const setor = inputs[1].value;
-            const turno = inputs[2].value;
+            const setoresSelecionados = getSelectedValues(inputs[1]);
+            const turno = inputs[2].value; // Turno é single select
             const cc = inputs[3].value;
             const status = inputs[4].value;
             
@@ -164,10 +179,13 @@
                 const dados = linha.dataset;
                 
                 const matchTexto = !termo || dados.busca.toUpperCase().includes(termo);
-                const matchSetor = !setor || dados.setor === setor;
                 const matchTurno = !turno || dados.turno === turno;
                 const matchCC = !cc || dados.cc === cc;
                 const matchStatus = !status || dados.status === status;
+
+                // Lógica Multi-Select: Deve corresponder a PELO MENOS UM setor selecionado, 
+                // OU se a lista de setores selecionados for vazia (mostra todos).
+                const matchSetor = setoresSelecionados.length === 0 || setoresSelecionados.includes(dados.setor);
 
                 if (matchTexto && matchSetor && matchTurno && matchCC && matchStatus) {
                     linha.style.display = '';
@@ -177,6 +195,7 @@
                 }
             });
             
+            // Atualiza o contador
             if (visiveis === totalInicial) {
                 contador.textContent = `Exibindo todos (${visiveis})`;
                 contador.className = 'badge bg-primary fs-6';
@@ -186,20 +205,19 @@
             }
         }
 
-        // --- NOVO EVENTO DE DUPLO CLIQUE ---
+        // Adiciona o Duplo Clique e o Evento de Filtro
         linhas.forEach(linha => {
-            linha.style.cursor = 'pointer'; // Indica que a linha é clicável
+            linha.style.cursor = 'pointer'; 
             linha.addEventListener('dblclick', function() {
-                const url = this.dataset.detailUrl; // Pega a URL do atributo que criamos
+                const url = this.dataset.detailUrl; 
                 if (url) {
                     window.location.href = url;
                 }
             });
         });
 
-        // Ativa os filtros
         inputs.forEach(input => input.addEventListener('input', filtrar));
-        filtrar();
+        filtrar(); // Roda na inicialização
     });
 </script>
 {% endblock %}
