@@ -26,8 +26,11 @@
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white py-3 border-bottom">
         <div class="row g-2 align-items-center">
-            <div class="col-md-12 mb-2">
+            <div class="col-md-12 mb-2 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 text-primary"><i class="bi bi-funnel"></i> Filtros de Pesquisa</h5>
+                <span class="badge bg-primary fs-6" id="contadorBadge">
+                    Exibindo {{ instrumentos.count }} instrumentos
+                </span>
             </div>
 
             <div class="col-md-4">
@@ -71,7 +74,7 @@
                 <tr>
                     <th class="ps-3">Status</th>
                     <th>TAG / Código</th>
-                    <th>Equipamento</th>
+                    <th>Descrição / Categoria</th>
                     <th>Fabricante / Modelo</th>
                     <th>Nº Série</th>
                     <th>Setor / Local</th>
@@ -92,8 +95,10 @@
                     <td class="ps-3 text-center">
                         {% if inst.ativo %}
                             <i class="bi bi-check-circle-fill text-success" title="Ativo"></i>
+                            <span class="d-none">ATIVO</span>
                         {% else %}
                             <i class="bi bi-x-circle-fill text-danger" title="Inativo"></i>
+                            <span class="d-none">INATIVO</span>
                         {% endif %}
                     </td>
                     
@@ -108,7 +113,7 @@
                     
                     <td>
                         {{ inst.descricao|truncatechars:35 }}
-                        <div class="text-muted small">{{ inst.categoria.nome|default:"-" }}</div>
+                        <div class="text-muted small categoria-text">{{ inst.categoria.nome|default:"-" }}</div>
                     </td>
                     
                     <td>
@@ -119,7 +124,7 @@
                     <td>{{ inst.serie|default:"-" }}</td>
                     
                     <td>
-                        <div class="fw-semibold">{{ inst.setor.nome|default:"-" }}</div>
+                        <div class="fw-semibold setor-text">{{ inst.setor.nome|default:"-" }}</div>
                         <div class="text-muted small">{{ inst.localizacao|default:"" }}</div>
                     </td>
                     
@@ -156,11 +161,6 @@
                         <div class="text-muted opacity-50">
                             <i class="bi bi-inbox display-1"></i>
                             <p class="mt-3 fs-5">Nenhum instrumento encontrado.</p>
-                            {% if can_edit %}
-                            <a href="{% url 'importar_instrumentos' %}" class="btn btn-primary btn-sm mt-2">
-                                Fazer Importação Agora
-                            </a>
-                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -169,14 +169,14 @@
         </table>
     </div>
     
-    <div class="card-footer bg-white py-2 d-flex justify-content-between align-items-center">
-        <small class="text-muted">Total de registros: {{ instrumentos.count }}</small>
-        <span class="badge bg-light text-dark border" id="contadorVisiveis">Exibindo: {{ instrumentos.count }}</span>
+    <div class="card-footer bg-white py-2 text-end">
+        <small class="text-muted">Base total: {{ instrumentos.count }} registros</small>
     </div>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Elementos
         const inputs = [
             document.getElementById('filtroBusca'),
             document.getElementById('filtroSetor'),
@@ -184,7 +184,8 @@
             document.getElementById('filtroStatus')
         ];
         const linhas = document.querySelectorAll('.linha-instrumento');
-        const contador = document.getElementById('contadorVisiveis');
+        const contadorBadge = document.getElementById('contadorBadge');
+        const totalInicial = linhas.length;
 
         function filtrar() {
             const termo = inputs[0].value.toUpperCase();
@@ -195,13 +196,15 @@
             let visiveis = 0;
 
             linhas.forEach(linha => {
-                const dados = linha.dataset; // Pega os dados data-setor, data-categoria...
+                const dados = linha.dataset; // Lê os dados escondidos na linha
                 
+                // Verifica cada critério
                 const matchTexto = !termo || dados.busca.toUpperCase().includes(termo);
                 const matchSetor = !setor || dados.setor === setor;
                 const matchCat = !categoria || dados.categoria === categoria;
                 const matchStatus = !status || dados.status === status;
 
+                // Se atender a TODOS, mostra
                 if (matchTexto && matchSetor && matchCat && matchStatus) {
                     linha.style.display = '';
                     visiveis++;
@@ -210,11 +213,24 @@
                 }
             });
             
-            contador.textContent = `Exibindo: ${visiveis}`;
+            // Atualiza o contador visual
+            if (visiveis === totalInicial) {
+                contadorBadge.textContent = `Exibindo todos (${visiveis})`;
+                contadorBadge.className = 'badge bg-primary fs-6';
+            } else if (visiveis === 0) {
+                contadorBadge.textContent = `Nenhum resultado encontrado`;
+                contadorBadge.className = 'badge bg-danger fs-6';
+            } else {
+                contadorBadge.textContent = `Filtrado: ${visiveis} de ${totalInicial}`;
+                contadorBadge.className = 'badge bg-success fs-6';
+            }
         }
 
-        // Adiciona o evento a todos os inputs
+        // Ativa o filtro quando qualquer campo mudar
         inputs.forEach(input => input.addEventListener('input', filtrar));
+        
+        // Roda uma vez para garantir
+        filtrar();
     });
 </script>
 {% endblock %}
