@@ -36,7 +36,10 @@
             </div>
 
             <div class="col-md-3">
-                <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, Matrícula ou Cargo...">
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, Matrícula ou Cargo...">
+                </div>
             </div>
 
             <div class="col-md-3">
@@ -169,7 +172,7 @@
         function filtrar() {
             const termo = inputs[0].value.toUpperCase();
             const setor = inputs[1].value;
-            const turno = inputs[2].value;
+            const turno = inputs[2].value; // Valor é ADM, TURNO_1, etc.
             const cc = inputs[3].value;
             const status = inputs[4].value;
             
@@ -180,7 +183,7 @@
                 
                 const matchTexto = !termo || dados.busca.toUpperCase().includes(termo);
                 const matchSetor = !setor || dados.setor === setor;
-                const matchTurno = !turno || dados.turno === turno; // Agora compara códigos iguais (ADM com ADM)
+                const matchTurno = !turno || dados.turno === turno; // Compara código do filtro (ADM) com código da linha (ADM)
                 const matchCC = !cc || dados.cc === cc;
                 const matchStatus = !status || dados.status === status;
 
