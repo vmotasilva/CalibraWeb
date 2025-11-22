@@ -51,7 +51,11 @@
                     {% for func in funcionarios %}
                     <tr>
                         <td><strong>{{ func.matricula }}</strong></td>
-                        <td>{{ func.nome_completo }}</td>
+                        <td class="fw-bold">
+                            <a href="{% url 'detalhe_colaborador' func.id %}" class="text-decoration-none text-dark">
+                                {{ func.nome_completo }}
+                            </a>
+                        </td>
                         <td>{{ func.cargo }}</td>
                         <td>{{ func.setor.nome|default:"-" }}</td>
                         <td>

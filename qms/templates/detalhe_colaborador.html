@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-primary fw-bold mb-0">{{ alvo.nome_completo }}</h2>
+            <p class="text-muted mb-0">{{ alvo.cargo }} | {{ alvo.setor.nome }}</p>
+        </div>
+        <a href="{% url 'modulo_rh' %}" class="btn btn-outline-secondary">
+            ⬅ Voltar para Lista
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-header bg-dark text-white fw-bold">
+                    <i class="bi bi-person-badge"></i> Dados Cadastrais
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Matrícula:</span> <strong>{{ alvo.matricula }}</strong>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">CPF:</span> <span>{{ alvo.cpf|default:"-" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Centro de Custo:</span> <span>{{ alvo.centro_custo.codigo|default:"-" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Turno:</span> 
+                            <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Status:</span> 
+                            {% if alvo.is_active %}
+                                <span class="badge bg-success">ATIVO</span>
+                            {% else %}
+                                <span class="badge bg-danger">INATIVO</span>
+                            {% endif %}
+                        </li>
+                        
+                        <li class="list-group-item d-flex justify-content-between bg-light">
+                            <span class="text-muted fw-bold">Salário:</span>
+                            {% if can_see_salary %}
+                                <span class="text-success fw-bold">R$ {{ alvo.salario|floatformat:2 }}</span>
+                            {% else %}
+                                <span class="text-muted fst-italic">🔒 Restrito</span>
+                            {% endif %}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-header bg-secondary text-white">
+                    <i class="bi bi-folder"></i> Documentos
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for doc in documentos %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <small>{{ doc.tipo }}</small>
+                            <a href="{{ doc.arquivo.url }}" target="_blank" class="btn btn-sm btn-light border"><i class="bi bi-download"></i></a>
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item text-center text-muted small">Nenhum documento anexado.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-mortarboard"></i> Treinamentos e Competências
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 text-center table-sm" style="font-size: 0.9rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Procedimento</th>
+                                    <th>Rev. Treinada</th>
+                                    <th>Data</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for t in treinamentos %}
+                                <tr>
+                                    <td class="text-start ps-3">{{ t.procedimento.codigo }} - {{ t.procedimento.titulo|truncatechars:30 }}</td>
+                                    <td>{{ t.revisao_treinada }}</td>
+                                    <td>{{ t.data_treinamento|date:"d/m/Y" }}</td>
+                                    <td>
+                                        {% if t.status_treinamento == 'VIGENTE' %}
+                                            <span class="badge bg-success">VIGENTE</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">PENDENTE</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="p-3 text-muted">Nenhum registro de treinamento.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-exclamation-triangle"></i> Ocorrências (Disciplinar)
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Tipo</th>
+                                    <th>Resumo</th>
+                                    <th>Natureza</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for o in ocorrencias %}
+                                <tr>
+                                    <td>{{ o.data_ocorrencia|date:"d/m/Y" }}</td>
+                                    <td>{{ o.get_tipo_display }}</td>
+                                    <td>{{ o.titulo }}</td>
+                                    <td>
+                                        {% if o.natureza == 'NEGATIVA' %}
+                                            <span class="badge bg-danger">NEGATIVA</span>
+                                        {% elif o.natureza == 'POSITIVA' %}
+                                            <span class="badge bg-success">POSITIVA</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">NEUTRA</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="p-3 text-center text-muted">Nenhuma ocorrência registrada.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
