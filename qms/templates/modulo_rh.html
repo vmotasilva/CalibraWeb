@@ -3,84 +3,209 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="mb-0">👥 Gestão de RH & Competências</h2>
-        <p class="text-muted">Controle de Colaboradores e Treinamentos</p>
+        <h2 class="mb-0 fw-bold text-secondary">👥 Gestão de Pessoas (RH)</h2>
+        <p class="text-muted mb-0">Gerencie colaboradores, salários e hierarquia.</p>
     </div>
     
-    {% if can_edit %}
     <div class="d-flex gap-2">
-        <a href="{% url 'importar_colaboradores' %}" class="btn btn-success text-white fw-bold">
-            📥 Importar Excel
+        <a href="{% url 'template_colaboradores' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-download"></i> Modelo Excel
+        </a>
+        
+        <a href="{% url 'importar_hierarquia' %}" class="btn btn-outline-primary">
+            <i class="bi bi-diagram-3"></i> Hierarquia
+        </a>
+
+        {% if can_edit %}
+        <a href="{% url 'importar_colaboradores' %}" class="btn btn-success text-white">
+            <i class="bi bi-file-earmark-excel"></i> Importar Planilha
         </a>
         <a href="/admin/qms/colaborador/add/" class="btn btn-primary">
-            + Novo Colaborador
+            <i class="bi bi-person-plus"></i> Novo Colaborador
         </a>
-    </div>
-    {% endif %}
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm bg-white">
-            <div class="card-body text-center">
-                <h3 class="text-primary fw-bold">{{ funcionarios.count }}</h3>
-                <small class="text-muted text-uppercase">Total de Colaboradores</small>
-            </div>
-        </div>
+        {% endif %}
     </div>
 </div>
 
 <div class="card shadow-sm border-0">
-    <div class="card-header bg-white py-3">
-        <h5 class="mb-0 text-secondary">Lista de Colaboradores</h5>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0 align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Matrícula</th>
-                        <th>Nome Completo</th>
-                        <th>Cargo</th>
-                        <th>Setor</th>
-                        <th>Status</th>
-                        <th class="text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for func in funcionarios %}
-                    <tr>
-                        <td><strong>{{ func.matricula }}</strong></td>
-                        <td class="fw-bold">
-                            <a href="{% url 'detalhe_colaborador' func.id %}" class="text-decoration-none text-dark">
-                                {{ func.nome_completo }}
-                            </a>
-                        </td>
-                        <td>{{ func.cargo }}</td>
-                        <td>{{ func.setor.nome|default:"-" }}</td>
-                        <td>
-                            {% if func.is_active %}
-                                <span class="badge bg-success-subtle text-success border border-success">ATIVO</span>
-                            {% else %}
-                                <span class="badge bg-secondary">INATIVO</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-end">
-                            <a href="/admin/qms/colaborador/{{ func.id }}/change/" class="btn btn-sm btn-outline-secondary">
-                                ✏️ Editar
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" class="text-center p-5 text-muted">
-                            Nenhum colaborador encontrado.
-                        </td>
-                    </tr>
+    <div class="card-header bg-white py-3 border-bottom">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-12 mb-2 d-flex justify-content-between">
+                <h5 class="mb-0 text-primary"><i class="bi bi-funnel"></i> Filtros de RH</h5>
+                <span class="badge bg-primary fs-6" id="contadorBadge">Exibindo {{ funcionarios.count }}</span>
+            </div>
+
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, Matrícula ou Cargo...">
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <select id="filtroSetor" class="form-select">
+                    <option value="">🏢 Todos os Setores</option>
+                    {% for s in setores %}
+                        <option value="{{ s.nome }}">{{ s.nome }}</option>
                     {% endfor %}
-                </tbody>
-            </table>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select id="filtroTurno" class="form-select">
+                    <option value="">🕒 Todos Turnos</option>
+                    <option value="ADM">Administrativo</option>
+                    <option value="TURNO 1">Turno 1</option>
+                    <option value="TURNO 2">Turno 2</option>
+                    <option value="TURNO 3">Turno 3</option>
+                    <option value="12X36">12x36</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select id="filtroCC" class="form-select">
+                    <option value="">💰 Todos CCs</option>
+                    {% for c in centros %}
+                        <option value="{{ c.codigo }}">{{ c.codigo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select id="filtroStatus" class="form-select">
+                    <option value="">📊 Status</option>
+                    <option value="ATIVO">Ativo</option>
+                    <option value="INATIVO">Inativo</option>
+                </select>
+            </div>
         </div>
     </div>
+    
+    <div class="card-body p-0 table-responsive">
+        <table class="table table-hover mb-0 align-middle table-sm" style="font-size: 0.9rem;">
+            <thead class="table-dark">
+                <tr>
+                    <th class="ps-3">Status</th>
+                    <th>Matrícula</th>
+                    <th>Nome / Cargo</th>
+                    <th>Setor / Turno</th>
+                    <th>Centro Custo</th>
+                    <th>Salário</th>
+                    <th class="text-end pe-3">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for func in funcionarios %}
+                <tr class="linha-rh"
+                    data-busca="{{ func.nome_completo }} {{ func.matricula }} {{ func.cargo }}"
+                    data-setor="{{ func.setor.nome|default:'' }}"
+                    data-turno="{{ func.get_turno_display }}"
+                    data-cc="{{ func.centro_custo.codigo|default:'' }}"
+                    data-status="{% if func.is_active %}ATIVO{% else %}INATIVO{% endif %}">
+                    
+                    <td class="ps-3">
+                        {% if func.is_active %}
+                            <i class="bi bi-check-circle-fill text-success" title="Ativo"></i>
+                        {% else %}
+                            <i class="bi bi-x-circle-fill text-danger" title="Desligado/Inativo"></i>
+                        {% endif %}
+                    </td>
+                    
+                    <td class="fw-bold">{{ func.matricula }}</td>
+                    
+                    <td>
+                        <a href="{% url 'detalhe_colaborador' func.id %}" class="text-decoration-none fw-bold text-dark">
+                            {{ func.nome_completo }}
+                        </a>
+                        <div class="text-muted small">{{ func.cargo }}</div>
+                    </td>
+                    
+                    <td>
+                        <div class="fw-semibold">{{ func.setor.nome|default:"-" }}</div>
+                        <span class="badge bg-light text-dark border">{{ func.get_turno_display }}</span>
+                    </td>
+                    
+                    <td>{{ func.centro_custo.codigo|default:"-" }}</td>
+                    
+                    <td>
+                        {% if can_see_salary %}
+                            <span class="text-success fw-bold">R$ {{ func.salario|floatformat:2 }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Restrito</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="text-end pe-3">
+                        <a href="{% url 'editar_colaborador' func.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{% url 'detalhe_colaborador' func.id %}" class="btn btn-sm btn-light border" title="Ver Perfil">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-5 text-muted">
+                        Nenhum colaborador encontrado.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputs = [
+            document.getElementById('filtroBusca'),
+            document.getElementById('filtroSetor'),
+            document.getElementById('filtroTurno'),
+            document.getElementById('filtroCC'),
+            document.getElementById('filtroStatus')
+        ];
+        const linhas = document.querySelectorAll('.linha-rh');
+        const contador = document.getElementById('contadorBadge');
+        const totalInicial = linhas.length;
+
+        function filtrar() {
+            const termo = inputs[0].value.toUpperCase();
+            const setor = inputs[1].value;
+            const turno = inputs[2].value;
+            const cc = inputs[3].value;
+            const status = inputs[4].value;
+            
+            let visiveis = 0;
+
+            linhas.forEach(linha => {
+                const dados = linha.dataset;
+                
+                const matchTexto = !termo || dados.busca.toUpperCase().includes(termo);
+                const matchSetor = !setor || dados.setor === setor;
+                const matchTurno = !turno || dados.turno === turno;
+                const matchCC = !cc || dados.cc === cc;
+                const matchStatus = !status || dados.status === status;
+
+                if (matchTexto && matchSetor && matchTurno && matchCC && matchStatus) {
+                    linha.style.display = '';
+                    visiveis++;
+                } else {
+                    linha.style.display = 'none';
+                }
+            });
+            
+            if (visiveis === totalInicial) {
+                contador.textContent = `Exibindo todos (${visiveis})`;
+                contador.className = 'badge bg-primary fs-6';
+            } else {
+                contador.textContent = `Filtrado: ${visiveis} de ${totalInicial}`;
+                contador.className = 'badge bg-success fs-6';
+            }
+        }
+
+        inputs.forEach(input => input.addEventListener('input', filtrar));
+        filtrar();
+    });
+</script>
 {% endblock %}

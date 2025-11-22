@@ -13,6 +13,7 @@ from django.db import transaction, IntegrityError, models
 from django.urls import reverse
 from django.db.models import Q
 from django.core.files.base import ContentFile
+from .forms import ColaboradorForm
 
 # IMPORTA TODOS OS MODELOS
 from .models import (
@@ -67,65 +68,55 @@ def modulo_metrologia_view(request):
     }
     return render(request, 'modulo_metrologia.html', ctx)
 
-# --- VIEWS DE RH COM HIERARQUIA ---
-
 @login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
     
-    # 1. Definição de Permissões Iniciais
-    can_see_salary = False
-    funcionarios = Colaborador.objects.none() # Começa vazio por segurança
+    # Busca dados para os filtros dinâmicos
+    setores = Setor.objects.all().order_by('nome')
+    centros = CentroCusto.objects.all().order_by('codigo')
+    # Turnos são fixos no model, passaremos no template manualmente ou via choices
     
-    if request.user.is_superuser:
-        # Superusuário vê tudo
-        funcionarios = Colaborador.objects.all().order_by('nome_completo')
+    # Busca todos os colaboradores para a lista
+    funcionarios = Colaborador.objects.all().order_by('nome_completo')
+    
+    # Regra de visualização de salário (Mantém a segurança visual na lista)
+    can_see_salary = False
+    if request.user.is_superuser or (colab and ('GERENTE' in str(colab.cargo).upper() or 'RH' in str(colab.setor.nome).upper())):
         can_see_salary = True
-        
-    elif colab:
-        cargo = str(colab.cargo).upper()
-        grupo = str(colab.grupo).upper()
-        
-        # Verifica Hierarquia no Banco
-        is_gerente = HierarquiaSetor.objects.filter(gerente=colab).exists()
-        is_supervisor = HierarquiaSetor.objects.filter(supervisor=colab).exists()
-        is_lider = HierarquiaSetor.objects.filter(lider=colab).exists()
-        is_qualidade = 'QUALIDADE' in cargo or 'QUALIDADE' in grupo
-
-        # --- REGRAS DE VISUALIZAÇÃO (QUEM EU VEJO?) ---
-        if is_gerente or 'GERENTE' in cargo:
-            # Gerente vê todo mundo
-            funcionarios = Colaborador.objects.all().order_by('nome_completo')
-            can_see_salary = True # Gerente vê salário
-            
-        elif is_qualidade:
-            # Qualidade vê todo mundo
-            funcionarios = Colaborador.objects.all().order_by('nome_completo')
-            can_see_salary = False # Qualidade NÃO vê salário
-            
-        elif is_supervisor:
-            # Supervisor vê apenas o SEU TURNO (de qualquer setor ou só do dele)
-            # Aqui assumi que vê do turno dele geral. Se for só do setor, adicione filter(setor=colab.setor)
-            funcionarios = Colaborador.objects.filter(turno=colab.turno).order_by('nome_completo')
-            can_see_salary = False
-            
-        elif is_lider:
-             # Líder vê seu turno e setor
-            funcionarios = Colaborador.objects.filter(turno=colab.turno, setor=colab.setor).order_by('nome_completo')
-            can_see_salary = False
-            
-        else:
-            # Colaborador comum vê apenas a si mesmo (ou ninguém)
-            funcionarios = Colaborador.objects.filter(id=colab.id)
-            can_see_salary = False
 
     ctx = {
         'colaborador': colab, 
-        'funcionarios': funcionarios, 
-        'can_see_salary': can_see_salary, # Envia a permissão para o template
-        'can_edit': True # Pode refinar isso depois
+        'funcionarios': funcionarios,
+        'setores': setores,
+        'centros': centros,
+        'can_see_salary': can_see_salary,
+        'can_edit': True # RH pode editar
     }
     return render(request, 'modulo_rh.html', ctx)
+
+@login_required
+def editar_colaborador_view(request, colab_id):
+    # Apenas Admin, Gerentes ou RH deveriam acessar isso
+    usuario_logado = get_colab(request)
+    alvo = get_object_or_404(Colaborador, id=colab_id)
+    
+    if request.method == 'POST':
+        form = ColaboradorForm(request.POST, instance=alvo)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Dados de {alvo.nome_completo} atualizados com sucesso!")
+            return redirect('detalhe_colaborador', colab_id=alvo.id)
+        else:
+            messages.error(request, "Erro ao salvar. Verifique os campos.")
+    else:
+        form = ColaboradorForm(instance=alvo)
+    
+    return render(request, 'editar_colaborador.html', {
+        'form': form, 
+        'alvo': alvo,
+        'colaborador': usuario_logado
+    })
 
 @login_required
 def detalhe_colaborador_view(request, colab_id):
