@@ -59,7 +59,21 @@ def dashboard_view(request):
 @login_required
 def modulo_metrologia_view(request):
     colab = get_colab(request)
-    ctx = {'colaborador': colab, 'instrumentos': Instrumento.objects.all().order_by('tag'), 'can_edit': True}
+    
+    # Buscando dados para popular os filtros
+    setores = Setor.objects.all().order_by('nome')
+    categorias = CategoriaInstrumento.objects.all().order_by('nome')
+    
+    # Buscando instrumentos
+    instrumentos = Instrumento.objects.all().order_by('tag')
+    
+    ctx = {
+        'colaborador': colab, 
+        'instrumentos': instrumentos,
+        'setores': setores,         # Enviando para o template
+        'categorias': categorias,   # Enviando para o template
+        'can_edit': True
+    }
     return render(request, 'modulo_metrologia.html', ctx)
 
 @login_required
