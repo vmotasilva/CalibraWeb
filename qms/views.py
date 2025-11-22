@@ -4,6 +4,7 @@ import zipfile
 import os
 import re
 from datetime import datetime, date, timedelta
+from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from django.contrib import messages
@@ -13,7 +14,7 @@ from django.urls import reverse
 from django.db.models import Q
 from django.core.files.base import ContentFile
 
-# IMPORTA TODOS OS MODELOS NECESSÁRIOS
+# IMPORTA TODOS OS MODELOS
 from .models import (
     Instrumento, Colaborador, ProcessoCotacao, Procedimento,
     Fornecedor, HistoricoCalibracao, Setor, CentroCusto,
@@ -28,12 +29,26 @@ from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import Color as RColor
 
-# --- FUNÇÕES AUXILIARES ---
+# ==============================================================================
+# FUNÇÕES AUXILIARES
+# ==============================================================================
 def get_colab(request):
     try: return Colaborador.objects.get(user_django=request.user)
     except: return None
 
-# --- VIEWS DE TELA ---
+def excel_date_to_datetime(serial):
+    if pd.isnull(serial) or str(serial).strip() == '' or str(serial).strip() == '-': return None
+    try:
+        serial_str = str(serial).strip()
+        if '/' in serial_str: return pd.to_datetime(serial_str, dayfirst=True).date()
+        serial_float = float(serial)
+        return (datetime(1899, 12, 30) + timedelta(days=serial_float)).date()
+    except: return None
+
+# ==============================================================================
+# VIEWS DE TELA
+# ==============================================================================
+
 @login_required
 def dashboard_view(request):
     colab = get_colab(request)
@@ -59,19 +74,15 @@ def dashboard_view(request):
 @login_required
 def modulo_metrologia_view(request):
     colab = get_colab(request)
-    
-    # Buscando dados para popular os filtros
     setores = Setor.objects.all().order_by('nome')
     categorias = CategoriaInstrumento.objects.all().order_by('nome')
-    
-    # Buscando instrumentos
     instrumentos = Instrumento.objects.all().order_by('tag')
     
     ctx = {
         'colaborador': colab, 
         'instrumentos': instrumentos,
-        'setores': setores,         # Enviando para o template
-        'categorias': categorias,   # Enviando para o template
+        'setores': setores,
+        'categorias': categorias,
         'can_edit': True
     }
     return render(request, 'modulo_metrologia.html', ctx)
@@ -98,7 +109,9 @@ def remover_historico_view(request, historico_id):
     messages.success(request, "Certificado removido e datas atualizadas.")
     return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
 
-# --- CARIMBO ---
+# ==============================================================================
+# CARIMBO (VALIDAÇÃO)
+# ==============================================================================
 @login_required
 def carimbar_view(request):
     colab = get_colab(request)
@@ -123,16 +136,18 @@ def carimbar_view(request):
                 ui = (float(raw_x), float(raw_y), float(raw_w), float(raw_h), screen_w, screen_h)
                 pdf_buffer = apply_stamp_logic(f, user_full_name, status_txt, ui, dt_validacao)
                 inst_id = request.POST.get(f'instrument_id_{i}'); calib_date_str = request.POST.get(f'calib_date_{i}'); cert_num = request.POST.get(f'cert_num_{i}', f.name)
+                
                 if inst_id and calib_date_str:
                     try:
                         instrumento = Instrumento.objects.get(id=inst_id)
                         dt_calibracao = datetime.strptime(calib_date_str, '%Y-%m-%d').date()
                         prox_calib = None
-                        if instrumento.frequencia_meses: prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
+                        if instrumento.frequencia_meses: 
+                            prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
                         
                         hist, created = HistoricoCalibracao.objects.get_or_create(
                             instrumento=instrumento, data_calibracao=dt_calibracao, data_aprovacao=dt_validacao, numero_certificado=cert_num,
-                            defaults={'proxima_calibracao': prox_calib, 'resultado': resultado_banco, 'responsavel': c_resp, 'observacoes': f"Validado por {user_full_name}: {status_txt}"}
+                            defaults={'proxima_calibracao': prox_calib, 'resultado': resultado_banco, 'responsavel': str(c_resp), 'observacoes': f"Validado por {user_full_name}: {status_txt}"}
                         )
                         if not created: hist.resultado = resultado_banco; hist.observacoes = f"Revalidado por {user_full_name}: {status_txt}"
                         filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"; hist.certificado.save(filename, ContentFile(pdf_buffer.getvalue())); hist.save()
@@ -166,22 +181,23 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
         for pg in ipdf.pages[1:]: o.add_page(pg)
     out = io.BytesIO(); o.write(out); out.seek(0); return out
 
-# --- TEMPLATES ---
+# ==============================================================================
+# TEMPLATES DE DOWNLOAD
+# ==============================================================================
 def dl_template_instr(request):
     colunas = ["TAG", "EQUIPAMENTO", "STATUS", "FABRICANTE", "MODELO", "N SERIE", "SETOR", "LOCALIZACAO", "FREQUENCIA_MESES", "DATA_ULTIMA_CALIBRACAO", "FAIXA", "UNIDADE"]
-    df = pd.DataFrame(columns=colunas)
-    r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    r['Content-Disposition'] = 'attachment; filename="template_instrumentos_v2.xlsx"'; df.to_excel(r, index=False); return r
-
+    df = pd.DataFrame(columns=colunas); r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_instrumentos_v2.xlsx"'; df.to_excel(r, index=False); return r
 def dl_template_colab(request):
     df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
 def dl_template_hierarquia(request):
     df = pd.DataFrame({'SETOR': ['MANUTENCAO'], 'TURNO': ['TURNO 1'], 'MAT_LIDER': ['1001'], 'MAT_SUPERVISOR': [''], 'MAT_GERENTE': [''], 'MAT_DIRETOR': ['']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_hierarquia.xlsx"'; return r
 def dl_template_historico(request):
-    colunas = ["TAG", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", "ERRO ENCONTRADO", "INCERTEZA", "TOLERANCIA PROCESSO (+/-)", "RESULTADO", "RESPONSÁVEL", "OBSERVAÇÕES"]
+    colunas = ["TAG", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", "ERRO ENCONTRADO", "INCERTEZA", "TOLERANCIA PROCESSO (+/-)", "OBSERVAÇÕES"]
     df = pd.DataFrame(columns=colunas); r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_historico_calibracao.xlsx"'; df.to_excel(r, index=False); return r
 
-# --- IMPORTAÇÕES INSTRUMENTOS ---
+# ==============================================================================
+# IMPORTAÇÃO DE INSTRUMENTOS (VERTICAL)
+# ==============================================================================
 @login_required
 def imp_instr_view(request):
     if request.method == 'POST':
@@ -202,7 +218,7 @@ def imp_instr_view(request):
                             return None
                         def get_date(k_list):
                             val = get_val(k_list)
-                            if not val or val == '-' or val == 'NaT': return None
+                            if not val or val in ['-', 'NaT']: return None
                             try: return pd.to_datetime(val, dayfirst=True).date()
                             except: return None
                         def traduzir_frequencia(valor):
@@ -210,8 +226,7 @@ def imp_instr_view(request):
                             s = str(valor).upper().replace(',', '.')
                             numeros = re.findall(r'\d+', s)
                             if numeros: return int(numeros[0])
-                            try: return int(float(valor))
-                            except: return 12
+                            return 12
                         def extrair_min_max(texto_faixa):
                             if not texto_faixa: return 0, 0
                             txt = str(texto_faixa).replace(',', '.')
@@ -224,12 +239,14 @@ def imp_instr_view(request):
                         if not tag: continue 
 
                         cat_nome = get_val(['CATEGORIA', 'FAMILIA', 'TIPO', 'EQUIPAMENTO']) 
-                        categoria_obj = None
-                        if cat_nome: categoria_obj, _ = CategoriaInstrumento.objects.get_or_create(nome=cat_nome.title())
+                        if cat_nome: 
+                            cat, _ = CategoriaInstrumento.objects.get_or_create(nome=cat_nome.title())
+                        else: cat = None
 
                         setor_nome = get_val(['SETOR', 'DEPARTAMENTO'])
-                        setor_obj = None
-                        if setor_nome: setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+                        if setor_nome:
+                            setor, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+                        else: setor = None
 
                         freq_meses = traduzir_frequencia(get_val(['FREQUENCIA_MESES', 'FREQUENCIA', 'PERIODICIDADE']))
                         dt_ultima = get_date(['DATA_ULTIMA_CALIBRACAO', 'DATA ÚLTIMA CALIBRAÇÃO', 'ULTIMA CALIBRACAO', 'DATA CALIBRAÇÃO'])
@@ -238,11 +255,11 @@ def imp_instr_view(request):
                         dados = {
                             'codigo': tag,
                             'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição',
-                            'categoria': categoria_obj,
+                            'categoria': cat,
                             'fabricante': get_val(['FABRICANTE', 'MARCA']),
                             'modelo': get_val(['MODELO']),
                             'serie': get_val(['N SERIE', 'N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']),
-                            'setor': setor_obj,
+                            'setor': setor,
                             'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']),
                             'frequencia_meses': freq_meses,
                             'data_ultima_calibracao': dt_ultima,
@@ -256,21 +273,18 @@ def imp_instr_view(request):
                         faixa_txt = get_val(['FAIXA', 'RANGE', 'CAPACIDADE', 'FAIXA DE MEDICAO'])
                         unidade_txt = get_val(['UNIDADE', 'U.M.', 'UNIDADE DE MEDIDA'])
                         if faixa_txt and unidade_txt:
-                            und_obj, _ = UnidadeMedida.objects.get_or_create(sigla=unidade_txt, defaults={'nome': unidade_txt})
+                            und, _ = UnidadeMedida.objects.get_or_create(sigla=unidade_txt, defaults={'nome': unidade_txt})
                             v_min, v_max = extrair_min_max(faixa_txt)
-                            FaixaMedicao.objects.get_or_create(instrumento=obj, unidade=und_obj, valor_minimo=v_min, valor_maximo=v_max, defaults={'resolucao': 0})
+                            FaixaMedicao.objects.get_or_create(instrumento=obj, unidade=und, valor_minimo=v_min, valor_maximo=v_max, defaults={'resolucao': 0})
                             count_faixas += 1
-                messages.success(request, f"Importação: {count_new} Novos, {count_upd} Atualizados. {count_faixas} Faixas processadas.")
+                messages.success(request, f"Importação: {count_new} Novos, {count_upd} Atualizados. {count_faixas} Faixas.")
                 return redirect('modulo_metrologia')
-            except Exception as e:
-                messages.error(request, f"Erro ao importar: {str(e)}")
-                return redirect('importar_instrumentos')
-    else:
-        form = ImportacaoInstrumentosForm()
+            except Exception as e: messages.error(request, f"Erro: {str(e)}"); return redirect('importar_instrumentos')
+    else: form = ImportacaoInstrumentosForm()
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
 # ==============================================================================
-# IMPORTAÇÃO DE HISTÓRICO (BLINDADA E UNIVERSAL)
+# IMPORTAÇÃO DE HISTÓRICO (BLINDADA E COMPLETA)
 # ==============================================================================
 @login_required
 def imp_historico_view(request):
@@ -287,63 +301,42 @@ def imp_historico_view(request):
                             f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
                     else: df = pd.read_excel(f)
                 except Exception as e:
-                    messages.error(request, f"Erro ao ler arquivo: {e}")
-                    return redirect('importar_historico')
+                    messages.error(request, f"Erro arquivo: {e}"); return redirect('importar_historico')
 
-                # LIMPEZA DE CABEÇALHO
-                if df is not None:
-                    df.columns = df.columns.str.strip().str.upper()
-                    df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
-                
                 if df is None or len(df.columns) < 2:
-                    messages.error(request, "Arquivo inválido ou vazio.")
-                    return redirect('importar_historico')
+                    messages.error(request, "Arquivo inválido ou 1 coluna só."); return redirect('importar_historico')
 
+                df.columns = df.columns.str.strip().str.upper()
+                df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
+                
                 count_new = 0; relatorio_erros = []
                 with transaction.atomic():
                     for index, row in df.iterrows():
                         linha = index + 2
-                        
-                        def encontrar_coluna(palavras_chave, evitar=[]):
+                        def get_val(keywords):
+                            if isinstance(keywords, str): keywords = [keywords]
                             for col in df.columns:
-                                match = False
-                                for k in palavras_chave:
+                                for k in keywords:
                                     k_clean = k.upper().replace('Ç','C').replace('Ã','A').replace('Á','A').replace('É','E')
-                                    if k_clean in col: match = True; break
-                                if match:
-                                    proibido = False
-                                    for bad in evitar:
-                                        if bad.upper() in col: proibido = True; break
-                                    if not proibido: return col
-                            return None
-
-                        def get_val_by_col(col_name):
-                            if col_name and pd.notna(row[col_name]): return str(row[col_name]).strip()
+                                    if k_clean in col:
+                                        if pd.notna(row[col]): return str(row[col]).strip()
                             return None
 
                         def converter_data(valor):
                             if not valor or str(valor).strip() in ['-', 'NaT', 'nan', 'None', '']: return None
-                            # Suporte para formato ISO YYYY-MM-DD
-                            try: return pd.to_datetime(str(valor).strip()).date()
+                            try: return pd.to_datetime(str(valor).strip(), dayfirst=True).date()
                             except:
-                                # Suporte para formato BR DD/MM/YYYY
-                                try: return pd.to_datetime(str(valor).strip(), dayfirst=True).date()
-                                except:
-                                    # Suporte para Serial do Excel
-                                    try: return (datetime(1899, 12, 30) + timedelta(days=float(valor))).date()
-                                    except: return None
-
-                        def get_float_by_col(col_name):
-                            val = get_val_by_col(col_name)
+                                try: return (datetime(1899, 12, 30) + timedelta(days=float(valor))).date()
+                                except: return None
+                        
+                        def get_float(keywords):
+                            val = get_val(keywords)
                             if not val: return None
                             try: return float(re.sub(r'[^\d,.-]', '', val).replace(',', '.'))
                             except: return None
 
-                        col_tag = encontrar_coluna(['TAG', 'CODIGO', 'IDENTIFICACAO'])
-                        col_dt_cal = encontrar_coluna(['DATA CALIB', 'DATA ULTIMA', 'REALIZADO', 'CALIBRACAO'], evitar=['PROXIMA', 'VENCIMENTO', 'VALIDADE'])
-                        
-                        tag = get_val_by_col(col_tag)
-                        dt_cal = converter_data(row.get(col_dt_cal)) if col_dt_cal else None
+                        tag = get_val(['TAG', 'CODIGO', 'IDENTIFICACAO'])
+                        dt_cal = converter_data(get_val(['DATA CALIBRACAO', 'DATA ULTIMA', 'REALIZADO', 'CALIBRACAO']))
 
                         if not tag: continue
                         if not dt_cal:
@@ -352,40 +345,29 @@ def imp_historico_view(request):
                         
                         try: inst = Instrumento.objects.get(tag=tag)
                         except: 
-                            relatorio_erros.append(f"L.{linha}: Instrumento não cadastrado.")
+                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não cadastrado.")
                             continue
 
-                        col_dt_apr = encontrar_coluna(['DATA APROVACAO', 'DATA VALIDACAO', 'AVALIACAO'])
-                        # CORREÇÃO AQUI: Se a coluna de aprovação não existir ou estiver vazia, usa a data de calibração
-                        val_apr = converter_data(row.get(col_dt_apr)) if col_dt_apr else None
+                        # CORREÇÃO DE DATA NULA: Se não achar aprovação, usa calibração
+                        val_apr = converter_data(get_val(['DATA APROVACAO', 'DATA VALIDACAO', 'AVALIACAO']))
                         dt_apr = val_apr if val_apr else dt_cal
                         
-                        col_cert = encontrar_coluna(['CERTIFICADO', 'N DOC'], evitar=['DATA'])
-                        num_cert = get_val_by_col(col_cert) or 'S/N'
-                        
-                        col_erro = encontrar_coluna(['ERRO', 'TENDENCIA'])
-                        col_inc = encontrar_coluna(['INCERTEZA', 'U'])
-                        col_tol = encontrar_coluna(['TOLERANCIA', 'CRITERIO', 'EMA'], evitar=['NOMINAL'])
-                        
-                        erro = get_float_by_col(col_erro)
-                        inc = get_float_by_col(col_inc)
-                        tol = get_float_by_col(col_tol)
+                        num_cert = get_val(['CERTIFICADO', 'N DOC']) or 'S/N'
+                        erro = get_float(['ERRO', 'TENDENCIA'])
+                        inc = get_float(['INCERTEZA', 'U'])
+                        # Prioriza Tolerância(+/-) e evita Nominal
+                        tol = get_float(['TOLERANCIA(+/-)', 'TOLERANCIA DO PROCESSO - TOLERANCIA', 'CRITERIO'])
+                        if tol is None: tol = get_float(['TOLERANCIA', 'EMA'])
 
-                        col_resp = encontrar_coluna(['RESPONSAVEL', 'APROVADOR', 'ANALISE'])
-                        resp_txt = get_val_by_col(col_resp)
+                        resp_txt = get_val(['RESPONSAVEL', 'APROVADOR', 'ANALISE'])
+                        forn_txt = get_val(['FORNECEDOR', 'LABORATORIO'])
                         
-                        col_forn = encontrar_coluna(['FORNECEDOR', 'LABORATORIO'])
-                        forn_txt = get_val_by_col(col_forn)
-                        
-                        col_res = encontrar_coluna(['RESULTADO', 'STATUS', 'ANALISE RESULTADO'])
-                        res_excel = str(get_val_by_col(col_res) or '').upper()
+                        res_excel = str(get_val(['RESULTADO', 'STATUS']) or '').upper()
                         res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
                         elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
                         
-                        col_prox = encontrar_coluna(['PROXIMA', 'VENCIMENTO'])
-                        prox = converter_data(row.get(col_prox)) if col_prox else None
-                        
+                        prox = converter_data(get_val(['PROXIMA', 'VENCIMENTO']))
                         if not prox and inst.frequencia_meses and dt_cal:
                             try: prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
                             except: prox = None
@@ -396,7 +378,7 @@ def imp_historico_view(request):
                                 'data_aprovacao': dt_apr, 'resultado': res, 'proxima_calibracao': prox, 
                                 'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 
                                 'responsavel': resp_txt, 'fornecedor': forn_txt,
-                                'observacoes': get_val_by_col(encontrar_coluna(['OBSERVACOES', 'OBS']))
+                                'observacoes': get_val(['OBSERVACOES', 'OBS'])
                             }
                         )
                         if erro is not None and inc is not None and tol is not None: obj.save()
