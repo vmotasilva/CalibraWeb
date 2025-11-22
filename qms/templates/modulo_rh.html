@@ -8,21 +8,13 @@
     </div>
     
     <div class="d-flex gap-2">
-        <a href="{% url 'template_colaboradores' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-download"></i> Modelo Excel
-        </a>
+        <a href="{% url 'template_colaboradores' %}" class="btn btn-outline-secondary"><i class="bi bi-download"></i> Modelo Excel</a>
         
-        <a href="{% url 'importar_hierarquia' %}" class="btn btn-outline-primary">
-            <i class="bi bi-diagram-3"></i> Hierarquia
-        </a>
+        <a href="{% url 'importar_hierarquia' %}" class="btn btn-outline-primary"><i class="bi bi-diagram-3"></i> Hierarquia</a>
 
         {% if can_edit %}
-        <a href="{% url 'importar_colaboradores' %}" class="btn btn-success text-white">
-            <i class="bi bi-file-earmark-excel"></i> Importar Planilha
-        </a>
-        <a href="/admin/qms/colaborador/add/" class="btn btn-primary">
-            <i class="bi bi-person-plus"></i> Novo Colaborador
-        </a>
+        <a href="{% url 'importar_colaboradores' %}" class="btn btn-success text-white"><i class="bi bi-file-earmark-excel"></i> Importar Planilha</a>
+        <a href="/admin/qms/colaborador/add/" class="btn btn-primary" target="_blank"><i class="bi bi-person-plus"></i> Novo Colaborador</a>
         {% endif %}
     </div>
 </div>
@@ -31,15 +23,12 @@
     <div class="card-header bg-white py-3 border-bottom">
         <div class="row g-2 align-items-center">
             <div class="col-md-12 mb-2 d-flex justify-content-between">
-                <h5 class="mb-0 text-primary"><i class="bi bi-funnel"></i> Filtros de RH</h5>
+                <h5 class="mb-0 text-primary"><i class="bi bi-funnel"></i> Filtros</h5>
                 <span class="badge bg-primary fs-6" id="contadorBadge">Exibindo {{ funcionarios.count }}</span>
             </div>
 
             <div class="col-md-3">
-                <div class="input-group">
-                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
-                    <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, Matrícula ou Cargo...">
-                </div>
+                <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, Matrícula ou Cargo...">
             </div>
 
             <div class="col-md-3">
@@ -97,6 +86,7 @@
             <tbody>
                 {% for func in funcionarios %}
                 <tr class="linha-rh"
+                    data-detail-url="{% url 'detalhe_colaborador' func.id %}"
                     data-busca="{{ func.nome_completo }} {{ func.matricula }} {{ func.cargo }}"
                     data-setor="{{ func.setor.nome|default:'' }}"
                     data-turno="{{ func.turno }}" 
@@ -104,11 +94,7 @@
                     data-status="{% if func.is_active %}ATIVO{% else %}INATIVO{% endif %}">
                     
                     <td class="ps-3">
-                        {% if func.is_active %}
-                            <i class="bi bi-check-circle-fill text-success" title="Ativo"></i>
-                        {% else %}
-                            <i class="bi bi-x-circle-fill text-danger" title="Desligado/Inativo"></i>
-                        {% endif %}
+                        {% if func.is_active %}<i class="bi bi-check-circle-fill text-success" title="Ativo"></i>{% else %}<i class="bi bi-x-circle-fill text-danger" title="Desligado/Inativo"></i>{% endif %}
                     </td>
                     
                     <td class="fw-bold">{{ func.matricula }}</td>
@@ -145,11 +131,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="7" class="text-center py-5 text-muted">
-                        Nenhum colaborador encontrado.
-                    </td>
-                </tr>
+                <tr><td colspan="7" class="text-center py-5 text-muted">Nenhum colaborador encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -172,7 +154,7 @@
         function filtrar() {
             const termo = inputs[0].value.toUpperCase();
             const setor = inputs[1].value;
-            const turno = inputs[2].value; // Valor é ADM, TURNO_1, etc.
+            const turno = inputs[2].value;
             const cc = inputs[3].value;
             const status = inputs[4].value;
             
@@ -183,7 +165,7 @@
                 
                 const matchTexto = !termo || dados.busca.toUpperCase().includes(termo);
                 const matchSetor = !setor || dados.setor === setor;
-                const matchTurno = !turno || dados.turno === turno; // Compara código do filtro (ADM) com código da linha (ADM)
+                const matchTurno = !turno || dados.turno === turno;
                 const matchCC = !cc || dados.cc === cc;
                 const matchStatus = !status || dados.status === status;
 
@@ -204,6 +186,18 @@
             }
         }
 
+        // --- NOVO EVENTO DE DUPLO CLIQUE ---
+        linhas.forEach(linha => {
+            linha.style.cursor = 'pointer'; // Indica que a linha é clicável
+            linha.addEventListener('dblclick', function() {
+                const url = this.dataset.detailUrl; // Pega a URL do atributo que criamos
+                if (url) {
+                    window.location.href = url;
+                }
+            });
+        });
+
+        // Ativa os filtros
         inputs.forEach(input => input.addEventListener('input', filtrar));
         filtrar();
     });
