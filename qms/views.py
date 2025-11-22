@@ -228,77 +228,102 @@ def imp_instr_view(request):
                 except:
                     f.seek(0); df = pd.read_csv(f, sep=',', encoding='utf-8')
 
+                # Remove espaços dos nomes das colunas e deixa maiúsculo
                 df.columns = df.columns.str.strip().str.upper()
                 count_new = 0; count_upd = 0; count_faixas = 0
                 
                 with transaction.atomic():
                     for _, row in df.iterrows():
-                        # --- HELPERS INTERNOS ---
+                        
+                        # --- 1. FUNÇÕES DE LIMPEZA (Agora mais fortes) ---
                         def get_val(k_list): 
                             for key in k_list:
-                                if key in df.columns and pd.notna(row[key]): return str(row[key]).strip()
+                                if key in df.columns and pd.notna(row[key]): 
+                                    return str(row[key]).strip()
                             return None
                         
                         def get_date(k_list):
                             val = get_val(k_list)
-                            return pd.to_datetime(val).date() if val else None
+                            if not val or val == '-' or val == 'NaT': return None
+                            try:
+                                # dayfirst=True é crucial para datas BR (dd/mm/yyyy)
+                                return pd.to_datetime(val, dayfirst=True).date()
+                            except:
+                                return None
 
                         def traduzir_frequencia(valor):
                             if not valor: return 12
-                            s = str(valor).upper()
+                            s = str(valor).upper().replace(',', '.') # Troca vírgula por ponto
+                            
+                            # Palavras chaves
                             if 'ANUAL' in s: return 12
                             if 'SEMESTRAL' in s: return 6
                             if 'TRIMESTRAL' in s: return 3
                             if 'BIENAL' in s: return 24
                             if 'MENSAL' in s: return 1
-                            try: return int(float(valor))
-                            except: return 12 
-                        
+                            
+                            # Tenta extrair apenas o número (ex: "12 meses" -> 12)
+                            numeros = re.findall(r'\d+', s)
+                            if numeros:
+                                return int(numeros[0])
+                            return 12 # Padrão se falhar
+
                         def extrair_min_max(texto_faixa):
                             if not texto_faixa: return 0, 0
-                            txt = texto_faixa.replace(',', '.')
+                            txt = str(texto_faixa).replace(',', '.')
+                            # Pega números inteiros ou decimais, positivos ou negativos
                             numeros = re.findall(r'-?\d+\.?\d*', txt)
                             if len(numeros) >= 2: return float(numeros[0]), float(numeros[1])
                             elif len(numeros) == 1: return 0, float(numeros[0])
                             return 0, 0
 
-                        # --- 1. DADOS DO INSTRUMENTO ---
-                        tag = get_val(['TAG', 'IDENTIFICACAO', 'CÓDIGO', 'CODIGO'])
+                        # --- 2. IDENTIFICAÇÃO ---
+                        tag = get_val(['TAG', 'IDENTIFICACAO', 'CODIGO', 'CÓDIGO'])
                         if not tag: continue 
 
-                        cat_nome = get_val(['CATEGORIA', 'FAMILIA', 'TIPO', 'EQUIPAMENTO']) # Equipamento = Categoria
+                        # --- 3. CATEGORIA E SETOR ---
+                        # Usa a coluna 'EQUIPAMENTO' como Categoria se não tiver coluna Categoria
+                        cat_nome = get_val(['CATEGORIA', 'FAMILIA', 'TIPO', 'EQUIPAMENTO']) 
                         categoria_obj = None
-                        if cat_nome: categoria_obj, _ = CategoriaInstrumento.objects.get_or_create(nome=cat_nome.title())
+                        if cat_nome: 
+                            categoria_obj, _ = CategoriaInstrumento.objects.get_or_create(nome=cat_nome.title())
 
                         setor_nome = get_val(['SETOR', 'DEPARTAMENTO'])
                         setor_obj = None
-                        if setor_nome: setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+                        if setor_nome: 
+                            setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
 
-                        freq_meses = traduzir_frequencia(get_val(['FREQUENCIA', 'PERIODICIDADE']))
+                        # --- 4. PREPARAÇÃO DOS DADOS ---
+                        freq_meses = traduzir_frequencia(get_val(['FREQUENCIA_MESES', 'FREQUENCIA', 'PERIODICIDADE']))
+                        dt_ultima = get_date(['DATA_ULTIMA_CALIBRACAO', 'DATA ÚLTIMA CALIBRAÇÃO', 'ULTIMA CALIBRACAO', 'DATA CALIBRAÇÃO'])
+                        
+                        # Cálculo da próxima data
+                        dt_proxima = None
+                        if dt_ultima:
+                            dt_proxima = dt_ultima + timedelta(days=freq_meses*30)
 
                         dados = {
-                            'codigo': tag, # Codigo igual a TAG
-                            'descricao': get_val(['DESCRIÇÃO', 'DESCRICAO']) or cat_nome or 'Sem Descrição',
+                            'codigo': tag,
+                            'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição',
                             'categoria': categoria_obj,
                             'fabricante': get_val(['FABRICANTE', 'MARCA']),
                             'modelo': get_val(['MODELO']),
-                            'serie': get_val(['N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE', 'N SERIE']),
+                            'serie': get_val(['N SERIE', 'N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']),
                             'setor': setor_obj,
                             'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']),
                             'frequencia_meses': freq_meses,
-                            'data_ultima_calibracao': get_date(['DATA ÚLTIMA CALIBRAÇÃO', 'ULTIMA CALIBRACAO', 'DATA CALIBRAÇÃO']),
+                            'data_ultima_calibracao': dt_ultima,
+                            'data_proxima_calibracao': dt_proxima,
                             'ativo': True
                         }
-                        if dados['data_ultima_calibracao']:
-                            dados['data_proxima_calibracao'] = dados['data_ultima_calibracao'] + timedelta(days=freq_meses*30)
 
-                        # update_or_create evita duplicar se a TAG repetir no Excel
+                        # Salva/Atualiza o Instrumento
                         obj, created = Instrumento.objects.update_or_create(tag=tag, defaults=dados)
                         if created: count_new += 1
                         else: count_upd += 1
 
-                        # --- 2. DADOS DA FAIXA DESTA LINHA ---
-                        faixa_txt = get_val(['FAIXA', 'RANGE', 'CAPACIDADE'])
+                        # --- 5. FAIXAS ---
+                        faixa_txt = get_val(['FAIXA', 'RANGE', 'CAPACIDADE', 'FAIXA DE MEDICAO'])
                         unidade_txt = get_val(['UNIDADE', 'U.M.', 'UNIDADE DE MEDIDA'])
                         
                         if faixa_txt and unidade_txt:
@@ -314,16 +339,15 @@ def imp_instr_view(request):
                             )
                             count_faixas += 1
 
-                messages.success(request, f"Importação: {count_new} Novos. {count_faixas} Faixas processadas.")
+                messages.success(request, f"Sucesso! {count_new} Novos, {count_upd} Atualizados. Datas e Frequências corrigidas.")
                 return redirect('modulo_metrologia')
             
             except Exception as e:
-                messages.error(request, f"Erro ao importar: {str(e)}")
+                messages.error(request, f"Erro crítico na importação: {str(e)}")
                 return redirect('importar_instrumentos')
     else:
         form = ImportacaoInstrumentosForm()
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
-
 @login_required
 def imp_colab_view(request):
     if request.method == 'POST':
