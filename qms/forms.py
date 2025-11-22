@@ -1,5 +1,5 @@
 from django import forms
-from .models import Colaborador, Instrumento
+from .models import Colaborador, Instrumento, Padrao
 
 # --- WIDGET PARA MÚLTIPLOS ARQUIVOS (CARIMBO) ---
 class MultipleFileInput(forms.ClearableFileInput):
@@ -26,7 +26,6 @@ class CarimboForm(forms.Form):
         label="Data da Validação (Carimbo)"
     )
     
-    # Opções alinhadas com a View
     STATUS_VALIDACAO = [
         ('Aprovado sem correções', 'Aprovado sem correções'), 
         ('Aprovado com correções', 'Aprovado com correções'), 
@@ -38,6 +37,20 @@ class CarimboForm(forms.Form):
         label="Status / Texto do Carimbo"
     )
     
+    # Novos campos (RBC e Padrões)
+    is_rbc = forms.BooleanField(
+        required=False, 
+        label="É um certificado RBC?", 
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    padroes = forms.ModelMultipleChoiceField(
+        queryset=Padrao.objects.filter(ativo=True).order_by('descricao'),
+        required=False,
+        label="Padrões Utilizados (Se não for RBC)",
+        widget=forms.SelectMultiple(attrs={'class': 'form-control', 'style': 'height: 100px;'})
+    )
+    
     arquivo_pdf = MultipleFileField(
         label="Selecione os Certificados (PDF)",
         widget=MultipleFileInput(attrs={
@@ -47,7 +60,7 @@ class CarimboForm(forms.Form):
         })
     )
     
-    # Campos ocultos para posição do carimbo (Javascript preenche isso)
+    # Campos ocultos
     x = forms.FloatField(widget=forms.HiddenInput(), required=False, initial=0)
     y = forms.FloatField(widget=forms.HiddenInput(), required=False, initial=0)
     w = forms.FloatField(widget=forms.HiddenInput(), required=False, initial=0)
@@ -58,7 +71,6 @@ class CarimboForm(forms.Form):
 # --- FORMULÁRIOS DE IMPORTAÇÃO ---
 
 class ImportacaoInstrumentosForm(forms.Form):
-    # Adicionei .csv no accept
     arquivo_excel = forms.FileField(
         label="Planilha de Instrumentos",
         widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.xlsx, .xls, .csv'})
@@ -85,6 +97,13 @@ class ImportacaoHierarquiaForm(forms.Form):
 class ImportacaoHistoricoForm(forms.Form):
     arquivo_excel = forms.FileField(
         label="Histórico de Calibrações",
-        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.xlsx, .xls'}),
-        help_text="Colunas obrigatórias: CÓDIGO (ou TAG), DATA CALIBRAÇÃO, DATA APROVAÇÃO, N CERTIFICADO, RESULTADO"
+        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.xlsx, .xls, .csv'}),
+        help_text="O sistema aceita planilhas de controle (FOR 139) e detecta colunas automaticamente."
+    )
+
+# ESTE É O FORMULÁRIO QUE FALTAVA 👇
+class ImportacaoPadroesForm(forms.Form):
+    arquivo_excel = forms.FileField(
+        label="Planilha de Padrões/Kits",
+        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.xlsx, .xls, .csv'})
     )
