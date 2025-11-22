@@ -337,7 +337,7 @@ def imp_instr_view(request):
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
 # ==============================================================================
-# IMPORTAÇÃO DE HISTÓRICO (TEXTO LIVRE E CÁLCULO)
+# IMPORTAÇÃO DE HISTÓRICO (COM TRAVA DE SEGURANÇA NO CÁLCULO)
 # ==============================================================================
 @login_required
 def imp_historico_view(request):
@@ -346,13 +346,11 @@ def imp_historico_view(request):
         if form.is_valid():
             try:
                 f = request.FILES['arquivo_excel']
-                # Auto-detecta separador CSV
                 try: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
                 except: 
-                    f.seek(0)
-                    df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8') if f.name.endswith('.csv') else pd.read_excel(f)
+                    try: f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
+                    except: df = pd.read_excel(f)
 
-                # Limpeza de cabeçalho
                 df.columns = df.columns.str.strip().str.upper()
                 df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
                 
@@ -362,7 +360,6 @@ def imp_historico_view(request):
                     for index, row in df.iterrows():
                         linha = index + 2
                         
-                        # Helpers
                         def get_val(k_list):
                             if isinstance(k_list, str): k_list = [k_list]
                             for key in k_list:
@@ -376,7 +373,9 @@ def imp_historico_view(request):
                             val = get_val(k_list)
                             if not val or val == '-' or val == 'NaT': return None
                             try: return pd.to_datetime(val, dayfirst=True).date() 
-                            except: return None
+                            except: 
+                                try: return (datetime(1899, 12, 30) + timedelta(days=float(val))).date()
+                                except: return None
 
                         def get_float(k_list):
                             val = get_val(k_list)
@@ -386,41 +385,52 @@ def imp_historico_view(request):
                         
                         # 1. Identificação
                         tag = get_val(['TAG', 'CODIGO', 'IDENTIFICACAO'])
-                        dt_cal = get_date_val(['DATA CALIBRACAO', 'CALIBRACAO'])
+                        if not tag: continue 
                         
-                        if not tag: continue # Pula se não tiver TAG
+                        # 2. Data Calibração
+                        dt_cal = get_date_val(['DATA CALIBRACAO', 'DATA DA CALIBRACAO', 'CALIBRACAO'])
+                        if not dt_cal:
+                            relatorio_erros.append(f"L.{linha} ({tag}): Data inválida.")
+                            continue
                         
+                        # 3. Instrumento
                         try: inst = Instrumento.objects.get(tag=tag)
                         except: 
                             relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não encontrado.")
                             continue
                         
-                        # 2. Dados Gerais
+                        # 4. Dados Gerais
                         dt_apr = get_date_val(['DATA APROVACAO', 'VALIDACAO']) or dt_cal
                         num_cert = get_val(['N CERTIFICADO', 'CERTIFICADO']) or 'S/N'
                         
-                        # 3. Campos Matemáticos
+                        # 5. Dados Matemáticos
                         erro = get_float(['ERRO', 'ERRO ENCONTRADO'])
                         inc = get_float(['INCERTEZA', 'U'])
                         tol = get_float(['TOLERANCIA', 'CRITERIO', 'EMA'])
 
-                        # 4. TEXTO LIVRE (Responsável e Fornecedor)
-                        # Agora salvamos direto o texto do Excel, sem precisar cadastrar antes
-                        resp_txt = get_val(['RESPONSAVEL', 'APROVADOR', 'ANALISTA'])
-                        forn_txt = get_val(['FORNECEDOR', 'LABORATORIO', 'PRESTADOR'])
+                        # 6. Responsável (Texto Livre)
+                        resp_txt = get_val(['RESPONSAVEL', 'APROVADOR'])
+                        forn_txt = get_val(['FORNECEDOR', 'LABORATORIO'])
 
-                        # 5. Resultado
+                        # 7. Resultado
                         res_excel = str(get_val(['RESULTADO', 'STATUS']) or '').upper()
                         res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
                         elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
                         
-                        # 6. Próxima Data
+                        # 8. Cálculo de Próxima Calibração (SEGURANÇA EXTRA AQUI)
                         prox = get_date_val(['PROXIMA CALIBRACAO', 'VENCIMENTO'])
-                        if not prox and inst.frequencia_meses:
-                            prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
                         
-                        # 7. Salvar
+                        # AQUI ESTAVA O ERRO: Se prox era None, ele tentava calcular.
+                        # Se dt_cal fosse None (o que não deveria acontecer, mas...), quebrava.
+                        # Adicionei "if dt_cal" explicitamente na linha do cálculo.
+                        if not prox and inst.frequencia_meses and dt_cal:
+                            try:
+                                prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
+                            except:
+                                prox = None # Se falhar o cálculo, deixa sem vencimento
+                        
+                        # 9. Salvar
                         obj, cr = HistoricoCalibracao.objects.update_or_create(
                             instrumento=inst, data_calibracao=dt_cal, numero_certificado=num_cert, 
                             defaults={
@@ -428,8 +438,8 @@ def imp_historico_view(request):
                                 'resultado': res, 
                                 'proxima_calibracao': prox, 
                                 'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 
-                                'responsavel': resp_obj if 'resp_obj' in locals() else resp_txt, # Usa o texto direto
-                                'fornecedor': forn_txt, # Novo campo texto
+                                'responsavel': resp_txt,
+                                'fornecedor': forn_txt,
                                 'observacoes': get_val(['OBSERVACOES', 'OBS'])
                             }
                         )
