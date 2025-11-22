@@ -383,63 +383,51 @@ def imp_historico_view(request):
                             try: return float(re.sub(r'[^\d,.-]', '', val).replace(',', '.'))
                             except: return None
                         
-                        # 1. Identificação
+                        # 1. IDENTIFICAÇÃO
                         tag = get_val(['TAG', 'CODIGO', 'IDENTIFICACAO'])
-                        if not tag: continue 
+                        if not tag: continue # Pula linhas vazias
                         
-                        # 2. Data Calibração
-                        dt_cal = get_date_val(['DATA CALIBRACAO', 'DATA DA CALIBRACAO', 'CALIBRACAO'])
+                        # 2. DATA (CORREÇÃO AQUI: Busca mais específica para não pegar o Certificado)
+                        # Removeu 'CALIBRACAO' sozinho, exige 'DATA' ou 'REALIZADO'
+                        dt_cal = get_date_val(['DATA CALIBRACAO', 'DATA DA CALIBRACAO', 'DATA ULTIMA', 'REALIZADO EM'])
+                        
                         if not dt_cal:
-                            relatorio_erros.append(f"L.{linha} ({tag}): Data inválida.")
+                            relatorio_erros.append(f"L.{linha} ({tag}): Data inválida (Coluna DATA não encontrada ou valor incorreto).")
                             continue
                         
-                        # 3. Instrumento
                         try: inst = Instrumento.objects.get(tag=tag)
                         except: 
                             relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não encontrado.")
                             continue
                         
-                        # 4. Dados Gerais
-                        dt_apr = get_date_val(['DATA APROVACAO', 'VALIDACAO']) or dt_cal
-                        num_cert = get_val(['N CERTIFICADO', 'CERTIFICADO']) or 'S/N'
+                        # 3. DEMAIS DADOS
+                        dt_apr = get_date_val(['DATA APROVACAO', 'DATA VALIDAÇÃO']) or dt_cal
+                        num_cert = get_val(['N CERTIFICADO', 'CERTIFICADO', 'N DOC', 'NO DO CERTIFICADO']) or 'S/N'
                         
-                        # 5. Dados Matemáticos
                         erro = get_float(['ERRO', 'ERRO ENCONTRADO'])
-                        inc = get_float(['INCERTEZA', 'U'])
+                        inc = get_float(['INCERTEZA', 'U', 'INCERTEZA (U)'])
                         tol = get_float(['TOLERANCIA', 'CRITERIO', 'EMA'])
 
-                        # 6. Responsável (Texto Livre)
-                        resp_txt = get_val(['RESPONSAVEL', 'APROVADOR'])
-                        forn_txt = get_val(['FORNECEDOR', 'LABORATORIO'])
+                        resp_txt = get_val(['RESPONSAVEL', 'APROVADOR', 'ANALISE'])
+                        forn_txt = get_val(['FORNECEDOR', 'LABORATORIO', 'PRESTADOR'])
 
-                        # 7. Resultado
-                        res_excel = str(get_val(['RESULTADO', 'STATUS']) or '').upper()
+                        res_excel = str(get_val(['RESULTADO', 'STATUS', 'ANALISE RESULTADO']) or '').upper()
                         res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
                         elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
                         
-                        # 8. Cálculo de Próxima Calibração (SEGURANÇA EXTRA AQUI)
-                        prox = get_date_val(['PROXIMA CALIBRACAO', 'VENCIMENTO'])
-                        
-                        # AQUI ESTAVA O ERRO: Se prox era None, ele tentava calcular.
-                        # Se dt_cal fosse None (o que não deveria acontecer, mas...), quebrava.
-                        # Adicionei "if dt_cal" explicitamente na linha do cálculo.
+                        prox = get_date_val(['PROXIMA CALIBRACAO', 'VENCIMENTO', 'DT PROXIMA'])
                         if not prox and inst.frequencia_meses and dt_cal:
-                            try:
-                                prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
-                            except:
-                                prox = None # Se falhar o cálculo, deixa sem vencimento
+                            try: prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
+                            except: prox = None
                         
-                        # 9. Salvar
+                        # 4. SALVAR
                         obj, cr = HistoricoCalibracao.objects.update_or_create(
                             instrumento=inst, data_calibracao=dt_cal, numero_certificado=num_cert, 
                             defaults={
-                                'data_aprovacao': dt_apr,
-                                'resultado': res, 
-                                'proxima_calibracao': prox, 
+                                'data_aprovacao': dt_apr, 'resultado': res, 'proxima_calibracao': prox, 
                                 'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 
-                                'responsavel': resp_txt,
-                                'fornecedor': forn_txt,
+                                'responsavel': resp_txt, 'fornecedor': forn_txt,
                                 'observacoes': get_val(['OBSERVACOES', 'OBS'])
                             }
                         )
@@ -448,7 +436,7 @@ def imp_historico_view(request):
 
                 if relatorio_erros:
                     msg = " | ".join(relatorio_erros[:3])
-                    messages.warning(request, f"Importados: {count_new}. Alertas: {msg}")
+                    messages.warning(request, f"Importados: {count_new}. Erros: {msg}")
                 else:
                     messages.success(request, f"Sucesso! {count_new} registros importados.")
                 
