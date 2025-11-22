@@ -35,8 +35,8 @@
             </div>
 
             <div class="col-md-3">
-                <select id="filtroSetor" class="form-select" multiple style="height: 100px;">
-                    <option value="" selected>🏢 Todos os Setores</option>
+                <select id="filtroSetor" class="form-select">
+                    <option value="">🏢 Todos os Setores</option>
                     {% for s in setores %}
                         <option value="{{ s.nome }}">{{ s.nome }}</option>
                     {% endfor %}
@@ -44,8 +44,8 @@
             </div>
 
             <div class="col-md-2">
-                <select id="filtroTurno" class="form-select" multiple style="height: 100px;">
-                    <option value="" selected>🕒 Todos Turnos</option>
+                <select id="filtroTurno" class="form-select">
+                    <option value="">🕒 Todos Turnos</option>
                     <option value="ADM">Administrativo</option>
                     <option value="TURNO_1">Turno 1</option>
                     <option value="TURNO_2">Turno 2</option>
@@ -55,8 +55,8 @@
             </div>
 
             <div class="col-md-2">
-                <select id="filtroCC" class="form-select" multiple style="height: 100px;">
-                    <option value="" selected>💰 Todos CCs</option>
+                <select id="filtroCC" class="form-select">
+                    <option value="">💰 Todos CCs</option>
                     {% for c in centros %}
                         <option value="{{ c.codigo }}">{{ c.codigo }}</option>
                     {% endfor %}
@@ -64,8 +64,8 @@
             </div>
 
             <div class="col-md-2">
-                <select id="filtroStatus" class="form-select" multiple style="height: 100px;">
-                    <option value="" selected>📊 Status</option>
+                <select id="filtroStatus" class="form-select">
+                    <option value="">📊 Status</option>
                     <option value="ATIVO">Ativo</option>
                     <option value="INATIVO">Inativo</option>
                 </select>
@@ -89,7 +89,6 @@
             <tbody>
                 {% for func in funcionarios %}
                 <tr class="linha-rh"
-                    data-detail-url="{% url 'detalhe_colaborador' func.id %}"
                     data-busca="{{ func.nome_completo }} {{ func.matricula }} {{ func.cargo }}"
                     data-setor="{{ func.setor.nome|default:'' }}"
                     data-turno="{{ func.turno }}" 
@@ -163,18 +162,19 @@
         const totalInicial = linhas.length;
 
         function getSelectedValues(selectElement) {
-            // Retorna uma array de valores selecionados, excluindo a opção "Todos"
-            return Array.from(selectElement.selectedOptions)
-                        .filter(opt => opt.value !== "") 
-                        .map(opt => opt.value);
+            // Retorna o valor selecionado (ou a array de valores para multi-select)
+            if (selectElement.multiple) {
+                return Array.from(selectElement.selectedOptions).filter(opt => opt.value !== "").map(opt => opt.value);
+            }
+            return selectElement.value; // Single select
         }
 
         function filtrar() {
             const termo = inputs[0].value.toUpperCase();
-            const setoresSelecionados = getSelectedValues(inputs[1]);
-            const turnosSelecionados = getSelectedValues(inputs[2]);
-            const ccsSelecionados = getSelectedValues(inputs[3]);
-            const statusSelecionados = getSelectedValues(inputs[4]);
+            const setor = getSelectedValues(inputs[1]);
+            const turno = getSelectedValues(inputs[2]);
+            const cc = getSelectedValues(inputs[3]);
+            const status = getSelectedValues(inputs[4]);
             
             let visiveis = 0;
 
@@ -183,11 +183,11 @@
                 
                 const matchTexto = !termo || dados.busca.toUpperCase().includes(termo);
 
-                // Lógica de Multi-Select (a linha deve pertencer a PELO MENOS UM dos selecionados)
-                const matchSetor = setoresSelecionados.length === 0 || setoresSelecionados.includes(dados.setor);
-                const matchTurno = turnosSelecionados.length === 0 || turnosSelecionados.includes(dados.turno);
-                const matchCC = ccsSelecionados.length === 0 || ccsSelecionados.includes(dados.cc);
-                const matchStatus = statusSelecionados.length === 0 || statusSelecionados.includes(dados.status);
+                // Multi-select logic for Setor, Turno, CC, Status
+                const matchSetor = Array.isArray(setor) ? setor.length === 0 || setor.includes(dados.setor) : !setor || dados.setor === setor;
+                const matchTurno = Array.isArray(turno) ? turno.length === 0 || turno.includes(dados.turno) : !turno || dados.turno === turno;
+                const matchCC = Array.isArray(cc) ? cc.length === 0 || cc.includes(dados.cc) : !cc || dados.cc === cc;
+                const matchStatus = Array.isArray(status) ? status.length === 0 || status.includes(dados.status) : !status || dados.status === status;
 
                 if (matchTexto && matchSetor && matchTurno && matchCC && matchStatus) {
                     linha.style.display = '';
@@ -197,7 +197,6 @@
                 }
             });
             
-            // Atualiza o contador
             if (visiveis === totalInicial) {
                 contador.textContent = `Exibindo todos (${visiveis})`;
                 contador.className = 'badge bg-primary fs-6';
@@ -207,14 +206,12 @@
             }
         }
 
-        // Adiciona o Duplo Clique e o Evento de Filtro
-        linhas.forEach(linha => {
+        // --- NOVO EVENTO DE DUPLO CLIQUE (Corrigido para evitar bugs) ---
+        document.querySelectorAll('.linha-rh').forEach(linha => {
             linha.style.cursor = 'pointer'; 
             linha.addEventListener('dblclick', function() {
                 const url = this.dataset.detailUrl; 
-                if (url) {
-                    window.location.href = url;
-                }
+                if (url) { window.location.href = url; }
             });
         });
 
