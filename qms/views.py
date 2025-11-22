@@ -356,11 +356,13 @@ def imp_historico_view(request):
                     for _, row in df.iterrows():
                         def get_val(k): return str(row[k]).strip() if k in df.columns and pd.notna(row[k]) else None
                         
+                        # CORREÇÃO: Adicionado dayfirst=True para datas BR
                         def get_date_val(k): 
                             if k in df.columns and pd.notna(row[k]):
                                 return pd.to_datetime(row[k], dayfirst=True).date() 
                             return None
-
+                        
+                        # CORREÇÃO: Tratamento de float com vírgula
                         def get_float(k):
                             val = get_val(k)
                             if not val: return None
@@ -371,28 +373,22 @@ def imp_historico_view(request):
                         dt_cal = get_date_val('DATA CALIBRAÇÃO') or get_date_val('DATA CALIBRACAO')
                         
                         if not tag or not dt_cal: continue
+                        
                         try: inst = Instrumento.objects.get(tag=tag)
                         except: continue
                         
-                        dt_apr = get_date_val('DATA APROVAÇÃO') or dt_cal
+                        dt_apr = get_date_val('DATA APROVAÇÃO') or get_date_val('DATA APROVACAO') or dt_cal
                         num_cert = get_val('N CERTIFICADO') or 'S/N'
                         
-                        # DADOS MATEMÁTICOS
                         erro = get_float('ERRO ENCONTRADO')
                         inc = get_float('INCERTEZA')
                         tol = get_float('TOLERANCIA PROCESSO (+/-)')
 
-                        # LÓGICA HÍBRIDA (MANUAL OU AUTOMÁTICA)
                         res_excel = str(get_val('RESULTADO (OPCIONAL)') or get_val('RESULTADO')).upper()
-                        res = 'APROVADO' # Default
-                        
+                        res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
                         elif 'CONDICIONAL' in res_excel or 'CORRE' in res_excel: res = 'CONDICIONAL'
-                        # Se não tem status manual, calcula:
-                        elif erro is not None and inc is not None and tol is not None:
-                            # Cálculo será refeito no .save() do model, mas definimos aqui também
-                            pass 
-
+                        
                         prox = None
                         if inst.frequencia_meses:
                             prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
@@ -411,11 +407,14 @@ def imp_historico_view(request):
                                 'observacoes': get_val('OBSERVAÇÕES')
                             }
                         )
-                        # Força o save() para rodar a lógica matemática do model
-                        obj.save()
-                        if cr: count_new += 1
+                        # Força o save() para calcular automaticamente se tiver números
+                        if erro is not None and inc is not None and tol is not None:
+                            obj.save()
                         
-                messages.success(request, f"Histórico Importado/Atualizado: {count_new} registros novos."); return redirect('modulo_metrologia')
+                        if cr: count_new += 1
+                        # O Signal no models.py atualizará o instrumento automaticamente
+
+                messages.success(request, f"Histórico Importado: {count_new} novos registros."); return redirect('modulo_metrologia')
             except Exception as e: messages.error(request, f"Erro: {str(e)}")
     else: form = ImportacaoHistoricoForm()
     return render(request, 'importar_historico.html', {'form': form, 'colaborador': get_colab(request)})
