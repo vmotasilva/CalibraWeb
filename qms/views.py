@@ -337,7 +337,7 @@ def imp_instr_view(request):
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
 # ==============================================================================
-# IMPORTAÇÃO DE HISTÓRICO (MAPEADA PARA O SEU FORMULÁRIO)
+# IMPORTAÇÃO DE HISTÓRICO (TEXTO LIVRE E CÁLCULO)
 # ==============================================================================
 @login_required
 def imp_historico_view(request):
@@ -346,32 +346,27 @@ def imp_historico_view(request):
         if form.is_valid():
             try:
                 f = request.FILES['arquivo_excel']
-                try: 
-                    # Tenta ler CSV (Detecta separador)
-                    df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
-                except:
-                    try: f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
-                    except: df = pd.read_excel(f)
+                # Auto-detecta separador CSV
+                try: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
+                except: 
+                    f.seek(0)
+                    df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8') if f.name.endswith('.csv') else pd.read_excel(f)
 
-                # Limpeza básica de cabeçalho
+                # Limpeza de cabeçalho
                 df.columns = df.columns.str.strip().str.upper()
-                # Remove acentos para garantir
                 df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
                 
-                count_new = 0
-                relatorio_erros = []
+                count_new = 0; relatorio_erros = []
 
                 with transaction.atomic():
                     for index, row in df.iterrows():
                         linha = index + 2
                         
-                        # --- HELPERS ---
+                        # Helpers
                         def get_val(k_list):
                             if isinstance(k_list, str): k_list = [k_list]
                             for key in k_list:
-                                # Normaliza a chave de busca
                                 key_clean = key.upper().replace('Ç', 'C').replace('Ã', 'A').replace('Õ', 'O').replace('Á', 'A').replace('É', 'E')
-                                # Busca exata ou parcial
                                 for col in df.columns:
                                     if key_clean == col or key_clean in col:
                                         if pd.notna(row[col]): return str(row[col]).strip()
@@ -386,88 +381,66 @@ def imp_historico_view(request):
                         def get_float(k_list):
                             val = get_val(k_list)
                             if not val: return None
-                            # Limpa texto (ex: "0,05 bar" -> "0.05")
-                            clean_val = re.sub(r'[^\d,.-]', '', val).replace(',', '.')
-                            try: return float(clean_val)
+                            try: return float(re.sub(r'[^\d,.-]', '', val).replace(',', '.'))
                             except: return None
                         
-                        # 1. IDENTIFICAÇÃO
-                        tag = get_val(['CODIGO', 'TAG', 'IDENTIFICACAO'])
-                        if not tag: 
-                            if any(pd.notna(row)): relatorio_erros.append(f"L.{linha}: Coluna CODIGO/TAG vazia.")
-                            continue
+                        # 1. Identificação
+                        tag = get_val(['TAG', 'CODIGO', 'IDENTIFICACAO'])
+                        dt_cal = get_date_val(['DATA CALIBRACAO', 'CALIBRACAO'])
                         
-                        # 2. DATA (Mapeado para sua coluna exata)
-                        dt_cal = get_date_val(['DATA ULTIMA: CALIBRACAO/VERIFICACAO', 'DATA CALIBRACAO'])
-                        if not dt_cal:
-                            relatorio_erros.append(f"L.{linha} ({tag}): Data inválida.")
-                            continue
+                        if not tag: continue # Pula se não tiver TAG
                         
                         try: inst = Instrumento.objects.get(tag=tag)
                         except: 
-                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não cadastrado.")
+                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não encontrado.")
                             continue
                         
-                        # 3. DADOS DO CERTIFICADO (Mapeados)
-                        # Data de avaliação serve como aprovação
-                        dt_apr = get_date_val(['DATA DA AVALIACAO', 'DATA APROVACAO']) or dt_cal
-                        num_cert = get_val(['NO DO CERTIFICADO DE CALIBRACAO', 'N CERTIFICADO']) or 'S/N'
+                        # 2. Dados Gerais
+                        dt_apr = get_date_val(['DATA APROVACAO', 'VALIDACAO']) or dt_cal
+                        num_cert = get_val(['N CERTIFICADO', 'CERTIFICADO']) or 'S/N'
                         
-                        # 4. DADOS MATEMÁTICOS (Seus nomes exatos)
-                        erro = get_float(['ERRO (ABSOLUTO) DO CERTIFICADO', 'ERRO'])
-                        inc = get_float(['INCERTEZA (ABSOLUTA) DO CERTIFICADO', 'INCERTEZA'])
-                        tol = get_float(['TOLERANCIA DO PROCESSO - TOLERANCIA(+/-)', 'TOLERANCIA'])
+                        # 3. Campos Matemáticos
+                        erro = get_float(['ERRO', 'ERRO ENCONTRADO'])
+                        inc = get_float(['INCERTEZA', 'U'])
+                        tol = get_float(['TOLERANCIA', 'CRITERIO', 'EMA'])
 
-                        # 5. RESPONSÁVEL
-                        nome_resp = get_val(['RESPONSAVEL PELA ANALISE', 'RESPONSAVEL'])
-                        resp_obj = None
-                        if nome_resp:
-                            resp_obj = Colaborador.objects.filter(
-                                Q(nome_completo__iexact=nome_resp) | 
-                                Q(nome_completo__icontains=nome_resp) |
-                                Q(matricula=nome_resp)
-                            ).first()
+                        # 4. TEXTO LIVRE (Responsável e Fornecedor)
+                        # Agora salvamos direto o texto do Excel, sem precisar cadastrar antes
+                        resp_txt = get_val(['RESPONSAVEL', 'APROVADOR', 'ANALISTA'])
+                        forn_txt = get_val(['FORNECEDOR', 'LABORATORIO', 'PRESTADOR'])
 
-                        # 6. RESULTADO
-                        res_excel = str(get_val(['ANALISE RESULTADO DO CERTIFICADO', 'RESULTADO']) or '').upper()
+                        # 5. Resultado
+                        res_excel = str(get_val(['RESULTADO', 'STATUS']) or '').upper()
                         res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
-                        elif 'CONDICIONAL' in res_excel or 'RESTRICAO' in res_excel: res = 'CONDICIONAL'
+                        elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
                         
-                        # 7. PRÓXIMA CALIBRAÇÃO (Calcula baseado na frequência do instrumento se não tiver coluna)
-                        prox = None
-                        if inst.frequencia_meses:
+                        # 6. Próxima Data
+                        prox = get_date_val(['PROXIMA CALIBRACAO', 'VENCIMENTO'])
+                        if not prox and inst.frequencia_meses:
                             prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
                         
-                        # 8. SALVAR
+                        # 7. Salvar
                         obj, cr = HistoricoCalibracao.objects.update_or_create(
-                            instrumento=inst, 
-                            data_calibracao=dt_cal, 
-                            numero_certificado=num_cert, 
+                            instrumento=inst, data_calibracao=dt_cal, numero_certificado=num_cert, 
                             defaults={
                                 'data_aprovacao': dt_apr,
                                 'resultado': res, 
                                 'proxima_calibracao': prox, 
-                                'erro_encontrado': erro,
-                                'incerteza': inc,
-                                'tolerancia_usada': tol,
-                                'responsavel': resp_obj,
+                                'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 
+                                'responsavel': resp_obj if 'resp_obj' in locals() else resp_txt, # Usa o texto direto
+                                'fornecedor': forn_txt, # Novo campo texto
                                 'observacoes': get_val(['OBSERVACOES', 'OBS'])
                             }
                         )
-                        
-                        # Força cálculo matemático (se tiver os 3 números, ele vai recalcular o Aprovado/Reprovado)
-                        if erro is not None and inc is not None and tol is not None:
-                            obj.save()
-
+                        if erro is not None and inc is not None and tol is not None: obj.save()
                         if cr: count_new += 1
 
                 if relatorio_erros:
                     msg = " | ".join(relatorio_erros[:3])
-                    if len(relatorio_erros) > 3: msg += f" ... e mais {len(relatorio_erros)-3}."
-                    messages.warning(request, f"Importados: {count_new}. Detalhes: {msg}")
+                    messages.warning(request, f"Importados: {count_new}. Alertas: {msg}")
                 else:
-                    messages.success(request, f"Sucesso Absoluto! {count_new} registros importados.")
+                    messages.success(request, f"Sucesso! {count_new} registros importados.")
                 
                 return redirect('modulo_metrologia')
 

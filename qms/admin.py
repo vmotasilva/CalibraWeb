@@ -138,8 +138,8 @@ class InstrumentoAdmin(admin.ModelAdmin):
 
 @admin.register(HistoricoCalibracao)
 class HistoricoCalibracaoAdmin(admin.ModelAdmin):
-    list_display = ('instrumento', 'certificado', 'data_calibracao', 'resultado')
-    search_fields = ('instrumento__tag', 'instrumento__descricao', 'certificado')
+    list_display = ('instrumento', 'certificado', 'data_calibracao', 'resultado', 'fornecedor') # Adicionei fornecedor
+    search_fields = ('instrumento__tag', 'numero_certificado', 'responsavel', 'fornecedor') # Busca por texto agora
     list_filter = ('resultado', 'data_calibracao')
     autocomplete_fields = ['instrumento']
 
