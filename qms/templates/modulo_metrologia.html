@@ -25,16 +25,42 @@
 
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white py-3 border-bottom">
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <h5 class="mb-0 text-primary"><i class="bi bi-list-ul"></i> Inventário Geral</h5>
-                <span class="text-muted small">Total: {{ instrumentos.count }} registros</span>
+        <div class="row g-2 align-items-center">
+            <div class="col-md-12 mb-2">
+                <h5 class="mb-0 text-primary"><i class="bi bi-funnel"></i> Filtros de Pesquisa</h5>
             </div>
-            <div class="col-md-6">
+
+            <div class="col-md-4">
                 <div class="input-group">
                     <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
-                    <input type="text" id="searchInput" class="form-control" placeholder="Pesquisar por TAG, Código, Equipamento, Série ou Setor...">
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Buscar TAG, Modelo, Série...">
                 </div>
+            </div>
+
+            <div class="col-md-3">
+                <select id="filtroSetor" class="form-select">
+                    <option value="">🏢 Todos os Setores</option>
+                    {% for s in setores %}
+                        <option value="{{ s.nome }}">{{ s.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select id="filtroCategoria" class="form-select">
+                    <option value="">🔧 Todas as Categorias</option>
+                    {% for c in categorias %}
+                        <option value="{{ c.nome }}">{{ c.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <select id="filtroStatus" class="form-select">
+                    <option value="">📊 Todos Status</option>
+                    <option value="ATIVO">Ativo</option>
+                    <option value="INATIVO">Inativo</option>
+                </select>
             </div>
         </div>
     </div>
@@ -50,19 +76,24 @@
                     <th>Nº Série</th>
                     <th>Setor / Local</th>
                     <th class="text-center">Freq.</th>
-                    <th class="text-center">Última Calib.</th>
-                    <th class="text-center">Próxima Calib.</th>
+                    <th class="text-center">Última</th>
+                    <th class="text-center">Próxima</th>
                     <th class="text-end pe-3">Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for inst in instrumentos %}
-                <tr>
-                    <td class="ps-3">
+                <tr class="linha-instrumento" 
+                    data-busca="{{ inst.tag }} {{ inst.codigo }} {{ inst.descricao }} {{ inst.numero_serie }} {{ inst.modelo }} {{ inst.fabricante }}"
+                    data-setor="{{ inst.setor.nome|default:'' }}"
+                    data-categoria="{{ inst.categoria.nome|default:'' }}"
+                    data-status="{% if inst.ativo %}ATIVO{% else %}INATIVO{% endif %}">
+                    
+                    <td class="ps-3 text-center">
                         {% if inst.ativo %}
                             <i class="bi bi-check-circle-fill text-success" title="Ativo"></i>
                         {% else %}
-                            <i class="bi bi-x-circle-fill text-danger" title="Inativo/Manutenção"></i>
+                            <i class="bi bi-x-circle-fill text-danger" title="Inativo"></i>
                         {% endif %}
                     </td>
                     
@@ -76,8 +107,8 @@
                     </td>
                     
                     <td>
-                        {{ inst.descricao|truncatechars:40 }}
-                        <div class="text-muted small">{{ inst.categoria.nome|default:"" }}</div>
+                        {{ inst.descricao|truncatechars:35 }}
+                        <div class="text-muted small">{{ inst.categoria.nome|default:"-" }}</div>
                     </td>
                     
                     <td>
@@ -137,31 +168,53 @@
             </tbody>
         </table>
     </div>
-    <div class="card-footer bg-white py-3">
-        <small class="text-muted">Exibindo todos os {{ instrumentos.count }} instrumentos.</small>
+    
+    <div class="card-footer bg-white py-2 d-flex justify-content-between align-items-center">
+        <small class="text-muted">Total de registros: {{ instrumentos.count }}</small>
+        <span class="badge bg-light text-dark border" id="contadorVisiveis">Exibindo: {{ instrumentos.count }}</span>
     </div>
 </div>
 
 <script>
-    document.getElementById('searchInput').addEventListener('keyup', function() {
-        let filter = this.value.toUpperCase();
-        let rows = document.querySelector("#tabelaInstrumentos tbody").rows;
-        
-        for (let i = 0; i < rows.length; i++) {
-            let match = false;
-            let cells = rows[i].getElementsByTagName("td");
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputs = [
+            document.getElementById('filtroBusca'),
+            document.getElementById('filtroSetor'),
+            document.getElementById('filtroCategoria'),
+            document.getElementById('filtroStatus')
+        ];
+        const linhas = document.querySelectorAll('.linha-instrumento');
+        const contador = document.getElementById('contadorVisiveis');
+
+        function filtrar() {
+            const termo = inputs[0].value.toUpperCase();
+            const setor = inputs[1].value;
+            const categoria = inputs[2].value;
+            const status = inputs[3].value;
             
-            // Varre todas as colunas da linha
-            for (let j = 0; j < cells.length; j++) {
-                if (cells[j]) {
-                    if (cells[j].textContent.toUpperCase().indexOf(filter) > -1) {
-                        match = true;
-                        break;
-                    }
+            let visiveis = 0;
+
+            linhas.forEach(linha => {
+                const dados = linha.dataset; // Pega os dados data-setor, data-categoria...
+                
+                const matchTexto = !termo || dados.busca.toUpperCase().includes(termo);
+                const matchSetor = !setor || dados.setor === setor;
+                const matchCat = !categoria || dados.categoria === categoria;
+                const matchStatus = !status || dados.status === status;
+
+                if (matchTexto && matchSetor && matchCat && matchStatus) {
+                    linha.style.display = '';
+                    visiveis++;
+                } else {
+                    linha.style.display = 'none';
                 }
-            }
-            rows[i].style.display = match ? "" : "none";
+            });
+            
+            contador.textContent = `Exibindo: ${visiveis}`;
         }
+
+        // Adiciona o evento a todos os inputs
+        inputs.forEach(input => input.addEventListener('input', filtrar));
     });
 </script>
 {% endblock %}
