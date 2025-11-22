@@ -102,9 +102,28 @@ class ImportacaoHistoricoForm(forms.Form):
         help_text="Colunas obrigatórias: CÓDIGO (ou TAG), DATA CALIBRAÇÃO, DATA APROVAÇÃO, N CERTIFICADO, RESULTADO"
     )
 
-# --- FORMULÁRIO NOVO QUE FALTAVA ---
 class ImportacaoPadroesForm(forms.Form):
     arquivo_excel = forms.FileField(
         label="Planilha de Padrões (Kits)",
         widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.xlsx, .xls, .csv'})
     )
+
+class ColaboradorForm(forms.ModelForm):
+    class Meta:
+        model = Colaborador
+        fields = '__all__' # Permite editar tudo (exceto campos automáticos)
+        exclude = ['user_django', 'criado_em'] # Protege o login e data de criação
+        widgets = {
+            'nome_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'matricula': forms.TextInput(attrs={'class': 'form-control'}),
+            'cpf': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '000.000.000-00'}),
+            'cargo': forms.TextInput(attrs={'class': 'form-control'}),
+            'grupo': forms.TextInput(attrs={'class': 'form-control'}),
+            'setor': forms.Select(attrs={'class': 'form-select'}),
+            'centro_custo': forms.Select(attrs={'class': 'form-select'}),
+            'turno': forms.Select(attrs={'class': 'form-select'}),
+            'salario': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'em_ferias': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'pacotes_treinamento': forms.SelectMultiple(attrs={'class': 'form-control', 'style': 'height: 150px;'}),
+        }
