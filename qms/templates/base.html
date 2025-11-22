@@ -9,10 +9,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     
     <style>
+        /* Ajuste de padding para o conteúdo não ficar escondido atrás da navbar */
         body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; padding-top: 80px; }
         .navbar-brand { font-weight: bold; letter-spacing: 1px; }
-        /* Estilo para o menu do usuário */
-        .user-box { line-height: 1.2; text-align: right; border-right: 1px solid #555; padding-right: 15px; margin-right: 15px; }
+        /* Hover nos dropdowns */
+        .dropdown-item:active { background-color: #0d6efd; }
     </style>
 </head>
 <body>
@@ -29,17 +30,82 @@
 
         <div class="collapse navbar-collapse" id="navbarContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                
                 <li class="nav-item">
-                    <a class="nav-link active" href="{% url 'home' %}">Dashboard</a>
+                    <a class="nav-link active" href="{% url 'home' %}">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'modulo_metrologia' %}">Metrologia</a>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-tools"></i> Metrologia
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><h6 class="dropdown-header text-muted">GESTÃO</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'modulo_metrologia' %}">📋 Lista de Instrumentos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'carimbar' %}">📑 Validar Certificado</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'importar_instrumentos' %}">📥 Importar Instrumentos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'importar_historico' %}">📜 Importar Histórico</a></li>
+                    </ul>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'modulo_rh' %}">RH</a>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-people"></i> RH
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><h6 class="dropdown-header text-muted">EQUIPE</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'modulo_rh' %}">👥 Colaboradores</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'importar_colaboradores' %}">📥 Importar Pessoas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'importar_hierarquia' %}">🌳 Importar Hierarquia</a></li>
+                    </ul>
                 </li>
             </ul>
 
-            <div class="d-flex align-items-center">
-                
-                <div class="user-box text-white d-none d-md-block">
+            <div class="d-flex align-items-center border-start border-secondary ps-3 ms-2">
+                <div class="text-white me-3 text-end d-none d-md-block" style="line-height: 1.2;">
+                    <div class="fw-bold small">{{ colaborador.nome_completo|default:user.username|upper }}</div>
+                    <div class="text-muted" style="font-size: 0.7rem;">{{ colaborador.cargo|default:"Usuário" }}</div>
+                </div>
+
+                {% if user.is_staff or colaborador.is_admin %}
+                    <a href="/admin/" target="_blank" class="btn btn-sm btn-outline-warning me-2" title="Admin">⚙️</a>
+                {% endif %}
+
+                <form action="{% url 'logout' %}" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger">Sair</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid px-4">
+    
+    {% if messages %}
+        <div class="row justify-content-center mt-3">
+            <div class="col-md-8">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% block content %}
+    {% endblock content %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
