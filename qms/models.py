@@ -175,6 +175,10 @@ class HistoricoCalibracao(models.Model):
     data_aprovacao = models.DateField(default=date.today)
     numero_certificado = models.CharField(max_length=100, default="S/N")
     
+    # NOVOS CAMPOS TEXTO LIVRE (Para facilitar a importação)
+    responsavel = models.CharField(max_length=150, null=True, blank=True, verbose_name="Responsável Técnica")
+    fornecedor = models.CharField(max_length=150, null=True, blank=True, verbose_name="Laboratório/Fornecedor")
+
     # DADOS MATEMÁTICOS
     erro_encontrado = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name="Erro (E)")
     incerteza = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, verbose_name="Incerteza (U)")
@@ -190,7 +194,6 @@ class HistoricoCalibracao(models.Model):
     ]
     resultado = models.CharField(max_length=50, choices=RESULTADO_CHOICES, default='APROVADO')
     
-    responsavel = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True)
     observacoes = models.TextField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -203,46 +206,32 @@ class HistoricoCalibracao(models.Model):
     def __str__(self): return f"{self.instrumento.tag} - {self.data_calibracao}"
 
     def save(self, *args, **kwargs):
-        # CÁLCULO AUTOMÁTICO DE APROVAÇÃO
+        # CÁLCULO AUTOMÁTICO
         if self.erro_encontrado is not None and self.incerteza is not None and self.tolerancia_usada is not None:
             try:
                 erro = abs(Decimal(str(self.erro_encontrado)))
                 inc = abs(Decimal(str(self.incerteza)))
                 tol = abs(Decimal(str(self.tolerancia_usada)))
-
-                # Regra de Decisão (Guard Band / TUR)
-                # EMA (Erro Máximo Admissível) = Tolerância / 2
                 ema = tol / Decimal(2)
-                # EME (Erro Máximo do Equipamento) = Erro + Incerteza
                 eme = erro + inc
-
-                if eme <= ema:
-                    self.resultado = 'APROVADO'
-                elif eme > (ema * Decimal(3)):
-                    self.resultado = 'REPROVADO'
-                else:
-                    self.resultado = 'CONDICIONAL'
-            except:
-                pass # Se der erro de conversão, mantém o manual
-        
+                if eme <= ema: self.resultado = 'APROVADO'
+                elif eme > (ema * Decimal(3)): self.resultado = 'REPROVADO'
+                else: self.resultado = 'CONDICIONAL'
+            except: pass
         super().save(*args, **kwargs)
 
-# --- SIGNAL: ATUALIZAR INSTRUMENTO AUTOMATICAMENTE ---
+# --- SIGNAL (Mantido igual, apenas garantindo que está aqui) ---
 @receiver([post_save, post_delete], sender=HistoricoCalibracao)
 def atualizar_datas_instrumento(sender, instance, **kwargs):
     inst = instance.instrumento
     ultima_calib = inst.historico_calibracoes.order_by('-data_calibracao').first()
-    
     if ultima_calib:
         inst.data_ultima_calibracao = ultima_calib.data_calibracao
         inst.data_proxima_calibracao = ultima_calib.proxima_calibracao
-        # Se o último certificado foi REPROVADO, inativa o instrumento
         inst.ativo = False if ultima_calib.resultado == 'REPROVADO' else True
     else:
-        # Se não tem histórico, zera as datas
         inst.data_ultima_calibracao = None
         inst.data_proxima_calibracao = None
-    
     inst.save()
 
 # ==============================================================================
