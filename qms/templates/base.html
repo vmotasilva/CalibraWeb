@@ -1,18 +1,45 @@
-{% if colaborador.is_admin %}
-        <a href="/admin/" target="_blank" class="text-warning">⚙️ Administração Avançada</a>
-    {% endif %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calibra QMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     
-    <form action="{% url 'logout' %}" method="post" style="margin-top: auto;">
-        {% csrf_token %}
-        <button type="submit" style="background:none; border:none; color:#ef5350; padding:15px 20px; width:100%; text-align:left; cursor:pointer; border-top: 1px solid rgba(255,255,255,0.1);">
-            🚪 Sair do Sistema
-        </button>
-    </form>
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; padding-top: 80px; }
+        .navbar-brand { font-weight: bold; letter-spacing: 1px; }
+        /* Estilo para o menu do usuário */
+        .user-box { line-height: 1.2; text-align: right; border-right: 1px solid #555; padding-right: 15px; margin-right: 15px; }
+    </style>
+</head>
+<body>
 
-   <div class="mt-auto user-info">
-        Logado como:<br>
-        <strong>{{ nome_display|default:user.username|upper }}</strong><br>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow">
+    <div class="container-fluid">
+        <a class="navbar-brand ms-3" href="{% url 'home' %}">
+            🏭 Calibra QMS
+        </a>
         
-        <small>{{ cargo_display|default:"Administrador do Sistema" }}</small>
-    </div>
-</div>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link active" href="{% url 'home' %}">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'modulo_metrologia' %}">Metrologia</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'modulo_rh' %}">RH</a>
+                </li>
+            </ul>
+
+            <div class="d-flex align-items-center">
+                
+                <div class="user-box text-white d-none d-md-block">
