@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.db.models import Q
 from django.core.files.base import ContentFile
 
-# IMPORTA TODOS OS MODELOS NECESSÁRIOS
+# IMPORTA TODOS OS MODELOS
 from .models import (
     Instrumento, Colaborador, ProcessoCotacao, Procedimento,
     Fornecedor, HistoricoCalibracao, Setor, CentroCusto,
@@ -23,7 +23,8 @@ from .models import (
 )
 from .forms import (
     CarimboForm, ImportacaoInstrumentosForm, ImportacaoColaboradoresForm, 
-    ImportacaoProcedimentosForm, ImportacaoHierarquiaForm, ImportacaoHistoricoForm
+    ImportacaoProcedimentosForm, ImportacaoHierarquiaForm, ImportacaoHistoricoForm,
+    ImportacaoPadroesForm
 )
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
@@ -48,10 +49,8 @@ def dashboard_view(request):
     lista_urgentes = Instrumento.objects.filter(data_proxima_calibracao__lte=trinta_dias, ativo=True).order_by('data_proxima_calibracao')[:5]
     
     ctx = {
-        'colaborador': colab, 
-        'nome_display': nome_display, 
-        'qtd_vencidos': qtd_vencidos, 
-        'qtd_avencer': qtd_avencer, 
+        'colaborador': colab, 'nome_display': nome_display, 
+        'qtd_vencidos': qtd_vencidos, 'qtd_avencer': qtd_avencer, 
         'lista_urgentes': lista_urgentes, 
         'qtd_cotacoes': ProcessoCotacao.objects.filter(status='ABERTO').count(), 
         'today': hoje
@@ -61,15 +60,11 @@ def dashboard_view(request):
 @login_required
 def modulo_metrologia_view(request):
     colab = get_colab(request)
-    setores = Setor.objects.all().order_by('nome')
-    categorias = CategoriaInstrumento.objects.all().order_by('nome')
-    instrumentos = Instrumento.objects.all().order_by('tag')
-    
     ctx = {
         'colaborador': colab, 
-        'instrumentos': instrumentos,
-        'setores': setores,
-        'categorias': categorias,
+        'instrumentos': Instrumento.objects.all().order_by('tag'),
+        'setores': Setor.objects.all().order_by('nome'),
+        'categorias': CategoriaInstrumento.objects.all().order_by('nome'),
         'can_edit': True
     }
     return render(request, 'modulo_metrologia.html', ctx)
@@ -93,7 +88,7 @@ def remover_historico_view(request, historico_id):
     instrumento_id = hist.instrumento.id
     if hist.certificado: hist.certificado.delete(save=False)
     hist.delete()
-    messages.success(request, "Certificado removido e datas atualizadas.")
+    messages.success(request, "Certificado removido.")
     return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
 
 # --- CARIMBO ---
@@ -107,8 +102,8 @@ def carimbar_view(request):
     if request.method == 'POST':
         form = CarimboForm(request.POST, request.FILES)
         if form.is_valid():
-            c_resp = colab; dt_validacao = form.cleaned_data['data_validacao']; status_txt = form.cleaned_data['status_validacao']
-            
+            c_resp = colab; dt_validacao = form.cleaned_data['data_validacao']
+            status_txt = form.cleaned_data['status_validacao']
             is_rbc = form.cleaned_data.get('is_rbc', False)
             padroes_selecionados = form.cleaned_data.get('padroes', [])
             
@@ -119,7 +114,6 @@ def carimbar_view(request):
             fs = request.FILES.getlist('arquivo_pdf'); processed_files = []
             try: screen_w = float(request.POST.get('page_width', 0)); screen_h = float(request.POST.get('page_height', 0))
             except: screen_w = 0; screen_h = 0
-            processed_files = []
 
             for i, f in enumerate(fs):
                 raw_x = request.POST.get(f'x_{i}', 0); raw_y = request.POST.get(f'y_{i}', 0); raw_w = request.POST.get(f'w_{i}', 0); raw_h = request.POST.get(f'h_{i}', 0)
@@ -132,8 +126,7 @@ def carimbar_view(request):
                         instrumento = Instrumento.objects.get(id=inst_id)
                         dt_calibracao = datetime.strptime(calib_date_str, '%Y-%m-%d').date()
                         prox_calib = None
-                        if instrumento.frequencia_meses: 
-                            prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
+                        if instrumento.frequencia_meses: prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
                         
                         hist, created = HistoricoCalibracao.objects.get_or_create(
                             instrumento=instrumento, data_calibracao=dt_calibracao, numero_certificado=cert_num,
@@ -183,27 +176,17 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
 def dl_template_instr(request):
     colunas = ["TAG", "EQUIPAMENTO", "STATUS", "FABRICANTE", "MODELO", "N SERIE", "SETOR", "LOCALIZACAO", "FREQUENCIA_MESES", "DATA_ULTIMA_CALIBRACAO", "FAIXA", "UNIDADE"]
     df = pd.DataFrame(columns=colunas)
-    r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    r['Content-Disposition'] = 'attachment; filename="template_instrumentos_v2.xlsx"'; df.to_excel(r, index=False); return r
+    r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_instrumentos_v2.xlsx"'; df.to_excel(r, index=False); return r
 def dl_template_colab(request):
     df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
 def dl_template_hierarquia(request):
     df = pd.DataFrame({'SETOR': ['MANUTENCAO'], 'TURNO': ['TURNO 1'], 'MAT_LIDER': ['1001'], 'MAT_SUPERVISOR': [''], 'MAT_GERENTE': [''], 'MAT_DIRETOR': ['']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_hierarquia.xlsx"'; return r
-
-# TEMPLATE ATUALIZADO COM RBC E TIPO
 def dl_template_historico(request):
-    colunas = [
-        "TAG", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", 
-        "ERRO ENCONTRADO", "INCERTEZA", "TOLERANCIA PROCESSO (+/-)", 
-        "RBC (SIM/NAO)", "RESULTADO", "FORNECEDOR", "RESPONSÁVEL", "OBSERVAÇÕES"
-    ]
-    df = pd.DataFrame(columns=colunas)
-    r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    r['Content-Disposition'] = 'attachment; filename="template_historico_calibracao.xlsx"'
-    df.to_excel(r, index=False)
-    return r
+    colunas = ["TAG", "DATA CALIBRAÇÃO", "DATA APROVAÇÃO", "N CERTIFICADO", "ERRO ENCONTRADO", "INCERTEZA", "TOLERANCIA PROCESSO (+/-)", "RBC (SIM/NAO)", "RESULTADO", "FORNECEDOR", "RESPONSÁVEL", "OBSERVAÇÕES"]
+    df = pd.DataFrame(columns=colunas); r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_historico_calibracao.xlsx"'; df.to_excel(r, index=False); return r
 
-# --- IMPORTAÇÃO INSTRUMENTOS ---
+# --- IMPORTAÇÕES ---
+
 @login_required
 def imp_instr_view(request):
     if request.method == 'POST':
@@ -288,9 +271,6 @@ def imp_instr_view(request):
     else: form = ImportacaoInstrumentosForm()
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
-# ==============================================================================
-# IMPORTAÇÃO DE HISTÓRICO (BLINDADA + RBC/INTERNA)
-# ==============================================================================
 @login_required
 def imp_historico_view(request):
     if request.method == 'POST':
@@ -309,10 +289,6 @@ def imp_historico_view(request):
                     messages.error(request, f"Erro ao ler arquivo: {e}")
                     return redirect('importar_historico')
 
-                if df is None or len(df.columns) < 2:
-                    messages.error(request, "Arquivo inválido ou vazio.")
-                    return redirect('importar_historico')
-
                 df.columns = df.columns.str.strip().str.upper()
                 df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
                 
@@ -320,8 +296,6 @@ def imp_historico_view(request):
                 with transaction.atomic():
                     for index, row in df.iterrows():
                         linha = index + 2
-                        
-                        # Helpers
                         def encontrar_coluna(palavras_chave, evitar=[]):
                             for col in df.columns:
                                 match = False
@@ -352,7 +326,6 @@ def imp_historico_view(request):
                             try: return float(re.sub(r'[^\d,.-]', '', val).replace(',', '.'))
                             except: return None
 
-                        # 1. IDENTIFICAÇÃO
                         col_tag = encontrar_coluna(['TAG', 'CODIGO', 'IDENTIFICACAO'])
                         col_dt_cal = encontrar_coluna(['DATA CALIB', 'DATA ULTIMA', 'REALIZADO', 'CALIBRACAO'], evitar=['PROXIMA', 'VENCIMENTO', 'VALIDADE'])
                         
@@ -369,9 +342,7 @@ def imp_historico_view(request):
                             relatorio_erros.append(f"L.{linha}: Instrumento não cadastrado.")
                             continue
 
-                        # 2. DADOS
                         col_dt_apr = encontrar_coluna(['DATA APROVACAO', 'DATA VALIDACAO', 'AVALIACAO'])
-                        # Se não achar data de aprovação, usa a de calibração
                         val_apr = converter_data(row.get(col_dt_apr)) if col_dt_apr else None
                         dt_apr = val_apr if val_apr else dt_cal
                         
@@ -388,7 +359,6 @@ def imp_historico_view(request):
 
                         col_resp = encontrar_coluna(['RESPONSAVEL', 'APROVADOR', 'ANALISE'])
                         resp_txt = get_val_by_col(col_resp)
-                        
                         col_forn = encontrar_coluna(['FORNECEDOR', 'LABORATORIO'])
                         forn_txt = get_val_by_col(col_forn)
                         
@@ -398,24 +368,20 @@ def imp_historico_view(request):
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
                         elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
                         
-                        # 3. DEDUÇÃO DE TIPO (INTERNA/EXTERNA) E RBC
-                        val_tipo = 'EXTERNA' # Padrão
-                        if forn_txt and 'INTERNA' in str(forn_txt).upper():
-                            val_tipo = 'INTERNA'
+                        # TIPO e RBC
+                        val_tipo = 'EXTERNA' 
+                        if forn_txt and 'INTERNA' in str(forn_txt).upper(): val_tipo = 'INTERNA'
                         
                         col_rbc = encontrar_coluna(['RBC', 'SELO', 'ACREDITADO'])
                         val_rbc = str(get_val_by_col(col_rbc) or '').upper()
                         tem_rbc = True if val_rbc in ['SIM', 'S', 'YES', 'RBC'] else False
 
-                        # 4. VENCIMENTO
                         col_prox = encontrar_coluna(['PROXIMA', 'VENCIMENTO'])
                         prox = converter_data(row.get(col_prox)) if col_prox else None
-                        
                         if not prox and inst.frequencia_meses and dt_cal:
                             try: prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
                             except: prox = None
 
-                        # 5. SALVAR
                         obj, cr = HistoricoCalibracao.objects.update_or_create(
                             instrumento=inst, data_calibracao=dt_cal, numero_certificado=num_cert, 
                             defaults={
@@ -440,10 +406,118 @@ def imp_historico_view(request):
     return render(request, 'importar_historico.html', {'form': form, 'colaborador': get_colab(request)})
 
 @login_required
+def imp_padroes_view(request):
+    if request.method == 'POST':
+        form = ImportacaoPadroesForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                f = request.FILES['arquivo_excel']
+                try: df = pd.read_excel(f)
+                except: df = pd.read_csv(f, sep=None, engine='python')
+                df.columns = df.columns.str.strip().str.upper()
+                count = 0
+                with transaction.atomic():
+                    for _, row in df.iterrows():
+                        def get_val(k): return str(row[k]).strip() if k in df.columns and pd.notna(row[k]) else None
+                        def get_date(k): 
+                            val = get_val(k)
+                            if not val: return None
+                            try: return pd.to_datetime(val, dayfirst=True).date()
+                            except: return None
+                        codigo = get_val('CODIGO')
+                        if not codigo: continue
+                        
+                        dt_cal = get_date('DATA CALIBRACAO') or date.today()
+                        dt_val = get_date('DATA VALIDADE') or (date.today() + timedelta(days=365))
+
+                        Padrao.objects.update_or_create(
+                            codigo=codigo,
+                            defaults={
+                                'descricao': get_val('DESCRICAO') or 'Padrão Importado',
+                                'numero_certificado': get_val('N CERTIFICADO') or 'S/N',
+                                'data_calibracao': dt_cal,
+                                'data_validade': dt_val,
+                                'ativo': True
+                            }
+                        )
+                        count += 1
+                messages.success(request, f"{count} Padrões/Kits importados!")
+                return redirect('modulo_metrologia')
+            except Exception as e: messages.error(request, f"Erro: {e}")
+    else:
+        form = ImportacaoPadroesForm()
+    return render(request, 'importar_historico.html', {'form': form, 'titulo': 'Importar Padrões/Kits', 'colaborador': get_colab(request)})
+
+@login_required
 def imp_colab_view(request):
     if request.method == 'POST':
         form = ImportacaoColaboradoresForm(request.POST, request.FILES)
-        if form.is_valid(): messages.success(request, "Importação OK"); return redirect('modulo_rh')
+        if form.is_valid():
+            try:
+                f = request.FILES['arquivo_excel']
+                try: df = pd.read_excel(f)
+                except: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
+                df.columns = df.columns.str.strip().str.upper()
+                df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
+                count_new = 0; count_upd = 0
+                with transaction.atomic():
+                    for index, row in df.iterrows():
+                        def get_val(keywords):
+                            for k in keywords:
+                                for col in df.columns:
+                                    if k in col and pd.notna(row[col]): return str(row[col]).strip()
+                            return None
+
+                        matricula = get_val(['MATRICULA', 'MAT', 'RE'])
+                        if matricula: matricula = matricula.split('.')[0]
+                        nome = get_val(['NOME', 'COLABORADOR', 'FUNCIONARIO'])
+                        if not matricula or not nome: continue
+
+                        cpf_raw = get_val(['CPF', 'DOC'])
+                        cpf = re.sub(r'[^0-9]', '', cpf_raw) if cpf_raw else None
+
+                        setor_nome = get_val(['SETOR', 'DEPARTAMENTO', 'AREA'])
+                        setor_obj = None
+                        if setor_nome: setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+
+                        cc_raw = get_val(['CENTRO DE CUSTO', 'CC', 'CUSTO'])
+                        cc_obj = None
+                        if cc_raw and setor_obj:
+                            parts = cc_raw.split('-')
+                            c_code = parts[0].strip()
+                            c_desc = parts[1].strip() if len(parts) > 1 else "Importado"
+                            cc_obj, _ = CentroCusto.objects.get_or_create(codigo=c_code, setor=setor_obj, defaults={'descricao': c_desc})
+
+                        turno_raw = str(get_val(['TURNO', 'HORARIO']) or 'ADM').upper()
+                        turno = 'ADM'
+                        if '1' in turno_raw: turno = 'TURNO_1'
+                        elif '2' in turno_raw: turno = 'TURNO_2'
+                        elif '3' in turno_raw: turno = 'TURNO_3'
+                        elif '12' in turno_raw: turno = '12X36'
+
+                        status_raw = str(get_val(['STATUS']) or 'ATIVO').upper()
+                        is_active = False if 'INATIVO' in status_raw or 'DEMITIDO' in status_raw else True
+                        sal_raw = get_val(['SALARIO'])
+                        salario = float(sal_raw.replace(',', '.')) if sal_raw else None
+
+                        Colaborador.objects.update_or_create(
+                            matricula=matricula,
+                            defaults={
+                                'nome_completo': nome.upper(),
+                                'cpf': cpf,
+                                'cargo': get_val(['CARGO', 'FUNCAO']) or 'Não Informado',
+                                'grupo': get_val(['GRUPO', 'MACRO']) or 'Geral',
+                                'setor': setor_obj,
+                                'centro_custo': cc_obj,
+                                'turno': turno,
+                                'salario': salario,
+                                'is_active': is_active
+                            }
+                        )
+                        count_new += 1
+                messages.success(request, f"RH Importado: {count_new} registros.")
+                return redirect('modulo_rh')
+            except Exception as e: messages.error(request, f"Erro na importação: {str(e)}")
     else: form = ImportacaoColaboradoresForm()
     return render(request, 'importar_colaboradores.html', {'form': form, 'colaborador': get_colab(request)})
 
