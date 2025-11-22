@@ -25,7 +25,7 @@ urlpatterns = [
     path('metrologia/', views.modulo_metrologia_view, name='modulo_metrologia'),
     path('rh/', views.modulo_rh_view, name='modulo_rh'),
     path('rh/colaborador/<int:colab_id>/', views.detalhe_colaborador_view, name='detalhe_colaborador'),
-    
+
     # 6. Funcionalidades Específicas
     path('carimbar/', views.carimbar_view, name='carimbar'),
     path('detalhe/<int:instrumento_id>/', views.detalhe_instrumento_view, name='detalhe_instrumento'),
