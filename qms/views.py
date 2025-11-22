@@ -337,7 +337,7 @@ def imp_instr_view(request):
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
 # ==============================================================================
-# IMPORTAÇÃO DE HISTÓRICO (COM TRAVA DE SEGURANÇA NO CÁLCULO)
+# IMPORTAÇÃO DE HISTÓRICO (BLINDADA)
 # ==============================================================================
 @login_required
 def imp_historico_view(request):
@@ -346,78 +346,112 @@ def imp_historico_view(request):
         if form.is_valid():
             try:
                 f = request.FILES['arquivo_excel']
-                try: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
-                except: 
-                    try: f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
-                    except: df = pd.read_excel(f)
-
-                df.columns = df.columns.str.strip().str.upper()
-                df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
                 
-                count_new = 0; relatorio_erros = []
+                # 1. TENTATIVA DE LEITURA ROBUSTA
+                df = None
+                try:
+                    # Tenta ler como CSV (separador automático)
+                    if f.name.endswith('.csv'):
+                        try: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
+                        except: 
+                            f.seek(0)
+                            df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
+                    else:
+                        # Tenta ler como Excel
+                        df = pd.read_excel(f)
+                except Exception as e:
+                    messages.error(request, f"Não foi possível ler o arquivo. Erro: {e}")
+                    return redirect('importar_historico')
+
+                if df is None or len(df.columns) < 2:
+                    messages.error(request, "O arquivo parece estar vazio ou com formato inválido (apenas 1 coluna identificada). Verifique o separador (ponto-e-vírgula).")
+                    return redirect('importar_historico')
+
+                # 2. NORMALIZAÇÃO DE COLUNAS (O SEGREDO DO SUCESSO)
+                # Remove espaços, acentos e pontuações dos nomes das colunas
+                def normalizar_texto(txt):
+                    if not isinstance(txt, str): return str(txt)
+                    txt = txt.strip().upper()
+                    txt = re.sub(r'[^\w\s]', '', txt) # Remove pontuação (: / -)
+                    txt = txt.replace('Ç', 'C').replace('Ã', 'A').replace('Õ', 'O').replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+                    return txt
+
+                df.columns = [normalizar_texto(c) for c in df.columns]
+                
+                count_new = 0
+                relatorio_erros = []
 
                 with transaction.atomic():
                     for index, row in df.iterrows():
                         linha = index + 2
                         
-                        def get_val(k_list):
-                            if isinstance(k_list, str): k_list = [k_list]
-                            for key in k_list:
-                                key_clean = key.upper().replace('Ç', 'C').replace('Ã', 'A').replace('Õ', 'O').replace('Á', 'A').replace('É', 'E')
-                                for col in df.columns:
-                                    if key_clean == col or key_clean in col:
+                        # --- HELPERS ---
+                        def get_val(keywords):
+                            if isinstance(keywords, str): keywords = [keywords]
+                            # Normaliza as palavras-chave de busca
+                            keys_norm = [normalizar_texto(k) for k in keywords]
+                            
+                            for col in df.columns:
+                                # Se a coluna contém ALGUMA das palavras-chave
+                                for k in keys_norm:
+                                    if k in col:
                                         if pd.notna(row[col]): return str(row[col]).strip()
                             return None
                         
-                        def get_date_val(k_list):
-                            val = get_val(k_list)
-                            if not val or val == '-' or val == 'NaT': return None
+                        def get_date_val(keywords):
+                            val = get_val(keywords)
+                            if not val or val in ['-', 'NaT', 'nan', 'None']: return None
                             try: return pd.to_datetime(val, dayfirst=True).date() 
                             except: 
                                 try: return (datetime(1899, 12, 30) + timedelta(days=float(val))).date()
                                 except: return None
 
-                        def get_float(k_list):
-                            val = get_val(k_list)
+                        def get_float(keywords):
+                            val = get_val(keywords)
                             if not val: return None
                             try: return float(re.sub(r'[^\d,.-]', '', val).replace(',', '.'))
                             except: return None
                         
                         # 1. IDENTIFICAÇÃO
                         tag = get_val(['TAG', 'CODIGO', 'IDENTIFICACAO'])
-                        if not tag: continue # Pula linhas vazias
+                        if not tag: 
+                            if any(pd.notna(row)): relatorio_erros.append(f"L.{linha}: TAG não encontrada.")
+                            continue
                         
-                        # 2. DATA (CORREÇÃO AQUI: Busca mais específica para não pegar o Certificado)
-                        # Removeu 'CALIBRACAO' sozinho, exige 'DATA' ou 'REALIZADO'
-                        dt_cal = get_date_val(['DATA CALIBRACAO', 'DATA DA CALIBRACAO', 'DATA ULTIMA', 'REALIZADO EM'])
+                        # 2. DATA (Agora busca por "DATA" e "CALIB" ou "ULTIMA")
+                        # Procura colunas que tenham "DATA CALIB" ou "DATA ULTIMA" ou "REALIZADO"
+                        dt_cal = get_date_val(['DATA CALIBRACAO', 'DATA ULTIMA', 'REALIZADO EM', 'CALIBRACAO'])
                         
                         if not dt_cal:
-                            relatorio_erros.append(f"L.{linha} ({tag}): Data inválida (Coluna DATA não encontrada ou valor incorreto).")
+                            relatorio_erros.append(f"L.{linha} ({tag}): Data inválida (Verifique a coluna 'Data Última').")
                             continue
                         
                         try: inst = Instrumento.objects.get(tag=tag)
                         except: 
-                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não encontrado.")
+                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não cadastrado.")
                             continue
                         
-                        # 3. DEMAIS DADOS
-                        dt_apr = get_date_val(['DATA APROVACAO', 'DATA VALIDAÇÃO']) or dt_cal
-                        num_cert = get_val(['N CERTIFICADO', 'CERTIFICADO', 'N DOC', 'NO DO CERTIFICADO']) or 'S/N'
+                        # 3. DADOS
+                        dt_apr = get_date_val(['DATA APROVACAO', 'DATA VALIDACAO', 'AVALIACAO']) or dt_cal
+                        num_cert = get_val(['N CERTIFICADO', 'CERTIFICADO', 'N DOC']) or 'S/N'
                         
-                        erro = get_float(['ERRO', 'ERRO ENCONTRADO'])
-                        inc = get_float(['INCERTEZA', 'U', 'INCERTEZA (U)'])
+                        erro = get_float(['ERRO', 'TENDENCIA'])
+                        inc = get_float(['INCERTEZA'])
                         tol = get_float(['TOLERANCIA', 'CRITERIO', 'EMA'])
-
+                        
+                        # Responsável e Fornecedor (Texto Livre)
                         resp_txt = get_val(['RESPONSAVEL', 'APROVADOR', 'ANALISE'])
                         forn_txt = get_val(['FORNECEDOR', 'LABORATORIO', 'PRESTADOR'])
 
-                        res_excel = str(get_val(['RESULTADO', 'STATUS', 'ANALISE RESULTADO']) or '').upper()
+                        # Resultado
+                        res_excel = str(get_val(['RESULTADO', 'STATUS', 'ANALISE']) or '').upper()
                         res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
                         elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
                         
-                        prox = get_date_val(['PROXIMA CALIBRACAO', 'VENCIMENTO', 'DT PROXIMA'])
-                        if not prox and inst.frequencia_meses and dt_cal:
+                        # Próxima
+                        prox = get_date_val(['PROXIMA', 'VENCIMENTO'])
+                        if not prox and inst.frequencia_meses:
                             try: prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
                             except: prox = None
                         
@@ -431,12 +465,17 @@ def imp_historico_view(request):
                                 'observacoes': get_val(['OBSERVACOES', 'OBS'])
                             }
                         )
-                        if erro is not None and inc is not None and tol is not None: obj.save()
+                        
+                        if erro is not None and inc is not None and tol is not None:
+                            obj.save()
+
                         if cr: count_new += 1
 
                 if relatorio_erros:
+                    # Mostra as colunas lidas em caso de erro, para debug
                     msg = " | ".join(relatorio_erros[:3])
-                    messages.warning(request, f"Importados: {count_new}. Erros: {msg}")
+                    cols_lidas = ", ".join(df.columns[:5]) + "..."
+                    messages.warning(request, f"Importados: {count_new}. Erros: {msg}. Colunas lidas: {cols_lidas}")
                 else:
                     messages.success(request, f"Sucesso! {count_new} registros importados.")
                 
