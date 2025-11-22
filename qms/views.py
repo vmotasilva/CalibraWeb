@@ -13,7 +13,6 @@ from django.db import transaction, IntegrityError, models
 from django.urls import reverse
 from django.db.models import Q
 from django.core.files.base import ContentFile
-from .forms import ColaboradorForm
 
 # IMPORTA TODOS OS MODELOS
 from .models import (
@@ -25,7 +24,7 @@ from .models import (
 from .forms import (
     CarimboForm, ImportacaoInstrumentosForm, ImportacaoColaboradoresForm, 
     ImportacaoProcedimentosForm, ImportacaoHierarquiaForm, ImportacaoHistoricoForm,
-    ImportacaoPadroesForm
+    ImportacaoPadroesForm, ColaboradorForm
 )
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
@@ -36,13 +35,26 @@ def get_colab(request):
     try: return Colaborador.objects.get(user_django=request.user)
     except: return None
 
-# --- VIEWS DE TELA ---
+def excel_date_to_datetime(serial):
+    if pd.isnull(serial) or str(serial).strip() == '' or str(serial).strip() == '-': return None
+    try:
+        serial_str = str(serial).strip()
+        if '/' in serial_str: return pd.to_datetime(serial_str, dayfirst=True).date()
+        serial_float = float(serial)
+        return (datetime(1899, 12, 30) + timedelta(days=serial_float)).date()
+    except: return None
+
+# ==============================================================================
+# VIEWS DE TELA (DASHBOARD E MÓDULOS)
+# ==============================================================================
+
 @login_required
 def dashboard_view(request):
     colab = get_colab(request)
     nome_display = colab.nome_completo if colab else request.user.username
     hoje = date.today()
     trinta_dias = hoje + timedelta(days=30)
+    
     qtd_vencidos = Instrumento.objects.filter(data_proxima_calibracao__lt=hoje, ativo=True).count()
     qtd_avencer = Instrumento.objects.filter(data_proxima_calibracao__range=[hoje, trinta_dias], ativo=True).count()
     lista_urgentes = Instrumento.objects.filter(data_proxima_calibracao__lte=trinta_dias, ativo=True).order_by('data_proxima_calibracao')[:5]
@@ -72,105 +84,67 @@ def modulo_metrologia_view(request):
 def modulo_rh_view(request):
     colab = get_colab(request)
     
-    # Busca dados para os filtros dinâmicos
-    setores = Setor.objects.all().order_by('nome')
-    centros = CentroCusto.objects.all().order_by('codigo')
-    # Turnos são fixos no model, passaremos no template manualmente ou via choices
-    
-    # Busca todos os colaboradores para a lista
-    funcionarios = Colaborador.objects.all().order_by('nome_completo')
-    
-    # Regra de visualização de salário (Mantém a segurança visual na lista)
+    # Regra de visualização de Salário
     can_see_salary = False
-    if request.user.is_superuser or (colab and ('GERENTE' in str(colab.cargo).upper() or 'RH' in str(colab.setor.nome).upper())):
-        can_see_salary = True
+    if request.user.is_superuser: can_see_salary = True
+    elif colab:
+        if 'GERENTE' in str(colab.cargo).upper(): can_see_salary = True
+        if HierarquiaSetor.objects.filter(gerente=colab).exists(): can_see_salary = True
 
     ctx = {
         'colaborador': colab, 
-        'funcionarios': funcionarios,
-        'setores': setores,
-        'centros': centros,
+        'funcionarios': Colaborador.objects.all().order_by('nome_completo'),
+        'setores': Setor.objects.all().order_by('nome'),      # Essencial para o filtro
+        'centros': CentroCusto.objects.all().order_by('codigo'), # Essencial para o filtro
         'can_see_salary': can_see_salary,
-        'can_edit': True # RH pode editar
+        'can_edit': True
     }
     return render(request, 'modulo_rh.html', ctx)
 
 @login_required
-def editar_colaborador_view(request, colab_id):
-    # Apenas Admin, Gerentes ou RH deveriam acessar isso
+def detalhe_colaborador_view(request, colab_id):
     usuario_logado = get_colab(request)
     alvo = get_object_or_404(Colaborador, id=colab_id)
+    
+    # Permissão de Salário
+    can_see_salary = False
+    if request.user.is_superuser: can_see_salary = True
+    elif usuario_logado:
+        if 'GERENTE' in str(usuario_logado.cargo).upper(): can_see_salary = True
+        if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists(): can_see_salary = True
+        if usuario_logado.id == alvo.id: can_see_salary = True
+
+    ocorrencias = alvo.ocorrencias.all().order_by('-data_ocorrencia')
+    treinamentos = alvo.treinamentos.all().order_by('-data_treinamento')
+    documentos = alvo.documentos_pessoais.all().order_by('-data_upload')
+
+    ctx = {
+        'colaborador': usuario_logado, 'alvo': alvo,
+        'can_see_salary': can_see_salary, 'ocorrencias': ocorrencias,
+        'treinamentos': treinamentos, 'documentos': documentos, 'can_edit': True
+    }
+    return render(request, 'detalhe_colaborador.html', ctx)
+
+# --- VIEW DE EDIÇÃO (ADICIONADA AGORA) ---
+@login_required
+def editar_colaborador_view(request, colab_id):
+    usuario_logado = get_colab(request)
+    alvo = get_object_or_404(Colaborador, id=colab_id)
+    
+    # Aqui você pode adicionar verificação de permissão se quiser (ex: só gerente/RH)
     
     if request.method == 'POST':
         form = ColaboradorForm(request.POST, instance=alvo)
         if form.is_valid():
             form.save()
-            messages.success(request, f"Dados de {alvo.nome_completo} atualizados com sucesso!")
+            messages.success(request, f"Dados de {alvo.nome_completo} atualizados!")
             return redirect('detalhe_colaborador', colab_id=alvo.id)
         else:
             messages.error(request, "Erro ao salvar. Verifique os campos.")
     else:
         form = ColaboradorForm(instance=alvo)
     
-    return render(request, 'editar_colaborador.html', {
-        'form': form, 
-        'alvo': alvo,
-        'colaborador': usuario_logado
-    })
-
-@login_required
-def detalhe_colaborador_view(request, colab_id):
-    usuario_logado = get_colab(request)
-    
-    # Busca o colaborador alvo ou 404
-    alvo = get_object_or_404(Colaborador, id=colab_id)
-    
-    # --- REPETE A LÓGICA DE SEGURANÇA (Para evitar acesso direto via URL) ---
-    can_see_salary = False
-    acesso_permitido = False
-    
-    if request.user.is_superuser:
-        acesso_permitido = True; can_see_salary = True
-    elif usuario_logado:
-        cargo = str(usuario_logado.cargo).upper()
-        grupo = str(usuario_logado.grupo).upper()
-        is_gerente = HierarquiaSetor.objects.filter(gerente=usuario_logado).exists()
-        is_qualidade = 'QUALIDADE' in cargo or 'QUALIDADE' in grupo
-        is_supervisor = HierarquiaSetor.objects.filter(supervisor=usuario_logado).exists()
-
-        if is_gerente or 'GERENTE' in cargo:
-            acesso_permitido = True
-            can_see_salary = True
-        elif is_qualidade:
-            acesso_permitido = True
-            can_see_salary = False
-        elif is_supervisor:
-            # Só acessa se for do mesmo turno
-            if alvo.turno == usuario_logado.turno:
-                acesso_permitido = True
-            else:
-                acesso_permitido = False # Bloqueia acesso a turnos diferentes
-        elif alvo.id == usuario_logado.id:
-            acesso_permitido = True # Vê o próprio perfil
-    
-    if not acesso_permitido:
-        messages.error(request, "Você não tem permissão para visualizar este colaborador.")
-        return redirect('modulo_rh')
-    
-    # Busca ocorrências e treinamentos
-    ocorrencias = alvo.ocorrencias.all().order_by('-data_ocorrencia')
-    treinamentos = alvo.treinamentos.all().order_by('-data_treinamento')
-    documentos = alvo.documentos_pessoais.all().order_by('-data_upload')
-
-    ctx = {
-        'colaborador': usuario_logado,
-        'alvo': alvo, # 'alvo' é o colaborador que estamos vendo
-        'can_see_salary': can_see_salary,
-        'ocorrencias': ocorrencias,
-        'treinamentos': treinamentos,
-        'documentos': documentos
-    }
-    return render(request, 'detalhe_colaborador.html', ctx)
+    return render(request, 'editar_colaborador.html', {'form': form, 'alvo': alvo, 'colaborador': usuario_logado})
 
 @login_required
 def detalhe_instrumento_view(request, instrumento_id):
@@ -188,7 +162,9 @@ def remover_historico_view(request, historico_id):
     messages.success(request, "Certificado removido.")
     return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
 
-# --- CARIMBO ---
+# ==============================================================================
+# CARIMBO (VALIDAÇÃO)
+# ==============================================================================
 @login_required
 def carimbar_view(request):
     colab = get_colab(request)
@@ -199,8 +175,7 @@ def carimbar_view(request):
     if request.method == 'POST':
         form = CarimboForm(request.POST, request.FILES)
         if form.is_valid():
-            c_resp = colab; dt_validacao = form.cleaned_data['data_validacao']
-            status_txt = form.cleaned_data['status_validacao']
+            c_resp = colab; dt_validacao = form.cleaned_data['data_validacao']; status_txt = form.cleaned_data['status_validacao']
             is_rbc = form.cleaned_data.get('is_rbc', False)
             padroes_selecionados = form.cleaned_data.get('padroes', [])
             
@@ -211,6 +186,7 @@ def carimbar_view(request):
             fs = request.FILES.getlist('arquivo_pdf'); processed_files = []
             try: screen_w = float(request.POST.get('page_width', 0)); screen_h = float(request.POST.get('page_height', 0))
             except: screen_w = 0; screen_h = 0
+            processed_files = []
 
             for i, f in enumerate(fs):
                 raw_x = request.POST.get(f'x_{i}', 0); raw_y = request.POST.get(f'y_{i}', 0); raw_w = request.POST.get(f'w_{i}', 0); raw_h = request.POST.get(f'h_{i}', 0)
@@ -223,7 +199,8 @@ def carimbar_view(request):
                         instrumento = Instrumento.objects.get(id=inst_id)
                         dt_calibracao = datetime.strptime(calib_date_str, '%Y-%m-%d').date()
                         prox_calib = None
-                        if instrumento.frequencia_meses: prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
+                        if instrumento.frequencia_meses: 
+                            prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
                         
                         hist, created = HistoricoCalibracao.objects.get_or_create(
                             instrumento=instrumento, data_calibracao=dt_calibracao, numero_certificado=cert_num,
@@ -381,6 +358,10 @@ def imp_historico_view(request):
                     else: df = pd.read_excel(f)
                 except Exception as e:
                     messages.error(request, f"Erro ao ler arquivo: {e}")
+                    return redirect('importar_historico')
+
+                if df is None or len(df.columns) < 2:
+                    messages.error(request, "Arquivo inválido ou vazio.")
                     return redirect('importar_historico')
 
                 df.columns = df.columns.str.strip().str.upper()
@@ -567,12 +548,13 @@ def imp_colab_view(request):
                         nome = get_val(['NOME', 'COLABORADOR', 'FUNCIONARIO'])
                         if not matricula or not nome: continue
 
-                        # CPF (somente números)
+                        # CORREÇÃO DO CPF DUPLICADO (00)
                         cpf_raw = get_val(['CPF', 'DOC'])
                         cpf = None
                         if cpf_raw:
                             limpo = re.sub(r'[^0-9]', '', str(cpf_raw))
-                            if len(limpo) == 11 and limpo != '00000000000':
+                            # Só salva se tiver 11 dígitos e não for tudo zero (00 ou 0000...)
+                            if len(limpo) == 11 and limpo != '00000000000' and limpo != '00':
                                 cpf = limpo
 
                         setor_nome = get_val(['SETOR', 'DEPARTAMENTO', 'AREA'])

@@ -36,10 +36,7 @@
             </div>
 
             <div class="col-md-3">
-                <div class="input-group">
-                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
-                    <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, Matrícula ou Cargo...">
-                </div>
+                <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, Matrícula ou Cargo...">
             </div>
 
             <div class="col-md-3">
@@ -55,9 +52,9 @@
                 <select id="filtroTurno" class="form-select">
                     <option value="">🕒 Todos Turnos</option>
                     <option value="ADM">Administrativo</option>
-                    <option value="TURNO 1">Turno 1</option>
-                    <option value="TURNO 2">Turno 2</option>
-                    <option value="TURNO 3">Turno 3</option>
+                    <option value="TURNO_1">Turno 1</option>
+                    <option value="TURNO_2">Turno 2</option>
+                    <option value="TURNO_3">Turno 3</option>
                     <option value="12X36">12x36</option>
                 </select>
             </div>
@@ -99,7 +96,7 @@
                 <tr class="linha-rh"
                     data-busca="{{ func.nome_completo }} {{ func.matricula }} {{ func.cargo }}"
                     data-setor="{{ func.setor.nome|default:'' }}"
-                    data-turno="{{ func.get_turno_display }}"
+                    data-turno="{{ func.turno }}" 
                     data-cc="{{ func.centro_custo.codigo|default:'' }}"
                     data-status="{% if func.is_active %}ATIVO{% else %}INATIVO{% endif %}">
                     
@@ -183,7 +180,7 @@
                 
                 const matchTexto = !termo || dados.busca.toUpperCase().includes(termo);
                 const matchSetor = !setor || dados.setor === setor;
-                const matchTurno = !turno || dados.turno === turno;
+                const matchTurno = !turno || dados.turno === turno; // Agora compara códigos iguais (ADM com ADM)
                 const matchCC = !cc || dados.cc === cc;
                 const matchStatus = !status || dados.status === status;
 
