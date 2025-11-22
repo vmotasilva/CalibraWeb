@@ -1,5 +1,5 @@
 from django import forms
-from .models import Colaborador, Instrumento, Padrao
+from .models import Colaborador, Instrumento, Padrao # <--- Adicionei Padrao aqui
 
 # --- WIDGET PARA MÚLTIPLOS ARQUIVOS (CARIMBO) ---
 class MultipleFileInput(forms.ClearableFileInput):
@@ -36,8 +36,8 @@ class CarimboForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-control'}),
         label="Status / Texto do Carimbo"
     )
-    
-    # Novos campos (RBC e Padrões)
+
+    # --- NOVOS CAMPOS PARA RASTREABILIDADE ---
     is_rbc = forms.BooleanField(
         required=False, 
         label="É um certificado RBC?", 
@@ -50,6 +50,7 @@ class CarimboForm(forms.Form):
         label="Padrões Utilizados (Se não for RBC)",
         widget=forms.SelectMultiple(attrs={'class': 'form-control', 'style': 'height: 100px;'})
     )
+    # -----------------------------------------
     
     arquivo_pdf = MultipleFileField(
         label="Selecione os Certificados (PDF)",
@@ -98,12 +99,12 @@ class ImportacaoHistoricoForm(forms.Form):
     arquivo_excel = forms.FileField(
         label="Histórico de Calibrações",
         widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.xlsx, .xls, .csv'}),
-        help_text="O sistema aceita planilhas de controle (FOR 139) e detecta colunas automaticamente."
+        help_text="Colunas obrigatórias: CÓDIGO (ou TAG), DATA CALIBRAÇÃO, DATA APROVAÇÃO, N CERTIFICADO, RESULTADO"
     )
 
-# ESTE É O FORMULÁRIO QUE FALTAVA 👇
+# --- FORMULÁRIO NOVO QUE FALTAVA ---
 class ImportacaoPadroesForm(forms.Form):
     arquivo_excel = forms.FileField(
-        label="Planilha de Padrões/Kits",
+        label="Planilha de Padrões (Kits)",
         widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.xlsx, .xls, .csv'})
     )
