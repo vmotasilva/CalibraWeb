@@ -337,7 +337,7 @@ def imp_instr_view(request):
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
 # ==============================================================================
-# IMPORTAÇÃO DE HISTÓRICO (COM DEBUG DE COLUNAS)
+# IMPORTAÇÃO DE HISTÓRICO (MAPEADA PARA O SEU FORMULÁRIO)
 # ==============================================================================
 @login_required
 def imp_historico_view(request):
@@ -346,42 +346,16 @@ def imp_historico_view(request):
         if form.is_valid():
             try:
                 f = request.FILES['arquivo_excel']
-                df = None
-                
-                # 1. TENTATIVAS DE LEITURA (Força Bruta para descobrir o formato)
-                if f.name.endswith('.csv'):
-                    # Tentativa A: Padrão Brasileiro (Ponto e vírgula + Latin1)
-                    try:
-                        f.seek(0)
-                        df = pd.read_csv(f, sep=';', encoding='latin1')
-                    except: pass
-                    
-                    # Tentativa B: Padrão Internacional (Vírgula + UTF-8) - Se A falhou ou veio 1 coluna
-                    if df is None or len(df.columns) < 2:
-                        try:
-                            f.seek(0)
-                            df = pd.read_csv(f, sep=',', encoding='utf-8')
-                        except: pass
+                try: 
+                    # Tenta ler CSV (Detecta separador)
+                    df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
+                except:
+                    try: f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
+                    except: df = pd.read_excel(f)
 
-                    # Tentativa C: Motor Python (Adivinhação)
-                    if df is None or len(df.columns) < 2:
-                        try:
-                            f.seek(0)
-                            df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
-                        except: pass
-                else:
-                    # Excel (.xlsx)
-                    df = pd.read_excel(f)
-
-                # Verifica se conseguiu ler algo útil
-                if df is None or len(df.columns) < 2:
-                    cols_lidas = list(df.columns) if df is not None else "Nenhuma"
-                    messages.error(request, f"Erro de Leitura: O sistema não reconheceu as colunas. Colunas encontradas: {cols_lidas}. Verifique se é CSV separado por ponto-e-vírgula.")
-                    return redirect('importar_historico')
-
-                # 2. LIMPEZA DE CABEÇALHO
+                # Limpeza básica de cabeçalho
                 df.columns = df.columns.str.strip().str.upper()
-                # Remove acentos e caracteres estranhos
+                # Remove acentos para garantir
                 df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
                 
                 count_new = 0
@@ -395,9 +369,9 @@ def imp_historico_view(request):
                         def get_val(k_list):
                             if isinstance(k_list, str): k_list = [k_list]
                             for key in k_list:
-                                # Normaliza a chave de busca (remove acentos)
-                                key_clean = key.upper().encode('ascii', 'ignore').decode('utf-8')
-                                # Procura coluna exata ou coluna que CONTÉM o nome (ex: "TAG DO INSTRUMENTO")
+                                # Normaliza a chave de busca
+                                key_clean = key.upper().replace('Ç', 'C').replace('Ã', 'A').replace('Õ', 'O').replace('Á', 'A').replace('É', 'E')
+                                # Busca exata ou parcial
                                 for col in df.columns:
                                     if key_clean == col or key_clean in col:
                                         if pd.notna(row[col]): return str(row[col]).strip()
@@ -407,77 +381,93 @@ def imp_historico_view(request):
                             val = get_val(k_list)
                             if not val or val == '-' or val == 'NaT': return None
                             try: return pd.to_datetime(val, dayfirst=True).date() 
-                            except: 
-                                try:
-                                    return (datetime(1899, 12, 30) + timedelta(days=float(val))).date()
-                                except: return None
+                            except: return None
 
                         def get_float(k_list):
                             val = get_val(k_list)
                             if not val: return None
+                            # Limpa texto (ex: "0,05 bar" -> "0.05")
                             clean_val = re.sub(r'[^\d,.-]', '', val).replace(',', '.')
                             try: return float(clean_val)
                             except: return None
                         
-                        # --- LÓGICA PRINCIPAL ---
-                        # Busca por TAG, CODIGO, etc.
-                        tag = get_val(['TAG', 'CODIGO', 'IDENTIFICACAO', 'INSTRUMENTO'])
-                        
+                        # 1. IDENTIFICAÇÃO
+                        tag = get_val(['CODIGO', 'TAG', 'IDENTIFICACAO'])
                         if not tag: 
-                            if any(pd.notna(row)): relatorio_erros.append(f"L.{linha}: Coluna TAG vazia ou não identificada.")
+                            if any(pd.notna(row)): relatorio_erros.append(f"L.{linha}: Coluna CODIGO/TAG vazia.")
                             continue
                         
-                        dt_cal = get_date_val(['DATA CALIBRACAO', 'DATA DA CALIBRACAO', 'CALIBRACAO'])
+                        # 2. DATA (Mapeado para sua coluna exata)
+                        dt_cal = get_date_val(['DATA ULTIMA: CALIBRACAO/VERIFICACAO', 'DATA CALIBRACAO'])
                         if not dt_cal:
                             relatorio_erros.append(f"L.{linha} ({tag}): Data inválida.")
                             continue
                         
                         try: inst = Instrumento.objects.get(tag=tag)
                         except: 
-                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não existe no sistema.")
+                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não cadastrado.")
                             continue
                         
-                        dt_apr = get_date_val(['DATA APROVACAO', 'DATA VALIDACAO', 'APROVADO EM']) or dt_cal
-                        num_cert = get_val(['N CERTIFICADO', 'CERTIFICADO', 'N DOC']) or 'S/N'
+                        # 3. DADOS DO CERTIFICADO (Mapeados)
+                        # Data de avaliação serve como aprovação
+                        dt_apr = get_date_val(['DATA DA AVALIACAO', 'DATA APROVACAO']) or dt_cal
+                        num_cert = get_val(['NO DO CERTIFICADO DE CALIBRACAO', 'N CERTIFICADO']) or 'S/N'
                         
-                        erro = get_float(['ERRO', 'TENDENCIA'])
-                        inc = get_float(['INCERTEZA', 'U'])
-                        tol = get_float(['TOLERANCIA', 'CRITERIO', 'EMA'])
-                        
-                        nome_resp = get_val(['RESPONSAVEL', 'APROVADOR'])
+                        # 4. DADOS MATEMÁTICOS (Seus nomes exatos)
+                        erro = get_float(['ERRO (ABSOLUTO) DO CERTIFICADO', 'ERRO'])
+                        inc = get_float(['INCERTEZA (ABSOLUTA) DO CERTIFICADO', 'INCERTEZA'])
+                        tol = get_float(['TOLERANCIA DO PROCESSO - TOLERANCIA(+/-)', 'TOLERANCIA'])
+
+                        # 5. RESPONSÁVEL
+                        nome_resp = get_val(['RESPONSAVEL PELA ANALISE', 'RESPONSAVEL'])
                         resp_obj = None
                         if nome_resp:
                             resp_obj = Colaborador.objects.filter(
-                                Q(nome_completo__iexact=nome_resp) | Q(nome_completo__icontains=nome_resp) | Q(matricula=nome_resp)
+                                Q(nome_completo__iexact=nome_resp) | 
+                                Q(nome_completo__icontains=nome_resp) |
+                                Q(matricula=nome_resp)
                             ).first()
 
-                        # Resultado
-                        res_excel = str(get_val(['RESULTADO', 'STATUS']) or '').upper()
+                        # 6. RESULTADO
+                        res_excel = str(get_val(['ANALISE RESULTADO DO CERTIFICADO', 'RESULTADO']) or '').upper()
                         res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
-                        elif 'CONDICIONAL' in res_excel: res = 'CONDICIONAL'
+                        elif 'CONDICIONAL' in res_excel or 'RESTRICAO' in res_excel: res = 'CONDICIONAL'
                         
-                        prox = get_date_val(['PROXIMA CALIBRACAO', 'VENCIMENTO'])
-                        if not prox and inst.frequencia_meses:
+                        # 7. PRÓXIMA CALIBRAÇÃO (Calcula baseado na frequência do instrumento se não tiver coluna)
+                        prox = None
+                        if inst.frequencia_meses:
                             prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
                         
+                        # 8. SALVAR
                         obj, cr = HistoricoCalibracao.objects.update_or_create(
-                            instrumento=inst, data_calibracao=dt_cal, numero_certificado=num_cert, 
+                            instrumento=inst, 
+                            data_calibracao=dt_cal, 
+                            numero_certificado=num_cert, 
                             defaults={
-                                'data_aprovacao': dt_apr, 'resultado': res, 'proxima_calibracao': prox, 
-                                'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 
-                                'responsavel': resp_obj, 'observacoes': get_val(['OBSERVACOES', 'OBS'])
+                                'data_aprovacao': dt_apr,
+                                'resultado': res, 
+                                'proxima_calibracao': prox, 
+                                'erro_encontrado': erro,
+                                'incerteza': inc,
+                                'tolerancia_usada': tol,
+                                'responsavel': resp_obj,
+                                'observacoes': get_val(['OBSERVACOES', 'OBS'])
                             }
                         )
-                        if erro is not None and inc is not None and tol is not None: obj.save()
+                        
+                        # Força cálculo matemático (se tiver os 3 números, ele vai recalcular o Aprovado/Reprovado)
+                        if erro is not None and inc is not None and tol is not None:
+                            obj.save()
+
                         if cr: count_new += 1
 
                 if relatorio_erros:
                     msg = " | ".join(relatorio_erros[:3])
-                    # SE FALHAR, MOSTRA QUAIS COLUNAS ELE LEU PARA AJUDAR NO DEBUG
-                    messages.warning(request, f"Importados: {count_new}. Problemas: {msg}. (Colunas lidas no arquivo: {list(df.columns)})")
+                    if len(relatorio_erros) > 3: msg += f" ... e mais {len(relatorio_erros)-3}."
+                    messages.warning(request, f"Importados: {count_new}. Detalhes: {msg}")
                 else:
-                    messages.success(request, f"Sucesso! {count_new} registros importados.")
+                    messages.success(request, f"Sucesso Absoluto! {count_new} registros importados.")
                 
                 return redirect('modulo_metrologia')
 
