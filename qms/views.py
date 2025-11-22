@@ -43,18 +43,11 @@ def dashboard_view(request):
     nome_display = colab.nome_completo if colab else request.user.username
     hoje = date.today()
     trinta_dias = hoje + timedelta(days=30)
-    
     qtd_vencidos = Instrumento.objects.filter(data_proxima_calibracao__lt=hoje, ativo=True).count()
     qtd_avencer = Instrumento.objects.filter(data_proxima_calibracao__range=[hoje, trinta_dias], ativo=True).count()
     lista_urgentes = Instrumento.objects.filter(data_proxima_calibracao__lte=trinta_dias, ativo=True).order_by('data_proxima_calibracao')[:5]
     
-    ctx = {
-        'colaborador': colab, 'nome_display': nome_display, 
-        'qtd_vencidos': qtd_vencidos, 'qtd_avencer': qtd_avencer, 
-        'lista_urgentes': lista_urgentes, 
-        'qtd_cotacoes': ProcessoCotacao.objects.filter(status='ABERTO').count(), 
-        'today': hoje
-    }
+    ctx = {'colaborador': colab, 'nome_display': nome_display, 'qtd_vencidos': qtd_vencidos, 'qtd_avencer': qtd_avencer, 'lista_urgentes': lista_urgentes, 'qtd_cotacoes': ProcessoCotacao.objects.filter(status='ABERTO').count(), 'today': hoje}
     return render(request, 'dashboard.html', ctx)
 
 @login_required
@@ -102,8 +95,7 @@ def carimbar_view(request):
     if request.method == 'POST':
         form = CarimboForm(request.POST, request.FILES)
         if form.is_valid():
-            c_resp = colab; dt_validacao = form.cleaned_data['data_validacao']
-            status_txt = form.cleaned_data['status_validacao']
+            c_resp = colab; dt_validacao = form.cleaned_data['data_validacao']; status_txt = form.cleaned_data['status_validacao']
             is_rbc = form.cleaned_data.get('is_rbc', False)
             padroes_selecionados = form.cleaned_data.get('padroes', [])
             
@@ -136,15 +128,11 @@ def carimbar_view(request):
                                 'tem_selo_rbc': is_rbc, 'tipo_calibracao': 'EXTERNA'
                             }
                         )
-                        if not created: hist.resultado = resultado_banco; hist.observacoes = f"Revalidado por {user_full_name}: {status_txt}"
-                        
-                        if not is_rbc and padroes_selecionados:
-                            hist.padroes_utilizados.set(padroes_selecionados)
-
+                        if not created: hist.resultado = resultado_banco; hist.observacoes = f"Revalidado: {status_txt}"
+                        if not is_rbc and padroes_selecionados: hist.padroes_utilizados.set(padroes_selecionados)
                         filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"; hist.certificado.save(filename, ContentFile(pdf_buffer.getvalue())); hist.save()
                     except Exception as e: print(f"Erro: {e}")
                 pdf_buffer.seek(0); processed_files.append((f.name, pdf_buffer))
-            
             if len(processed_files) == 1: fname, fbuf = processed_files[0]; r = HttpResponse(fbuf, content_type='application/pdf'); r['Content-Disposition'] = f'attachment; filename="Validado_{fname}"'; return r
             elif len(processed_files) > 1: zb = io.BytesIO(); 
             with zipfile.ZipFile(zb, 'w') as zf:
@@ -172,7 +160,7 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
         for pg in ipdf.pages[1:]: o.add_page(pg)
     out = io.BytesIO(); o.write(out); out.seek(0); return out
 
-# --- TEMPLATES ---
+# --- TEMPLATES DE DOWNLOAD ---
 def dl_template_instr(request):
     colunas = ["TAG", "EQUIPAMENTO", "STATUS", "FABRICANTE", "MODELO", "N SERIE", "SETOR", "LOCALIZACAO", "FREQUENCIA_MESES", "DATA_ULTIMA_CALIBRACAO", "FAIXA", "UNIDADE"]
     df = pd.DataFrame(columns=colunas)
@@ -195,8 +183,7 @@ def imp_instr_view(request):
             try:
                 f = request.FILES['arquivo_excel']
                 try: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
-                except: 
-                    f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8') if f.name.endswith('.csv') else pd.read_excel(f)
+                except: f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8') if f.name.endswith('.csv') else pd.read_excel(f)
                 df.columns = df.columns.str.strip().str.upper()
                 count_new = 0; count_upd = 0; count_faixas = 0
                 with transaction.atomic():
@@ -227,37 +214,19 @@ def imp_instr_view(request):
 
                         tag = get_val(['TAG', 'IDENTIFICACAO', 'CODIGO', 'CÓDIGO'])
                         if not tag: continue 
-
                         cat_nome = get_val(['CATEGORIA', 'FAMILIA', 'TIPO', 'EQUIPAMENTO']) 
                         if cat_nome: cat, _ = CategoriaInstrumento.objects.get_or_create(nome=cat_nome.title())
                         else: cat = None
-
                         setor_nome = get_val(['SETOR', 'DEPARTAMENTO'])
                         if setor_nome: setor, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
                         else: setor = None
-
                         freq_meses = traduzir_frequencia(get_val(['FREQUENCIA_MESES', 'FREQUENCIA', 'PERIODICIDADE']))
                         dt_ultima = get_date(['DATA_ULTIMA_CALIBRACAO', 'DATA ÚLTIMA CALIBRAÇÃO', 'ULTIMA CALIBRACAO', 'DATA CALIBRAÇÃO'])
                         dt_proxima = dt_ultima + timedelta(days=freq_meses*30) if dt_ultima else None
-
-                        dados = {
-                            'codigo': tag,
-                            'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição',
-                            'categoria': cat,
-                            'fabricante': get_val(['FABRICANTE', 'MARCA']),
-                            'modelo': get_val(['MODELO']),
-                            'serie': get_val(['N SERIE', 'N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']),
-                            'setor': setor,
-                            'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']),
-                            'frequencia_meses': freq_meses,
-                            'data_ultima_calibracao': dt_ultima,
-                            'data_proxima_calibracao': dt_proxima,
-                            'ativo': True
-                        }
+                        dados = {'codigo': tag, 'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição', 'categoria': cat, 'fabricante': get_val(['FABRICANTE', 'MARCA']), 'modelo': get_val(['MODELO']), 'serie': get_val(['N SERIE', 'N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']), 'setor': setor, 'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']), 'frequencia_meses': freq_meses, 'data_ultima_calibracao': dt_ultima, 'data_proxima_calibracao': dt_proxima, 'ativo': True}
                         obj, created = Instrumento.objects.update_or_create(tag=tag, defaults=dados)
                         if created: count_new += 1
                         else: count_upd += 1
-
                         faixa_txt = get_val(['FAIXA', 'RANGE', 'CAPACIDADE', 'FAIXA DE MEDICAO'])
                         unidade_txt = get_val(['UNIDADE', 'U.M.', 'UNIDADE DE MEDIDA'])
                         if faixa_txt and unidade_txt:
@@ -282,124 +251,95 @@ def imp_historico_view(request):
                 try:
                     if f.name.endswith('.csv'):
                         try: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
-                        except: 
-                            f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
+                        except: f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
                     else: df = pd.read_excel(f)
-                except Exception as e:
-                    messages.error(request, f"Erro ao ler arquivo: {e}")
-                    return redirect('importar_historico')
+                except Exception as e: messages.error(request, f"Erro ao ler arquivo: {e}"); return redirect('importar_historico')
+                
+                if df is None or len(df.columns) < 2: messages.error(request, "Arquivo inválido ou vazio."); return redirect('importar_historico')
 
                 df.columns = df.columns.str.strip().str.upper()
                 df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
-                
                 count_new = 0; relatorio_erros = []
+                
                 with transaction.atomic():
                     for index, row in df.iterrows():
                         linha = index + 2
-                        def encontrar_coluna(palavras_chave, evitar=[]):
+                        def finding_col(keys, avoid=[]):
                             for col in df.columns:
                                 match = False
-                                for k in palavras_chave:
+                                for k in keys:
                                     k_clean = k.upper().replace('Ç','C').replace('Ã','A').replace('Á','A').replace('É','E')
                                     if k_clean in col: match = True; break
                                 if match:
-                                    proibido = False
-                                    for bad in evitar:
-                                        if bad.upper() in col: proibido = True; break
-                                    if not proibido: return col
+                                    bad_match = False
+                                    for b in avoid:
+                                        if b.upper() in col: bad_match = True; break
+                                    if not bad_match: return col
                             return None
-
-                        def get_val_by_col(col_name):
-                            if col_name and pd.notna(row[col_name]): return str(row[col_name]).strip()
-                            return None
-
-                        def converter_data(valor):
-                            if not valor or str(valor).strip() in ['-', 'NaT', 'nan', 'None', '']: return None
-                            try: return pd.to_datetime(str(valor).strip(), dayfirst=True).date()
+                        
+                        def get_val(col_name): return str(row[col_name]).strip() if col_name and pd.notna(row[col_name]) else None
+                        
+                        def conv_date(v):
+                            if not v or str(v).strip() in ['-', 'NaT', 'nan', 'None', '']: return None
+                            try: return pd.to_datetime(str(v).strip(), dayfirst=True).date()
                             except:
-                                try: return (datetime(1899, 12, 30) + timedelta(days=float(valor))).date()
+                                try: return (datetime(1899, 12, 30) + timedelta(days=float(v))).date()
                                 except: return None
 
-                        def get_float_by_col(col_name):
-                            val = get_val_by_col(col_name)
-                            if not val: return None
-                            try: return float(re.sub(r'[^\d,.-]', '', val).replace(',', '.'))
+                        def conv_float(col_name):
+                            v = get_val(col_name)
+                            if not v: return None
+                            try: return float(re.sub(r'[^\d,.-]', '', v).replace(',', '.'))
                             except: return None
 
-                        col_tag = encontrar_coluna(['TAG', 'CODIGO', 'IDENTIFICACAO'])
-                        col_dt_cal = encontrar_coluna(['DATA CALIB', 'DATA ULTIMA', 'REALIZADO', 'CALIBRACAO'], evitar=['PROXIMA', 'VENCIMENTO', 'VALIDADE'])
+                        col_tag = finding_col(['TAG', 'CODIGO', 'IDENTIFICACAO'])
+                        col_dt = finding_col(['DATA CALIB', 'DATA ULTIMA', 'REALIZADO', 'CALIBRACAO'], evitar=['PROXIMA', 'VENCIMENTO'])
+                        tag = get_val(col_tag); dt_cal = conv_date(row.get(col_dt)) if col_dt else None
                         
-                        tag = get_val_by_col(col_tag)
-                        dt_cal = converter_data(row.get(col_dt_cal)) if col_dt_cal else None
-
                         if not tag: continue
-                        if not dt_cal:
-                            relatorio_erros.append(f"L.{linha} ({tag}): Data inválida.")
-                            continue
-                        
+                        if not dt_cal: relatorio_erros.append(f"L.{linha}: Data inválida."); continue
                         try: inst = Instrumento.objects.get(tag=tag)
-                        except: 
-                            relatorio_erros.append(f"L.{linha}: Instrumento não cadastrado.")
-                            continue
+                        except: relatorio_erros.append(f"L.{linha}: Instrumento não cadastrado."); continue
 
-                        col_dt_apr = encontrar_coluna(['DATA APROVACAO', 'DATA VALIDACAO', 'AVALIACAO'])
-                        val_apr = converter_data(row.get(col_dt_apr)) if col_dt_apr else None
-                        dt_apr = val_apr if val_apr else dt_cal
+                        col_apr = finding_col(['DATA APROVACAO', 'DATA VALIDACAO', 'AVALIACAO']); dt_apr = conv_date(row.get(col_apr)) if col_apr else dt_cal
+                        col_cert = finding_col(['CERTIFICADO', 'N DOC'], evitar=['DATA']); num_cert = get_val(col_cert) or 'S/N'
                         
-                        col_cert = encontrar_coluna(['CERTIFICADO', 'N DOC'], evitar=['DATA'])
-                        num_cert = get_val_by_col(col_cert) or 'S/N'
-                        
-                        col_erro = encontrar_coluna(['ERRO', 'TENDENCIA'])
-                        col_inc = encontrar_coluna(['INCERTEZA', 'U'])
-                        col_tol = encontrar_coluna(['TOLERANCIA', 'CRITERIO', 'EMA'], evitar=['NOMINAL'])
-                        
-                        erro = get_float_by_col(col_erro)
-                        inc = get_float_by_col(col_inc)
-                        tol = get_float_by_col(col_tol)
+                        erro = conv_float(finding_col(['ERRO', 'TENDENCIA']))
+                        inc = conv_float(finding_col(['INCERTEZA', 'U']))
+                        tol = conv_float(finding_col(['TOLERANCIA', 'CRITERIO', 'EMA'], evitar=['NOMINAL']))
 
-                        col_resp = encontrar_coluna(['RESPONSAVEL', 'APROVADOR', 'ANALISE'])
-                        resp_txt = get_val_by_col(col_resp)
-                        col_forn = encontrar_coluna(['FORNECEDOR', 'LABORATORIO'])
-                        forn_txt = get_val_by_col(col_forn)
+                        resp = get_val(finding_col(['RESPONSAVEL', 'APROVADOR', 'ANALISE']))
+                        forn = get_val(finding_col(['FORNECEDOR', 'LABORATORIO']))
                         
-                        col_res = encontrar_coluna(['RESULTADO', 'STATUS', 'ANALISE RESULTADO'])
-                        res_excel = str(get_val_by_col(col_res) or '').upper()
+                        res_raw = str(get_val(finding_col(['RESULTADO', 'STATUS', 'ANALISE RESULTADO'])) or '').upper()
                         res = 'APROVADO'
-                        if 'REPROVADO' in res_excel: res = 'REPROVADO'
-                        elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
+                        if 'REPROVADO' in res_raw: res = 'REPROVADO'
+                        elif 'CONDICIONAL' in res_raw or 'RESTR' in res_raw: res = 'CONDICIONAL'
                         
-                        # TIPO e RBC
-                        val_tipo = 'EXTERNA' 
-                        if forn_txt and 'INTERNA' in str(forn_txt).upper(): val_tipo = 'INTERNA'
-                        
-                        col_rbc = encontrar_coluna(['RBC', 'SELO', 'ACREDITADO'])
-                        val_rbc = str(get_val_by_col(col_rbc) or '').upper()
-                        tem_rbc = True if val_rbc in ['SIM', 'S', 'YES', 'RBC'] else False
+                        tipo = 'INTERNA' if forn and 'INTERNA' in str(forn).upper() else 'EXTERNA'
+                        rbc_raw = str(get_val(finding_col(['RBC', 'SELO', 'ACREDITADO'])) or '').upper()
+                        rbc = True if rbc_raw in ['SIM', 'S', 'YES', 'RBC'] else False
 
-                        col_prox = encontrar_coluna(['PROXIMA', 'VENCIMENTO'])
-                        prox = converter_data(row.get(col_prox)) if col_prox else None
+                        col_prox = finding_col(['PROXIMA', 'VENCIMENTO'])
+                        prox = conv_date(row.get(col_prox)) if col_prox else None
                         if not prox and inst.frequencia_meses and dt_cal:
                             try: prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
-                            except: prox = None
+                            except: pass
 
                         obj, cr = HistoricoCalibracao.objects.update_or_create(
                             instrumento=inst, data_calibracao=dt_cal, numero_certificado=num_cert, 
                             defaults={
                                 'data_aprovacao': dt_apr, 'resultado': res, 'proxima_calibracao': prox, 
                                 'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 
-                                'responsavel': resp_txt, 'fornecedor': forn_txt,
-                                'tipo_calibracao': val_tipo, 'tem_selo_rbc': tem_rbc,
-                                'observacoes': get_val_by_col(encontrar_coluna(['OBSERVACOES', 'OBS']))
+                                'responsavel': resp, 'fornecedor': forn, 'tipo_calibracao': tipo, 'tem_selo_rbc': rbc,
+                                'observacoes': get_val(finding_col(['OBSERVACOES', 'OBS']))
                             }
                         )
-                        if erro is not None and inc is not None and tol is not None: obj.save()
+                        if erro is not None: obj.save()
                         if cr: count_new += 1
 
-                if relatorio_erros:
-                    msg = " | ".join(relatorio_erros[:3])
-                    messages.warning(request, f"Importados: {count_new}. Alertas: {msg}")
-                else:
-                    messages.success(request, f"Sucesso! {count_new} registros importados.")
+                if relatorio_erros: messages.warning(request, f"Importados: {count_new}. Alertas: {' | '.join(relatorio_erros[:3])}")
+                else: messages.success(request, f"Sucesso! {count_new} registros importados.")
                 return redirect('modulo_metrologia')
             except Exception as e: messages.error(request, f"Erro Crítico: {str(e)}")
     else: form = ImportacaoHistoricoForm()
@@ -426,27 +366,19 @@ def imp_padroes_view(request):
                             except: return None
                         codigo = get_val('CODIGO')
                         if not codigo: continue
-                        
                         dt_cal = get_date('DATA CALIBRACAO') or date.today()
                         dt_val = get_date('DATA VALIDADE') or (date.today() + timedelta(days=365))
-
                         Padrao.objects.update_or_create(
                             codigo=codigo,
-                            defaults={
-                                'descricao': get_val('DESCRICAO') or 'Padrão Importado',
-                                'numero_certificado': get_val('N CERTIFICADO') or 'S/N',
-                                'data_calibracao': dt_cal,
-                                'data_validade': dt_val,
-                                'ativo': True
-                            }
+                            defaults={'descricao': get_val('DESCRICAO') or 'Padrão', 'numero_certificado': get_val('N CERTIFICADO') or 'S/N', 'data_calibracao': dt_cal, 'data_validade': dt_val, 'ativo': True}
                         )
                         count += 1
-                messages.success(request, f"{count} Padrões/Kits importados!")
+                messages.success(request, f"{count} Padrões importados!")
                 return redirect('modulo_metrologia')
             except Exception as e: messages.error(request, f"Erro: {e}")
     else:
         form = ImportacaoPadroesForm()
-    return render(request, 'importar_historico.html', {'form': form, 'titulo': 'Importar Padrões/Kits', 'colaborador': get_colab(request)})
+    return render(request, 'importar_historico.html', {'form': form, 'titulo': 'Importar Padrões', 'colaborador': get_colab(request)})
 
 @login_required
 def imp_colab_view(request):
@@ -467,57 +399,44 @@ def imp_colab_view(request):
                                 for col in df.columns:
                                     if k in col and pd.notna(row[col]): return str(row[col]).strip()
                             return None
-
                         matricula = get_val(['MATRICULA', 'MAT', 'RE'])
                         if matricula: matricula = matricula.split('.')[0]
                         nome = get_val(['NOME', 'COLABORADOR', 'FUNCIONARIO'])
                         if not matricula or not nome: continue
-
-                        cpf_raw = get_val(['CPF', 'DOC'])
-                        cpf = re.sub(r'[^0-9]', '', cpf_raw) if cpf_raw else None
-
-                        setor_nome = get_val(['SETOR', 'DEPARTAMENTO', 'AREA'])
+                        cpf = re.sub(r'[^0-9]', '', get_val(['CPF', 'DOC'])) if get_val(['CPF', 'DOC']) else None
+                        setor_nome = get_val(['SETOR', 'DEPARTAMENTO'])
                         setor_obj = None
                         if setor_nome: setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
-
-                        cc_raw = get_val(['CENTRO DE CUSTO', 'CC', 'CUSTO'])
+                        
+                        cc_raw = get_val(['CENTRO DE CUSTO', 'CC'])
                         cc_obj = None
                         if cc_raw and setor_obj:
                             parts = cc_raw.split('-')
-                            c_code = parts[0].strip()
-                            c_desc = parts[1].strip() if len(parts) > 1 else "Importado"
+                            c_code = parts[0].strip(); c_desc = parts[1].strip() if len(parts) > 1 else "Importado"
                             cc_obj, _ = CentroCusto.objects.get_or_create(codigo=c_code, setor=setor_obj, defaults={'descricao': c_desc})
 
-                        turno_raw = str(get_val(['TURNO', 'HORARIO']) or 'ADM').upper()
                         turno = 'ADM'
-                        if '1' in turno_raw: turno = 'TURNO_1'
-                        elif '2' in turno_raw: turno = 'TURNO_2'
-                        elif '3' in turno_raw: turno = 'TURNO_3'
-                        elif '12' in turno_raw: turno = '12X36'
+                        t_raw = str(get_val(['TURNO']) or '').upper()
+                        if '1' in t_raw: turno = 'TURNO_1'
+                        elif '2' in t_raw: turno = 'TURNO_2'
+                        elif '3' in t_raw: turno = 'TURNO_3'
+                        elif '12' in t_raw: turno = '12X36'
 
-                        status_raw = str(get_val(['STATUS']) or 'ATIVO').upper()
-                        is_active = False if 'INATIVO' in status_raw or 'DEMITIDO' in status_raw else True
+                        status = str(get_val(['STATUS']) or 'ATIVO').upper()
+                        is_active = False if 'INATIVO' in status else True
+                        
                         sal_raw = get_val(['SALARIO'])
                         salario = float(sal_raw.replace(',', '.')) if sal_raw else None
 
                         Colaborador.objects.update_or_create(
                             matricula=matricula,
-                            defaults={
-                                'nome_completo': nome.upper(),
-                                'cpf': cpf,
-                                'cargo': get_val(['CARGO', 'FUNCAO']) or 'Não Informado',
-                                'grupo': get_val(['GRUPO', 'MACRO']) or 'Geral',
-                                'setor': setor_obj,
-                                'centro_custo': cc_obj,
-                                'turno': turno,
-                                'salario': salario,
-                                'is_active': is_active
-                            }
+                            defaults={'nome_completo': nome.upper(), 'cpf': cpf, 'cargo': get_val(['CARGO']) or 'Não Informado', 'grupo': get_val(['GRUPO']) or 'Geral', 'setor': setor_obj, 'centro_custo': cc_obj, 'turno': turno, 'salario': salario, 'is_active': is_active}
                         )
-                        count_new += 1
-                messages.success(request, f"RH Importado: {count_new} registros.")
+                        if count_upd: count_upd += 1
+                        else: count_new += 1
+                messages.success(request, f"RH Importado: {count_new} registros processados.")
                 return redirect('modulo_rh')
-            except Exception as e: messages.error(request, f"Erro na importação: {str(e)}")
+            except Exception as e: messages.error(request, f"Erro: {str(e)}")
     else: form = ImportacaoColaboradoresForm()
     return render(request, 'importar_colaboradores.html', {'form': form, 'colaborador': get_colab(request)})
 
