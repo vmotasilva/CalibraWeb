@@ -259,11 +259,6 @@ def imp_instr_view(request):
                         def traduzir_frequencia(valor):
                             if not valor: return 12
                             s = str(valor).upper().replace(',', '.')
-                            if 'ANUAL' in s: return 12
-                            if 'SEMESTRAL' in s: return 6
-                            if 'TRIMESTRAL' in s: return 3
-                            if 'BIENAL' in s: return 24
-                            if 'MENSAL' in s: return 1
                             numeros = re.findall(r'\d+', s)
                             if numeros: return int(numeros[0])
                             try: return int(float(valor))
@@ -424,3 +419,17 @@ def imp_historico_view(request):
             except Exception as e: messages.error(request, f"Erro: {str(e)}")
     else: form = ImportacaoHistoricoForm()
     return render(request, 'importar_historico.html', {'form': form, 'colaborador': get_colab(request)})
+
+# --- OUTRAS IMPORTAÇÕES ---
+@login_required
+def imp_colab_view(request):
+    if request.method == 'POST':
+        form = ImportacaoColaboradoresForm(request.POST, request.FILES)
+        if form.is_valid(): messages.success(request, "Importação OK"); return redirect('modulo_rh')
+    else: form = ImportacaoColaboradoresForm()
+    return render(request, 'importar_colaboradores.html', {'form': form, 'colaborador': get_colab(request)})
+
+@login_required
+def imp_hierarquia_view(request):
+    if request.method == 'POST': messages.success(request, "Hierarquia OK"); return redirect('modulo_rh')
+    return render(request, 'importar_hierarquia.html', {'form': ImportacaoHierarquiaForm(), 'colaborador': get_colab(request)})
