@@ -349,23 +349,21 @@ def imp_historico_view(request):
         if form.is_valid():
             try:
                 f = request.FILES['arquivo_excel']
-                # Tenta ler CSV ou Excel
                 try: df = pd.read_csv(f, sep=';', encoding='latin1') if f.name.endswith('.csv') else pd.read_excel(f)
                 except: f.seek(0); df = pd.read_csv(f, sep=',', encoding='utf-8')
 
-                # Padroniza colunas: Maiúsculas e sem espaços extras
                 df.columns = df.columns.str.strip().str.upper()
                 count_new = 0
+                relatorio_erros = [] # Lista para guardar os problemas
                 
                 with transaction.atomic():
-                    for _, row in df.iterrows():
+                    for index, row in df.iterrows():
+                        linha = index + 2 # Ajusta para bater com a linha do Excel (Cabeçalho é 1)
                         
-                        # --- HELPERS DE LEITURA ---
                         def get_val(k_list):
                             if isinstance(k_list, str): k_list = [k_list]
                             for key in k_list:
-                                if key in df.columns and pd.notna(row[key]): 
-                                    return str(row[key]).strip()
+                                if key in df.columns and pd.notna(row[key]): return str(row[key]).strip()
                             return None
                         
                         def get_date_val(k_list):
@@ -373,38 +371,41 @@ def imp_historico_view(request):
                             if not val or val == '-' or val == 'NaT': return None
                             try: return pd.to_datetime(val, dayfirst=True).date() 
                             except: return None
-
+                        
                         def get_float(k_list):
                             val = get_val(k_list)
                             if not val: return None
-                            # Limpa texto (ex: "0,05 bar" -> "0.05")
                             clean_val = re.sub(r'[^\d,.-]', '', val).replace(',', '.')
                             try: return float(clean_val)
                             except: return None
-                        
-                        # 1. IDENTIFICAÇÃO (Procura por TAG, CÓDIGO ou ID)
+
+                        # 1. VALIDAÇÃO DA TAG
                         tag = get_val(['TAG', 'CÓDIGO', 'CODIGO', 'IDENTIFICAÇÃO', 'INSTRUMENTO'])
+                        if not tag:
+                            relatorio_erros.append(f"Linha {linha}: Coluna TAG/CÓDIGO vazia ou não encontrada.")
+                            continue
+
+                        # 2. VALIDAÇÃO DA DATA
                         dt_cal = get_date_val(['DATA CALIBRAÇÃO', 'DATA DA CALIBRAÇÃO', 'DATA CALIB', 'CALIBRAÇÃO', 'REALIZADO EM'])
+                        if not dt_cal:
+                            relatorio_erros.append(f"Linha {linha} ({tag}): Data de Calibração inválida ou não encontrada.")
+                            continue
                         
-                        if not tag or not dt_cal: continue
+                        # 3. VALIDAÇÃO DO INSTRUMENTO NO BANCO
+                        try: 
+                            inst = Instrumento.objects.get(tag=tag)
+                        except Instrumento.DoesNotExist:
+                            relatorio_erros.append(f"Linha {linha}: Instrumento '{tag}' não existe no cadastro. Cadastre-o primeiro.")
+                            continue
                         
-                        # Busca o instrumento no banco
-                        try: inst = Instrumento.objects.get(tag=tag)
-                        except: continue
-                        
-                        # 2. DADOS DO CERTIFICADO
-                        num_cert = get_val(['N CERTIFICADO', 'CERTIFICADO', 'Nº CERTIFICADO', 'N DOC']) or 'S/N'
+                        # Se passou daqui, tenta salvar
                         dt_apr = get_date_val(['DATA APROVAÇÃO', 'DATA VALIDAÇÃO', 'APROVADO EM']) or dt_cal
+                        num_cert = get_val(['N CERTIFICADO', 'CERTIFICADO', 'Nº CERTIFICADO', 'N DOC']) or 'S/N'
                         
-                        # 3. DADOS MATEMÁTICOS (Coração do Cálculo)
-                        # Tenta achar colunas comuns em planilhas de controle
                         erro = get_float(['ERRO', 'ERRO ENCONTRADO', 'TENDÊNCIA', 'TENDENCIA', 'DESVIO'])
                         inc = get_float(['INCERTEZA', 'INCERTEZA EXPANDIDA', 'U', 'INCERTEZA (U)'])
-                        
-                        # Tolerância pode ter vários nomes
                         tol = get_float(['TOLERANCIA', 'TOLERÂNCIA', 'CRITÉRIO', 'CRITERIO DE ACEITAÇÃO', 'EMA', 'ERRO MÁXIMO', 'TOLERÂNCIA DO PROCESSO'])
-
-                        # 4. RESPONSÁVEL PELA VALIDAÇÃO
+                        
                         nome_resp = get_val(['RESPONSÁVEL', 'RESPONSAVEL', 'APROVADOR', 'VALIDADO POR', 'EXECUTANTE'])
                         resp_obj = None
                         if nome_resp:
@@ -414,44 +415,40 @@ def imp_historico_view(request):
                                 Q(matricula=nome_resp)
                             ).first()
 
-                        # 5. RESULTADO (Lê da planilha ou define padrão)
                         res_excel = str(get_val(['RESULTADO', 'STATUS', 'SITUAÇÃO', 'PARECER']) or '').upper()
                         res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
                         elif 'CONDICIONAL' in res_excel or 'CORRE' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
                         
-                        # 6. PRÓXIMA CALIBRAÇÃO (Lê da planilha ou Calcula)
                         prox = get_date_val(['PRÓXIMA CALIBRAÇÃO', 'VENCIMENTO', 'DATA VENCIMENTO', 'VALIDADE'])
                         if not prox and inst.frequencia_meses:
                             prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
                         
-                        # 7. SALVA NO BANCO
                         obj, cr = HistoricoCalibracao.objects.update_or_create(
                             instrumento=inst, 
                             data_calibracao=dt_cal, 
                             numero_certificado=num_cert, 
                             defaults={
-                                'data_aprovacao': dt_apr,
-                                'resultado': res, 
-                                'proxima_calibracao': prox, 
-                                'erro_encontrado': erro,
-                                'incerteza': inc,
-                                'tolerancia_usada': tol,
-                                'responsavel': resp_obj,
-                                'observacoes': get_val(['OBSERVAÇÕES', 'OBS', 'COMENTÁRIOS'])
+                                'data_aprovacao': dt_apr, 'resultado': res, 'proxima_calibracao': prox, 
+                                'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 
+                                'responsavel': resp_obj, 'observacoes': get_val(['OBSERVAÇÕES', 'OBS', 'COMENTÁRIOS'])
                             }
                         )
-                        
-                        # Se tiver números, força o cálculo matemático (sobrescreve o status se necessário)
-                        if erro is not None and inc is not None and tol is not None:
-                            obj.save()
-
+                        if erro is not None and inc is not None and tol is not None: obj.save()
                         if cr: count_new += 1
-                        
-                        # O Signal atualizará as datas do instrumento automaticamente
 
-                messages.success(request, f"Processamento Concluído: {count_new} registros novos importados."); return redirect('modulo_metrologia')
-            except Exception as e: messages.error(request, f"Erro no processamento: {str(e)}")
+                # MENSAGEM FINAL INTELIGENTE
+                if relatorio_erros:
+                    # Mostra os primeiros 3 erros para não poluir a tela
+                    msg_erro = " | ".join(relatorio_erros[:3])
+                    if len(relatorio_erros) > 3: msg_erro += f" ... e mais {len(relatorio_erros)-3} erros."
+                    messages.warning(request, f"Importados: {count_new}. ERROS: {msg_erro}")
+                else:
+                    messages.success(request, f"Sucesso! {count_new} registros importados sem erros.")
+                
+                return redirect('modulo_metrologia')
+
+            except Exception as e: messages.error(request, f"Erro Crítico: {str(e)}")
     else: form = ImportacaoHistoricoForm()
     return render(request, 'importar_historico.html', {'form': form, 'colaborador': get_colab(request)})
 
