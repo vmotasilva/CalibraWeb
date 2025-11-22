@@ -337,7 +337,7 @@ def imp_instr_view(request):
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
 # ==============================================================================
-# IMPORTAÇÃO DE HISTÓRICO (BLINDADA: DETECTA SEPARADOR E FAZ CÁLCULOS)
+# IMPORTAÇÃO DE HISTÓRICO (COM DEBUG DE COLUNAS)
 # ==============================================================================
 @login_required
 def imp_historico_view(request):
@@ -346,30 +346,44 @@ def imp_historico_view(request):
         if form.is_valid():
             try:
                 f = request.FILES['arquivo_excel']
+                df = None
                 
-                # 1. LEITURA INTELIGENTE (Auto-detecta separador CSV)
+                # 1. TENTATIVAS DE LEITURA (Força Bruta para descobrir o formato)
                 if f.name.endswith('.csv'):
+                    # Tentativa A: Padrão Brasileiro (Ponto e vírgula + Latin1)
                     try:
-                        # engine='python' e sep=None faz o pandas adivinhar se é ; ou ,
-                        df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
-                    except:
-                        # Tenta utf-8 se latin1 falhar
                         f.seek(0)
-                        df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
+                        df = pd.read_csv(f, sep=';', encoding='latin1')
+                    except: pass
+                    
+                    # Tentativa B: Padrão Internacional (Vírgula + UTF-8) - Se A falhou ou veio 1 coluna
+                    if df is None or len(df.columns) < 2:
+                        try:
+                            f.seek(0)
+                            df = pd.read_csv(f, sep=',', encoding='utf-8')
+                        except: pass
+
+                    # Tentativa C: Motor Python (Adivinhação)
+                    if df is None or len(df.columns) < 2:
+                        try:
+                            f.seek(0)
+                            df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
+                        except: pass
                 else:
-                    # Lê Excel normal
+                    # Excel (.xlsx)
                     df = pd.read_excel(f)
 
-                # 2. LIMPEZA DE CABEÇALHO (Remove acentos e espaços)
-                # Isso garante que "DATA CALIBRAÇÃO" vire "DATA CALIBRACAO"
-                df.columns = df.columns.str.strip().str.upper()
-                df.columns = df.columns.str.replace('Ç', 'C').str.replace('Ã', 'A').str.replace('Õ', 'O').str.replace('Á', 'A').str.replace('É', 'E')
-                
-                # Verificação básica de segurança
-                if len(df.columns) < 2:
-                    messages.error(request, f"Erro de Leitura: O sistema leu apenas 1 coluna. Verifique o arquivo CSV.")
+                # Verifica se conseguiu ler algo útil
+                if df is None or len(df.columns) < 2:
+                    cols_lidas = list(df.columns) if df is not None else "Nenhuma"
+                    messages.error(request, f"Erro de Leitura: O sistema não reconheceu as colunas. Colunas encontradas: {cols_lidas}. Verifique se é CSV separado por ponto-e-vírgula.")
                     return redirect('importar_historico')
 
+                # 2. LIMPEZA DE CABEÇALHO
+                df.columns = df.columns.str.strip().str.upper()
+                # Remove acentos e caracteres estranhos
+                df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
+                
                 count_new = 0
                 relatorio_erros = []
 
@@ -377,110 +391,91 @@ def imp_historico_view(request):
                     for index, row in df.iterrows():
                         linha = index + 2
                         
-                        # --- HELPERS DE LEITURA ---
+                        # --- HELPERS ---
                         def get_val(k_list):
                             if isinstance(k_list, str): k_list = [k_list]
                             for key in k_list:
-                                # Normaliza a chave de busca para bater com a limpeza feita lá em cima
-                                key_clean = key.upper().replace('Ç', 'C').replace('Ã', 'A').replace('Õ', 'O').replace('Á', 'A').replace('É', 'E')
-                                if key_clean in df.columns and pd.notna(row[key_clean]): 
-                                    return str(row[key_clean]).strip()
+                                # Normaliza a chave de busca (remove acentos)
+                                key_clean = key.upper().encode('ascii', 'ignore').decode('utf-8')
+                                # Procura coluna exata ou coluna que CONTÉM o nome (ex: "TAG DO INSTRUMENTO")
+                                for col in df.columns:
+                                    if key_clean == col or key_clean in col:
+                                        if pd.notna(row[col]): return str(row[col]).strip()
                             return None
                         
                         def get_date_val(k_list):
                             val = get_val(k_list)
                             if not val or val == '-' or val == 'NaT': return None
                             try: return pd.to_datetime(val, dayfirst=True).date() 
-                            except: return None
+                            except: 
+                                try:
+                                    return (datetime(1899, 12, 30) + timedelta(days=float(val))).date()
+                                except: return None
 
                         def get_float(k_list):
                             val = get_val(k_list)
                             if not val: return None
-                            # Limpa texto (ex: "0,05 bar" -> "0.05")
                             clean_val = re.sub(r'[^\d,.-]', '', val).replace(',', '.')
                             try: return float(clean_val)
                             except: return None
                         
-                        # 1. IDENTIFICAÇÃO
+                        # --- LÓGICA PRINCIPAL ---
+                        # Busca por TAG, CODIGO, etc.
                         tag = get_val(['TAG', 'CODIGO', 'IDENTIFICACAO', 'INSTRUMENTO'])
+                        
                         if not tag: 
-                            # Pula linha vazia sem avisar erro (comum em final de arquivo)
-                            if not any(pd.notna(row)): continue
-                            relatorio_erros.append(f"L.{linha}: Coluna TAG vazia.")
+                            if any(pd.notna(row)): relatorio_erros.append(f"L.{linha}: Coluna TAG vazia ou não identificada.")
                             continue
                         
-                        # 2. DATA
-                        dt_cal = get_date_val(['DATA CALIBRACAO', 'DATA DA CALIBRACAO', 'CALIBRACAO', 'REALIZADO EM'])
+                        dt_cal = get_date_val(['DATA CALIBRACAO', 'DATA DA CALIBRACAO', 'CALIBRACAO'])
                         if not dt_cal:
                             relatorio_erros.append(f"L.{linha} ({tag}): Data inválida.")
                             continue
                         
-                        # 3. BUSCA INSTRUMENTO
                         try: inst = Instrumento.objects.get(tag=tag)
                         except: 
-                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não cadastrado.")
+                            relatorio_erros.append(f"L.{linha}: Instrumento '{tag}' não existe no sistema.")
                             continue
                         
-                        # 4. DADOS DO CERTIFICADO
                         dt_apr = get_date_val(['DATA APROVACAO', 'DATA VALIDACAO', 'APROVADO EM']) or dt_cal
                         num_cert = get_val(['N CERTIFICADO', 'CERTIFICADO', 'N DOC']) or 'S/N'
                         
-                        # 5. DADOS MATEMÁTICOS (Lê colunas extras se existirem)
-                        erro = get_float(['ERRO', 'ERRO ENCONTRADO', 'TENDENCIA'])
-                        inc = get_float(['INCERTEZA', 'U', 'INCERTEZA (U)'])
-                        tol = get_float(['TOLERANCIA', 'CRITERIO', 'EMA', 'ERRO MAXIMO'])
-
-                        # 6. RESPONSÁVEL
-                        nome_resp = get_val(['RESPONSAVEL', 'APROVADOR', 'EXECUTANTE'])
+                        erro = get_float(['ERRO', 'TENDENCIA'])
+                        inc = get_float(['INCERTEZA', 'U'])
+                        tol = get_float(['TOLERANCIA', 'CRITERIO', 'EMA'])
+                        
+                        nome_resp = get_val(['RESPONSAVEL', 'APROVADOR'])
                         resp_obj = None
                         if nome_resp:
                             resp_obj = Colaborador.objects.filter(
-                                Q(nome_completo__iexact=nome_resp) | 
-                                Q(nome_completo__icontains=nome_resp) |
-                                Q(matricula=nome_resp)
+                                Q(nome_completo__iexact=nome_resp) | Q(nome_completo__icontains=nome_resp) | Q(matricula=nome_resp)
                             ).first()
 
-                        # 7. RESULTADO (Híbrido: Manual ou Automático)
-                        res_excel = str(get_val(['RESULTADO', 'STATUS', 'SITUAÇÃO', 'PARECER']) or '').upper()
-                        res = 'APROVADO' # Padrão inicial
-                        
-                        # Se o Excel já diz Reprovado, respeita
+                        # Resultado
+                        res_excel = str(get_val(['RESULTADO', 'STATUS']) or '').upper()
+                        res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
-                        elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
+                        elif 'CONDICIONAL' in res_excel: res = 'CONDICIONAL'
                         
-                        # 8. PRÓXIMA CALIBRAÇÃO
-                        prox = get_date_val(['PROXIMA CALIBRACAO', 'VENCIMENTO', 'VALIDADE'])
+                        prox = get_date_val(['PROXIMA CALIBRACAO', 'VENCIMENTO'])
                         if not prox and inst.frequencia_meses:
                             prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
                         
-                        # 9. SALVAR
                         obj, cr = HistoricoCalibracao.objects.update_or_create(
-                            instrumento=inst, 
-                            data_calibracao=dt_cal, 
-                            numero_certificado=num_cert, 
+                            instrumento=inst, data_calibracao=dt_cal, numero_certificado=num_cert, 
                             defaults={
-                                'data_aprovacao': dt_apr,
-                                'resultado': res, 
-                                'proxima_calibracao': prox, 
-                                'erro_encontrado': erro,
-                                'incerteza': inc,
-                                'tolerancia_usada': tol,
-                                'responsavel': resp_obj,
-                                'observacoes': get_val(['OBSERVACOES', 'OBS'])
+                                'data_aprovacao': dt_apr, 'resultado': res, 'proxima_calibracao': prox, 
+                                'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 
+                                'responsavel': resp_obj, 'observacoes': get_val(['OBSERVACOES', 'OBS'])
                             }
                         )
-                        
-                        # Se importou os números, força o save() para rodar o cálculo matemático do Model
-                        if erro is not None and inc is not None and tol is not None:
-                            obj.save()
-
+                        if erro is not None and inc is not None and tol is not None: obj.save()
                         if cr: count_new += 1
-                        # O Signal no models.py atualiza as datas do instrumento automaticamente
 
                 if relatorio_erros:
-                    msg = " | ".join(relatorio_erros[:5])
-                    if len(relatorio_erros) > 5: msg += f" ... e mais {len(relatorio_erros)-5}."
-                    messages.warning(request, f"Importados: {count_new}. ALERTA: {msg}")
+                    msg = " | ".join(relatorio_erros[:3])
+                    # SE FALHAR, MOSTRA QUAIS COLUNAS ELE LEU PARA AJUDAR NO DEBUG
+                    messages.warning(request, f"Importados: {count_new}. Problemas: {msg}. (Colunas lidas no arquivo: {list(df.columns)})")
                 else:
                     messages.success(request, f"Sucesso! {count_new} registros importados.")
                 
