@@ -249,7 +249,16 @@ def dl_template_instr(request):
     df = pd.DataFrame(columns=colunas)
     r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_instrumentos_v2.xlsx"'; df.to_excel(r, index=False); return r
 def dl_template_colab(request):
-    df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO'], 'MAT_LIDER': ['999']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
+    # Template Atualizado com colunas de Liderança, Supervisor e Gerente
+    df = pd.DataFrame({
+        'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 
+        'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO'], 
+        'MAT_LIDER': ['999'], 'MAT_SUPERVISOR': ['888'], 'MAT_GERENTE': ['777']
+    })
+    b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0)
+    r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
+
 def dl_template_hierarquia(request):
     df = pd.DataFrame({'SETOR': ['MANUTENCAO'], 'TURNO': ['TURNO 1'], 'MAT_LIDER': ['1001'], 'MAT_SUPERVISOR': [''], 'MAT_GERENTE': [''], 'MAT_DIRETOR': ['']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_hierarquia.xlsx"'; return r
 def dl_template_historico(request):
@@ -515,7 +524,7 @@ def imp_padroes_view(request):
         form = ImportacaoPadroesForm()
     return render(request, 'importar_historico.html', {'form': form, 'titulo': 'Importar Padrões', 'colaborador': get_colab(request)})
 
-# --- IMPORTAÇÃO COLABORADORES (MODIFICADA PARA HIERARQUIA) ---
+# --- IMPORTAÇÃO COLABORADORES (ATUALIZADA PARA LIDER/SUPERVISOR/GERENTE) ---
 @login_required
 def imp_colab_view(request):
     if request.method == 'POST':
@@ -598,7 +607,7 @@ def imp_colab_view(request):
                         else: count_upd += 1
 
                     # --- PASSADA 2: VINCULAR HIERARQUIA (LIDERES) ---
-                    # Re-itera o DataFrame agora que todos os colaboradores (Líderes e Liderados) existem no DB.
+                    # Lógica em Cascata: Tenta Lider -> Supervisor -> Gerente
                     for index, row in df.iterrows():
                         def get_val_h(keywords):
                             for k in keywords:
@@ -609,18 +618,32 @@ def imp_colab_view(request):
                         matricula = get_val_h(['MATRICULA', 'MAT', 'RE'])
                         if matricula: matricula = matricula.split('.')[0]
 
-                        mat_lider = get_val_h(['MATRICULA_LIDER', 'MAT_LIDER', 'LIDER', 'COD_LIDER'])
-                        if mat_lider: mat_lider = mat_lider.split('.')[0]
+                        # Tenta encontrar o "Chefe" na ordem de proximidade
+                        mat_chefe = None
+                        
+                        # 1. Tenta Líder Direto
+                        cand_lider = get_val_h(['MAT_LIDER', 'LIDER', 'COD_LIDER'])
+                        if cand_lider: mat_chefe = cand_lider.split('.')[0]
+                        
+                        # 2. Se não tem Líder, tenta Supervisor
+                        if not mat_chefe:
+                            cand_super = get_val_h(['MAT_SUPERVISOR', 'SUPERVISOR'])
+                            if cand_super: mat_chefe = cand_super.split('.')[0]
+                        
+                        # 3. Se não tem Supervisor, tenta Gerente
+                        if not mat_chefe:
+                            cand_gerente = get_val_h(['MAT_GERENTE', 'GERENTE'])
+                            if cand_gerente: mat_chefe = cand_gerente.split('.')[0]
 
-                        if matricula and mat_lider and matricula != mat_lider:
+                        if matricula and mat_chefe and matricula != mat_chefe:
                             try:
                                 colab = Colaborador.objects.get(matricula=matricula)
-                                lider = Colaborador.objects.get(matricula=mat_lider)
+                                lider = Colaborador.objects.get(matricula=mat_chefe)
                                 colab.lider = lider
                                 colab.save(update_fields=['lider'])
                                 count_lider += 1
                             except Colaborador.DoesNotExist:
-                                # Se a matrícula do líder não foi encontrada na base, ignoramos.
+                                # Se a matrícula do chefe não foi encontrada na base, ignoramos.
                                 pass
 
                 messages.success(request, f"RH: {count_new} Novos, {count_upd} Atu, {count_lider} Vínculos Hierárquicos.")
