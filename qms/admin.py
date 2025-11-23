@@ -10,7 +10,7 @@ from .models import (
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento, 
     Setor, CentroCusto, HierarquiaSetor,
     Procedimento, RegistroTreinamento, Ferias, Ocorrencia, PacoteTreinamento, DocumentoPessoal,
-    UnidadeMedida, CategoriaInstrumento, FaixaMedicao, Padrao # <--- Importei Padrao
+    UnidadeMedida, CategoriaInstrumento, FaixaMedicao, Padrao 
 )
 
 class CentroCustoInline(admin.TabularInline): 
@@ -55,15 +55,23 @@ class SetorPorGrupoFilter(admin.SimpleListFilter):
 class ColaboradorAdmin(admin.ModelAdmin):
     def get_setor_nome(self, obj): return obj.setor.nome if obj.setor else "-"
     def get_cc_code(self, obj): return obj.centro_custo.codigo if obj.centro_custo else "-"
-    list_display = ('matricula', 'cpf', 'nome_completo', 'cargo', 'grupo', 'get_setor_nome', 'salario', 'em_ferias', 'is_active')
+    
+    # ADICIONADO 'lider' NA LISTAGEM:
+    list_display = ('matricula', 'cpf', 'nome_completo', 'cargo', 'lider', 'grupo', 'get_setor_nome', 'salario', 'em_ferias', 'is_active')
+    
     search_fields = ('matricula', 'cpf', 'nome_completo', 'cargo')
     list_filter = ('is_active', 'em_ferias', 'grupo', SetorPorGrupoFilter, 'turno')
-    autocomplete_fields = ['setor', 'centro_custo'] 
+    
+    # ADICIONADO 'lider' NO AUTOCOMPLETE (Para não carregar lista gigante):
+    autocomplete_fields = ['setor', 'centro_custo', 'lider'] 
+    
     filter_horizontal = ('pacotes_treinamento',)
     inlines = [FeriasInline, OcorrenciaInline, DocumentoPessoalInline, TreinamentoInline]
+    
     fieldsets = (
         ("Identificação", {'fields': (('matricula', 'cpf'), 'nome_completo')}),
-        ("Lotação e Cargo", {'fields': (('cargo', 'salario'), ('grupo', 'turno'), ('setor', 'centro_custo'))}),
+        # ADICIONADO 'lider' NO FORMULÁRIO DE EDIÇÃO:
+        ("Lotação e Cargo", {'fields': (('cargo', 'salario'), 'lider', ('grupo', 'turno'), ('setor', 'centro_custo'))}),
         ("Treinamentos", {'fields': ('pacotes_treinamento',)}),
         ("Controle", {'fields': ('is_active', 'em_ferias')})
     )
