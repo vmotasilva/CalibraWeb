@@ -6,7 +6,7 @@ import re
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction, IntegrityError, models
@@ -43,6 +43,23 @@ def excel_date_to_datetime(serial):
         serial_float = float(serial)
         return (datetime(1899, 12, 30) + timedelta(days=serial_float)).date()
     except: return None
+
+# --- NOVA FUNÇÃO: RECURSIVIDADE HIERÁRQUICA ---
+def get_all_subordinates(colaborador):
+    """
+    Retorna um SET com os IDs de todos os subordinados (diretos e indiretos)
+    de um colaborador, descendo toda a árvore hierárquica.
+    """
+    subordinados = set()
+    # 'liderados' é o related_name definido no models.py
+    diretos = colaborador.liderados.all()
+    
+    for direto in diretos:
+        subordinados.add(direto.id)
+        # Recursividade: Pega os liderados deste liderado
+        subordinados.update(get_all_subordinates(direto))
+    
+    return subordinados
 
 # ==============================================================================
 # VIEWS DE TELA (DASHBOARD E MÓDULOS)
@@ -84,16 +101,33 @@ def modulo_metrologia_view(request):
 def modulo_rh_view(request):
     colab = get_colab(request)
     
-    # Regra de visualização de Salário
+    # --- LÓGICA DE VISÃO DE TÚNEL ---
+    funcionarios_visiveis = Colaborador.objects.none()
     can_see_salary = False
-    if request.user.is_superuser: can_see_salary = True
+
+    if request.user.is_superuser:
+        # Superusuário vê TUDO
+        funcionarios_visiveis = Colaborador.objects.all().order_by('nome_completo')
+        can_see_salary = True
     elif colab:
-        if 'GERENTE' in str(colab.cargo).upper(): can_see_salary = True
-        if HierarquiaSetor.objects.filter(gerente=colab).exists(): can_see_salary = True
+        # Verifica se é do RH (Opcional: RH costuma ver tudo)
+        if colab.setor and 'RH' in colab.setor.nome.upper():
+            funcionarios_visiveis = Colaborador.objects.all().order_by('nome_completo')
+            can_see_salary = True
+        else:
+            # Usuário Comum ou Gestor: Vê apenas a si mesmo e seus subordinados
+            ids_permitidos = get_all_subordinates(colab)
+            ids_permitidos.add(colab.id) # Inclui o próprio usuário
+            
+            funcionarios_visiveis = Colaborador.objects.filter(id__in=ids_permitidos).order_by('nome_completo')
+            
+            # Regra de Salário mantida + Hierarquia
+            if 'GERENTE' in str(colab.cargo).upper(): can_see_salary = True
+            if HierarquiaSetor.objects.filter(gerente=colab).exists(): can_see_salary = True
 
     ctx = {
         'colaborador': colab, 
-        'funcionarios': Colaborador.objects.all().order_by('nome_completo'),
+        'funcionarios': funcionarios_visiveis,
         'setores': Setor.objects.all().order_by('nome'),      # Essencial para o filtro
         'centros': CentroCusto.objects.all().order_by('codigo'), # Essencial para o filtro
         'can_see_salary': can_see_salary,
@@ -106,6 +140,26 @@ def detalhe_colaborador_view(request, colab_id):
     usuario_logado = get_colab(request)
     alvo = get_object_or_404(Colaborador, id=colab_id)
     
+    # --- SEGURANÇA: VERIFICA SE PODE VER ESTE PERFIL ---
+    if not request.user.is_superuser:
+        permitido = False
+        if usuario_logado:
+            # 1. É o próprio usuário?
+            if usuario_logado.id == alvo.id: 
+                permitido = True
+            # 2. É do RH?
+            elif usuario_logado.setor and 'RH' in usuario_logado.setor.nome.upper():
+                permitido = True
+            else:
+                # 3. É um subordinado (direto ou indireto)?
+                meus_subordinados = get_all_subordinates(usuario_logado)
+                if alvo.id in meus_subordinados:
+                    permitido = True
+        
+        if not permitido:
+            messages.error(request, "Acesso Negado: Você não tem permissão para visualizar este colaborador.")
+            return redirect('modulo_rh')
+
     # Permissão de Salário
     can_see_salary = False
     if request.user.is_superuser: can_see_salary = True
@@ -125,13 +179,31 @@ def detalhe_colaborador_view(request, colab_id):
     }
     return render(request, 'detalhe_colaborador.html', ctx)
 
-# --- VIEW DE EDIÇÃO (ADICIONADA AGORA) ---
+# --- VIEW DE EDIÇÃO ---
 @login_required
 def editar_colaborador_view(request, colab_id):
     usuario_logado = get_colab(request)
     alvo = get_object_or_404(Colaborador, id=colab_id)
     
-    # Aqui você pode adicionar verificação de permissão se quiser (ex: só gerente/RH)
+    # --- SEGURANÇA: VERIFICA SE PODE EDITAR ---
+    if not request.user.is_superuser:
+        permitido = False
+        if usuario_logado:
+            # RH pode editar
+            if usuario_logado.setor and 'RH' in usuario_logado.setor.nome.upper():
+                permitido = True
+            else:
+                # Gestor pode editar subordinados (mas não a si mesmo, geralmente, ou sim?)
+                # Vamos assumir que ele pode editar subordinados
+                meus_subordinados = get_all_subordinates(usuario_logado)
+                if alvo.id in meus_subordinados:
+                    permitido = True
+                # Se quiser permitir editar o próprio perfil, descomente abaixo:
+                # if alvo.id == usuario_logado.id: permitido = True 
+
+        if not permitido:
+            messages.error(request, "Acesso Negado para edição.")
+            return redirect('modulo_rh')
     
     if request.method == 'POST':
         form = ColaboradorForm(request.POST, instance=alvo)
