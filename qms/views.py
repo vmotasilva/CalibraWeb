@@ -249,7 +249,7 @@ def dl_template_instr(request):
     df = pd.DataFrame(columns=colunas)
     r = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_instrumentos_v2.xlsx"'; df.to_excel(r, index=False); return r
 def dl_template_colab(request):
-    df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
+    df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO'], 'MAT_LIDER': ['999']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_colaboradores.xlsx"'; return r
 def dl_template_hierarquia(request):
     df = pd.DataFrame({'SETOR': ['MANUTENCAO'], 'TURNO': ['TURNO 1'], 'MAT_LIDER': ['1001'], 'MAT_SUPERVISOR': [''], 'MAT_GERENTE': [''], 'MAT_DIRETOR': ['']}); b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = 'attachment; filename="template_hierarquia.xlsx"'; return r
 def dl_template_historico(request):
@@ -515,6 +515,7 @@ def imp_padroes_view(request):
         form = ImportacaoPadroesForm()
     return render(request, 'importar_historico.html', {'form': form, 'titulo': 'Importar Padrões', 'colaborador': get_colab(request)})
 
+# --- IMPORTAÇÃO COLABORADORES (MODIFICADA PARA HIERARQUIA) ---
 @login_required
 def imp_colab_view(request):
     if request.method == 'POST':
@@ -529,31 +530,27 @@ def imp_colab_view(request):
                 # 2. Limpeza
                 df.columns = df.columns.str.strip().str.upper()
                 df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
-                count_new = 0; count_upd = 0
+                count_new = 0; count_upd = 0; count_lider = 0
                 
                 with transaction.atomic():
+                    # --- PASSADA 1: CRIAR OU ATUALIZAR COLABORADORES ---
                     for index, row in df.iterrows():
-                        # Helpers
                         def get_val(keywords):
                             for k in keywords:
                                 for col in df.columns:
-                                    # Busca parcial
                                     if k in col and pd.notna(row[col]): return str(row[col]).strip()
                             return None
 
                         matricula = get_val(['MATRICULA', 'MAT', 'RE'])
-                        # Tira .0 se vier float
                         if matricula: matricula = matricula.split('.')[0]
                         
                         nome = get_val(['NOME', 'COLABORADOR', 'FUNCIONARIO'])
                         if not matricula or not nome: continue
 
-                        # CORREÇÃO DO CPF DUPLICADO (00)
                         cpf_raw = get_val(['CPF', 'DOC'])
                         cpf = None
                         if cpf_raw:
                             limpo = re.sub(r'[^0-9]', '', str(cpf_raw))
-                            # Só salva se tiver 11 dígitos e não for tudo zero (00 ou 0000...)
                             if len(limpo) == 11 and limpo != '00000000000' and limpo != '00':
                                 cpf = limpo
 
@@ -600,7 +597,33 @@ def imp_colab_view(request):
                         if created: count_new += 1
                         else: count_upd += 1
 
-                messages.success(request, f"RH Importado: {count_new} Novos, {count_upd} Atualizados.")
+                    # --- PASSADA 2: VINCULAR HIERARQUIA (LIDERES) ---
+                    # Re-itera o DataFrame agora que todos os colaboradores (Líderes e Liderados) existem no DB.
+                    for index, row in df.iterrows():
+                        def get_val_h(keywords):
+                            for k in keywords:
+                                for col in df.columns:
+                                    if k in col and pd.notna(row[col]): return str(row[col]).strip()
+                            return None
+
+                        matricula = get_val_h(['MATRICULA', 'MAT', 'RE'])
+                        if matricula: matricula = matricula.split('.')[0]
+
+                        mat_lider = get_val_h(['MATRICULA_LIDER', 'MAT_LIDER', 'LIDER', 'COD_LIDER'])
+                        if mat_lider: mat_lider = mat_lider.split('.')[0]
+
+                        if matricula and mat_lider and matricula != mat_lider:
+                            try:
+                                colab = Colaborador.objects.get(matricula=matricula)
+                                lider = Colaborador.objects.get(matricula=mat_lider)
+                                colab.lider = lider
+                                colab.save(update_fields=['lider'])
+                                count_lider += 1
+                            except Colaborador.DoesNotExist:
+                                # Se a matrícula do líder não foi encontrada na base, ignoramos.
+                                pass
+
+                messages.success(request, f"RH: {count_new} Novos, {count_upd} Atu, {count_lider} Vínculos Hierárquicos.")
                 return redirect('modulo_rh')
             except Exception as e: messages.error(request, f"Erro na importação: {str(e)}")
     else: form = ImportacaoColaboradoresForm()
