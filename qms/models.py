@@ -41,14 +41,22 @@ class Colaborador(models.Model):
     matricula = models.CharField(max_length=20, unique=True, verbose_name="Matrícula")
     cpf = models.CharField(max_length=14, unique=True, null=True, blank=True, verbose_name="CPF")
     nome_completo = models.CharField(max_length=100, verbose_name="Nome Completo")
-    cargo = models.CharField(max_length=100, verbose_name="Cargo/Função")
+    cargo = models.CharField(max_length=100, null=True, blank=True)
     grupo = models.CharField(max_length=50, verbose_name="Grupo (Macro)")
     setor = models.ForeignKey(Setor, on_delete=models.SET_NULL, null=True, verbose_name="Setor")
     centro_custo = models.ForeignKey(CentroCusto, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Centro de Custo")
     turno = models.CharField(max_length=20, choices=TURNOS_CHOICES, default='ADM', verbose_name="Turno")
     salario = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, verbose_name="Salário (R$)")
     em_ferias = models.BooleanField(default=False, verbose_name="Está de Férias?")
-    
+    lider = models.ForeignKey(
+        'self',                           
+        on_delete=models.SET_NULL,        
+        null=True, 
+        blank=True, 
+        related_name='liderados',         
+        verbose_name='Líder/Supervisor Direto'
+    )
+
     pacotes_treinamento = models.ManyToManyField('PacoteTreinamento', blank=True, verbose_name="Pacotes Atribuídos", related_name="colaboradores")
     is_active = models.BooleanField(default=True, verbose_name="Colaborador Ativo (RH)")
     criado_em = models.DateTimeField(auto_now_add=True)
