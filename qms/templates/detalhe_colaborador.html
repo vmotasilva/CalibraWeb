@@ -50,6 +50,12 @@
                             <span class="text-muted">Centro de Custo:</span>
                             <span>{{ alvo.centro_custo.codigo|default:"-" }}</span>
                         </li>
+                        <!-- CAMPO ADICIONADO: LÍDER IMEDIATO -->
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Líder Imediato:</span>
+                            <strong>{{ alvo.lider.nome_completo|default:"-" }}</strong>
+                        </li>
+                        <!-- FIM DO CAMPO ADICIONADO -->
                         <li class="list-group-item d-flex justify-content-between">
                             <span class="text-muted">Turno:</span>
                             <span class="badge bg-secondary">{{ alvo.get_turno_display }}</span>
