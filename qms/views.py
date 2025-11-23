@@ -105,10 +105,12 @@ def modulo_rh_view(request):
     funcionarios_visiveis = Colaborador.objects.none()
     can_see_salary = False
 
-    if request.user.is_superuser:
-        # Superusuário vê TUDO
+    # CORREÇÃO: Se for Superusuário OU Staff (Admin), vê tudo.
+    # Isso garante que você veja a lista mesmo se seu usuário não estiver vinculado a um Colaborador.
+    if request.user.is_superuser or request.user.is_staff:
         funcionarios_visiveis = Colaborador.objects.all().order_by('nome_completo')
         can_see_salary = True
+        
     elif colab:
         # Verifica se é do RH (Opcional: RH costuma ver tudo)
         if colab.setor and 'RH' in colab.setor.nome.upper():
@@ -124,12 +126,14 @@ def modulo_rh_view(request):
             # Regra de Salário mantida + Hierarquia
             if 'GERENTE' in str(colab.cargo).upper(): can_see_salary = True
             if HierarquiaSetor.objects.filter(gerente=colab).exists(): can_see_salary = True
+    
+    # Se não for admin e não tiver colaborador vinculado, a lista continuará vazia (correto por segurança)
 
     ctx = {
         'colaborador': colab, 
         'funcionarios': funcionarios_visiveis,
-        'setores': Setor.objects.all().order_by('nome'),      # Essencial para o filtro
-        'centros': CentroCusto.objects.all().order_by('codigo'), # Essencial para o filtro
+        'setores': Setor.objects.all().order_by('nome'),      
+        'centros': CentroCusto.objects.all().order_by('codigo'), 
         'can_see_salary': can_see_salary,
         'can_edit': True
     }
@@ -141,7 +145,8 @@ def detalhe_colaborador_view(request, colab_id):
     alvo = get_object_or_404(Colaborador, id=colab_id)
     
     # --- SEGURANÇA: VERIFICA SE PODE VER ESTE PERFIL ---
-    if not request.user.is_superuser:
+    # CORREÇÃO: Libera também para Staff
+    if not (request.user.is_superuser or request.user.is_staff):
         permitido = False
         if usuario_logado:
             # 1. É o próprio usuário?
@@ -162,7 +167,8 @@ def detalhe_colaborador_view(request, colab_id):
 
     # Permissão de Salário
     can_see_salary = False
-    if request.user.is_superuser: can_see_salary = True
+    if request.user.is_superuser or request.user.is_staff: 
+        can_see_salary = True
     elif usuario_logado:
         if 'GERENTE' in str(usuario_logado.cargo).upper(): can_see_salary = True
         if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists(): can_see_salary = True
@@ -186,20 +192,18 @@ def editar_colaborador_view(request, colab_id):
     alvo = get_object_or_404(Colaborador, id=colab_id)
     
     # --- SEGURANÇA: VERIFICA SE PODE EDITAR ---
-    if not request.user.is_superuser:
+    # CORREÇÃO: Libera também para Staff
+    if not (request.user.is_superuser or request.user.is_staff):
         permitido = False
         if usuario_logado:
             # RH pode editar
             if usuario_logado.setor and 'RH' in usuario_logado.setor.nome.upper():
                 permitido = True
             else:
-                # Gestor pode editar subordinados (mas não a si mesmo, geralmente, ou sim?)
-                # Vamos assumir que ele pode editar subordinados
+                # Gestor pode editar subordinados
                 meus_subordinados = get_all_subordinates(usuario_logado)
                 if alvo.id in meus_subordinados:
                     permitido = True
-                # Se quiser permitir editar o próprio perfil, descomente abaixo:
-                # if alvo.id == usuario_logado.id: permitido = True 
 
         if not permitido:
             messages.error(request, "Acesso Negado para edição.")
