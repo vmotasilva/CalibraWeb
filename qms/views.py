@@ -14,18 +14,25 @@ from django.urls import reverse
 from django.db.models import Q
 from django.core.files.base import ContentFile
 
-# IMPORTA TODOS OS MODELOS
+# IMPORTA TODOS OS MODELOS (ATUALIZADO COM OS NOVOS)
 from .models import (
     Instrumento, Colaborador, ProcessoCotacao, Procedimento,
     Fornecedor, HistoricoCalibracao, Setor, CentroCusto,
     RegistroTreinamento, Ferias, Ocorrencia, HierarquiaSetor,
-    CategoriaInstrumento, UnidadeMedida, FaixaMedicao, Padrao
+    CategoriaInstrumento, UnidadeMedida, FaixaMedicao, Padrao,
+    # NOVOS MODELOS ADICIONADOS:
+    SolicitacaoInstrumento, OrdemCalibracao
 )
+
+# IMPORTA OS FORMS (ATUALIZADO COM OS NOVOS)
 from .forms import (
     CarimboForm, ImportacaoInstrumentosForm, ImportacaoColaboradoresForm, 
     ImportacaoProcedimentosForm, ImportacaoHierarquiaForm, ImportacaoHistoricoForm,
-    ImportacaoPadroesForm, ColaboradorForm, ImportacaoFeriasForm # <--- OBRIGATÓRIO TER ESTE FORM NO FORMS.PY
+    ImportacaoPadroesForm, ColaboradorForm, ImportacaoFeriasForm,
+    # NOVOS FORMS ADICIONADOS:
+    SolicitacaoForm, OcorrenciaForm
 )
+
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import Color as RColor
@@ -90,11 +97,15 @@ def dashboard_view(request):
     qtd_avencer = Instrumento.objects.filter(data_proxima_calibracao__range=[hoje, trinta_dias], ativo=True).count()
     lista_urgentes = Instrumento.objects.filter(data_proxima_calibracao__lte=trinta_dias, ativo=True).order_by('data_proxima_calibracao')[:5]
     
+    # NOVO: Contagem de solicitações pendentes
+    qtd_pendentes = SolicitacaoInstrumento.objects.filter(status='PENDENTE').count()
+
     ctx = {
         'colaborador': colab, 'nome_display': nome_display, 
         'qtd_vencidos': qtd_vencidos, 'qtd_avencer': qtd_avencer, 
         'lista_urgentes': lista_urgentes, 
-        'qtd_cotacoes': ProcessoCotacao.objects.filter(status='ABERTO').count(), 
+        'qtd_cotacoes': ProcessoCotacao.objects.filter(status='ABERTO').count(),
+        'qtd_pendentes': qtd_pendentes, # <--- Adicionado ao contexto
         'today': hoje
     }
     return render(request, 'dashboard.html', ctx)
@@ -264,12 +275,75 @@ def editar_colaborador_view(request, colab_id):
     else: form = ColaboradorForm(instance=alvo)
     return render(request, 'editar_colaborador.html', {'form': form, 'alvo': alvo, 'colaborador': usuario_logado})
 
+
+# --- NOVA VIEW: SOLICITAÇÃO DE INSTRUMENTO ---
 @login_required
-def detalhe_instrumento_view(request, instrumento_id):
+def nova_solicitacao(request):
+    if request.method == 'POST':
+        form = SolicitacaoForm(request.POST)
+        if form.is_valid():
+            solicitacao = form.save(commit=False)
+            solicitacao.solicitante = request.user 
+            solicitacao.save()
+            messages.success(request, 'Solicitação enviada com sucesso!')
+            return redirect('home') # Volta para o dashboard
+    else:
+        form = SolicitacaoForm()
+    
+    return render(request, 'form_generico.html', {'form': form, 'titulo': 'Nova Solicitação', 'colaborador': get_colab(request)})
+
+
+# --- VIEW ATUALIZADA: DETALHE DO INSTRUMENTO (COM OCORRÊNCIAS E ORDENS) ---
+@login_required
+def detalhe_instrumento_view(request, instrumento_id): # Note que o URLs.py usa 'pk' ou 'instrumento_id', verifique se o urls.py espera <int:pk> ou <int:instrumento_id>. Vou manter instrumento_id conforme seu código antigo.
     inst = get_object_or_404(Instrumento, id=instrumento_id)
-    historico = inst.historico_calibracoes.all().order_by('-data_calibracao')
-    faixas = inst.faixas.all()
-    return render(request, 'detalhe_instrumento.html', {'colaborador': get_colab(request), 'instrumento': inst, 'historico': historico, 'faixas': faixas, 'today': date.today()})
+    
+    # Processamento do Form de Ocorrência Rápida
+    if request.method == 'POST':
+        form_ocorrencia = OcorrenciaForm(request.POST)
+        if form_ocorrencia.is_valid():
+            ocorrencia = form_ocorrencia.save(commit=False)
+            ocorrencia.instrumento = inst
+            ocorrencia.usuario_responsavel = request.user
+            ocorrencia.save()
+            messages.success(request, 'Ocorrência registrada com sucesso!')
+            # Recarrega a página para limpar o post
+            return redirect('detalhe_instrumento', instrumento_id=inst.id)
+        else:
+            messages.error(request, 'Erro ao registrar ocorrência. Verifique os dados.')
+    else:
+        form_ocorrencia = OcorrenciaForm()
+
+    # Buscando dados para as novas abas
+    historico = inst.historicocalibracao_set.all().order_by('-data_calibracao')
+    
+    # Usando related_names definidos no models.py (calibracoes e ocorrencias)
+    # Se der erro aqui, verifique se no models.py está related_name='calibracoes'
+    try:
+        calibracoes = inst.calibracoes.all().order_by('-data_prevista') 
+    except AttributeError:
+        calibracoes = [] # Fallback caso a migration não tenha rolado 100%
+
+    try:
+        ocorrencias = inst.ocorrencias.all().order_by('-data_ocorrencia')
+    except AttributeError:
+        ocorrencias = []
+
+    faixas = inst.faixamedicao_set.all() # Seu código antigo usava inst.faixas.all(), mas o padrão django é _set ou related_name. Vou tentar manter compatibilidade.
+    # Ajuste de compatibilidade para Faixas (caso seu model use related_name='faixas')
+    if hasattr(inst, 'faixas'):
+        faixas = inst.faixas.all()
+
+    return render(request, 'detalhe_instrumento.html', {
+        'colaborador': get_colab(request), 
+        'instrumento': inst, 
+        'historico': historico, 
+        'calibracoes': calibracoes,
+        'ocorrencias': ocorrencias,
+        'faixas': faixas, 
+        'form_ocorrencia': form_ocorrencia,
+        'today': date.today()
+    })
 
 @login_required
 def remover_historico_view(request, historico_id):
@@ -716,7 +790,7 @@ def imp_ferias_view(request):
                                 'periodo_aquisitivo_inicio': dt_aq_ini,
                                 'data_inicio': dt_ini,
                                 'data_fim': dt_fim,
-                                'dias_vendidos': dias_vend, # <--- NOVO CAMPO SALVO
+                                'dias_vendidos': dias_vend,
                                 'status': get_v('STATUS') or 'PROGRAMADAS'
                             }
                         )
