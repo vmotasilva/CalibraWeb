@@ -871,7 +871,7 @@ def imp_ferias_view(request):
                         dt_aq_ini = parse_dt('AQUISITIVO_INICIO')
                         dt_aq_fim = parse_dt('AQUISITIVO_FIM')
                         dt_ini = parse_dt('DATA_INICIO')
-                            dt_fim = parse_dt('DATA_FIM')
+                        dt_fim = parse_dt('DATA_FIM')
 
                         # LER DIAS VENDIDOS
                         dias_vend = get_v('DIAS_VENDIDOS')
