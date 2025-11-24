@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction, IntegrityError, models
 from django.urls import reverse
-from django.db.models import Q
+from django.db.models import Q, Subquery, OuterRef
 from django.core.files.base import ContentFile
 
 # IMPORTA TODOS OS MODELOS (ATUALIZADO COM OS NOVOS)
