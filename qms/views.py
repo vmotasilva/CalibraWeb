@@ -152,23 +152,22 @@ def modulo_metrologia_view(request):
     }
     return render(request, 'modulo_metrologia.html', ctx)
 
-
 @login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
 
-    # 0. Verifica se o usuário está vinculado a um colaborador
+    # 0. Verifica vinculação do usuário
     if not colab and not (request.user.is_staff or request.user.is_superuser):
         messages.error(request, "Seu usuário não está vinculado a um colaborador.")
         return redirect('home')
 
     # ---------------------------------------------------------
-    # 1. PERMISSÕES E VISIBILIDADE
+    # 1. PERMISSÕES
     # ---------------------------------------------------------
     ids_permitidos = set()
     can_see_salary = False
 
-    # SUPERUSER / STAFF → vê tudo
+    # Admin / Staff → vê tudo
     if request.user.is_superuser or request.user.is_staff:
         ids_permitidos = set(
             Colaborador.objects.filter(is_active=True).values_list('id', flat=True)
@@ -176,44 +175,41 @@ def modulo_rh_view(request):
         can_see_salary = True
 
     else:
-        # RH → vê tudo + salários
+        # RH → vê tudo
         if colab.setor and "RH" in colab.setor.nome.upper():
             ids_permitidos = set(
                 Colaborador.objects.filter(is_active=True).values_list('id', flat=True)
             )
             can_see_salary = True
-
         else:
-            # Funcionário comum → vê subordinados + ele mesmo
+            # Funcionário comum → subordinados + ele mesmo
             ids_permitidos = set(get_all_subordinates(colab))
             ids_permitidos.add(colab.id)
 
-            # Permissão de ver salário se gerente
+            # Pode ver salário se for gerente
             if (
                 "GERENTE" in str(colab.cargo).upper()
                 or HierarquiaSetor.objects.filter(gerente=colab).exists()
             ):
                 can_see_salary = True
 
-    # Se mesmo assim tiver vazio, impede acesso incorreto
     if not ids_permitidos:
         messages.error(request, "Você não possui permissão para acessar este módulo.")
         return redirect('home')
 
     # ---------------------------------------------------------
-    # 2. QUERYSET BASE PARA FILTROS
+    # 2. Base para construção dos filtros
     # ---------------------------------------------------------
     funcionarios_base = (
-        Colaborador.objects
-        .filter(id__in=ids_permitidos, is_active=True)
+        Colaborador.objects.filter(id__in=ids_permitidos, is_active=True)
         .order_by("nome_completo")
     )
 
-    # Query inicial para filtragem dinâmica
+    # Query inicial para filtragem
     funcionarios_filtrados = Colaborador.objects.filter(is_active=True)
 
     # ---------------------------------------------------------
-    # 3. CAPTURA DE PARÂMETROS DA URL
+    # 3. GET Params
     # ---------------------------------------------------------
     setor_id = request.GET.get("setor_id")
     lider_id = request.GET.get("lider_id")
@@ -221,7 +217,6 @@ def modulo_rh_view(request):
     gerente_id = request.GET.get("gerente_id")
     turno_slug = request.GET.get("turno")
 
-    # Função de validação segura para IDs
     def id_valido(x):
         return x and x.isdigit() and int(x) > 0
 
@@ -238,23 +233,19 @@ def modulo_rh_view(request):
         funcionarios_filtrados = funcionarios_filtrados.filter(turno=turno_slug)
 
     # ---------------------------------------------------------
-    # 5. FILTROS HIERÁRQUICOS (SUPERVISOR / GERENTE)
+    # 5. FILTROS HIERÁRQUICOS
     # ---------------------------------------------------------
+
+    # 🎯 SUPERVISOR CORRIGIDO → usa líder direto do colaborador
     if id_valido(supervisor_id):
-        setores_do_supervisor = (
-            HierarquiaSetor.objects
-            .filter(supervisor_id=int(supervisor_id))
-            .values_list("setor_id", flat=True)
-            .distinct()
-        )
         funcionarios_filtrados = funcionarios_filtrados.filter(
-            setor_id__in=setores_do_supervisor
+            lider_id=int(supervisor_id)
         )
 
+    # 🎯 GERENTE → via tabela HierarquiaSetor (mantido)
     if id_valido(gerente_id):
         setores_do_gerente = (
-            HierarquiaSetor.objects
-            .filter(gerente_id=int(gerente_id))
+            HierarquiaSetor.objects.filter(gerente_id=int(gerente_id))
             .values_list("setor_id", flat=True)
             .distinct()
         )
@@ -263,32 +254,33 @@ def modulo_rh_view(request):
         )
 
     # ---------------------------------------------------------
-    # 6. FILTRO FINAL DE SEGURANÇA (INTERSEÇÃO)
+    # 6. INTERSEÇÃO COM PERMISSÕES
     # ---------------------------------------------------------
     funcionarios_visiveis = funcionarios_filtrados.filter(id__in=ids_permitidos)
 
     # ---------------------------------------------------------
-    # 7. OPÇÕES PARA FILTROS DO FRONT (BASEADAS NO QUE É PERMITIDO)
+    # 7. FILTROS DO FRONT
     # ---------------------------------------------------------
     setores_ids = funcionarios_base.values_list("setor", flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by("nome")
 
-    lideres_ids = [l for l in funcionarios_base.values_list("lider", flat=True) if l]
+    lideres_ids = [
+        l for l in funcionarios_base.values_list("lider", flat=True) if l
+    ]
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids)
 
     hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids)
 
     supervisores_ids = [
-        sid for sid in hierarquias.values_list("supervisor", flat=True) if sid
+        s for s in hierarquias.values_list("supervisor", flat=True) if s
     ]
     gerentes_ids = [
-        gid for gid in hierarquias.values_list("gerente", flat=True) if gid
+        g for g in hierarquias.values_list("gerente", flat=True) if g
     ]
 
     supervisores_filtro = Colaborador.objects.filter(id__in=supervisores_ids)
     gerentes_filtro = Colaborador.objects.filter(id__in=gerentes_ids)
 
-    # Turnos fixos do sistema
     turnos_filtro = [
         ("ADM", "Administrativo"),
         ("TURNO_1", "Turno 1"),
@@ -314,115 +306,6 @@ def modulo_rh_view(request):
     }
 
     return render(request, "modulo_rh.html", ctx)
-
-    colab = get_colab(request)
-    
-    # 1. VISIBILIDADE (Definição dos IDs permitidos)
-    ids_permitidos = set()
-    can_see_salary = False
-    
-    if request.user.is_superuser or request.user.is_staff:
-        ids_permitidos = Colaborador.objects.filter(is_active=True).values_list('id', flat=True)
-        can_see_salary = True
-    elif colab:
-        if colab.setor and 'RH' in colab.setor.nome.upper():
-            ids_permitidos = Colaborador.objects.filter(is_active=True).values_list('id', flat=True)
-            can_see_salary = True
-        else:
-            ids_permitidos = get_all_subordinates(colab)
-            ids_permitidos.add(colab.id)
-            if 'GERENTE' in str(colab.cargo).upper() or HierarquiaSetor.objects.filter(gerente=colab).exists():
-                can_see_salary = True
-    
-    # QuerySet BASE para OPÇÕES DE FILTRO (Permite ver todas as opções que o usuário é autorizado a ver)
-    funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
-    
-    # QuerySet de TRABALHO: Começa com TODOS os colaboradores ativos da empresa.
-    funcionarios_a_filtrar = Colaborador.objects.filter(is_active=True) 
-
-    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET (APLICADO AO VISIVEIS ANOTADO) ---
-    
-    # 1. Recebe os IDs dos filtros da URL
-    setor_id = request.GET.get('setor_id')
-    lider_id = request.GET.get('lider_id')
-    supervisor_id = request.GET.get('supervisor_id')
-    gerente_id = request.GET.get('gerente_id')
-    turno_slug = request.GET.get('turno')
-    
-    # 2. Aplicar filtros de busca (Simples)
-    if setor_id:
-        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(setor_id=setor_id)
-    if lider_id:
-        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(lider_id=lider_id)
-    if turno_slug:
-        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(turno=turno_slug)
-        
-    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - SEM CAST INT()
-    # Esta lógica agora filtra a EMPRESA TODA primeiro.
-    
-    if supervisor_id:
-        # A) Busca todos os IDs de Setores que têm esse Supervisor definido
-        reporting_setor_ids = HierarquiaSetor.objects.filter(
-            supervisor_id=supervisor_id # <--- Filtra pelo ID (STRING) da URL
-        ).values_list('setor_id', flat=True).distinct()
-        
-        # B) Filtra funcionários que trabalham nesses Setores
-        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(setor_id__in=reporting_setor_ids).distinct()
-    
-    if gerente_id:
-        # A) Busca todos os IDs de Setores que têm esse Gerente definido
-        reporting_setor_ids = HierarquiaSetor.objects.filter(
-            gerente_id=gerente_id # <--- Filtra pelo ID (STRING) da URL
-        ).values_list('setor_id', flat=True).distinct()
-        
-        # B) Filtra funcionários que pertencem a esses Setores
-        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(setor_id__in=reporting_setor_ids).distinct()
-
-    # --- FINAL: APLICA FILTRO DE SEGURANÇA AO RESULTADO ---
-    # Interseção: O QuerySet final é a lista FILTRADA pela hierarquia + restrita pela permissão do usuário
-    funcionarios_visiveis = funcionarios_a_filtrar.filter(id__in=ids_permitidos)
-
-    # 4. CÁLCULO DAS OPÇÕES DE FILTRO (Usa funcionarios_base)
-    
-    setores_ids_base = funcionarios_base.values_list('setor', flat=True).distinct()
-    setores_filtro = Setor.objects.filter(id__in=setores_ids_base).order_by('nome')
-
-    lideres_ids = funcionarios_base.values_list('lider', flat=True).distinct()
-    lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
-
-    # Busca Hierarquias para as opções de Supervisor/Gerente
-    hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids_base)
-    
-    sup_ids_raw = hierarquias.values_list('supervisor', flat=True).distinct()
-    ger_ids_raw = hierarquias.values_list('gerente', flat=True).distinct()
-    
-    sup_ids = [id for id in sup_ids_raw if id is not None]
-    ger_ids = [id for id in ger_ids_raw if id is not None]
-    
-    supervisores_filtro = Colaborador.objects.filter(id__in=sup_ids).order_by('nome_completo')
-    gerentes_filtro = Colaborador.objects.filter(id__in=ger_ids).order_by('nome_completo')
-    
-    turnos_filtro = [
-        ('ADM', 'Administrativo'),
-        ('TURNO_1', 'Turno 1'),
-        ('TURNO_2', 'Turno 2'),
-        ('TURNO_3', 'Turno 3'),
-        ('12X36', '12x36'),
-    ]
-
-    ctx = {
-        'colaborador': colab, 
-        'funcionarios': funcionarios_visiveis,
-        'lideres_filtro': lideres_filtro, 
-        'setores_filtro': setores_filtro,
-        'supervisores_filtro': supervisores_filtro, 
-        'gerentes_filtro': gerentes_filtro,
-        'turnos_filtro': turnos_filtro,
-        'centros': CentroCusto.objects.all().order_by('codigo'), 
-        'can_see_salary': can_see_salary,
-        'can_edit': True
-    }
-    return render(request, 'modulo_rh.html', ctx)
 
 @login_required
 def detalhe_colaborador_view(request, colab_id):
