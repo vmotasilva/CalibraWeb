@@ -156,7 +156,7 @@ def modulo_metrologia_view(request):
 def modulo_rh_view(request):
     colab = get_colab(request)
     
-    # 1. VISIBILIDADE (Definição dos IDs permitidos - Mantida)
+    # 1. VISIBILIDADE (Calcula apenas o SET de IDs permitidos para SEGURANÇA)
     ids_permitidos = set()
     can_see_salary = False
     
@@ -173,54 +173,49 @@ def modulo_rh_view(request):
             if 'GERENTE' in str(colab.cargo).upper() or HierarquiaSetor.objects.filter(gerente=colab).exists():
                 can_see_salary = True
     
-    # QuerySet BASE (Todos os colaboradores ativos que o usuário pode ver)
+    # QuerySet BASE para OPÇÕES DE FILTRO (Permite ver todas as opções que o usuário é autorizado a ver)
     funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
-    funcionarios_visiveis = funcionarios_base
     
-    # --- NOVO: LÓGICA DE FILTRAGEM SIMPLES VIA GET (ESTÁVEL) ---
+    # QuerySet de TRABALHO: Começa com TODOS os colaboradores ativos da empresa.
+    funcionarios_a_filtrar = Colaborador.objects.filter(is_active=True) 
+
+    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET ---
     
-    # 1. Recebe os IDs dos filtros da URL
     setor_id = request.GET.get('setor_id')
     lider_id = request.GET.get('lider_id')
-    turno_slug = request.GET.get('turno')
     supervisor_id = request.GET.get('supervisor_id')
     gerente_id = request.GET.get('gerente_id')
+    turno_slug = request.GET.get('turno')
     
-    # 2. Aplicar filtros diretos (Turno/Setor/Líder)
+    # 2. Aplicar filtros de busca (Simples)
     if setor_id:
-        funcionarios_visiveis = funcionarios_visiveis.filter(setor_id=setor_id)
+        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(setor_id=setor_id)
     if lider_id:
-        funcionarios_visiveis = funcionarios_visiveis.filter(lider_id=lider_id)
+        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(lider_id=lider_id)
     if turno_slug:
-        funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
+        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(turno=turno_slug)
         
-    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - Lógica de duas etapas
+    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente)
     
     if supervisor_id:
         try:
-            # 1. Converte e busca Setores ligados ao Supervisor
             sup_id = int(supervisor_id)
             reporting_setor_ids = HierarquiaSetor.objects.filter(supervisor_id=sup_id).values_list('setor_id', flat=True).distinct()
-            
-            # 2. Filtra funcionários que trabalham nesses Setores (dentro da visibilidade)
-            funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
-        except ValueError:
-            messages.error(request, "ID de Supervisor na URL é inválido.")
+            funcionarios_a_filtrar = funcionarios_a_filtrar.filter(setor_id__in=reporting_setor_ids).distinct()
+        except ValueError: pass
     
     if gerente_id:
         try:
-            # 1. Converte e busca Setores ligados ao Gerente
             ger_id = int(gerente_id)
             reporting_setor_ids = HierarquiaSetor.objects.filter(gerente_id=ger_id).values_list('setor_id', flat=True).distinct()
-            
-            # 2. Filtra funcionários que pertencem a esses Setores
-            funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
-        except ValueError:
-            messages.error(request, "ID de Gerente na URL é inválido.")
+            funcionarios_a_filtrar = funcionarios_a_filtrar.filter(setor_id__in=reporting_setor_ids).distinct()
+        except ValueError: pass
 
-    # --- FIM DA LÓGICA DE FILTRAGEM ---
+    # --- FINAL: APLICA FILTRO DE SEGURANÇA AO RESULTADO ---
+    # O QuerySet final é a INTERSEÇÃO do resultado do filtro com os IDs que o usuário PODE VER.
+    funcionarios_visiveis = funcionarios_a_filtrar.filter(id__in=ids_permitidos)
 
-    # 4. FILTROS DINÂMICOS (Recálculo das opções para o dropdown)
+    # 4. CÁLCULO DAS OPÇÕES DE FILTRO (Usa funcionarios_base, que é a lista de todos os permitidos)
     
     setores_ids_base = funcionarios_base.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids_base).order_by('nome')
@@ -245,11 +240,9 @@ def modulo_rh_view(request):
         ('TURNO_1', 'Turno 1'),
         ('TURNO_2', 'Turno 2'),
         ('TURNO_3', 'Turno 3'),
+        ('12X36', '12x36'),
     ]
 
-    # ADICIONE ESTA LINHA ABAIXO PARA VER O RESULTADO DO FILTRO:
-    messages.warning(request, f"IDs ENCONTRADOS: {list(funcionarios_visiveis.values_list('id', flat=True))}")
-    
     ctx = {
         'colaborador': colab, 
         'funcionarios': funcionarios_visiveis,
