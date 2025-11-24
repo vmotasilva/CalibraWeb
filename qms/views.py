@@ -46,15 +46,10 @@ def get_colab(request):
         pass
 
     # 2. Tenta pelo Nome (Feature Automática)
-    # Só tenta se o usuário tiver Nome e Sobrenome preenchidos no perfil
     if request.user.first_name and request.user.last_name:
-        # Monta o nome completo (ex: "Vinicius Mota")
         nome_montado = f"{request.user.first_name} {request.user.last_name}".strip()
-        
         # Busca no banco ignorando maiúsculas/minúsculas (__iexact)
-        # Ex: "Vinicius Mota" vai encontrar "VINICIUS MOTA"
         colab = Colaborador.objects.filter(nome_completo__iexact=nome_montado).first()
-        
         if colab:
             return colab
 
@@ -76,12 +71,10 @@ def get_all_subordinates(colaborador):
     de um colaborador, descendo toda a árvore hierárquica.
     """
     subordinados = set()
-    # 'liderados' é o related_name definido no models.py
     diretos = colaborador.liderados.all()
     
     for direto in diretos:
         subordinados.add(direto.id)
-        # Recursividade: Pega os liderados deste liderado
         subordinados.update(get_all_subordinates(direto))
     
     return subordinados
@@ -126,42 +119,45 @@ def modulo_metrologia_view(request):
 def modulo_rh_view(request):
     colab = get_colab(request)
     
-    # --- LÓGICA DE VISÃO DE TÚNEL ---
     funcionarios_visiveis = Colaborador.objects.none()
     can_see_salary = False
 
-    # 1. Se for Superusuário OU Staff (Admin), vê tudo.
+    # 1. Lógica de Visibilidade (Quem vê quem)
     if request.user.is_superuser or request.user.is_staff:
         funcionarios_visiveis = Colaborador.objects.all().order_by('nome_completo')
         can_see_salary = True
-        
-    # 2. Se for um Colaborador identificado (via Vínculo ou Nome) -> Aplica Hierarquia
     elif colab:
-        # Verifica se é do RH (Opcional: RH costuma ver tudo)
         if colab.setor and 'RH' in colab.setor.nome.upper():
             funcionarios_visiveis = Colaborador.objects.all().order_by('nome_completo')
             can_see_salary = True
         else:
-            # Usuário Comum ou Gestor: Vê apenas a si mesmo e seus subordinados
             ids_permitidos = get_all_subordinates(colab)
-            ids_permitidos.add(colab.id) # Inclui o próprio usuário
-            
+            ids_permitidos.add(colab.id)
             funcionarios_visiveis = Colaborador.objects.filter(id__in=ids_permitidos).order_by('nome_completo')
             
-            # Regra de Salário mantida + Hierarquia
             if 'GERENTE' in str(colab.cargo).upper(): can_see_salary = True
             if HierarquiaSetor.objects.filter(gerente=colab).exists(): can_see_salary = True
-    
     else:
-        # Se não identificou ninguém, mostra aviso para ajudar no diagnóstico
         if not (request.user.is_superuser or request.user.is_staff):
-            nome_tentado = f"{request.user.first_name} {request.user.last_name}".strip()
-            messages.warning(request, f"Não foi possível vincular seu usuário '{request.user.username}' a um colaborador. Verifique se seu Nome e Sobrenome ({nome_tentado}) correspondem exatamente ao cadastro do RH.")
+            messages.warning(request, f"Não foi possível vincular seu usuário '{request.user.username}' a um colaborador.")
+
+    # 2. PREPARAÇÃO DOS FILTROS (NOVO)
+    # Extrai apenas os líderes e setores que existem na lista visível
+    lideres_ids = funcionarios_visiveis.values_list('lider', flat=True).distinct()
+    lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
+    
+    setores_ids = funcionarios_visiveis.values_list('setor', flat=True).distinct()
+    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by('nome')
+
+    # Extraindo turnos únicos presentes na lista
+    turnos_filtro = funcionarios_visiveis.values_list('turno', flat=True).distinct()
 
     ctx = {
         'colaborador': colab, 
         'funcionarios': funcionarios_visiveis,
-        'setores': Setor.objects.all().order_by('nome'),      
+        'lideres_filtro': lideres_filtro, # Envia lista de líderes para o filtro
+        'setores_filtro': setores_filtro, # Envia lista de setores para o filtro
+        'turnos_filtro': turnos_filtro,   # Envia lista de turnos para o filtro
         'centros': CentroCusto.objects.all().order_by('codigo'), 
         'can_see_salary': can_see_salary,
         'can_edit': True
