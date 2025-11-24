@@ -11,19 +11,20 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction, IntegrityError, models
 from django.urls import reverse
-from django.db.models import Q, Subquery, OuterRef
+from django.db.models import Q, Subquery, OuterRef # <-- CRÍTICO: Imports de Query Avançada
 from django.core.files.base import ContentFile
 
-# IMPORTA TODOS OS MODELOS
+# IMPORTA TODOS OS MODELOS (ATUALIZADO COM OS NOVOS)
 from .models import (
     Instrumento, Colaborador, ProcessoCotacao, Procedimento,
     Fornecedor, HistoricoCalibracao, Setor, CentroCusto,
     RegistroTreinamento, Ferias, Ocorrencia, HierarquiaSetor,
     CategoriaInstrumento, UnidadeMedida, FaixaMedicao, Padrao,
+    # NOVOS MODELOS ADICIONADOS:
     SolicitacaoInstrumento, OrdemCalibracao
 )
 
-# IMPORTA OS FORMS
+# IMPORTA OS FORMS (ATUALIZADO COM OS NOVOS)
 from .forms import (
     CarimboForm, ImportacaoInstrumentosForm, ImportacaoColaboradoresForm, 
     ImportacaoProcedimentosForm, ImportacaoHierarquiaForm, ImportacaoHistoricoForm,
@@ -51,6 +52,7 @@ def get_colab(request):
     # 2. Tenta pelo Nome (Feature Automática)
     if request.user.first_name and request.user.last_name:
         nome_montado = f"{request.user.first_name} {request.user.last_name}".strip()
+        # Busca Case-Insensitive
         colab = Colaborador.objects.filter(nome_completo__iexact=nome_montado).first()
         if colab:
             return colab
@@ -171,10 +173,10 @@ def modulo_rh_view(request):
             if 'GERENTE' in str(colab.cargo).upper() or HierarquiaSetor.objects.filter(gerente=colab).exists():
                 can_see_salary = True
     
-    # QuerySet BASE para OPÇÕES DE FILTRO
+    # QuerySet BASE para OPÇÕES DE FILTRO (Usa a visibilidade do usuário)
     funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
     
-    # QuerySet de TRABALHO: Começa com TODOS os colaboradores ativos da empresa.
+    # QuerySet de TRABALHO (INICIALMENTE, A EMPRESA INTEIRA ATIVA)
     funcionarios_a_filtrar = Colaborador.objects.filter(is_active=True) 
 
     # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET ---
@@ -194,12 +196,12 @@ def modulo_rh_view(request):
     if turno_slug:
         funcionarios_a_filtrar = funcionarios_a_filtrar.filter(turno=turno_slug)
         
-    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente)
+    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - SEM CAST INT()
     
     if supervisor_id:
         # A) Busca todos os IDs de Setores que têm esse Supervisor definido
         reporting_setor_ids = HierarquiaSetor.objects.filter(
-            supervisor_id=supervisor_id # <--- Filtra pelo ID (STRING) da URL
+            supervisor_id=supervisor_id # Filtra pelo ID (STRING)
         ).values_list('setor_id', flat=True).distinct()
         
         # B) Filtra funcionários que trabalham nesses Setores
@@ -208,14 +210,14 @@ def modulo_rh_view(request):
     if gerente_id:
         # A) Busca todos os IDs de Setores que têm esse Gerente definido
         reporting_setor_ids = HierarquiaSetor.objects.filter(
-            gerente_id=gerente_id # <--- Filtra pelo ID (STRING) da URL
+            gerente_id=gerente_id # Filtra pelo ID (STRING)
         ).values_list('setor_id', flat=True).distinct()
         
         # B) Filtra funcionários que pertencem a esses Setores
         funcionarios_a_filtrar = funcionarios_a_filtrar.filter(setor_id__in=reporting_setor_ids).distinct()
 
     # --- FINAL: APLICA FILTRO DE SEGURANÇA AO RESULTADO ---
-    # O QuerySet final é a lista FILTRADA pela hierarquia + restrita pela permissão do usuário
+    # Interseção: O QuerySet final é a lista FILTRADA + restrita pela permissão do usuário
     funcionarios_visiveis = funcionarios_a_filtrar.filter(id__in=ids_permitidos)
 
     # 4. CÁLCULO DAS OPÇÕES DE FILTRO (Usa funcionarios_base)
@@ -830,7 +832,7 @@ def imp_colab_view(request):
                             except Colaborador.DoesNotExist: pass
                 messages.success(request, f"RH: {count_new} Novos, {count_upd} Atu, {count_lider} Vínculos Hierárquicos.")
                 return redirect('modulo_rh')
-            except Exception as e: messages.error(request, f"Erro na importação: {str(e)}"); return redirect('modulo_rh')
+            except Exception as e: messages.error(request, f"Erro na importação: {str(e)}")
     else: form = ImportacaoColaboradoresForm()
     return render(request, 'importar_colaboradores.html', {'form': form, 'colaborador': get_colab(request)})
 
