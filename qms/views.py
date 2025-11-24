@@ -192,22 +192,21 @@ def modulo_rh_view(request):
 
     # --- NOVO: BUSCA SUPERVISORES E GERENTES VIA TABELA HIERARQUIA ---
     
-    # 1. Busca as definições de hierarquia para os setores que estão aparecendo na lista
+# 1. Busca as definições de hierarquia para os setores visíveis
     hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids)
     
-    # 2. Extrai os IDs de Colaboradores únicos que ocupam o cargo de Supervisor/Gerente
-    # A função values_list retorna None para campos vazios. Excluímos aqui para não quebrar a query
-    sup_ids = hierarquias.values_list('supervisor', flat=True).distinct()
-    ger_ids = hierarquias.values_list('gerente', flat=True).distinct()
+    # 2. Extrai os IDs brutos, incluindo Nulos
+    sup_ids_brutos = hierarquias.values_list('supervisor', flat=True).distinct()
+    ger_ids_brutos = hierarquias.values_list('gerente', flat=True).distinct()
     
-    sup_ids = [id for id in sup_ids_raw if id is not None]
-    ger_ids = [id for id in ger_ids_raw if id is not None]
-
-    # 3. Busca os objetos Colaborador correspondentes
-    # Excluímos Nulos explicitamente para garantir a query correta no banco
+    # 3. Limpa explicitamente os valores nulos (None) antes de consultar Colaborador
+    # CORREÇÃO: Usa 'sup_ids_brutos' para a iteração e armazena em 'sup_ids'
+    sup_ids = [id for id in sup_ids_brutos if id is not None]
+    ger_ids = [id for id in ger_ids_brutos if id is not None]
+    
+    # 4. Busca os objetos Colaborador correspondentes (agora com IDs limpos)
     supervisores_filtro = Colaborador.objects.filter(id__in=sup_ids).exclude(id__isnull=True).order_by('nome_completo')
-    gerentes_filtro = Colaborador.objects.filter(id__in=ger_ids).exclude(id__isnull=True).order_by('nome_completo')
-    
+    gerentes_filtro = Colaborador.objects.filter(id__in=ger_ids).exclude(id__isnull=True).order_by('nome_completo')    
     # --- FIM DO NOVO BLOCO ---
 
     turnos_filtro = [
