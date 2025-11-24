@@ -2,17 +2,17 @@
 
 {% block content %}
 <style>
-    /* --- ESTILOS DE "APP" --- */
+    /* --- ESTILOS GERAIS DE APP (SEM ROLAGEM NA PÁGINA) --- */
     body { overflow: hidden; }
 
-    /* Barra Lateral */
+    /* BARRA LATERAL (FILTROS) */
     .sidebar-scroll {
         height: calc(100vh - 160px);
         overflow-y: auto;
         padding-right: 5px;
     }
 
-    /* Tabela com Rolagem */
+    /* TABELA (ROLAGEM) */
     .table-container-scroll {
         height: calc(100vh - 200px);
         overflow-y: auto;
@@ -28,44 +28,76 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
-    /* --- ESTILO DOS FILTROS EXPANSÍVEIS (ACCORDION) --- */
+    /* --- NOVO: ESTILO DOS FILTROS EXPANSÍVEIS (ACORDEÃO) --- */
+    .filter-group {
+        border-bottom: 1px solid #f0f0f0;
+        margin-bottom: 5px;
+    }
+    
     .filter-header {
         cursor: pointer;
-        padding: 8px 0;
-        user-select: none;
+        padding: 10px 5px;
+        user-select: none; /* Evita selecionar o texto ao clicar rápido */
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #f0f0f0;
+        border-radius: 4px;
+        transition: background-color 0.2s;
     }
+    
     .filter-header:hover {
         background-color: #f8f9fa;
     }
-    .filter-header i {
-        transition: transform 0.2s ease;
-        font-size: 0.8rem;
+
+    .filter-title {
+        font-size: 0.75rem;
+        font-weight: 700;
         color: #6c757d;
+        text-transform: uppercase;
+        margin: 0;
+        cursor: pointer;
     }
-    /* Classe para girar a seta quando aberto */
+
+    /* Ícone da seta */
+    .filter-header i {
+        transition: transform 0.3s ease;
+        font-size: 0.8rem;
+        color: #adb5bd;
+    }
+
+    /* Quando o grupo está ABERTO (classe .open) */
     .filter-group.open .filter-header i {
-        transform: rotate(180deg);
+        transform: rotate(180deg); /* Gira a seta */
+        color: #0d6efd; /* Muda cor para azul */
     }
+    
+    .filter-group.open .filter-title {
+        color: #212529; /* Texto fica mais escuro */
+    }
+
+    /* Conteúdo dos filtros (Checkboxes) */
     .filter-content {
         display: none; /* Escondido por padrão */
-        padding-top: 8px;
-        padding-bottom: 8px;
-        padding-left: 5px;
+        padding: 5px 0 15px 10px;
+        animation: slideDown 0.3s ease-out;
     }
-    /* Quando tiver a classe 'open', mostra o conteúdo */
+
+    /* Mostra conteúdo quando aberto */
     .filter-group.open .filter-content {
         display: block;
     }
 
-    /* Scrollbars finas */
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* SCROLLBARS CUSTOMIZADAS */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #f1f1f1; }
     ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    
     .transition-all { transition: all 0.3s ease; }
 </style>
 
@@ -102,30 +134,32 @@
 
     <div class="row h-100 overflow-hidden">
         
-        <!-- BARRA LATERAL (FILTROS) -->
+        <!-- BARRA LATERAL DE FILTROS -->
         <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
             
-            <!-- Busca Fixa no Topo -->
-            <div class="mb-3 flex-shrink-0">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
-                    <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="limparFiltros()">
-                        <small>Limpar</small>
-                    </button>
-                </div>
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula...">
-                </div>
+            <!-- Topo da Barra: Título e Limpar -->
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-shrink-0">
+                <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
+                <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="limparFiltros()">
+                    <small>Limpar tudo</small>
+                </button>
             </div>
 
-            <!-- Área Rolável dos Filtros Expansíveis -->
+            <!-- Área de Rolagem -->
             <div class="sidebar-scroll">
                 
-                <!-- 1. STATUS (Aberto por padrão: class="open") -->
-                <div class="filter-group open mb-1">
+                <!-- 1. BUSCA TEXTUAL (Sempre visível) -->
+                <div class="mb-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula...">
+                    </div>
+                </div>
+
+                <!-- 2. STATUS (Aberto por padrão 'open') -->
+                <div class="filter-group open">
                     <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="form-label small fw-bold text-muted mb-0" style="cursor: pointer;">STATUS</label>
+                        <label class="filter-title">Status</label>
                         <i class="bi bi-chevron-down"></i>
                     </div>
                     <div class="filter-content">
@@ -146,10 +180,10 @@
                     </div>
                 </div>
 
-                <!-- 2. LÍDER / GESTOR -->
-                <div class="filter-group mb-1">
+                <!-- 3. LÍDER / GESTOR -->
+                <div class="filter-group">
                     <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="form-label small fw-bold text-muted mb-0" style="cursor: pointer;">LÍDER / GESTOR</label>
+                        <label class="filter-title">Líder / Gestor</label>
                         <i class="bi bi-chevron-down"></i>
                     </div>
                     <div class="filter-content">
@@ -166,10 +200,10 @@
                     </div>
                 </div>
 
-                <!-- 3. SETOR -->
-                <div class="filter-group mb-1">
+                <!-- 4. SETOR -->
+                <div class="filter-group">
                     <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="form-label small fw-bold text-muted mb-0" style="cursor: pointer;">SETOR</label>
+                        <label class="filter-title">Setor</label>
                         <i class="bi bi-chevron-down"></i>
                     </div>
                     <div class="filter-content">
@@ -186,10 +220,10 @@
                     </div>
                 </div>
 
-                <!-- 4. TURNO -->
-                <div class="filter-group mb-1">
+                <!-- 5. TURNO -->
+                <div class="filter-group">
                     <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="form-label small fw-bold text-muted mb-0" style="cursor: pointer;">TURNO</label>
+                        <label class="filter-title">Turno</label>
                         <i class="bi bi-chevron-down"></i>
                     </div>
                     <div class="filter-content">
@@ -215,7 +249,7 @@
             <!-- Contador -->
             <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
                 <span class="badge bg-secondary bg-opacity-10 text-secondary border">
-                    <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ funcionarios.count }}</span> colaboradores encontrados
+                    <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ funcionarios.count }}</span> registros
                 </span>
             </div>
 
@@ -320,21 +354,24 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Inicializa filtros e contagem
+    // Inicializa filtragem
     filtrar();
     
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
     
-    // Event listeners para busca e checkboxes
+    // Listeners
     searchInput.addEventListener('keyup', filtrar);
     checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
 });
 
-// FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS
+// FUNÇÃO PARA ABRIR/FECHAR FILTROS (ACORDEÃO)
 function toggleFilterGroup(element) {
+    // O elemento clicado é o .filter-header
+    // O pai dele é o .filter-group
     const group = element.parentElement;
-    // Alterna a classe 'open' que controla a visibilidade via CSS
+    
+    // Adiciona ou remove a classe 'open' para mostrar/esconder o conteúdo
     group.classList.toggle('open');
 }
 
@@ -362,6 +399,8 @@ function filtrar() {
         let mostrar = true;
 
         if (termoBusca && !row.dataset.nome.includes(termoBusca)) mostrar = false;
+        
+        // Lógica E (entre categorias) / OU (dentro da categoria)
         if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) mostrar = false;
         if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
         if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) mostrar = false;
@@ -377,6 +416,7 @@ function filtrar() {
 function limparFiltros() {
     document.getElementById('searchInput').value = '';
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        // Mantém apenas Ativo
         cb.checked = (cb.id === 'st_ativo');
     });
     filtrar();
