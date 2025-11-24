@@ -245,9 +245,11 @@ def modulo_rh_view(request):
         ('TURNO_1', 'Turno 1'),
         ('TURNO_2', 'Turno 2'),
         ('TURNO_3', 'Turno 3'),
-        ('12X36', '12x36'),
     ]
 
+    # ADICIONE ESTA LINHA ABAIXO PARA VER O RESULTADO DO FILTRO:
+    messages.warning(request, f"IDs ENCONTRADOS: {list(funcionarios_visiveis.values_list('id', flat=True))}")
+    
     ctx = {
         'colaborador': colab, 
         'funcionarios': funcionarios_visiveis,
