@@ -152,12 +152,11 @@ def modulo_metrologia_view(request):
     }
     return render(request, 'modulo_metrologia.html', ctx)
 
-
 @login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
     
-    # 1. VISIBILIDADE (Definição dos IDs permitidos)
+    # 1. VISIBILIDADE (Calcula apenas o SET de IDs permitidos para SEGURANÇA)
     ids_permitidos = set()
     can_see_salary = False
     
@@ -174,65 +173,63 @@ def modulo_rh_view(request):
             if 'GERENTE' in str(colab.cargo).upper() or HierarquiaSetor.objects.filter(gerente=colab).exists():
                 can_see_salary = True
     
-    # QuerySet BASE ANTES DO FILTRO (Todos os colaboradores ativos que o usuário pode ver)
+    # QuerySet BASE (O mais amplo possível, para calcular as opções de filtro)
     funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
     
-    # 2. ANNOTATION: Anexa os IDs de Hierarquia do Setor (CRUCIAL PARA O FILTRO JS)
+    # QuerySet de todos os funcionários ativos (para aplicar o filtro de hierarquia)
+    funcionarios_total = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
     
-    # Subqueries para buscar os IDs da Hierarquia (ligado ao Setor do Colaborador)
-    hierarquia_sup_sq = HierarquiaSetor.objects.filter(
-        setor_id=OuterRef('setor_id')
-    ).values_list('supervisor_id')[:1] 
-    
-    hierarquia_ger_sq = HierarquiaSetor.objects.filter(
-        setor_id=OuterRef('setor_id')
-    ).values_list('gerente_id')[:1] 
-    
-    # Anota o QuerySet base com os IDs de Hierarquia
-    funcionarios_visiveis = funcionarios_base.annotate(
-        supervisor_hierarquia_id=Subquery(hierarquia_sup_sq),
-        gerente_hierarquia_id=Subquery(hierarquia_ger_sq)
-    )
+    # QuerySet final que será exibido (inicialmente, todos os permitidos)
+    funcionarios_final = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True) 
 
-    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET (APLICADO AO VISIVEIS ANOTADO) ---
+    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET ---
     
-    # 1. Recebe os IDs dos filtros da URL (Mantido)
+    # 1. Recebe os IDs dos filtros da URL
     setor_id = request.GET.get('setor_id')
     lider_id = request.GET.get('lider_id')
     supervisor_id = request.GET.get('supervisor_id')
     gerente_id = request.GET.get('gerente_id')
     turno_slug = request.GET.get('turno')
     
-    # 2. Aplicar filtros diretos (Mantido)
+    # 2. Aplicar filtros diretos (Turno/Setor/Líder)
     if setor_id:
-        funcionarios_visiveis = funcionarios_visiveis.filter(setor_id=setor_id)
+        funcionarios_final = funcionarios_final.filter(setor_id=setor_id)
     if lider_id:
-        funcionarios_visiveis = funcionarios_visiveis.filter(lider_id=lider_id)
+        funcionarios_final = funcionarios_final.filter(lider_id=lider_id)
     if turno_slug:
-        funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
+        funcionarios_final = funcionarios_final.filter(turno=turno_slug)
         
-    # 3. Aplicar filtros por Hierarquia (Usando o campo ANOTADO)
-    try:
-        if supervisor_id:
-            sup_id = int(supervisor_id) 
-            reporting_setor_ids = HierarquiaSetor.objects.filter(supervisor_id=sup_id).values_list('setor_id', flat=True).distinct()
-            funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
+    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - Lógica de duas etapas
+    
+    if supervisor_id:
+        # A) Busca todos os IDs de Setores que têm esse Supervisor definido
+        reporting_setor_ids = HierarquiaSetor.objects.filter(
+            supervisor_id=int(supervisor_id)
+        ).values_list('setor_id', flat=True).distinct()
         
-        if gerente_id:
-            ger_id = int(gerente_id)
-            reporting_setor_ids = HierarquiaSetor.objects.filter(gerente_id=ger_id).values_list('setor_id', flat=True).distinct()
-            funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
-
-    except ValueError:
-        messages.error(request, "Erro de Filtro: ID de Supervisor/Gerente inválido na URL.")
-    except Exception as e:
-        # Removendo este bloco de código para evitar o erro SyntaxError da função anterior.
-        pass
-
+        # B) Filtra funcionários que trabalham nesses Setores
+        funcionarios_final = funcionarios_final.filter(
+            setor_id__in=reporting_setor_ids
+        ).distinct()
+    
+    if gerente_id:
+        # A) Busca todos os IDs de Setores que têm esse Gerente definido
+        reporting_setor_ids = HierarquiaSetor.objects.filter(
+            gerente_id=int(gerente_id)
+        ).values_list('setor_id', flat=True).distinct()
+        
+        # B) Filtra funcionários que pertencem a esses Setores
+        funcionarios_final = funcionarios_final.filter(
+            setor_id__in=reporting_setor_ids
+        ).distinct()
 
     # --- FIM DA LÓGICA DE FILTRAGEM ---
+    
+    # 4. FILTRO DE SEGURANÇA FINAL: Garante que apenas os IDs permitidos sejam exibidos
+    funcionarios_visiveis = funcionarios_final.filter(id__in=ids_permitidos)
 
-    # 4. FILTROS DINÂMICOS (Recálculo das opções para o dropdown)
+
+    # 5. CÁLCULO DAS OPÇÕES DE FILTRO (Usando funcionarios_base, que é o limite de visibilidade)
     
     setores_ids_base = funcionarios_base.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids_base).order_by('nome')
