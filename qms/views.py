@@ -153,43 +153,47 @@ def modulo_metrologia_view(request):
         'can_edit': True
     }
     return render(request, 'modulo_metrologia.html', ctx)
+# Substitua a sua função modulo_rh_view por esta versão
 @login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
     
-    funcionarios_visiveis = Colaborador.objects.none()
+    # 1. VISIBILIDADE (Otimizada para carregar filtros)
+    ids_permitidos = set()
     can_see_salary = False
-
-    # 1. VISIBILIDADE (Lógica inicial mantida)
+    
+    # Define a visibilidade inicial
     if request.user.is_superuser or request.user.is_staff:
-        funcionarios_visiveis = Colaborador.objects.all().order_by('nome_completo')
+        # Se for admin, vê todos os IDs ativos
+        ids_permitidos = Colaborador.objects.filter(is_active=True).values_list('id', flat=True)
         can_see_salary = True
     elif colab:
         if colab.setor and 'RH' in colab.setor.nome.upper():
-            funcionarios_visiveis = Colaborador.objects.all().order_by('nome_completo')
+            # Se for RH, vê todos os IDs ativos
+            ids_permitidos = Colaborador.objects.filter(is_active=True).values_list('id', flat=True)
             can_see_salary = True
         else:
+            # Se for Líder, a visibilidade são apenas seus subordinados + ele mesmo
             ids_permitidos = get_all_subordinates(colab)
             ids_permitidos.add(colab.id)
-            funcionarios_visiveis = Colaborador.objects.filter(id__in=ids_permitidos).order_by('nome_completo')
-            
-            if 'GERENTE' in str(colab.cargo).upper(): can_see_salary = True
-            if HierarquiaSetor.objects.filter(gerente=colab).exists(): can_see_salary = True
-    else:
-        if not (request.user.is_superuser or request.user.is_staff):
-            messages.warning(request, f"Não foi possível vincular seu usuário '{request.user.username}' a um colaborador.")
-
-
-    # --- NOVO: LÓGICA DE FILTRAGEM VIA GET (MAIS ROBUSTA) ---
+            # Regras salariais
+            if 'GERENTE' in str(colab.cargo).upper() or HierarquiaSetor.objects.filter(gerente=colab).exists():
+                can_see_salary = True
     
-    # 1. Recebe os IDs dos filtros da URL
+    # QuerySet BASE ANTES DO FILTRO (Só funcionários ativos na visibilidade)
+    funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
+    funcionarios_visiveis = funcionarios_base
+
+    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET ---
+    
+    # 1. Recebe os IDs dos filtros da URL (Mantido)
     setor_id = request.GET.get('setor_id')
     lider_id = request.GET.get('lider_id')
     supervisor_id = request.GET.get('supervisor_id')
     gerente_id = request.GET.get('gerente_id')
     turno_slug = request.GET.get('turno')
     
-    # 2. Aplicar filtros diretos (Turno/Setor/Líder)
+    # 2. Aplicar filtros diretos (Mantido)
     if setor_id:
         funcionarios_visiveis = funcionarios_visiveis.filter(setor_id=setor_id)
     if lider_id:
@@ -197,42 +201,30 @@ def modulo_rh_view(request):
     if turno_slug:
         funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
         
-    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - Lógica de duas etapas
-    
+    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - Lógica de duas etapas (Mantido)
     if supervisor_id:
-        # A) Busca todos os IDs de Setores que têm esse Supervisor definido
-        reporting_setor_ids = HierarquiaSetor.objects.filter(
-            supervisor_id=supervisor_id
-        ).values_list('setor_id', flat=True).distinct()
-        
-        # B) Filtra funcionários que trabalham nesses Setores
-        funcionarios_visiveis = funcionarios_visiveis.filter(
-            setor_id__in=reporting_setor_ids
-        ).distinct()
+        reporting_setor_ids = HierarquiaSetor.objects.filter(supervisor_id=supervisor_id).values_list('setor_id', flat=True).distinct()
+        funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
     
     if gerente_id:
-        # A) Busca todos os IDs de Setores que têm esse Gerente definido
-        reporting_setor_ids = HierarquiaSetor.objects.filter(
-            gerente_id=gerente_id
-        ).values_list('setor_id', flat=True).distinct()
-        
-        # B) Filtra funcionários que pertencem a esses Setores
-        funcionarios_visiveis = funcionarios_visiveis.filter(
-            setor_id__in=reporting_setor_ids
-        ).distinct()
+        reporting_setor_ids = HierarquiaSetor.objects.filter(gerente_id=gerente_id).values_list('setor_id', flat=True).distinct()
+        funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
 
     # --- FIM DA LÓGICA DE FILTRAGEM ---
 
-    # 4. FILTROS DINÂMICOS (Recálculo das opções para o dropdown)
+    # 4. FILTROS DINÂMICOS (Recálculo das opções de filtro - CRUCIAL)
+    # A base para buscar as opções de filtro é sempre a lista COMPLETA de IDs que o usuário pode ver,
+    # não o QuerySet que pode ter sido filtrado pelo usuário.
     
-    setores_ids = funcionarios_visiveis.values_list('setor', flat=True).distinct()
-    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by('nome')
+    # A base para extrair os Setores é o QuerySet antes da filtragem GET
+    setores_ids_base = funcionarios_base.values_list('setor', flat=True).distinct()
+    setores_filtro = Setor.objects.filter(id__in=setores_ids_base).order_by('nome')
 
-    lideres_ids = funcionarios_visiveis.values_list('lider', flat=True).distinct()
+    lideres_ids = funcionarios_base.values_list('lider', flat=True).distinct()
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
 
-    # Busca Hierarquias para as opções de Supervisor/Gerente
-    hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids)
+    # Busca Hierarquias para as opções de Supervisor/Gerente (Usando o setor base)
+    hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids_base)
     
     sup_ids_raw = hierarquias.values_list('supervisor', flat=True).distinct()
     ger_ids_raw = hierarquias.values_list('gerente', flat=True).distinct()
