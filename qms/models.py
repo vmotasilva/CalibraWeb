@@ -191,6 +191,7 @@ class SolicitacaoInstrumento(models.Model):
         blank=True, 
         help_text="Preencher caso seja substituição de um item existente"
     )
+    motivo = models.TextField(help_text="Descreva a necessidade da aplicação ou o motivo da troca", default="")
     data_solicitacao = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
     resposta_qualidade = models.TextField(blank=True, null=True, help_text="Parecer do setor de qualidade")
