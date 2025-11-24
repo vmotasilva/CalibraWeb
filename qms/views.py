@@ -102,11 +102,28 @@ def dashboard_view(request):
 @login_required
 def modulo_metrologia_view(request):
     colab = get_colab(request)
+    
+    # Busca todos os instrumentos
+    instrumentos = Instrumento.objects.all().order_by('tag')
+    
+    # Preparação dos Filtros (Extraindo valores únicos presentes na lista)
+    setores_ids = instrumentos.values_list('setor', flat=True).distinct()
+    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by('nome')
+    
+    categorias_ids = instrumentos.values_list('categoria', flat=True).distinct()
+    categorias_filtro = CategoriaInstrumento.objects.filter(id__in=categorias_ids).order_by('nome')
+
+    # Datas de referência para o template calcular status (Vencido/A Vencer)
+    hoje = date.today()
+    alerta_30d = hoje + timedelta(days=30)
+
     ctx = {
         'colaborador': colab, 
-        'instrumentos': Instrumento.objects.all().order_by('tag'),
-        'setores': Setor.objects.all().order_by('nome'),
-        'categorias': CategoriaInstrumento.objects.all().order_by('nome'),
+        'instrumentos': instrumentos,
+        'setores_filtro': setores_filtro,
+        'categorias_filtro': categorias_filtro,
+        'hoje': hoje,
+        'alerta_30d': alerta_30d,
         'can_edit': True
     }
     return render(request, 'modulo_metrologia.html', ctx)

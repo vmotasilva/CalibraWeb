@@ -1,236 +1,330 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="mb-0 fw-bold text-secondary">📏 Metrologia & Instrumentos</h2>
-        <p class="text-muted mb-0">Gerencie o inventário e o status de calibração.</p>
-    </div>
+<style>
+    /* Estilos de "App" (Rolagem Independente) */
+    body { overflow: hidden; }
+
+    .sidebar-scroll {
+        height: calc(100vh - 160px);
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+    .table-container-scroll {
+        height: calc(100vh - 200px);
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        background-color: white;
+    }
+    .table-container-scroll thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Filtros Expansíveis */
+    .filter-header {
+        cursor: pointer; padding: 8px 0; user-select: none; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0;
+    }
+    .filter-header:hover { background-color: #f8f9fa; }
+    .filter-header i { transition: transform 0.2s ease; font-size: 0.8rem; color: #6c757d; }
+    .filter-group.open .filter-header i { transform: rotate(180deg); }
+    .filter-content { display: none; padding: 8px 0 8px 5px; }
+    .filter-group.open .filter-content { display: block; }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    .transition-all { transition: all 0.3s ease; }
+</style>
+
+<div class="container-fluid py-3" style="height: 100vh; display: flex; flex-direction: column;">
     
-    <div class="d-flex gap-2">
-        <a href="{% url 'template_instrumentos' %}" class="btn btn-outline-secondary">
-            <i class="bi bi-download"></i> Modelo Excel
-        </a>
-        
-        {% if can_edit %}
-        <a href="{% url 'carimbar' %}" class="btn btn-primary">
-            <i class="bi bi-patch-check"></i> Validar Certificado
-        </a>
-        <a href="{% url 'importar_instrumentos' %}" class="btn btn-success text-white">
-            <i class="bi bi-file-earmark-excel"></i> Importar Excel
-        </a>
-        {% endif %}
-    </div>
-</div>
-
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-white py-3 border-bottom">
-        <div class="row g-2 align-items-center">
-            <div class="col-md-12 mb-2 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 text-primary"><i class="bi bi-funnel"></i> Filtros de Pesquisa</h5>
-                <span class="badge bg-primary fs-6" id="contadorBadge">
-                    Exibindo {{ instrumentos.count }} instrumentos
-                </span>
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2 flex-shrink-0">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Alternar Filtros">
+                <i class="bi bi-layout-sidebar" id="sidebarIcon"></i>
+            </button>
+            <div>
+                <h4 class="fw-bold text-primary mb-0">Metrologia</h4>
+                <p class="text-muted mb-0 small">Controle de Instrumentos e Calibrações</p>
             </div>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <a href="{% url 'carimbo' %}" class="btn btn-warning shadow-sm text-dark fw-bold btn-sm">
+                <i class="bi bi-patch-check-fill"></i> Validar Certificado
+            </a>
+            <a href="{% url 'importar_instrumentos' %}" class="btn btn-success btn-sm shadow-sm">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Importar
+            </a>
+            <a href="/admin/qms/instrumento/add/" target="_blank" class="btn btn-primary btn-sm shadow-sm">
+                <i class="bi bi-plus-lg"></i> Novo
+            </a>
+        </div>
+    </div>
 
-            <div class="col-md-4">
-                <div class="input-group">
-                    <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
-                    <input type="text" id="filtroBusca" class="form-control" placeholder="Buscar TAG, Modelo, Série...">
+    <div class="row h-100 overflow-hidden">
+        
+        <!-- SIDEBAR FILTROS -->
+        <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
+            
+            <!-- Busca -->
+            <div class="mb-3 flex-shrink-0">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
+                    <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="limparFiltros()">
+                        <small>Limpar</small>
+                    </button>
+                </div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Tag, Descrição...">
                 </div>
             </div>
 
-            <div class="col-md-3">
-                <select id="filtroSetor" class="form-select">
-                    <option value="">🏢 Todos os Setores</option>
-                    {% for s in setores %}
-                        <option value="{{ s.nome }}">{{ s.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+            <div class="sidebar-scroll">
+                
+                <!-- 1. SITUAÇÃO (Vencimento) -->
+                <div class="filter-group open mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0">SITUAÇÃO</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="VENCIDO" data-category="situacao">
+                                <label class="form-check-label small text-danger fw-bold">Vencidos</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER" data-category="situacao">
+                                <label class="form-check-label small text-warning fw-bold">A Vencer (30d)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="EM_DIA" data-category="situacao">
+                                <label class="form-check-label small text-success">Em Dia</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            <div class="col-md-3">
-                <select id="filtroCategoria" class="form-select">
-                    <option value="">🔧 Todas as Categorias</option>
-                    {% for c in categorias %}
-                        <option value="{{ c.nome }}">{{ c.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <!-- 2. STATUS (Ativo/Inativo) -->
+                <div class="filter-group mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0">STATUS</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
+                                <label class="form-check-label small">Ativo</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status">
+                                <label class="form-check-label small">Inativo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            <div class="col-md-2">
-                <select id="filtroStatus" class="form-select">
-                    <option value="">📊 Todos Status</option>
-                    <option value="ATIVO">Ativo</option>
-                    <option value="INATIVO">Inativo</option>
-                </select>
+                <!-- 3. CATEGORIA -->
+                <div class="filter-group mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0">CATEGORIA</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1 ps-1">
+                            {% for cat in categorias_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ cat.id }}" data-category="categoria">
+                                <label class="form-check-label small text-truncate" title="{{ cat.nome }}">{{ cat.nome }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. SETOR -->
+                <div class="filter-group mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0">SETOR</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1 ps-1">
+                            {% for setor in setores_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor">
+                                <label class="form-check-label small text-truncate" title="{{ setor.nome }}">{{ setor.nome }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
-    </div>
-    
-    <div class="card-body p-0 table-responsive">
-        <table class="table table-hover mb-0 align-middle table-sm" id="tabelaInstrumentos" style="font-size: 0.9rem;">
-            <thead class="table-dark">
-                <tr>
-                    <th class="ps-3">Status</th>
-                    <th>TAG / Código</th>
-                    <th>Descrição / Categoria</th>
-                    <th>Fabricante / Modelo</th>
-                    <th>Nº Série</th>
-                    <th>Setor / Local</th>
-                    <th class="text-center">Freq.</th>
-                    <th class="text-center">Última</th>
-                    <th class="text-center">Próxima</th>
-                    <th class="text-end pe-3">Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for inst in instrumentos %}
-                <tr class="linha-instrumento" 
-                    data-busca="{{ inst.tag }} {{ inst.codigo }} {{ inst.descricao }} {{ inst.numero_serie }} {{ inst.modelo }} {{ inst.fabricante }}"
-                    data-setor="{{ inst.setor.nome|default:'' }}"
-                    data-categoria="{{ inst.categoria.nome|default:'' }}"
-                    data-status="{% if inst.ativo %}ATIVO{% else %}INATIVO{% endif %}">
-                    
-                    <td class="ps-3 text-center">
-                        {% if inst.ativo %}
-                            <i class="bi bi-check-circle-fill text-success" title="Ativo"></i>
-                            <span class="d-none">ATIVO</span>
-                        {% else %}
-                            <i class="bi bi-x-circle-fill text-danger" title="Inativo"></i>
-                            <span class="d-none">INATIVO</span>
-                        {% endif %}
-                    </td>
-                    
-                    <td class="fw-bold">
-                        <a href="{% url 'detalhe_instrumento' inst.id %}" class="text-decoration-none text-primary">
-                            {{ inst.tag }}
-                        </a>
-                        {% if inst.codigo and inst.codigo != inst.tag %}
-                            <div class="text-muted small" style="font-size: 0.75rem;">{{ inst.codigo }}</div>
-                        {% endif %}
-                    </td>
-                    
-                    <td>
-                        {{ inst.descricao|truncatechars:35 }}
-                        <div class="text-muted small categoria-text">{{ inst.categoria.nome|default:"-" }}</div>
-                    </td>
-                    
-                    <td>
-                        <div class="fw-semibold">{{ inst.fabricante|default:"-" }}</div>
-                        <div class="text-muted small">{{ inst.modelo|default:"" }}</div>
-                    </td>
-                    
-                    <td>{{ inst.serie|default:"-" }}</td>
-                    
-                    <td>
-                        <div class="fw-semibold setor-text">{{ inst.setor.nome|default:"-" }}</div>
-                        <div class="text-muted small">{{ inst.localizacao|default:"" }}</div>
-                    </td>
-                    
-                    <td class="text-center">{{ inst.frequencia_meses }} m</td>
 
-                    <td class="text-center text-muted">
-                        {{ inst.data_ultima_calibracao|date:"d/m/Y"|default:"-" }}
-                    </td>
-                    
-                    <td class="text-center">
-                        {% if inst.data_proxima_calibracao %}
-                            {% now "Y-m-d" as hoje_str %}
-                            {% if inst.data_proxima_calibracao|date:"Y-m-d" < hoje_str %}
-                                <span class="badge bg-danger">{{ inst.data_proxima_calibracao|date:"d/m/Y" }}</span>
-                            {% elif inst.data_proxima_calibracao|date:"Y-m-d" == hoje_str %}
-                                <span class="badge bg-warning text-dark">HOJE</span>
-                            {% else %}
-                                <span class="badge bg-success">{{ inst.data_proxima_calibracao|date:"d/m/Y" }}</span>
-                            {% endif %}
-                        {% else %}
-                            <span class="text-muted small">-</span>
-                        {% endif %}
-                    </td>
+        <!-- TABELA PRINCIPAL -->
+        <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col">
+            
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                    <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ instrumentos.count }}</span> instrumentos
+                </span>
+            </div>
 
-                    <td class="text-end pe-3">
-                        <a href="{% url 'detalhe_instrumento' inst.id %}" class="btn btn-sm btn-light text-primary border" title="Ver Detalhes">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="10" class="text-center py-5">
-                        <div class="text-muted opacity-50">
-                            <i class="bi bi-inbox display-1"></i>
-                            <p class="mt-3 fs-5">Nenhum instrumento encontrado.</p>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    
-    <div class="card-footer bg-white py-2 text-end">
-        <small class="text-muted">Base total: {{ instrumentos.count }} registros</small>
+            <div class="table-container-scroll shadow-sm">
+                <table class="table table-hover align-middle mb-0" id="metrologiaTable">
+                    <thead class="small text-uppercase text-muted font-monospace">
+                        <tr>
+                            <th class="ps-4 py-3">Tag / Código</th>
+                            <th class="py-3">Descrição</th>
+                            <th class="py-3">Categoria</th>
+                            <th class="py-3">Setor</th>
+                            <th class="py-3">Próxima Calibração</th>
+                            <th class="text-end pe-4 py-3">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0 bg-white">
+                        {% for i in instrumentos %}
+                        
+                        <!-- Lógica de Cores e Dados para Filtro -->
+                        {% with dias=(i.data_proxima_calibracao|timeuntil:hoje) %}
+                        <tr class="instrumento-row border-bottom"
+                            data-nome="{{ i.tag|lower }} {{ i.descricao|lower }} {{ i.fabricante|lower }}"
+                            data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
+                            data-categoria="{{ i.categoria.id|default:'' }}"
+                            data-setor="{{ i.setor.id|default:'' }}"
+                            data-situacao="{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER{% else %}EM_DIA{% endif %}">
+                            
+                            <td class="ps-4 py-2 fw-bold text-primary font-monospace">
+                                {{ i.tag }}
+                            </td>
+                            
+                            <td class="py-2">
+                                <div class="text-dark small fw-semibold">{{ i.descricao|truncatechars:40 }}</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">
+                                    {{ i.fabricante }} - {{ i.modelo }}
+                                </div>
+                            </td>
+
+                            <td class="py-2">
+                                <span class="badge bg-light text-dark border fw-normal">{{ i.categoria.nome|default:"-" }}</span>
+                            </td>
+
+                            <td class="py-2 small text-muted">
+                                {{ i.setor.nome|default:"-" }}
+                            </td>
+
+                            <td class="py-2">
+                                {% if i.data_proxima_calibracao %}
+                                    {% if i.data_proxima_calibracao < hoje %}
+                                        <span class="badge bg-danger">VENCIDO ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                    {% elif i.data_proxima_calibracao <= alerta_30d %}
+                                        <span class="badge bg-warning text-dark">A VENCER ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                    {% else %}
+                                        <span class="text-success small fw-bold">{{ i.data_proxima_calibracao|date:"d/m/Y" }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+
+                            <td class="text-end pe-4 py-2">
+                                <a href="{% url 'detalhe_instrumento' i.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill" style="font-size: 0.75rem;">
+                                    Detalhes
+                                </a>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center py-5 text-muted">Nenhum instrumento cadastrado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Elementos
-        const inputs = [
-            document.getElementById('filtroBusca'),
-            document.getElementById('filtroSetor'),
-            document.getElementById('filtroCategoria'),
-            document.getElementById('filtroStatus')
-        ];
-        const linhas = document.querySelectorAll('.linha-instrumento');
-        const contadorBadge = document.getElementById('contadorBadge');
-        const totalInicial = linhas.length;
+document.addEventListener('DOMContentLoaded', function() {
+    filtrar();
+    const searchInput = document.getElementById('searchInput');
+    const checkboxes = document.querySelectorAll('.filter-checkbox');
+    searchInput.addEventListener('keyup', filtrar);
+    checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
+});
 
-        function filtrar() {
-            const termo = inputs[0].value.toUpperCase();
-            const setor = inputs[1].value;
-            const categoria = inputs[2].value;
-            const status = inputs[3].value;
-            
-            let visiveis = 0;
+function toggleFilterGroup(element) {
+    element.parentElement.classList.toggle('open');
+}
 
-            linhas.forEach(linha => {
-                const dados = linha.dataset; // Lê os dados escondidos na linha
-                
-                // Verifica cada critério
-                const matchTexto = !termo || dados.busca.toUpperCase().includes(termo);
-                const matchSetor = !setor || dados.setor === setor;
-                const matchCat = !categoria || dados.categoria === categoria;
-                const matchStatus = !status || dados.status === status;
-
-                // Se atender a TODOS, mostra
-                if (matchTexto && matchSetor && matchCat && matchStatus) {
-                    linha.style.display = '';
-                    visiveis++;
-                } else {
-                    linha.style.display = 'none';
-                }
-            });
-            
-            // Atualiza o contador visual
-            if (visiveis === totalInicial) {
-                contadorBadge.textContent = `Exibindo todos (${visiveis})`;
-                contadorBadge.className = 'badge bg-primary fs-6';
-            } else if (visiveis === 0) {
-                contadorBadge.textContent = `Nenhum resultado encontrado`;
-                contadorBadge.className = 'badge bg-danger fs-6';
-            } else {
-                contadorBadge.textContent = `Filtrado: ${visiveis} de ${totalInicial}`;
-                contadorBadge.className = 'badge bg-success fs-6';
-            }
-        }
-
-        // Ativa o filtro quando qualquer campo mudar
-        inputs.forEach(input => input.addEventListener('input', filtrar));
-        
-        // Roda uma vez para garantir
-        filtrar();
+function filtrar() {
+    const searchInput = document.getElementById('searchInput');
+    const countDisplay = document.getElementById('countDisplay');
+    const termoBusca = searchInput.value.toLowerCase();
+    
+    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [] };
+    
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
     });
+
+    let visiveis = 0;
+    
+    document.querySelectorAll('.instrumento-row').forEach(row => {
+        let mostrar = true;
+
+        if (termoBusca && !row.dataset.nome.includes(termoBusca)) mostrar = false;
+        
+        if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) mostrar = false;
+        if (mostrar && filtrosAtivos.situacao.length > 0 && !filtrosAtivos.situacao.includes(row.dataset.situacao)) mostrar = false;
+        if (mostrar && filtrosAtivos.categoria.length > 0 && !filtrosAtivos.categoria.includes(row.dataset.categoria)) mostrar = false;
+        if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
+
+        row.style.display = mostrar ? '' : 'none';
+        if (mostrar) visiveis++;
+    });
+
+    if(countDisplay) countDisplay.innerText = visiveis;
+}
+
+function limparFiltros() {
+    document.getElementById('searchInput').value = '';
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        cb.checked = (cb.id === 'st_ativo');
+    });
+    filtrar();
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar-col');
+    const content = document.getElementById('content-col');
+    const icon = document.getElementById('sidebarIcon');
+
+    if (sidebar.classList.contains('d-none')) {
+        sidebar.classList.remove('d-none');
+        content.classList.replace('col-12', 'col-md-9');
+        content.classList.add('col-lg-10');
+        icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
+    } else {
+        sidebar.classList.add('d-none');
+        content.classList.replace('col-md-9', 'col-12');
+        content.classList.remove('col-lg-10');
+        icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
+    }
+}
 </script>
 {% endblock %}
