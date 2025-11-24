@@ -156,7 +156,7 @@ def modulo_metrologia_view(request):
 def modulo_rh_view(request):
     colab = get_colab(request)
     
-    # 1. VISIBILIDADE (Calcula apenas o SET de IDs permitidos para SEGURANÇA)
+    # 1. VISIBILIDADE (Definição dos IDs permitidos - Mantida)
     ids_permitidos = set()
     can_see_salary = False
     
@@ -173,63 +173,29 @@ def modulo_rh_view(request):
             if 'GERENTE' in str(colab.cargo).upper() or HierarquiaSetor.objects.filter(gerente=colab).exists():
                 can_see_salary = True
     
-    # QuerySet BASE (O mais amplo possível, para calcular as opções de filtro)
+    # QuerySet BASE (Todos os colaboradores ativos que o usuário pode ver)
     funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
+    funcionarios_visiveis = funcionarios_base
     
-    # QuerySet de todos os funcionários ativos (para aplicar o filtro de hierarquia)
-    funcionarios_total = Colaborador.objects.filter(is_active=True).order_by('nome_completo')
-    
-    # QuerySet final que será exibido (inicialmente, todos os permitidos)
-    funcionarios_final = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True) 
-
-    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET ---
+    # --- NOVO: LÓGICA DE FILTRAGEM SIMPLES VIA GET (ESTÁVEL) ---
     
     # 1. Recebe os IDs dos filtros da URL
     setor_id = request.GET.get('setor_id')
     lider_id = request.GET.get('lider_id')
-    supervisor_id = request.GET.get('supervisor_id')
-    gerente_id = request.GET.get('gerente_id')
     turno_slug = request.GET.get('turno')
+    # NOTA: Supervisor/Gerente foram desabilitados na filtragem principal aqui.
     
-    # 2. Aplicar filtros diretos (Turno/Setor/Líder)
+    # 2. Aplicar filtros diretos 
     if setor_id:
-        funcionarios_final = funcionarios_final.filter(setor_id=setor_id)
+        funcionarios_visiveis = funcionarios_visiveis.filter(setor_id=setor_id)
     if lider_id:
-        funcionarios_final = funcionarios_final.filter(lider_id=lider_id)
+        funcionarios_visiveis = funcionarios_visiveis.filter(lider_id=lider_id)
     if turno_slug:
-        funcionarios_final = funcionarios_final.filter(turno=turno_slug)
+        funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
         
-    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - Lógica de duas etapas
-    
-    if supervisor_id:
-        # A) Busca todos os IDs de Setores que têm esse Supervisor definido
-        reporting_setor_ids = HierarquiaSetor.objects.filter(
-            supervisor_id=int(supervisor_id)
-        ).values_list('setor_id', flat=True).distinct()
-        
-        # B) Filtra funcionários que trabalham nesses Setores
-        funcionarios_final = funcionarios_final.filter(
-            setor_id__in=reporting_setor_ids
-        ).distinct()
-    
-    if gerente_id:
-        # A) Busca todos os IDs de Setores que têm esse Gerente definido
-        reporting_setor_ids = HierarquiaSetor.objects.filter(
-            gerente_id=int(gerente_id)
-        ).values_list('setor_id', flat=True).distinct()
-        
-        # B) Filtra funcionários que pertencem a esses Setores
-        funcionarios_final = funcionarios_final.filter(
-            setor_id__in=reporting_setor_ids
-        ).distinct()
+    # --- FIM DA LÓGICA DE FILTRAGEM SIMPLES ---
 
-    # --- FIM DA LÓGICA DE FILTRAGEM ---
-    
-    # 4. FILTRO DE SEGURANÇA FINAL: Garante que apenas os IDs permitidos sejam exibidos
-    funcionarios_visiveis = funcionarios_final.filter(id__in=ids_permitidos)
-
-
-    # 5. CÁLCULO DAS OPÇÕES DE FILTRO (Usando funcionarios_base, que é o limite de visibilidade)
+    # 3. FILTROS DINÂMICOS (Recálculo das opções para o dropdown)
     
     setores_ids_base = funcionarios_base.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids_base).order_by('nome')
@@ -262,8 +228,8 @@ def modulo_rh_view(request):
         'funcionarios': funcionarios_visiveis,
         'lideres_filtro': lideres_filtro, 
         'setores_filtro': setores_filtro,
-        'supervisores_filtro': supervisores_filtro, 
-        'gerentes_filtro': gerentes_filtro,
+        'supervisores_filtro': supervisores_filtro, # <--- Opções de filtro preenchidas
+        'gerentes_filtro': gerentes_filtro,         # <--- Opções de filtro preenchidas
         'turnos_filtro': turnos_filtro,
         'centros': CentroCusto.objects.all().order_by('codigo'), 
         'can_see_salary': can_see_salary,
