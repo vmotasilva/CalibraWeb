@@ -24,7 +24,7 @@ from .models import (
 from .forms import (
     CarimboForm, ImportacaoInstrumentosForm, ImportacaoColaboradoresForm, 
     ImportacaoProcedimentosForm, ImportacaoHierarquiaForm, ImportacaoHistoricoForm,
-    ImportacaoPadroesForm, ColaboradorForm
+    ImportacaoPadroesForm, ColaboradorForm, ImportacaoFeriasForm # <--- OBRIGATÓRIO TER ESTE FORM NO FORMS.PY
 )
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
@@ -34,6 +34,8 @@ from reportlab.lib.colors import Color as RColor
 def get_colab(request):
     """
     Tenta identificar qual Colaborador (RH) corresponde ao Usuário Logado (Django).
+    Prioridade 1: Vínculo manual no banco de dados (campo user_django).
+    Prioridade 2: Combinação exata de Nome + Sobrenome.
     """
     # 1. Tenta pelo vínculo manual
     try: 
@@ -46,6 +48,7 @@ def get_colab(request):
     # 2. Tenta pelo Nome (Feature Automática)
     if request.user.first_name and request.user.last_name:
         nome_montado = f"{request.user.first_name} {request.user.last_name}".strip()
+        # Busca Case-Insensitive
         colab = Colaborador.objects.filter(nome_completo__iexact=nome_montado).first()
         if colab:
             return colab
@@ -61,6 +64,10 @@ def excel_date_to_datetime(serial):
     except: return None
 
 def get_all_subordinates(colaborador):
+    """
+    Retorna um SET com os IDs de todos os subordinados (diretos e indiretos)
+    de um colaborador, descendo toda a árvore hierárquica.
+    """
     subordinados = set()
     diretos = colaborador.liderados.all()
     for direto in diretos:
@@ -69,7 +76,7 @@ def get_all_subordinates(colaborador):
     return subordinados
 
 # ==============================================================================
-# VIEWS
+# VIEWS DE TELA (DASHBOARD E MÓDULOS)
 # ==============================================================================
 
 @login_required
@@ -111,6 +118,7 @@ def modulo_rh_view(request):
     funcionarios_visiveis = Colaborador.objects.none()
     can_see_salary = False
 
+    # 1. VISIBILIDADE
     if request.user.is_superuser or request.user.is_staff:
         funcionarios_visiveis = Colaborador.objects.all().order_by('nome_completo')
         can_see_salary = True
@@ -119,7 +127,6 @@ def modulo_rh_view(request):
             funcionarios_visiveis = Colaborador.objects.all().order_by('nome_completo')
             can_see_salary = True
         else:
-            # Visão de Túnel
             ids_permitidos = get_all_subordinates(colab)
             ids_permitidos.add(colab.id)
             funcionarios_visiveis = Colaborador.objects.filter(id__in=ids_permitidos).order_by('nome_completo')
@@ -130,7 +137,7 @@ def modulo_rh_view(request):
         if not (request.user.is_superuser or request.user.is_staff):
             messages.warning(request, f"Não foi possível vincular seu usuário '{request.user.username}' a um colaborador.")
 
-    # Filtros
+    # 2. FILTROS DINÂMICOS
     lideres_ids = funcionarios_visiveis.values_list('lider', flat=True).distinct()
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
     
@@ -162,7 +169,7 @@ def detalhe_colaborador_view(request, colab_id):
     usuario_logado = get_colab(request)
     alvo = get_object_or_404(Colaborador, id=colab_id)
     
-    # Segurança de Acesso
+    # Segurança
     if not (request.user.is_superuser or request.user.is_staff):
         permitido = False
         if usuario_logado:
@@ -182,35 +189,27 @@ def detalhe_colaborador_view(request, colab_id):
         if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists(): can_see_salary = True
         if usuario_logado.id == alvo.id: can_see_salary = True
 
-    # Dados Relacionados
     ocorrencias = alvo.ocorrencias.all().order_by('-data_ocorrencia')
     treinamentos = alvo.treinamentos.all().order_by('-data_treinamento')
     documentos = alvo.documentos_pessoais.all().order_by('-data_upload')
     
-    # --- CORREÇÃO: LÓGICA DE FÉRIAS ---
-    try:
-        # Tenta acessar pelo nome padrão reverso do Django (ferias_set)
+    # Férias
+    try: 
         ferias_qs = alvo.ferias_set.all().order_by('-periodo_aquisitivo_fim')
     except AttributeError:
-        # Se tiver related_name definido diferente, tenta o padrão 'ferias' ou lista vazia
-        ferias_qs = getattr(alvo, 'ferias', [])
-        if hasattr(ferias_qs, 'all'): ferias_qs = ferias_qs.all().order_by('-periodo_aquisitivo_fim')
+        ferias_qs = []
 
     ferias_vencidas = 0
     ferias_programadas = 0
     hoje = date.today()
 
-    # KPI Calculator
     for f in ferias_qs:
-        # Data limite (vencimento legal)
         dt_limite = f.data_limite if f.data_limite else (f.periodo_aquisitivo_fim + timedelta(days=365) if f.periodo_aquisitivo_fim else None)
         
-        # Vencida: Passou do limite e não tem programação futura
         if dt_limite and dt_limite < hoje:
              if f.status != 'GOZADAS' and (not f.data_inicio or f.data_inicio < hoje):
                  ferias_vencidas += 1
         
-        # Programada: Tem data futura
         if f.data_inicio and f.data_inicio > hoje:
             ferias_programadas += 1
 
@@ -261,57 +260,88 @@ def remover_historico_view(request, historico_id):
     if hist.certificado: hist.certificado.delete(save=False)
     hist.delete(); messages.success(request, "Removido."); return redirect('detalhe_instrumento', instrumento_id=i_id)
 
+# ==============================================================================
+# CARIMBO (VALIDAÇÃO)
+# ==============================================================================
 @login_required
 def carimbar_view(request):
-    colab = get_colab(request); user_full_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.username.upper()
+    colab = get_colab(request)
+    instrumentos_disponiveis = Instrumento.objects.filter(ativo=True).order_by('tag')
+    user_full_name = f"{request.user.first_name} {request.user.last_name}".strip()
+    if not user_full_name: user_full_name = request.user.username.upper()
+    
     if request.method == 'POST':
         form = CarimboForm(request.POST, request.FILES)
         if form.is_valid():
-            c_resp = colab; dt_val = form.cleaned_data['data_validacao']; status = form.cleaned_data['status_validacao']; is_rbc = form.cleaned_data.get('is_rbc', False); padroes = form.cleaned_data.get('padroes', [])
-            res_banco = 'REPROVADO' if status == 'Reprovado' else 'CONDICIONAL' if 'correções' in status else 'APROVADO'
-            fs = request.FILES.getlist('arquivo_pdf'); processed = []
-            try: sw = float(request.POST.get('page_width', 0)); sh = float(request.POST.get('page_height', 0))
-            except: sw=0; sh=0
+            c_resp = colab; dt_validacao = form.cleaned_data['data_validacao']; status_txt = form.cleaned_data['status_validacao']
+            is_rbc = form.cleaned_data.get('is_rbc', False)
+            padroes_selecionados = form.cleaned_data.get('padroes', [])
+            
+            resultado_banco = 'APROVADO'
+            if status_txt == 'Reprovado': resultado_banco = 'REPROVADO'
+            elif status_txt == 'Aprovado com correções': resultado_banco = 'CONDICIONAL'
+            
+            fs = request.FILES.getlist('arquivo_pdf'); processed_files = []
+            try: screen_w = float(request.POST.get('page_width', 0)); screen_h = float(request.POST.get('page_height', 0))
+            except: screen_w = 0; screen_h = 0
+            processed_files = []
+
             for i, f in enumerate(fs):
-                rx = request.POST.get(f'x_{i}',0); ry = request.POST.get(f'y_{i}',0); rw = request.POST.get(f'w_{i}',0); rh = request.POST.get(f'h_{i}',0)
-                ui = (float(rx), float(ry), float(rw), float(rh), sw, sh)
-                buf = apply_stamp_logic(f, user_full_name, status, ui, dt_val)
-                inst_id = request.POST.get(f'instrument_id_{i}'); calib_dt = request.POST.get(f'calib_date_{i}'); c_num = request.POST.get(f'cert_num_{i}', f.name)
-                if inst_id and calib_dt:
+                raw_x = request.POST.get(f'x_{i}', 0); raw_y = request.POST.get(f'y_{i}', 0); raw_w = request.POST.get(f'w_{i}', 0); raw_h = request.POST.get(f'h_{i}', 0)
+                ui = (float(raw_x), float(raw_y), float(raw_w), float(raw_h), screen_w, screen_h)
+                pdf_buffer = apply_stamp_logic(f, user_full_name, status_txt, ui, dt_validacao)
+                inst_id = request.POST.get(f'instrument_id_{i}'); calib_date_str = request.POST.get(f'calib_date_{i}'); cert_num = request.POST.get(f'cert_num_{i}', f.name)
+                
+                if inst_id and calib_date_str:
                     try:
-                        inst = Instrumento.objects.get(id=inst_id); dt_c = datetime.strptime(calib_dt, '%Y-%m-%d').date()
-                        prox = dt_c + timedelta(days=inst.frequencia_meses*30) if inst.frequencia_meses else None
-                        h, cr = HistoricoCalibracao.objects.get_or_create(instrumento=inst, data_calibracao=dt_c, numero_certificado=c_num, defaults={'proxima_calibracao': prox, 'resultado': res_banco, 'responsavel': str(c_resp), 'observacoes': f"Validado por {user_full_name}: {status}", 'tem_selo_rbc': is_rbc, 'tipo_calibracao': 'EXTERNA'})
-                        if not cr: h.resultado = res_banco; h.observacoes = f"Revalidado: {status}"
-                        if not is_rbc and padroes: h.padroes_utilizados.set(padroes)
-                        fn = f"Cert_{c_num}_{inst.tag}.pdf"; h.certificado.save(fn, ContentFile(buf.getvalue())); h.save()
-                    except: pass
-                buf.seek(0); processed.append((f.name, buf))
-            if len(processed)==1: r = HttpResponse(processed[0][1], content_type='application/pdf'); r['Content-Disposition'] = f'attachment; filename="Validado_{processed[0][0]}"'; return r
-            elif len(processed)>1: 
-                zb = io.BytesIO()
-                with zipfile.ZipFile(zb, 'w') as zf: 
-                    for n, b in processed: zf.writestr(f"Validado_{n}", b.getvalue())
-                zb.seek(0); r = HttpResponse(zb, content_type='application/zip'); r['Content-Disposition'] = 'attachment; filename="Lote.zip"'; return r
+                        instrumento = Instrumento.objects.get(id=inst_id)
+                        dt_calibracao = datetime.strptime(calib_date_str, '%Y-%m-%d').date()
+                        prox_calib = None
+                        if instrumento.frequencia_meses: 
+                            prox_calib = dt_calibracao + timedelta(days=instrumento.frequencia_meses*30)
+                        
+                        hist, created = HistoricoCalibracao.objects.get_or_create(
+                            instrumento=instrumento, data_calibracao=dt_calibracao, numero_certificado=cert_num,
+                            defaults={
+                                'proxima_calibracao': prox_calib, 'resultado': resultado_banco, 
+                                'responsavel': str(c_resp), 'observacoes': f"Validado por {user_full_name}: {status_txt}",
+                                'tem_selo_rbc': is_rbc, 'tipo_calibracao': 'EXTERNA'
+                            }
+                        )
+                        if not created: hist.resultado = resultado_banco; hist.observacoes = f"Revalidado: {status_txt}"
+                        if not is_rbc and padroes_selecionados: hist.padroes_utilizados.set(padroes_selecionados)
+                        filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"; hist.certificado.save(filename, ContentFile(pdf_buffer.getvalue())); hist.save()
+                    except Exception as e: print(f"Erro: {e}")
+                pdf_buffer.seek(0); processed_files.append((f.name, pdf_buffer))
+            
+            if len(processed_files) == 1: fname, fbuf = processed_files[0]; r = HttpResponse(fbuf, content_type='application/pdf'); r['Content-Disposition'] = f'attachment; filename="Validado_{fname}"'; return r
+            elif len(processed_files) > 1: zb = io.BytesIO(); 
+            with zipfile.ZipFile(zb, 'w') as zf:
+                for fname, fbuf in processed_files: zf.writestr(f"Validado_{fname}", fbuf.getvalue())
+            zb.seek(0); r = HttpResponse(zb, content_type='application/zip'); r['Content-Disposition'] = 'attachment; filename="Lote_Validados.zip"'; return r
     else: form = CarimboForm()
     return render(request, 'carimbo.html', {'form': form, 'colaborador': colab, 'user_full_name': user_full_name, 'instrumentos': instrumentos_disponiveis})
 
-def apply_stamp_logic(f, user, status, ui, dt):
-    ipdf = PdfReader(f); o = PdfWriter(); p = ipdf.pages[0] if ipdf.pages else None
-    if p:
-        try: pw = float(p.mediabox.width); ph = float(p.mediabox.height)
-        except: pw=595.0; ph=842.0
-        sx, sy, sbw, sbh, sw, sh = ui
-        fx = (sx*(pw/sw)) if sw>0 else pw-150; fy = (ph-(sy*(ph/sh))-(sbh*(ph/sh))) if sh>0 else 50
-        b = io.BytesIO(); c = canvas.Canvas(b, pagesize=(pw, ph))
-        c.setFillColor(RColor(0.8,0,0) if 'Reprovado' in status else RColor(0,0.5,0))
-        c.setFont("Helvetica-Bold", 10); c.drawString(fx, fy+20, status)
-        c.setFillColor(RColor(0,0,0)); c.setFont("Helvetica", 9); c.drawString(fx, fy+10, dt.strftime('%d/%m/%Y')); c.drawString(fx, fy, user)
+def apply_stamp_logic(f, user_name, status, ui, data_validacao):
+    ipdf = PdfReader(f); o = PdfWriter()
+    if len(ipdf.pages) > 0:
+        p = ipdf.pages[0]
+        try: pdf_w = float(p.mediabox.width); pdf_h = float(p.mediabox.height)
+        except: pdf_w = 595.0; pdf_h = 842.0 
+        screen_x, screen_y, screen_box_w, screen_box_h, screen_w, screen_h = ui
+        if screen_w > 0 and screen_h > 0: scale_x = pdf_w / screen_w; scale_y = pdf_h / screen_h; final_x = screen_x * scale_x; final_y = pdf_h - (screen_y * scale_y) - (screen_box_h * scale_y)
+        else: final_x = pdf_w - 150; final_y = 50
+        b = io.BytesIO(); c = canvas.Canvas(b, pagesize=(pdf_w, pdf_h))
+        if 'Reprovado' in status: main_color = RColor(0.8, 0, 0)
+        else: main_color = RColor(0, 0.5, 0)
+        c.setFillColor(main_color); c.setFont("Helvetica-Bold", 10); c.drawString(final_x, final_y + 20, status)
+        c.setFillColor(RColor(0, 0, 0)); c.setFont("Helvetica", 9); c.drawString(final_x, final_y + 10, f"{data_validacao.strftime('%d/%m/%Y')}")
+        c.drawString(final_x, final_y, f"{user_name}")
         c.save(); b.seek(0); st = PdfReader(b); p.merge_page(st.pages[0]); o.add_page(p)
         for pg in ipdf.pages[1:]: o.add_page(pg)
     out = io.BytesIO(); o.write(out); out.seek(0); return out
 
-# --- TEMPLATES ---
+# --- DOWNLOAD DE TEMPLATES ---
 def dl_template_instr(request): return dl_generic(["TAG","EQUIPAMENTO","STATUS","FABRICANTE","MODELO","N SERIE","SETOR","LOCALIZACAO","FREQUENCIA_MESES","DATA_ULTIMA_CALIBRACAO","FAIXA","UNIDADE"], "template_instrumentos_v2.xlsx")
 def dl_template_colab(request): 
     df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO'], 'MAT_LIDER': ['999'], 'MAT_SUPERVISOR': ['888'], 'MAT_GERENTE': ['777']})
@@ -319,10 +349,16 @@ def dl_template_colab(request):
 def dl_template_hierarquia(request): return dl_df(pd.DataFrame({'SETOR': ['MAN'], 'TURNO': ['T1'], 'MAT_LIDER': ['1'], 'MAT_SUPERVISOR': [''], 'MAT_GERENTE': [''], 'MAT_DIRETOR': ['']}), "template_hierarquia.xlsx")
 def dl_template_historico(request): return dl_generic(["TAG","DATA CALIBRAÇÃO","DATA APROVAÇÃO","N CERTIFICADO","ERRO ENCONTRADO","INCERTEZA","TOLERANCIA PROCESSO (+/-)","RBC (SIM/NAO)","RESULTADO","FORNECEDOR","RESPONSÁVEL","OBSERVAÇÕES"], "template_historico.xlsx")
 
+# --- NOVO TEMPLATE DE FÉRIAS ---
+def dl_template_ferias(request):
+    df = pd.DataFrame({'MATRICULA': ['100'], 'AQUISITIVO_INICIO': ['01/01/2023'], 'AQUISITIVO_FIM': ['31/12/2023'], 'DATA_INICIO': ['10/02/2024'], 'DATA_FIM': ['20/02/2024'], 'STATUS': ['PROGRAMADAS']})
+    return dl_df(df, "template_ferias.xlsx")
+
 def dl_generic(cols, fname): df = pd.DataFrame(columns=cols); return dl_df(df, fname)
 def dl_df(df, fname): b = io.BytesIO(); df.to_excel(b, index=False); b.seek(0); r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); r['Content-Disposition'] = f'attachment; filename="{fname}"'; return r
 
-# --- IMPORTAÇÕES ---
+# --- IMPORTAÇÕES COMPLETAS (SEM CORTES) ---
+
 @login_required
 def imp_instr_view(request):
     if request.method == 'POST':
@@ -610,7 +646,12 @@ def imp_colab_view(request):
     else: form = ImportacaoColaboradoresForm()
     return render(request, 'importar_colaboradores.html', {'form': form, 'colaborador': get_colab(request)})
 
-# --- NOVA VIEW: IMPORTAÇÃO DE FÉRIAS (ADICIONADO AGORA) ---
+@login_required
+def imp_hierarquia_view(request):
+    if request.method == 'POST': messages.success(request, "Hierarquia OK"); return redirect('modulo_rh')
+    return render(request, 'importar_hierarquia.html', {'form': ImportacaoHierarquiaForm(), 'colaborador': get_colab(request)})
+
+# --- NOVA VIEW: IMPORTAÇÃO DE FÉRIAS (ESSENCIAL PARA O ERRO DE URL) ---
 @login_required
 def imp_ferias_view(request):
     if request.method == 'POST':
@@ -667,8 +708,3 @@ def imp_ferias_view(request):
     else:
         form = ImportacaoFeriasForm()
     return render(request, 'importar_ferias.html', {'form': form, 'colaborador': get_colab(request)})
-
-@login_required
-def imp_hierarquia_view(request):
-    if request.method == 'POST': messages.success(request, "Hierarquia OK"); return redirect('modulo_rh')
-    return render(request, 'importar_hierarquia.html', {'form': ImportacaoHierarquiaForm(), 'colaborador': get_colab(request)})
