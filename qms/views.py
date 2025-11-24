@@ -153,34 +153,30 @@ def modulo_metrologia_view(request):
         'can_edit': True
     }
     return render(request, 'modulo_metrologia.html', ctx)
-# Substitua a sua função modulo_rh_view por esta versão
+
+
 @login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
     
-    # 1. VISIBILIDADE (Otimizada para carregar filtros)
+    # 1. VISIBILIDADE (Definição dos IDs permitidos)
     ids_permitidos = set()
     can_see_salary = False
     
-    # Define a visibilidade inicial
     if request.user.is_superuser or request.user.is_staff:
-        # Se for admin, vê todos os IDs ativos
         ids_permitidos = Colaborador.objects.filter(is_active=True).values_list('id', flat=True)
         can_see_salary = True
     elif colab:
         if colab.setor and 'RH' in colab.setor.nome.upper():
-            # Se for RH, vê todos os IDs ativos
             ids_permitidos = Colaborador.objects.filter(is_active=True).values_list('id', flat=True)
             can_see_salary = True
         else:
-            # Se for Líder, a visibilidade são apenas seus subordinados + ele mesmo
             ids_permitidos = get_all_subordinates(colab)
             ids_permitidos.add(colab.id)
-            # Regras salariais
             if 'GERENTE' in str(colab.cargo).upper() or HierarquiaSetor.objects.filter(gerente=colab).exists():
                 can_see_salary = True
     
-    # QuerySet BASE ANTES DO FILTRO (Só funcionários ativos na visibilidade)
+    # QuerySet BASE ANTES DO FILTRO (Todos os colaboradores ativos que o usuário pode ver)
     funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
     funcionarios_visiveis = funcionarios_base
 
@@ -201,20 +197,11 @@ def modulo_rh_view(request):
     if turno_slug:
         funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
         
-    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - Lógica de duas etapas (Mantido)
-    if supervisor_id:
-        reporting_setor_ids = HierarquiaSetor.objects.filter(supervisor_id=supervisor_id).values_list('setor_id', flat=True).distinct()
-        funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
+    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - REMOVIDO para simplificar
     
-    if gerente_id:
-        reporting_setor_ids = HierarquiaSetor.objects.filter(gerente_id=gerente_id).values_list('setor_id', flat=True).distinct()
-        funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
-
     # --- FIM DA LÓGICA DE FILTRAGEM ---
 
-    # 4. FILTROS DINÂMICOS (Recálculo das opções de filtro - CRUCIAL)
-    # A base para buscar as opções de filtro é sempre a lista COMPLETA de IDs que o usuário pode ver,
-    # não o QuerySet que pode ter sido filtrado pelo usuário.
+    # 4. FILTROS DINÂMICOS (Recálculo das opções para o dropdown)
     
     # A base para extrair os Setores é o QuerySet antes da filtragem GET
     setores_ids_base = funcionarios_base.values_list('setor', flat=True).distinct()
@@ -223,7 +210,7 @@ def modulo_rh_view(request):
     lideres_ids = funcionarios_base.values_list('lider', flat=True).distinct()
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
 
-    # Busca Hierarquias para as opções de Supervisor/Gerente (Usando o setor base)
+    # Busca Hierarquias para as opções de Supervisor/Gerente (Sem filtro aplicado no QuerySet)
     hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids_base)
     
     sup_ids_raw = hierarquias.values_list('supervisor', flat=True).distinct()
