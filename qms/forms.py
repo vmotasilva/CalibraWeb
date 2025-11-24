@@ -134,6 +134,7 @@ class ImportacaoFeriasForm(forms.Form):
         widget=forms.ClearableFileInput(attrs={'class': 'form-control'})
     )
 
+# --- NOVOS FORMULÁRIOS (VERIFIQUE SE ESTÃO AQUI) ---
 
 class DateInput(forms.DateInput):
     input_type = 'date'
