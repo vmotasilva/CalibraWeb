@@ -199,8 +199,6 @@
                     <tbody class="border-top-0 bg-white">
                         {% for i in instrumentos %}
                         
-                        <!-- Lógica de Cores e Dados para Filtro -->
-                        {% with dias=(i.data_proxima_calibracao|timeuntil:hoje) %}
                         <tr class="instrumento-row border-bottom"
                             data-nome="{{ i.tag|lower }} {{ i.descricao|lower }} {{ i.fabricante|lower }}"
                             data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
@@ -247,7 +245,6 @@
                                 </a>
                             </td>
                         </tr>
-                        {% endwith %}
                         {% empty %}
                         <tr><td colspan="6" class="text-center py-5 text-muted">Nenhum instrumento cadastrado.</td></tr>
                         {% endfor %}
