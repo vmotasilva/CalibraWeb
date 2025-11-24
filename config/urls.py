@@ -42,6 +42,7 @@ urlpatterns = [
     path('dl-template-hier/', views.dl_template_hierarquia, name='template_hierarquia'),
     path('dl-template-hist/', views.dl_template_historico, name='template_historico'),
     path('dl-template-ferias/', views.dl_template_ferias, name='dl_template_ferias'),
+    path('dl-dados-colab/', views.dl_template_colab_dados, name='dl_colaboradores_dados'),
 
     # 8. Importações (Excel)
     path('imp-inst/', views.imp_instr_view, name='importar_instrumentos'),
