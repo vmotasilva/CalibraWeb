@@ -200,6 +200,9 @@ def modulo_rh_view(request):
     sup_ids = hierarquias.values_list('supervisor', flat=True).distinct()
     ger_ids = hierarquias.values_list('gerente', flat=True).distinct()
     
+    sup_ids = [id for id in sup_ids_raw if id is not None]
+    ger_ids = [id for id in ger_ids_raw if id is not None]
+
     # 3. Busca os objetos Colaborador correspondentes
     # Excluímos Nulos explicitamente para garantir a query correta no banco
     supervisores_filtro = Colaborador.objects.filter(id__in=sup_ids).exclude(id__isnull=True).order_by('nome_completo')
