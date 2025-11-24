@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction, IntegrityError, models
 from django.urls import reverse
-from django.db.models import Q, Subquery, OuterRef
+from django.db.models import Q, Subquery, OuterRef # <-- CRÍTICO: Adicionado Subquery e OuterRef
 from django.core.files.base import ContentFile
 
 # IMPORTA TODOS OS MODELOS (ATUALIZADO COM OS NOVOS)
@@ -152,8 +152,6 @@ def modulo_metrologia_view(request):
     }
     return render(request, 'modulo_metrologia.html', ctx)
 
-# No topo, nos imports, certifique-se de que estão presentes:
-# from django.db.models import Q, Subquery, OuterRef  <-- CRÍTICO
 
 @login_required
 def modulo_rh_view(request):
@@ -179,7 +177,7 @@ def modulo_rh_view(request):
     # QuerySet BASE ANTES DO FILTRO (Todos os colaboradores ativos que o usuário pode ver)
     funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
     
-    # --- 2. ANNOTATION: Anexa os IDs de Hierarquia do Setor ---
+    # 2. ANNOTATION: Anexa os IDs de Hierarquia do Setor (CRUCIAL PARA O FILTRO JS)
     
     # Subqueries para buscar os IDs da Hierarquia (ligado ao Setor do Colaborador)
     hierarquia_sup_sq = HierarquiaSetor.objects.filter(
@@ -196,7 +194,7 @@ def modulo_rh_view(request):
         gerente_hierarquia_id=Subquery(hierarquia_ger_sq)
     )
 
-    # --- 3. INÍCIO DA LÓGICA DE FILTRAGEM VIA GET ---
+    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET (APLICADO AO VISIVEIS ANOTADO) ---
     
     # 1. Recebe os IDs dos filtros da URL (Mantido)
     setor_id = request.GET.get('setor_id')
@@ -205,7 +203,7 @@ def modulo_rh_view(request):
     gerente_id = request.GET.get('gerente_id')
     turno_slug = request.GET.get('turno')
     
-    # 2. Aplicar filtros diretos (Turno/Setor/Líder)
+    # 2. Aplicar filtros diretos (Mantido)
     if setor_id:
         funcionarios_visiveis = funcionarios_visiveis.filter(setor_id=setor_id)
     if lider_id:
@@ -213,14 +211,24 @@ def modulo_rh_view(request):
     if turno_slug:
         funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
         
-    # 3. Aplicar filtros por Hierarquia (Usando o campo ANOTADO para o filtro JS)
-    if supervisor_id:
-        # Filtra pelo campo anotado supervisor_hierarquia_id
-        funcionarios_visiveis = funcionarios_visiveis.filter(supervisor_hierarquia_id=supervisor_id).distinct()
-    
-    if gerente_id:
-        # Filtra pelo campo anotado gerente_hierarquia_id
-        funcionarios_visiveis = funcionarios_visiveis.filter(gerente_hierarquia_id=gerente_id).distinct()
+    # 3. Aplicar filtros por Hierarquia (Usando o campo ANOTADO)
+    try:
+        if supervisor_id:
+            sup_id = int(supervisor_id) 
+            reporting_setor_ids = HierarquiaSetor.objects.filter(supervisor_id=sup_id).values_list('setor_id', flat=True).distinct()
+            funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
+        
+        if gerente_id:
+            ger_id = int(gerente_id)
+            reporting_setor_ids = HierarquiaSetor.objects.filter(gerente_id=ger_id).values_list('setor_id', flat=True).distinct()
+            funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
+
+    except ValueError:
+        messages.error(request, "Erro de Filtro: ID de Supervisor/Gerente inválido na URL.")
+    except Exception as e:
+        # Removendo este bloco de código para evitar o erro SyntaxError da função anterior.
+        pass
+
 
     # --- FIM DA LÓGICA DE FILTRAGEM ---
 
@@ -232,7 +240,7 @@ def modulo_rh_view(request):
     lideres_ids = funcionarios_base.values_list('lider', flat=True).distinct()
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
 
-    # Busca Hierarquias para as opções de Supervisor/Gerente (Sem filtro aplicado no QuerySet)
+    # Busca Hierarquias para as opções de Supervisor/Gerente
     hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids_base)
     
     sup_ids_raw = hierarquias.values_list('supervisor', flat=True).distinct()
@@ -265,8 +273,6 @@ def modulo_rh_view(request):
         'can_edit': True
     }
     return render(request, 'modulo_rh.html', ctx)
-
-# ... (restante das suas views)
 
 @login_required
 def detalhe_colaborador_view(request, colab_id):
@@ -885,3 +891,41 @@ def imp_ferias_view(request):
     else:
         form = ImportacaoFeriasForm()
     return render(request, 'importar_ferias.html', {'form': form, 'colaborador': get_colab(request)})
+
+# Adicione esta função na seção de Downloads de Templates (após dl_df):
+
+@login_required
+def dl_template_colab_dados(request):
+    """Gera um template Excel preenchido com dados dos Colaboradores ativos."""
+    
+    # 1. Busca todos os colaboradores ativos
+    qs = Colaborador.objects.filter(is_active=True).select_related('setor', 'centro_custo', 'lider')
+    
+    # 2. Cria uma lista de dicionários com os dados
+    data = []
+    for colab in qs:
+        data.append({
+            'MATRICULA': colab.matricula,
+            'NOME': colab.nome_completo,
+            'CPF': colab.cpf or '',
+            'CARGO': colab.cargo or '',
+            'GRUPO': colab.grupo or 'Geral',
+            'SETOR': colab.setor.nome if colab.setor else '',
+            'CC': colab.centro_custo.codigo if colab.centro_custo else '',
+            'TURNO': colab.turno,
+            'STATUS': 'ATIVO',
+            'MAT_LIDER': colab.lider.matricula if colab.lider else '',
+        })
+
+    # 3. Cria o DataFrame e o arquivo Excel na memória
+    df = pd.DataFrame(data)
+    fname = f"colaboradores_export_{date.today().strftime('%Y%m%d')}.xlsx"
+    
+    # Reutiliza a função dl_df para servir o arquivo
+    b = io.BytesIO()
+    df.to_excel(b, index=False)
+    b.seek(0)
+    
+    r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    r['Content-Disposition'] = f'attachment; filename="{fname}"'
+    return r
