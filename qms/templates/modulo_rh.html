@@ -2,175 +2,194 @@
 
 {% block content %}
 <style>
-    /* --- ESTILOS DE CONGELAMENTO (FIXED LAYOUT) --- */
+    /* --- ESTILOS DE "APP" (TELA CHEIA SEM ROLAGEM DA PÁGINA) --- */
     
+    /* Remove a rolagem da página principal para focar nos painéis internos */
+    body { overflow: hidden; }
+
     /* 1. Barra Lateral com Rolagem Independente */
     .sidebar-scroll {
-        height: calc(100vh - 140px); /* Altura da tela menos o cabeçalho */
+        height: calc(100vh - 160px); /* Ajusta altura com base no topo */
         overflow-y: auto;            /* Barra de rolagem vertical */
-        padding-right: 10px;         /* Espaço para não colar na barra */
+        padding-right: 8px;          /* Espaço para a barra não colar */
     }
 
-    /* 2. Tabela com Cabeçalho Congelado */
+    /* 2. Container da Tabela com Rolagem */
     .table-container-scroll {
-        height: calc(100vh - 180px); /* Altura da tela menos cabeçalhos */
-        overflow-y: auto;            /* Rolagem vertical */
+        height: calc(100vh - 200px); /* Altura calculada para caber na tela */
+        overflow-y: auto;            /* Rolagem interna */
         border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
+        border-radius: 6px;
+        background-color: white;
     }
 
-    /* O segredo do cabeçalho fixo da tabela */
+    /* 3. O Segredo do Cabeçalho Fixo (Congelado) */
     .table-container-scroll thead th {
         position: sticky;
         top: 0;
-        z-index: 2; /* Fica acima das linhas */
-        background-color: #e9ecef; /* Cor de fundo opaca (cinza claro) */
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Sombra sutil para separar */
+        z-index: 10;                 /* Garante que fique acima das linhas */
+        background-color: #f8f9fa;   /* Cor de fundo sólida para não ficar transparente */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Sombra suave */
     }
 
-    /* Ajuste fino da barra de rolagem (opcional, para ficar mais bonita) */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    /* Ajuste visual das barras de rolagem (Fica mais elegante) */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #f1f1f1; }
-    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #aaa; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
     .transition-all { transition: all 0.3s ease; }
 </style>
 
-<div class="container-fluid py-3" style="height: 100vh; overflow: hidden;">
+<div class="container-fluid py-3" style="height: 100vh; display: flex; flex-direction: column;">
     
-    <!-- CABEÇALHO FIXO DA PÁGINA -->
-    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2" style="height: 60px;">
+    <!-- CABEÇALHO DA PÁGINA (FIXO) -->
+    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2 flex-shrink-0">
         <div class="d-flex align-items-center gap-3">
             <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Expandir/Recolher Filtros">
                 <i class="bi bi-layout-sidebar" id="sidebarIcon"></i>
             </button>
             <div>
                 <h4 class="fw-bold text-primary mb-0">Gestão de Pessoas</h4>
-                <p class="text-muted mb-0 small">Equipe e Hierarquia</p>
+                <p class="text-muted mb-0 small">Visualização hierárquica e controle de equipe</p>
             </div>
         </div>
         
         <div class="d-flex gap-2">
-            <a href="/static/modelos/template_colaboradores.xlsx" class="btn btn-outline-secondary btn-sm d-none d-md-inline-block">
-                <i class="bi bi-download"></i> Modelo
+            <!-- Botões de Ação -->
+            <a href="{% url 'importar_ferias' %}" class="btn btn-info text-white btn-sm shadow-sm">
+                <i class="bi bi-airplane"></i> Férias
             </a>
-            <a href="{% url 'importar_colaboradores' %}" class="btn btn-success btn-sm">
-                <i class="bi bi-file-earmark-spreadsheet"></i> Importar
+            <a href="{% url 'importar_colaboradores' %}" class="btn btn-success btn-sm shadow-sm">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Importar RH
             </a>
-            <a href="/admin/qms/colaborador/add/" target="_blank" class="btn btn-primary btn-sm">
+            <a href="/admin/qms/colaborador/add/" target="_blank" class="btn btn-primary btn-sm shadow-sm">
                 <i class="bi bi-plus-lg"></i> Novo
+            </a>
+            
+            <div class="vr mx-1 d-none d-md-block"></div>
+            
+            <a href="/static/modelos/template_colaboradores.xlsx" class="btn btn-outline-secondary btn-sm d-none d-md-inline-block" title="Baixar Modelo">
+                <i class="bi bi-download"></i>
             </a>
         </div>
     </div>
 
-    <div class="row h-100">
-        <!-- SIDEBAR DE FILTROS (ROLAGEM INDEPENDENTE) -->
-        <div class="col-md-3 col-lg-2 border-end pe-3 sidebar-scroll" id="sidebar-col">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel"></i> FILTROS</h6>
-                <button class="btn btn-sm btn-link text-muted text-decoration-none" onclick="limparFiltros()">
-                    <small>Limpar</small>
+    <div class="row h-100 overflow-hidden">
+        
+        <!-- BARRA LATERAL DE FILTROS (SIDEBAR) -->
+        <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+                <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
+                <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="limparFiltros()">
+                    <small>Limpar tudo</small>
                 </button>
             </div>
-            
-            <!-- 1. Filtro de Texto -->
-            <div class="mb-3">
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                    <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Buscar...">
-                </div>
-            </div>
 
-            <!-- 2. Filtro Status -->
-            <div class="mb-3">
-                <label class="form-label small fw-bold text-muted mb-1">STATUS</label>
-                <div class="bg-light p-2 rounded border">
-                    <div class="form-check">
-                        <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
-                        <label class="form-check-label small" for="st_ativo">Ativo</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input filter-checkbox" type="checkbox" value="FERIAS" data-category="status" id="st_ferias">
-                        <label class="form-check-label small" for="st_ferias">Em Férias</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status" id="st_inativo">
-                        <label class="form-check-label small" for="st_inativo">Desligado</label>
+            <!-- Área de Rolagem dos Filtros -->
+            <div class="sidebar-scroll">
+                
+                <!-- 1. Busca Textual -->
+                <div class="mb-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula...">
                     </div>
                 </div>
-            </div>
 
-            <!-- 3. Filtro Setor -->
-            <div class="mb-3">
-                <label class="form-label small fw-bold text-muted mb-1">SETOR</label>
-                <!-- Removido max-height fixo, usa o scroll da sidebar -->
-                <div class="d-flex flex-column gap-1 ps-1"> 
-                    {% for setor in setores_filtro %}
-                    <div class="form-check">
-                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor" id="set_{{ setor.id }}">
-                        <label class="form-check-label small text-truncate" for="set_{{ setor.id }}" title="{{ setor.nome }}">
-                            {{ setor.nome }}
-                        </label>
+                <!-- 2. Status -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted mb-1">STATUS</label>
+                    <div class="bg-light p-2 rounded border">
+                        <div class="form-check">
+                            <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
+                            <label class="form-check-label small" for="st_ativo">Ativo</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input filter-checkbox" type="checkbox" value="FERIAS" data-category="status" id="st_ferias">
+                            <label class="form-check-label small" for="st_ferias">Em Férias</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status" id="st_inativo">
+                            <label class="form-check-label small" for="st_inativo">Desligado</label>
+                        </div>
                     </div>
-                    {% endfor %}
                 </div>
-            </div>
 
-            <!-- 4. Filtro Líder -->
-            <div class="mb-3">
-                <label class="form-label small fw-bold text-muted mb-1">LÍDER / GESTOR</label>
-                <div class="d-flex flex-column gap-1 ps-1">
-                    {% for lider in lideres_filtro %}
-                    <div class="form-check">
-                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ lider.id }}" data-category="lider" id="lid_{{ lider.id }}">
-                        <label class="form-check-label small text-truncate" for="lid_{{ lider.id }}" title="{{ lider.nome_completo }}">
-                            {{ lider.nome_completo|title }}
-                        </label>
+                <!-- 3. Líder / Gestor -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted mb-1">LÍDER / GESTOR</label>
+                    <div class="d-flex flex-column gap-1 ps-1">
+                        {% for lider in lideres_filtro %}
+                        <div class="form-check">
+                            <input class="form-check-input filter-checkbox" type="checkbox" value="{{ lider.id }}" data-category="lider" id="lid_{{ lider.id }}">
+                            <label class="form-check-label small text-truncate" for="lid_{{ lider.id }}" title="{{ lider.nome_completo }}">
+                                {{ lider.nome_completo|title }}
+                            </label>
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
-            </div>
 
-            <!-- 5. Filtro Turno -->
-            <div class="mb-4">
-                <label class="form-label small fw-bold text-muted mb-1">TURNO</label>
-                <div class="d-flex flex-column gap-1 ps-1">
-                    {% for codigo, nome in turnos_filtro %}
-                    <div class="form-check">
-                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ codigo }}" data-category="turno" id="tn_{{ codigo }}">
-                        <label class="form-check-label small" for="tn_{{ codigo }}">
-                            {{ nome }}
-                        </label>
+                <!-- 4. Setor -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted mb-1">SETOR</label>
+                    <div class="d-flex flex-column gap-1 ps-1"> 
+                        {% for setor in setores_filtro %}
+                        <div class="form-check">
+                            <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor" id="set_{{ setor.id }}">
+                            <label class="form-check-label small text-truncate" for="set_{{ setor.id }}" title="{{ setor.nome }}">
+                                {{ setor.nome }}
+                            </label>
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
+                </div>
+
+                <!-- 5. Turno -->
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted mb-1">TURNO</label>
+                    <div class="d-flex flex-column gap-1 ps-1">
+                        {% for codigo, nome in turnos_filtro %}
+                        <div class="form-check">
+                            <input class="form-check-input filter-checkbox" type="checkbox" value="{{ codigo }}" data-category="turno" id="tn_{{ codigo }}">
+                            <label class="form-check-label small" for="tn_{{ codigo }}">
+                                {{ nome }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- CONTEÚDO PRINCIPAL (TABELA COM SCROLL) -->
+        <!-- ÁREA PRINCIPAL (CONTEÚDO) -->
         <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col">
             
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="badge bg-secondary"><span id="countDisplay">{{ funcionarios.count }}</span> registros</span>
+            <!-- Contador de Registros -->
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                    <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ funcionarios.count }}</span> colaboradores encontrados
+                </span>
             </div>
 
-            <!-- CONTAINER SCROLLÁVEL DA TABELA -->
-            <div class="table-container-scroll shadow-sm bg-white">
+            <!-- TABELA SCROLLÁVEL -->
+            <div class="table-container-scroll shadow-sm">
                 <table class="table table-hover align-middle mb-0" id="rhTable">
-                    <thead class="small text-uppercase text-muted">
+                    <thead class="small text-uppercase text-muted font-monospace">
                         <tr>
-                            <th class="ps-4 py-3">Colaborador</th>
+                            <th class="ps-4 py-3" style="min-width: 250px;">Colaborador</th>
                             <th class="py-3">Cargo</th>
-                            <th class="py-3">Setor / Turno</th>
+                            <th class="py-3">Setor / CC</th>
+                            <th class="py-3">Turno</th>
                             <th class="py-3">Líder</th>
                             <th class="py-3">Salário</th>
                             <th class="text-end pe-4 py-3">Ações</th>
                         </tr>
                     </thead>
-                    <tbody class="border-top-0">
+                    <tbody class="border-top-0 bg-white">
                         {% for f in funcionarios %}
-                        <tr class="rh-row" 
+                        <tr class="rh-row border-bottom" 
                             data-nome="{{ f.nome_completo|lower }} {{ f.matricula }}"
                             data-status="{% if not f.is_active %}INATIVO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
                             data-setor="{{ f.setor.id|default:'' }}"
@@ -179,52 +198,73 @@
                             
                             <td class="ps-4 py-2">
                                 <div class="d-flex align-items-center">
-                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border" style="width: 35px; height: 35px; font-size: 0.8rem;">
+                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
                                         {{ f.nome_completo|slice:":1" }}
                                     </div>
                                     <div>
-                                        <div class="fw-bold text-dark small">{{ f.nome_completo }}</div>
-                                        <div class="text-muted" style="font-size: 0.7rem;">Mat: {{ f.matricula }} 
+                                        <div class="fw-bold text-dark small text-uppercase">{{ f.nome_completo }}</div>
+                                        <div class="text-muted d-flex align-items-center" style="font-size: 0.7rem;">
+                                            <i class="bi bi-person-vcard me-1"></i> {{ f.matricula }} 
                                             {% if not f.is_active %}
-                                                <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">DESLIGADO</span>
+                                                <span class="badge bg-danger ms-2 py-0" style="font-size: 0.6rem;">DESLIGADO</span>
                                             {% elif f.em_ferias %}
-                                                <span class="badge bg-warning text-dark ms-1" style="font-size: 0.6rem;">FÉRIAS</span>
+                                                <span class="badge bg-warning text-dark ms-2 py-0" style="font-size: 0.6rem;">FÉRIAS</span>
                                             {% endif %}
                                         </div>
                                     </div>
                                 </div>
                             </td>
+                            
                             <td class="py-2">
-                                <span class="d-block text-dark small">{{ f.cargo }}</span>
+                                <span class="d-block text-dark small fw-semibold">{{ f.cargo }}</span>
                             </td>
+                            
+                            <!-- CORREÇÃO: Reintroduzindo Centro de Custo -->
                             <td class="py-2">
-                                <div class="small text-dark fw-bold" style="font-size: 0.75rem;">{{ f.setor.nome|default:"-" }}</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">{{ f.get_turno_display }}</div>
+                                <div class="small text-dark fw-bold">{{ f.setor.nome|default:"-" }}</div>
+                                <div class="text-muted small" style="font-size: 0.7rem;" title="Centro de Custo">
+                                    CC: {{ f.centro_custo.codigo|default:"N/A" }}
+                                </div>
                             </td>
+                            
+                            <td class="py-2">
+                                <span class="badge bg-light text-dark border fw-normal">{{ f.get_turno_display }}</span>
+                            </td>
+                            
                             <td class="py-2">
                                 {% if f.lider %}
-                                    <span class="badge bg-light text-dark border fw-normal text-truncate" style="max-width: 120px;" title="{{ f.lider.nome_completo }}">
-                                        {{ f.lider.nome_completo }}
-                                    </span>
+                                    <div class="d-flex align-items-center" title="Reporta a: {{ f.lider.nome_completo }}">
+                                        <i class="bi bi-arrow-return-right text-muted me-1" style="font-size: 0.7rem;"></i>
+                                        <span class="small text-dark text-truncate" style="max-width: 120px;">
+                                            {{ f.lider.nome_completo|title }}
+                                        </span>
+                                    </div>
                                 {% else %}
                                     <span class="text-muted small">-</span>
                                 {% endif %}
                             </td>
+                            
                             <td class="py-2">
                                 {% if can_see_salary %}
-                                    <span class="text-success fw-bold small" style="font-size: 0.8rem;">R$ {{ f.salario|floatformat:2 }}</span>
+                                    <span class="text-success fw-bold small" style="font-size: 0.85rem;">R$ {{ f.salario|floatformat:2 }}</span>
                                 {% else %}
-                                    <i class="bi bi-lock-fill text-muted small" title="Restrito"></i>
+                                    <i class="bi bi-lock-fill text-muted small opacity-50" title="Acesso Restrito"></i>
                                 {% endif %}
                             </td>
+                            
                             <td class="text-end pe-4 py-2">
-                                <a href="{% url 'detalhe_colaborador' f.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">
-                                    Ver
+                                <a href="{% url 'detalhe_colaborador' f.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill" style="font-size: 0.75rem;">
+                                    Perfil
                                 </a>
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" class="text-center py-5 text-muted">Nenhum colaborador encontrado.</td></tr>
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted bg-light">
+                                <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
+                                <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
+                            </td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -235,57 +275,90 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // 1. Inicializa a filtragem ao carregar
     filtrar();
+    
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
     
+    // 2. Listeners para digitação e cliques
     searchInput.addEventListener('keyup', filtrar);
     checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
 });
 
+// Lógica de Filtro (AND entre grupos, OR dentro do grupo)
 function filtrar() {
     const searchInput = document.getElementById('searchInput');
     const countDisplay = document.getElementById('countDisplay');
     const termoBusca = searchInput.value.toLowerCase();
     
-    const filtrosAtivos = { status: [], setor: [], lider: [], turno: [] };
+    const filtrosAtivos = {
+        status: [],
+        setor: [],
+        lider: [],
+        turno: []
+    };
     
+    // Coleta quais checkboxes estão marcados
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
-        if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
+        if (cb.checked) {
+            filtrosAtivos[cb.dataset.category].push(cb.value);
+        }
     });
 
     let visiveis = 0;
+    
+    // Varre cada linha da tabela
     document.querySelectorAll('.rh-row').forEach(row => {
         let mostrar = true;
-        if (termoBusca && !row.dataset.nome.includes(termoBusca)) mostrar = false;
-        if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) mostrar = false;
-        if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
-        if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) mostrar = false;
-        if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) mostrar = false;
 
-        row.style.display = mostrar ? '' : 'none';
-        if (mostrar) visiveis++;
+        // Filtro de Texto
+        if (termoBusca && !row.dataset.nome.includes(termoBusca)) {
+            mostrar = false;
+        }
+
+        // Filtros de Categoria
+        if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) { mostrar = false; }
+        if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) { mostrar = false; }
+        if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) { mostrar = false; }
+        if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) { mostrar = false; }
+
+        // Aplica Visibilidade
+        if (mostrar) {
+            row.style.display = '';
+            visiveis++;
+        } else {
+            row.style.display = 'none';
+        }
     });
+
+    // Atualiza contador
     if(countDisplay) countDisplay.innerText = visiveis;
 }
 
 function limparFiltros() {
     document.getElementById('searchInput').value = '';
-    document.querySelectorAll('.filter-checkbox').forEach(cb => cb.checked = (cb.id === 'st_ativo'));
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        // Mantém apenas "ATIVO" marcado por padrão, desmarca o resto
+        cb.checked = (cb.id === 'st_ativo');
+    });
     filtrar();
 }
 
+// Função Toggle Sidebar (Expandir/Recolher)
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar-col');
     const content = document.getElementById('content-col');
     const icon = document.getElementById('sidebarIcon');
 
     if (sidebar.classList.contains('d-none')) {
+        // MOSTRAR Sidebar
         sidebar.classList.remove('d-none');
         content.classList.replace('col-12', 'col-md-9');
         content.classList.add('col-lg-10');
         icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
     } else {
+        // ESCONDER Sidebar
         sidebar.classList.add('d-none');
         content.classList.replace('col-md-9', 'col-12');
         content.classList.remove('col-lg-10');

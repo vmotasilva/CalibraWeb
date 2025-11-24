@@ -127,3 +127,9 @@ class ColaboradorForm(forms.ModelForm):
             'em_ferias': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'pacotes_treinamento': forms.SelectMultiple(attrs={'class': 'form-control', 'style': 'height: 150px;'}),
         }
+
+class ImportacaoFeriasForm(forms.Form):
+    arquivo_excel = forms.FileField(
+        label="Selecione a Planilha de Férias (.xlsx ou .csv)",
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control'})
+    )

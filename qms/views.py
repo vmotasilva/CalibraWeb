@@ -610,6 +610,64 @@ def imp_colab_view(request):
     else: form = ImportacaoColaboradoresForm()
     return render(request, 'importar_colaboradores.html', {'form': form, 'colaborador': get_colab(request)})
 
+# --- NOVA VIEW: IMPORTAÇÃO DE FÉRIAS (ADICIONADO AGORA) ---
+@login_required
+def imp_ferias_view(request):
+    if request.method == 'POST':
+        form = ImportacaoFeriasForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                f = request.FILES['arquivo_excel']
+                try: df = pd.read_excel(f)
+                except: df = pd.read_csv(f, sep=None, engine='python')
+                
+                df.columns = df.columns.str.strip().str.upper()
+                count = 0
+                
+                with transaction.atomic():
+                    for _, row in df.iterrows():
+                        # 1. Encontra o Colaborador
+                        def get_v(k): return str(row.get(k,'')).strip()
+                        matricula = get_v('MATRICULA')
+                        if not matricula: continue
+                        
+                        try: colab = Colaborador.objects.get(matricula=matricula.split('.')[0])
+                        except Colaborador.DoesNotExist: continue
+                        
+                        # 2. Processa Datas
+                        def parse_dt(col):
+                            val = get_v(col)
+                            if not val or val in ['-','NaT','nan']: return None
+                            try: return pd.to_datetime(val, dayfirst=True).date()
+                            except: return None
+                            
+                        dt_aq_ini = parse_dt('AQUISITIVO_INICIO')
+                        dt_aq_fim = parse_dt('AQUISITIVO_FIM')
+                        dt_ini = parse_dt('DATA_INICIO')
+                        dt_fim = parse_dt('DATA_FIM')
+                        
+                        if not dt_aq_fim: continue # Obrigatório ter referência do período
+                        
+                        # 3. Cria/Atualiza Registro de Férias
+                        Ferias.objects.update_or_create(
+                            colaborador=colab,
+                            periodo_aquisitivo_fim=dt_aq_fim,
+                            defaults={
+                                'periodo_aquisitivo_inicio': dt_aq_ini,
+                                'data_inicio': dt_ini,
+                                'data_fim': dt_fim,
+                                'status': get_v('STATUS') or 'PROGRAMADAS'
+                            }
+                        )
+                        count += 1
+                        
+                messages.success(request, f"{count} registros de férias importados!")
+                return redirect('modulo_rh')
+            except Exception as e: messages.error(request, f"Erro: {e}")
+    else:
+        form = ImportacaoFeriasForm()
+    return render(request, 'importar_ferias.html', {'form': form, 'colaborador': get_colab(request)})
+
 @login_required
 def imp_hierarquia_view(request):
     if request.method == 'POST': messages.success(request, "Hierarquia OK"); return redirect('modulo_rh')
