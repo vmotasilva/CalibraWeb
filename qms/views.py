@@ -315,7 +315,7 @@ def detalhe_instrumento_view(request, instrumento_id): # Note que o URLs.py usa 
         form_ocorrencia = OcorrenciaForm()
 
     # Buscando dados para as novas abas
-    historico = inst.historicocalibracao_set.all().order_by('-data_calibracao')
+    historico = inst.historico_calibracoes.all().order_by('-data_calibracao')
     
     # Usando related_names definidos no models.py (calibracoes e ocorrencias)
     # Se der erro aqui, verifique se no models.py está related_name='calibracoes'
@@ -329,8 +329,8 @@ def detalhe_instrumento_view(request, instrumento_id): # Note que o URLs.py usa 
     except AttributeError:
         ocorrencias = []
 
-    faixas = inst.faixamedicao_set.all() # Seu código antigo usava inst.faixas.all(), mas o padrão django é _set ou related_name. Vou tentar manter compatibilidade.
-    # Ajuste de compatibilidade para Faixas (caso seu model use related_name='faixas')
+    faixas = inst.faixas.all()
+    
     if hasattr(inst, 'faixas'):
         faixas = inst.faixas.all()
 
