@@ -1,5 +1,5 @@
 from django import forms
-from .models import Colaborador, Instrumento, Padrao # <--- Adicionei Padrao aqui
+from .models import Colaborador, Instrumento, Padrao, SolicitacaoInstrumento, Ocorrencia, OrdemCalibracao 
 
 # --- WIDGET PARA MÚLTIPLOS ARQUIVOS (CARIMBO) ---
 class MultipleFileInput(forms.ClearableFileInput):
@@ -133,3 +133,28 @@ class ImportacaoFeriasForm(forms.Form):
         label="Selecione a Planilha de Férias (.xlsx ou .csv)",
         widget=forms.ClearableFileInput(attrs={'class': 'form-control'})
     )
+
+
+class DateInput(forms.DateInput):
+    input_type = 'date'
+
+class SolicitacaoForm(forms.ModelForm):
+    class Meta:
+        model = SolicitacaoInstrumento
+        fields = ['tipo', 'instrumento_alvo', 'motivo']
+        widgets = {
+            'motivo': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Explique a necessidade...'}),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'instrumento_alvo': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+class OcorrenciaForm(forms.ModelForm):
+    class Meta:
+        model = Ocorrencia
+        fields = ['tipo', 'descricao', 'data_ocorrencia', 'custo_reparo']
+        widgets = {
+            'data_ocorrencia': DateInput(attrs={'class': 'form-control'}),
+            'descricao': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'custo_reparo': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
