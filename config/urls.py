@@ -27,7 +27,7 @@ urlpatterns = [
     path('rh/editar/<int:colab_id>/', views.editar_colaborador_view, name='editar_colaborador'),
 
     # 6. Funcionalidades Específicas
-    path('carimbar/', views.carimbar_view, name='carimbar'),
+    path('carimbar/', views.carimbar_view, name='carimbo'),
     path('detalhe/<int:instrumento_id>/', views.detalhe_instrumento_view, name='detalhe_instrumento'),
     
     # 7. Downloads de Templates
