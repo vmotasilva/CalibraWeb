@@ -30,21 +30,17 @@ urlpatterns = [
     path('metrologia/instrumento/<int:instrumento_id>/', views.detalhe_instrumento_view, name='detalhe_instrumento'),
 
     # --- NOVA ROTA (ADICIONADA) ---
-    # Necessária para o link "Nova Solicitação" no menu e dashboard funcionar
     path('solicitacao/nova/', views.nova_solicitacao, name='nova_solicitacao'),
 
     # 6. Funcionalidades Específicas
-    path('carimbar/', views.carimbar_view, name='carimbar'), # Mantido 'carimbar'
+    path('carimbar/', views.carimbar_view, name='carimbar'), 
     path('metrologia/historico/remover/<int:historico_id>/', views.remover_historico_view, name='remover_historico'),
     
-    # 7. Downloads de Templates (NOMES CORRIGIDOS PARA LEGADO)
-    # Voltamos os 'names' para o que os HTMLs antigos esperam
+    # 7. Downloads de Templates (IMPORTANTE: O ERRO ESTÁ AQUI SE FALTAR ALGUMA LINHA)
     path('dl-template-inst/', views.dl_template_instr, name='template_instrumentos'),
-    path('dl-template-colab/', views.dl_template_colab, name='template_colaboradores'),
+    path('dl-template-colab/', views.dl_template_colab, name='template_colaboradores'), # <--- ESSA É A LINHA QUE FALTAVA
     path('dl-template-hier/', views.dl_template_hierarquia, name='template_hierarquia'),
     path('dl-template-hist/', views.dl_template_historico, name='template_historico'),
-    
-    # Este é novo, então mantemos o nome novo
     path('dl-template-ferias/', views.dl_template_ferias, name='dl_template_ferias'),
 
     # 8. Importações (Excel)
