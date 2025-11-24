@@ -152,7 +152,6 @@ def modulo_metrologia_view(request):
     }
     return render(request, 'modulo_metrologia.html', ctx)
 
-
 @login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
@@ -171,100 +170,84 @@ def modulo_rh_view(request):
         else:
             ids_permitidos = get_all_subordinates(colab)
             ids_permitidos.add(colab.id)
+
             if 'GERENTE' in str(colab.cargo).upper() or HierarquiaSetor.objects.filter(gerente=colab).exists():
                 can_see_salary = True
     
-    # QuerySet BASE ANTES DO FILTRO (Todos os colaboradores ativos que o usuário pode ver)
-    funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
+    # Base de colaboradores visíveis
+    funcionarios_base = Colaborador.objects.filter(
+        id__in=ids_permitidos, 
+        is_active=True
+    ).order_by('nome_completo')
+
     funcionarios_visiveis = funcionarios_base
 
-    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET (AGORA COM DEBUG) ---
-    
-    # 1. Recebe os IDs dos filtros da URL
+    # --- FILTROS VIA GET ---
     setor_id = request.GET.get('setor_id')
     lider_id = request.GET.get('lider_id')
     supervisor_id = request.GET.get('supervisor_id')
     gerente_id = request.GET.get('gerente_id')
     turno_slug = request.GET.get('turno')
     
-    # 2. Aplicar filtros diretos
     if setor_id:
         funcionarios_visiveis = funcionarios_visiveis.filter(setor_id=setor_id)
+
     if lider_id:
         funcionarios_visiveis = funcionarios_visiveis.filter(lider_id=lider_id)
+
     if turno_slug:
         funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
-        
-    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - Lógica de duas etapas
-    
+
+    # --- FILTROS POR HIERARQUIA ---
     try:
         if supervisor_id:
-            # Garante que o ID da URL é um inteiro
-            sup_id = int(supervisor_id) 
-            
-            # A) Busca todos os IDs de Setores que têm esse Supervisor definido
+            sup_id = int(supervisor_id)
             reporting_setor_ids = HierarquiaSetor.objects.filter(
                 supervisor_id=sup_id
             ).values_list('setor_id', flat=True).distinct()
-            
-            # MENSAGEM DE DEBUG CRÍTICA: O que o banco está retornando?
-            if reporting_setor_ids.exists():
-                messages.info(request, f"DEBUG SUP: Setores encontrados para {sup_id}: {list(reporting_setor_ids)}")
-            else:
-                messages.warning(request, f"DEBUG SUP: Supervisor {sup_id} NÃO está ligado a NENHUM Setor na Hierarquia. Tabela vazia?")
 
-            # B) Filtra funcionários que trabalham nesses Setores
             funcionarios_visiveis = funcionarios_visiveis.filter(
                 setor_id__in=reporting_setor_ids
             ).distinct()
         
         if gerente_id:
-            # Garante que o ID da URL é um inteiro
             ger_id = int(gerente_id)
-            
-            # A) Busca todos os IDs de Setores que têm esse Gerente definido
             reporting_setor_ids = HierarquiaSetor.objects.filter(
                 gerente_id=ger_id
             ).values_list('setor_id', flat=True).distinct()
-            
-            # MENSAGEM DE DEBUG CRÍTICA:
-            if reporting_setor_ids.exists():
-                messages.info(request, f"DEBUG GER: Setores encontrados para {ger_id}: {list(reporting_setor_ids)}")
-            else:
-                messages.warning(request, f"DEBUG GER: Gerente {ger_id} NÃO está ligado a NENHUM Setor na Hierarquia. Tabela vazia?")
-            
-            # B) Filtra funcionários que pertencem a esses Setores
+
             funcionarios_visiveis = funcionarios_visiveis.filter(
                 setor_id__in=reporting_setor_ids
             ).distinct()
-
-    except ValueError:
-        messages.error(request, "Erro de Filtro: ID de Supervisor/Gerente inválido na URL.")
-    except Exception as e:
-        messages.error(request, f"Erro inesperado na filtragem de Hierarquia: {e}")
-
-    # --- FIM DA LÓGICA DE FILTRAGEM ---
-
-    # 4. FILTROS DINÂMICOS (Recálculo das opções para o dropdown)
     
+    except Exception as e:
+        messages.error(request, f"Erro inesperado na filtragem de hierarquia: {e}")
+
+    # --- RECONSTRUÇÃO DOS FILTROS (DINÂMICOS) ---
     setores_ids_base = funcionarios_base.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids_base).order_by('nome')
 
     lideres_ids = funcionarios_base.values_list('lider', flat=True).distinct()
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
 
-    # Busca Hierarquias para as opções de Supervisor/Gerente
+    # Dados da tabela de Hierarquia
     hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids_base)
-    
+
     sup_ids_raw = hierarquias.values_list('supervisor', flat=True).distinct()
     ger_ids_raw = hierarquias.values_list('gerente', flat=True).distinct()
-    
-    sup_ids = [id for id in sup_ids_raw if id is not None]
-    ger_ids = [id for id in ger_ids_raw if id is not None]
-    
+
+    # -------------------------------------------
+    # 🔥 CORREÇÃO CRÍTICA (Opção A - Segura)
+    # Remove IDs que não existem no Railway
+    # -------------------------------------------
+
+    sup_ids = Colaborador.objects.filter(id__in=sup_ids_raw).values_list('id', flat=True)
+    ger_ids = Colaborador.objects.filter(id__in=ger_ids_raw).values_list('id', flat=True)
+
     supervisores_filtro = Colaborador.objects.filter(id__in=sup_ids).order_by('nome_completo')
     gerentes_filtro = Colaborador.objects.filter(id__in=ger_ids).order_by('nome_completo')
-    
+
+    # --- Turnos fixos ---
     turnos_filtro = [
         ('ADM', 'Administrativo'),
         ('TURNO_1', 'Turno 1'),
