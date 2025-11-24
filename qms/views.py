@@ -185,7 +185,7 @@ def detalhe_colaborador_view(request, colab_id):
     usuario_logado = get_colab(request)
     alvo = get_object_or_404(Colaborador, id=colab_id)
     
-    # SEGURANÇA
+    # Segurança
     if not (request.user.is_superuser or request.user.is_staff):
         permitido = False
         if usuario_logado:
@@ -194,9 +194,8 @@ def detalhe_colaborador_view(request, colab_id):
             else:
                 meus_subordinados = get_all_subordinates(usuario_logado)
                 if alvo.id in meus_subordinados: permitido = True
-        
         if not permitido:
-            messages.error(request, "Acesso Negado: Você não tem permissão para visualizar este colaborador.")
+            messages.error(request, "Acesso Negado.")
             return redirect('modulo_rh')
 
     can_see_salary = False
@@ -206,14 +205,42 @@ def detalhe_colaborador_view(request, colab_id):
         if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists(): can_see_salary = True
         if usuario_logado.id == alvo.id: can_see_salary = True
 
+    # --- DADOS RELACIONADOS ---
     ocorrencias = alvo.ocorrencias.all().order_by('-data_ocorrencia')
     treinamentos = alvo.treinamentos.all().order_by('-data_treinamento')
     documentos = alvo.documentos_pessoais.all().order_by('-data_upload')
+    
+    # --- LÓGICA DE FÉRIAS ---
+    # Assumindo que o modelo Ferias tem campos: data_inicio (programação), data_fim, periodo_aquisitivo_fim (vencimento)
+    # Se não tiver esses campos exatos, o template tratará, mas vamos buscar tudo.
+    ferias_lista = alvo.ferias.all().order_by('periodo_aquisitivo_fim') # Ordena pelo vencimento
+    
+    ferias_vencidas = 0
+    ferias_programadas = 0
+    hoje = date.today()
+
+    for f in ferias_lista:
+        # Regra de Vencida: Se já passou do prazo aquisitivo e não foi gozada (não tem data_inicio ou data_inicio no futuro)
+        # Aqui simplificamos: Se não tem programação e o período aquisitivo já fechou há mais de 1 ano (limite legal), ou se venceu e não programou.
+        # Ajuste conforme sua regra de negócio. Exemplo simples:
+        if f.periodo_aquisitivo_fim and f.periodo_aquisitivo_fim < hoje:
+             # Se não tem data programada OU a data programada ainda não aconteceu (está pendente)
+             if not f.data_inicio:
+                 ferias_vencidas += 1
+        
+        if f.data_inicio and f.data_inicio > hoje:
+            ferias_programadas += 1
 
     ctx = {
         'colaborador': usuario_logado, 'alvo': alvo,
-        'can_see_salary': can_see_salary, 'ocorrencias': ocorrencias,
-        'treinamentos': treinamentos, 'documentos': documentos, 'can_edit': True
+        'can_see_salary': can_see_salary, 
+        'ocorrencias': ocorrencias,
+        'treinamentos': treinamentos, 
+        'documentos': documentos,
+        'ferias': ferias_lista, # Passa a lista completa
+        'kpi_ferias_vencidas': ferias_vencidas,
+        'kpi_ferias_programadas': ferias_programadas,
+        'can_edit': True
     }
     return render(request, 'detalhe_colaborador.html', ctx)
 
