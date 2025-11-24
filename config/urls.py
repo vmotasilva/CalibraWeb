@@ -20,6 +20,9 @@ urlpatterns = [
     # 4. Dashboard
     path('home/', views.dashboard_view, name='home'),
 
+    path('solicitacao/nova/', views.nova_solicitacao, name='nova_solicitacao'),
+    path('instrumento/<int:pk>/', views.detalhe_instrumento, name='detalhe_instrumento'),
+
     # 5. Módulos Principais
     path('metrologia/', views.modulo_metrologia_view, name='modulo_metrologia'),
     path('rh/', views.modulo_rh_view, name='modulo_rh'),
