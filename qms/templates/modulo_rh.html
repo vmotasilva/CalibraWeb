@@ -1,1 +1,474 @@
-<h1>TESTE</h1>
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    /* --- ESTILOS DE "APP" (SEM ROLAGEM NA PÁGINA) --- */
+    body { overflow: hidden; }
+
+    /* BARRA LATERAL (FILTROS) */
+    .sidebar-scroll {
+        height: calc(100vh - 160px);
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+    /* TABELA (ROLAGEM) */
+    .table-container-scroll {
+        height: calc(100vh - 200px);
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        background-color: white;
+    }
+    .table-container-scroll thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* --- NOVO: ESTILO DOS FILTROS EXPANSÍVEIS (ACORDEÃO) --- */
+    .filter-group {
+        border-bottom: 1px solid #f0f0f0;
+        margin-bottom: 5px;
+    }
+    
+    .filter-header {
+        cursor: pointer;
+        padding: 10px 5px;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    
+    .filter-header:hover {
+        background-color: #f8f9fa;
+    }
+
+    .filter-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin: 0;
+        cursor: pointer;
+    }
+
+    /* Ícone da seta */
+    .filter-header i {
+        transition: transform 0.3s ease;
+        font-size: 0.8rem;
+        color: #adb5bd;
+    }
+
+    /* Quando o grupo está ABERTO (classe .open) */
+    .filter-group.open .filter-header i {
+        transform: rotate(180deg);
+        color: #0d6efd;
+    }
+    
+    .filter-group.open .filter-title {
+        color: #212529;
+    }
+
+    /* Conteúdo dos filtros (Checkboxes) */
+    .filter-content {
+        display: none;
+        padding: 5px 0 15px 10px;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    /* Mostra conteúdo quando aberto */
+    .filter-group.open .filter-content {
+        display: block;
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* SCROLLBARS CUSTOMIZADAS */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    
+    .transition-all { transition: all 0.3s ease; }
+</style>
+
+<div class="container-fluid py-3" style="height: 100vh; display: flex; flex-direction: column;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2 flex-shrink-0">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Expandir/Recolher Filtros">
+                <i class="bi bi-layout-sidebar" id="sidebarIcon"></i>
+            </button>
+            <div>
+                <h4 class="fw-bold text-primary mb-0">Gestão de Pessoas</h4>
+                <p class="text-muted mb-0 small">Equipe e Hierarquia</p>
+            </div>
+        </div>
+        
+        <div class="d-flex gap-2">
+            <a href="{% url 'importar_ferias' %}" class="btn btn-info text-white btn-sm shadow-sm">
+                <i class="bi bi-airplane"></i> Férias
+            </a>
+            <a href="{% url 'importar_colaboradores' %}" class="btn btn-success btn-sm shadow-sm">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Importar RH
+            </a>
+            <a href="/admin/qms/colaborador/add/" target="_blank" class="btn btn-primary btn-sm shadow-sm">
+                <i class="bi bi-plus-lg"></i> Novo
+            </a>
+            <div class="vr mx-1 d-none d-md-block"></div>
+            <a href="{% url 'dl_colaboradores_dados' %}" class="btn btn-outline-secondary btn-sm d-none d-md-inline-block" title="Baixar Dados Atuais para Edição">
+                <i class="bi bi-download"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="row h-100 overflow-hidden">
+        
+        <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
+            
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-shrink-0">
+                <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
+                <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="limparFiltros()">
+                    <small>Limpar tudo</small>
+                </button>
+            </div>
+
+            <div class="sidebar-scroll">
+                
+                <div class="mb-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula...">
+                    </div>
+                </div>
+
+                <div class="filter-group open">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Status</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
+                                <label class="form-check-label small" for="st_ativo">Ativo</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="FERIAS" data-category="status" id="st_ferias">
+                                <label class="form-check-label small" for="st_ferias">Em Férias</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status" id="st_inativo">
+                                <label class="form-check-label small" for="st_inativo">Desligado</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Líder / Gestor</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for lider in lideres_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ lider.id }}" data-category="lider" id="lid_{{ lider.id }}">
+                                <label class="form-check-label small text-truncate" for="lid_{{ lider.id }}" title="{{ lider.nome_completo }}">
+                                    {{ lider.nome_completo|title }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Supervisor</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for super in supervisores_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ super.id }}" data-category="supervisor" id="sup_{{ super.id }}">
+                                <label class="form-check-label small text-truncate" for="sup_{{ super.id }}" title="{{ super.nome_completo }}">
+                                    {{ super.nome_completo|title }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Gerente</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for gerente in gerentes_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ gerente.id }}" data-category="gerente" id="ger_{{ gerente.id }}">
+                                <label class="form-check-label small text-truncate" for="ger_{{ gerente.id }}" title="{{ gerente.nome_completo }}">
+                                    {{ gerente.nome_completo|title }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Setor</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1"> 
+                            {% for setor in setores_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor" id="set_{{ setor.id }}">
+                                <label class="form-check-label small text-truncate" for="set_{{ setor.id }}" title="{{ setor.nome }}">
+                                    {{ setor.nome }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Turno</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for codigo, nome in turnos_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ codigo }}" data-category="turno" id="tn_{{ codigo }}">
+                                <label class="form-check-label small" for="tn_{{ codigo }}">
+                                    {{ nome }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col">
+            
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                    <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ funcionarios.count }}</span> colaboradores encontrados
+                </span>
+            </div>
+
+            <div class="table-container-scroll shadow-sm">
+                <table class="table table-hover align-middle mb-0" id="rhTable">
+                    <thead class="small text-uppercase text-muted font-monospace">
+                        <tr>
+                            <th class="ps-4 py-3" style="min-width: 250px;">Colaborador</th>
+                            <th class="py-3">Cargo</th>
+                            <th class="py-3">Setor / CC</th>
+                            <th class="py-3">Turno</th>
+                            <th class="py-3">Líder</th>
+                            <th class="py-3">Salário</th>
+                            <th class="text-end pe-4 py-3">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0 bg-white">
+                        {% for f in funcionarios %}
+                        <tr class="rh-row border-bottom" 
+                            data-nome="{{ f.nome_completo|lower }} {{ f.matricula }}"
+                            data-status="{% if not f.is_active %}INATIVO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
+                            data-setor="{{ f.setor.id|default:'' }}"
+                            data-lider="{{ f.lider.id|default:'' }}"
+                            data-supervisor="{{ f.supervisor_hierarquia_id|default:'' }}" 
+                            data-gerente="{{ f.gerente_hierarquia_id|default:'' }}"
+                            data-turno="{{ f.turno|default:'' }}">
+                            
+                            <td class="ps-4 py-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
+                                        {{ f.nome_completo|slice:":1" }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark small text-uppercase">{{ f.nome_completo }}</div>
+                                        <div class="text-muted d-flex align-items-center" style="font-size: 0.7rem;">
+                                            <i class="bi bi-person-vcard me-1"></i> {{ f.matricula }} 
+                                            {% if not f.is_active %}
+                                                <span class="badge bg-danger ms-2 py-0" style="font-size: 0.6rem;">DESLIGADO</span>
+                                            {% elif f.em_ferias %}
+                                                <span class="badge bg-warning text-dark ms-2 py-0" style="font-size: 0.6rem;">FÉRIAS</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            
+                            <td class="py-2">
+                                <span class="d-block text-dark small fw-semibold">{{ f.cargo }}</span>
+                            </td>
+                            
+                            <td class="py-2">
+                                <div class="small text-dark fw-bold">{{ f.setor.nome|default:"-" }}</div>
+                                <div class="text-muted small" style="font-size: 0.7rem;" title="Centro de Custo">
+                                    CC: {{ f.centro_custo.codigo|default:"N/A" }}
+                                </div>
+                            </td>
+                            
+                            <td class="py-2">
+                                <span class="badge bg-light text-dark border fw-normal">{{ f.get_turno_display }}</span>
+                            </td>
+                            
+                            <td class="py-2">
+                                {% if f.lider %}
+                                    <div class="d-flex align-items-center" title="Reporta a: {{ f.lider.nome_completo }}">
+                                        <i class="bi bi-arrow-return-right text-muted me-1" style="font-size: 0.7rem;"></i>
+                                        <span class="small text-dark text-truncate" style="max-width: 120px;">
+                                            {{ f.lider.nome_completo|title }}
+                                        </span>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="py-2">
+                                {% if can_see_salary %}
+                                    <span class="text-success fw-bold small" style="font-size: 0.85rem;">R$ {{ f.salario|floatformat:2 }}</span>
+                                {% else %}
+                                    <i class="bi bi-lock-fill text-muted small opacity-50" title="Acesso Restrito"></i>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="text-end pe-4 py-2">
+                                <a href="{% url 'detalhe_colaborador' f.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill" style="font-size: 0.75rem;">
+                                    Perfil
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted bg-light">
+                                <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
+                                <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializa filtros e contagem
+    filtrar();
+    
+    const searchInput = document.getElementById('searchInput');
+    const checkboxes = document.querySelectorAll('.filter-checkbox');
+    
+    // Event listeners para busca e checkboxes
+    searchInput.addEventListener('keyup', filtrar);
+    checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
+});
+
+// FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS (ACORDEÃO)
+function toggleFilterGroup(element) {
+    const group = element.parentElement;
+    // Alterna a classe 'open' que controla a visibilidade via CSS
+    group.classList.toggle('open');
+}
+
+function filtrar() {
+    const searchInput = document.getElementById('searchInput');
+    const countDisplay = document.getElementById('countDisplay');
+    const termoBusca = searchInput.value.toLowerCase();
+    
+    const filtrosAtivos = {
+        status: [],
+        setor: [],
+        lider: [],
+        supervisor: [], // NOVO
+        gerente: [],    // NOVO
+        turno: []
+    };
+    
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        if (cb.checked) {
+            filtrosAtivos[cb.dataset.category].push(cb.value);
+        }
+    });
+
+    let visiveis = 0;
+    
+    document.querySelectorAll('.rh-row').forEach(row => {
+        let mostrar = true;
+
+        if (termoBusca && !row.dataset.nome.includes(termoBusca)) mostrar = false;
+        if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) mostrar = false;
+        if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
+        if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) mostrar = false;
+        
+        // NOVOS FILTROS (Lógica de filtragem Client-side)
+        if (mostrar && filtrosAtivos.supervisor.length > 0 && !filtrosAtivos.supervisor.includes(row.dataset.supervisor)) mostrar = false;
+        if (mostrar && filtrosAtivos.gerente.length > 0 && !filtrosAtivos.gerente.includes(row.dataset.gerente)) mostrar = false;
+        
+        if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) mostrar = false;
+
+        row.style.display = mostrar ? '' : 'none';
+        if (mostrar) visiveis++;
+    });
+
+    if(countDisplay) countDisplay.innerText = visiveis;
+}
+
+function limparFiltros() {
+    document.getElementById('searchInput').value = '';
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        cb.checked = (cb.id === 'st_ativo');
+    });
+    filtrar();
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar-col');
+    const content = document.getElementById('content-col');
+    const icon = document.getElementById('sidebarIcon');
+
+    if (sidebar.classList.contains('d-none')) {
+        sidebar.classList.remove('d-none');
+        content.classList.replace('col-md-9', 'col-12'); // Adiciona col-12 para tela cheia
+        content.classList.add('col-lg-12'); // Garante que em tela grande ocupe tudo
+        content.classList.remove('col-lg-10'); 
+        icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
+    } else {
+        sidebar.classList.add('d-none');
+        content.classList.replace('col-12', 'col-md-9'); // Volta para a proporção original
+        content.classList.add('col-lg-10'); // Volta para a proporção original
+        content.classList.remove('col-lg-12');
+        icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
+    }
+}
+</script>
+{% endblock %}
