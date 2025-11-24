@@ -271,6 +271,7 @@ def modulo_rh_view(request):
     }
     return render(request, 'modulo_rh.html', ctx)
 
+
 @login_required
 def detalhe_colaborador_view(request, colab_id):
     usuario_logado = get_colab(request)
