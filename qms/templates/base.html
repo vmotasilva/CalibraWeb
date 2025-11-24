@@ -29,27 +29,31 @@
         <div class="collapse navbar-collapse" id="navbarContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 
-                <li class="nav-item">
-                    <a class="nav-link active" href="{% url 'home' %}">
-                        <i class="bi bi-speedometer2"></i> Dashboard
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'nova_solicitacao' %}">
-                        <i class="bi bi-hand-index-thumb"></i> Solicitações
-                    </a>
-                </li>
-
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-tools"></i> Metrologia
                     </a>
                     <ul class="dropdown-menu shadow">
+                        <li><h6 class="dropdown-header text-muted">VISÃO GERAL</h6></li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'home' %}">
+                                <i class="bi bi-speedometer2"></i> Dashboard Metrologia
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'nova_solicitacao' %}">
+                                <i class="bi bi-hand-index-thumb"></i> Nova Solicitação
+                            </a>
+                        </li>
+                        
+                        <li><hr class="dropdown-divider"></li>
+                        
                         <li><h6 class="dropdown-header text-muted">GESTÃO</h6></li>
                         <li><a class="dropdown-item" href="{% url 'modulo_metrologia' %}">📋 Lista de Instrumentos</a></li>
                         <li><a class="dropdown-item" href="{% url 'carimbar' %}">📑 Validar Certificado</a></li>
+                        
                         <li><hr class="dropdown-divider"></li>
+                        
                         <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
                         <li><a class="dropdown-item" href="{% url 'importar_instrumentos' %}">📥 Importar Instrumentos</a></li>
                         <li><a class="dropdown-item" href="{% url 'importar_historico' %}">📜 Importar Histórico</a></li>

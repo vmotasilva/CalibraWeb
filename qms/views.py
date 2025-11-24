@@ -115,8 +115,23 @@ def modulo_metrologia_view(request):
     colab = get_colab(request)
     
     # Busca todos os instrumentos
-    instrumentos = Instrumento.objects.all().order_by('tag')
+    instrumentos = Instrumento.objects.filter(ativo=True).order_by('tag')
     
+    # --- NOVA LÓGICA DE FILTRO VINDO DO DASHBOARD ---
+    status_filter = request.GET.get('status') # Pega o parâmetro da URL
+    hoje = date.today()
+    alerta_30d = hoje + timedelta(days=30)
+    
+    if status_filter == 'vencidos':
+        # Filtra onde a data é menor que hoje
+        instrumentos = instrumentos.filter(data_proxima_calibracao__lt=hoje)
+        messages.info(request, "Exibindo apenas instrumentos VENCIDOS.")
+        
+    elif status_filter == 'avencer':
+        # Filtra no intervalo entre hoje e 30 dias
+        instrumentos = instrumentos.filter(data_proxima_calibracao__range=[hoje, alerta_30d])
+        messages.info(request, "Exibindo instrumentos a vencer em 30 dias.")
+
     # Preparação dos Filtros (Extraindo valores únicos presentes na lista)
     setores_ids = instrumentos.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by('nome')
@@ -315,7 +330,7 @@ def detalhe_instrumento_view(request, instrumento_id): # Note que o URLs.py usa 
         form_ocorrencia = OcorrenciaForm()
 
     # Buscando dados para as novas abas
-    historico = inst.historico_calibracoes.all().order_by('-data_calibracao')
+    historico = inst.historicocalibracao_set.all().order_by('-data_calibracao')
     
     # Usando related_names definidos no models.py (calibracoes e ocorrencias)
     # Se der erro aqui, verifique se no models.py está related_name='calibracoes'
@@ -329,8 +344,8 @@ def detalhe_instrumento_view(request, instrumento_id): # Note que o URLs.py usa 
     except AttributeError:
         ocorrencias = []
 
-    faixas = inst.faixas.all()
-    
+    faixas = inst.faixamedicao_set.all() # Seu código antigo usava inst.faixas.all(), mas o padrão django é _set ou related_name. Vou tentar manter compatibilidade.
+    # Ajuste de compatibilidade para Faixas (caso seu model use related_name='faixas')
     if hasattr(inst, 'faixas'):
         faixas = inst.faixas.all()
 

@@ -22,7 +22,7 @@
     .card-counter.danger { background-color: #ef5350; }
     .card-counter.warning { background-color: #ffca28; color: #333; }
     .card-counter.info { background-color: #26c6da; }
-    .card-counter.primary { background-color: #0d6efd; } /* Novo estilo */
+    .card-counter.primary { background-color: #0d6efd; }
     
     .count-numbers { font-size: 36px; font-weight: bold; display: block; }
     .count-name { font-size: 14px; text-transform: uppercase; opacity: 0.9; letter-spacing: 1px; }
@@ -32,13 +32,13 @@
 
 <div class="row mb-4">
     <div class="col-md-3">
-        <a href="{% url 'modulo_metrologia' %}" class="card-counter danger">
+        <a href="{% url 'modulo_metrologia' %}?status=vencidos" class="card-counter danger">
             <span class="count-numbers">{{ qtd_vencidos }}</span>
             <span class="count-name">Instrumentos Vencidos</span>
         </a>
     </div>
     <div class="col-md-3">
-        <a href="{% url 'modulo_metrologia' %}" class="card-counter warning">
+        <a href="{% url 'modulo_metrologia' %}?status=avencer" class="card-counter warning">
             <span class="count-numbers">{{ qtd_avencer }}</span>
             <span class="count-name">Vencem em 30 Dias</span>
         </a>
@@ -50,7 +50,7 @@
         </a>
     </div>
     <div class="col-md-3">
-        <a href="{% url 'nova_solicitacao' %}" class="card-counter primary">
+        <a href="/admin/qms/solicitacaoinstrumento/?status__exact=PENDENTE" class="card-counter primary">
             <span class="count-numbers">{{ qtd_pendentes|default:"0" }}</span>
             <span class="count-name">Solicitações Pendentes</span>
         </a>
