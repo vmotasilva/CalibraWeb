@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction, IntegrityError, models
 from django.urls import reverse
-from django.db.models import Q, Subquery, OuterRef # <-- CRÍTICO: Adicionado Subquery e OuterRef
+from django.db.models import Q, Subquery, OuterRef # <--- CRÍTICO: Imports de Query Avançada
 from django.core.files.base import ContentFile
 
 # IMPORTA TODOS OS MODELOS (ATUALIZADO COM OS NOVOS)
@@ -152,11 +152,12 @@ def modulo_metrologia_view(request):
     }
     return render(request, 'modulo_metrologia.html', ctx)
 
+
 @login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
     
-    # 1. VISIBILIDADE (Definição dos IDs permitidos - Mantida)
+    # 1. VISIBILIDADE (Definição dos IDs permitidos)
     ids_permitidos = set()
     can_see_salary = False
     
@@ -173,13 +174,13 @@ def modulo_rh_view(request):
             if 'GERENTE' in str(colab.cargo).upper() or HierarquiaSetor.objects.filter(gerente=colab).exists():
                 can_see_salary = True
     
-    # QuerySet BASE para OPÇÕES DE FILTRO
+    # QuerySet BASE para OPÇÕES DE FILTRO (Permite ver todas as opções que o usuário é autorizado a ver)
     funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
     
     # QuerySet de TRABALHO: Começa com TODOS os colaboradores ativos da empresa.
     funcionarios_a_filtrar = Colaborador.objects.filter(is_active=True) 
 
-    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET ---
+    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET (APLICADO AO VISIVEIS ANOTADO) ---
     
     # 1. Recebe os IDs dos filtros da URL
     setor_id = request.GET.get('setor_id')
@@ -197,11 +198,12 @@ def modulo_rh_view(request):
         funcionarios_a_filtrar = funcionarios_a_filtrar.filter(turno=turno_slug)
         
     # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - SEM CAST INT()
+    # Esta lógica agora filtra a EMPRESA TODA primeiro.
     
     if supervisor_id:
         # A) Busca todos os IDs de Setores que têm esse Supervisor definido
         reporting_setor_ids = HierarquiaSetor.objects.filter(
-            supervisor_id=supervisor_id
+            supervisor_id=supervisor_id # <--- Filtra pelo ID (STRING) da URL
         ).values_list('setor_id', flat=True).distinct()
         
         # B) Filtra funcionários que trabalham nesses Setores
@@ -210,13 +212,14 @@ def modulo_rh_view(request):
     if gerente_id:
         # A) Busca todos os IDs de Setores que têm esse Gerente definido
         reporting_setor_ids = HierarquiaSetor.objects.filter(
-            gerente_id=gerente_id
+            gerente_id=gerente_id # <--- Filtra pelo ID (STRING) da URL
         ).values_list('setor_id', flat=True).distinct()
         
         # B) Filtra funcionários que pertencem a esses Setores
         funcionarios_a_filtrar = funcionarios_a_filtrar.filter(setor_id__in=reporting_setor_ids).distinct()
 
     # --- FINAL: APLICA FILTRO DE SEGURANÇA AO RESULTADO ---
+    # Interseção: O QuerySet final é a lista FILTRADA pela hierarquia + restrita pela permissão do usuário
     funcionarios_visiveis = funcionarios_a_filtrar.filter(id__in=ids_permitidos)
 
     # 4. CÁLCULO DAS OPÇÕES DE FILTRO (Usa funcionarios_base)
@@ -510,9 +513,7 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
 
 # --- DOWNLOAD DE TEMPLATES ---
 def dl_template_instr(request): return dl_generic(["TAG","EQUIPAMENTO","STATUS","FABRICANTE","MODELO","N SERIE","SETOR","LOCALIZACAO","FREQUENCIA_MESES","DATA_ULTIMA_CALIBRACAO","FAIXA","UNIDADE"], "template_instrumentos_v2.xlsx")
-def dl_template_colab(request): 
-    df = pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO'], 'MAT_LIDER': ['999'], 'MAT_SUPERVISOR': ['888'], 'MAT_GERENTE': ['777']})
-    return dl_df(df, "template_colaboradores.xlsx")
+def dl_template_colab(request): return dl_df(pd.DataFrame({'MATRICULA':['100'], 'NOME':['TESTE'], 'CPF':['000'], 'CARGO':['Y'], 'GRUPO':['ADM'], 'SETOR':['ADM'], 'CC':['100'], 'TURNO':['ADM'], 'STATUS':['ATIVO'], 'MAT_LIDER': ['999'], 'MAT_SUPERVISOR': ['888'], 'MAT_GERENTE': ['777']}), "template_colaboradores.xlsx")
 def dl_template_hierarquia(request): return dl_df(pd.DataFrame({'SETOR': ['MAN'], 'TURNO': ['T1'], 'MAT_LIDER': ['1'], 'MAT_SUPERVISOR': [''], 'MAT_GERENTE': [''], 'MAT_DIRETOR': ['']}), "template_hierarquia.xlsx")
 def dl_template_historico(request): return dl_generic(["TAG","DATA CALIBRAÇÃO","DATA APROVAÇÃO","N CERTIFICADO","ERRO ENCONTRADO","INCERTEZA","TOLERANCIA PROCESSO (+/-)","RBC (SIM/NAO)","RESULTADO","FORNECEDOR","RESPONSÁVEL","OBSERVAÇÕES"], "template_historico.xlsx")
 
