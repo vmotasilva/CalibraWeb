@@ -2,48 +2,76 @@
 
 {% block content %}
 <style>
-    /* --- ESTILOS DE "APP" (TELA CHEIA SEM ROLAGEM DA PÁGINA) --- */
-    
-    /* Remove a rolagem da página principal para focar nos painéis internos */
+    /* --- ESTILOS DE "APP" --- */
     body { overflow: hidden; }
 
-    /* 1. Barra Lateral com Rolagem Independente */
+    /* Barra Lateral */
     .sidebar-scroll {
-        height: calc(100vh - 160px); /* Ajusta altura com base no topo */
-        overflow-y: auto;            /* Barra de rolagem vertical */
-        padding-right: 8px;          /* Espaço para a barra não colar */
+        height: calc(100vh - 160px);
+        overflow-y: auto;
+        padding-right: 5px;
     }
 
-    /* 2. Container da Tabela com Rolagem */
+    /* Tabela com Rolagem */
     .table-container-scroll {
-        height: calc(100vh - 200px); /* Altura calculada para caber na tela */
-        overflow-y: auto;            /* Rolagem interna */
+        height: calc(100vh - 200px);
+        overflow-y: auto;
         border: 1px solid #dee2e6;
         border-radius: 6px;
         background-color: white;
     }
-
-    /* 3. O Segredo do Cabeçalho Fixo (Congelado) */
     .table-container-scroll thead th {
         position: sticky;
         top: 0;
-        z-index: 10;                 /* Garante que fique acima das linhas */
-        background-color: #f8f9fa;   /* Cor de fundo sólida para não ficar transparente */
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Sombra suave */
+        z-index: 10;
+        background-color: #f8f9fa;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
-    /* Ajuste visual das barras de rolagem (Fica mais elegante) */
+    /* --- ESTILO DOS FILTROS EXPANSÍVEIS (ACCORDION) --- */
+    .filter-header {
+        cursor: pointer;
+        padding: 8px 0;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .filter-header:hover {
+        background-color: #f8f9fa;
+    }
+    .filter-header i {
+        transition: transform 0.2s ease;
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    /* Classe para girar a seta quando aberto */
+    .filter-group.open .filter-header i {
+        transform: rotate(180deg);
+    }
+    .filter-content {
+        display: none; /* Escondido por padrão */
+        padding-top: 8px;
+        padding-bottom: 8px;
+        padding-left: 5px;
+    }
+    /* Quando tiver a classe 'open', mostra o conteúdo */
+    .filter-group.open .filter-content {
+        display: block;
+    }
+
+    /* Scrollbars finas */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #f1f1f1; }
     ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-
     .transition-all { transition: all 0.3s ease; }
 </style>
 
 <div class="container-fluid py-3" style="height: 100vh; display: flex; flex-direction: column;">
     
-    <!-- CABEÇALHO DA PÁGINA (FIXO) -->
+    <!-- CABEÇALHO FIXO -->
     <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2 flex-shrink-0">
         <div class="d-flex align-items-center gap-3">
             <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Expandir/Recolher Filtros">
@@ -51,12 +79,11 @@
             </button>
             <div>
                 <h4 class="fw-bold text-primary mb-0">Gestão de Pessoas</h4>
-                <p class="text-muted mb-0 small">Visualização hierárquica e controle de equipe</p>
+                <p class="text-muted mb-0 small">Equipe e Hierarquia</p>
             </div>
         </div>
         
         <div class="d-flex gap-2">
-            <!-- Botões de Ação -->
             <a href="{% url 'importar_ferias' %}" class="btn btn-info text-white btn-sm shadow-sm">
                 <i class="bi bi-airplane"></i> Férias
             </a>
@@ -66,9 +93,7 @@
             <a href="/admin/qms/colaborador/add/" target="_blank" class="btn btn-primary btn-sm shadow-sm">
                 <i class="bi bi-plus-lg"></i> Novo
             </a>
-            
             <div class="vr mx-1 d-none d-md-block"></div>
-            
             <a href="/static/modelos/template_colaboradores.xlsx" class="btn btn-outline-secondary btn-sm d-none d-md-inline-block" title="Baixar Modelo">
                 <i class="bi bi-download"></i>
             </a>
@@ -77,103 +102,124 @@
 
     <div class="row h-100 overflow-hidden">
         
-        <!-- BARRA LATERAL DE FILTROS (SIDEBAR) -->
+        <!-- BARRA LATERAL (FILTROS) -->
         <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
-            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
-                <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
-                <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="limparFiltros()">
-                    <small>Limpar tudo</small>
-                </button>
+            
+            <!-- Busca Fixa no Topo -->
+            <div class="mb-3 flex-shrink-0">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
+                    <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="limparFiltros()">
+                        <small>Limpar</small>
+                    </button>
+                </div>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula...">
+                </div>
             </div>
 
-            <!-- Área de Rolagem dos Filtros -->
+            <!-- Área Rolável dos Filtros Expansíveis -->
             <div class="sidebar-scroll">
                 
-                <!-- 1. Busca Textual -->
-                <div class="mb-3">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula...">
+                <!-- 1. STATUS (Aberto por padrão: class="open") -->
+                <div class="filter-group open mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0" style="cursor: pointer;">STATUS</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
+                                <label class="form-check-label small" for="st_ativo">Ativo</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="FERIAS" data-category="status" id="st_ferias">
+                                <label class="form-check-label small" for="st_ferias">Em Férias</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status" id="st_inativo">
+                                <label class="form-check-label small" for="st_inativo">Desligado</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 2. Status -->
-                <div class="mb-3">
-                    <label class="form-label small fw-bold text-muted mb-1">STATUS</label>
-                    <div class="bg-light p-2 rounded border">
-                        <div class="form-check">
-                            <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
-                            <label class="form-check-label small" for="st_ativo">Ativo</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input filter-checkbox" type="checkbox" value="FERIAS" data-category="status" id="st_ferias">
-                            <label class="form-check-label small" for="st_ferias">Em Férias</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status" id="st_inativo">
-                            <label class="form-check-label small" for="st_inativo">Desligado</label>
+                <!-- 2. LÍDER / GESTOR -->
+                <div class="filter-group mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0" style="cursor: pointer;">LÍDER / GESTOR</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for lider in lideres_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ lider.id }}" data-category="lider" id="lid_{{ lider.id }}">
+                                <label class="form-check-label small text-truncate" for="lid_{{ lider.id }}" title="{{ lider.nome_completo }}">
+                                    {{ lider.nome_completo|title }}
+                                </label>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
 
-                <!-- 3. Líder / Gestor -->
-                <div class="mb-3">
-                    <label class="form-label small fw-bold text-muted mb-1">LÍDER / GESTOR</label>
-                    <div class="d-flex flex-column gap-1 ps-1">
-                        {% for lider in lideres_filtro %}
-                        <div class="form-check">
-                            <input class="form-check-input filter-checkbox" type="checkbox" value="{{ lider.id }}" data-category="lider" id="lid_{{ lider.id }}">
-                            <label class="form-check-label small text-truncate" for="lid_{{ lider.id }}" title="{{ lider.nome_completo }}">
-                                {{ lider.nome_completo|title }}
-                            </label>
+                <!-- 3. SETOR -->
+                <div class="filter-group mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0" style="cursor: pointer;">SETOR</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1"> 
+                            {% for setor in setores_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor" id="set_{{ setor.id }}">
+                                <label class="form-check-label small text-truncate" for="set_{{ setor.id }}" title="{{ setor.nome }}">
+                                    {{ setor.nome }}
+                                </label>
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
                 </div>
 
-                <!-- 4. Setor -->
-                <div class="mb-3">
-                    <label class="form-label small fw-bold text-muted mb-1">SETOR</label>
-                    <div class="d-flex flex-column gap-1 ps-1"> 
-                        {% for setor in setores_filtro %}
-                        <div class="form-check">
-                            <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor" id="set_{{ setor.id }}">
-                            <label class="form-check-label small text-truncate" for="set_{{ setor.id }}" title="{{ setor.nome }}">
-                                {{ setor.nome }}
-                            </label>
+                <!-- 4. TURNO -->
+                <div class="filter-group mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0" style="cursor: pointer;">TURNO</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for codigo, nome in turnos_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ codigo }}" data-category="turno" id="tn_{{ codigo }}">
+                                <label class="form-check-label small" for="tn_{{ codigo }}">
+                                    {{ nome }}
+                                </label>
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
                     </div>
                 </div>
 
-                <!-- 5. Turno -->
-                <div class="mb-4">
-                    <label class="form-label small fw-bold text-muted mb-1">TURNO</label>
-                    <div class="d-flex flex-column gap-1 ps-1">
-                        {% for codigo, nome in turnos_filtro %}
-                        <div class="form-check">
-                            <input class="form-check-input filter-checkbox" type="checkbox" value="{{ codigo }}" data-category="turno" id="tn_{{ codigo }}">
-                            <label class="form-check-label small" for="tn_{{ codigo }}">
-                                {{ nome }}
-                            </label>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
             </div>
         </div>
 
-        <!-- ÁREA PRINCIPAL (CONTEÚDO) -->
+        <!-- CONTEÚDO PRINCIPAL -->
         <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col">
             
-            <!-- Contador de Registros -->
+            <!-- Contador -->
             <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
                 <span class="badge bg-secondary bg-opacity-10 text-secondary border">
                     <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ funcionarios.count }}</span> colaboradores encontrados
                 </span>
             </div>
 
-            <!-- TABELA SCROLLÁVEL -->
+            <!-- TABELA -->
             <div class="table-container-scroll shadow-sm">
                 <table class="table table-hover align-middle mb-0" id="rhTable">
                     <thead class="small text-uppercase text-muted font-monospace">
@@ -219,7 +265,6 @@
                                 <span class="d-block text-dark small fw-semibold">{{ f.cargo }}</span>
                             </td>
                             
-                            <!-- CORREÇÃO: Reintroduzindo Centro de Custo -->
                             <td class="py-2">
                                 <div class="small text-dark fw-bold">{{ f.setor.nome|default:"-" }}</div>
                                 <div class="text-muted small" style="font-size: 0.7rem;" title="Centro de Custo">
@@ -275,18 +320,24 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 1. Inicializa a filtragem ao carregar
+    // Inicializa filtros e contagem
     filtrar();
     
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
     
-    // 2. Listeners para digitação e cliques
+    // Event listeners para busca e checkboxes
     searchInput.addEventListener('keyup', filtrar);
     checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
 });
 
-// Lógica de Filtro (AND entre grupos, OR dentro do grupo)
+// FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS
+function toggleFilterGroup(element) {
+    const group = element.parentElement;
+    // Alterna a classe 'open' que controla a visibilidade via CSS
+    group.classList.toggle('open');
+}
+
 function filtrar() {
     const searchInput = document.getElementById('searchInput');
     const countDisplay = document.getElementById('countDisplay');
@@ -299,7 +350,6 @@ function filtrar() {
         turno: []
     };
     
-    // Coleta quais checkboxes estão marcados
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
         if (cb.checked) {
             filtrosAtivos[cb.dataset.category].push(cb.value);
@@ -308,57 +358,41 @@ function filtrar() {
 
     let visiveis = 0;
     
-    // Varre cada linha da tabela
     document.querySelectorAll('.rh-row').forEach(row => {
         let mostrar = true;
 
-        // Filtro de Texto
-        if (termoBusca && !row.dataset.nome.includes(termoBusca)) {
-            mostrar = false;
-        }
+        if (termoBusca && !row.dataset.nome.includes(termoBusca)) mostrar = false;
+        if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) mostrar = false;
+        if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
+        if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) mostrar = false;
+        if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) mostrar = false;
 
-        // Filtros de Categoria
-        if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) { mostrar = false; }
-        if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) { mostrar = false; }
-        if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) { mostrar = false; }
-        if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) { mostrar = false; }
-
-        // Aplica Visibilidade
-        if (mostrar) {
-            row.style.display = '';
-            visiveis++;
-        } else {
-            row.style.display = 'none';
-        }
+        row.style.display = mostrar ? '' : 'none';
+        if (mostrar) visiveis++;
     });
 
-    // Atualiza contador
     if(countDisplay) countDisplay.innerText = visiveis;
 }
 
 function limparFiltros() {
     document.getElementById('searchInput').value = '';
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
-        // Mantém apenas "ATIVO" marcado por padrão, desmarca o resto
         cb.checked = (cb.id === 'st_ativo');
     });
     filtrar();
 }
 
-// Função Toggle Sidebar (Expandir/Recolher)
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar-col');
     const content = document.getElementById('content-col');
     const icon = document.getElementById('sidebarIcon');
 
     if (sidebar.classList.contains('d-none')) {
-        // MOSTRAR Sidebar
         sidebar.classList.remove('d-none');
         content.classList.replace('col-12', 'col-md-9');
         content.classList.add('col-lg-10');
         icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
     } else {
-        // ESCONDER Sidebar
         sidebar.classList.add('d-none');
         content.classList.replace('col-md-9', 'col-12');
         content.classList.remove('col-lg-10');
