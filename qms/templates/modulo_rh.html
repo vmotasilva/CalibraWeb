@@ -5,16 +5,23 @@
     
     <!-- Cabeçalho -->
     <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
-        <div>
-            <h2 class="fw-bold text-primary mb-0"><i class="bi bi-people-fill"></i> Gestão de Pessoas</h2>
-            <p class="text-muted mb-0">Gerencie sua equipe, visualize status e hierarquia.</p>
+        <div class="d-flex align-items-center gap-3">
+            <!-- Botão Toggle Sidebar (Novo) -->
+            <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Expandir/Recolher Filtros">
+                <i class="bi bi-layout-sidebar" id="sidebarIcon"></i>
+            </button>
+            <div>
+                <h2 class="fw-bold text-primary mb-0">Gestão de Pessoas</h2>
+                <p class="text-muted mb-0 small">Gerencie sua equipe e hierarquia.</p>
+            </div>
         </div>
+        
         <div class="d-flex gap-2">
-            <a href="/static/modelos/template_colaboradores.xlsx" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-download"></i> Modelo Excel
+            <a href="/static/modelos/template_colaboradores.xlsx" class="btn btn-outline-secondary btn-sm d-none d-md-inline-block">
+                <i class="bi bi-download"></i> Modelo
             </a>
             <a href="{% url 'importar_colaboradores' %}" class="btn btn-success btn-sm">
-                <i class="bi bi-file-earmark-spreadsheet"></i> Importar RH
+                <i class="bi bi-file-earmark-spreadsheet"></i> Importar
             </a>
             <a href="/admin/qms/colaborador/add/" target="_blank" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-lg"></i> Novo
@@ -23,25 +30,30 @@
     </div>
 
     <div class="row">
-        <!-- SIDEBAR DE FILTROS (Estilo Amazon) -->
-        <div class="col-md-3 col-lg-2 border-end pe-4">
-            <h5 class="fw-bold mb-3"><i class="bi bi-funnel"></i> Filtros</h5>
+        <!-- SIDEBAR DE FILTROS (Com ID para controle JS) -->
+        <div class="col-md-3 col-lg-2 border-end pe-4" id="sidebar-col">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-funnel"></i> Filtros</h5>
+                <button class="btn btn-sm btn-link text-muted text-decoration-none" onclick="toggleSidebar()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
             
-            <!-- Filtro de Pesquisa Texto -->
+            <!-- 1. Filtro de Texto -->
             <div class="mb-4">
-                <label class="form-label small fw-bold text-muted">BUSCAR PESSOA</label>
+                <label class="form-label small fw-bold text-muted">BUSCAR</label>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                    <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula...">
+                    <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome/Matrícula...">
                 </div>
             </div>
 
-            <!-- Filtro Status -->
+            <!-- 2. Filtro Status -->
             <div class="mb-4">
                 <label class="form-label small fw-bold text-muted">STATUS</label>
                 <div class="d-flex flex-column gap-1">
                     <div class="form-check">
-                        <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo">
+                        <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
                         <label class="form-check-label small" for="st_ativo">Ativo</label>
                     </div>
                     <div class="form-check">
@@ -50,15 +62,15 @@
                     </div>
                     <div class="form-check">
                         <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status" id="st_inativo">
-                        <label class="form-check-label small" for="st_inativo">Desligado / Inativo</label>
+                        <label class="form-check-label small" for="st_inativo">Desligado</label>
                     </div>
                 </div>
             </div>
 
-            <!-- Filtro Setor -->
+            <!-- 3. Filtro Setor -->
             <div class="mb-4">
                 <label class="form-label small fw-bold text-muted">SETOR</label>
-                <div class="d-flex flex-column gap-1 overflow-auto" style="max-height: 200px;">
+                <div class="d-flex flex-column gap-1 overflow-auto" style="max-height: 150px;">
                     {% for setor in setores_filtro %}
                     <div class="form-check">
                         <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor" id="set_{{ setor.id }}">
@@ -70,10 +82,10 @@
                 </div>
             </div>
 
-            <!-- Filtro Líder (Novo!) -->
+            <!-- 4. Filtro Líder -->
             <div class="mb-4">
                 <label class="form-label small fw-bold text-muted">LÍDER / GESTOR</label>
-                <div class="d-flex flex-column gap-1 overflow-auto" style="max-height: 200px;">
+                <div class="d-flex flex-column gap-1 overflow-auto" style="max-height: 150px;">
                     {% for lider in lideres_filtro %}
                     <div class="form-check">
                         <input class="form-check-input filter-checkbox" type="checkbox" value="{{ lider.id }}" data-category="lider" id="lid_{{ lider.id }}">
@@ -85,11 +97,10 @@
                 </div>
             </div>
 
-            <!-- Filtro Turno -->
+            <!-- 5. Filtro Turno -->
             <div class="mb-4">
                 <label class="form-label small fw-bold text-muted">TURNO</label>
                 <div class="d-flex flex-column gap-1">
-                    <!-- LOOP ATUALIZADO PARA LER A LISTA FIXA -->
                     {% for codigo, nome in turnos_filtro %}
                     <div class="form-check">
                         <input class="form-check-input filter-checkbox" type="checkbox" value="{{ codigo }}" data-category="turno" id="tn_{{ codigo }}">
@@ -102,15 +113,15 @@
             </div>
 
             <button class="btn btn-outline-dark btn-sm w-100 mt-2" onclick="limparFiltros()">
-                Limpar Filtros
+                Limpar Tudo
             </button>
         </div>
 
-        <!-- CONTEÚDO PRINCIPAL (LISTA) -->
-        <div class="col-md-9 col-lg-10">
+        <!-- CONTEÚDO PRINCIPAL (Com ID para controle JS) -->
+        <div class="col-md-9 col-lg-10 transition-all" id="content-col">
             
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small"><span id="countDisplay">{{ funcionarios.count }}</span> colaboradores encontrados</span>
+                <span class="text-muted small"><span id="countDisplay">{{ funcionarios.count }}</span> registros encontrados</span>
             </div>
 
             <div class="card shadow-sm border-0">
@@ -152,16 +163,14 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td>
-                                    <span class="d-block text-dark small">{{ f.cargo }}</span>
-                                </td>
+                                <td><span class="d-block text-dark small">{{ f.cargo }}</span></td>
                                 <td>
                                     <div class="small text-dark">{{ f.setor.nome|default:"-" }}</div>
                                     <div class="small text-muted" style="font-size: 0.75rem;">{{ f.get_turno_display }}</div>
                                 </td>
                                 <td>
                                     {% if f.lider %}
-                                        <span class="badge bg-light text-dark border fw-normal" title="Líder">{{ f.lider.nome_completo|truncatechars:15 }}</span>
+                                        <span class="badge bg-light text-dark border fw-normal" title="{{ f.lider.nome_completo }}">{{ f.lider.nome_completo|truncatechars:15 }}</span>
                                     {% else %}
                                         <span class="text-muted small">-</span>
                                     {% endif %}
@@ -174,18 +183,11 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-end pe-4">
-                                    <a href="{% url 'detalhe_colaborador' f.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                                        Ver Perfil
-                                    </a>
+                                    <a href="{% url 'detalhe_colaborador' f.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">Ver</a>
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr>
-                                <td colspan="6" class="text-center py-5 text-muted">
-                                    <i class="bi bi-people fs-1 d-block mb-2"></i>
-                                    Nenhum colaborador encontrado com estes filtros.
-                                </td>
-                            </tr>
+                            <tr><td colspan="6" class="text-center py-5 text-muted">Nenhum colaborador encontrado.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -195,59 +197,75 @@
     </div>
 </div>
 
-<!-- JAVASCRIPT PARA FILTRAGEM INSTANTÂNEA -->
+<style>
+    /* Transição suave ao expandir/recolher */
+    .transition-all { transition: all 0.3s ease; }
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializa filtros e contagem
+    filtrar();
+    
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
-    const rows = document.querySelectorAll('.rh-row');
-    const countDisplay = document.getElementById('countDisplay');
-
-    function filtrar() {
-        const termoBusca = searchInput.value.toLowerCase();
-        const filtrosAtivos = { status: [], setor: [], lider: [], turno: [] };
-
-        checkboxes.forEach(cb => {
-            if (cb.checked) {
-                filtrosAtivos[cb.dataset.category].push(cb.value);
-            }
-        });
-
-        let visiveis = 0;
-
-        rows.forEach(row => {
-            let mostrar = true;
-
-            // 1. Filtro de Texto
-            if (termoBusca && !row.dataset.nome.includes(termoBusca)) {
-                mostrar = false;
-            }
-
-            // 2. Filtros de Categoria (OR dentro, AND entre)
-            if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) { mostrar = false; }
-            if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) { mostrar = false; }
-            if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) { mostrar = false; }
-            if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) { mostrar = false; }
-
-            if (mostrar) {
-                row.style.display = '';
-                visiveis++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        countDisplay.innerText = visiveis;
-    }
-
+    
     searchInput.addEventListener('keyup', filtrar);
     checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
 });
 
+// Função Lógica de Filtros (E/OU)
+function filtrar() {
+    const searchInput = document.getElementById('searchInput');
+    const countDisplay = document.getElementById('countDisplay');
+    const termoBusca = searchInput.value.toLowerCase();
+    
+    const filtrosAtivos = { status: [], setor: [], lider: [], turno: [] };
+    
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
+    });
+
+    let visiveis = 0;
+    document.querySelectorAll('.rh-row').forEach(row => {
+        let mostrar = true;
+        if (termoBusca && !row.dataset.nome.includes(termoBusca)) mostrar = false;
+        if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) mostrar = false;
+        if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
+        if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) mostrar = false;
+        if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) mostrar = false;
+
+        row.style.display = mostrar ? '' : 'none';
+        if (mostrar) visiveis++;
+    });
+    if(countDisplay) countDisplay.innerText = visiveis;
+}
+
 function limparFiltros() {
     document.getElementById('searchInput').value = '';
-    document.querySelectorAll('.filter-checkbox').forEach(cb => cb.checked = false);
-    document.querySelector('.filter-checkbox').dispatchEvent(new Event('change'));
+    document.querySelectorAll('.filter-checkbox').forEach(cb => cb.checked = (cb.id === 'st_ativo')); // Reseta para Ativo padrão
+    filtrar();
+}
+
+// NOVA FUNÇÃO: Expandir/Recolher Sidebar
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar-col');
+    const content = document.getElementById('content-col');
+    const icon = document.getElementById('sidebarIcon');
+
+    if (sidebar.classList.contains('d-none')) {
+        // Mostrar Sidebar
+        sidebar.classList.remove('d-none');
+        content.classList.replace('col-12', 'col-md-9'); // Volta ao tamanho original
+        content.classList.add('col-lg-10');
+        icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
+    } else {
+        // Esconder Sidebar (Expandir Tabela)
+        sidebar.classList.add('d-none');
+        content.classList.replace('col-md-9', 'col-12'); // Ocupa tudo
+        content.classList.remove('col-lg-10');
+        icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
+    }
 }
 </script>
 {% endblock %}
