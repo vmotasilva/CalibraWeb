@@ -2,17 +2,17 @@
 
 {% block content %}
 <style>
-    /* --- ESTILOS DE "APP" --- */
+    /* --- ESTILOS DE "APP" (SEM ROLAGEM NA PÁGINA) --- */
     body { overflow: hidden; }
 
-    /* Barra Lateral */
+    /* BARRA LATERAL (FILTROS) */
     .sidebar-scroll {
         height: calc(100vh - 160px);
         overflow-y: auto;
         padding-right: 5px;
     }
 
-    /* Tabela com Rolagem */
+    /* TABELA (ROLAGEM) */
     .table-container-scroll {
         height: calc(100vh - 200px);
         overflow-y: auto;
@@ -28,7 +28,7 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
-    /* --- ESTILO DOS FILTROS EXPANSÍVEIS (ACCORDION) --- */
+    /* --- NOVO: ESTILO DOS FILTROS EXPANSÍVEIS (ACORDEÃO) --- */
     .filter-group {
         border-bottom: 1px solid #f0f0f0;
         margin-bottom: 5px;
@@ -180,10 +180,10 @@
                     </div>
                 </div>
 
-                <!-- 3. LÍDER -->
+                <!-- 3. LÍDER / GESTOR -->
                 <div class="filter-group">
                     <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="filter-title">Líder Imediato</label>
+                        <label class="filter-title">Líder / Gestor</label>
                         <i class="bi bi-chevron-down"></i>
                     </div>
                     <div class="filter-content">
@@ -199,7 +199,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 4. SUPERVISOR (NOVO) -->
                 <div class="filter-group">
                     <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -410,6 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS (ACORDEÃO)
 function toggleFilterGroup(element) {
     const group = element.parentElement;
+    // Alterna a classe 'open' que controla a visibilidade via CSS
     group.classList.toggle('open');
 }
 
