@@ -32,7 +32,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'qms', # Seu app
+    'qms',
+    'widget_tweaks',
 ]
 
 MIDDLEWARE = [
