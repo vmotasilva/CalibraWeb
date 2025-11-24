@@ -154,7 +154,7 @@ def modulo_metrologia_view(request):
     }
     return render(request, 'modulo_metrologia.html', ctx)
 
-@login_required
+@@login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
     
@@ -180,7 +180,40 @@ def modulo_rh_view(request):
         if not (request.user.is_superuser or request.user.is_staff):
             messages.warning(request, f"Não foi possível vincular seu usuário '{request.user.username}' a um colaborador.")
 
-    # 2. FILTROS DINÂMICOS (CORREÇÃO PARA POPULAR SUPERVISOR/GERENTE)
+
+    # --- NOVO: LÓGICA DE FILTRAGEM DE RH VIA GET ---
+    
+    # 1. Recebe os IDs dos filtros da URL
+    setor_id = request.GET.get('setor_id')
+    lider_id = request.GET.get('lider_id')
+    supervisor_id = request.GET.get('supervisor_id')
+    gerente_id = request.GET.get('gerente_id')
+    turno_slug = request.GET.get('turno')
+    
+    # 2. Aplicar filtros diretos (Líder/Setor/Turno)
+    if setor_id:
+        funcionarios_visiveis = funcionarios_visiveis.filter(setor_id=setor_id)
+    if lider_id:
+        funcionarios_visiveis = funcionarios_visiveis.filter(lider_id=lider_id)
+    if turno_slug:
+        funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
+        
+    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente)
+    if supervisor_id:
+        # Filtra funcionários cujo setor TEM o supervisor selecionado na tabela HierarquiaSetor
+        funcionarios_visiveis = funcionarios_visiveis.filter(
+            setor__hierarquiasetor__supervisor_id=supervisor_id
+        ).distinct() # Usamos distinct para evitar duplicidade na listagem
+    
+    if gerente_id:
+        # Filtra funcionários cujo setor TEM o gerente selecionado
+        funcionarios_visiveis = funcionarios_visiveis.filter(
+            setor__hierarquiasetor__gerente_id=gerente_id
+        ).distinct()
+
+    # --- FIM DA LÓGICA DE FILTRAGEM ---
+
+    # 4. FILTROS DINÂMICOS (Agora recalcula as OPÇÕES de filtro com base nos funcionários *já filtrados*)
     
     # Filtro de Líderes
     lideres_ids = funcionarios_visiveis.values_list('lider', flat=True).distinct()
@@ -190,25 +223,18 @@ def modulo_rh_view(request):
     setores_ids = funcionarios_visiveis.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by('nome')
 
-    # --- NOVO: BUSCA SUPERVISORES E GERENTES VIA TABELA HIERARQUIA ---
-    
-# 1. Busca as definições de hierarquia para os setores visíveis
+    # Busca Hierarquias (Para as opções de Supervisor/Gerente)
     hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids)
     
-    # 2. Extrai os IDs brutos, incluindo Nulos
-    sup_ids_brutos = hierarquias.values_list('supervisor', flat=True).distinct()
-    ger_ids_brutos = hierarquias.values_list('gerente', flat=True).distinct()
+    # Extrai Supervisores e Gerentes de forma limpa
+    sup_ids_raw = hierarquias.values_list('supervisor', flat=True).distinct()
+    ger_ids_raw = hierarquias.values_list('gerente', flat=True).distinct()
+    sup_ids = [id for id in sup_ids_raw if id is not None]
+    ger_ids = [id for id in ger_ids_raw if id is not None]
     
-    # 3. Limpa explicitamente os valores nulos (None) antes de consultar Colaborador
-    # CORREÇÃO: Usa 'sup_ids_brutos' para a iteração e armazena em 'sup_ids'
-    sup_ids = [id for id in sup_ids_brutos if id is not None]
-    ger_ids = [id for id in ger_ids_brutos if id is not None]
+    supervisores_filtro = Colaborador.objects.filter(id__in=sup_ids).order_by('nome_completo')
+    gerentes_filtro = Colaborador.objects.filter(id__in=ger_ids).order_by('nome_completo')
     
-    # 4. Busca os objetos Colaborador correspondentes (agora com IDs limpos)
-    supervisores_filtro = Colaborador.objects.filter(id__in=sup_ids).exclude(id__isnull=True).order_by('nome_completo')
-    gerentes_filtro = Colaborador.objects.filter(id__in=ger_ids).exclude(id__isnull=True).order_by('nome_completo')    
-    # --- FIM DO NOVO BLOCO ---
-
     turnos_filtro = [
         ('ADM', 'Administrativo'),
         ('TURNO_1', 'Turno 1'),
@@ -219,11 +245,11 @@ def modulo_rh_view(request):
 
     ctx = {
         'colaborador': colab, 
-        'funcionarios': funcionarios_visiveis,
+        'funcionarios': funcionarios_visiveis, # Este QuerySet agora está FILTRADO
         'lideres_filtro': lideres_filtro, 
         'setores_filtro': setores_filtro,
-        'supervisores_filtro': supervisores_filtro, # <--- ENVIADO PARA O TEMPLATE
-        'gerentes_filtro': gerentes_filtro,         # <--- ENVIADO PARA O TEMPLATE
+        'supervisores_filtro': supervisores_filtro, 
+        'gerentes_filtro': gerentes_filtro,
         'turnos_filtro': turnos_filtro,
         'centros': CentroCusto.objects.all().order_by('codigo'), 
         'can_see_salary': can_see_salary,
