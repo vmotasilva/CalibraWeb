@@ -46,10 +46,15 @@ def get_colab(request):
         pass
 
     # 2. Tenta pelo Nome (Feature Automática)
+    # Só tenta se o usuário tiver Nome e Sobrenome preenchidos no perfil
     if request.user.first_name and request.user.last_name:
+        # Monta o nome completo (ex: "Vinicius Mota")
         nome_montado = f"{request.user.first_name} {request.user.last_name}".strip()
+        
         # Busca no banco ignorando maiúsculas/minúsculas (__iexact)
+        # Ex: "Vinicius Mota" vai encontrar "VINICIUS MOTA"
         colab = Colaborador.objects.filter(nome_completo__iexact=nome_montado).first()
+        
         if colab:
             return colab
 
@@ -71,10 +76,12 @@ def get_all_subordinates(colaborador):
     de um colaborador, descendo toda a árvore hierárquica.
     """
     subordinados = set()
+    # 'liderados' é o related_name definido no models.py
     diretos = colaborador.liderados.all()
     
     for direto in diretos:
         subordinados.add(direto.id)
+        # Recursividade: Pega os liderados deste liderado
         subordinados.update(get_all_subordinates(direto))
     
     return subordinados
@@ -131,6 +138,7 @@ def modulo_rh_view(request):
             funcionarios_visiveis = Colaborador.objects.all().order_by('nome_completo')
             can_see_salary = True
         else:
+            # Visão de Túnel
             ids_permitidos = get_all_subordinates(colab)
             ids_permitidos.add(colab.id)
             funcionarios_visiveis = Colaborador.objects.filter(id__in=ids_permitidos).order_by('nome_completo')
@@ -141,23 +149,31 @@ def modulo_rh_view(request):
         if not (request.user.is_superuser or request.user.is_staff):
             messages.warning(request, f"Não foi possível vincular seu usuário '{request.user.username}' a um colaborador.")
 
-    # 2. PREPARAÇÃO DOS FILTROS (NOVO)
-    # Extrai apenas os líderes e setores que existem na lista visível
+    # 2. PREPARAÇÃO DOS FILTROS (Dinâmicos + Fixos)
+    
+    # Líderes (Dinâmico: Só mostra quem é líder na lista atual)
     lideres_ids = funcionarios_visiveis.values_list('lider', flat=True).distinct()
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
     
+    # Setores (Dinâmico)
     setores_ids = funcionarios_visiveis.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by('nome')
 
-    # Extraindo turnos únicos presentes na lista
-    turnos_filtro = funcionarios_visiveis.values_list('turno', flat=True).distinct()
+    # Turnos (FIXO e LIMPO, conforme solicitado)
+    turnos_filtro = [
+        ('ADM', 'Administrativo'),
+        ('TURNO_1', 'Turno 1'),
+        ('TURNO_2', 'Turno 2'),
+        ('TURNO_3', 'Turno 3'),
+        ('12X36', '12x36'),
+    ]
 
     ctx = {
         'colaborador': colab, 
         'funcionarios': funcionarios_visiveis,
-        'lideres_filtro': lideres_filtro, # Envia lista de líderes para o filtro
-        'setores_filtro': setores_filtro, # Envia lista de setores para o filtro
-        'turnos_filtro': turnos_filtro,   # Envia lista de turnos para o filtro
+        'lideres_filtro': lideres_filtro, 
+        'setores_filtro': setores_filtro, 
+        'turnos_filtro': turnos_filtro,
         'centros': CentroCusto.objects.all().order_by('codigo'), 
         'can_see_salary': can_see_salary,
         'can_edit': True
@@ -169,30 +185,22 @@ def detalhe_colaborador_view(request, colab_id):
     usuario_logado = get_colab(request)
     alvo = get_object_or_404(Colaborador, id=colab_id)
     
-    # --- SEGURANÇA: VERIFICA SE PODE VER ESTE PERFIL ---
+    # SEGURANÇA
     if not (request.user.is_superuser or request.user.is_staff):
         permitido = False
         if usuario_logado:
-            # 1. É o próprio usuário?
-            if usuario_logado.id == alvo.id: 
-                permitido = True
-            # 2. É do RH?
-            elif usuario_logado.setor and 'RH' in usuario_logado.setor.nome.upper():
-                permitido = True
+            if usuario_logado.id == alvo.id: permitido = True
+            elif usuario_logado.setor and 'RH' in usuario_logado.setor.nome.upper(): permitido = True
             else:
-                # 3. É um subordinado (direto ou indireto)?
                 meus_subordinados = get_all_subordinates(usuario_logado)
-                if alvo.id in meus_subordinados:
-                    permitido = True
+                if alvo.id in meus_subordinados: permitido = True
         
         if not permitido:
             messages.error(request, "Acesso Negado: Você não tem permissão para visualizar este colaborador.")
             return redirect('modulo_rh')
 
-    # Permissão de Salário
     can_see_salary = False
-    if request.user.is_superuser or request.user.is_staff: 
-        can_see_salary = True
+    if request.user.is_superuser or request.user.is_staff: can_see_salary = True
     elif usuario_logado:
         if 'GERENTE' in str(usuario_logado.cargo).upper(): can_see_salary = True
         if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists(): can_see_salary = True
@@ -209,24 +217,19 @@ def detalhe_colaborador_view(request, colab_id):
     }
     return render(request, 'detalhe_colaborador.html', ctx)
 
-# --- VIEW DE EDIÇÃO ---
 @login_required
 def editar_colaborador_view(request, colab_id):
     usuario_logado = get_colab(request)
     alvo = get_object_or_404(Colaborador, id=colab_id)
     
-    # --- SEGURANÇA: VERIFICA SE PODE EDITAR ---
+    # SEGURANÇA
     if not (request.user.is_superuser or request.user.is_staff):
         permitido = False
         if usuario_logado:
-            # RH pode editar
-            if usuario_logado.setor and 'RH' in usuario_logado.setor.nome.upper():
-                permitido = True
+            if usuario_logado.setor and 'RH' in usuario_logado.setor.nome.upper(): permitido = True
             else:
-                # Gestor pode editar subordinados
                 meus_subordinados = get_all_subordinates(usuario_logado)
-                if alvo.id in meus_subordinados:
-                    permitido = True
+                if alvo.id in meus_subordinados: permitido = True
 
         if not permitido:
             messages.error(request, "Acesso Negado para edição.")
@@ -394,21 +397,40 @@ def imp_instr_view(request):
                             if len(numeros) >= 2: return float(numeros[0]), float(numeros[1])
                             elif len(numeros) == 1: return 0, float(numeros[0])
                             return 0, 0
+
                         tag = get_val(['TAG', 'IDENTIFICACAO', 'CODIGO', 'CÓDIGO'])
                         if not tag: continue 
+
                         cat_nome = get_val(['CATEGORIA', 'FAMILIA', 'TIPO', 'EQUIPAMENTO']) 
                         if cat_nome: cat, _ = CategoriaInstrumento.objects.get_or_create(nome=cat_nome.title())
                         else: cat = None
+
                         setor_nome = get_val(['SETOR', 'DEPARTAMENTO'])
                         if setor_nome: setor, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
                         else: setor = None
+
                         freq_meses = traduzir_frequencia(get_val(['FREQUENCIA_MESES', 'FREQUENCIA', 'PERIODICIDADE']))
                         dt_ultima = get_date(['DATA_ULTIMA_CALIBRACAO', 'DATA ÚLTIMA CALIBRAÇÃO', 'ULTIMA CALIBRACAO', 'DATA CALIBRAÇÃO'])
                         dt_proxima = dt_ultima + timedelta(days=freq_meses*30) if dt_ultima else None
-                        dados = {'codigo': tag, 'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição', 'categoria': cat, 'fabricante': get_val(['FABRICANTE', 'MARCA']), 'modelo': get_val(['MODELO']), 'serie': get_val(['N SERIE', 'N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']), 'setor': setor, 'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']), 'frequencia_meses': freq_meses, 'data_ultima_calibracao': dt_ultima, 'data_proxima_calibracao': dt_proxima, 'ativo': True}
+
+                        dados = {
+                            'codigo': tag,
+                            'descricao': get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição',
+                            'categoria': cat,
+                            'fabricante': get_val(['FABRICANTE', 'MARCA']),
+                            'modelo': get_val(['MODELO']),
+                            'serie': get_val(['N SERIE', 'N° DE SÉRIE', 'N DE SERIE', 'SÉRIE', 'SERIE']),
+                            'setor': setor,
+                            'localizacao': get_val(['LOCALIZAÇÃO', 'LOCALIZACAO', 'AREA']),
+                            'frequencia_meses': freq_meses,
+                            'data_ultima_calibracao': dt_ultima,
+                            'data_proxima_calibracao': dt_proxima,
+                            'ativo': True
+                        }
                         obj, created = Instrumento.objects.update_or_create(tag=tag, defaults=dados)
                         if created: count_new += 1
                         else: count_upd += 1
+
                         faixa_txt = get_val(['FAIXA', 'RANGE', 'CAPACIDADE', 'FAIXA DE MEDICAO'])
                         unidade_txt = get_val(['UNIDADE', 'U.M.', 'UNIDADE DE MEDIDA'])
                         if faixa_txt and unidade_txt:
@@ -422,6 +444,7 @@ def imp_instr_view(request):
     else: form = ImportacaoInstrumentosForm()
     return render(request, 'importar_instrumentos.html', {'form': form, 'colaborador': get_colab(request)})
 
+# --- IMPORTAÇÃO HISTÓRICO BLINDADA ---
 @login_required
 def imp_historico_view(request):
     if request.method == 'POST':
@@ -433,11 +456,20 @@ def imp_historico_view(request):
                 try:
                     if f.name.endswith('.csv'):
                         try: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
-                        except: f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
+                        except: 
+                            f.seek(0); df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8')
                     else: df = pd.read_excel(f)
-                except Exception as e: messages.error(request, f"Erro ao ler arquivo: {e}"); return redirect('importar_historico')
-                if df is None or len(df.columns) < 2: messages.error(request, "Arquivo inválido ou vazio."); return redirect('importar_historico')
-                df.columns = df.columns.str.strip().str.upper(); df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
+                except Exception as e:
+                    messages.error(request, f"Erro ao ler arquivo: {e}")
+                    return redirect('importar_historico')
+
+                if df is None or len(df.columns) < 2:
+                    messages.error(request, "Arquivo inválido ou vazio.")
+                    return redirect('importar_historico')
+
+                df.columns = df.columns.str.strip().str.upper()
+                df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
+                
                 count_new = 0; relatorio_erros = []
                 with transaction.atomic():
                     for index, row in df.iterrows():
@@ -454,69 +486,103 @@ def imp_historico_view(request):
                                         if bad.upper() in col: proibido = True; break
                                     if not proibido: return col
                             return None
-                        def get_val_by_col(col_name): return str(row[col_name]).strip() if col_name and pd.notna(row[col_name]) else None
+
+                        def get_val_by_col(col_name):
+                            if col_name and pd.notna(row[col_name]): return str(row[col_name]).strip()
+                            return None
+
                         def converter_data(valor):
                             if not valor or str(valor).strip() in ['-', 'NaT', 'nan', 'None', '']: return None
                             try: return pd.to_datetime(str(valor).strip(), dayfirst=True).date()
-                            except: 
+                            except:
                                 try: return (datetime(1899, 12, 30) + timedelta(days=float(valor))).date()
                                 except: return None
+
                         def get_float_by_col(col_name):
                             val = get_val_by_col(col_name)
                             if not val: return None
                             try: return float(re.sub(r'[^\d,.-]', '', val).replace(',', '.'))
                             except: return None
+
                         col_tag = encontrar_coluna(['TAG', 'CODIGO', 'IDENTIFICACAO'])
                         col_dt_cal = encontrar_coluna(['DATA CALIB', 'DATA ULTIMA', 'REALIZADO', 'CALIBRACAO'], evitar=['PROXIMA', 'VENCIMENTO', 'VALIDADE'])
+                        
                         tag = get_val_by_col(col_tag)
                         dt_cal = converter_data(row.get(col_dt_cal)) if col_dt_cal else None
+
                         if not tag: continue
-                        if not dt_cal: relatorio_erros.append(f"L.{linha} ({tag}): Data inválida."); continue
+                        if not dt_cal:
+                            relatorio_erros.append(f"L.{linha} ({tag}): Data inválida.")
+                            continue
+                        
                         try: inst = Instrumento.objects.get(tag=tag)
-                        except: relatorio_erros.append(f"L.{linha}: Instrumento não cadastrado."); continue
+                        except: 
+                            relatorio_erros.append(f"L.{linha}: Instrumento não cadastrado.")
+                            continue
+
                         col_dt_apr = encontrar_coluna(['DATA APROVACAO', 'DATA VALIDACAO', 'AVALIACAO'])
                         val_apr = converter_data(row.get(col_dt_apr)) if col_dt_apr else None
                         dt_apr = val_apr if val_apr else dt_cal
+                        
                         col_cert = encontrar_coluna(['CERTIFICADO', 'N DOC'], evitar=['DATA'])
                         num_cert = get_val_by_col(col_cert) or 'S/N'
+                        
                         col_erro = encontrar_coluna(['ERRO', 'TENDENCIA'])
                         col_inc = encontrar_coluna(['INCERTEZA', 'U'])
                         col_tol = encontrar_coluna(['TOLERANCIA', 'CRITERIO', 'EMA'], evitar=['NOMINAL'])
+                        
                         erro = get_float_by_col(col_erro)
                         inc = get_float_by_col(col_inc)
                         tol = get_float_by_col(col_tol)
+
                         col_resp = encontrar_coluna(['RESPONSAVEL', 'APROVADOR', 'ANALISE'])
                         resp_txt = get_val_by_col(col_resp)
                         col_forn = encontrar_coluna(['FORNECEDOR', 'LABORATORIO'])
                         forn_txt = get_val_by_col(col_forn)
+                        
                         col_res = encontrar_coluna(['RESULTADO', 'STATUS', 'ANALISE RESULTADO'])
                         res_excel = str(get_val_by_col(col_res) or '').upper()
                         res = 'APROVADO'
                         if 'REPROVADO' in res_excel: res = 'REPROVADO'
                         elif 'CONDICIONAL' in res_excel or 'RESTR' in res_excel: res = 'CONDICIONAL'
+                        
                         val_tipo = 'EXTERNA' 
                         if forn_txt and 'INTERNA' in str(forn_txt).upper(): val_tipo = 'INTERNA'
+                        
                         col_rbc = encontrar_coluna(['RBC', 'SELO', 'ACREDITADO'])
                         val_rbc = str(get_val_by_col(col_rbc) or '').upper()
                         tem_rbc = True if val_rbc in ['SIM', 'S', 'YES', 'RBC'] else False
+
                         col_prox = encontrar_coluna(['PROXIMA', 'VENCIMENTO'])
                         prox = converter_data(row.get(col_prox)) if col_prox else None
                         if not prox and inst.frequencia_meses and dt_cal:
                             try: prox = dt_cal + timedelta(days=inst.frequencia_meses*30)
                             except: prox = None
+
                         obj, cr = HistoricoCalibracao.objects.update_or_create(
                             instrumento=inst, data_calibracao=dt_cal, numero_certificado=num_cert, 
-                            defaults={'data_aprovacao': dt_apr, 'resultado': res, 'proxima_calibracao': prox, 'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 'responsavel': resp_txt, 'fornecedor': forn_txt, 'tipo_calibracao': val_tipo, 'tem_selo_rbc': tem_rbc, 'observacoes': get_val_by_col(encontrar_coluna(['OBSERVACOES', 'OBS']))}
+                            defaults={
+                                'data_aprovacao': dt_apr, 'resultado': res, 'proxima_calibracao': prox, 
+                                'erro_encontrado': erro, 'incerteza': inc, 'tolerancia_usada': tol, 
+                                'responsavel': resp_txt, 'fornecedor': forn_txt,
+                                'tipo_calibracao': val_tipo, 'tem_selo_rbc': tem_rbc,
+                                'observacoes': get_val_by_col(encontrar_coluna(['OBSERVACOES', 'OBS']))
+                            }
                         )
                         if erro is not None and inc is not None and tol is not None: obj.save()
                         if cr: count_new += 1
-                if relatorio_erros: msg = " | ".join(relatorio_erros[:3]); messages.warning(request, f"Importados: {count_new}. Alertas: {msg}")
-                else: messages.success(request, f"Sucesso! {count_new} registros importados.")
+
+                if relatorio_erros:
+                    msg = " | ".join(relatorio_erros[:3])
+                    messages.warning(request, f"Importados: {count_new}. Alertas: {msg}")
+                else:
+                    messages.success(request, f"Sucesso! {count_new} registros importados.")
                 return redirect('modulo_metrologia')
             except Exception as e: messages.error(request, f"Erro Crítico: {str(e)}")
     else: form = ImportacaoHistoricoForm()
     return render(request, 'importar_historico.html', {'form': form, 'colaborador': get_colab(request)})
 
+# --- IMPORTAÇÃO DE PADRÕES (KITS) ---
 @login_required
 def imp_padroes_view(request):
     if request.method == 'POST':
@@ -530,16 +596,29 @@ def imp_padroes_view(request):
                 count = 0
                 with transaction.atomic():
                     for _, row in df.iterrows():
-                        codigo = str(row.get('CODIGO', '')).strip()
-                        if codigo:
-                            Padrao.objects.update_or_create(codigo=codigo, defaults={'descricao': 'Importado', 'ativo': True})
-                            count += 1
-                messages.success(request, f"{count} Padrões importados!")
+                        def get_val(k): return str(row[k]).strip() if k in df.columns and pd.notna(row[k]) else None
+                        def get_date(k): 
+                            val = get_val(k)
+                            if not val: return None
+                            try: return pd.to_datetime(val, dayfirst=True).date()
+                            except: return None
+                        codigo = get_val('CODIGO')
+                        if not codigo: continue
+                        dt_cal = get_date('DATA CALIBRACAO') or date.today()
+                        dt_val = get_date('DATA VALIDADE') or (date.today() + timedelta(days=365))
+                        Padrao.objects.update_or_create(
+                            codigo=codigo,
+                            defaults={'descricao': get_val('DESCRICAO') or 'Padrão', 'numero_certificado': get_val('N CERTIFICADO') or 'S/N', 'data_calibracao': dt_cal, 'data_validade': dt_val, 'ativo': True}
+                        )
+                        count += 1
+                messages.success(request, f"{count} Padrões/Kits importados!")
                 return redirect('modulo_metrologia')
             except Exception as e: messages.error(request, f"Erro: {e}")
-    else: form = ImportacaoPadroesForm()
+    else:
+        form = ImportacaoPadroesForm()
     return render(request, 'importar_historico.html', {'form': form, 'titulo': 'Importar Padrões', 'colaborador': get_colab(request)})
 
+# --- IMPORTAÇÃO COLABORADORES (ATUALIZADA PARA LIDER/SUPERVISOR/GERENTE) ---
 @login_required
 def imp_colab_view(request):
     if request.method == 'POST':
@@ -547,30 +626,42 @@ def imp_colab_view(request):
         if form.is_valid():
             try:
                 f = request.FILES['arquivo_excel']
+                # 1. Leitura Universal
                 try: df = pd.read_excel(f)
                 except: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
+
+                # 2. Limpeza
                 df.columns = df.columns.str.strip().str.upper()
                 df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
                 count_new = 0; count_upd = 0; count_lider = 0
+                
                 with transaction.atomic():
+                    # --- PASSADA 1: CRIAR OU ATUALIZAR COLABORADORES ---
                     for index, row in df.iterrows():
                         def get_val(keywords):
                             for k in keywords:
                                 for col in df.columns:
                                     if k in col and pd.notna(row[col]): return str(row[col]).strip()
                             return None
+
                         matricula = get_val(['MATRICULA', 'MAT', 'RE'])
                         if matricula: matricula = matricula.split('.')[0]
+                        
                         nome = get_val(['NOME', 'COLABORADOR', 'FUNCIONARIO'])
                         if not matricula or not nome: continue
+
                         cpf_raw = get_val(['CPF', 'DOC'])
                         cpf = None
                         if cpf_raw:
                             limpo = re.sub(r'[^0-9]', '', str(cpf_raw))
-                            if len(limpo) == 11 and limpo != '00000000000' and limpo != '00': cpf = limpo
+                            if len(limpo) == 11 and limpo != '00000000000' and limpo != '00':
+                                cpf = limpo
+
                         setor_nome = get_val(['SETOR', 'DEPARTAMENTO', 'AREA'])
                         setor_obj = None
-                        if setor_nome: setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+                        if setor_nome:
+                            setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+
                         cc_raw = get_val(['CENTRO DE CUSTO', 'CC'])
                         cc_obj = None
                         if cc_raw and setor_obj:
@@ -578,39 +669,66 @@ def imp_colab_view(request):
                             c_code = parts[0].strip()
                             c_desc = parts[1].strip() if len(parts) > 1 else "Importado"
                             cc_obj, _ = CentroCusto.objects.get_or_create(codigo=c_code, setor=setor_obj, defaults={'descricao': c_desc})
+
                         turno_raw = str(get_val(['TURNO', 'HORARIO']) or 'ADM').upper()
                         turno = 'ADM'
                         if '1' in turno_raw: turno = 'TURNO_1'
                         elif '2' in turno_raw: turno = 'TURNO_2'
                         elif '3' in turno_raw: turno = 'TURNO_3'
                         elif '12' in turno_raw: turno = '12X36'
+
                         status_raw = str(get_val(['STATUS']) or 'ATIVO').upper()
                         is_active = False if 'INATIVO' in status_raw or 'DEMITIDO' in status_raw else True
+                        
                         sal_raw = get_val(['SALARIO'])
                         salario = float(sal_raw.replace(',', '.')) if sal_raw else None
+
                         obj, created = Colaborador.objects.update_or_create(
                             matricula=matricula,
-                            defaults={'nome_completo': nome.upper(), 'cpf': cpf, 'cargo': get_val(['CARGO', 'FUNCAO']) or 'Não Informado', 'grupo': get_val(['GRUPO', 'MACRO']) or 'Geral', 'setor': setor_obj, 'centro_custo': cc_obj, 'turno': turno, 'salario': salario, 'is_active': is_active}
+                            defaults={
+                                'nome_completo': nome.upper(),
+                                'cpf': cpf,
+                                'cargo': get_val(['CARGO', 'FUNCAO']) or 'Não Informado',
+                                'grupo': get_val(['GRUPO', 'MACRO']) or 'Geral',
+                                'setor': setor_obj,
+                                'centro_custo': cc_obj,
+                                'turno': turno,
+                                'salario': salario,
+                                'is_active': is_active
+                            }
                         )
                         if created: count_new += 1
                         else: count_upd += 1
+
+                    # --- PASSADA 2: VINCULAR HIERARQUIA (LIDERES) ---
+                    # Lógica em Cascata: Tenta Lider -> Supervisor -> Gerente
                     for index, row in df.iterrows():
                         def get_val_h(keywords):
                             for k in keywords:
                                 for col in df.columns:
                                     if k in col and pd.notna(row[col]): return str(row[col]).strip()
                             return None
+
                         matricula = get_val_h(['MATRICULA', 'MAT', 'RE'])
                         if matricula: matricula = matricula.split('.')[0]
+
+                        # Tenta encontrar o "Chefe" na ordem de proximidade
                         mat_chefe = None
+                        
+                        # 1. Tenta Líder Direto
                         cand_lider = get_val_h(['MAT_LIDER', 'LIDER', 'COD_LIDER'])
                         if cand_lider: mat_chefe = cand_lider.split('.')[0]
+                        
+                        # 2. Se não tem Líder, tenta Supervisor
                         if not mat_chefe:
                             cand_super = get_val_h(['MAT_SUPERVISOR', 'SUPERVISOR'])
                             if cand_super: mat_chefe = cand_super.split('.')[0]
+                        
+                        # 3. Se não tem Supervisor, tenta Gerente
                         if not mat_chefe:
                             cand_gerente = get_val_h(['MAT_GERENTE', 'GERENTE'])
                             if cand_gerente: mat_chefe = cand_gerente.split('.')[0]
+
                         if matricula and mat_chefe and matricula != mat_chefe:
                             try:
                                 colab = Colaborador.objects.get(matricula=matricula)
@@ -618,7 +736,10 @@ def imp_colab_view(request):
                                 colab.lider = lider
                                 colab.save(update_fields=['lider'])
                                 count_lider += 1
-                            except Colaborador.DoesNotExist: pass
+                            except Colaborador.DoesNotExist:
+                                # Se a matrícula do chefe não foi encontrada na base, ignoramos.
+                                pass
+
                 messages.success(request, f"RH: {count_new} Novos, {count_upd} Atu, {count_lider} Vínculos Hierárquicos.")
                 return redirect('modulo_rh')
             except Exception as e: messages.error(request, f"Erro na importação: {str(e)}")

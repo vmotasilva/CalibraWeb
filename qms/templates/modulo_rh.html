@@ -89,15 +89,14 @@
             <div class="mb-4">
                 <label class="form-label small fw-bold text-muted">TURNO</label>
                 <div class="d-flex flex-column gap-1">
-                    {% for turno in turnos_filtro %}
-                        {% if turno %}
-                        <div class="form-check">
-                            <input class="form-check-input filter-checkbox" type="checkbox" value="{{ turno }}" data-category="turno" id="tn_{{ forloop.counter }}">
-                            <label class="form-check-label small" for="tn_{{ forloop.counter }}">
-                                {{ turno }}
-                            </label>
-                        </div>
-                        {% endif %}
+                    <!-- LOOP ATUALIZADO PARA LER A LISTA FIXA -->
+                    {% for codigo, nome in turnos_filtro %}
+                    <div class="form-check">
+                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ codigo }}" data-category="turno" id="tn_{{ codigo }}">
+                        <label class="form-check-label small" for="tn_{{ codigo }}">
+                            {{ nome }}
+                        </label>
+                    </div>
                     {% endfor %}
                 </div>
             </div>
@@ -112,7 +111,6 @@
             
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="text-muted small"><span id="countDisplay">{{ funcionarios.count }}</span> colaboradores encontrados</span>
-                <!-- Paginação ou ordenação aqui se precisar -->
             </div>
 
             <div class="card shadow-sm border-0">
@@ -197,7 +195,7 @@
     </div>
 </div>
 
-<!-- JAVASCRIPT PARA FILTRAGEM INSTANTÂNEA (AMAZON STYLE) -->
+<!-- JAVASCRIPT PARA FILTRAGEM INSTANTÂNEA -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
@@ -207,14 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function filtrar() {
         const termoBusca = searchInput.value.toLowerCase();
-        
-        // Coleta os filtros ativos por categoria
-        const filtrosAtivos = {
-            status: [],
-            setor: [],
-            lider: [],
-            turno: []
-        };
+        const filtrosAtivos = { status: [], setor: [], lider: [], turno: [] };
 
         checkboxes.forEach(cb => {
             if (cb.checked) {
@@ -232,22 +223,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 mostrar = false;
             }
 
-            // 2. Filtros de Categoria (Lógica OR dentro da categoria, AND entre categorias)
-            // Se houver filtros de Status marcados, a linha tem que bater com ALGUM deles
-            if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) {
-                mostrar = false;
-            }
-            if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) {
-                mostrar = false;
-            }
-            if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) {
-                mostrar = false;
-            }
-            if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) {
-                mostrar = false;
-            }
+            // 2. Filtros de Categoria (OR dentro, AND entre)
+            if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) { mostrar = false; }
+            if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) { mostrar = false; }
+            if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) { mostrar = false; }
+            if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) { mostrar = false; }
 
-            // Aplica a visibilidade
             if (mostrar) {
                 row.style.display = '';
                 visiveis++;
@@ -259,7 +240,6 @@ document.addEventListener('DOMContentLoaded', function() {
         countDisplay.innerText = visiveis;
     }
 
-    // Event Listeners
     searchInput.addEventListener('keyup', filtrar);
     checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
 });
@@ -267,7 +247,6 @@ document.addEventListener('DOMContentLoaded', function() {
 function limparFiltros() {
     document.getElementById('searchInput').value = '';
     document.querySelectorAll('.filter-checkbox').forEach(cb => cb.checked = false);
-    // Dispara evento de mudança para recalcular
     document.querySelector('.filter-checkbox').dispatchEvent(new Event('change'));
 }
 </script>
