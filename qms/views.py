@@ -348,7 +348,11 @@ def detalhe_instrumento_view(request, instrumento_id): # Note que o URLs.py usa 
         form_ocorrencia = OcorrenciaForm()
 
     # Buscando dados para as novas abas
-    historico = inst.historicocalibracao_set.all().order_by('-data_calibracao')
+    try:
+        historico = inst.historico_calibracoes.all().order_by('-data_calibracao') 
+    except AttributeError:
+        # Fallback caso tenha mudado
+        historico = []
     
     # Usando related_names definidos no models.py (calibracoes e ocorrencias)
     # Se der erro aqui, verifique se no models.py está related_name='calibracoes'
