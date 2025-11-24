@@ -5,18 +5,21 @@ from django.urls import reverse
 from django.utils.http import urlencode
 from datetime import date
 
-# Importando todos os models (Adicionei SolicitacaoInstrumento e OrdemCalibracao)
+# Importando todos os models
 from .models import (
     Colaborador, Instrumento, HistoricoCalibracao, 
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento, 
     Setor, CentroCusto, HierarquiaSetor,
     Procedimento, RegistroTreinamento, Ferias, PacoteTreinamento, DocumentoPessoal,
     UnidadeMedida, CategoriaInstrumento, FaixaMedicao, Padrao,
-    # Novos Models:
-    Ocorrencia, SolicitacaoInstrumento, OrdemCalibracao
+    # Models de Ocorrência e Solicitação
+    Ocorrencia,                 # Ocorrência de RH (Colaborador)
+    OcorrenciaInstrumento,      # Ocorrência de Metrologia (Instrumento)
+    SolicitacaoInstrumento, 
+    OrdemCalibracao
 )
 
-# --- INLINES (Tabelas dentro de outras telas) ---
+# --- INLINES GERAIS (Tabelas dentro de outras telas) ---
 
 class CentroCustoInline(admin.TabularInline): 
     model = CentroCusto
@@ -38,9 +41,19 @@ class DocumentoPessoalInline(admin.TabularInline):
     model = DocumentoPessoal
     extra = 1
 
-# CORREÇÃO: Inlines ligados ao Instrumento, não ao Colaborador
-class OcorrenciaInline(admin.TabularInline):
+# --- INLINES ESPECÍFICOS DE OCORRÊNCIAS ---
+
+# Inline para Ocorrências de RH (Colaborador)
+class OcorrenciaRHInline(admin.TabularInline):
     model = Ocorrencia
+    extra = 0
+    # Ajuste os campos conforme o que existe no seu model Ocorrencia de RH. 
+    # Se tiver dúvida, verifique seu models.py. Assumindo campos comuns:
+    # fields = ('data_ocorrencia', 'motivo', 'descricao') # Exemplo
+
+# Inline para Ocorrências de Metrologia (Instrumento)
+class OcorrenciaInstrumentoInline(admin.TabularInline):
+    model = OcorrenciaInstrumento
     extra = 0
     fields = ('tipo', 'data_ocorrencia', 'usuario_responsavel', 'descricao')
     readonly_fields = ('data_ocorrencia',)
@@ -93,8 +106,8 @@ class ColaboradorAdmin(admin.ModelAdmin):
     autocomplete_fields = ['setor', 'centro_custo', 'lider'] 
     filter_horizontal = ('pacotes_treinamento',)
     
-    # CORREÇÃO: Removi OcorrenciaInline daqui para não dar erro
-    inlines = [FeriasInline, DocumentoPessoalInline, TreinamentoInline]
+    # CORREÇÃO: Usando o Inline correto para RH
+    inlines = [FeriasInline, DocumentoPessoalInline, TreinamentoInline, OcorrenciaRHInline]
     
     fieldsets = (
         ("Identificação", {'fields': (('matricula', 'cpf'), 'nome_completo')}),
@@ -148,7 +161,6 @@ class UnidadeMedidaAdmin(admin.ModelAdmin):
 class CategoriaInstrumentoAdmin(admin.ModelAdmin):
     list_display = ('nome', 'descricao')
     search_fields = ('nome',)
-    # Removi inlines daqui pois Ocorrência é do Instrumento, não da Categoria
 
 @admin.register(Padrao)
 class PadraoAdmin(admin.ModelAdmin):
@@ -169,8 +181,8 @@ class InstrumentoAdmin(admin.ModelAdmin):
     list_filter = ('categoria', 'ativo', 'setor')
     autocomplete_fields = ['responsavel', 'setor', 'categoria']
     
-    # AQUI ESTÁ A CORREÇÃO PRINCIPAL: Inlines movidos para cá
-    inlines = [FaixaMedicaoInline, OcorrenciaInline, CalibracaoInline]
+    # CORREÇÃO: Usando o Inline correto para Instrumentos
+    inlines = [FaixaMedicaoInline, OcorrenciaInstrumentoInline, CalibracaoInline]
     
     fieldsets = (
         ('Identificação', {
@@ -201,16 +213,22 @@ class SolicitacaoAdmin(admin.ModelAdmin):
     list_filter = ('status', 'tipo')
     search_fields = ('solicitante__username', 'instrumento_alvo__tag')
 
+# CORREÇÃO: OcorrenciaAdmin separado para RH
 @admin.register(Ocorrencia)
 class OcorrenciaAdmin(admin.ModelAdmin):
-    # Permite ver todas as ocorrências em uma lista única
+    # Ajuste os campos conforme seu model de RH
+    list_display = ('colaborador', 'data_ocorrencia') 
+    search_fields = ('colaborador__nome_completo',)
+
+# CORREÇÃO: OcorrenciaInstrumentoAdmin separado para Metrologia
+@admin.register(OcorrenciaInstrumento)
+class OcorrenciaInstrumentoAdmin(admin.ModelAdmin):
     list_display = ('instrumento', 'tipo', 'data_ocorrencia', 'usuario_responsavel')
     list_filter = ('tipo', 'data_ocorrencia')
     search_fields = ('instrumento__tag',)
 
 @admin.register(OrdemCalibracao)
 class OrdemCalibracaoAdmin(admin.ModelAdmin):
-    # Permite gerenciar envios e retornos de calibração
     list_display = ('instrumento', 'fornecedor', 'status', 'data_prevista')
     list_filter = ('status', 'tipo_local')
     search_fields = ('instrumento__tag', 'fornecedor')

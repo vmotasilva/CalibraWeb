@@ -1,5 +1,5 @@
 from django import forms
-from .models import Colaborador, Instrumento, Padrao, SolicitacaoInstrumento, Ocorrencia, OrdemCalibracao 
+from .models import Colaborador, Instrumento, Padrao, SolicitacaoInstrumento, OcorrenciaInstrumento, Ocorrencia, OrdemCalibracao
 
 # --- WIDGET PARA MÚLTIPLOS ARQUIVOS (CARIMBO) ---
 class MultipleFileInput(forms.ClearableFileInput):
@@ -151,7 +151,7 @@ class SolicitacaoForm(forms.ModelForm):
 
 class OcorrenciaForm(forms.ModelForm):
     class Meta:
-        model = Ocorrencia
+        model = OcorrenciaInstrumento
         fields = ['tipo', 'descricao', 'data_ocorrencia', 'custo_reparo']
         widgets = {
             'data_ocorrencia': DateInput(attrs={'class': 'form-control'}),

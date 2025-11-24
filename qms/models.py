@@ -108,10 +108,11 @@ def atualizar_status_ferias(sender, instance, **kwargs):
 class Ocorrencia(models.Model):
     TIPO = [('FALTA', 'Falta'), ('ATRASO', 'Atraso'), ('ADV', 'Advertência'), ('ELOGIO', 'Elogio'), ('OUTRO', 'Outro')]
     NATUREZA = [('NEGATIVA', '🔴 Negativa'), ('POSITIVA', '🟢 Positiva'), ('NEUTRA', '⚪ Neutra')]
-    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='ocorrencias')
+    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='ocorrencias', null=True, blank=True)
     data_ocorrencia = models.DateField(verbose_name="Data"); tipo = models.CharField(max_length=20, choices=TIPO)
     natureza = models.CharField(max_length=10, choices=NATUREZA, default='NEGATIVA')
-    titulo = models.CharField(max_length=100, verbose_name="Resumo"); descricao = models.TextField(verbose_name="Detalhes")
+    titulo = models.CharField(max_length=100, verbose_name="Resumo", null=True, blank=True) 
+    descricao = models.TextField(verbose_name="Detalhes")
     arquivo_evidencia = models.FileField(upload_to='ocorrencias/', null=True, blank=True)
     def save(self, *args, **kwargs):
         if self.tipo in ['FALTA', 'ATRASO', 'ADV']: self.natureza = 'NEGATIVA'
@@ -201,7 +202,7 @@ class SolicitacaoInstrumento(models.Model):
 
 
 # --- 2. Registro de Ocorrências ---
-class Ocorrencia(models.Model):
+class OcorrenciaInstrumento(models.Model):
     TIPO_OCORRENCIA = [
         ('MANUTENCAO', 'Manutenção Corretiva'),
         ('QUEDA', 'Queda/Dano Físico'),
