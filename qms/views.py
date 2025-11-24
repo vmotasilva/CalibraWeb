@@ -156,6 +156,166 @@ def modulo_metrologia_view(request):
 @login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
+
+    # 0. Verifica se o usuário está vinculado a um colaborador
+    if not colab and not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "Seu usuário não está vinculado a um colaborador.")
+        return redirect('home')
+
+    # ---------------------------------------------------------
+    # 1. PERMISSÕES E VISIBILIDADE
+    # ---------------------------------------------------------
+    ids_permitidos = set()
+    can_see_salary = False
+
+    # SUPERUSER / STAFF → vê tudo
+    if request.user.is_superuser or request.user.is_staff:
+        ids_permitidos = set(
+            Colaborador.objects.filter(is_active=True).values_list('id', flat=True)
+        )
+        can_see_salary = True
+
+    else:
+        # RH → vê tudo + salários
+        if colab.setor and "RH" in colab.setor.nome.upper():
+            ids_permitidos = set(
+                Colaborador.objects.filter(is_active=True).values_list('id', flat=True)
+            )
+            can_see_salary = True
+
+        else:
+            # Funcionário comum → vê subordinados + ele mesmo
+            ids_permitidos = set(get_all_subordinates(colab))
+            ids_permitidos.add(colab.id)
+
+            # Permissão de ver salário se gerente
+            if (
+                "GERENTE" in str(colab.cargo).upper()
+                or HierarquiaSetor.objects.filter(gerente=colab).exists()
+            ):
+                can_see_salary = True
+
+    # Se mesmo assim tiver vazio, impede acesso incorreto
+    if not ids_permitidos:
+        messages.error(request, "Você não possui permissão para acessar este módulo.")
+        return redirect('home')
+
+    # ---------------------------------------------------------
+    # 2. QUERYSET BASE PARA FILTROS
+    # ---------------------------------------------------------
+    funcionarios_base = (
+        Colaborador.objects
+        .filter(id__in=ids_permitidos, is_active=True)
+        .order_by("nome_completo")
+    )
+
+    # Query inicial para filtragem dinâmica
+    funcionarios_filtrados = Colaborador.objects.filter(is_active=True)
+
+    # ---------------------------------------------------------
+    # 3. CAPTURA DE PARÂMETROS DA URL
+    # ---------------------------------------------------------
+    setor_id = request.GET.get("setor_id")
+    lider_id = request.GET.get("lider_id")
+    supervisor_id = request.GET.get("supervisor_id")
+    gerente_id = request.GET.get("gerente_id")
+    turno_slug = request.GET.get("turno")
+
+    # Função de validação segura para IDs
+    def id_valido(x):
+        return x and x.isdigit() and int(x) > 0
+
+    # ---------------------------------------------------------
+    # 4. FILTROS SIMPLES
+    # ---------------------------------------------------------
+    if id_valido(setor_id):
+        funcionarios_filtrados = funcionarios_filtrados.filter(setor_id=int(setor_id))
+
+    if id_valido(lider_id):
+        funcionarios_filtrados = funcionarios_filtrados.filter(lider_id=int(lider_id))
+
+    if turno_slug:
+        funcionarios_filtrados = funcionarios_filtrados.filter(turno=turno_slug)
+
+    # ---------------------------------------------------------
+    # 5. FILTROS HIERÁRQUICOS (SUPERVISOR / GERENTE)
+    # ---------------------------------------------------------
+    if id_valido(supervisor_id):
+        setores_do_supervisor = (
+            HierarquiaSetor.objects
+            .filter(supervisor_id=int(supervisor_id))
+            .values_list("setor_id", flat=True)
+            .distinct()
+        )
+        funcionarios_filtrados = funcionarios_filtrados.filter(
+            setor_id__in=setores_do_supervisor
+        )
+
+    if id_valido(gerente_id):
+        setores_do_gerente = (
+            HierarquiaSetor.objects
+            .filter(gerente_id=int(gerente_id))
+            .values_list("setor_id", flat=True)
+            .distinct()
+        )
+        funcionarios_filtrados = funcionarios_filtrados.filter(
+            setor_id__in=setores_do_gerente
+        )
+
+    # ---------------------------------------------------------
+    # 6. FILTRO FINAL DE SEGURANÇA (INTERSEÇÃO)
+    # ---------------------------------------------------------
+    funcionarios_visiveis = funcionarios_filtrados.filter(id__in=ids_permitidos)
+
+    # ---------------------------------------------------------
+    # 7. OPÇÕES PARA FILTROS DO FRONT (BASEADAS NO QUE É PERMITIDO)
+    # ---------------------------------------------------------
+    setores_ids = funcionarios_base.values_list("setor", flat=True).distinct()
+    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by("nome")
+
+    lideres_ids = [l for l in funcionarios_base.values_list("lider", flat=True) if l]
+    lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids)
+
+    hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids)
+
+    supervisores_ids = [
+        sid for sid in hierarquias.values_list("supervisor", flat=True) if sid
+    ]
+    gerentes_ids = [
+        gid for gid in hierarquias.values_list("gerente", flat=True) if gid
+    ]
+
+    supervisores_filtro = Colaborador.objects.filter(id__in=supervisores_ids)
+    gerentes_filtro = Colaborador.objects.filter(id__in=gerentes_ids)
+
+    # Turnos fixos do sistema
+    turnos_filtro = [
+        ("ADM", "Administrativo"),
+        ("TURNO_1", "Turno 1"),
+        ("TURNO_2", "Turno 2"),
+        ("TURNO_3", "Turno 3"),
+        ("12X36", "12x36"),
+    ]
+
+    # ---------------------------------------------------------
+    # 8. CONTEXTO FINAL
+    # ---------------------------------------------------------
+    ctx = {
+        "colaborador": colab,
+        "funcionarios": funcionarios_visiveis,
+        "lideres_filtro": lideres_filtro.order_by("nome_completo"),
+        "setores_filtro": setores_filtro,
+        "supervisores_filtro": supervisores_filtro.order_by("nome_completo"),
+        "gerentes_filtro": gerentes_filtro.order_by("nome_completo"),
+        "turnos_filtro": turnos_filtro,
+        "centros": CentroCusto.objects.all().order_by("codigo"),
+        "can_see_salary": can_see_salary,
+        "can_edit": True,
+    }
+
+    return render(request, "modulo_rh.html", ctx)
+
+    colab = get_colab(request)
     
     # 1. VISIBILIDADE (Definição dos IDs permitidos)
     ids_permitidos = set()
@@ -733,86 +893,199 @@ def imp_padroes_view(request):
 def imp_colab_view(request):
     if request.method == 'POST':
         form = ImportacaoColaboradoresForm(request.POST, request.FILES)
-        if form.is_valid():
+
+        if not form.is_valid():
+            messages.error(request, "Arquivo inválido.")
+            return redirect('modulo_rh')
+
+        try:
+            file = request.FILES['arquivo_excel']
+
+            # ----- LEITURA DO ARQUIVO -----
             try:
-                f = request.FILES['arquivo_excel']
-                try: df = pd.read_excel(f)
-                except: df = pd.read_csv(f, sep=None, engine='python', encoding='latin1')
-                df.columns = df.columns.str.strip().str.upper()
-                df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
-                count_new = 0; count_upd = 0; count_lider = 0
-                with transaction.atomic():
-                    for index, row in df.iterrows():
-                        def get_val(keywords):
-                            for k in keywords:
-                                for col in df.columns:
-                                    if k in col and pd.notna(row[col]): return str(row[col]).strip()
-                            return None
-                        matricula = get_val(['MATRICULA', 'MAT', 'RE'])
-                        if matricula: matricula = matricula.split('.')[0]
-                        nome = get_val(['NOME', 'COLABORADOR', 'FUNCIONARIO'])
-                        if not matricula or not nome: continue
-                        cpf_raw = get_val(['CPF', 'DOC'])
-                        cpf = None
-                        if cpf_raw:
-                            limpo = re.sub(r'[^0-9]', '', str(cpf_raw))
-                            if len(limpo) == 11 and limpo != '00000000000' and limpo != '00': cpf = limpo
-                        setor_nome = get_val(['SETOR', 'DEPARTAMENTO', 'AREA'])
-                        setor_obj = None
-                        if setor_nome: setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
-                        cc_raw = get_val(['CENTRO DE CUSTO', 'CC'])
-                        cc_obj = None
-                        if cc_raw and setor_obj:
-                            parts = cc_raw.split('-')
-                            c_code = parts[0].strip()
-                            c_desc = parts[1].strip() if len(parts) > 1 else "Importado"
-                            cc_obj, _ = CentroCusto.objects.get_or_create(codigo=c_code, setor=setor_obj, defaults={'descricao': c_desc})
-                        turno_raw = str(get_val(['TURNO', 'HORARIO']) or 'ADM').upper()
-                        turno = 'ADM'
-                        if '1' in turno_raw: turno = 'TURNO_1'
-                        elif '2' in turno_raw: turno = 'TURNO_2'
-                        elif '3' in turno_raw: turno = 'TURNO_3'
-                        elif '12' in turno_raw: turno = '12X36'
-                        status_raw = str(get_val(['STATUS']) or 'ATIVO').upper()
-                        is_active = False if 'INATIVO' in status_raw or 'DEMITIDO' in status_raw else True
-                        sal_raw = get_val(['SALARIO'])
-                        salario = float(sal_raw.replace(',', '.')) if sal_raw else None
-                        obj, created = Colaborador.objects.update_or_create(
-                            matricula=matricula,
-                            defaults={'nome_completo': nome.upper(), 'cpf': cpf, 'cargo': get_val(['CARGO', 'FUNCAO']) or 'Não Informado', 'grupo': get_val(['GRUPO', 'MACRO']) or 'Geral', 'setor': setor_obj, 'centro_custo': cc_obj, 'turno': turno, 'salario': salario, 'is_active': is_active}
+                df = pd.read_excel(file)
+            except:
+                df = pd.read_csv(file, sep=None, engine='python', encoding='latin1')
+
+            # ----- NORMALIZAÇÃO DE COLUNAS -----
+            df.columns = (
+                df.columns
+                .str.strip()
+                .str.upper()
+                .str.normalize('NFKD')
+                .str.encode('ascii', errors='ignore')
+                .str.decode('utf-8')
+            )
+
+            def get_val(row, keywords):
+                """Busca valor correspondente a qualquer coluna que comece com um dos padrões."""
+                for k in keywords:
+                    for col in df.columns:
+                        if col.startswith(k):  
+                            val = row[col]
+                            if pd.notna(val):
+                                return str(val).strip()
+                return None
+
+            count_new = 0
+            count_upd = 0
+            count_lider = 0
+
+            with transaction.atomic():
+
+                # -------------------------------------------------------------------
+                # PRIMEIRO LOOP: CRIA/ATUALIZA COLABORADORES
+                # -------------------------------------------------------------------
+                for _, row in df.iterrows():
+
+                    matricula = get_val(row, ['MATRICULA', 'MAT', 'RE'])
+                    if matricula:
+                        matricula = matricula.split('.')[0]
+
+                    nome = get_val(row, ['NOME', 'COLABORADOR', 'FUNCIONARIO'])
+
+                    if not matricula or not nome:
+                        continue
+
+                    # ----- CPF -----
+                    cpf_raw = get_val(row, ['CPF', 'DOC'])
+                    cpf = None
+                    if cpf_raw:
+                        limpo = re.sub(r'\D', '', cpf_raw)
+                        if len(limpo) == 11 and limpo != '00000000000':
+                            cpf = limpo
+
+                    # ----- SETOR -----
+                    setor_nome = get_val(row, ['SETOR', 'DEPARTAMENTO', 'AREA'])
+                    setor_obj = None
+                    if setor_nome:
+                        setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+
+                    # ----- CENTRO DE CUSTO -----
+                    cc_raw = get_val(row, ['CENTRO DE CUSTO', 'CC'])
+                    cc_obj = None
+
+                    if cc_raw and setor_obj:
+                        cc_raw = cc_raw.replace('—', '-').replace('–', '-')
+                        parts = cc_raw.split('-')
+                        codigo = parts[0].strip()
+                        descricao = parts[1].strip() if len(parts) > 1 and parts[1].strip() else "Importado"
+
+                        cc_obj, _ = CentroCusto.objects.get_or_create(
+                            codigo=codigo,
+                            setor=setor_obj,
+                            defaults={'descricao': descricao}
                         )
-                        if created: count_new += 1
-                        else: count_upd += 1
-                    for index, row in df.iterrows():
-                        def get_val_h(keywords):
-                            for k in keywords:
-                                for col in df.columns:
-                                    if k in col and pd.notna(row[col]): return str(row[col]).strip()
-                            return None
-                        matricula = get_val_h(['MATRICULA', 'MAT', 'RE'])
-                        if matricula: matricula = matricula.split('.')[0]
-                        mat_chefe = None
-                        cand_lider = get_val_h(['MAT_LIDER', 'LIDER', 'COD_LIDER'])
-                        if cand_lider: mat_chefe = cand_lider.split('.')[0]
-                        if not mat_chefe:
-                            cand_super = get_val_h(['MAT_SUPERVISOR', 'SUPERVISOR'])
-                            if cand_super: mat_chefe = cand_super.split('.')[0]
-                        if not mat_chefe:
-                            cand_gerente = get_val_h(['MAT_GERENTE', 'GERENTE'])
-                            if cand_gerente: mat_chefe = cand_gerente.split('.')[0]
-                        if matricula and mat_chefe and matricula != mat_chefe:
-                            try:
-                                colab = Colaborador.objects.get(matricula=matricula)
-                                lider = Colaborador.objects.get(matricula=mat_chefe)
-                                colab.lider = lider
-                                colab.save(update_fields=['lider'])
-                                count_lider += 1
-                            except Colaborador.DoesNotExist: pass
-                messages.success(request, f"RH: {count_new} Novos, {count_upd} Atu, {count_lider} Vínculos Hierárquicos.")
-                return redirect('modulo_rh')
-            except Exception as e: messages.error(request, f"Erro na importação: {str(e)}")
-    else: form = ImportacaoColaboradoresForm()
-    return render(request, 'importar_colaboradores.html', {'form': form, 'colaborador': get_colab(request)})
+
+                    # ----- TURNO -----
+                    turno_raw = str(get_val(row, ['TURNO', 'HORARIO']) or 'ADM').upper()
+                    turno_raw = turno_raw.replace(" ", "").replace("_", "")
+
+                    if turno_raw.startswith("TURNO1"):
+                        turno = "TURNO_1"
+                    elif turno_raw.startswith("TURNO2"):
+                        turno = "TURNO_2"
+                    elif turno_raw.startswith("TURNO3"):
+                        turno = "TURNO_3"
+                    elif "12X36" in turno_raw:
+                        turno = "12X36"
+                    else:
+                        turno = "ADM"
+
+                    # ----- STATUS -----
+                    status_raw = str(get_val(row, ['STATUS']) or 'ATIVO').upper()
+                    is_active = not ('INATIVO' in status_raw or 'DEMITIDO' in status_raw)
+
+                    # ----- SALÁRIO -----
+                    sal_raw = get_val(row, ['SALARIO'])
+                    try:
+                        salario = float(str(sal_raw).replace(',', '.')) if sal_raw else None
+                    except:
+                        salario = None
+
+                    # ----- UPDATE OR CREATE -----
+                    obj, created = Colaborador.objects.update_or_create(
+                        matricula=matricula,
+                        defaults={
+                            'nome_completo': nome.upper(),
+                            'cpf': cpf if cpf else None,
+                            'cargo': get_val(row, ['CARGO', 'FUNCAO']) or 'Não Informado',
+                            'grupo': get_val(row, ['GRUPO', 'MACRO']) or 'Geral',
+                            'setor': setor_obj,
+                            'centro_custo': cc_obj,
+                            'turno': turno,
+                            'salario': salario,
+                            'is_active': is_active,
+                        }
+                    )
+
+                    if created:
+                        count_new += 1
+                    else:
+                        count_upd += 1
+
+                # -------------------------------------------------------------------
+                # SEGUNDO LOOP: CRIA HIERARQUIA (LÍDER / CHEFE)
+                # -------------------------------------------------------------------
+                for _, row in df.iterrows():
+
+                    matricula = get_val(row, ['MATRICULA', 'MAT', 'RE'])
+                    if matricula:
+                        matricula = matricula.split('.')[0]
+                    else:
+                        continue
+
+                    # Tentativas em ordem de prioridade
+                    mat_chefe = (
+                        get_val(row, ['MAT_LIDER', 'LIDER', 'COD_LIDER']) or
+                        get_val(row, ['MAT_SUPERVISOR', 'SUPERVISOR']) or
+                        get_val(row, ['MAT_GERENTE', 'GERENTE'])
+                    )
+
+                    if mat_chefe:
+                        mat_chefe = mat_chefe.split('.')[0]
+
+                    # Sem líder → ignore
+                    if not mat_chefe:
+                        continue
+
+                    # Evita autoliderança
+                    if matricula == mat_chefe:
+                        continue
+
+                    try:
+                        colab = Colaborador.objects.get(matricula=matricula)
+                        lider = Colaborador.objects.get(matricula=mat_chefe)
+
+                        # Proteção contra ciclo
+                        if lider.lider_id == colab.id:
+                            continue
+
+                        colab.lider = lider
+                        colab.save(update_fields=['lider'])
+                        count_lider += 1
+
+                    except Colaborador.DoesNotExist:
+                        continue
+
+            messages.success(
+                request,
+                f"RH: {count_new} novos, {count_upd} atualizados, {count_lider} vínculos hierárquicos."
+            )
+            return redirect('modulo_rh')
+
+        except Exception as e:
+            messages.error(request, f"Erro na importação: {str(e)}")
+            return redirect('modulo_rh')
+
+    else:
+        form = ImportacaoColaboradoresForm()
+
+    return render(
+        request,
+        'importar_colaboradores.html',
+        {'form': form, 'colaborador': get_colab(request)}
+    )
 
 @login_required
 def imp_hierarquia_view(request):
