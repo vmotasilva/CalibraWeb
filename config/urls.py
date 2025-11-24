@@ -12,7 +12,6 @@ urlpatterns = [
 
     # 2. Admin
     path('admin/', admin.site.urls),
-    # REMOVIDO: path('qms/', include('qms.urls')) <- Essa linha causava o erro
 
     # 3. Autenticação
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
@@ -36,16 +35,21 @@ urlpatterns = [
     path('dl-template-colab/', views.dl_template_colab, name='template_colaboradores'),
     path('dl-template-hier/', views.dl_template_hierarquia, name='template_hierarquia'),
     path('dl-template-hist/', views.dl_template_historico, name='template_historico'),
+    
+    # --- NOVO: Template de Férias (Correção do Erro) ---
+    path('dl-template-ferias/', views.dl_template_ferias, name='dl_template_ferias'),
 
     # 8. Importações
     path('imp-inst/', views.imp_instr_view, name='importar_instrumentos'),
     path('imp-colab/', views.imp_colab_view, name='importar_colaboradores'),
     path('imp-hist/', views.imp_historico_view, name='importar_historico'),    
     path('imp-hierarquia/', views.imp_hierarquia_view, name='importar_hierarquia'),
+    
+    # --- NOVO: Importação de Férias (Correção do Erro) ---
+    path('imp-ferias/', views.imp_ferias_view, name='importar_ferias'),
 
     # ... outras urls ...
     path('remover-historico/<int:historico_id>/', views.remover_historico_view, name='remover_historico'),
-    # ...
 ]
 
 # Configuração para servir arquivos de mídia/estáticos em modo Debug
