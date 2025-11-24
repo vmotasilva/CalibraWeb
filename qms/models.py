@@ -57,6 +57,8 @@ class Colaborador(models.Model):
         related_name='liderados',         
         verbose_name='Líder/Supervisor Direto'
     )
+    supervisor = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='supervisionados', verbose_name='Supervisor')
+    gerente = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='gerenciados', verbose_name='Gerente')
 
     pacotes_treinamento = models.ManyToManyField('PacoteTreinamento', blank=True, verbose_name="Pacotes Atribuídos", related_name="colaboradores")
     is_active = models.BooleanField(default=True, verbose_name="Colaborador Ativo (RH)")

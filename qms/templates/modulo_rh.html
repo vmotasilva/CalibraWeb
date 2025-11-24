@@ -2,17 +2,17 @@
 
 {% block content %}
 <style>
-    /* --- ESTILOS GERAIS DE APP (SEM ROLAGEM NA PÁGINA) --- */
+    /* --- ESTILOS DE "APP" --- */
     body { overflow: hidden; }
 
-    /* BARRA LATERAL (FILTROS) */
+    /* Barra Lateral */
     .sidebar-scroll {
         height: calc(100vh - 160px);
         overflow-y: auto;
         padding-right: 5px;
     }
 
-    /* TABELA (ROLAGEM) */
+    /* Tabela com Rolagem */
     .table-container-scroll {
         height: calc(100vh - 200px);
         overflow-y: auto;
@@ -28,7 +28,7 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
-    /* --- NOVO: ESTILO DOS FILTROS EXPANSÍVEIS (ACORDEÃO) --- */
+    /* --- ESTILO DOS FILTROS EXPANSÍVEIS (ACCORDION) --- */
     .filter-group {
         border-bottom: 1px solid #f0f0f0;
         margin-bottom: 5px;
@@ -180,10 +180,10 @@
                     </div>
                 </div>
 
-                <!-- 3. LÍDER / GESTOR -->
+                <!-- 3. LÍDER -->
                 <div class="filter-group">
                     <div class="filter-header" onclick="toggleFilterGroup(this)">
-                        <label class="filter-title">Líder / Gestor</label>
+                        <label class="filter-title">Líder Imediato</label>
                         <i class="bi bi-chevron-down"></i>
                     </div>
                     <div class="filter-content">
@@ -199,8 +199,48 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- 4. SUPERVISOR (NOVO) -->
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Supervisor</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for super in supervisores_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ super.id }}" data-category="supervisor" id="sup_{{ super.id }}">
+                                <label class="form-check-label small text-truncate" for="sup_{{ super.id }}" title="{{ super.nome_completo }}">
+                                    {{ super.nome_completo|title }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 5. GERENTE (NOVO) -->
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Gerente</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for gerente in gerentes_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ gerente.id }}" data-category="gerente" id="ger_{{ gerente.id }}">
+                                <label class="form-check-label small text-truncate" for="ger_{{ gerente.id }}" title="{{ gerente.nome_completo }}">
+                                    {{ gerente.nome_completo|title }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
 
-                <!-- 4. SETOR -->
+                <!-- 6. SETOR -->
                 <div class="filter-group">
                     <div class="filter-header" onclick="toggleFilterGroup(this)">
                         <label class="filter-title">Setor</label>
@@ -220,7 +260,7 @@
                     </div>
                 </div>
 
-                <!-- 5. TURNO -->
+                <!-- 7. TURNO -->
                 <div class="filter-group">
                     <div class="filter-header" onclick="toggleFilterGroup(this)">
                         <label class="filter-title">Turno</label>
@@ -249,7 +289,7 @@
             <!-- Contador -->
             <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
                 <span class="badge bg-secondary bg-opacity-10 text-secondary border">
-                    <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ funcionarios.count }}</span> registros
+                    <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ funcionarios.count }}</span> colaboradores encontrados
                 </span>
             </div>
 
@@ -274,6 +314,8 @@
                             data-status="{% if not f.is_active %}INATIVO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
                             data-setor="{{ f.setor.id|default:'' }}"
                             data-lider="{{ f.lider.id|default:'' }}"
+                            data-supervisor="{{ f.supervisor.id|default:'' }}" 
+                            data-gerente="{{ f.gerente.id|default:'' }}"
                             data-turno="{{ f.turno|default:'' }}">
                             
                             <td class="ps-4 py-2">
@@ -354,24 +396,20 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Inicializa filtragem
+    // Inicializa filtros e contagem
     filtrar();
     
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
     
-    // Listeners
+    // Event listeners para busca e checkboxes
     searchInput.addEventListener('keyup', filtrar);
     checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
 });
 
-// FUNÇÃO PARA ABRIR/FECHAR FILTROS (ACORDEÃO)
+// FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS (ACORDEÃO)
 function toggleFilterGroup(element) {
-    // O elemento clicado é o .filter-header
-    // O pai dele é o .filter-group
     const group = element.parentElement;
-    
-    // Adiciona ou remove a classe 'open' para mostrar/esconder o conteúdo
     group.classList.toggle('open');
 }
 
@@ -384,6 +422,8 @@ function filtrar() {
         status: [],
         setor: [],
         lider: [],
+        supervisor: [], // NOVO
+        gerente: [],    // NOVO
         turno: []
     };
     
@@ -399,11 +439,14 @@ function filtrar() {
         let mostrar = true;
 
         if (termoBusca && !row.dataset.nome.includes(termoBusca)) mostrar = false;
-        
-        // Lógica E (entre categorias) / OU (dentro da categoria)
         if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) mostrar = false;
         if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
         if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) mostrar = false;
+        
+        // NOVOS FILTROS
+        if (mostrar && filtrosAtivos.supervisor.length > 0 && !filtrosAtivos.supervisor.includes(row.dataset.supervisor)) mostrar = false;
+        if (mostrar && filtrosAtivos.gerente.length > 0 && !filtrosAtivos.gerente.includes(row.dataset.gerente)) mostrar = false;
+        
         if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) mostrar = false;
 
         row.style.display = mostrar ? '' : 'none';
@@ -416,7 +459,6 @@ function filtrar() {
 function limparFiltros() {
     document.getElementById('searchInput').value = '';
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
-        // Mantém apenas Ativo
         cb.checked = (cb.id === 'st_ativo');
     });
     filtrar();
