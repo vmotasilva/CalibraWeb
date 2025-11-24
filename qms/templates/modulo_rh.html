@@ -1,18 +1,53 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<style>
+    /* --- ESTILOS DE CONGELAMENTO (FIXED LAYOUT) --- */
     
-    <!-- Cabeçalho -->
-    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+    /* 1. Barra Lateral com Rolagem Independente */
+    .sidebar-scroll {
+        height: calc(100vh - 140px); /* Altura da tela menos o cabeçalho */
+        overflow-y: auto;            /* Barra de rolagem vertical */
+        padding-right: 10px;         /* Espaço para não colar na barra */
+    }
+
+    /* 2. Tabela com Cabeçalho Congelado */
+    .table-container-scroll {
+        height: calc(100vh - 180px); /* Altura da tela menos cabeçalhos */
+        overflow-y: auto;            /* Rolagem vertical */
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+    }
+
+    /* O segredo do cabeçalho fixo da tabela */
+    .table-container-scroll thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2; /* Fica acima das linhas */
+        background-color: #e9ecef; /* Cor de fundo opaca (cinza claro) */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Sombra sutil para separar */
+    }
+
+    /* Ajuste fino da barra de rolagem (opcional, para ficar mais bonita) */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+    .transition-all { transition: all 0.3s ease; }
+</style>
+
+<div class="container-fluid py-3" style="height: 100vh; overflow: hidden;">
+    
+    <!-- CABEÇALHO FIXO DA PÁGINA -->
+    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2" style="height: 60px;">
         <div class="d-flex align-items-center gap-3">
-            <!-- Botão Toggle Sidebar (Novo) -->
             <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Expandir/Recolher Filtros">
                 <i class="bi bi-layout-sidebar" id="sidebarIcon"></i>
             </button>
             <div>
-                <h2 class="fw-bold text-primary mb-0">Gestão de Pessoas</h2>
-                <p class="text-muted mb-0 small">Gerencie sua equipe e hierarquia.</p>
+                <h4 class="fw-bold text-primary mb-0">Gestão de Pessoas</h4>
+                <p class="text-muted mb-0 small">Equipe e Hierarquia</p>
             </div>
         </div>
         
@@ -29,29 +64,28 @@
         </div>
     </div>
 
-    <div class="row">
-        <!-- SIDEBAR DE FILTROS (Com ID para controle JS) -->
-        <div class="col-md-3 col-lg-2 border-end pe-4" id="sidebar-col">
+    <div class="row h-100">
+        <!-- SIDEBAR DE FILTROS (ROLAGEM INDEPENDENTE) -->
+        <div class="col-md-3 col-lg-2 border-end pe-3 sidebar-scroll" id="sidebar-col">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0"><i class="bi bi-funnel"></i> Filtros</h5>
-                <button class="btn btn-sm btn-link text-muted text-decoration-none" onclick="toggleSidebar()">
-                    <i class="bi bi-x-lg"></i>
+                <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel"></i> FILTROS</h6>
+                <button class="btn btn-sm btn-link text-muted text-decoration-none" onclick="limparFiltros()">
+                    <small>Limpar</small>
                 </button>
             </div>
             
             <!-- 1. Filtro de Texto -->
-            <div class="mb-4">
-                <label class="form-label small fw-bold text-muted">BUSCAR</label>
+            <div class="mb-3">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                    <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome/Matrícula...">
+                    <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Buscar...">
                 </div>
             </div>
 
             <!-- 2. Filtro Status -->
-            <div class="mb-4">
-                <label class="form-label small fw-bold text-muted">STATUS</label>
-                <div class="d-flex flex-column gap-1">
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted mb-1">STATUS</label>
+                <div class="bg-light p-2 rounded border">
                     <div class="form-check">
                         <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
                         <label class="form-check-label small" for="st_ativo">Ativo</label>
@@ -68,9 +102,10 @@
             </div>
 
             <!-- 3. Filtro Setor -->
-            <div class="mb-4">
-                <label class="form-label small fw-bold text-muted">SETOR</label>
-                <div class="d-flex flex-column gap-1 overflow-auto" style="max-height: 150px;">
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted mb-1">SETOR</label>
+                <!-- Removido max-height fixo, usa o scroll da sidebar -->
+                <div class="d-flex flex-column gap-1 ps-1"> 
                     {% for setor in setores_filtro %}
                     <div class="form-check">
                         <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor" id="set_{{ setor.id }}">
@@ -83,9 +118,9 @@
             </div>
 
             <!-- 4. Filtro Líder -->
-            <div class="mb-4">
-                <label class="form-label small fw-bold text-muted">LÍDER / GESTOR</label>
-                <div class="d-flex flex-column gap-1 overflow-auto" style="max-height: 150px;">
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted mb-1">LÍDER / GESTOR</label>
+                <div class="d-flex flex-column gap-1 ps-1">
                     {% for lider in lideres_filtro %}
                     <div class="form-check">
                         <input class="form-check-input filter-checkbox" type="checkbox" value="{{ lider.id }}" data-category="lider" id="lid_{{ lider.id }}">
@@ -99,8 +134,8 @@
 
             <!-- 5. Filtro Turno -->
             <div class="mb-4">
-                <label class="form-label small fw-bold text-muted">TURNO</label>
-                <div class="d-flex flex-column gap-1">
+                <label class="form-label small fw-bold text-muted mb-1">TURNO</label>
+                <div class="d-flex flex-column gap-1 ps-1">
                     {% for codigo, nome in turnos_filtro %}
                     <div class="form-check">
                         <input class="form-check-input filter-checkbox" type="checkbox" value="{{ codigo }}" data-category="turno" id="tn_{{ codigo }}">
@@ -111,102 +146,96 @@
                     {% endfor %}
                 </div>
             </div>
-
-            <button class="btn btn-outline-dark btn-sm w-100 mt-2" onclick="limparFiltros()">
-                Limpar Tudo
-            </button>
         </div>
 
-        <!-- CONTEÚDO PRINCIPAL (Com ID para controle JS) -->
-        <div class="col-md-9 col-lg-10 transition-all" id="content-col">
+        <!-- CONTEÚDO PRINCIPAL (TABELA COM SCROLL) -->
+        <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col">
             
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted small"><span id="countDisplay">{{ funcionarios.count }}</span> registros encontrados</span>
+                <span class="badge bg-secondary"><span id="countDisplay">{{ funcionarios.count }}</span> registros</span>
             </div>
 
-            <div class="card shadow-sm border-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="rhTable">
-                        <thead class="table-light small fw-bold text-muted text-uppercase">
-                            <tr>
-                                <th class="ps-4">Colaborador</th>
-                                <th>Cargo</th>
-                                <th>Setor / Turno</th>
-                                <th>Líder</th>
-                                <th>Salário</th>
-                                <th class="text-end pe-4">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody class="border-top-0">
-                            {% for f in funcionarios %}
-                            <tr class="rh-row" 
-                                data-nome="{{ f.nome_completo|lower }} {{ f.matricula }}"
-                                data-status="{% if not f.is_active %}INATIVO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
-                                data-setor="{{ f.setor.id|default:'' }}"
-                                data-lider="{{ f.lider.id|default:'' }}"
-                                data-turno="{{ f.turno|default:'' }}">
-                                
-                                <td class="ps-4 py-3">
-                                    <div class="d-flex align-items-center">
-                                        <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border" style="width: 40px; height: 40px;">
-                                            {{ f.nome_completo|slice:":1" }}
-                                        </div>
-                                        <div>
-                                            <div class="fw-bold text-dark">{{ f.nome_completo }}</div>
-                                            <div class="small text-muted">Mat: {{ f.matricula }} 
-                                                {% if not f.is_active %}
-                                                    <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">DESLIGADO</span>
-                                                {% elif f.em_ferias %}
-                                                    <span class="badge bg-warning text-dark ms-1" style="font-size: 0.6rem;">FÉRIAS</span>
-                                                {% endif %}
-                                            </div>
+            <!-- CONTAINER SCROLLÁVEL DA TABELA -->
+            <div class="table-container-scroll shadow-sm bg-white">
+                <table class="table table-hover align-middle mb-0" id="rhTable">
+                    <thead class="small text-uppercase text-muted">
+                        <tr>
+                            <th class="ps-4 py-3">Colaborador</th>
+                            <th class="py-3">Cargo</th>
+                            <th class="py-3">Setor / Turno</th>
+                            <th class="py-3">Líder</th>
+                            <th class="py-3">Salário</th>
+                            <th class="text-end pe-4 py-3">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        {% for f in funcionarios %}
+                        <tr class="rh-row" 
+                            data-nome="{{ f.nome_completo|lower }} {{ f.matricula }}"
+                            data-status="{% if not f.is_active %}INATIVO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
+                            data-setor="{{ f.setor.id|default:'' }}"
+                            data-lider="{{ f.lider.id|default:'' }}"
+                            data-turno="{{ f.turno|default:'' }}">
+                            
+                            <td class="ps-4 py-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border" style="width: 35px; height: 35px; font-size: 0.8rem;">
+                                        {{ f.nome_completo|slice:":1" }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark small">{{ f.nome_completo }}</div>
+                                        <div class="text-muted" style="font-size: 0.7rem;">Mat: {{ f.matricula }} 
+                                            {% if not f.is_active %}
+                                                <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">DESLIGADO</span>
+                                            {% elif f.em_ferias %}
+                                                <span class="badge bg-warning text-dark ms-1" style="font-size: 0.6rem;">FÉRIAS</span>
+                                            {% endif %}
                                         </div>
                                     </div>
-                                </td>
-                                <td><span class="d-block text-dark small">{{ f.cargo }}</span></td>
-                                <td>
-                                    <div class="small text-dark">{{ f.setor.nome|default:"-" }}</div>
-                                    <div class="small text-muted" style="font-size: 0.75rem;">{{ f.get_turno_display }}</div>
-                                </td>
-                                <td>
-                                    {% if f.lider %}
-                                        <span class="badge bg-light text-dark border fw-normal" title="{{ f.lider.nome_completo }}">{{ f.lider.nome_completo|truncatechars:15 }}</span>
-                                    {% else %}
-                                        <span class="text-muted small">-</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if can_see_salary %}
-                                        <span class="text-success fw-bold small">R$ {{ f.salario|floatformat:2 }}</span>
-                                    {% else %}
-                                        <i class="bi bi-lock-fill text-muted" title="Restrito"></i>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end pe-4">
-                                    <a href="{% url 'detalhe_colaborador' f.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">Ver</a>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="6" class="text-center py-5 text-muted">Nenhum colaborador encontrado.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                                </div>
+                            </td>
+                            <td class="py-2">
+                                <span class="d-block text-dark small">{{ f.cargo }}</span>
+                            </td>
+                            <td class="py-2">
+                                <div class="small text-dark fw-bold" style="font-size: 0.75rem;">{{ f.setor.nome|default:"-" }}</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">{{ f.get_turno_display }}</div>
+                            </td>
+                            <td class="py-2">
+                                {% if f.lider %}
+                                    <span class="badge bg-light text-dark border fw-normal text-truncate" style="max-width: 120px;" title="{{ f.lider.nome_completo }}">
+                                        {{ f.lider.nome_completo }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-2">
+                                {% if can_see_salary %}
+                                    <span class="text-success fw-bold small" style="font-size: 0.8rem;">R$ {{ f.salario|floatformat:2 }}</span>
+                                {% else %}
+                                    <i class="bi bi-lock-fill text-muted small" title="Restrito"></i>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4 py-2">
+                                <a href="{% url 'detalhe_colaborador' f.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 0.75rem;">
+                                    Ver
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center py-5 text-muted">Nenhum colaborador encontrado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-    /* Transição suave ao expandir/recolher */
-    .transition-all { transition: all 0.3s ease; }
-</style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Inicializa filtros e contagem
     filtrar();
-    
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
     
@@ -214,7 +243,6 @@ document.addEventListener('DOMContentLoaded', function() {
     checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
 });
 
-// Função Lógica de Filtros (E/OU)
 function filtrar() {
     const searchInput = document.getElementById('searchInput');
     const countDisplay = document.getElementById('countDisplay');
@@ -243,26 +271,23 @@ function filtrar() {
 
 function limparFiltros() {
     document.getElementById('searchInput').value = '';
-    document.querySelectorAll('.filter-checkbox').forEach(cb => cb.checked = (cb.id === 'st_ativo')); // Reseta para Ativo padrão
+    document.querySelectorAll('.filter-checkbox').forEach(cb => cb.checked = (cb.id === 'st_ativo'));
     filtrar();
 }
 
-// NOVA FUNÇÃO: Expandir/Recolher Sidebar
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar-col');
     const content = document.getElementById('content-col');
     const icon = document.getElementById('sidebarIcon');
 
     if (sidebar.classList.contains('d-none')) {
-        // Mostrar Sidebar
         sidebar.classList.remove('d-none');
-        content.classList.replace('col-12', 'col-md-9'); // Volta ao tamanho original
+        content.classList.replace('col-12', 'col-md-9');
         content.classList.add('col-lg-10');
         icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
     } else {
-        // Esconder Sidebar (Expandir Tabela)
         sidebar.classList.add('d-none');
-        content.classList.replace('col-md-9', 'col-12'); // Ocupa tudo
+        content.classList.replace('col-md-9', 'col-12');
         content.classList.remove('col-lg-10');
         icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
     }
