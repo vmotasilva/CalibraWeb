@@ -300,8 +300,10 @@
                             data-status="{% if not f.is_active %}INATIVO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
                             data-setor="{{ f.setor.id|default:'' }}"
                             data-lider="{{ f.lider.id|default:'' }}"
+                            
                             data-supervisor="{{ f.supervisor_hierarquia_id|default:'' }}" 
                             data-gerente="{{ f.gerente_hierarquia_id|default:'' }}"
+                            
                             data-turno="{{ f.turno|default:'' }}">
                             
                             <td class="ps-4 py-2">

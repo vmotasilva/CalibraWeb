@@ -152,6 +152,9 @@ def modulo_metrologia_view(request):
     }
     return render(request, 'modulo_metrologia.html', ctx)
 
+# No topo, nos imports, certifique-se de que estão presentes:
+# from django.db.models import Q, Subquery, OuterRef  <-- CRÍTICO
+
 @login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
@@ -170,84 +173,77 @@ def modulo_rh_view(request):
         else:
             ids_permitidos = get_all_subordinates(colab)
             ids_permitidos.add(colab.id)
-
             if 'GERENTE' in str(colab.cargo).upper() or HierarquiaSetor.objects.filter(gerente=colab).exists():
                 can_see_salary = True
     
-    # Base de colaboradores visíveis
-    funcionarios_base = Colaborador.objects.filter(
-        id__in=ids_permitidos, 
-        is_active=True
-    ).order_by('nome_completo')
+    # QuerySet BASE ANTES DO FILTRO (Todos os colaboradores ativos que o usuário pode ver)
+    funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
+    
+    # --- 2. ANNOTATION: Anexa os IDs de Hierarquia do Setor ---
+    
+    # Subqueries para buscar os IDs da Hierarquia (ligado ao Setor do Colaborador)
+    hierarquia_sup_sq = HierarquiaSetor.objects.filter(
+        setor_id=OuterRef('setor_id')
+    ).values_list('supervisor_id')[:1] 
+    
+    hierarquia_ger_sq = HierarquiaSetor.objects.filter(
+        setor_id=OuterRef('setor_id')
+    ).values_list('gerente_id')[:1] 
+    
+    # Anota o QuerySet base com os IDs de Hierarquia
+    funcionarios_visiveis = funcionarios_base.annotate(
+        supervisor_hierarquia_id=Subquery(hierarquia_sup_sq),
+        gerente_hierarquia_id=Subquery(hierarquia_ger_sq)
+    )
 
-    funcionarios_visiveis = funcionarios_base
-
-    # --- FILTROS VIA GET ---
+    # --- 3. INÍCIO DA LÓGICA DE FILTRAGEM VIA GET ---
+    
+    # 1. Recebe os IDs dos filtros da URL (Mantido)
     setor_id = request.GET.get('setor_id')
     lider_id = request.GET.get('lider_id')
     supervisor_id = request.GET.get('supervisor_id')
     gerente_id = request.GET.get('gerente_id')
     turno_slug = request.GET.get('turno')
     
+    # 2. Aplicar filtros diretos (Turno/Setor/Líder)
     if setor_id:
         funcionarios_visiveis = funcionarios_visiveis.filter(setor_id=setor_id)
-
     if lider_id:
         funcionarios_visiveis = funcionarios_visiveis.filter(lider_id=lider_id)
-
     if turno_slug:
         funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
-
-    # --- FILTROS POR HIERARQUIA ---
-    try:
-        if supervisor_id:
-            sup_id = int(supervisor_id)
-            reporting_setor_ids = HierarquiaSetor.objects.filter(
-                supervisor_id=sup_id
-            ).values_list('setor_id', flat=True).distinct()
-
-            funcionarios_visiveis = funcionarios_visiveis.filter(
-                setor_id__in=reporting_setor_ids
-            ).distinct()
         
-        if gerente_id:
-            ger_id = int(gerente_id)
-            reporting_setor_ids = HierarquiaSetor.objects.filter(
-                gerente_id=ger_id
-            ).values_list('setor_id', flat=True).distinct()
-
-            funcionarios_visiveis = funcionarios_visiveis.filter(
-                setor_id__in=reporting_setor_ids
-            ).distinct()
+    # 3. Aplicar filtros por Hierarquia (Usando o campo ANOTADO para o filtro JS)
+    if supervisor_id:
+        # Filtra pelo campo anotado supervisor_hierarquia_id
+        funcionarios_visiveis = funcionarios_visiveis.filter(supervisor_hierarquia_id=supervisor_id).distinct()
     
-    except Exception as e:
-        messages.error(request, f"Erro inesperado na filtragem de hierarquia: {e}")
+    if gerente_id:
+        # Filtra pelo campo anotado gerente_hierarquia_id
+        funcionarios_visiveis = funcionarios_visiveis.filter(gerente_hierarquia_id=gerente_id).distinct()
 
-    # --- RECONSTRUÇÃO DOS FILTROS (DINÂMICOS) ---
+    # --- FIM DA LÓGICA DE FILTRAGEM ---
+
+    # 4. FILTROS DINÂMICOS (Recálculo das opções para o dropdown)
+    
     setores_ids_base = funcionarios_base.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids_base).order_by('nome')
 
     lideres_ids = funcionarios_base.values_list('lider', flat=True).distinct()
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
 
-    # Dados da tabela de Hierarquia
+    # Busca Hierarquias para as opções de Supervisor/Gerente (Sem filtro aplicado no QuerySet)
     hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids_base)
-
+    
     sup_ids_raw = hierarquias.values_list('supervisor', flat=True).distinct()
     ger_ids_raw = hierarquias.values_list('gerente', flat=True).distinct()
-
-    # -------------------------------------------
-    # 🔥 CORREÇÃO CRÍTICA (Opção A - Segura)
-    # Remove IDs que não existem no Railway
-    # -------------------------------------------
-
-    sup_ids = Colaborador.objects.filter(id__in=sup_ids_raw).values_list('id', flat=True)
-    ger_ids = Colaborador.objects.filter(id__in=ger_ids_raw).values_list('id', flat=True)
-
+    
+    sup_ids = [id for id in sup_ids_raw if id is not None]
+    ger_ids = [id for id in ger_ids_raw if id is not None]
+    
     supervisores_filtro = Colaborador.objects.filter(id__in=sup_ids).order_by('nome_completo')
     gerentes_filtro = Colaborador.objects.filter(id__in=ger_ids).order_by('nome_completo')
-
-    # --- Turnos fixos ---
+    
     turnos_filtro = [
         ('ADM', 'Administrativo'),
         ('TURNO_1', 'Turno 1'),
@@ -269,6 +265,8 @@ def modulo_rh_view(request):
         'can_edit': True
     }
     return render(request, 'modulo_rh.html', ctx)
+
+# ... (restante das suas views)
 
 @login_required
 def detalhe_colaborador_view(request, colab_id):
