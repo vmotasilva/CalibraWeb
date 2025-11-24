@@ -366,8 +366,11 @@ def detalhe_instrumento_view(request, instrumento_id): # Note que o URLs.py usa 
     except AttributeError:
         ocorrencias = []
 
-    faixas = inst.faixamedicao_set.all() # Seu código antigo usava inst.faixas.all(), mas o padrão django é _set ou related_name. Vou tentar manter compatibilidade.
-    # Ajuste de compatibilidade para Faixas (caso seu model use related_name='faixas')
+    try:
+        faixas = inst.faixamedicao_set.all()
+    except AttributeError:
+        ocorrencias = []
+
     if hasattr(inst, 'faixas'):
         faixas = inst.faixas.all()
 
