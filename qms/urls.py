@@ -29,6 +29,10 @@ urlpatterns = [
     path('rh/editar/<int:colab_id>/', views.editar_colaborador_view, name='editar_colaborador'),
     path('metrologia/instrumento/<int:instrumento_id>/', views.detalhe_instrumento_view, name='detalhe_instrumento'),
 
+    # --- NOVA ROTA (ADICIONADA) ---
+    # Necessária para o link "Nova Solicitação" no menu e dashboard funcionar
+    path('solicitacao/nova/', views.nova_solicitacao, name='nova_solicitacao'),
+
     # 6. Funcionalidades Específicas
     path('carimbar/', views.carimbar_view, name='carimbar'), # Mantido 'carimbar'
     path('metrologia/historico/remover/<int:historico_id>/', views.remover_historico_view, name='remover_historico'),
