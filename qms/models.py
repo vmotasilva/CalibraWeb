@@ -86,11 +86,17 @@ class HierarquiaSetor(models.Model):
     class Meta: verbose_name = "Hierarquia"; verbose_name_plural = "1.1 Hierarquia (Setor x Turno)"; unique_together = ('setor', 'turno')
 
 class Ferias(models.Model):
-    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='historico_ferias')
-    data_inicio = models.DateField(verbose_name="Início")
-    data_fim = models.DateField(verbose_name="Fim")
-    observacao = models.CharField(max_length=200, null=True, blank=True, verbose_name="Obs")
-    class Meta: verbose_name = "Férias"; verbose_name_plural = "1.2 Controle de Férias"; ordering = ['-data_inicio']
+    # ... seus campos existentes ...
+    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='ferias_set') # (Verifique se o related_name está assim ou padrão)
+    periodo_aquisitivo_inicio = models.DateField(null=True, blank=True)
+    periodo_aquisitivo_fim = models.DateField(null=True, blank=True)
+    data_limite = models.DateField(null=True, blank=True)
+    data_inicio = models.DateField(null=True, blank=True)
+    data_fim = models.DateField(null=True, blank=True)
+    saldo_dias = models.IntegerField(default=30)
+    dias_gozados = models.IntegerField(default=0)
+    dias_vendidos = models.IntegerField(default=0, null=True, blank=True, verbose_name="Dias Vendidos (Abono)")
+    status = models.CharField(max_length=20, default='AQUISITIVO')
 
 @receiver(post_save, sender=Ferias)
 def atualizar_status_ferias(sender, instance, **kwargs):

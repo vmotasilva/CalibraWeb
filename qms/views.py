@@ -651,7 +651,7 @@ def imp_hierarquia_view(request):
     if request.method == 'POST': messages.success(request, "Hierarquia OK"); return redirect('modulo_rh')
     return render(request, 'importar_hierarquia.html', {'form': ImportacaoHierarquiaForm(), 'colaborador': get_colab(request)})
 
-# --- NOVA VIEW: IMPORTAÇÃO DE FÉRIAS (ESSENCIAL PARA O ERRO DE URL) ---
+# --- IMPORTAÇÃO DE FÉRIAS (COM DIAS VENDIDOS) ---
 @login_required
 def imp_ferias_view(request):
     if request.method == 'POST':
@@ -667,7 +667,6 @@ def imp_ferias_view(request):
                 
                 with transaction.atomic():
                     for _, row in df.iterrows():
-                        # 1. Encontra o Colaborador
                         def get_v(k): return str(row.get(k,'')).strip()
                         matricula = get_v('MATRICULA')
                         if not matricula: continue
@@ -675,7 +674,6 @@ def imp_ferias_view(request):
                         try: colab = Colaborador.objects.get(matricula=matricula.split('.')[0])
                         except Colaborador.DoesNotExist: continue
                         
-                        # 2. Processa Datas
                         def parse_dt(col):
                             val = get_v(col)
                             if not val or val in ['-','NaT','nan']: return None
@@ -686,10 +684,14 @@ def imp_ferias_view(request):
                         dt_aq_fim = parse_dt('AQUISITIVO_FIM')
                         dt_ini = parse_dt('DATA_INICIO')
                         dt_fim = parse_dt('DATA_FIM')
+
+                        # LER DIAS VENDIDOS
+                        dias_vend = get_v('DIAS_VENDIDOS')
+                        try: dias_vend = int(float(dias_vend)) if dias_vend else 0
+                        except: dias_vend = 0
                         
-                        if not dt_aq_fim: continue # Obrigatório ter referência do período
+                        if not dt_aq_fim: continue 
                         
-                        # 3. Cria/Atualiza Registro de Férias
                         Ferias.objects.update_or_create(
                             colaborador=colab,
                             periodo_aquisitivo_fim=dt_aq_fim,
@@ -697,6 +699,7 @@ def imp_ferias_view(request):
                                 'periodo_aquisitivo_inicio': dt_aq_ini,
                                 'data_inicio': dt_ini,
                                 'data_fim': dt_fim,
+                                'dias_vendidos': dias_vend, # <--- NOVO CAMPO SALVO
                                 'status': get_v('STATUS') or 'PROGRAMADAS'
                             }
                         )

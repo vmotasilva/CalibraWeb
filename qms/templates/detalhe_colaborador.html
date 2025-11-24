@@ -3,7 +3,6 @@
 {% block content %}
 <div class="container-fluid">
     
-    <!-- Cabeçalho do Colaborador -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div class="d-flex align-items-center gap-3">
             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 24px;">
@@ -28,7 +27,7 @@
     </div>
 
     <div class="row">
-        <!-- COLUNA DA ESQUERDA: DADOS FIXOS -->
+        <!-- COLUNA DA ESQUERDA -->
         <div class="col-md-4">
             <div class="card shadow-sm mb-4 border-0">
                 <div class="card-header bg-dark text-white fw-bold">
@@ -81,7 +80,6 @@
                 </div>
             </div>
 
-            <!-- DOCUMENTOS PESSOAIS -->
             <div class="card shadow-sm mb-4 border-0">
                 <div class="card-header bg-secondary text-white fw-bold">
                     <i class="bi bi-folder"></i> Documentos Pessoais
@@ -106,10 +104,10 @@
             </div>
         </div>
 
-        <!-- COLUNA DA DIREITA: GESTÃO DE FÉRIAS E TREINAMENTOS -->
+        <!-- COLUNA DA DIREITA -->
         <div class="col-md-8">
             
-            <!-- CARD DE FÉRIAS (NOVO) -->
+            <!-- CARD DE FÉRIAS (ATUALIZADO COM DIAS VENDIDOS) -->
             <div class="card shadow-sm mb-4 border-0">
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                     <span class="fw-bold"><i class="bi bi-airplane"></i> Gestão de Férias</span>
@@ -130,7 +128,8 @@
                                     <th class="text-start ps-3">Período Aquisitivo</th>
                                     <th>Limite / Vencimento</th>
                                     <th>Programação</th>
-                                    <th>Dias</th>
+                                    <th>Dias Gozo</th>
+                                    <th>Dias Vendidos</th> <!-- COLUNA NOVA -->
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -156,6 +155,14 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ f.dias_gozados|default:"-" }}</td>
+                                    <!-- DADOS DIAS VENDIDOS -->
+                                    <td>
+                                        {% if f.dias_vendidos > 0 %}
+                                            <span class="badge bg-success text-white" title="Abono Pecuniário">+{{ f.dias_vendidos }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         {% if f.status == 'GOZADAS' %}
                                             <span class="badge bg-secondary">CONCLUÍDO</span>
@@ -173,7 +180,7 @@
                                     </td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="5" class="p-4 text-muted">Nenhum registro de férias encontrado.</td></tr>
+                                <tr><td colspan="6" class="p-4 text-muted">Nenhum registro de férias encontrado.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
