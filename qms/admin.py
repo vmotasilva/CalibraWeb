@@ -5,17 +5,70 @@ from django.urls import reverse
 from django.utils.http import urlencode
 from datetime import date
 
+# Importando todos os models (Adicionei SolicitacaoInstrumento e OrdemCalibracao)
 from .models import (
     Colaborador, Instrumento, HistoricoCalibracao, 
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento, 
     Setor, CentroCusto, HierarquiaSetor,
-    Procedimento, RegistroTreinamento, Ferias, Ocorrencia, PacoteTreinamento, DocumentoPessoal,
-    UnidadeMedida, CategoriaInstrumento, FaixaMedicao, Padrao 
+    Procedimento, RegistroTreinamento, Ferias, PacoteTreinamento, DocumentoPessoal,
+    UnidadeMedida, CategoriaInstrumento, FaixaMedicao, Padrao,
+    # Novos Models:
+    Ocorrencia, SolicitacaoInstrumento, OrdemCalibracao
 )
+
+# --- INLINES (Tabelas dentro de outras telas) ---
 
 class CentroCustoInline(admin.TabularInline): 
     model = CentroCusto
     extra = 1 
+
+class TreinamentoInline(admin.TabularInline):
+    model = RegistroTreinamento
+    extra = 0
+    readonly_fields = ('status_visual',)
+    fields = ('procedimento', 'revisao_treinada', 'data_treinamento', 'status_visual')
+    def status_visual(self, obj): 
+        return format_html('<span style="color:green">VIGENTE</span>') if obj.status_treinamento == "VIGENTE" else format_html('<span style="color:red">PENDENTE</span>')
+
+class FeriasInline(admin.TabularInline): 
+    model = Ferias
+    extra = 1
+
+class DocumentoPessoalInline(admin.TabularInline): 
+    model = DocumentoPessoal
+    extra = 1
+
+# CORREÇÃO: Inlines ligados ao Instrumento, não ao Colaborador
+class OcorrenciaInline(admin.TabularInline):
+    model = Ocorrencia
+    extra = 0
+    fields = ('tipo', 'data_ocorrencia', 'usuario_responsavel', 'descricao')
+    readonly_fields = ('data_ocorrencia',)
+
+class CalibracaoInline(admin.TabularInline):
+    model = OrdemCalibracao
+    extra = 0
+    fields = ('fornecedor', 'tipo_local', 'status', 'data_prevista', 'data_envio', 'data_retorno')
+
+class FaixaMedicaoInline(admin.TabularInline):
+    model = FaixaMedicao
+    extra = 1
+
+
+# --- FILTROS PERSONALIZADOS ---
+
+class SetorPorGrupoFilter(admin.SimpleListFilter):
+    title = 'Setor (Dinâmico)'
+    parameter_name = 'setor_id'
+    def lookups(self, request, model_admin):
+        g = request.GET.get('grupo')
+        qs = Setor.objects.filter(colaborador__grupo=g).distinct() if g else Setor.objects.filter(colaborador__isnull=False).distinct()
+        return [(s.id, s.nome) for s in qs]
+    def queryset(self, request, queryset): 
+        return queryset.filter(setor__id=self.value()) if self.value() else queryset
+
+
+# --- CADASTROS PRINCIPAIS (RH / ESTRUTURA) ---
 
 @admin.register(Setor)
 class SetorAdmin(admin.ModelAdmin):
@@ -29,48 +82,22 @@ class CentroCustoAdmin(admin.ModelAdmin):
     search_fields = ('codigo', 'descricao', 'setor__nome')
     list_display = ('codigo', 'descricao', 'setor')
 
-class TreinamentoInline(admin.TabularInline):
-    model = RegistroTreinamento
-    extra = 0
-    readonly_fields = ('status_visual',)
-    fields = ('procedimento', 'revisao_treinada', 'data_treinamento', 'status_visual')
-    def status_visual(self, obj): 
-        return format_html('<span style="color:green">VIGENTE</span>') if obj.status_treinamento == "VIGENTE" else format_html('<span style="color:red">PENDENTE</span>')
-
-class FeriasInline(admin.TabularInline): model = Ferias; extra = 1
-class OcorrenciaInline(admin.TabularInline): model = Ocorrencia; extra = 0
-class DocumentoPessoalInline(admin.TabularInline): model = DocumentoPessoal; extra = 1
-
-class SetorPorGrupoFilter(admin.SimpleListFilter):
-    title = 'Setor (Dinâmico)'
-    parameter_name = 'setor_id'
-    def lookups(self, request, model_admin):
-        g = request.GET.get('grupo')
-        qs = Setor.objects.filter(colaborador__grupo=g).distinct() if g else Setor.objects.filter(colaborador__isnull=False).distinct()
-        return [(s.id, s.nome) for s in qs]
-    def queryset(self, request, queryset): 
-        return queryset.filter(setor__id=self.value()) if self.value() else queryset
-
 @admin.register(Colaborador)
 class ColaboradorAdmin(admin.ModelAdmin):
     def get_setor_nome(self, obj): return obj.setor.nome if obj.setor else "-"
     def get_cc_code(self, obj): return obj.centro_custo.codigo if obj.centro_custo else "-"
     
-    # ADICIONADO 'lider' NA LISTAGEM:
     list_display = ('matricula', 'cpf', 'nome_completo', 'cargo', 'lider', 'grupo', 'get_setor_nome', 'salario', 'em_ferias', 'is_active')
-    
     search_fields = ('matricula', 'cpf', 'nome_completo', 'cargo')
     list_filter = ('is_active', 'em_ferias', 'grupo', SetorPorGrupoFilter, 'turno')
-    
-    # ADICIONADO 'lider' NO AUTOCOMPLETE (Para não carregar lista gigante):
     autocomplete_fields = ['setor', 'centro_custo', 'lider'] 
-    
     filter_horizontal = ('pacotes_treinamento',)
-    inlines = [FeriasInline, OcorrenciaInline, DocumentoPessoalInline, TreinamentoInline]
+    
+    # CORREÇÃO: Removi OcorrenciaInline daqui para não dar erro
+    inlines = [FeriasInline, DocumentoPessoalInline, TreinamentoInline]
     
     fieldsets = (
         ("Identificação", {'fields': (('matricula', 'cpf'), 'nome_completo')}),
-        # ADICIONADO 'lider' NO FORMULÁRIO DE EDIÇÃO:
         ("Lotação e Cargo", {'fields': (('cargo', 'salario'), 'lider', ('grupo', 'turno'), ('setor', 'centro_custo'))}),
         ("Treinamentos", {'fields': ('pacotes_treinamento',)}),
         ("Controle", {'fields': ('is_active', 'em_ferias')})
@@ -82,6 +109,7 @@ class HierarquiaSetorAdmin(admin.ModelAdmin):
     list_filter = ('setor', 'turno')
     autocomplete_fields = ['lider', 'supervisor', 'gerente', 'diretor', 'setor']
     actions = ['duplicar_hierarquia']
+    
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)
         for c in ['lider', 'supervisor', 'gerente', 'diretor', 'setor']:
@@ -91,6 +119,7 @@ class HierarquiaSetorAdmin(admin.ModelAdmin):
                 w.can_change_related = False
                 w.can_delete_related = False
         return form
+
     @admin.action(description='Duplicar')
     def duplicar_hierarquia(self, request, queryset):
         if queryset.count() != 1:
@@ -107,7 +136,8 @@ class HierarquiaSetorAdmin(admin.ModelAdmin):
         })
         return redirect(f'{base}?{qs}')
 
-# --- CONFIGURAÇÕES DE METROLOGIA ---
+
+# --- CONFIGURAÇÕES DE METROLOGIA (INSTRUMENTOS) ---
 
 @admin.register(UnidadeMedida)
 class UnidadeMedidaAdmin(admin.ModelAdmin):
@@ -118,8 +148,8 @@ class UnidadeMedidaAdmin(admin.ModelAdmin):
 class CategoriaInstrumentoAdmin(admin.ModelAdmin):
     list_display = ('nome', 'descricao')
     search_fields = ('nome',)
+    # Removi inlines daqui pois Ocorrência é do Instrumento, não da Categoria
 
-# NOVO: Admin de Padrões (Kits)
 @admin.register(Padrao)
 class PadraoAdmin(admin.ModelAdmin):
     list_display = ('codigo', 'descricao', 'data_validade', 'status_validade', 'ativo')
@@ -132,17 +162,15 @@ class PadraoAdmin(admin.ModelAdmin):
         return format_html('<span style="color:green;">VIGENTE</span>')
     status_validade.short_description = "Validade"
 
-class FaixaMedicaoInline(admin.TabularInline):
-    model = FaixaMedicao
-    extra = 1
-
 @admin.register(Instrumento)
 class InstrumentoAdmin(admin.ModelAdmin):
     list_display = ('tag', 'descricao', 'categoria', 'responsavel', 'data_proxima_calibracao', 'ativo')
     search_fields = ('tag', 'codigo', 'descricao', 'modelo', 'serie')
     list_filter = ('categoria', 'ativo', 'setor')
     autocomplete_fields = ['responsavel', 'setor', 'categoria']
-    inlines = [FaixaMedicaoInline]
+    
+    # AQUI ESTÁ A CORREÇÃO PRINCIPAL: Inlines movidos para cá
+    inlines = [FaixaMedicaoInline, OcorrenciaInline, CalibracaoInline]
     
     fieldsets = (
         ('Identificação', {
@@ -162,12 +190,39 @@ class HistoricoCalibracaoAdmin(admin.ModelAdmin):
     search_fields = ('instrumento__tag', 'numero_certificado', 'responsavel', 'fornecedor')
     list_filter = ('resultado', 'data_calibracao', 'tem_selo_rbc', 'tipo_calibracao')
     autocomplete_fields = ['instrumento']
-    filter_horizontal = ('padroes_utilizados',) # Facilita selecionar múltiplos padrões
+    filter_horizontal = ('padroes_utilizados',)
 
-# --- OUTROS CADASTROS ---
+
+# --- NOVOS PAINEIS (SOLICITAÇÕES E OCORRÊNCIAS AVULSAS) ---
+
+@admin.register(SolicitacaoInstrumento)
+class SolicitacaoAdmin(admin.ModelAdmin):
+    list_display = ('tipo', 'solicitante', 'instrumento_alvo', 'status', 'data_solicitacao')
+    list_filter = ('status', 'tipo')
+    search_fields = ('solicitante__username', 'instrumento_alvo__tag')
+
+@admin.register(Ocorrencia)
+class OcorrenciaAdmin(admin.ModelAdmin):
+    # Permite ver todas as ocorrências em uma lista única
+    list_display = ('instrumento', 'tipo', 'data_ocorrencia', 'usuario_responsavel')
+    list_filter = ('tipo', 'data_ocorrencia')
+    search_fields = ('instrumento__tag',)
+
+@admin.register(OrdemCalibracao)
+class OrdemCalibracaoAdmin(admin.ModelAdmin):
+    # Permite gerenciar envios e retornos de calibração
+    list_display = ('instrumento', 'fornecedor', 'status', 'data_prevista')
+    list_filter = ('status', 'tipo_local')
+    search_fields = ('instrumento__tag', 'fornecedor')
+
+
+# --- OUTROS CADASTROS (FORNECEDORES / COTACAO) ---
+
 admin.site.register(Fornecedor)
 admin.site.register(ProcessoCotacao)
 admin.site.register(Orcamento)
+
+# --- PROCEDIMENTOS E TREINAMENTOS ---
 
 @admin.register(Procedimento)
 class ProcedimentoAdmin(admin.ModelAdmin):

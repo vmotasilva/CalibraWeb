@@ -9,10 +9,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     
     <style>
-        /* Ajuste de padding para o conteúdo não ficar escondido atrás da navbar */
         body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; padding-top: 80px; }
         .navbar-brand { font-weight: bold; letter-spacing: 1px; }
-        /* Hover nos dropdowns */
         .dropdown-item:active { background-color: #0d6efd; }
     </style>
 </head>
@@ -34,6 +32,12 @@
                 <li class="nav-item">
                     <a class="nav-link active" href="{% url 'home' %}">
                         <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'nova_solicitacao' %}">
+                        <i class="bi bi-hand-index-thumb"></i> Solicitações
                     </a>
                 </li>
 

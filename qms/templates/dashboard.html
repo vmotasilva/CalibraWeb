@@ -22,6 +22,8 @@
     .card-counter.danger { background-color: #ef5350; }
     .card-counter.warning { background-color: #ffca28; color: #333; }
     .card-counter.info { background-color: #26c6da; }
+    .card-counter.primary { background-color: #0d6efd; } /* Novo estilo */
+    
     .count-numbers { font-size: 36px; font-weight: bold; display: block; }
     .count-name { font-size: 14px; text-transform: uppercase; opacity: 0.9; letter-spacing: 1px; }
     .btn-action { width: 100%; margin-bottom: 12px; font-weight: bold; padding: 12px; text-align: left; display: flex; align-items: center; justify-content: space-between; }
@@ -29,22 +31,28 @@
 </style>
 
 <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <a href="{% url 'modulo_metrologia' %}" class="card-counter danger">
             <span class="count-numbers">{{ qtd_vencidos }}</span>
             <span class="count-name">Instrumentos Vencidos</span>
         </a>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <a href="{% url 'modulo_metrologia' %}" class="card-counter warning">
             <span class="count-numbers">{{ qtd_avencer }}</span>
             <span class="count-name">Vencem em 30 Dias</span>
         </a>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <a href="/admin/qms/processocotacao/" class="card-counter info">
             <span class="count-numbers">{{ qtd_cotacoes }}</span>
             <span class="count-name">Cotações Abertas</span>
+        </a>
+    </div>
+    <div class="col-md-3">
+        <a href="{% url 'nova_solicitacao' %}" class="card-counter primary">
+            <span class="count-numbers">{{ qtd_pendentes|default:"0" }}</span>
+            <span class="count-name">Solicitações Pendentes</span>
         </a>
     </div>
 </div>
@@ -57,6 +65,12 @@
                 ⚙️ Ações Rápidas
             </div>
             <div class="card-body">
+                <a href="{% url 'nova_solicitacao' %}" class="btn btn-outline-primary btn-action">
+                    📥 Solicitar Instrumento
+                </a>
+
+                <hr class="my-2">
+
                 <a href="{% url 'carimbar' %}" class="btn btn-primary btn-action">
                     📑 Validar Certificado (Carimbo)
                 </a>

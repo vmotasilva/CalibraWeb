@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models.signals import post_save, m2m_changed, post_delete
 from django.dispatch import receiver
+from django.utils import timezone
 from django.contrib.auth.models import User
 from datetime import date, timedelta
 from decimal import Decimal
@@ -166,6 +167,93 @@ class CategoriaInstrumento(models.Model):
     def __str__(self): return self.nome
     class Meta: verbose_name_plural = "2.2 Categorias de Instrumentos"
 
+# --- 1. Solicitação de Instrumentos ---
+class SolicitacaoInstrumento(models.Model):
+    TIPO_CHOICES = [
+        ('NOVA', 'Nova Aplicação'),
+        ('SUBSTITUICAO', 'Substituição (Dano/Perda)'),
+    ]
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('EM_ANALISE', 'Em Análise pelo Qualidade'),
+        ('APROVADO', 'Aprovado'),
+        ('REJEITADO', 'Rejeitado'),
+        ('CONCLUIDO', 'Entregue/Resolvido'),
+    ]
+
+    solicitante = models.ForeignKey(User, on_delete=models.CASCADE, related_name='solicitacoes')
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    # Instrumento é opcional pois pode ser uma solicitação de algo que ainda não existe
+    instrumento_alvo = models.ForeignKey(
+        'Instrumento', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        help_text="Preencher caso seja substituição de um item existente"
+    )
+    data_solicitacao = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+    resposta_qualidade = models.TextField(blank=True, null=True, help_text="Parecer do setor de qualidade")
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.solicitante.username} - {self.status}"
+
+
+# --- 2. Registro de Ocorrências ---
+class Ocorrencia(models.Model):
+    TIPO_OCORRENCIA = [
+        ('MANUTENCAO', 'Manutenção Corretiva'),
+        ('QUEDA', 'Queda/Dano Físico'),
+        ('AJUSTE', 'Ajuste Interno'),
+        ('OUTRO', 'Outros'),
+    ]
+
+    instrumento = models.ForeignKey('Instrumento', on_delete=models.CASCADE, related_name='ocorrencias', null=True, blank=True)
+    tipo = models.CharField(max_length=20, choices=TIPO_OCORRENCIA)
+    descricao = models.TextField()
+    data_ocorrencia = models.DateField(default=timezone.now)
+    usuario_responsavel = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    custo_reparo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.instrumento} - {self.get_tipo_display()} ({self.data_ocorrencia})"
+
+
+# --- 3. Controle de Calibração (Rastreio) ---
+class OrdemCalibracao(models.Model):
+    LOCAL_CHOICES = [
+        ('EXTERNO', 'Laboratório Externo'),
+        ('IN_LOCO', 'Calibração In Loco (Na Empresa)'),
+    ]
+    STATUS_CALIBRACAO = [
+        ('AGENDADO', 'Agendado'),
+        ('ENVIADO', 'Enviado ao Fornecedor'), # Apenas para externo
+        ('EM_CALIBRACAO', 'Em Calibração'),
+        ('RETORNOU', 'Retornou do Fornecedor'), # Apenas para externo
+        ('FINALIZADO', 'Finalizado e Aprovado'),
+    ]
+
+    instrumento = models.ForeignKey('Instrumento', on_delete=models.CASCADE, related_name='calibracoes', null=True, blank=True)
+    fornecedor = models.CharField(max_length=100, help_text="Nome do Laboratório/Empresa")
+    tipo_local = models.CharField(max_length=20, choices=LOCAL_CHOICES, default='EXTERNO')
+    status = models.CharField(max_length=20, choices=STATUS_CALIBRACAO, default='AGENDADO')
+    
+    # Datas de Rastreio
+    data_prevista = models.DateField()
+    data_envio = models.DateField(null=True, blank=True, help_text="Data de saída da empresa")
+    data_retorno = models.DateField(null=True, blank=True, help_text="Data de chegada na empresa")
+    
+    observacoes = models.TextField(blank=True, null=True)
+    certificado_arquivo = models.FileField(upload_to='certificados/', null=True, blank=True)
+
+    def __str__(self):
+        return f"Calibração {self.instrumento.codigo} - {self.status}"
+
+    # Validação simples para saber se está fora da empresa
+    @property
+    def esta_fora(self):
+        return self.tipo_local == 'EXTERNO' and self.status == 'ENVIADO'
+
 class Instrumento(models.Model):
     tag = models.CharField(max_length=50, unique=True, verbose_name="TAG / Identificação")
     codigo = models.CharField(max_length=50, blank=True, null=True, verbose_name="Código Interno")
@@ -189,7 +277,7 @@ class Instrumento(models.Model):
     def __str__(self): return f"{self.tag} - {self.descricao}"
 
 class FaixaMedicao(models.Model):
-    instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='faixas')
+    instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='faixas', null=True, blank=True)
     unidade = models.ForeignKey(UnidadeMedida, on_delete=models.PROTECT)
     
     valor_minimo = models.DecimalField(max_digits=10, decimal_places=4)
@@ -204,7 +292,7 @@ class FaixaMedicao(models.Model):
     class Meta: verbose_name_plural = "2.3 Faixas de Medição"
 
 class HistoricoCalibracao(models.Model):
-    instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='historico_calibracoes')
+    instrumento = models.ForeignKey(Instrumento, on_delete=models.CASCADE, related_name='historico_calibracoes', null=True, blank=True)
     
     data_calibracao = models.DateField()
     data_aprovacao = models.DateField(default=date.today)

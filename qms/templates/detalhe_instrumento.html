@@ -1,31 +1,16 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ instrumento.tag }} | Detalhes</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card-header { font-weight: 600; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 0.5px; }
-        .label-detail { font-size: 0.8rem; color: #6c757d; text-transform: uppercase; margin-bottom: 2px; }
-        .value-detail { font-size: 1.1rem; font-weight: 500; color: #212529; margin-bottom: 15px; }
-    </style>
-</head>
-<body>
+{% extends 'base.html' %}
+{% load widget_tweaks %}
 
-<nav class="navbar navbar-dark bg-dark mb-4 shadow">
-    <div class="container-fluid">
-        <a class="navbar-brand mb-0 h1 ms-3" href="{% url 'modulo_metrologia' %}">🏭 Calibra QMS</a>
-        <div class="d-flex gap-2">
-            <a href="{% url 'modulo_metrologia' %}" class="btn btn-outline-light btn-sm">
-                <i class="bi bi-arrow-left"></i> Voltar
-            </a>
-        </div>
-    </div>
-</nav>
+{% block content %}
 
-<div class="container">
+<style>
+    .card-header { font-weight: 600; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 0.5px; }
+    .label-detail { font-size: 0.8rem; color: #6c757d; text-transform: uppercase; margin-bottom: 2px; }
+    .value-detail { font-size: 1.1rem; font-weight: 500; color: #212529; margin-bottom: 15px; }
+    .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; }
+</style>
+
+<div class="container py-4">
     
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -52,39 +37,19 @@
         <div class="col-md-4">
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light text-secondary">
-                    <i class="bi bi-box-seam"></i> Identificação & Localização
+                    <i class="bi bi-box-seam"></i> Identificação
                 </div>
                 <div class="card-body">
-                    <div class="label-detail">Categoria / Família</div>
+                    <div class="label-detail">Categoria</div>
                     <div class="value-detail">{{ instrumento.categoria.nome|default:"-" }}</div>
 
-                    <div class="label-detail">Fabricante</div>
-                    <div class="value-detail">{{ instrumento.fabricante|default:"-" }}</div>
-                    
-                    <div class="label-detail">Modelo</div>
-                    <div class="value-detail">{{ instrumento.modelo|default:"-" }}</div>
-                    
-                    <div class="label-detail">Nº de Série</div>
-                    <div class="value-detail">{{ instrumento.serie|default:"-" }}</div>
+                    <div class="label-detail">Modelo / Série</div>
+                    <div class="value-detail">{{ instrumento.modelo|default:"-" }} / {{ instrumento.serie|default:"-" }}</div>
                     
                     <hr>
                     
-                    <div class="label-detail">Setor Responsável</div>
-                    <div class="value-detail">{{ instrumento.setor.nome|default:"-" }}</div>
-                    
-                    <div class="label-detail">Localização Física</div>
-                    <div class="value-detail">{{ instrumento.localizacao|default:"-" }}</div>
-
-                    <hr>
-                    
-                    <div class="label-detail">Frequência de Calibração</div>
-                    <div class="value-detail">
-                        {% if instrumento.frequencia_meses %}
-                            {{ instrumento.frequencia_meses }} Meses
-                        {% else %}
-                            -
-                        {% endif %}
-                    </div>
+                    <div class="label-detail">Setor / Localização</div>
+                    <div class="value-detail">{{ instrumento.setor.nome|default:"-" }} - {{ instrumento.localizacao|default:"-" }}</div>
                 </div>
             </div>
 
@@ -109,23 +74,51 @@
                     </div>
                 </div>
             </div>
+
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-exclamation-triangle"></i> Registrar Ocorrência
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-2">
+                            <label class="small text-muted">Tipo</label>
+                            {% render_field form_ocorrencia.tipo class="form-select form-select-sm" %}
+                        </div>
+                        <div class="mb-2">
+                            <label class="small text-muted">Data</label>
+                            {% render_field form_ocorrencia.data_ocorrencia class="form-control form-control-sm" type="date" %}
+                        </div>
+                        <div class="mb-2">
+                            <label class="small text-muted">Descrição</label>
+                            {% render_field form_ocorrencia.descricao class="form-control form-control-sm" rows="2" placeholder="O que aconteceu?" %}
+                        </div>
+                        <div class="mb-2">
+                            <label class="small text-muted">Custo (R$)</label>
+                            {% render_field form_ocorrencia.custo_reparo class="form-control form-control-sm" placeholder="0.00" %}
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-danger w-100">Registrar</button>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <div class="col-md-8">
             
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-rulers"></i> Faixas de Medição / Capacidade</span>
+                    <span><i class="bi bi-rulers"></i> Faixas de Medição</span>
                     <span class="badge bg-light text-dark">{{ faixas.count }} Faixa(s)</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0 align-middle text-center">
+                        <table class="table table-hover mb-0 align-middle text-center small">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Mínimo</th>
-                                    <th>Máximo</th>
-                                    <th>Unidade</th>
+                                    <th>Mín</th>
+                                    <th>Máx</th>
+                                    <th>Unid.</th>
                                     <th>Resolução</th>
                                 </tr>
                             </thead>
@@ -135,14 +128,10 @@
                                     <td>{{ f.valor_minimo }}</td>
                                     <td>{{ f.valor_maximo }}</td>
                                     <td><strong>{{ f.unidade.sigla }}</strong></td>
-                                    <td class="text-muted small">{{ f.resolucao|default:"-" }}</td>
+                                    <td class="text-muted">{{ f.resolucao|default:"-" }}</td>
                                 </tr>
                                 {% empty %}
-                                <tr>
-                                    <td colspan="4" class="text-center p-3 text-muted">
-                                        Nenhuma faixa cadastrada.
-                                    </td>
-                                </tr>
+                                <tr><td colspan="4" class="text-muted">Sem faixas cadastradas.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -150,20 +139,34 @@
                 </div>
             </div>
 
-            <div class="card shadow-sm mb-5">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-secondary"><i class="bi bi-clock-history"></i> Histórico de Calibrações</h5>
-                </div>
-                <div class="card-body p-0">
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" id="calib-tab" data-bs-toggle="tab" data-bs-target="#calib" type="button">
+                        📜 Certificados
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="rastreio-tab" data-bs-toggle="tab" data-bs-target="#rastreio" type="button">
+                        🚚 Rastreio (Ordens)
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link text-danger" id="ocorr-tab" data-bs-toggle="tab" data-bs-target="#ocorr" type="button">
+                        ⚠️ Ocorrências
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content card shadow-sm border-top-0 p-0" id="myTabContent">
+                
+                <div class="tab-pane fade show active" id="calib">
                     <div class="table-responsive">
                         <table class="table table-striped mb-0 align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Data Calibração</th>
+                                    <th>Data</th>
                                     <th>Certificado</th>
                                     <th>Resultado</th>
-                                    <th>Vencimento</th>
-                                    <th>Resp.</th>
                                     <th class="text-end">Ações</th>
                                 </tr>
                             </thead>
@@ -174,46 +177,72 @@
                                     <td><small>{{ item.numero_certificado }}</small></td>
                                     <td>
                                         {% if item.resultado == 'APROVADO' %}
-                                            <span class="badge bg-success">APROVADO</span>
+                                            <span class="badge bg-success">OK</span>
                                         {% elif item.resultado == 'REPROVADO' %}
-                                            <span class="badge bg-danger">REPROVADO</span>
+                                            <span class="badge bg-danger">NOK</span>
                                         {% else %}
-                                            <span class="badge bg-warning text-dark">CONDICIONAL</span>
+                                            <span class="badge bg-warning text-dark">COND.</span>
                                         {% endif %}
                                     </td>
-                                    <td><small>{{ item.proxima_calibracao|date:"d/m/Y"|default:"-" }}</small></td>
-                                    <td><small>{{ item.responsavel.nome_completo|default:"-"|truncatechars:15 }}</small></td>
                                     <td class="text-end">
-                                        <div class="d-flex justify-content-end gap-2">
-                                            {% if item.certificado %}
-                                                <a href="{{ item.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Baixar PDF">
-                                                    <i class="bi bi-file-earmark-pdf"></i>
-                                                </a>
-                                            {% endif %}
-                                            
-                                            <a href="{% url 'remover_historico' item.id %}" class="btn btn-sm btn-outline-danger" title="Excluir Registro" onclick="return confirm('Tem certeza que deseja excluir este certificado? Essa ação vai recalcular as datas do instrumento.')">
-                                                <i class="bi bi-trash"></i>
-                                            </a>
-                                        </div>
+                                        {% if item.certificado %}
+                                            <a href="{{ item.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-file-pdf"></i></a>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
-                                <tr>
-                                    <td colspan="6" class="text-center py-4 text-muted">
-                                        Nenhum histórico de calibração registrado.
-                                    </td>
-                                </tr>
+                                <tr><td colspan="4" class="text-center py-3 text-muted">Nenhum certificado.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
                 </div>
+
+                <div class="tab-pane fade" id="rastreio">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Local</th>
+                                    <th>Previsão</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cal in calibracoes %}
+                                <tr>
+                                    <td><span class="badge bg-secondary">{{ cal.get_status_display }}</span></td>
+                                    <td><small>{{ cal.fornecedor }} ({{ cal.get_tipo_local_display }})</small></td>
+                                    <td>{{ cal.data_prevista|date:"d/m/Y" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center py-3 text-muted">Nenhuma ordem de calibração em aberto.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="ocorr">
+                    <div class="list-group list-group-flush">
+                        {% for oc in ocorrencias %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1 text-danger fw-bold">{{ oc.get_tipo_display }}</h6>
+                                <small class="text-muted">{{ oc.data_ocorrencia|date:"d/m/Y" }}</small>
+                            </div>
+                            <p class="mb-1 small">{{ oc.descricao }}</p>
+                            <small class="text-muted" style="font-size: 0.75rem;">Responsável: {{ oc.usuario_responsavel.get_full_name|default:oc.usuario_responsavel.username }}</small>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4 text-muted">Nenhuma ocorrência registrada.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
-
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{% endblock %}
