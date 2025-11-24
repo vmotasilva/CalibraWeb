@@ -180,9 +180,9 @@ def modulo_rh_view(request):
         if not (request.user.is_superuser or request.user.is_staff):
             messages.warning(request, f"Não foi possível vincular seu usuário '{request.user.username}' a um colaborador.")
 
-    # 2. FILTROS DINÂMICOS (CORRIGIDO AQUI)
+    # 2. FILTROS DINÂMICOS (CORREÇÃO PARA POPULAR SUPERVISOR/GERENTE)
     
-    # Filtro de Líderes (Direto do cadastro do colaborador)
+    # Filtro de Líderes
     lideres_ids = funcionarios_visiveis.values_list('lider', flat=True).distinct()
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
     
@@ -190,18 +190,22 @@ def modulo_rh_view(request):
     setores_ids = funcionarios_visiveis.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by('nome')
 
-    # --- NOVO: Filtros de Supervisor e Gerente (Via HierarquiaSetor) ---
-    # Busca as definições de hierarquia para os setores que estão aparecendo na lista
+    # --- NOVO: BUSCA SUPERVISORES E GERENTES VIA TABELA HIERARQUIA ---
+    
+    # 1. Busca as definições de hierarquia para os setores que estão aparecendo na lista
     hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids)
     
-    # Extrai IDs únicos dos supervisores e gerentes dessas hierarquias
+    # 2. Extrai os IDs de Colaboradores únicos que ocupam o cargo de Supervisor/Gerente
+    # A função values_list retorna None para campos vazios. Excluímos aqui para não quebrar a query
     sup_ids = hierarquias.values_list('supervisor', flat=True).distinct()
     ger_ids = hierarquias.values_list('gerente', flat=True).distinct()
     
-    # Busca os objetos Colaborador correspondentes
-    supervisores_filtro = Colaborador.objects.filter(id__in=sup_ids).order_by('nome_completo')
-    gerentes_filtro = Colaborador.objects.filter(id__in=ger_ids).order_by('nome_completo')
-    # ------------------------------------------------------------------
+    # 3. Busca os objetos Colaborador correspondentes
+    # Excluímos Nulos explicitamente para garantir a query correta no banco
+    supervisores_filtro = Colaborador.objects.filter(id__in=sup_ids).exclude(id__isnull=True).order_by('nome_completo')
+    gerentes_filtro = Colaborador.objects.filter(id__in=ger_ids).exclude(id__isnull=True).order_by('nome_completo')
+    
+    # --- FIM DO NOVO BLOCO ---
 
     turnos_filtro = [
         ('ADM', 'Administrativo'),
@@ -216,8 +220,8 @@ def modulo_rh_view(request):
         'funcionarios': funcionarios_visiveis,
         'lideres_filtro': lideres_filtro, 
         'setores_filtro': setores_filtro,
-        'supervisores_filtro': supervisores_filtro, # <--- Adicionado ao Contexto
-        'gerentes_filtro': gerentes_filtro,         # <--- Adicionado ao Contexto
+        'supervisores_filtro': supervisores_filtro, # <--- ENVIADO PARA O TEMPLATE
+        'gerentes_filtro': gerentes_filtro,         # <--- ENVIADO PARA O TEMPLATE
         'turnos_filtro': turnos_filtro,
         'centros': CentroCusto.objects.all().order_by('codigo'), 
         'can_see_salary': can_see_salary,
