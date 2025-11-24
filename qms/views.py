@@ -183,9 +183,10 @@ def modulo_rh_view(request):
     setor_id = request.GET.get('setor_id')
     lider_id = request.GET.get('lider_id')
     turno_slug = request.GET.get('turno')
-    # NOTA: Supervisor/Gerente foram desabilitados na filtragem principal aqui.
+    supervisor_id = request.GET.get('supervisor_id')
+    gerente_id = request.GET.get('gerente_id')
     
-    # 2. Aplicar filtros diretos 
+    # 2. Aplicar filtros diretos (Turno/Setor/Líder)
     if setor_id:
         funcionarios_visiveis = funcionarios_visiveis.filter(setor_id=setor_id)
     if lider_id:
@@ -193,9 +194,33 @@ def modulo_rh_view(request):
     if turno_slug:
         funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
         
-    # --- FIM DA LÓGICA DE FILTRAGEM SIMPLES ---
+    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - Lógica de duas etapas
+    
+    if supervisor_id:
+        try:
+            # 1. Converte e busca Setores ligados ao Supervisor
+            sup_id = int(supervisor_id)
+            reporting_setor_ids = HierarquiaSetor.objects.filter(supervisor_id=sup_id).values_list('setor_id', flat=True).distinct()
+            
+            # 2. Filtra funcionários que trabalham nesses Setores (dentro da visibilidade)
+            funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
+        except ValueError:
+            messages.error(request, "ID de Supervisor na URL é inválido.")
+    
+    if gerente_id:
+        try:
+            # 1. Converte e busca Setores ligados ao Gerente
+            ger_id = int(gerente_id)
+            reporting_setor_ids = HierarquiaSetor.objects.filter(gerente_id=ger_id).values_list('setor_id', flat=True).distinct()
+            
+            # 2. Filtra funcionários que pertencem a esses Setores
+            funcionarios_visiveis = funcionarios_visiveis.filter(setor_id__in=reporting_setor_ids).distinct()
+        except ValueError:
+            messages.error(request, "ID de Gerente na URL é inválido.")
 
-    # 3. FILTROS DINÂMICOS (Recálculo das opções para o dropdown)
+    # --- FIM DA LÓGICA DE FILTRAGEM ---
+
+    # 4. FILTROS DINÂMICOS (Recálculo das opções para o dropdown)
     
     setores_ids_base = funcionarios_base.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids_base).order_by('nome')
@@ -228,15 +253,14 @@ def modulo_rh_view(request):
         'funcionarios': funcionarios_visiveis,
         'lideres_filtro': lideres_filtro, 
         'setores_filtro': setores_filtro,
-        'supervisores_filtro': supervisores_filtro, # <--- Opções de filtro preenchidas
-        'gerentes_filtro': gerentes_filtro,         # <--- Opções de filtro preenchidas
+        'supervisores_filtro': supervisores_filtro, 
+        'gerentes_filtro': gerentes_filtro,
         'turnos_filtro': turnos_filtro,
         'centros': CentroCusto.objects.all().order_by('codigo'), 
         'can_see_salary': can_see_salary,
         'can_edit': True
     }
     return render(request, 'modulo_rh.html', ctx)
-
 
 @login_required
 def detalhe_colaborador_view(request, colab_id):
