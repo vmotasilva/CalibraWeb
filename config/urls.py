@@ -30,8 +30,8 @@ urlpatterns = [
     path('metrologia/instrumento/<int:instrumento_id>/', views.detalhe_instrumento_view, name='detalhe_instrumento'),
 
     # 6. Funcionalidades Específicas
-    # CORREÇÃO AQUI: O nome agora é 'carimbo' para bater com o menu novo
-    path('carimbo/', views.carimbar_view, name='carimbo'),
+    # CORREÇÃO: O NOME VOLTOU A SER 'carimbar' PARA NÃO QUEBRAR O MENU
+    path('carimbar/', views.carimbar_view, name='carimbar'),
     
     path('metrologia/historico/remover/<int:historico_id>/', views.remover_historico_view, name='remover_historico'),
     
