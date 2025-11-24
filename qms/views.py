@@ -41,8 +41,6 @@ from reportlab.lib.colors import Color as RColor
 def get_colab(request):
     """
     Tenta identificar qual Colaborador (RH) corresponde ao Usuário Logado (Django).
-    Prioridade 1: Vínculo manual no banco de dados (campo user_django).
-    Prioridade 2: Combinação exata de Nome + Sobrenome.
     """
     # 1. Tenta pelo vínculo manual
     try: 
@@ -180,16 +178,16 @@ def modulo_rh_view(request):
     funcionarios_base = Colaborador.objects.filter(id__in=ids_permitidos, is_active=True).order_by('nome_completo')
     funcionarios_visiveis = funcionarios_base
 
-    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET ---
+    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET (AGORA COM DEBUG) ---
     
-    # 1. Recebe os IDs dos filtros da URL (Mantido)
+    # 1. Recebe os IDs dos filtros da URL
     setor_id = request.GET.get('setor_id')
     lider_id = request.GET.get('lider_id')
     supervisor_id = request.GET.get('supervisor_id')
     gerente_id = request.GET.get('gerente_id')
     turno_slug = request.GET.get('turno')
     
-    # 2. Aplicar filtros diretos (Mantido)
+    # 2. Aplicar filtros diretos
     if setor_id:
         funcionarios_visiveis = funcionarios_visiveis.filter(setor_id=setor_id)
     if lider_id:
@@ -197,20 +195,65 @@ def modulo_rh_view(request):
     if turno_slug:
         funcionarios_visiveis = funcionarios_visiveis.filter(turno=turno_slug)
         
-    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - REMOVIDO para simplificar
+    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente) - Lógica de duas etapas
     
+    try:
+        if supervisor_id:
+            # Garante que o ID da URL é um inteiro
+            sup_id = int(supervisor_id) 
+            
+            # A) Busca todos os IDs de Setores que têm esse Supervisor definido
+            reporting_setor_ids = HierarquiaSetor.objects.filter(
+                supervisor_id=sup_id
+            ).values_list('setor_id', flat=True).distinct()
+            
+            # MENSAGEM DE DEBUG CRÍTICA: O que o banco está retornando?
+            if reporting_setor_ids.exists():
+                messages.info(request, f"DEBUG SUP: Setores encontrados para {sup_id}: {list(reporting_setor_ids)}")
+            else:
+                messages.warning(request, f"DEBUG SUP: Supervisor {sup_id} NÃO está ligado a NENHUM Setor na Hierarquia. Tabela vazia?")
+
+            # B) Filtra funcionários que trabalham nesses Setores
+            funcionarios_visiveis = funcionarios_visiveis.filter(
+                setor_id__in=reporting_setor_ids
+            ).distinct()
+        
+        if gerente_id:
+            # Garante que o ID da URL é um inteiro
+            ger_id = int(gerente_id)
+            
+            # A) Busca todos os IDs de Setores que têm esse Gerente definido
+            reporting_setor_ids = HierarquiaSetor.objects.filter(
+                gerente_id=ger_id
+            ).values_list('setor_id', flat=True).distinct()
+            
+            # MENSAGEM DE DEBUG CRÍTICA:
+            if reporting_setor_ids.exists():
+                messages.info(request, f"DEBUG GER: Setores encontrados para {ger_id}: {list(reporting_setor_ids)}")
+            else:
+                messages.warning(request, f"DEBUG GER: Gerente {ger_id} NÃO está ligado a NENHUM Setor na Hierarquia. Tabela vazia?")
+            
+            # B) Filtra funcionários que pertencem a esses Setores
+            funcionarios_visiveis = funcionarios_visiveis.filter(
+                setor_id__in=reporting_setor_ids
+            ).distinct()
+
+    except ValueError:
+        messages.error(request, "Erro de Filtro: ID de Supervisor/Gerente inválido na URL.")
+    except Exception as e:
+        messages.error(request, f"Erro inesperado na filtragem de Hierarquia: {e}")
+
     # --- FIM DA LÓGICA DE FILTRAGEM ---
 
     # 4. FILTROS DINÂMICOS (Recálculo das opções para o dropdown)
     
-    # A base para extrair os Setores é o QuerySet antes da filtragem GET
     setores_ids_base = funcionarios_base.values_list('setor', flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids_base).order_by('nome')
 
     lideres_ids = funcionarios_base.values_list('lider', flat=True).distinct()
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by('nome_completo')
 
-    # Busca Hierarquias para as opções de Supervisor/Gerente (Sem filtro aplicado no QuerySet)
+    # Busca Hierarquias para as opções de Supervisor/Gerente
     hierarquias = HierarquiaSetor.objects.filter(setor__in=setores_ids_base)
     
     sup_ids_raw = hierarquias.values_list('supervisor', flat=True).distinct()
@@ -861,41 +904,3 @@ def imp_ferias_view(request):
     else:
         form = ImportacaoFeriasForm()
     return render(request, 'importar_ferias.html', {'form': form, 'colaborador': get_colab(request)})
-
-# Adicione esta função na seção de Downloads de Templates (após dl_df):
-
-@login_required
-def dl_template_colab_dados(request):
-    """Gera um template Excel preenchido com dados dos Colaboradores ativos."""
-    
-    # 1. Busca todos os colaboradores ativos
-    qs = Colaborador.objects.filter(is_active=True).select_related('setor', 'centro_custo', 'lider')
-    
-    # 2. Cria uma lista de dicionários com os dados
-    data = []
-    for colab in qs:
-        data.append({
-            'MATRICULA': colab.matricula,
-            'NOME': colab.nome_completo,
-            'CPF': colab.cpf or '',
-            'CARGO': colab.cargo or '',
-            'GRUPO': colab.grupo or 'Geral',
-            'SETOR': colab.setor.nome if colab.setor else '',
-            'CC': colab.centro_custo.codigo if colab.centro_custo else '',
-            'TURNO': colab.turno,
-            'STATUS': 'ATIVO',
-            'MAT_LIDER': colab.lider.matricula if colab.lider else '',
-        })
-
-    # 3. Cria o DataFrame e o arquivo Excel na memória
-    df = pd.DataFrame(data)
-    fname = f"colaboradores_export_{date.today().strftime('%Y%m%d')}.xlsx"
-    
-    # Reutiliza a função dl_df para servir o arquivo
-    b = io.BytesIO()
-    df.to_excel(b, index=False)
-    b.seek(0)
-    
-    r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    r['Content-Disposition'] = f'attachment; filename="{fname}"'
-    return r
