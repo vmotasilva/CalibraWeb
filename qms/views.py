@@ -153,8 +153,7 @@ def modulo_metrologia_view(request):
         'can_edit': True
     }
     return render(request, 'modulo_metrologia.html', ctx)
-
-@@login_required
+@login_required
 def modulo_rh_view(request):
     colab = get_colab(request)
     
