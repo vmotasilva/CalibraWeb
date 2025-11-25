@@ -197,97 +197,36 @@ def modulo_rh_view(request):
             ):
                 can_see_salary = True
 
-    # QuerySet BASE para OPÇÕES DE FILTRO (Permite ver todas as opções que o usuário é autorizado a ver)
+    # QuerySet BASE: Apenas colaboradores visíveis pelo usuário logado
     funcionarios_base = Colaborador.objects.filter(
         id__in=ids_permitidos, is_active=True
-    ).order_by("nome_completo")
+    ).select_related('setor', 'centro_custo', 'lider', 'supervisor', 'gerente').order_by("nome_completo")
 
-    # QuerySet de TRABALHO: Começa com TODOS os colaboradores ativos da empresa.
-    funcionarios_a_filtrar = Colaborador.objects.filter(is_active=True)
+    # 2. CÁLCULO DAS OPÇÕES DE FILTRO - BASEADO APENAS NA BASE DE DADOS DE COLABORADORES
+    
+    # Setores: Pega todos os setores únicos dos colaboradores visíveis
+    setores_ids = funcionarios_base.exclude(setor__isnull=True).values_list("setor", flat=True).distinct()
+    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by("nome")
 
-    # --- INÍCIO DA LÓGICA DE FILTRAGEM VIA GET ---
+    # Líderes: Pega todos os líderes únicos dos colaboradores visíveis
+    lideres_ids = funcionarios_base.exclude(lider__isnull=True).values_list("lider", flat=True).distinct()
+    lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by("nome_completo")
 
-    # 1. Recebe os IDs dos filtros da URL
-    setor_id = request.GET.get("setor_id")
-    lider_id = request.GET.get("lider_id")
-    supervisor_id = request.GET.get("supervisor_id")
-    gerente_id = request.GET.get("gerente_id")
-    turno_slug = request.GET.get("turno")
+    # Supervisores: Pega todos os supervisores únicos dos colaboradores visíveis
+    supervisores_ids = funcionarios_base.exclude(supervisor__isnull=True).values_list("supervisor", flat=True).distinct()
+    supervisores_filtro = Colaborador.objects.filter(id__in=supervisores_ids).order_by("nome_completo")
 
-    # 2. Aplicar filtros de busca (Simples)
-    if setor_id:
-        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(setor_id=setor_id)
-    if lider_id:
-        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(lider_id=lider_id)
-    if turno_slug:
-        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(turno=turno_slug)
+    # Gerentes: Pega todos os gerentes únicos dos colaboradores visíveis
+    gerentes_ids = funcionarios_base.exclude(gerente__isnull=True).values_list("gerente", flat=True).distinct()
+    gerentes_filtro = Colaborador.objects.filter(id__in=gerentes_ids).order_by("nome_completo")
 
-    # 3. Aplicar filtros por Hierarquia (Supervisor/Gerente)
+    # Turnos: Pega todos os turnos únicos dos colaboradores visíveis
+    turnos_unicos = funcionarios_base.values_list("turno", flat=True).distinct()
+    turnos_map = dict(TURNOS_CHOICES)
+    turnos_filtro = [(turno, turnos_map.get(turno, turno)) for turno in turnos_unicos if turno]
 
-    if supervisor_id:
-        # A) Busca todos os IDs de Setores que têm esse Supervisor definido
-        reporting_setor_ids = (
-            HierarquiaSetor.objects.filter(supervisor_id=supervisor_id)
-            .values_list("setor_id", flat=True)
-            .distinct()
-        )
-
-        # B) Filtra funcionários que trabalham nesses Setores
-        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(
-            setor_id__in=reporting_setor_ids
-        ).distinct()
-
-    if gerente_id:
-        # A) Busca todos os IDs de Setores que têm esse Gerente definido
-        reporting_setor_ids = (
-            HierarquiaSetor.objects.filter(gerente_id=gerente_id)
-            .values_list("setor_id", flat=True)
-            .distinct()
-        )
-
-        # B) Filtra funcionários que pertencem a esses Setores
-        funcionarios_a_filtrar = funcionarios_a_filtrar.filter(
-            setor_id__in=reporting_setor_ids
-        ).distinct()
-
-    # --- FINAL: APLICA FILTRO DE SEGURANÇA AO RESULTADO ---
-    funcionarios_visiveis = funcionarios_a_filtrar.filter(id__in=ids_permitidos)
-
-    # 4. CÁLCULO DAS OPÇÕES DE FILTRO (Usa funcionarios_base)
-
-    setores_ids_base = funcionarios_base.values_list("setor", flat=True).distinct()
-    setores_filtro = Setor.objects.filter(id__in=setores_ids_base).order_by("nome")
-
-    lideres_ids = funcionarios_base.values_list("lider", flat=True).distinct()
-    lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by(
-        "nome_completo"
-    )
-
-    # Busca Hierarquias para as opções de Supervisor/Gerente
-    hierarquias = (
-        HierarquiaSetor.objects.all()
-    )  # <--- Busca de todos os setores para popular o filtro
-
-    sup_ids_raw = hierarquias.values_list("supervisor", flat=True).distinct()
-    ger_ids_raw = hierarquias.values_list("gerente", flat=True).distinct()
-
-    sup_ids = [id for id in sup_ids_raw if id is not None]
-    ger_ids = [id for id in ger_ids_raw if id is not None]
-
-    supervisores_filtro = Colaborador.objects.filter(id__in=sup_ids).order_by(
-        "nome_completo"
-    )
-    gerentes_filtro = Colaborador.objects.filter(id__in=ger_ids).order_by(
-        "nome_completo"
-    )
-
-    turnos_filtro = [
-        ("ADM", "Administrativo"),
-        ("TURNO_1", "Turno 1"),
-        ("TURNO_2", "Turno 2"),
-        ("TURNO_3", "Turno 3"),
-        ("12X36", "12x36"),
-    ]
+    # 3. RESULTADO FINAL
+    funcionarios_visiveis = funcionarios_base
 
     ctx = {
         "colaborador": colab,
@@ -1200,12 +1139,12 @@ def imp_ferias_view(request):
 
 @login_required
 def dl_template_colab_dados(request):
-    """Gera um template Excel preenchido com dados dos Colaboradores ativos."""
+    """Gera um arquivo Excel com dados completos dos Colaboradores ativos."""
 
     # 1. Busca todos os colaboradores ativos
     qs = Colaborador.objects.filter(is_active=True).select_related(
-        "setor", "centro_custo", "lider"
-    )
+        "setor", "centro_custo", "lider", "supervisor", "gerente"
+    ).order_by("nome_completo")
 
     # 2. Cria uma lista de dicionários com os dados
     data = []
@@ -1219,9 +1158,17 @@ def dl_template_colab_dados(request):
                 "GRUPO": colab.grupo or "Geral",
                 "SETOR": colab.setor.nome if colab.setor else "",
                 "CC": colab.centro_custo.codigo if colab.centro_custo else "",
-                "TURNO": colab.turno,
+                "TURNO": colab.get_turno_display(),
+                "TURNO_CODIGO": colab.turno,
                 "STATUS": "ATIVO",
                 "MAT_LIDER": colab.lider.matricula if colab.lider else "",
+                "NOME_LIDER": colab.lider.nome_completo if colab.lider else "",
+                "MAT_SUPERVISOR": colab.supervisor.matricula if colab.supervisor else "",
+                "NOME_SUPERVISOR": colab.supervisor.nome_completo if colab.supervisor else "",
+                "MAT_GERENTE": colab.gerente.matricula if colab.gerente else "",
+                "NOME_GERENTE": colab.gerente.nome_completo if colab.gerente else "",
+                "EM_FERIAS": "SIM" if colab.em_ferias else "NÃO",
+                "SALARIO": float(colab.salario) if colab.salario else "",
             }
         )
 
@@ -1231,7 +1178,7 @@ def dl_template_colab_dados(request):
 
     # Reutiliza a função dl_df para servir o arquivo
     b = io.BytesIO()
-    df.to_excel(b, index=False)
+    df.to_excel(b, index=False, engine='openpyxl')
     b.seek(0)
 
     r = HttpResponse(
