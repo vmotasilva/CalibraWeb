@@ -170,5 +170,9 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
-    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "True") == "True"
+    # Railway já gerencia SSL/HTTPS no proxy, então não precisamos forçar redirect aqui
+    SECURE_SSL_REDIRECT = False
     X_FRAME_OPTIONS = "DENY"
+    
+    # Configuração para Railway reconhecer HTTPS corretamente
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
