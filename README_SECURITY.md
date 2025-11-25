@@ -29,6 +29,25 @@ Quick actions you can run locally (recommended):
 4) Rotate secrets / credentials after purge:
    - If SECRET_KEY, admin passwords, API keys or other secrets were committed earlier, rotate them in your services immediately.
 
+6) How to generate a new Django SECRET_KEY locally
+   - You can use the provided helper script:
+
+     ```powershell
+     python scripts/generate_secret_key.py > .env
+     ```
+
+     Then set the environment variable in your deployment environment (Railway / Heroku / CI secrets) using the value from the generated file.
+
+7) Reset admin/passwords (recommended)
+   - If you had an exposed admin user (e.g. `admin` with a weak password), rotate/reset that user immediately.
+   - Example using Django management command to set a new password (interactive):
+
+     ```powershell
+     python manage.py changepassword <admin_username>
+     ```
+
+   - Or set a new password via an environment-driven script (careful to avoid writing secrets into git).
+
 5) Keep sensitive files out of repo going forward — use artifact storage or secure object storage (S3), or `django-storages` for uploaded files.
 
 If you want, I can perform safe removals of files here in the repo (git rm and commit), and add a history-cleaning script — tell me to proceed and I will continue with the next steps in the plan.
