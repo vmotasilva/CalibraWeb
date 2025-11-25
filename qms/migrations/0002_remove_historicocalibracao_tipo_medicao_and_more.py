@@ -7,59 +7,89 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('qms', '0001_initial'),
+        ("qms", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='historicocalibracao',
-            name='tipo_medicao',
+            model_name="historicocalibracao",
+            name="tipo_medicao",
         ),
         migrations.AlterModelOptions(
-            name='historicocalibracao',
-            options={'ordering': ['-data_calibracao'], 'verbose_name': 'Histórico de Calibração', 'verbose_name_plural': '4. Histórico de Calibrações'},
+            name="historicocalibracao",
+            options={
+                "ordering": ["-data_calibracao"],
+                "verbose_name": "Histórico de Calibração",
+                "verbose_name_plural": "4. Histórico de Calibrações",
+            },
         ),
         migrations.RemoveField(
-            model_name='historicocalibracao',
-            name='certificado_pdf',
+            model_name="historicocalibracao",
+            name="certificado_pdf",
         ),
         migrations.AddField(
-            model_name='historicocalibracao',
-            name='certificado',
-            field=models.FileField(blank=True, null=True, upload_to='certificados/', verbose_name='Certificado (PDF)'),
+            model_name="historicocalibracao",
+            name="certificado",
+            field=models.FileField(
+                blank=True,
+                null=True,
+                upload_to="certificados/",
+                verbose_name="Certificado (PDF)",
+            ),
         ),
         migrations.AddField(
-            model_name='historicocalibracao',
-            name='instrumento',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='historico_calibracoes', to='qms.instrumento', verbose_name='Instrumento'),
+            model_name="historicocalibracao",
+            name="instrumento",
+            field=models.ForeignKey(
+                default=1,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="historico_calibracoes",
+                to="qms.instrumento",
+                verbose_name="Instrumento",
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='historicocalibracao',
-            name='proxima_calibracao',
-            field=models.DateField(blank=True, null=True, verbose_name='Vencimento'),
+            model_name="historicocalibracao",
+            name="proxima_calibracao",
+            field=models.DateField(blank=True, null=True, verbose_name="Vencimento"),
         ),
         migrations.AlterField(
-            model_name='historicocalibracao',
-            name='data_calibracao',
-            field=models.DateField(verbose_name='Data da Calibração'),
+            model_name="historicocalibracao",
+            name="data_calibracao",
+            field=models.DateField(verbose_name="Data da Calibração"),
         ),
         migrations.AlterField(
-            model_name='historicocalibracao',
-            name='observacoes',
-            field=models.TextField(blank=True, null=True, verbose_name='Observações'),
+            model_name="historicocalibracao",
+            name="observacoes",
+            field=models.TextField(blank=True, null=True, verbose_name="Observações"),
         ),
         migrations.AlterField(
-            model_name='historicocalibracao',
-            name='responsavel',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='qms.colaborador', verbose_name='Responsável Interno'),
+            model_name="historicocalibracao",
+            name="responsavel",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="qms.colaborador",
+                verbose_name="Responsável Interno",
+            ),
         ),
         migrations.AlterField(
-            model_name='historicocalibracao',
-            name='resultado',
-            field=models.CharField(choices=[('APROVADO', 'Aprovado'), ('COM_RESTricao', 'Aprovado c/ Restrição'), ('REPROVADO', 'Reprovado')], default='APROVADO', max_length=50, verbose_name='Resultado'),
+            model_name="historicocalibracao",
+            name="resultado",
+            field=models.CharField(
+                choices=[
+                    ("APROVADO", "Aprovado"),
+                    ("COM_RESTricao", "Aprovado c/ Restrição"),
+                    ("REPROVADO", "Reprovado"),
+                ],
+                default="APROVADO",
+                max_length=50,
+                verbose_name="Resultado",
+            ),
         ),
         migrations.DeleteModel(
-            name='TipoMedicao',
+            name="TipoMedicao",
         ),
     ]

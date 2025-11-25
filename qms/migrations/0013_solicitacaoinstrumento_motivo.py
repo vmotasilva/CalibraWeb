@@ -6,13 +6,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('qms', '0012_alter_ocorrencia_options_and_more'),
+        ("qms", "0012_alter_ocorrencia_options_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='solicitacaoinstrumento',
-            name='motivo',
-            field=models.TextField(default='', help_text='Descreva a necessidade da aplicação ou o motivo da troca'),
+            model_name="solicitacaoinstrumento",
+            name="motivo",
+            field=models.TextField(
+                default="",
+                help_text="Descreva a necessidade da aplicação ou o motivo da troca",
+            ),
         ),
     ]

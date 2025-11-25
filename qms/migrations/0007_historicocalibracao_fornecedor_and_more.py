@@ -6,18 +6,28 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('qms', '0006_remove_faixamedicao_incerteza_padrao_and_more'),
+        ("qms", "0006_remove_faixamedicao_incerteza_padrao_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='historicocalibracao',
-            name='fornecedor',
-            field=models.CharField(blank=True, max_length=150, null=True, verbose_name='Laboratório/Fornecedor'),
+            model_name="historicocalibracao",
+            name="fornecedor",
+            field=models.CharField(
+                blank=True,
+                max_length=150,
+                null=True,
+                verbose_name="Laboratório/Fornecedor",
+            ),
         ),
         migrations.AlterField(
-            model_name='historicocalibracao',
-            name='responsavel',
-            field=models.CharField(blank=True, max_length=150, null=True, verbose_name='Responsável Técnica'),
+            model_name="historicocalibracao",
+            name="responsavel",
+            field=models.CharField(
+                blank=True,
+                max_length=150,
+                null=True,
+                verbose_name="Responsável Técnica",
+            ),
         ),
     ]

@@ -7,18 +7,32 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('qms', '0014_alter_ocorrencia_options_and_more'),
+        ("qms", "0014_alter_ocorrencia_options_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='colaborador',
-            name='gerente',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='gerenciados', to='qms.colaborador', verbose_name='Gerente'),
+            model_name="colaborador",
+            name="gerente",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="gerenciados",
+                to="qms.colaborador",
+                verbose_name="Gerente",
+            ),
         ),
         migrations.AddField(
-            model_name='colaborador',
-            name='supervisor',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='supervisionados', to='qms.colaborador', verbose_name='Supervisor'),
+            model_name="colaborador",
+            name="supervisor",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="supervisionados",
+                to="qms.colaborador",
+                verbose_name="Supervisor",
+            ),
         ),
     ]
