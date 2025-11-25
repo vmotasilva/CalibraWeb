@@ -936,3 +936,14 @@ def dl_template_colab_dados(request):
     r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     r['Content-Disposition'] = f'attachment; filename="{fname}"'
     return r
+
+
+def health_check(request):
+    """Lightweight health check endpoint for monitoring and readiness probes.
+
+    Returns HTTP 200 when Django is running and imports succeeded. This is intentionally
+    simple so external systems can check app liveness quickly (eg. Railway/Heroku/Gunicorn).
+    """
+    from django.http import HttpResponse
+
+    return HttpResponse('OK', content_type='text/plain')
