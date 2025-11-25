@@ -222,7 +222,8 @@ def modulo_rh_view(request):
 
     # Turnos: Pega todos os turnos únicos dos colaboradores visíveis
     turnos_unicos = funcionarios_base.values_list("turno", flat=True).distinct()
-    turnos_map = dict(TURNOS_CHOICES)
+    # Usa choices do próprio modelo para evitar depender de constantes globais
+    turnos_map = dict(Colaborador._meta.get_field('turno').choices)
     turnos_filtro = [(turno, turnos_map.get(turno, turno)) for turno in turnos_unicos if turno]
 
     # 3. RESULTADO FINAL
@@ -1138,8 +1139,24 @@ def imp_ferias_view(request):
 
 
 @login_required
+@login_required
 def dl_template_colab_dados(request):
     """Gera um arquivo Excel com dados completos dos Colaboradores ativos."""
+
+    # Define permissão para visualizar salário conforme mesmas regras da tela RH
+    colab = get_colab(request)
+    can_see_salary = False
+    if request.user.is_superuser or request.user.is_staff:
+        can_see_salary = True
+    elif colab:
+        if colab.setor and "RH" in colab.setor.nome.upper():
+            can_see_salary = True
+        else:
+            if (
+                "GERENTE" in str(colab.cargo).upper()
+                or HierarquiaSetor.objects.filter(gerente=colab).exists()
+            ):
+                can_see_salary = True
 
     # 1. Busca todos os colaboradores ativos
     qs = Colaborador.objects.filter(is_active=True).select_related(
@@ -1168,7 +1185,7 @@ def dl_template_colab_dados(request):
                 "MAT_GERENTE": colab.gerente.matricula if colab.gerente else "",
                 "NOME_GERENTE": colab.gerente.nome_completo if colab.gerente else "",
                 "EM_FERIAS": "SIM" if colab.em_ferias else "NÃO",
-                "SALARIO": float(colab.salario) if colab.salario else "",
+                "SALARIO": (float(colab.salario) if (can_see_salary and colab.salario) else ""),
             }
         )
 
