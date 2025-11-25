@@ -6,6 +6,7 @@ from django.db import models
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 from django.utils import timezone
+import uuid
 
 # ==============================================================================
 # CONSTANTES E OPÇÕES GERAIS
@@ -503,6 +504,33 @@ class Instrumento(models.Model):
 
     def __str__(self):
         return f"{self.tag} - {self.descricao}"
+
+
+class ImportJob(models.Model):
+    STATUS_CHOICES = [
+        ("PENDING", "Pendente"),
+        ("STARTED", "Em Progresso"),
+        ("SUCCESS", "Concluído"),
+        ("FAILURE", "Falha"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        "auth.User", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    filename = models.CharField(max_length=255)
+    filepath = models.CharField(max_length=1024, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
+    result = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"ImportJob {self.id} - {self.filename} ({self.status})"
+
+    class Meta:
+        verbose_name = "Import Job"
+        verbose_name_plural = "Import Jobs"
 
 
 class FaixaMedicao(models.Model):

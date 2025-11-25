@@ -7,11 +7,11 @@ from django.utils.html import format_html
 from django.utils.http import urlencode
 
 # Importando todos os models
+from .models import AvaliacaoFornecedor  # Models de Ocorrência e Solicitação
 from .models import Ocorrencia  # Ocorrência de RH (Colaborador)
 from .models import \
     OcorrenciaInstrumento  # Ocorrência de Metrologia (Instrumento)
-from .models import (AvaliacaoFornecedor,  # Models de Ocorrência e Solicitação
-                     CategoriaInstrumento, CentroCusto, Colaborador,
+from .models import (CategoriaInstrumento, CentroCusto, Colaborador,
                      DocumentoPessoal, FaixaMedicao, Ferias, Fornecedor,
                      HierarquiaSetor, HistoricoCalibracao, Instrumento,
                      Orcamento, OrdemCalibracao, PacoteTreinamento, Padrao,

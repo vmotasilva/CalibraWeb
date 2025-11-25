@@ -3,6 +3,7 @@ import os
 import re
 import zipfile
 from datetime import date, datetime, timedelta
+import tempfile
 from decimal import Decimal
 
 import pandas as pd
@@ -30,7 +31,7 @@ from .models import (CategoriaInstrumento, CentroCusto, Colaborador,
                      HistoricoCalibracao, Instrumento, Ocorrencia,
                      OrdemCalibracao, Padrao, Procedimento, ProcessoCotacao,
                      RegistroTreinamento, Setor, SolicitacaoInstrumento,
-                     UnidadeMedida)
+                     UnidadeMedida, ImportJob)
 
 
 # --- FUNÇÕES AUXILIARES ---
@@ -827,160 +828,38 @@ def imp_instr_view(request):
         form = ImportacaoInstrumentosForm(request.POST, request.FILES)
         if form.is_valid():
             try:
-                f = request.FILES["arquivo_excel"]
+                uploaded = request.FILES["arquivo_excel"]
+                suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                for chunk in uploaded.chunks():
+                    tmp.write(chunk)
+                tmp.flush()
+                tmp.close()
+
+                # create import job record
+                job = ImportJob.objects.create(
+                    user=request.user if request.user.is_authenticated else None,
+                    filename=uploaded.name,
+                    filepath=tmp.name,
+                    status="PENDING",
+                )
+
+                # Enqueue background task (Celery) if available, otherwise execute inline
+                from .tasks import import_instruments_task
+
                 try:
-                    df = pd.read_csv(f, sep=None, engine="python", encoding="latin1")
-                except:
-                    f.seek(0)
-                    df = (
-                        pd.read_csv(f, sep=None, engine="python", encoding="utf-8")
-                        if f.name.endswith(".csv")
-                        else pd.read_excel(f)
-                    )
-                df.columns = df.columns.str.strip().str.upper()
-                count_new = 0
-                count_upd = 0
-                count_faixas = 0
-                with transaction.atomic():
-                    for _, row in df.iterrows():
-
-                        def get_val(k_list):
-                            for key in k_list:
-                                if key in df.columns and pd.notna(row[key]):
-                                    return str(row[key]).strip()
-                            return None
-
-                        def get_date(k_list):
-                            val = get_val(k_list)
-                            if not val or val == "-" or val == "NaT":
-                                return None
-                            try:
-                                return pd.to_datetime(val, dayfirst=True).date()
-                            except:
-                                return None
-
-                        def traduzir_frequencia(valor):
-                            if not valor:
-                                return 12
-                            s = str(valor).upper().replace(",", ".")
-                            numeros = re.findall(r"\d+", s)
-                            if numeros:
-                                return int(numeros[0])
-                            try:
-                                return int(float(valor))
-                            except:
-                                return 12
-
-                        def extrair_min_max(texto_faixa):
-                            if not texto_faixa:
-                                return 0, 0
-                            txt = str(texto_faixa).replace(",", ".")
-                            numeros = re.findall(r"-?\d+\.?\d*", txt)
-                            if len(numeros) >= 2:
-                                return float(numeros[0]), float(numeros[1])
-                            elif len(numeros) == 1:
-                                return 0, float(numeros[0])
-                            return 0, 0
-
-                        tag = get_val(["TAG", "IDENTIFICACAO", "CODIGO", "CÓDIGO"])
-                        if not tag:
-                            continue
-
-                        cat_nome = get_val(
-                            ["CATEGORIA", "FAMILIA", "TIPO", "EQUIPAMENTO"]
-                        )
-                        if cat_nome:
-                            cat, _ = CategoriaInstrumento.objects.get_or_create(
-                                nome=cat_nome.title()
-                            )
-                        else:
-                            cat = None
-
-                        setor_nome = get_val(["SETOR", "DEPARTAMENTO"])
-                        if setor_nome:
-                            setor, _ = Setor.objects.get_or_create(
-                                nome=setor_nome.upper()
-                            )
-                        else:
-                            setor = None
-
-                        freq_meses = traduzir_frequencia(
-                            get_val(["FREQUENCIA_MESES", "FREQUENCIA", "PERIODICIDADE"])
-                        )
-                        dt_ultima = get_date(
-                            [
-                                "DATA_ULTIMA_CALIBRACAO",
-                                "DATA ÚLTIMA CALIBRAÇÃO",
-                                "ULTIMA CALIBRACAO",
-                                "DATA CALIBRAÇÃO",
-                            ]
-                        )
-                        dt_proxima = (
-                            dt_ultima + timedelta(days=freq_meses * 30)
-                            if dt_ultima
-                            else None
-                        )
-
-                        dados = {
-                            "codigo": tag,
-                            "descricao": get_val(
-                                ["EQUIPAMENTO", "DESCRIÇÃO", "DESCRICAO"]
-                            )
-                            or "Sem Descrição",
-                            "categoria": cat,
-                            "fabricante": get_val(["FABRICANTE", "MARCA"]),
-                            "modelo": get_val(["MODELO"]),
-                            "serie": get_val(
-                                [
-                                    "N SERIE",
-                                    "N° DE SÉRIE",
-                                    "N DE SERIE",
-                                    "SÉRIE",
-                                    "SERIE",
-                                ]
-                            ),
-                            "setor": setor,
-                            "localizacao": get_val(
-                                ["LOCALIZAÇÃO", "LOCALIZACAO", "AREA"]
-                            ),
-                            "frequencia_meses": freq_meses,
-                            "data_ultima_calibracao": dt_ultima,
-                            "data_proxima_calibracao": dt_proxima,
-                            "ativo": True,
-                        }
-                        obj, created = Instrumento.objects.update_or_create(
-                            tag=tag, defaults=dados
-                        )
-                        if created:
-                            count_new += 1
-                        else:
-                            count_upd += 1
-
-                        faixa_txt = get_val(
-                            ["FAIXA", "RANGE", "CAPACIDADE", "FAIXA DE MEDICAO"]
-                        )
-                        unidade_txt = get_val(["UNIDADE", "U.M.", "UNIDADE DE MEDIDA"])
-                        if faixa_txt and unidade_txt:
-                            und, _ = UnidadeMedida.objects.get_or_create(
-                                sigla=unidade_txt, defaults={"nome": unidade_txt}
-                            )
-                            v_min, v_max = extrair_min_max(faixa_txt)
-                            FaixaMedicao.objects.get_or_create(
-                                instrumento=obj,
-                                unidade=und,
-                                valor_minimo=v_min,
-                                valor_maximo=v_max,
-                                defaults={"resolucao": 0},
-                            )
-                            count_faixas += 1
+                    import_instruments_task.delay(str(job.id), tmp.name)
+                except Exception:
+                    # fallback to direct call for environments without Celery during tests
+                    import_instruments_task(job.id, tmp.name)
 
                 messages.success(
                     request,
-                    f"Importação: {count_new} Novos, {count_upd} Atualizados. {count_faixas} Faixas.",
+                    f"Importação enfileirada (job {job.id}). Você será notificado quando acabar.",
                 )
                 return redirect("modulo_metrologia")
             except Exception as e:
-                messages.error(request, f"Erro: {str(e)}")
+                messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
                 return redirect("importar_instrumentos")
     else:
         form = ImportacaoInstrumentosForm()
@@ -997,211 +876,35 @@ def imp_historico_view(request):
         form = ImportacaoHistoricoForm(request.POST, request.FILES)
         if form.is_valid():
             try:
-                f = request.FILES["arquivo_excel"]
-                df = None
-                try:
-                    if f.name.endswith(".csv"):
-                        try:
-                            df = pd.read_csv(
-                                f, sep=None, engine="python", encoding="latin1"
-                            )
-                        except:
-                            f.seek(0)
-                            df = pd.read_csv(
-                                f, sep=None, engine="python", encoding="utf-8"
-                            )
-                    else:
-                        df = pd.read_excel(f)
-                except Exception as e:
-                    messages.error(request, f"Erro ao ler arquivo: {e}")
-                    return redirect("importar_historico")
-                if df is None or len(df.columns) < 2:
-                    messages.error(request, "Arquivo inválido ou vazio.")
-                    return redirect("importar_historico")
-                df.columns = df.columns.str.strip().str.upper()
-                df.columns = (
-                    df.columns.str.normalize("NFKD")
-                    .str.encode("ascii", errors="ignore")
-                    .str.decode("utf-8")
+                uploaded = request.FILES["arquivo_excel"]
+                suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                for chunk in uploaded.chunks():
+                    tmp.write(chunk)
+                tmp.flush()
+                tmp.close()
+
+                job = ImportJob.objects.create(
+                    user=request.user if request.user.is_authenticated else None,
+                    filename=uploaded.name,
+                    filepath=tmp.name,
+                    status="PENDING",
                 )
-                count_new = 0
-                relatorio_erros = []
-                with transaction.atomic():
-                    for index, row in df.iterrows():
-                        linha = index + 2
 
-                        def encontrar_coluna(palavras_chave, evitar=[]):
-                            for col in df.columns:
-                                match = False
-                                for k in palavras_chave:
-                                    k_clean = (
-                                        k.upper()
-                                        .replace("Ç", "C")
-                                        .replace("Ã", "A")
-                                        .replace("Á", "A")
-                                        .replace("É", "E")
-                                    )
-                                    if k_clean in col:
-                                        match = True
-                                        break
-                                if match:
-                                    proibido = False
-                                    for bad in evitar:
-                                        if bad.upper() in col:
-                                            proibido = True
-                                            break
-                                    if not proibido:
-                                        return col
-                            return None
+                from .tasks import import_instruments_task
 
-                        def get_val_by_col(col_name):
-                            return (
-                                str(row[col_name]).strip()
-                                if col_name and pd.notna(row[col_name])
-                                else None
-                            )
+                try:
+                    import_instruments_task.delay(str(job.id), tmp.name)
+                except Exception:
+                    import_instruments_task(job.id, tmp.name)
 
-                        def converter_data(valor):
-                            if not valor or str(valor).strip() in [
-                                "-",
-                                "NaT",
-                                "nan",
-                                "None",
-                                "",
-                            ]:
-                                return None
-                            try:
-                                return pd.to_datetime(
-                                    str(valor).strip(), dayfirst=True
-                                ).date()
-                            except:
-                                try:
-                                    return (
-                                        datetime(1899, 12, 30)
-                                        + timedelta(days=float(valor))
-                                    ).date()
-                                except:
-                                    return None
-
-                        def get_float_by_col(col_name):
-                            val = get_val_by_col(col_name)
-                            if not val:
-                                return None
-                            try:
-                                return float(
-                                    re.sub(r"[^\d,.-]", "", val).replace(",", ".")
-                                )
-                            except:
-                                return None
-
-                        col_tag = encontrar_coluna(["TAG", "CODIGO", "IDENTIFICACAO"])
-                        col_dt_cal = encontrar_coluna(
-                            ["DATA CALIB", "DATA ULTIMA", "REALIZADO", "CALIBRACAO"],
-                            evitar=["PROXIMA", "VENCIMENTO", "VALIDADE"],
-                        )
-                        tag = get_val_by_col(col_tag)
-                        dt_cal = (
-                            converter_data(row.get(col_dt_cal)) if col_dt_cal else None
-                        )
-                        if not tag:
-                            continue
-                        if not dt_cal:
-                            relatorio_erros.append(f"L.{linha} ({tag}): Data inválida.")
-                            continue
-                        try:
-                            inst = Instrumento.objects.get(tag=tag)
-                        except:
-                            relatorio_erros.append(
-                                f"L.{linha}: Instrumento não cadastrado."
-                            )
-                            continue
-                        col_dt_apr = encontrar_coluna(
-                            ["DATA APROVACAO", "DATA VALIDACAO", "AVALIACAO"]
-                        )
-                        val_apr = (
-                            converter_data(row.get(col_dt_apr)) if col_dt_apr else None
-                        )
-                        dt_apr = val_apr if val_apr else dt_cal
-                        col_cert = encontrar_coluna(
-                            ["CERTIFICADO", "N DOC"], evitar=["DATA"]
-                        )
-                        num_cert = get_val_by_col(col_cert) or "S/N"
-                        col_erro = encontrar_coluna(["ERRO", "TENDENCIA"])
-                        col_inc = encontrar_coluna(["INCERTEZA", "U"])
-                        col_tol = encontrar_coluna(
-                            ["TOLERANCIA", "CRITERIO", "EMA"], evitar=["NOMINAL"]
-                        )
-                        erro = get_float_by_col(col_erro)
-                        inc = get_float_by_col(col_inc)
-                        tol = get_float_by_col(col_tol)
-                        col_resp = encontrar_coluna(
-                            ["RESPONSAVEL", "APROVADOR", "ANALISE"]
-                        )
-                        resp_txt = get_val_by_col(col_resp)
-                        col_forn = encontrar_coluna(["FORNECEDOR", "LABORATORIO"])
-                        forn_txt = get_val_by_col(col_forn)
-                        col_res = encontrar_coluna(
-                            ["RESULTADO", "STATUS", "ANALISE RESULTADO"]
-                        )
-                        res_excel = str(get_val_by_col(col_res) or "").upper()
-                        res = "APROVADO"
-                        if "REPROVADO" in res_excel:
-                            res = "REPROVADO"
-                        elif "CONDICIONAL" in res_excel or "RESTR" in res_excel:
-                            res = "CONDICIONAL"
-                        val_tipo = "EXTERNA"
-                        if forn_txt and "INTERNA" in str(forn_txt).upper():
-                            val_tipo = "INTERNA"
-                        col_rbc = encontrar_coluna(["RBC", "SELO", "ACREDITADO"])
-                        val_rbc = str(get_val_by_col(col_rbc) or "").upper()
-                        tem_rbc = (
-                            True if val_rbc in ["SIM", "S", "YES", "RBC"] else False
-                        )
-                        col_prox = encontrar_coluna(["PROXIMA", "VENCIMENTO"])
-                        prox = converter_data(row.get(col_prox)) if col_prox else None
-                        if not prox and inst.frequencia_meses and dt_cal:
-                            try:
-                                prox = dt_cal + timedelta(
-                                    days=inst.frequencia_meses * 30
-                                )
-                            except:
-                                prox = None
-                        obj, cr = HistoricoCalibracao.objects.update_or_create(
-                            instrumento=inst,
-                            data_calibracao=dt_cal,
-                            numero_certificado=num_cert,
-                            defaults={
-                                "data_aprovacao": dt_apr,
-                                "resultado": res,
-                                "proxima_calibracao": prox,
-                                "erro_encontrado": erro,
-                                "incerteza": inc,
-                                "tolerancia_usada": tol,
-                                "responsavel": resp_txt,
-                                "fornecedor": forn_txt,
-                                "tipo_calibracao": val_tipo,
-                                "tem_selo_rbc": tem_rbc,
-                                "observacoes": get_val_by_col(
-                                    encontrar_coluna(["OBSERVACOES", "OBS"])
-                                ),
-                            },
-                        )
-                        if erro is not None and inc is not None and tol is not None:
-                            obj.save()
-                        if cr:
-                            count_new += 1
-                if relatorio_erros:
-                    msg = " | ".join(relatorio_erros[:3])
-                    messages.warning(
-                        request, f"Importados: {count_new}. Alertas: {msg}"
-                    )
-                else:
-                    messages.success(
-                        request, f"Sucesso! {count_new} registros importados."
-                    )
+                messages.success(
+                    request,
+                    f"Importação enfileirada (job {job.id}). Você será notificado quando acabar.",
+                )
                 return redirect("modulo_metrologia")
             except Exception as e:
-                messages.error(request, f"Erro Crítico: {str(e)}")
+                messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
                 return redirect("importar_historico")
     else:
         form = ImportacaoHistoricoForm()

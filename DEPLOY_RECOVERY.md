@@ -16,11 +16,15 @@ If your deployed site is down, follow these steps to bring it back. This documen
 
 3) Quick restore commands (run in deploy console or SSH into container)
 
-   # Run all migrations
+
+   # Quick diagnostic (safe read-only checks)
+   python scripts/bootstrap_deploy.py --diagnose
+
+   # Run all migrations (or use --apply to migrate + optionally create admin)
    python manage.py migrate
 
-   # Optionally create superuser from env (non-interactive), see scripts/bootstrap_deploy.py
-   ADMIN_USERNAME=admin ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='S3cure!' python scripts/bootstrap_deploy.py
+   # Optionally run the helper to auto-apply migrations and create admin non-interactively
+   ADMIN_USERNAME=admin ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='S3cure!' python scripts/bootstrap_deploy.py --apply
 
    # Or run interactively
    python manage.py createsuperuser
