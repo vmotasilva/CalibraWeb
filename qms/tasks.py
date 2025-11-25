@@ -7,7 +7,7 @@ def ping_task():
 
     Returns a known value so tests and monitors can ensure Celery is functional.
     """
-    return 'pong'
+    return "pong"
 
 
 @shared_task
@@ -18,4 +18,4 @@ def import_instruments_task(filename):
     asynchronously. For now it just returns success so integration tests can be built.
     """
     # NOTE: implement actual import streaming / validation here
-    return {'filename': filename, 'status': 'queued'}
+    return {"filename": filename, "status": "queued"}

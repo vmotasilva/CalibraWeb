@@ -7,18 +7,25 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('qms', '0009_padrao_historicocalibracao_tem_selo_rbc_and_more'),
+        ("qms", "0009_padrao_historicocalibracao_tem_selo_rbc_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='colaborador',
-            name='lider',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='liderados', to='qms.colaborador', verbose_name='Líder/Supervisor Direto'),
+            model_name="colaborador",
+            name="lider",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="liderados",
+                to="qms.colaborador",
+                verbose_name="Líder/Supervisor Direto",
+            ),
         ),
         migrations.AlterField(
-            model_name='colaborador',
-            name='cargo',
+            model_name="colaborador",
+            name="cargo",
             field=models.CharField(blank=True, max_length=100, null=True),
         ),
     ]

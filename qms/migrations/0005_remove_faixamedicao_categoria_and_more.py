@@ -7,18 +7,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('qms', '0004_categoriainstrumento_unidademedida_and_more'),
+        ("qms", "0004_categoriainstrumento_unidademedida_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='faixamedicao',
-            name='categoria',
+            model_name="faixamedicao",
+            name="categoria",
         ),
         migrations.AddField(
-            model_name='faixamedicao',
-            name='instrumento',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='faixas', to='qms.instrumento'),
+            model_name="faixamedicao",
+            name="instrumento",
+            field=models.ForeignKey(
+                default=1,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="faixas",
+                to="qms.instrumento",
+            ),
             preserve_default=False,
         ),
     ]

@@ -7,66 +7,72 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('qms', '0010_colaborador_lider_alter_colaborador_cargo'),
+        ("qms", "0010_colaborador_lider_alter_colaborador_cargo"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='ferias',
+            name="ferias",
             options={},
         ),
         migrations.RemoveField(
-            model_name='ferias',
-            name='observacao',
+            model_name="ferias",
+            name="observacao",
         ),
         migrations.AddField(
-            model_name='ferias',
-            name='data_limite',
+            model_name="ferias",
+            name="data_limite",
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='ferias',
-            name='dias_gozados',
+            model_name="ferias",
+            name="dias_gozados",
             field=models.IntegerField(default=0),
         ),
         migrations.AddField(
-            model_name='ferias',
-            name='dias_vendidos',
-            field=models.IntegerField(blank=True, default=0, null=True, verbose_name='Dias Vendidos (Abono)'),
+            model_name="ferias",
+            name="dias_vendidos",
+            field=models.IntegerField(
+                blank=True, default=0, null=True, verbose_name="Dias Vendidos (Abono)"
+            ),
         ),
         migrations.AddField(
-            model_name='ferias',
-            name='periodo_aquisitivo_fim',
+            model_name="ferias",
+            name="periodo_aquisitivo_fim",
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='ferias',
-            name='periodo_aquisitivo_inicio',
+            model_name="ferias",
+            name="periodo_aquisitivo_inicio",
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='ferias',
-            name='saldo_dias',
+            model_name="ferias",
+            name="saldo_dias",
             field=models.IntegerField(default=30),
         ),
         migrations.AddField(
-            model_name='ferias',
-            name='status',
-            field=models.CharField(default='AQUISITIVO', max_length=20),
+            model_name="ferias",
+            name="status",
+            field=models.CharField(default="AQUISITIVO", max_length=20),
         ),
         migrations.AlterField(
-            model_name='ferias',
-            name='colaborador',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ferias_set', to='qms.colaborador'),
+            model_name="ferias",
+            name="colaborador",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="ferias_set",
+                to="qms.colaborador",
+            ),
         ),
         migrations.AlterField(
-            model_name='ferias',
-            name='data_fim',
+            model_name="ferias",
+            name="data_fim",
             field=models.DateField(blank=True, null=True),
         ),
         migrations.AlterField(
-            model_name='ferias',
-            name='data_inicio',
+            model_name="ferias",
+            name="data_inicio",
             field=models.DateField(blank=True, null=True),
         ),
     ]

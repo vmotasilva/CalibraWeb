@@ -9,96 +9,237 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('qms', '0011_alter_ferias_options_remove_ferias_observacao_and_more'),
+        ("qms", "0011_alter_ferias_options_remove_ferias_observacao_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='ocorrencia',
+            name="ocorrencia",
             options={},
         ),
         migrations.RemoveField(
-            model_name='ocorrencia',
-            name='arquivo_evidencia',
+            model_name="ocorrencia",
+            name="arquivo_evidencia",
         ),
         migrations.RemoveField(
-            model_name='ocorrencia',
-            name='colaborador',
+            model_name="ocorrencia",
+            name="colaborador",
         ),
         migrations.RemoveField(
-            model_name='ocorrencia',
-            name='natureza',
+            model_name="ocorrencia",
+            name="natureza",
         ),
         migrations.RemoveField(
-            model_name='ocorrencia',
-            name='titulo',
+            model_name="ocorrencia",
+            name="titulo",
         ),
         migrations.AddField(
-            model_name='ocorrencia',
-            name='custo_reparo',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True),
+            model_name="ocorrencia",
+            name="custo_reparo",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True
+            ),
         ),
         migrations.AddField(
-            model_name='ocorrencia',
-            name='instrumento',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='ocorrencias', to='qms.instrumento'),
+            model_name="ocorrencia",
+            name="instrumento",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="ocorrencias",
+                to="qms.instrumento",
+            ),
         ),
         migrations.AddField(
-            model_name='ocorrencia',
-            name='usuario_responsavel',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL),
+            model_name="ocorrencia",
+            name="usuario_responsavel",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='faixamedicao',
-            name='instrumento',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='faixas', to='qms.instrumento'),
+            model_name="faixamedicao",
+            name="instrumento",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="faixas",
+                to="qms.instrumento",
+            ),
         ),
         migrations.AlterField(
-            model_name='historicocalibracao',
-            name='instrumento',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='historico_calibracoes', to='qms.instrumento'),
+            model_name="historicocalibracao",
+            name="instrumento",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="historico_calibracoes",
+                to="qms.instrumento",
+            ),
         ),
         migrations.AlterField(
-            model_name='ocorrencia',
-            name='data_ocorrencia',
+            model_name="ocorrencia",
+            name="data_ocorrencia",
             field=models.DateField(default=django.utils.timezone.now),
         ),
         migrations.AlterField(
-            model_name='ocorrencia',
-            name='descricao',
+            model_name="ocorrencia",
+            name="descricao",
             field=models.TextField(),
         ),
         migrations.AlterField(
-            model_name='ocorrencia',
-            name='tipo',
-            field=models.CharField(choices=[('MANUTENCAO', 'Manutenção Corretiva'), ('QUEDA', 'Queda/Dano Físico'), ('AJUSTE', 'Ajuste Interno'), ('OUTRO', 'Outros')], max_length=20),
+            model_name="ocorrencia",
+            name="tipo",
+            field=models.CharField(
+                choices=[
+                    ("MANUTENCAO", "Manutenção Corretiva"),
+                    ("QUEDA", "Queda/Dano Físico"),
+                    ("AJUSTE", "Ajuste Interno"),
+                    ("OUTRO", "Outros"),
+                ],
+                max_length=20,
+            ),
         ),
         migrations.CreateModel(
-            name='OrdemCalibracao',
+            name="OrdemCalibracao",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('fornecedor', models.CharField(help_text='Nome do Laboratório/Empresa', max_length=100)),
-                ('tipo_local', models.CharField(choices=[('EXTERNO', 'Laboratório Externo'), ('IN_LOCO', 'Calibração In Loco (Na Empresa)')], default='EXTERNO', max_length=20)),
-                ('status', models.CharField(choices=[('AGENDADO', 'Agendado'), ('ENVIADO', 'Enviado ao Fornecedor'), ('EM_CALIBRACAO', 'Em Calibração'), ('RETORNOU', 'Retornou do Fornecedor'), ('FINALIZADO', 'Finalizado e Aprovado')], default='AGENDADO', max_length=20)),
-                ('data_prevista', models.DateField()),
-                ('data_envio', models.DateField(blank=True, help_text='Data de saída da empresa', null=True)),
-                ('data_retorno', models.DateField(blank=True, help_text='Data de chegada na empresa', null=True)),
-                ('observacoes', models.TextField(blank=True, null=True)),
-                ('certificado_arquivo', models.FileField(blank=True, null=True, upload_to='certificados/')),
-                ('instrumento', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='calibracoes', to='qms.instrumento')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "fornecedor",
+                    models.CharField(
+                        help_text="Nome do Laboratório/Empresa", max_length=100
+                    ),
+                ),
+                (
+                    "tipo_local",
+                    models.CharField(
+                        choices=[
+                            ("EXTERNO", "Laboratório Externo"),
+                            ("IN_LOCO", "Calibração In Loco (Na Empresa)"),
+                        ],
+                        default="EXTERNO",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("AGENDADO", "Agendado"),
+                            ("ENVIADO", "Enviado ao Fornecedor"),
+                            ("EM_CALIBRACAO", "Em Calibração"),
+                            ("RETORNOU", "Retornou do Fornecedor"),
+                            ("FINALIZADO", "Finalizado e Aprovado"),
+                        ],
+                        default="AGENDADO",
+                        max_length=20,
+                    ),
+                ),
+                ("data_prevista", models.DateField()),
+                (
+                    "data_envio",
+                    models.DateField(
+                        blank=True, help_text="Data de saída da empresa", null=True
+                    ),
+                ),
+                (
+                    "data_retorno",
+                    models.DateField(
+                        blank=True, help_text="Data de chegada na empresa", null=True
+                    ),
+                ),
+                ("observacoes", models.TextField(blank=True, null=True)),
+                (
+                    "certificado_arquivo",
+                    models.FileField(blank=True, null=True, upload_to="certificados/"),
+                ),
+                (
+                    "instrumento",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="calibracoes",
+                        to="qms.instrumento",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='SolicitacaoInstrumento',
+            name="SolicitacaoInstrumento",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('tipo', models.CharField(choices=[('NOVA', 'Nova Aplicação'), ('SUBSTITUICAO', 'Substituição (Dano/Perda)')], max_length=20)),
-                ('data_solicitacao', models.DateTimeField(auto_now_add=True)),
-                ('status', models.CharField(choices=[('PENDENTE', 'Pendente'), ('EM_ANALISE', 'Em Análise pelo Qualidade'), ('APROVADO', 'Aprovado'), ('REJEITADO', 'Rejeitado'), ('CONCLUIDO', 'Entregue/Resolvido')], default='PENDENTE', max_length=20)),
-                ('resposta_qualidade', models.TextField(blank=True, help_text='Parecer do setor de qualidade', null=True)),
-                ('instrumento_alvo', models.ForeignKey(blank=True, help_text='Preencher caso seja substituição de um item existente', null=True, on_delete=django.db.models.deletion.SET_NULL, to='qms.instrumento')),
-                ('solicitante', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='solicitacoes', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "tipo",
+                    models.CharField(
+                        choices=[
+                            ("NOVA", "Nova Aplicação"),
+                            ("SUBSTITUICAO", "Substituição (Dano/Perda)"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("data_solicitacao", models.DateTimeField(auto_now_add=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("PENDENTE", "Pendente"),
+                            ("EM_ANALISE", "Em Análise pelo Qualidade"),
+                            ("APROVADO", "Aprovado"),
+                            ("REJEITADO", "Rejeitado"),
+                            ("CONCLUIDO", "Entregue/Resolvido"),
+                        ],
+                        default="PENDENTE",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "resposta_qualidade",
+                    models.TextField(
+                        blank=True, help_text="Parecer do setor de qualidade", null=True
+                    ),
+                ),
+                (
+                    "instrumento_alvo",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="Preencher caso seja substituição de um item existente",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="qms.instrumento",
+                    ),
+                ),
+                (
+                    "solicitante",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="solicitacoes",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

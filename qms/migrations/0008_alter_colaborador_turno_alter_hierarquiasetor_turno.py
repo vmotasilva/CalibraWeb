@@ -6,18 +6,37 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('qms', '0007_historicocalibracao_fornecedor_and_more'),
+        ("qms", "0007_historicocalibracao_fornecedor_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='colaborador',
-            name='turno',
-            field=models.CharField(choices=[('ADM', 'Administrativo'), ('TURNO_1', 'Turno 1'), ('TURNO_2', 'Turno 2'), ('TURNO_3', 'Turno 3')], default='ADM', max_length=20, verbose_name='Turno'),
+            model_name="colaborador",
+            name="turno",
+            field=models.CharField(
+                choices=[
+                    ("ADM", "Administrativo"),
+                    ("TURNO_1", "Turno 1"),
+                    ("TURNO_2", "Turno 2"),
+                    ("TURNO_3", "Turno 3"),
+                ],
+                default="ADM",
+                max_length=20,
+                verbose_name="Turno",
+            ),
         ),
         migrations.AlterField(
-            model_name='hierarquiasetor',
-            name='turno',
-            field=models.CharField(choices=[('ADM', 'Administrativo'), ('TURNO_1', 'Turno 1'), ('TURNO_2', 'Turno 2'), ('TURNO_3', 'Turno 3')], max_length=20, verbose_name='Turno'),
+            model_name="hierarquiasetor",
+            name="turno",
+            field=models.CharField(
+                choices=[
+                    ("ADM", "Administrativo"),
+                    ("TURNO_1", "Turno 1"),
+                    ("TURNO_2", "Turno 2"),
+                    ("TURNO_3", "Turno 3"),
+                ],
+                max_length=20,
+                verbose_name="Turno",
+            ),
         ),
     ]
