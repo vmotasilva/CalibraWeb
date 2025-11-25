@@ -26,3 +26,12 @@ class HistoricoCalibracaoLogicTests(TestCase):
 		hist.save()
 		self.assertEqual(hist.resultado, 'CONDICIONAL')
 
+
+class CeleryTasksTests(TestCase):
+	def test_ping_task(self):
+		# call apply (synchronous execution) so this passes in regular test runner
+		from .tasks import ping_task
+
+		res = ping_task.apply().get()
+		self.assertEqual(res, 'pong')
+
