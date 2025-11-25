@@ -340,10 +340,10 @@
                             
                             <td class="py-2">
                                 {% if f.lider %}
-                                    <div class="d-flex align-items-center" title="Reporta a: {{ f.lider.nome_completo }}">
+                                    <div class="d-flex align-items-center" title="Reporta a: {{ f.lider.matricula }} — {{ f.lider.nome_completo }}">
                                         <i class="bi bi-arrow-return-right text-muted me-1" style="font-size: 0.7rem;"></i>
-                                        <span class="small text-dark text-truncate" style="max-width: 120px;">
-                                            {{ f.lider.nome_completo|title }}
+                                        <span class="small text-dark text-truncate" style="max-width: 160px;">
+                                            {{ f.lider.matricula }} — {{ f.lider.nome_completo|title }}
                                         </span>
                                     </div>
                                 {% else %}
