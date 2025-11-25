@@ -51,3 +51,54 @@ Quick actions you can run locally (recommended):
 5) Keep sensitive files out of repo going forward — use artifact storage or secure object storage (S3), or `django-storages` for uploaded files.
 
 If you want, I can perform safe removals of files here in the repo (git rm and commit), and add a history-cleaning script — tell me to proceed and I will continue with the next steps in the plan.
+
+---
+
+Production Deployment & Environment Variables
+=============================================
+
+Essential variables (store in Railway / container secrets, never commit actual values):
+
+SECRET_KEY  Django secret (generate with: `python -c "from django.core.management.utils import get_random_secret_key as g; print(g())"`)
+DEBUG       Should be `False` in production
+ALLOWED_HOSTS Comma separated domains (no wildcards in prod)
+DATABASE_URL Postgres connection string (Railway/Cloud provider)
+REDIS_URL   Redis URL for Celery broker & result backend (e.g. Upstash/Railway Redis)
+CELERY_BROKER_URL  Usually same as REDIS_URL
+CELERY_RESULT_BACKEND Same as REDIS_URL (or use database/AMQP if preferred)
+TIME_ZONE   e.g. `America/Sao_Paulo`
+CSRF_TRUSTED_ORIGINS e.g. `https://your.domain.com`
+
+Quick deploy (Railway Nixpacks already configured via `railway.toml`):
+1. Set secrets (above) in Railway project settings
+2. Push code (`git push origin main`)
+3. Railway build runs startCommand: migrations + collectstatic + gunicorn
+4. (Optional) Add additional services for Celery worker & beat using Procfile entries (web / worker / beat)
+
+Docker (alternative deploy path):
+```bash
+docker build -t calibraweb:prod .
+docker run -d --env-file .env -p 8000:8000 calibraweb:prod
+```
+
+Celery processes (if using Redis):
+```bash
+celery -A config.celery.app worker -l info --concurrency=4
+celery -A config.celery.app beat -l info
+```
+
+Gunicorn manual run (without Docker):
+```bash
+python manage.py migrate --noinput
+python manage.py collectstatic --noinput
+gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+```
+
+Security checklist (supplement):
+- Rotate SECRET_KEY if ever leaked
+- Enforce HTTPS at platform/CDN level
+- Restrict admin access (IP allowlist / VPN if possible)
+- Monitor `/healthz` endpoint and set alerts
+- Keep dependencies patched (monthly scan)
+
+Refer to `.env.example` for a minimal template.

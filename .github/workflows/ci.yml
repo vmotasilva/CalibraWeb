@@ -2,6 +2,40 @@ name: CI
 
 on:
   push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r CalibraWeb/requirements.txt
+          pip install flake8
+      - name: Lint (flake8)
+        run: |
+          flake8 CalibraWeb/qms --count --select=E9,F63,F7,F82 --show-source --statistics || exit 1
+          flake8 CalibraWeb/qms --count --exit-zero --max-complexity=15 --max-line-length=120 --statistics
+      - name: Run tests
+        env:
+          SECRET_KEY: test-ci-key
+          DEBUG: 'False'
+        run: |
+          cd CalibraWeb
+          python manage.py migrate --noinput
+          python manage.py test qms -v 2name: CI
+
+on:
+  push:
     branches: [ main ]
   pull_request:
     branches: [ main ]

@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # set SECRET_KEY in a .env file; but on production the variable must be provided.
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    raise ImproperlyConfigured("The SECRET_KEY environment variable must be set in production")
+    raise ImproperlyConfigured("SECRET_KEY is required. Set it in the environment (see .env.example)")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Default is False (safer). In dev set DEBUG='True' in the environment.
@@ -26,26 +26,13 @@ DEBUG = os.environ.get("DEBUG", "False") == "True"
 # Configure ALLOWED_HOSTS via environment variable (comma-separated), default empty list.
 ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h]
 
-# If we are running in production (DEBUG False) and no SECRET_KEY was provided,
-# fail loudly so deployments don't accidentally use a weak hardcoded key.
-if not DEBUG and not SECRET_KEY:
-    raise ImproperlyConfigured(
-        "The SECRET_KEY environment variable must be set in production"
-    )
-
-if DEBUG and not SECRET_KEY:
-    # Use a clearly labeled development key for local work (not for production)
-    SECRET_KEY = "django-insecure-development-only-key"
-
-# Temporary fallback for SECRET_KEY in production
-if not SECRET_KEY:
-    SECRET_KEY = "temporary-production-secret-key"
-    print("WARNING: Using a temporary SECRET_KEY. Update your environment variables.")
-
-# Temporary fallback for ALLOWED_HOSTS in production
-if not ALLOWED_HOSTS:
-    ALLOWED_HOSTS = ["*"]  # Allow all hosts temporarily for debugging
-    print("WARNING: Using a wildcard ALLOWED_HOSTS. Update your environment variables.")
+# In development you may explicitly set DEBUG=True and still require SECRET_KEY above.
+# No implicit insecure fallbacks are provided anymore.
+if not ALLOWED_HOSTS and not DEBUG:
+    raise ImproperlyConfigured("ALLOWED_HOSTS must be set (comma-separated) in production.")
+if DEBUG and not ALLOWED_HOSTS:
+    # Development convenience: allow localhost
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 
 # Configuração necessária para o formulário de login funcionar no Railway (HTTPS)
@@ -142,7 +129,10 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"  # Você pode mudar para 'pt-br' se quiser
 
-TIME_ZONE = "UTC"  # Você pode mudar para 'America/Sao_Paulo' se quiser
+TIME_ZONE = os.getenv("TIME_ZONE", "UTC")
+# Celery / Redis configuration (optional; defaults if not provided)
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
 
 USE_I18N = True
 

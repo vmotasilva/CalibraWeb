@@ -262,6 +262,47 @@ def modulo_rh_view(request):
 
 
 @login_required
+def procedimentos_list_view(request):
+    """Lista pública (pós-login) de procedimentos com filtros simples.
+    Parâmetros GET:
+      q: termo de busca (código ou parte do título)
+      tipo: prefixo (POP, DOC, FOR, TAB, DEX)
+    """
+    termo = (request.GET.get("q") or "").strip().upper()
+    tipo = (request.GET.get("tipo") or "").strip().upper()
+
+    qs = Procedimento.objects.all().select_related("setor")
+    if termo:
+        qs = qs.filter(models.Q(codigo__icontains=termo) | models.Q(titulo__icontains=termo))
+    if tipo in {"POP", "DOC", "FOR", "TAB", "DEX"}:
+        qs = qs.filter(codigo__startswith=f"{tipo}.")
+
+    # Limita para paginação simples (pode evoluir depois)
+    # Paginação
+    from django.core.paginator import Paginator
+    page_number = request.GET.get("page", "1")
+    paginator = Paginator(qs.order_by("codigo"), 50)
+    page_obj = paginator.get_page(page_number)
+    procedimentos = page_obj.object_list
+
+    tipos_stats = {
+        t: Procedimento.objects.filter(codigo__startswith=f"{t}.").count()
+        for t in ["POP", "DOC", "FOR", "TAB", "DEX"]
+    }
+
+    ctx = {
+        "procedimentos": procedimentos,
+        "termo": termo,
+        "tipo": tipo,
+        "tipos_stats": tipos_stats,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "querystring_base": f"q={termo}&tipo={tipo}" if (termo or tipo) else "",
+    }
+    return render(request, "procedimentos_lista.html", ctx)
+
+
+@login_required
 def detalhe_colaborador_view(request, colab_id):
     usuario_logado = get_colab(request)
     alvo = get_object_or_404(Colaborador, id=colab_id)

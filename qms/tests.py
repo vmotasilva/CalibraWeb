@@ -1,6 +1,7 @@
 from datetime import date
 
 from django.test import TestCase
+from django.urls import reverse
 
 from .models import HistoricoCalibracao, Instrumento
 
@@ -166,3 +167,59 @@ class BasicViewsTests(TestCase):
         # DB should have a new HistoricoCalibracao for this instrument
         hist = HistoricoCalibracao.objects.filter(instrumento=inst, numero_certificado="CERT123").first()
         self.assertIsNotNone(hist)
+
+
+class ProcedimentosListViewTests(TestCase):
+    def setUp(self):
+        # Criar 120 procedimentos variados e autenticar usuário (view exige login)
+        from .models import Procedimento
+        from django.contrib.auth.models import User
+        tipos = ["POP", "DOC", "FOR", "TAB", "DEX"]
+        count = 0
+        for t in tipos:
+            for i in range(1, 25):  # 24 de cada tipo = 120 total
+                Procedimento.objects.create(
+                    codigo=f"{t}.{1000+i}",
+                    titulo=f"{t} TITULO {i}",
+                    revisao_atual="01",
+                    aplica_treinamento=True,
+                )
+                count += 1
+        self.total = count
+        # Autentica para evitar redirects (302)
+        self.user = User.objects.create_user(username='procuser', password='pw')
+        self.client.force_login(self.user)
+
+    def test_paginacao_primeira_pagina(self):
+        url = reverse("procedimentos_list")
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        # Deve haver page_obj e máximo 50 registros
+        self.assertIn("page_obj", resp.context)
+        self.assertLessEqual(len(resp.context["procedimentos"]), 50)
+        self.assertEqual(resp.context["page_obj"].number, 1)
+
+    def test_paginacao_segunda_pagina(self):
+        url = reverse("procedimentos_list") + "?page=2"
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context["page_obj"].number, 2)
+
+    def test_filtro_tipo(self):
+        url = reverse("procedimentos_list") + "?tipo=POP"
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        for p in resp.context["procedimentos"]:
+            self.assertTrue(p.codigo.startswith("POP."))
+
+    def test_busca_termo(self):
+        # Busca por um título específico
+        url = reverse("procedimentos_list") + "?q=TITULO 5&tipo=DOC"
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(any("TITULO 5" in p.titulo for p in resp.context["procedimentos"]))
+
+    def test_limite_total(self):
+        # Total criado deve ser 120
+        from .models import Procedimento
+        self.assertEqual(Procedimento.objects.count(), 120)
