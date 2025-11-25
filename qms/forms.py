@@ -154,6 +154,9 @@ class ColaboradorForm(forms.ModelForm):
             "setor": forms.Select(attrs={"class": "form-select"}),
             "centro_custo": forms.Select(attrs={"class": "form-select"}),
             "turno": forms.Select(attrs={"class": "form-select"}),
+            "lider": forms.Select(attrs={"class": "form-select"}),
+            "supervisor": forms.Select(attrs={"class": "form-select"}),
+            "gerente": forms.Select(attrs={"class": "form-select"}),
             "salario": forms.NumberInput(
                 attrs={"class": "form-control", "step": "0.01"}
             ),
