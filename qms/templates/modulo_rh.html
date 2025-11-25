@@ -278,6 +278,25 @@
                     </div>
                 </div>
 
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Treinamentos</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="PENDENTE" data-category="treino" id="tre_pend">
+                                <label class="form-check-label small" for="tre_pend">Com pendências</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="EM_DIA" data-category="treino" id="tre_ok">
+                                <label class="form-check-label small" for="tre_ok">Em dia</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -298,6 +317,7 @@
                             <th class="py-3">Setor / CC</th>
                             <th class="py-3">Turno</th>
                             <th class="py-3">Líder</th>
+                            <th class="py-3">Treinamentos</th>
                             <th class="py-3">Salário</th>
                             <th class="text-end pe-4 py-3">Ações</th>
                         </tr>
@@ -311,7 +331,8 @@
                             data-lider="{{ f.lider.id|default:'' }}"
                             data-supervisor="{{ f.supervisor.id|default:'' }}" 
                             data-gerente="{{ f.gerente.id|default:'' }}"
-                            data-turno="{{ f.turno|default:'' }}">
+                            data-turno="{{ f.turno|default:'' }}"
+                            data-treino="{% if f.trein_pendentes %}PENDENTE{% else %}EM_DIA{% endif %}">
                             
                             <td class="ps-4 py-2">
                                 <div class="d-flex align-items-center">
@@ -363,6 +384,16 @@
                             </td>
                             
                             <td class="py-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-success bg-opacity-10 text-success border small">Vigentes: {{ f.trein_vigentes }}</span>
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border small">Pendentes: {{ f.trein_pendentes }}</span>
+                                    {% if f.trein_ultima_data %}
+                                    <span class="text-muted small" title="Última participação">Último: {{ f.trein_ultima_data|date:"d/m/Y" }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            
+                            <td class="py-2">
                                 {% if can_see_salary %}
                                     <span class="text-success fw-bold small" style="font-size: 0.85rem;">R$ {{ f.salario|floatformat:2 }}</span>
                                 {% else %}
@@ -378,7 +409,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center py-5 text-muted bg-light">
+                            <td colspan="8" class="text-center py-5 text-muted bg-light">
                                 <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
                                 <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
                             </td>
@@ -420,9 +451,10 @@ function filtrar() {
         status: [],
         setor: [],
         lider: [],
-        supervisor: [], // NOVO
-        gerente: [],    // NOVO
-        turno: []
+        supervisor: [],
+        gerente: [],
+        turno: [],
+        treino: []
     };
     
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
@@ -446,6 +478,7 @@ function filtrar() {
         if (mostrar && filtrosAtivos.gerente.length > 0 && !filtrosAtivos.gerente.includes(row.dataset.gerente)) mostrar = false;
         
         if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) mostrar = false;
+        if (mostrar && filtrosAtivos.treino.length > 0 && !filtrosAtivos.treino.includes(row.dataset.treino)) mostrar = false;
 
         row.style.display = mostrar ? '' : 'none';
         if (mostrar) visiveis++;

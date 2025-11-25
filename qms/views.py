@@ -200,7 +200,7 @@ def modulo_rh_view(request):
     # QuerySet BASE: Apenas colaboradores visíveis pelo usuário logado
     funcionarios_base = Colaborador.objects.filter(
         id__in=ids_permitidos, is_active=True
-    ).select_related('setor', 'centro_custo', 'lider', 'supervisor', 'gerente').order_by("nome_completo")
+    ).select_related('setor', 'centro_custo', 'lider', 'supervisor', 'gerente').prefetch_related('treinamentos', 'treinamentos__procedimento').order_by("nome_completo")
 
     # 2. CÁLCULO DAS OPÇÕES DE FILTRO - BASEADO APENAS NA BASE DE DADOS DE COLABORADORES
     
@@ -228,6 +228,23 @@ def modulo_rh_view(request):
 
     # 3. RESULTADO FINAL
     funcionarios_visiveis = funcionarios_base
+
+    # 4. Estatísticas de Treinamento por colaborador (pendentes/vigentes, última data)
+    for f in funcionarios_visiveis:
+        vig = 0
+        pend = 0
+        last = None
+        for rt in getattr(f, 'treinamentos').all():
+            if rt.status_treinamento == "VIGENTE":
+                vig += 1
+            else:
+                pend += 1
+            if rt.data_treinamento and (last is None or rt.data_treinamento > last):
+                last = rt.data_treinamento
+        # Atribui no próprio objeto para fácil acesso no template
+        f.trein_vigentes = vig
+        f.trein_pendentes = pend
+        f.trein_ultima_data = last
 
     ctx = {
         "colaborador": colab,
