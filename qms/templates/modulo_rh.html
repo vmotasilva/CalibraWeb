@@ -187,6 +187,9 @@
                                 <label class="form-check-label small text-truncate" for="lid_{{ lider.id }}" title="{{ lider.nome_completo }}">
                                     {{ lider.nome_completo|title }}
                                 </label>
+                                <a href="{% url 'detalhe_colaborador' lider.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
                             </div>
                             {% endfor %}
                         </div>
@@ -206,6 +209,9 @@
                                 <label class="form-check-label small text-truncate" for="sup_{{ super.id }}" title="{{ super.nome_completo }}">
                                     {{ super.nome_completo|title }}
                                 </label>
+                                <a href="{% url 'detalhe_colaborador' super.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
                             </div>
                             {% endfor %}
                         </div>
@@ -225,6 +231,9 @@
                                 <label class="form-check-label small text-truncate" for="ger_{{ gerente.id }}" title="{{ gerente.nome_completo }}">
                                     {{ gerente.nome_completo|title }}
                                 </label>
+                                <a href="{% url 'detalhe_colaborador' gerente.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
                             </div>
                             {% endfor %}
                         </div>
