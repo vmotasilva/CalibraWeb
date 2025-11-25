@@ -1,5 +1,6 @@
 import dj_database_url
 import os
+from django.core.exceptions import ImproperlyConfigured
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -9,18 +10,30 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
+
 # SECURITY WARNING: keep the secret key used in production secret!
-# O Railway vai injetar a variável SECRET_KEY se você configurou lá.
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-sua-chave-padrao-aqui')
+# Read SECRET_KEY from environment in all environments. For local dev you may
+# set SECRET_KEY in a .env file; but on production the variable must be provided.
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# No Railway, defina a variável DEBUG como 'False'
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# Default is False (safer). In dev set DEBUG='True' in the environment.
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['*']
+# Configure ALLOWED_HOSTS via environment variable (comma-separated), default empty list.
+ALLOWED_HOSTS = [h for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h]
+
+# If we are running in production (DEBUG False) and no SECRET_KEY was provided,
+# fail loudly so deployments don't accidentally use a weak hardcoded key.
+if not DEBUG and not SECRET_KEY:
+    raise ImproperlyConfigured('The SECRET_KEY environment variable must be set in production')
+
+if DEBUG and not SECRET_KEY:
+    # Use a clearly labeled development key for local work (not for production)
+    SECRET_KEY = 'django-insecure-development-only-key'
 
 # Configuração necessária para o formulário de login funcionar no Railway (HTTPS)
-CSRF_TRUSTED_ORIGINS = ['https://*.railway.app']
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://*.railway.app').split(',')
 
 
 # Application definition
@@ -138,3 +151,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'login'            # Avisa que sua URL se chama apenas 'login' e não 'accounts/login'
 LOGIN_REDIRECT_URL = 'home'    # Para onde vai depois de logar (vi que você tem uma url chamada 'home')
 LOGOUT_REDIRECT_URL = 'login'  # Para onde vai depois de sair
+
+# --- Production security settings ---
+if not DEBUG:
+    # Protect cookies — useful on HTTPS deploys
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', 31536000))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True'
+    X_FRAME_OPTIONS = 'DENY'
