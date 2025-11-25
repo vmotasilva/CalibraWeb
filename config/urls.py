@@ -67,6 +67,8 @@ urlpatterns = [
     path("imp-padroes/", views.imp_padroes_view, name="importar_padroes"),
     # Health check for uptime monitoring / readiness probes
     path("healthz/", views.health_check, name="healthz"),
+    # 9. Ocorrência de Colaborador
+    path("rh/ocorrencia/nova/", views.registrar_ocorrencia_view, name="registrar_ocorrencia"),
 ]
 
 # Configuração para servir arquivos de mídia/estáticos em modo Debug

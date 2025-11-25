@@ -199,9 +199,10 @@ class SolicitacaoForm(forms.ModelForm):
 class OcorrenciaForm(forms.ModelForm):
     class Meta:
         model = Ocorrencia
-        fields = ['colaborador', 'tipo', 'titulo', 'descricao', 'arquivo_evidencia']  # Updated field name
+        fields = ['colaborador', 'data_ocorrencia', 'tipo', 'titulo', 'descricao', 'arquivo_evidencia']
         widgets = {
             'descricao': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
             'tipo': forms.Select(attrs={'class': 'form-select'}),
             'colaborador': forms.Select(attrs={'class': 'form-select'}),
+            'data_ocorrencia': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }

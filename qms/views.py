@@ -380,6 +380,32 @@ def editar_colaborador_view(request, colab_id):
     )
 
 
+# --- REGISTRO DE OCORRÊNCIA DO COLABORADOR ---
+@login_required
+def registrar_ocorrencia_view(request):
+    preselect_id = request.GET.get("colab_id")
+    if request.method == "POST":
+        form = OcorrenciaForm(request.POST, request.FILES)
+        if form.is_valid():
+            oc = form.save()
+            messages.success(request, "Ocorrência registrada com sucesso!")
+            if oc.colaborador_id:
+                return redirect("detalhe_colaborador", colab_id=oc.colaborador_id)
+            return redirect("modulo_rh")
+        else:
+            messages.error(request, "Verifique os dados da ocorrência.")
+    else:
+        initial = {}
+        if preselect_id:
+            initial["colaborador"] = preselect_id
+        form = OcorrenciaForm(initial=initial)
+    return render(
+        request,
+        "registro_ocorrencia.html",
+        {"form": form, "colaborador": get_colab(request)},
+    )
+
+
 # --- NOVA VIEW: SOLICITAÇÃO DE INSTRUMENTO ---
 @login_required
 def nova_solicitacao(request):
