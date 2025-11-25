@@ -296,7 +296,25 @@ def detalhe_colaborador_view(request, colab_id):
         if usuario_logado.id == alvo.id:
             can_see_salary = True
 
-    ocorrencias = alvo.ocorrencias.all().order_by("-data_ocorrencia")
+    # Permissões específicas para Ocorrências de RH
+    can_register_occ = False
+    can_view_occ = False
+    if request.user.is_superuser or request.user.is_staff:
+        can_register_occ = True
+        can_view_occ = True
+    elif usuario_logado:
+        if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
+            can_register_occ = True
+            can_view_occ = True
+        if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
+           HierarquiaSetor.objects.filter(supervisor=usuario_logado).exists():
+            can_register_occ = True
+            can_view_occ = True
+        # O próprio colaborador pode ver a página, mas não vê ocorrências
+        if usuario_logado.id == alvo.id and not (request.user.is_superuser or request.user.is_staff):
+            can_view_occ = False
+
+    ocorrencias = alvo.ocorrencias.all().order_by("-data_ocorrencia") if can_view_occ else []
     treinamentos = alvo.treinamentos.all().order_by("-data_treinamento")
     documentos = alvo.documentos_pessoais.all().order_by("-data_upload")
 
@@ -332,6 +350,8 @@ def detalhe_colaborador_view(request, colab_id):
         "colaborador": usuario_logado,
         "alvo": alvo,
         "can_see_salary": can_see_salary,
+        "can_register_occ": can_register_occ,
+        "can_view_occ": can_view_occ,
         "ocorrencias": ocorrencias,
         "treinamentos": treinamentos,
         "documentos": documentos,
@@ -383,6 +403,21 @@ def editar_colaborador_view(request, colab_id):
 # --- REGISTRO DE OCORRÊNCIA DO COLABORADOR ---
 @login_required
 def registrar_ocorrencia_view(request):
+    # Permissão: apenas RH, liderança (supervisor/gerente) e staff/superuser podem registrar
+    usuario_logado = get_colab(request)
+    permitido = False
+    if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    elif usuario_logado:
+        if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
+            permitido = True
+        if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
+           HierarquiaSetor.objects.filter(supervisor=usuario_logado).exists():
+            permitido = True
+    if not permitido:
+        messages.error(request, "Você não tem permissão para registrar ocorrências.")
+        return redirect("modulo_rh")
+
     preselect_id = request.GET.get("colab_id")
     if request.method == "POST":
         form = OcorrenciaForm(request.POST, request.FILES)
