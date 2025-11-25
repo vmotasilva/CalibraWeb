@@ -56,7 +56,7 @@
                             <strong>
                                 {% if alvo.lider %}
                                     <a href="{% url 'detalhe_colaborador' alvo.lider.id %}" class="text-decoration-none">
-                                        {{ alvo.lider.nome_completo }}
+                                        {{ alvo.lider.matricula }} — {{ alvo.lider.nome_completo }}
                                     </a>
                                 {% else %}-{% endif %}
                             </strong>
@@ -66,7 +66,7 @@
                             <strong>
                                 {% if alvo.supervisor %}
                                     <a href="{% url 'detalhe_colaborador' alvo.supervisor.id %}" class="text-decoration-none">
-                                        {{ alvo.supervisor.nome_completo }}
+                                        {{ alvo.supervisor.matricula }} — {{ alvo.supervisor.nome_completo }}
                                     </a>
                                 {% else %}-{% endif %}
                             </strong>
@@ -76,7 +76,7 @@
                             <strong>
                                 {% if alvo.gerente %}
                                     <a href="{% url 'detalhe_colaborador' alvo.gerente.id %}" class="text-decoration-none">
-                                        {{ alvo.gerente.nome_completo }}
+                                        {{ alvo.gerente.matricula }} — {{ alvo.gerente.nome_completo }}
                                     </a>
                                 {% else %}-{% endif %}
                             </strong>
