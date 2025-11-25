@@ -232,7 +232,15 @@
                                 <small class="text-muted">{{ oc.data_ocorrencia|date:"d/m/Y" }}</small>
                             </div>
                             <p class="mb-1 small">{{ oc.descricao }}</p>
-                            <small class="text-muted" style="font-size: 0.75rem;">Responsável: {{ oc.usuario_responsavel.get_full_name|default:oc.usuario_responsavel.username }}</small>
+                            <small class="text-muted" style="font-size: 0.75rem;">Responsável:
+                                {% if oc.responsavel_colab_id %}
+                                    <a href="{% url 'detalhe_colaborador' oc.responsavel_colab_id %}" class="text-decoration-none">
+                                        {{ oc.usuario_responsavel.get_full_name|default:oc.usuario_responsavel.username }}
+                                    </a>
+                                {% else %}
+                                    {{ oc.usuario_responsavel.get_full_name|default:oc.usuario_responsavel.username }}
+                                {% endif %}
+                            </small>
                         </div>
                         {% empty %}
                         <div class="text-center py-4 text-muted">Nenhuma ocorrência registrada.</div>

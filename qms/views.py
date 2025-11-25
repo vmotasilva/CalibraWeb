@@ -443,6 +443,17 @@ def detalhe_instrumento_view(
     except AttributeError:
         ocorrencias = []
 
+    # Anexa atributo responsavel_colab_id às ocorrências quando houver vínculo com Colaborador
+    try:
+        for oc in ocorrencias:
+            u = getattr(oc, "usuario_responsavel", None)
+            if u:
+                col = Colaborador.objects.filter(user_django=u).only("id").first()
+                if col:
+                    setattr(oc, "responsavel_colab_id", col.id)
+    except Exception:
+        pass
+
     try:
         faixas = inst.faixamedicao_set.all()
     except AttributeError:
@@ -460,6 +471,7 @@ def detalhe_instrumento_view(
             "historico": historico,
             "calibracoes": calibracoes,
             "ocorrencias": ocorrencias,
+            # nenhuma var extra necessária: cada ocorrência pode ter atributo responsavel_colab_id
             "faixas": faixas,
             "form_ocorrencia": form_ocorrencia,
             "today": date.today(),
