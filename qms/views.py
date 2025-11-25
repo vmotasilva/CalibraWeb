@@ -910,6 +910,8 @@ def imp_colab_view(request):
                 count_new = 0
                 count_upd = 0
                 count_lider = 0
+                count_super = 0
+                count_gerente = 0
                 with transaction.atomic():
                     for index, row in df.iterrows():
 
@@ -1002,30 +1004,58 @@ def imp_colab_view(request):
                         matricula = get_val_h(["MATRICULA", "MAT", "RE"])
                         if matricula:
                             matricula = matricula.split(".")[0]
-                        mat_chefe = None
-                        cand_lider = get_val_h(["MAT_LIDER", "LIDER", "COD_LIDER"])
-                        if cand_lider:
-                            mat_chefe = cand_lider.split(".")[0]
-                        if not mat_chefe:
-                            cand_super = get_val_h(["MAT_SUPERVISOR", "SUPERVISOR"])
-                            if cand_super:
-                                mat_chefe = cand_super.split(".")[0]
-                        if not mat_chefe:
-                            cand_gerente = get_val_h(["MAT_GERENTE", "GERENTE"])
-                            if cand_gerente:
-                                mat_chefe = cand_gerente.split(".")[0]
-                        if matricula and mat_chefe and matricula != mat_chefe:
+                        # Extrai cada tipo de vínculo separadamente
+                        def norm_mat(v):
+                            return v.split(".")[0] if v else None
+
+                        mat_lider = norm_mat(get_val_h(["MAT_LIDER", "LIDER", "COD_LIDER"]))
+                        mat_super = norm_mat(get_val_h(["MAT_SUPERVISOR", "SUPERVISOR", "COD_SUPERVISOR"]))
+                        mat_ger = norm_mat(get_val_h(["MAT_GERENTE", "GERENTE", "COD_GERENTE"]))
+
+                        if matricula:
                             try:
                                 colab = Colaborador.objects.get(matricula=matricula)
-                                lider = Colaborador.objects.get(matricula=mat_chefe)
-                                colab.lider = lider
-                                colab.save(update_fields=["lider"])
-                                count_lider += 1
                             except Colaborador.DoesNotExist:
-                                pass
+                                colab = None
+
+                            if colab:
+                                update_fields = []
+                                # Líder
+                                if mat_lider and mat_lider != matricula:
+                                    try:
+                                        lider = Colaborador.objects.get(matricula=mat_lider)
+                                        colab.lider = lider
+                                        update_fields.append("lider")
+                                        count_lider += 1
+                                    except Colaborador.DoesNotExist:
+                                        pass
+                                # Supervisor
+                                if mat_super and mat_super != matricula:
+                                    try:
+                                        superv = Colaborador.objects.get(matricula=mat_super)
+                                        colab.supervisor = superv
+                                        update_fields.append("supervisor")
+                                        count_super += 1
+                                    except Colaborador.DoesNotExist:
+                                        pass
+                                # Gerente
+                                if mat_ger and mat_ger != matricula:
+                                    try:
+                                        ger = Colaborador.objects.get(matricula=mat_ger)
+                                        colab.gerente = ger
+                                        update_fields.append("gerente")
+                                        count_gerente += 1
+                                    except Colaborador.DoesNotExist:
+                                        pass
+
+                                if update_fields:
+                                    colab.save(update_fields=update_fields)
                 messages.success(
                     request,
-                    f"RH: {count_new} Novos, {count_upd} Atu, {count_lider} Vínculos Hierárquicos.",
+                    (
+                        f"RH: {count_new} Novos, {count_upd} Atualizados, "
+                        f"{count_lider} líderes, {count_super} supervisores, {count_gerente} gerentes vinculados."
+                    ),
                 )
                 return redirect("modulo_rh")
             except Exception as e:
