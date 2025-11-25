@@ -57,11 +57,23 @@
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
                             <span class="text-muted">Supervisor:</span>
-                            <strong>{{ alvo.supervisor.nome_completo|default:"-" }}</strong>
+                            <strong>
+                                {% if alvo.supervisor %}
+                                    <a href="{% url 'detalhe_colaborador' alvo.supervisor.id %}" class="text-decoration-none">
+                                        {{ alvo.supervisor.nome_completo }}
+                                    </a>
+                                {% else %}-{% endif %}
+                            </strong>
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
                             <span class="text-muted">Gerente:</span>
-                            <strong>{{ alvo.gerente.nome_completo|default:"-" }}</strong>
+                            <strong>
+                                {% if alvo.gerente %}
+                                    <a href="{% url 'detalhe_colaborador' alvo.gerente.id %}" class="text-decoration-none">
+                                        {{ alvo.gerente.nome_completo }}
+                                    </a>
+                                {% else %}-{% endif %}
+                            </strong>
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
                             <span class="text-muted">Turno:</span>
