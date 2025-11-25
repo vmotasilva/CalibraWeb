@@ -1,0 +1,497 @@
+2025-11-25T02:28:34.000000000Z [inf]  Starting Container
+2025-11-25T02:28:35.645951737Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:35.645965671Z [err]      utility.execute()
+2025-11-25T02:28:35.645977150Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:35.645984000Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:35.645988702Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:35.645990062Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:35.645997026Z [err]      main()
+2025-11-25T02:28:35.645999222Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:35.646002320Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:35.646007317Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:35.646010143Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:35.646019384Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:35.646028762Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:35.646037551Z [err]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.646045871Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:35.646055209Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:35.648464337Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.648472970Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:35.648481544Z [err]      return _trans.get_language()
+2025-11-25T02:28:35.648489726Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.648498125Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:35.648507179Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:35.648513914Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.648519316Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:35.648524832Z [err]      self._setup(name)
+2025-11-25T02:28:35.648531100Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:35.648537094Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:35.648542084Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.648547615Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:35.648555582Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:35.648564364Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.648574463Z [err]  ^^^^^
+2025-11-25T02:28:35.648581679Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:35.648588390Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:35.648595186Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.648602054Z [err]  ^^^^^^^^^^^^^
+2025-11-25T02:28:35.648608521Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:35.648616442Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:35.648621790Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:35.648626888Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:35.648631074Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:35.648635447Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:35.648638981Z [err]    File "/app/config/settings.py", line 30, in <module>
+2025-11-25T02:28:35.648642583Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:35.648646209Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:35.932583562Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:35.932583764Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:35.932592363Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:35.932597770Z [err]      main()
+2025-11-25T02:28:35.932602357Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:35.932606866Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:35.932611531Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:35.932616507Z [err]      utility.execute()
+2025-11-25T02:28:35.932620610Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:35.932624827Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:35.932629865Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:35.932634073Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:35.932638373Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:35.932642657Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:35.932647623Z [err]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.932652000Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:35.932877353Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.932888597Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:35.932898464Z [err]      return _trans.get_language()
+2025-11-25T02:28:35.932906309Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.932912847Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:35.932920282Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:35.932927900Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.932944103Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:35.932952297Z [err]      self._setup(name)
+2025-11-25T02:28:35.932960498Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:35.932968021Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:35.933150612Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:35.933158587Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.933159423Z [err]    File "/app/config/settings.py", line 30, in <module>
+2025-11-25T02:28:35.933167059Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:35.933169416Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:35.933173135Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:35.933178733Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.933179239Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:35.933183197Z [err]  ^^
+2025-11-25T02:28:35.933187101Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:35.933190922Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:35.933194651Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.933199051Z [err]  ^^^^^^^^^^^^^^^^
+2025-11-25T02:28:35.933206252Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:35.933209914Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:35.933213469Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:35.933217423Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:35.933221080Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:36.803661636Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:36.803671797Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:36.803686126Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:36.803693875Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:36.803701703Z [err]      main()
+2025-11-25T02:28:36.803709390Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:36.803714594Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:36.803719046Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:36.803723472Z [err]      utility.execute()
+2025-11-25T02:28:36.803728252Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:36.803733894Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:36.803738149Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:36.803742275Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:36.803747759Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:36.803752091Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:36.803756152Z [err]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:36.807016327Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:36.807022809Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:36.807029279Z [err]      return _trans.get_language()
+2025-11-25T02:28:36.807035456Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:36.807043214Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:36.807050906Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:36.807057114Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:36.807098394Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:36.807103901Z [err]      self._setup(name)
+2025-11-25T02:28:36.807112789Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:36.807116963Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:36.807121192Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:36.807125503Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:36.807129528Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:36.807134983Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:36.807139125Z [err]  ^^^^^
+2025-11-25T02:28:36.807143652Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:36.807147881Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:36.807151798Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:36.807155951Z [err]  ^^
+2025-11-25T02:28:36.807159708Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:36.807164347Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:36.807168195Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:36.807172086Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:36.807176552Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:36.807181754Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:36.807185742Z [err]    File "/app/config/settings.py", line 30, in <module>
+2025-11-25T02:28:36.807189630Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:36.807193463Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:37.698525390Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:37.698534098Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:37.698540618Z [err]      main()
+2025-11-25T02:28:37.698547428Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:37.698555129Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:37.698562370Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:37.698568965Z [err]      utility.execute()
+2025-11-25T02:28:37.698575600Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:37.698584418Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:37.698591237Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:37.698597765Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:37.698604537Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:37.698611733Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:37.698618708Z [err]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:37.698625940Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:37.698632737Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:37.699141182Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:37.699147904Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:37.699149436Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:37.699151826Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:37.699156391Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:37.699156788Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:37.699159512Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:37.699162536Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:37.699163177Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:37.699169293Z [err]      return _trans.get_language()
+2025-11-25T02:28:37.699169410Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:37.699169777Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:37.699173216Z [err]  ^^^^^^^^^^^
+2025-11-25T02:28:37.699176913Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:37.699179394Z [err]    File "/app/config/settings.py", line 30, in <module>
+2025-11-25T02:28:37.699180169Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:37.699183899Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:37.699184127Z [err]  ^^^^
+2025-11-25T02:28:37.699189145Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:37.699191000Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:37.699191752Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:37.699195110Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:37.699197974Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:37.699202066Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:37.699203544Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:37.699210353Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:37.699217735Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:37.699225167Z [err]      self._setup(name)
+2025-11-25T02:28:37.699232160Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:38.619826634Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:38.619834258Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:38.619849787Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:38.619859567Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:38.619869019Z [err]      main()
+2025-11-25T02:28:38.619877404Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:38.619884415Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:38.619890317Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:38.619896079Z [err]      utility.execute()
+2025-11-25T02:28:38.619901999Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:38.619908707Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:38.619918517Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:38.619924992Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:38.619931273Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:38.619937195Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:38.619943704Z [err]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:38.620174404Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:38.620179798Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:38.620183861Z [err]      return _trans.get_language()
+2025-11-25T02:28:38.620187551Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:38.620190881Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:38.620194421Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:38.620198266Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:38.620201997Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:38.620205852Z [err]      self._setup(name)
+2025-11-25T02:28:38.620209572Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:38.620213954Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:38.620581406Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:38.620586363Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:38.620591044Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:38.620595334Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:38.620600749Z [err]  ^^^^^
+2025-11-25T02:28:38.620601603Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:38.620605407Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:38.620609047Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:38.620612978Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:38.620617172Z [err]  ^^^^^^^^^^^^^
+2025-11-25T02:28:38.620623206Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:38.620627182Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:38.620631088Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:38.620634743Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:38.620638824Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:38.620642657Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:38.620646476Z [err]    File "/app/config/settings.py", line 30, in <module>
+2025-11-25T02:28:38.620650231Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:39.594408719Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:39.594415312Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:39.594421780Z [err]      main()
+2025-11-25T02:28:39.594425966Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:39.594430405Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:39.594434888Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:39.594439327Z [err]      utility.execute()
+2025-11-25T02:28:39.594443191Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:39.594447205Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:39.594450843Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:39.594455033Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:39.594458870Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:39.594462685Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:39.594467151Z [err]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:39.594470925Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:39.594474821Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:39.594811575Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:39.594821305Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:39.594827307Z [err]      return _trans.get_language()
+2025-11-25T02:28:39.594833305Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:39.594839777Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:39.594845574Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:39.594851002Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:39.594857717Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:39.594863600Z [err]      self._setup(name)
+2025-11-25T02:28:39.594870715Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:39.594878037Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:39.595073362Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:39.595078892Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:39.595083037Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:39.595086675Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:39.595090296Z [err]  ^^^^^
+2025-11-25T02:28:39.595095067Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:39.595098762Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:39.595102362Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:39.595105959Z [err]  ^^^^^^^^^^^^^
+2025-11-25T02:28:39.595109685Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:39.595113398Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:39.595212058Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:39.595214442Z [err]    File "/app/config/settings.py", line 30, in <module>
+2025-11-25T02:28:39.595216492Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:39.595220108Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:39.595224718Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:39.595228668Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:39.595233518Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:40.549702109Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:40.549709204Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:40.549717412Z [err]      main()
+2025-11-25T02:28:40.549733116Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:40.549739901Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:40.549746887Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:40.549753447Z [err]      utility.execute()
+2025-11-25T02:28:40.549760817Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:40.549767357Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:40.549774092Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:40.549780568Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:40.549787847Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:40.549794657Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:40.549801550Z [err]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:40.549808849Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:40.549817605Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:40.553011976Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:40.553019178Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:40.553026095Z [err]      return _trans.get_language()
+2025-11-25T02:28:40.553030417Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:40.553035127Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:40.553039652Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:40.553044055Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:40.553047992Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:40.553052626Z [err]      self._setup(name)
+2025-11-25T02:28:40.553056571Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:40.553061529Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:40.553066025Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:40.553072298Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:40.553076607Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:40.553081323Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:40.553085212Z [err]  ^^^^^
+2025-11-25T02:28:40.553089044Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:40.553093434Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:40.553097477Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:40.553101923Z [err]  ^^^^^^^^^^^^^
+2025-11-25T02:28:40.553106044Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:40.553110085Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:40.553114956Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:40.553119034Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:40.553123127Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:40.553127225Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:40.553131283Z [err]    File "/app/config/settings.py", line 30, in <module>
+2025-11-25T02:28:40.553135112Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:40.553138732Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:41.242328481Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:41.242333339Z [err]      utility.execute()
+2025-11-25T02:28:41.242334747Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:41.242342170Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:41.242343221Z [err]      main()
+2025-11-25T02:28:41.242349772Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:41.242350116Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:41.242356743Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:41.242357113Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:41.242363520Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:41.242363668Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:41.242371949Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:41.242586854Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:41.242594467Z [err]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:41.242601019Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:41.242607407Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:41.242613716Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:41.242620504Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:41.243179131Z [err]      return _trans.get_language()
+2025-11-25T02:28:41.243183026Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:41.243186440Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:41.243190112Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:41.243193715Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:41.243197270Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:41.243200839Z [err]      self._setup(name)
+2025-11-25T02:28:41.243204518Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:41.243208217Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:41.243211787Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:41.243215381Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:41.243723304Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:41.243730213Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:41.243737041Z [err]  ^^^^
+2025-11-25T02:28:41.243742563Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:41.243748064Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:41.243753393Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:41.243759169Z [err]  ^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:41.243764193Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:41.243769376Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:41.243774613Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:41.243780077Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:41.243785203Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:41.243791233Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:41.243796549Z [err]    File "/app/config/settings.py", line 30, in <module>
+2025-11-25T02:28:41.243801986Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:41.243807267Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:42.171019264Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:42.171030170Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:42.171039470Z [err]      main()
+2025-11-25T02:28:42.171048805Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:42.171057610Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:42.171065938Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:42.171077732Z [err]      utility.execute()
+2025-11-25T02:28:42.171086540Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:42.171095835Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:42.171104889Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:42.171115330Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:42.171123171Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:42.171132258Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:42.171142831Z [err]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:42.171151072Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:42.171160331Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:42.174504700Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:42.174515871Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:42.174522268Z [err]      return _trans.get_language()
+2025-11-25T02:28:42.174528700Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:42.174535081Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:42.174541682Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:42.174547129Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:42.174552649Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:42.174557978Z [err]      self._setup(name)
+2025-11-25T02:28:42.174565957Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:42.174574890Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:42.174582817Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:42.174590367Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:42.174597798Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:42.174605460Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:42.174611065Z [err]  ^^^^^
+2025-11-25T02:28:42.174616396Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:42.174622218Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:42.174628747Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:42.174635007Z [err]  ^^^^^^^^^^^^
+2025-11-25T02:28:42.174641514Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:42.174647030Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:42.174651667Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:42.174656080Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:42.174677455Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:42.174683719Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:42.174687756Z [err]    File "/app/config/settings.py", line 30, in <module>
+2025-11-25T02:28:42.174691999Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:42.174696202Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:43.150999802Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:43.151009049Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:43.151016355Z [err]      main()
+2025-11-25T02:28:43.151023012Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:43.151030294Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:43.151037001Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:43.151042807Z [err]      utility.execute()
+2025-11-25T02:28:43.151187296Z [err]               ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:43.151189453Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:43.151198559Z [err]  ^^^^^^^^^^
+2025-11-25T02:28:43.151203105Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:43.151209176Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:43.151213099Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:43.151221115Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:43.151228092Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:43.151235556Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:43.151487910Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:43.151557223Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:43.151564830Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:43.151572478Z [err]      return _trans.get_language()
+2025-11-25T02:28:43.151576073Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:43.151580985Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:43.151589353Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:43.151589676Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:43.151597942Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:43.151605072Z [err]      self._setup(name)
+2025-11-25T02:28:43.151612296Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:43.151619174Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:43.151796446Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:43.151801655Z [err]  ^^^^^^^^^^^^^
+2025-11-25T02:28:43.151803060Z [err]    File "/app/config/settings.py", line 30, in <module>
+2025-11-25T02:28:43.151804451Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:43.151809441Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:43.151811437Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:43.151811868Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:43.151817576Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:43.151817748Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:43.151820084Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:43.151823347Z [err]  ^^^^
+2025-11-25T02:28:43.151825562Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:43.151828385Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:43.151831931Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:43.151834002Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:43.151838543Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:43.151839339Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:43.151843652Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:44.094246636Z [err]  Traceback (most recent call last):
+2025-11-25T02:28:44.094253087Z [err]    File "/app/manage.py", line 22, in <module>
+2025-11-25T02:28:44.094258034Z [err]      main()
+2025-11-25T02:28:44.094262007Z [err]    File "/app/manage.py", line 18, in main
+2025-11-25T02:28:44.094265868Z [err]      execute_from_command_line(sys.argv)
+2025-11-25T02:28:44.094269881Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 442, in execute_from_command_line
+2025-11-25T02:28:44.094275108Z [err]      utility.execute()
+2025-11-25T02:28:44.094280125Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/__init__.py", line 436, in execute
+2025-11-25T02:28:44.094284151Z [err]      self.fetch_command(subcommand).run_from_argv(self.argv)
+2025-11-25T02:28:44.094288043Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 413, in run_from_argv
+2025-11-25T02:28:44.094293415Z [err]      self.execute(*args, **cmd_options)
+2025-11-25T02:28:44.094298019Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 459, in execute
+2025-11-25T02:28:44.094302716Z [err]      output = self.handle(*args, **options)
+2025-11-25T02:28:44.094306599Z [err]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:44.094311576Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/core/management/base.py", line 104, in wrapper
+2025-11-25T02:28:44.094315410Z [err]      saved_locale = translation.get_language()
+2025-11-25T02:28:44.094319342Z [err]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:44.094324050Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 211, in get_language
+2025-11-25T02:28:44.094499074Z [err]      return _trans.get_language()
+2025-11-25T02:28:44.094508319Z [err]             ^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:44.094516496Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/utils/translation/__init__.py", line 66, in __getattr__
+2025-11-25T02:28:44.094523331Z [err]      if settings.USE_I18N:
+2025-11-25T02:28:44.094532296Z [err]         ^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:44.094539756Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 89, in __getattr__
+2025-11-25T02:28:44.094546434Z [err]      self._setup(name)
+2025-11-25T02:28:44.094554924Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 76, in _setup
+2025-11-25T02:28:44.094560696Z [err]      self._wrapped = Settings(settings_module)
+2025-11-25T02:28:44.094566190Z [err]                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:44.094571494Z [err]    File "/opt/venv/lib/python3.12/site-packages/django/conf/__init__.py", line 190, in __init__
+2025-11-25T02:28:44.094681350Z [err]      raise ImproperlyConfigured(
+2025-11-25T02:28:44.094688523Z [err]  django.core.exceptions.ImproperlyConfigured: The SECRET_KEY environment variable must be set in production
+2025-11-25T02:28:44.094695514Z [err]      mod = importlib.import_module(self.SETTINGS_MODULE)
+2025-11-25T02:28:44.094704659Z [err]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:44.094710962Z [err]  
+2025-11-25T02:28:44.094715923Z [err]    File "/root/.nix-profile/lib/python3.12/importlib/__init__.py", line 90, in import_module
+2025-11-25T02:28:44.094720041Z [err]      return _bootstrap._gcd_import(name[level:], package, level)
+2025-11-25T02:28:44.094724064Z [err]             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2025-11-25T02:28:44.094729542Z [err]  ^^^^^^^^^^^^
+2025-11-25T02:28:44.094733733Z [err]    File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+2025-11-25T02:28:44.094740176Z [err]    File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+2025-11-25T02:28:44.094744366Z [err]    File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+2025-11-25T02:28:44.094748593Z [err]    File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+2025-11-25T02:28:44.094752877Z [err]    File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+2025-11-25T02:28:44.094756825Z [err]    File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+2025-11-25T02:28:44.094761146Z [err]    File "/app/config/settings.py", line 30, in <module>

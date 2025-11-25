@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Registrar Ocorrência</h2>
+    <form method="post" action="{% url 'registrar_ocorrencia' %}">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="colaborador" class="form-label">Colaborador</label>
+            <select id="colaborador" name="colaborador" class="form-select" required>
+                {% for colaborador in colaboradores %}
+                    <option value="{{ colaborador.id }}">{{ colaborador.nome_completo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="tipo" class="form-label">Tipo de Ocorrência</label>
+            <select id="tipo" name="tipo" class="form-select" required>
+                <option value="POSITIVA">Positiva</option>
+                <option value="NEGATIVA">Negativa</option>
+                <option value="NEUTRA">Neutra</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label for="titulo" class="form-label">Título</label>
+            <input type="text" id="titulo" name="titulo" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="descricao" class="form-label">Descrição</label>
+            <textarea id="descricao" name="descricao" class="form-control" rows="4" required></textarea>
+        </div>
+
+        <div class="mb-3">
+            <label for="arquivo" class="form-label">Evidência (opcional)</label>
+            <input type="file" id="arquivo" name="arquivo" class="form-control">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Registrar</button>
+        <a href="{% url 'modulo_rh' %}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

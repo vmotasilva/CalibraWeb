@@ -198,11 +198,10 @@ class SolicitacaoForm(forms.ModelForm):
 
 class OcorrenciaForm(forms.ModelForm):
     class Meta:
-        model = OcorrenciaInstrumento
-        fields = ["tipo", "descricao", "data_ocorrencia", "custo_reparo"]
+        model = Ocorrencia
+        fields = ['colaborador', 'tipo', 'titulo', 'descricao', 'arquivo_evidencia']  # Updated field name
         widgets = {
-            "data_ocorrencia": DateInput(attrs={"class": "form-control"}),
-            "descricao": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
-            "tipo": forms.Select(attrs={"class": "form-select"}),
-            "custo_reparo": forms.NumberInput(attrs={"class": "form-control"}),
+            'descricao': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'colaborador': forms.Select(attrs={'class': 'form-select'}),
         }

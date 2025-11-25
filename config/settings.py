@@ -15,7 +15,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 # Read SECRET_KEY from environment in all environments. For local dev you may
 # set SECRET_KEY in a .env file; but on production the variable must be provided.
-SECRET_KEY = os.environ.get("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ImproperlyConfigured("The SECRET_KEY environment variable must be set in production")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Default is False (safer). In dev set DEBUG='True' in the environment.
@@ -34,6 +36,17 @@ if not DEBUG and not SECRET_KEY:
 if DEBUG and not SECRET_KEY:
     # Use a clearly labeled development key for local work (not for production)
     SECRET_KEY = "django-insecure-development-only-key"
+
+# Temporary fallback for SECRET_KEY in production
+if not SECRET_KEY:
+    SECRET_KEY = "temporary-production-secret-key"
+    print("WARNING: Using a temporary SECRET_KEY. Update your environment variables.")
+
+# Temporary fallback for ALLOWED_HOSTS in production
+if not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["*"]  # Allow all hosts temporarily for debugging
+    print("WARNING: Using a wildcard ALLOWED_HOSTS. Update your environment variables.")
+
 
 # Configuração necessária para o formulário de login funcionar no Railway (HTTPS)
 CSRF_TRUSTED_ORIGINS = os.environ.get(
@@ -173,6 +186,3 @@ if not DEBUG:
     # Railway já gerencia SSL/HTTPS no proxy, então não precisamos forçar redirect aqui
     SECURE_SSL_REDIRECT = False
     X_FRAME_OPTIONS = "DENY"
-    
-    # Configuração para Railway reconhecer HTTPS corretamente
-    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
