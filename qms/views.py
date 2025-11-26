@@ -1363,3 +1363,18 @@ def seed_demo_view(request):
         messages.error(request, f'Falha ao gerar dados de demonstração: {e}')
     # retorna ao RH (tem indicadores visuais) por padrão
     return redirect('modulo_rh')
+
+
+@login_required
+def fix_historico_proxima_view(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "Acesso negado.")
+        return redirect('home')
+    try:
+        from django.core.management import call_command
+        recalc = bool(request.GET.get('recalc'))
+        call_command('fix_historico_proxima', recalc=recalc)
+        messages.success(request, 'Recalculo de próxima calibração concluído!')
+    except Exception as e:
+        messages.error(request, f'Falha no recalculo: {e}')
+    return redirect('modulo_metrologia')

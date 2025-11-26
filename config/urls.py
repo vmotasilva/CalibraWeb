@@ -60,6 +60,7 @@ urlpatterns = [
     path("dl-dados-colab/", views.dl_template_colab_dados, name="dl_colaboradores_dados"),
     # Admin-only endpoint to seed demo data quickly
     path("seed-demo/", views.seed_demo_view, name="seed_demo"),
+    path("fix-historico/", views.fix_historico_proxima_view, name="fix_historico_proxima"),
     # 8. Importações (Excel)
     path("imp-inst/", views.imp_instr_view, name="importar_instrumentos"),
     # Import jobs listing and retry actions
