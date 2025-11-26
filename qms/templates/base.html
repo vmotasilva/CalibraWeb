@@ -86,7 +86,7 @@
                     {% endif %}
                 </div>
 
-                {% if user.is_staff or (colaborador and colaborador.is_admin) %}
+                {% if user.is_staff or colaborador and colaborador.is_admin %}
                     <a href="/admin/" target="_blank" class="btn btn-sm btn-outline-warning me-2" title="Admin">⚙️</a>
                 {% endif %}
 
