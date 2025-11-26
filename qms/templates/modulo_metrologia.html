@@ -66,6 +66,9 @@
             <a href="{% url 'importar_instrumentos' %}" class="btn btn-success btn-sm shadow-sm">
                 <i class="bi bi-file-earmark-spreadsheet"></i> Importar
             </a>
+            <a href="{% url 'import_jobs' %}" class="btn btn-outline-info btn-sm shadow-sm">
+                <i class="bi bi-clock-history"></i> Ver Importações
+            </a>
             <a href="/admin/qms/instrumento/add/" target="_blank" class="btn btn-primary btn-sm shadow-sm">
                 <i class="bi bi-plus-lg"></i> Novo
             </a>
@@ -76,21 +79,17 @@
         
         <!-- SIDEBAR FILTROS -->
         <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
-            
-            <!-- Busca -->
-            <div class="mb-3 flex-shrink-0">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2>Metrologia - Instrumentos</h2>
-                <a class="btn btn-outline-info" href="{% url 'import_jobs' %}">Ver Importações</a>
-            </div>
-            <div class="d-flex justify-content-end mb-2">
-                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">Limpar filtros</button>
-            </div>
-                </div>
+
+            <!-- Busca e ações dos filtros (sem títulos adicionais) -->
+            <div class="mb-2 flex-shrink-0">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                     <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Tag, Descrição...">
                 </div>
+                <div class="d-flex justify-content-end mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">Limpar filtros</button>
+                </div>
+            </div>
             <!-- keep sidebar-col open so sidebar-scroll stays inside -->
 
             <div class="sidebar-scroll">
