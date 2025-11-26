@@ -203,7 +203,7 @@
                         {% for i in instrumentos %}
                         
                         <tr class="instrumento-row border-bottom"
-                            data-nome="{{ i.tag|lower }} {{ i.descricao|lower }} {{ i.fabricante|lower }}"
+                            data-nome="{{ i.tag|default:''|lower }} {{ i.descricao|default:''|lower }} {{ i.fabricante|default:''|lower }}"
                             data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
                             data-categoria="{{ i.categoria_id|default:'' }}"
                             data-setor="{{ i.setor_id|default:'' }}"
@@ -221,7 +221,7 @@
                             </td>
 
                             <td class="py-2">
-                                <span class="badge bg-light text-dark border fw-normal">{{ i.categoria.nome|default:"-" }}</span>
+                                <span class="badge bg-light text-dark border fw-normal">{{ i.categoria.nome|default_if_none:"-" }}</span>
                             </td>
 
                             <td class="py-2 small text-muted">
