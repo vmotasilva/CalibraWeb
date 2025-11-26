@@ -1230,46 +1230,50 @@ def health_check(request):
 @login_required
 def import_jobs_view(request):
     """List recent import jobs with optional status filter."""
-    from .models import ImportJob
-    status = (request.GET.get('status') or '').upper()
-    job_type = (request.GET.get('type') or '').upper()
-    qs = ImportJob.objects.all()
-    if status in {'PENDING','STARTED','SUCCESS','FAILURE'}:
-        qs = qs.filter(status=status)
-    if job_type:
-        qs = qs.filter(job_type__iexact=job_type)
-    jobs = list(qs.order_by('-created_at')[:100])
-    # Prepare display fields: split summary and samples if present
-    prepared = []
-    for j in jobs:
-        summary = j.result or ''
-        samples = []
-        try:
-            if summary and '| Samples:' in summary:
-                parts = summary.split('| Samples:')
-                summary = parts[0].strip()
-                samples_str = parts[1].strip() if len(parts) > 1 else ''
-                if samples_str:
-                    samples = [s.strip() for s in samples_str.split(',') if s.strip()]
-        except Exception:
-            pass
-        prepared.append({
-            'id': j.id,
-            'job_type': j.job_type,
-            'filename': j.filename,
-            'status': j.status,
-            'result_summary': summary,
-            'result_samples': samples,
-            'created_at': j.created_at,
-            'updated_at': j.updated_at,
-            'filepath': j.filepath,
+    try:
+        from .models import ImportJob
+        status = (request.GET.get('status') or '').upper()
+        job_type = (request.GET.get('type') or '').upper()
+        qs = ImportJob.objects.all()
+        if status in {'PENDING','STARTED','SUCCESS','FAILURE'}:
+            qs = qs.filter(status=status)
+        if job_type:
+            qs = qs.filter(job_type__iexact=job_type)
+        jobs = list(qs.order_by('-created_at')[:100])
+        # Prepare display fields: split summary and samples if present
+        prepared = []
+        for j in jobs:
+            summary = j.result or ''
+            samples = []
+            try:
+                if summary and '| Samples:' in summary:
+                    parts = summary.split('| Samples:')
+                    summary = parts[0].strip()
+                    samples_str = parts[1].strip() if len(parts) > 1 else ''
+                    if samples_str:
+                        samples = [s.strip() for s in samples_str.split(',') if s.strip()]
+            except Exception:
+                samples = []
+            prepared.append({
+                'id': j.id,
+                'job_type': j.job_type,
+                'filename': j.filename,
+                'status': j.status,
+                'result_summary': summary,
+                'result_samples': samples,
+                'created_at': j.created_at,
+                'updated_at': j.updated_at,
+                'filepath': j.filepath,
+            })
+        return render(request, 'import_jobs.html', {
+            'jobs': prepared,
+            'status': status,
+            'job_type': job_type,
+            'colaborador': get_colab(request),
         })
-    return render(request, 'import_jobs.html', {
-        'jobs': prepared,
-        'status': status,
-        'job_type': job_type,
-        'colaborador': get_colab(request),
-    })
+    except Exception as e:
+        # Fallback: return minimal HTML to avoid 500 and expose error
+        return HttpResponse(f"<pre>Falha ao carregar import-jobs: {str(e)}</pre>", content_type="text/html", status=200)
 
 
 @login_required
