@@ -23,4 +23,4 @@ ENV DJANGO_SETTINGS_MODULE=config.settings
 RUN python manage.py collectstatic --noinput || echo "Skipping collectstatic if settings not configured"
 
 EXPOSE 8000
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3 --timeout 120 --access-logfile - --error-logfile -"]

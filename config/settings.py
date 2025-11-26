@@ -24,7 +24,7 @@ if not SECRET_KEY:
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 # Configure ALLOWED_HOSTS via environment variable (comma-separated), default to localhost for development.
-ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 # In development you may explicitly set DEBUG=True and still require SECRET_KEY above.
 # No implicit insecure fallbacks are provided anymore.
@@ -176,3 +176,17 @@ if not DEBUG:
     # Railway já gerencia SSL/HTTPS no proxy, então não precisamos forçar redirect aqui
     SECURE_SSL_REDIRECT = False
     X_FRAME_OPTIONS = "DENY"
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'DEBUG',
+    },
+}

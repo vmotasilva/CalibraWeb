@@ -866,6 +866,8 @@ def aplicar_pacotes_treinamento(sender, instance, action, pk_set, **kwargs):
         pacotes = PacoteTreinamento.objects.filter(pk__in=pk_set)
         for pacote in pacotes:
             for proc in pacote.procedimentos.all():
+                if not getattr(proc, "aplica_treinamento", False):
+                    continue
                 RegistroTreinamento.objects.get_or_create(
                     colaborador=instance,
                     procedimento=proc,
