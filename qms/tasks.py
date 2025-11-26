@@ -33,6 +33,7 @@ def import_instruments_task(job_id, filepath):
     count_new = 0
     count_upd = 0
     count_faixas = 0
+    sample_errors = []
 
     try:
         # Read file
@@ -46,6 +47,21 @@ def import_instruments_task(job_id, filepath):
             df = pd.read_excel(filepath)
 
         df.columns = df.columns.str.strip().str.upper()
+        try:
+            df.columns = (df.columns
+                          .str.normalize('NFKD')
+                          .str.encode('ascii', errors='ignore')
+                          .str.decode('utf-8'))
+        except Exception:
+            pass
+        # Normalize accents to widen header matching
+        try:
+            df.columns = (df.columns
+                          .str.normalize('NFKD')
+                          .str.encode('ascii', errors='ignore')
+                          .str.decode('utf-8'))
+        except Exception:
+            pass
 
         def excel_date_to_date(val):
             try:
@@ -80,6 +96,8 @@ def import_instruments_task(job_id, filepath):
 
                 tag = get_val(['TAG', 'IDENTIFICACAO', 'IDENTIFICAÇÃO', 'CODIGO', 'CÓDIGO'])
                 if not tag:
+                    if len(sample_errors) < 5:
+                        sample_errors.append('Linha sem TAG; ignorada.')
                     continue
 
                 descricao = get_val(['EQUIPAMENTO', 'DESCRIÇÃO', 'DESCRICAO']) or 'Sem Descrição'
@@ -112,8 +130,13 @@ def import_instruments_task(job_id, filepath):
                 dt_ult_calib = excel_date_to_date(row.get('DATA_ULTIMA_CALIBRACAO')) if 'DATA_ULTIMA_CALIBRACAO' in df.columns else excel_date_to_date(get_val(['DATA ULTIMA CALIBRACAO','ULTIMA CALIBRACAO','ÚLTIMA CALIBRAÇÃO','ULTIMA CALIB.']))
                 data_prox = None
                 if dt_ult_calib and frequencia_meses:
-                    from datetime import timedelta
-                    data_prox = dt_ult_calib + timedelta(days=frequencia_meses * 30)
+                    # Add months using relativedelta for calendar accuracy
+                    try:
+                        from dateutil.relativedelta import relativedelta
+                        data_prox = dt_ult_calib + relativedelta(months=+frequencia_meses)
+                    except Exception:
+                        from datetime import timedelta
+                        data_prox = dt_ult_calib + timedelta(days=frequencia_meses * 30)
 
                 # Faixa e Unidade
                 faixa_txt = get_val(['FAIXA', 'INTERVALO'])
@@ -177,17 +200,21 @@ def import_instruments_task(job_id, filepath):
                             defaults={'valor_minimo': minimo, 'valor_maximo': maximo}
                         )
                         count_faixas += 1
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        if len(sample_errors) < 5:
+                            sample_errors.append(f'Faixa inválida para {tag}: {faixa_txt}')
 
         job.status = 'SUCCESS'
-        job.result = f'Imported: {count_new} new, {count_upd} updated, {count_faixas} faixas'
+        msg = f'Instruments: {count_new} new, {count_upd} updated, {count_faixas} ranges'
+        if sample_errors:
+            msg += f" | Samples: {', '.join(sample_errors)}"
+        job.result = msg
         job.save()
         return {'job_id': str(job_id), 'status': 'SUCCESS', 'imported': count_new, 'updated': count_upd, 'faixas': count_faixas}
 
     except Exception as exc:
         job.status = 'FAILURE'
-        job.result = f'Error: {str(exc)}'
+        job.result = f'Error importing instruments: {str(exc)}'
         job.save()
         return {'job_id': str(job_id), 'status': 'FAILURE', 'error': str(exc)}
 
@@ -244,6 +271,7 @@ def import_historico_task(job_id, filepath):
     created = 0
     updated = 0
     errors = 0
+    sample_errors = []
 
     try:
         # Read file
@@ -267,10 +295,14 @@ def import_historico_task(job_id, filepath):
             for _, row in df.iterrows():
                 tag = get_val(row, ['TAG'])
                 if not tag:
+                    if len(sample_errors) < 5:
+                        sample_errors.append('Linha sem TAG; ignorada.')
                     continue
                 inst = Instrumento.objects.filter(tag=tag).first()
                 if not inst:
                     errors += 1
+                    if len(sample_errors) < 5:
+                        sample_errors.append(f'TAG não encontrado: {tag}')
                     continue
 
                 dt_cal = excel_date_to_date(row.get('DATA CALIBRAÇÃO') or row.get('DATA CALIBRACAO'))
@@ -293,7 +325,7 @@ def import_historico_task(job_id, filepath):
                     'incerteza': float(inc.replace(',', '.')) if inc else None,
                     'tolerancia_usada': float(tol.replace(',', '.')) if tol else None,
                     'tem_selo_rbc': tem_rbc,
-                    'resultado': resultado if resultado in {'APROVADO','CONDICIONAL','REPROVADO'} else 'APROVADO',
+                    'resultado': resultado if resultado in {'APROVADO','CONDICIONAL','REPROVADO'} else ('CONDICIONAL' if 'COND' in resultado else ('REPROVADO' if 'REPRO' in resultado else 'APROVADO')),
                     'fornecedor': fornecedor,
                     'responsavel': responsavel,
                     'observacoes': obs,
@@ -301,6 +333,8 @@ def import_historico_task(job_id, filepath):
 
                 if not dt_cal:
                     errors += 1
+                    if len(sample_errors) < 5:
+                        sample_errors.append(f'Data calibração ausente para TAG {tag}')
                     continue
 
                 obj, was_created = HistoricoCalibracao.objects.update_or_create(
@@ -315,13 +349,16 @@ def import_historico_task(job_id, filepath):
                     updated += 1
 
         job.status = 'SUCCESS'
-        job.result = f'Historico: {created} novos, {updated} atualizados, {errors} ignorados'
+        msg = f'Historico: {created} new, {updated} updated, {errors} ignored (missing TAG/date)'
+        if sample_errors:
+            msg += f" | Samples: {', '.join(sample_errors)}"
+        job.result = msg
         job.save()
         return {'job_id': str(job_id), 'status': 'SUCCESS', 'created': created, 'updated': updated, 'ignored': errors}
 
     except Exception as exc:
         job.status = 'FAILURE'
-        job.result = f'Error: {str(exc)}'
+        job.result = f'Error importing historico: {str(exc)}'
         job.save()
         return {'job_id': str(job_id), 'status': 'FAILURE', 'error': str(exc)}
 
@@ -358,6 +395,7 @@ def import_colab_task(job_id, filepath):
         count_lider = 0
         count_super = 0
         count_gerente = 0
+        sample_errors = []
 
         with transaction.atomic():
             for _, row in df.iterrows():
@@ -372,6 +410,8 @@ def import_colab_task(job_id, filepath):
                 matricula = matricula.split('.') [0]
                 nome = get_val(["NOME", "COLABORADOR", "FUNCIONARIO"])
                 if not matricula or not nome:
+                    if len(sample_errors) < 5:
+                        sample_errors.append('Linha sem matrícula ou nome; ignorada.')
                     continue
                 cpf_raw = get_val(["CPF", "DOC"])
                 cpf = None
@@ -463,8 +503,11 @@ def import_colab_task(job_id, filepath):
                         colab.save(update_fields=update_fields)
 
         job.status = 'SUCCESS'
-        job.result = (f"RH: {count_new} Novos, {count_upd} Atualizados, "
-                      f"{count_lider} líderes, {count_super} supervisores, {count_gerente} gerentes vinculados.")
+        msg = (f"RH: {count_new} Novos, {count_upd} Atualizados, "
+               f"{count_lider} líderes, {count_super} supervisores, {count_gerente} gerentes vinculados.")
+        if sample_errors:
+            msg += f" | Samples: {', '.join(sample_errors)}"
+        job.result = msg
         job.save()
         return {'job_id': str(job_id), 'status': 'SUCCESS'}
     except Exception as exc:
@@ -506,6 +549,7 @@ def import_hierarquia_task(job_id, filepath):
             return None
 
         count = 0
+        sample_errors = []
         with transaction.atomic():
             for _, row in df.iterrows():
                 setor_nome = get_val(row, ["SETOR", "DEPARTAMENTO", "AREA", "ÁREA"]) or None
@@ -520,6 +564,8 @@ def import_hierarquia_task(job_id, filepath):
                 elif "12" in turno_raw:
                     turno = "12X36"
                 if not setor_nome:
+                    if len(sample_errors) < 5:
+                        sample_errors.append('Linha sem setor; ignorada.')
                     continue
                 setor_obj, _ = Setor.objects.get_or_create(nome=str(setor_nome).upper())
                 def norm_mat(v):
@@ -545,12 +591,15 @@ def import_hierarquia_task(job_id, filepath):
                 count += 1
 
         job.status = 'SUCCESS'
-        job.result = f"Hierarquia importada: {count} linhas processadas."
+        msg = f"Hierarquia importada: {count} linhas processadas."
+        if sample_errors:
+            msg += f" | Samples: {', '.join(sample_errors)}"
+        job.result = msg
         job.save()
         return {'job_id': str(job_id), 'status': 'SUCCESS', 'processed': count}
     except Exception as exc:
         job.status = 'FAILURE'
-        job.result = f'Error: {str(exc)}'
+        job.result = f'Error importing hierarquia: {str(exc)}'
         job.save()
         return {'job_id': str(job_id), 'status': 'FAILURE', 'error': str(exc)}
 
@@ -601,13 +650,18 @@ def import_ferias_task(job_id, filepath):
         df.columns = df.columns.str.strip().str.upper()
 
         count = 0
+        sample_errors = []
         with transaction.atomic():
             for _, row in df.iterrows():
                 matricula = str(row.get('MATRICULA') or '').strip()
                 if not matricula:
+                    if len(sample_errors) < 5:
+                        sample_errors.append('Linha sem matrícula; ignorada.')
                     continue
                 colab = Colaborador.objects.filter(matricula=matricula.split('.') [0]).first()
                 if not colab:
+                    if len(sample_errors) < 5:
+                        sample_errors.append(f'Colaborador não encontrado: {matricula}')
                     continue
                 dt_aq_ini = parse_date(row.get('AQUISITIVO_INICIO'))
                 dt_aq_fim = parse_date(row.get('AQUISITIVO_FIM'))
@@ -619,6 +673,8 @@ def import_ferias_task(job_id, filepath):
                 except Exception:
                     dias_vend = 0
                 if not dt_aq_fim:
+                    if len(sample_errors) < 5:
+                        sample_errors.append(f'Período aquisitivo fim ausente para {matricula}')
                     continue
                 Ferias.objects.update_or_create(
                     colaborador=colab,
@@ -634,11 +690,14 @@ def import_ferias_task(job_id, filepath):
                 count += 1
 
         job.status = 'SUCCESS'
-        job.result = f"{count} registros de férias importados!"
+        msg = f"{count} registros de férias importados!"
+        if sample_errors:
+            msg += f" | Samples: {', '.join(sample_errors)}"
+        job.result = msg
         job.save()
         return {'job_id': str(job_id), 'status': 'SUCCESS', 'processed': count}
     except Exception as exc:
         job.status = 'FAILURE'
-        job.result = f'Error: {str(exc)}'
+        job.result = f'Error importing ferias: {str(exc)}'
         job.save()
         return {'job_id': str(job_id), 'status': 'FAILURE', 'error': str(exc)}
