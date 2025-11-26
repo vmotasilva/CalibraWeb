@@ -326,7 +326,7 @@
                     <tbody class="border-top-0 bg-white">
                         {% for f in funcionarios %}
                         <tr class="rh-row border-bottom" 
-                            data-nome="{{ f.nome_completo|lower }} {{ f.matricula }}"
+                            data-nome="{{ f.nome_completo|default:''|lower }} {{ f.matricula|default:'' }}"
                             data-status="{% if not f.is_active %}INATIVO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
                             data-setor="{{ f.setor.id|default:'' }}"
                             data-lider="{{ f.lider.id|default:'' }}"
