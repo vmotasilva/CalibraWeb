@@ -81,24 +81,16 @@
             {% endif %}
           </td>
           <td>
-            {% if j.result and 'Samples:' in j.result %}
-              {% with parts=j.result|split:'| Samples:' %}
-                <div class="small">{{ parts.0 }}</div>
-                {% if parts|length > 1 %}
-                  {% with samples=parts.1|split:', ' %}
-                    <button class="btn btn-xs btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#samples-{{ j.id }}">Ver detalhes</button>
-                    <div id="samples-{{ j.id }}" class="collapse mt-1">
-                      <ul class="mb-0">
-                        {% for s in samples %}
-                          <li class="text-muted small">{{ s }}</li>
-                        {% endfor %}
-                      </ul>
-                    </div>
-                  {% endwith %}
-                {% endif %}
-              {% endwith %}
-            {% else %}
-              <div class="small" title="{{ j.result }}">{{ j.result }}</div>
+            <div class="small">{{ j.result_summary }}</div>
+            {% if j.result_samples %}
+              <button class="btn btn-xs btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#samples-{{ j.id }}">Ver detalhes</button>
+              <div id="samples-{{ j.id }}" class="collapse mt-1">
+                <ul class="mb-0">
+                  {% for s in j.result_samples %}
+                    <li class="text-muted small">{{ s }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
             {% endif %}
           </td>
           <td>{{ j.created_at|date:"d/m/Y H:i" }}</td>

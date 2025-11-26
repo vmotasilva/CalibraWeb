@@ -1237,9 +1237,34 @@ def import_jobs_view(request):
         qs = qs.filter(status=status)
     if job_type:
         qs = qs.filter(job_type__iexact=job_type)
-    jobs = qs.order_by('-created_at')[:100]
+    jobs = list(qs.order_by('-created_at')[:100])
+    # Prepare display fields: split summary and samples if present
+    prepared = []
+    for j in jobs:
+        summary = j.result or ''
+        samples = []
+        try:
+            if summary and '| Samples:' in summary:
+                parts = summary.split('| Samples:')
+                summary = parts[0].strip()
+                samples_str = parts[1].strip() if len(parts) > 1 else ''
+                if samples_str:
+                    samples = [s.strip() for s in samples_str.split(',') if s.strip()]
+        except Exception:
+            pass
+        prepared.append({
+            'id': j.id,
+            'job_type': j.job_type,
+            'filename': j.filename,
+            'status': j.status,
+            'result_summary': summary,
+            'result_samples': samples,
+            'created_at': j.created_at,
+            'updated_at': j.updated_at,
+            'filepath': j.filepath,
+        })
     return render(request, 'import_jobs.html', {
-        'jobs': jobs,
+        'jobs': prepared,
         'status': status,
         'job_type': job_type,
         'colaborador': get_colab(request),
