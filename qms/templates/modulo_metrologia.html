@@ -79,12 +79,13 @@
             
             <!-- Busca -->
             <div class="mb-3 flex-shrink-0">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2>Metrologia - Instrumentos</h2>
-                    <a class="btn btn-outline-info" href="{% url 'import_jobs' %}">Ver Importações</a>
-                </div>
-                        <small>Limpar</small>
-                    </button>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Metrologia - Instrumentos</h2>
+                <a class="btn btn-outline-info" href="{% url 'import_jobs' %}">Ver Importações</a>
+            </div>
+            <div class="d-flex justify-content-end mb-2">
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">Limpar filtros</button>
+            </div>
                 </div>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
@@ -204,9 +205,9 @@
                         <tr class="instrumento-row border-bottom"
                             data-nome="{{ i.tag|lower }} {{ i.descricao|lower }} {{ i.fabricante|lower }}"
                             data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
-                            data-categoria="{{ i.categoria.id|default:'' }}"
-                            data-setor="{{ i.setor.id|default:'' }}"
-                            data-situacao="{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER{% else %}EM_DIA{% endif %}">
+                            data-categoria="{{ i.categoria_id|default:'' }}"
+                            data-setor="{{ i.setor_id|default:'' }}"
+                            data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
                             
                             <td class="ps-4 py-2 fw-bold text-primary font-monospace">
                                 {{ i.tag }}
