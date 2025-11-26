@@ -97,6 +97,9 @@ DATABASES = {
 }
 
 # Configuração de Produção (Railway)
+import logging
+logger = logging.getLogger(__name__)
+
 def _build_db_from_pg_env() -> str | None:
     """Build a PostgreSQL URL from Railway-style PG* env vars if present.
     Expected vars: PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE
@@ -107,11 +110,19 @@ def _build_db_from_pg_env() -> str | None:
     pg_user = os.environ.get("PGUSER")
     pg_pass = os.environ.get("PGPASSWORD")
     pg_db = os.environ.get("PGDATABASE")
+    
+    logger.info(f"DB ENV CHECK: PGHOST={pg_host}, PGPORT={pg_port}, PGUSER={pg_user}, PGDATABASE={pg_db}, has_pass={bool(pg_pass)}")
+    
     if all([pg_host, pg_user, pg_db]):
         # Password may be optional in some setups
         if pg_pass:
-            return f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
-        return f"postgresql://{pg_user}@{pg_host}:{pg_port}/{pg_db}"
+            dsn = f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+            logger.info(f"Built DSN from PG* vars: postgresql://{pg_user}:***@{pg_host}:{pg_port}/{pg_db}")
+            return dsn
+        dsn = f"postgresql://{pg_user}@{pg_host}:{pg_port}/{pg_db}"
+        logger.info(f"Built DSN from PG* vars (no pass): {dsn}")
+        return dsn
+    logger.warning("Insufficient PG* environment variables to build database URL")
     return None
 
 # Prefer an explicit DATABASE_URL; fall back to common alt names and PG* vars
@@ -122,18 +133,32 @@ database_url = (
     or os.environ.get("POSTGRESQL_URL")
 )
 
+logger.info(f"DATABASE_URL present: {bool(database_url)}")
+if database_url:
+    # Mask password for logging
+    safe_url = database_url.split('@')[0].split(':')[0] + ':***@' + database_url.split('@')[1] if '@' in database_url else database_url
+    logger.info(f"DATABASE_URL value (masked): {safe_url}")
+
 if database_url:
     # Guard against placeholder URLs like ...@host:port/db
     malformed_placeholder = "@host:" in database_url or database_url.endswith("@host")
     if malformed_placeholder:
+        logger.warning(f"Detected malformed DATABASE_URL with placeholder 'host', attempting to build from PG* vars")
         built = _build_db_from_pg_env()
         if built:
             database_url = built
+            logger.info("Successfully replaced malformed URL with PG* vars")
+        else:
+            logger.error("Failed to build URL from PG* vars, will use malformed URL (will likely fail)")
     DATABASES["default"] = dj_database_url.parse(database_url, conn_max_age=600, ssl_require=True)
 else:
+    logger.info("No DATABASE_URL found, attempting to build from PG* vars")
     built = _build_db_from_pg_env()
     if built:
         DATABASES["default"] = dj_database_url.parse(built, conn_max_age=600, ssl_require=True)
+        logger.info("Successfully configured database from PG* vars")
+    else:
+        logger.warning("No database configuration found, using default SQLite")
 
 # Cole o seu link GIGANTE do Railway entre as aspas abaixo para forçar manualmente, se necessário:
 # DATABASES['default'] = dj_database_url.parse("postgresql://<user>:<pass>@<host>:<port>/<db>", conn_max_age=600, ssl_require=True)
