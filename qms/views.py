@@ -1290,3 +1290,19 @@ def retry_import_job_view(request, job_id):
     except Exception as e:
         messages.error(request, f"Falha ao reprocessar: {e}")
     return redirect('import_jobs')
+
+
+# --- ADMIN-ONLY: disparar seed de dados demo ---
+@login_required
+def seed_demo_view(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "Acesso negado.")
+        return redirect('home')
+    try:
+        from django.core.management import call_command
+        call_command('seed_demo')
+        messages.success(request, 'Base de demonstração carregada com sucesso!')
+    except Exception as e:
+        messages.error(request, f'Falha ao gerar dados de demonstração: {e}')
+    # retorna ao RH (tem indicadores visuais) por padrão
+    return redirect('modulo_rh')
