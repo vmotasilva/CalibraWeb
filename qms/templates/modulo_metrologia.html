@@ -221,11 +221,15 @@
                             </td>
 
                             <td class="py-2">
-                                <span class="badge bg-light text-dark border fw-normal">{{ i.categoria.nome|default_if_none:"-" }}</span>
+                                {% if i.categoria %}
+                                    <span class="badge bg-light text-dark border fw-normal">{{ i.categoria.nome }}</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark border fw-normal">-</span>
+                                {% endif %}
                             </td>
 
                             <td class="py-2 small text-muted">
-                                {{ i.setor.nome|default:"-" }}
+                                {% if i.setor %}{{ i.setor.nome }}{% else %}-{% endif %}
                             </td>
 
                             <td class="py-2">
