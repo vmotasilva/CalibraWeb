@@ -23,8 +23,8 @@ if not SECRET_KEY:
 # Default is False (safer). In dev set DEBUG='True' in the environment.
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-# Configure ALLOWED_HOSTS via environment variable (comma-separated), default empty list.
-ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h]
+# Configure ALLOWED_HOSTS via environment variable (comma-separated), default to localhost for development.
+ALLOWED_HOSTS = [h for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
 
 # In development you may explicitly set DEBUG=True and still require SECRET_KEY above.
 # No implicit insecure fallbacks are provided anymore.
