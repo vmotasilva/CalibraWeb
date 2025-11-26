@@ -10,6 +10,35 @@
                 </div>
                 
                 <div class="card-body p-4">
+                    {% if jobs %}
+                    <div class="alert alert-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Últimas Importações:</strong>
+                                <ul class="mb-0 small">
+                                                                        {% for j in jobs %}
+                                                                        <li>#{{ j.id }} - {{ j.filename }} —
+                                                                                {% if j.status == 'SUCCESS' %}
+                                                                                    <span class="badge bg-success">SUCCESS</span>
+                                                                                {% elif j.status == 'FAILURE' %}
+                                                                                    <span class="badge bg-danger">FAILURE</span>
+                                                                                {% elif j.status == 'STARTED' %}
+                                                                                    <span class="badge bg-warning text-dark">STARTED</span>
+                                                                                {% elif j.status == 'PENDING' %}
+                                                                                    <span class="badge bg-secondary">PENDING</span>
+                                                                                {% else %}
+                                                                                    <span class="badge bg-light text-dark">{{ j.status }}</span>
+                                                                                {% endif %}
+                                                                        </li>
+                                                                        {% endfor %}
+                                </ul>
+                            </div>
+                            <div>
+                                <a href="{% url 'import_jobs' %}" class="btn btn-outline-dark btn-sm">Detalhes</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                     <p class="text-muted text-center mb-4">
                         Atualize o cadastro de RH enviando uma planilha Excel.<br>
                         <small>A chave única de identificação é a <strong>MATRÍCULA</strong>.</small>

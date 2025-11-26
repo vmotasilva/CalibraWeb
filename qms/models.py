@@ -520,6 +520,7 @@ class ImportJob(models.Model):
     )
     filename = models.CharField(max_length=255)
     filepath = models.CharField(max_length=1024, null=True, blank=True)
+    job_type = models.CharField(max_length=50, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
     result = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

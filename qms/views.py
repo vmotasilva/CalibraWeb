@@ -916,7 +916,7 @@ def imp_instr_view(request):
                 )
 
                 # Enqueue background task (Celery) if available, otherwise execute inline
-                from .tasks import import_instruments_task
+                from .tasks import import_historico_task
 
                 try:
                     import_instruments_task.delay(str(job.id), tmp.name)
@@ -937,7 +937,7 @@ def imp_instr_view(request):
     return render(
         request,
         "importar_instrumentos.html",
-        {"form": form, "colaborador": get_colab(request)},
+        {"form": form, "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
 
 
@@ -965,9 +965,9 @@ def imp_historico_view(request):
                 from .tasks import import_instruments_task
 
                 try:
-                    import_instruments_task.delay(str(job.id), tmp.name)
+                    import_historico_task.delay(str(job.id), tmp.name)
                 except Exception:
-                    import_instruments_task(job.id, tmp.name)
+                    import_historico_task(job.id, tmp.name)
 
                 messages.success(
                     request,
@@ -982,7 +982,7 @@ def imp_historico_view(request):
     return render(
         request,
         "importar_historico.html",
-        {"form": form, "colaborador": get_colab(request)},
+        {"form": form, "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
 
 
@@ -1197,19 +1197,92 @@ def imp_colab_view(request):
     return render(
         request,
         "importar_colaboradores.html",
-        {"form": form, "colaborador": get_colab(request)},
+        {"form": form, "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
 
 
 @login_required
 def imp_hierarquia_view(request):
     if request.method == "POST":
-        messages.success(request, "Hierarquia OK")
-        return redirect("modulo_rh")
+        form = ImportacaoHierarquiaForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                f = request.FILES["arquivo_excel"]
+                import pandas as pd
+                from django.db import transaction
+
+                try:
+                    df = pd.read_excel(f)
+                except Exception:
+                    df = pd.read_csv(f, sep=None, engine="python", encoding="latin1")
+
+                df.columns = df.columns.str.strip().str.upper()
+
+                def get_val(row, keys):
+                    for k in keys:
+                        if k in df.columns and pd.notna(row.get(k)):
+                            return str(row.get(k)).strip()
+                    return None
+
+                count = 0
+                from .models import Setor, HierarquiaSetor, Colaborador
+
+                with transaction.atomic():
+                    for _, row in df.iterrows():
+                        setor_nome = get_val(row, ["SETOR", "DEPARTAMENTO", "AREA", "ÁREA"])
+                        turno_raw = (get_val(row, ["TURNO"]) or "ADM").upper()
+                        turno = "ADM"
+                        if "1" in turno_raw:
+                            turno = "TURNO_1"
+                        elif "2" in turno_raw:
+                            turno = "TURNO_2"
+                        elif "3" in turno_raw:
+                            turno = "TURNO_3"
+                        elif "12" in turno_raw:
+                            turno = "12X36"
+
+                        if not setor_nome:
+                            continue
+
+                        setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+
+                        def norm_mat(v):
+                            return v.split(".")[0] if v else None
+
+                        mat_lider = norm_mat(get_val(row, ["MAT_LIDER", "LIDER", "COD_LIDER"]))
+                        mat_super = norm_mat(get_val(row, ["MAT_SUPERVISOR", "SUPERVISOR", "COD_SUPERVISOR"]))
+                        mat_ger = norm_mat(get_val(row, ["MAT_GERENTE", "GERENTE", "COD_GERENTE"]))
+                        mat_dir = norm_mat(get_val(row, ["MAT_DIRETOR", "DIRETOR", "COD_DIRETOR"]))
+
+                        def find_colab(mat):
+                            if not mat:
+                                return None
+                            try:
+                                return Colaborador.objects.get(matricula=mat)
+                            except Colaborador.DoesNotExist:
+                                return None
+
+                        hier, _ = HierarquiaSetor.objects.update_or_create(
+                            setor=setor_obj,
+                            turno=turno,
+                            defaults={
+                                "lider": find_colab(mat_lider),
+                                "supervisor": find_colab(mat_super),
+                                "gerente": find_colab(mat_ger),
+                                "diretor": find_colab(mat_dir),
+                            },
+                        )
+                        count += 1
+
+                messages.success(request, f"Hierarquia importada: {count} linhas processadas.")
+                return redirect("modulo_rh")
+            except Exception as e:
+                messages.error(request, f"Erro na importação: {str(e)}")
+                return redirect("modulo_rh")
     return render(
         request,
         "importar_hierarquia.html",
-        {"form": ImportacaoHierarquiaForm(), "colaborador": get_colab(request)},
+        {"form": ImportacaoHierarquiaForm(), "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
 
 
@@ -1292,7 +1365,7 @@ def imp_ferias_view(request):
     return render(
         request,
         "importar_ferias.html",
-        {"form": form, "colaborador": get_colab(request)},
+        {"form": form, "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
 
 
@@ -1376,3 +1449,19 @@ def health_check(request):
     from django.http import HttpResponse
 
     return HttpResponse("OK", content_type="text/plain")
+
+
+@login_required
+def import_jobs_view(request):
+    """List recent import jobs with optional status filter."""
+    from .models import ImportJob
+    status = (request.GET.get('status') or '').upper()
+    qs = ImportJob.objects.all()
+    if status in {'PENDING','STARTED','SUCCESS','FAILURE'}:
+        qs = qs.filter(status=status)
+    jobs = qs.order_by('-created_at')[:100]
+    return render(request, 'import_jobs.html', {
+        'jobs': jobs,
+        'status': status,
+        'colaborador': get_colab(request),
+    })

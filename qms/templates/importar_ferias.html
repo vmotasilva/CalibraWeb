@@ -9,6 +9,35 @@
                     <h4 class="mb-0"><i class="bi bi-airplane"></i> Importar Programação de Férias</h4>
                 </div>
                 <div class="card-body">
+                    {% if jobs %}
+                    <div class="alert alert-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Últimas Importações:</strong>
+                                <ul class="mb-0 small">
+                                                                        {% for j in jobs %}
+                                                                        <li>#{{ j.id }} - {{ j.filename }} —
+                                                                                {% if j.status == 'SUCCESS' %}
+                                                                                    <span class="badge bg-success">SUCCESS</span>
+                                                                                {% elif j.status == 'FAILURE' %}
+                                                                                    <span class="badge bg-danger">FAILURE</span>
+                                                                                {% elif j.status == 'STARTED' %}
+                                                                                    <span class="badge bg-warning text-dark">STARTED</span>
+                                                                                {% elif j.status == 'PENDING' %}
+                                                                                    <span class="badge bg-secondary">PENDING</span>
+                                                                                {% else %}
+                                                                                    <span class="badge bg-light text-dark">{{ j.status }}</span>
+                                                                                {% endif %}
+                                                                        </li>
+                                                                        {% endfor %}
+                                </ul>
+                            </div>
+                            <div>
+                                <a href="{% url 'import_jobs' %}" class="btn btn-outline-dark btn-sm">Detalhes</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                     <p class="text-muted">
                         Atualize a programação e o saldo de férias da equipe através de uma planilha Excel.
                         O sistema usará a <strong>Matrícula</strong> para vincular ao colaborador.

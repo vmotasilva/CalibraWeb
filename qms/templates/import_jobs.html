@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Import Jobs{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Importações Recentes</h3>
+    <div>
+      <a class="btn btn-outline-secondary" href="{% url 'modulo_metrologia' %}">Metrologia</a>
+      <a class="btn btn-outline-secondary" href="{% url 'modulo_rh' %}">RH</a>
+    </div>
+  </div>
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-auto">
+      <label class="col-form-label">Status:</label>
+    </div>
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="status">
+        <option value="" {% if not status %}selected{% endif %}>Todos</option>
+        <option value="PENDING" {% if status=='PENDING' %}selected{% endif %}>PENDING</option>
+        <option value="STARTED" {% if status=='STARTED' %}selected{% endif %}>STARTED</option>
+        <option value="SUCCESS" {% if status=='SUCCESS' %}selected{% endif %}>SUCCESS</option>
+        <option value="FAILURE" {% if status=='FAILURE' %}selected{% endif %}>FAILURE</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-sm btn-primary" type="submit">Filtrar</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'import_jobs' %}">Limpar</a>
+    </div>
+  </form>
+  <div class="table-responsive">
+    <table class="table table-sm table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Arquivo</th>
+          <th>Status</th>
+          <th>Resultado</th>
+          <th>Criado</th>
+          <th>Atualizado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in jobs %}
+        <tr>
+          <td>{{ j.id }}</td>
+          <td>{{ j.filename }}</td>
+          <td>
+            {% if j.status == 'SUCCESS' %}
+              <span class="badge bg-success">SUCCESS</span>
+            {% elif j.status == 'FAILURE' %}
+              <span class="badge bg-danger">FAILURE</span>
+            {% elif j.status == 'STARTED' %}
+              <span class="badge bg-warning text-dark">STARTED</span>
+            {% elif j.status == 'PENDING' %}
+              <span class="badge bg-secondary">PENDING</span>
+            {% else %}
+              <span class="badge bg-light text-dark">{{ j.status }}</span>
+            {% endif %}
+          </td>
+          <td style="max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ j.result }}">{{ j.result }}</td>
+          <td>{{ j.created_at|date:"d/m/Y H:i" }}</td>
+          <td>{{ j.updated_at|date:"d/m/Y H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center">Nenhuma importação registrada ainda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <script>
+    (function() {
+      const statuses = Array.from(document.querySelectorAll('table tbody tr td:nth-child(3)')).map(td => td.textContent.trim());
+      const needsRefresh = statuses.some(s => s === 'PENDING' || s === 'STARTED');
+      if (needsRefresh) {
+        setTimeout(function() { window.location.reload(); }, 10000);
+      }
+    })();
+  </script>
+</div>
+{% endblock %}
