@@ -60,6 +60,9 @@ urlpatterns = [
     path("dl-dados-colab/", views.dl_template_colab_dados, name="dl_colaboradores_dados"),
     # 8. Importações (Excel)
     path("imp-inst/", views.imp_instr_view, name="importar_instrumentos"),
+    # Import jobs listing and retry actions
+    path("import-jobs/", views.import_jobs_view, name="import_jobs"),
+    path("import-jobs/<uuid:job_id>/retry/", views.retry_import_job_view, name="retry_import_job"),
         # Procedimentos público (consulta)
         path("procedimentos/", views.procedimentos_list_view, name="procedimentos_list"),
     path("imp-colab/", views.imp_colab_view, name="importar_colaboradores"),
