@@ -1,9 +1,22 @@
 [build]
 builder = "dockerfile"
 
+# Web service (Django + Gunicorn)
 [deploy]
 startCommand = "bash start.sh"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 healthcheckPath = "/healthz"
 healthcheckTimeout = 100
+
+# Worker service (Celery Worker)
+[[services]]
+name = "worker"
+startCommand = "bash start-worker.sh"
+restartPolicyType = "on_failure"
+
+# Beat service (Celery Beat)  
+[[services]]
+name = "beat"
+startCommand = "bash start-beat.sh"
+restartPolicyType = "on_failure"
