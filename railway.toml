@@ -1,7 +1,9 @@
 [build]
-builder = "nixpacks"
+builder = "dockerfile"
 
 [deploy]
-startCommand = "python manage.py migrate --noinput && python manage.py collectstatic --noinput && python -m gunicorn config.wsgi:application"
+startCommand = "bash start.sh"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+healthcheckPath = "/healthz/"
+healthcheckTimeout = 100
