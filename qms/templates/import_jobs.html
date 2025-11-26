@@ -17,10 +17,10 @@
       <tbody>
         {% for j in jobs %}
         <tr>
-          <td>{{ j.id|default:"" }}</td>
-          <td>{{ j.job_type|default:"" }}</td>
-          <td>{{ j.status|default:"" }}</td>
-          <td>{{ j.result_summary|default:j.result|default:"" }}</td>
+          <td>{{ j.id }}</td>
+          <td>{{ j.job_type }}</td>
+          <td>{{ j.status }}</td>
+          <td>{{ j.result_summary }}</td>
         </tr>
         {% empty %}
         <tr><td colspan="4" class="text-center">Nenhuma importação registrada ainda.</td></tr>
