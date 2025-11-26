@@ -13,6 +13,7 @@ from django.core.files.base import ContentFile
 from django.db import IntegrityError, models, transaction
 from django.db.models import OuterRef, Q, Subquery
 from django.http import Http404, HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from PyPDF2 import PdfReader, PdfWriter
@@ -1269,6 +1270,33 @@ def import_jobs_view(request):
         'job_type': job_type,
         'colaborador': get_colab(request),
     })
+
+
+@login_required
+def import_jobs_json_view(request):
+    """Return recent import jobs as JSON for debugging when template fails."""
+    from .models import ImportJob
+    status = (request.GET.get('status') or '').upper()
+    job_type = (request.GET.get('type') or '').upper()
+    qs = ImportJob.objects.all()
+    if status in {'PENDING','STARTED','SUCCESS','FAILURE'}:
+        qs = qs.filter(status=status)
+    if job_type:
+        qs = qs.filter(job_type__iexact=job_type)
+    jobs = qs.order_by('-created_at')[:100]
+    data = []
+    for j in jobs:
+        data.append({
+            'id': str(j.id),
+            'job_type': j.job_type,
+            'filename': j.filename,
+            'status': j.status,
+            'result': j.result,
+            'created_at': j.created_at.isoformat() if j.created_at else None,
+            'updated_at': j.updated_at.isoformat() if j.updated_at else None,
+            'filepath': j.filepath,
+        })
+    return JsonResponse({'jobs': data})
 
 
 @login_required

@@ -65,6 +65,7 @@ urlpatterns = [
     # Import jobs listing and retry actions
     path("import-jobs/", views.import_jobs_view, name="import_jobs"),
     path("import-jobs/<uuid:job_id>/retry/", views.retry_import_job_view, name="retry_import_job"),
+    path("import-jobs.json", views.import_jobs_json_view, name="import_jobs_json"),
         # Procedimentos público (consulta)
         path("procedimentos/", views.procedimentos_list_view, name="procedimentos_list"),
     path("imp-colab/", views.imp_colab_view, name="importar_colaboradores"),
