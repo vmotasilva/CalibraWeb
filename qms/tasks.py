@@ -318,6 +318,20 @@ def import_historico_task(job_id, filepath):
                 responsavel = get_val(row, ['RESPONSÁVEL', 'RESPONSAVEL'])
                 obs = get_val(row, ['OBSERVAÇÕES', 'OBSERVACOES', 'OBS'])
 
+                # Compute próxima calibração based on instrument frequency
+                prox = None
+                if dt_cal:
+                    try:
+                        if inst.frequencia_meses and int(inst.frequencia_meses) > 0:
+                            try:
+                                from dateutil.relativedelta import relativedelta
+                                prox = dt_cal + relativedelta(months=+int(inst.frequencia_meses))
+                            except Exception:
+                                from datetime import timedelta
+                                prox = dt_cal + timedelta(days=int(inst.frequencia_meses) * 30)
+                    except Exception:
+                        prox = None
+
                 defaults = {
                     'data_aprovacao': dt_apr,
                     'numero_certificado': n_cert,
@@ -329,6 +343,7 @@ def import_historico_task(job_id, filepath):
                     'fornecedor': fornecedor,
                     'responsavel': responsavel,
                     'observacoes': obs,
+                    'proxima_calibracao': prox,
                 }
 
                 if not dt_cal:
@@ -343,6 +358,23 @@ def import_historico_task(job_id, filepath):
                     numero_certificado=n_cert,
                     defaults=defaults,
                 )
+                # Ensure Instrumento fields reflect latest calibration
+                try:
+                    if dt_cal:
+                        inst.data_ultima_calibracao = max(filter(None, [inst.data_ultima_calibracao, dt_cal])) if inst.data_ultima_calibracao else dt_cal
+                    if prox:
+                        inst.data_proxima_calibracao = prox
+                    elif dt_cal and inst.frequencia_meses:
+                        # fallback computed above already handled
+                        pass
+                    fields = [f for f in ['data_ultima_calibracao','data_proxima_calibracao'] if getattr(inst, f) is not None]
+                    if fields:
+                        inst.save(update_fields=fields)
+                    else:
+                        inst.save()
+                except Exception:
+                    pass
+
                 if was_created:
                     created += 1
                 else:
