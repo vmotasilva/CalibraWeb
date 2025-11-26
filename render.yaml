@@ -2,7 +2,7 @@ services:
   # Web Service (Django + Gunicorn)
   - type: web
     name: calibraweb
-    env: python
+    runtime: python
     region: oregon
     plan: free
     branch: main
@@ -17,7 +17,7 @@ services:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings
       - key: DEBUG
-        value: False
+        value: false
       - key: ALLOWED_HOSTS
         value: .onrender.com
       - key: CSRF_TRUSTED_ORIGINS
@@ -26,24 +26,25 @@ services:
         fromDatabase:
           name: calibraweb-db
           property: connectionString
-      - key: REDIS_URL
+      - key: CELERY_BROKER_URL
         fromService:
           type: redis
           name: calibraweb-redis
           property: connectionString
 
-  # PostgreSQL Database
+  # Redis (for Celery)
+  - type: redis
+    name: calibraweb-redis
+    region: oregon
+    plan: free
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
 databases:
+  # PostgreSQL Database
   - name: calibraweb-db
     databaseName: calibraweb
     user: calibraweb
     region: oregon
     plan: free
-    ipAllowList: []
-
-  # Redis (for Celery - optional)
-  - name: calibraweb-redis
-    region: oregon
-    plan: free
-    maxmemoryPolicy: noeviction
     ipAllowList: []
