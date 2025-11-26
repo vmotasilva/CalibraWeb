@@ -1,97 +1,35 @@
 {% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Import Jobs{% endblock %}
 {% block content %}
 <div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Importações Recentes</h3>
-    <div>
-      <a class="btn btn-outline-secondary" href="{% url 'modulo_metrologia' %}">Metrologia</a>
-      <a class="btn btn-outline-secondary" href="{% url 'modulo_rh' %}">RH</a>
-    </div>
-  </div>
-  <form class="row g-2 mb-3" method="get">
-    <div class="col-auto">
-      <label class="col-form-label">Status:</label>
-    </div>
-    <div class="col-auto">
-      <select class="form-select form-select-sm" name="status">
-        <option value="" {% if not status %}selected{% endif %}>Todos</option>
-        <option value="PENDING" {% if status=='PENDING' %}selected{% endif %}>PENDING</option>
-        <option value="STARTED" {% if status=='STARTED' %}selected{% endif %}>STARTED</option>
-        <option value="SUCCESS" {% if status=='SUCCESS' %}selected{% endif %}>SUCCESS</option>
-        <option value="FAILURE" {% if status=='FAILURE' %}selected{% endif %}>FAILURE</option>
-      </select>
-    </div>
-    <div class="col-auto">
-      <label class="col-form-label">Tipo:</label>
-    </div>
-    <div class="col-auto">
-      <select class="form-select form-select-sm" name="type">
-        <option value="" {% if not job_type %}selected{% endif %}>Todos</option>
-        <option value="INSTRUMENTOS" {% if job_type=='INSTRUMENTOS' %}selected{% endif %}>INSTRUMENTOS</option>
-        <option value="HISTORICO" {% if job_type=='HISTORICO' %}selected{% endif %}>HISTÓRICO</option>
-        <option value="RH_COLAB" {% if job_type=='RH_COLAB' %}selected{% endif %}>RH_COLAB</option>
-        <option value="RH_HIERARQUIA" {% if job_type=='RH_HIERARQUIA' %}selected{% endif %}>RH_HIERARQUIA</option>
-        <option value="RH_FERIAS" {% if job_type=='RH_FERIAS' %}selected{% endif %}>RH_FÉRIAS</option>
-      </select>
-    </div>
-    <div class="col-auto">
-      <button class="btn btn-sm btn-primary" type="submit">Filtrar</button>
-      <a class="btn btn-sm btn-outline-secondary" href="{% url 'import_jobs' %}">Limpar</a>
-    </div>
-  </form>
+  <h3>Importações Recentes</h3>
   <div class="table-responsive">
-    <table class="table table-sm table-striped">
+    <table class="table table-sm">
       <thead>
         <tr>
           <th>ID</th>
           <th>Tipo</th>
-          <th>Arquivo</th>
           <th>Status</th>
-          <th>Ações</th>
-          <th>Resultado</th>
-          <th>Criado</th>
-          <th>Atualizado</th>
+          <th>Resumo</th>
         </tr>
       </thead>
       <tbody>
         {% for j in jobs %}
         <tr>
-          <td>{{ j.id }}</td>
-          <td>{{ j.job_type }}</td>
-          <td>{{ j.filename }}</td>
-          <td>
-            {% if j.status == 'SUCCESS' %}
-              <span class="badge bg-success">SUCCESS</span>
-            {% elif j.status == 'FAILURE' %}
-              <span class="badge bg-danger">FAILURE</span>
-            {% elif j.status == 'STARTED' %}
-              <span class="badge bg-warning text-dark">STARTED</span>
-            {% elif j.status == 'PENDING' %}
-              <span class="badge bg-secondary">PENDING</span>
-            {% else %}
-              <span class="badge bg-light text-dark">{{ j.status }}</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if j.status == 'FAILURE' and j.filepath %}
-              <a href="{% url 'retry_import_job' j.id %}" class="btn btn-sm btn-outline-primary">Tentar novamente</a>
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
-          </td>
-          <td>
-            <div class="small">{{ j.result_summary }}</div>
-            {% if j.result_samples %}
-              <button class="btn btn-xs btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#samples-{{ j.id }}">Ver detalhes</button>
-              <div id="samples-{{ j.id }}" class="collapse mt-1">
-                <ul class="mb-0">
-                  {% for s in j.result_samples %}
-                    <li class="text-muted small">{{ s }}</li>
-                  {% endfor %}
-                </ul>
-              </div>
-            {% endif %}
+          <td>{{ j.id|default:"" }}</td>
+          <td>{{ j.job_type|default:"" }}</td>
+          <td>{{ j.status|default:"" }}</td>
+          <td>{{ j.result_summary|default:j.result|default:"" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center">Nenhuma importação registrada ainda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
           </td>
           <td>{{ j.created_at|date:"d/m/Y H:i" }}</td>
           <td>{{ j.updated_at|date:"d/m/Y H:i" }}</td>
