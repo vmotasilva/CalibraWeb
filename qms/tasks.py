@@ -324,3 +324,321 @@ def import_historico_task(job_id, filepath):
         job.result = f'Error: {str(exc)}'
         job.save()
         return {'job_id': str(job_id), 'status': 'FAILURE', 'error': str(exc)}
+
+
+@shared_task
+def import_colab_task(job_id, filepath):
+    """Importa colaboradores (RH) a partir de planilha."""
+    import re
+    import pandas as pd
+    from django.db import transaction
+    from .models import ImportJob, Colaborador, Setor, CentroCusto
+
+    try:
+        job = ImportJob.objects.get(id=job_id)
+        job.status = 'STARTED'
+        job.save()
+    except ImportJob.DoesNotExist:
+        return {'error': 'job not found', 'job_id': job_id}
+
+    try:
+        if filepath.endswith('.csv'):
+            try:
+                df = pd.read_csv(filepath, sep=None, engine='python', encoding='latin1')
+            except Exception:
+                df = pd.read_csv(filepath, sep=None, engine='python', encoding='utf-8')
+        else:
+            df = pd.read_excel(filepath)
+
+        df.columns = df.columns.str.strip().str.upper()
+        df.columns = df.columns.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')
+
+        count_new = 0
+        count_upd = 0
+        count_lider = 0
+        count_super = 0
+        count_gerente = 0
+
+        with transaction.atomic():
+            for _, row in df.iterrows():
+                def get_val(keys):
+                    for k in keys:
+                        for col in df.columns:
+                            if k in col and pd.notna(row[col]):
+                                return str(row[col]).strip()
+                    return None
+
+                matricula = get_val(["MATRICULA", "MAT", "RE"]) or ''
+                matricula = matricula.split('.') [0]
+                nome = get_val(["NOME", "COLABORADOR", "FUNCIONARIO"])
+                if not matricula or not nome:
+                    continue
+                cpf_raw = get_val(["CPF", "DOC"])
+                cpf = None
+                if cpf_raw:
+                    limpo = re.sub(r"[^0-9]", "", str(cpf_raw))
+                    if len(limpo) == 11 and limpo != "00000000000" and limpo != "00":
+                        cpf = limpo
+                setor_nome = get_val(["SETOR", "DEPARTAMENTO", "AREA"]) or None
+                setor_obj = None
+                if setor_nome:
+                    setor_obj, _ = Setor.objects.get_or_create(nome=setor_nome.upper())
+                cc_raw = get_val(["CENTRO DE CUSTO", "CC"]) or None
+                cc_obj = None
+                if cc_raw and setor_obj:
+                    parts = cc_raw.split("-")
+                    c_code = parts[0].strip()
+                    c_desc = parts[1].strip() if len(parts) > 1 else "Importado"
+                    cc_obj, _ = CentroCusto.objects.get_or_create(codigo=c_code, setor=setor_obj, defaults={'descricao': c_desc})
+
+                turno_raw = str(get_val(["TURNO", "HORARIO"]) or "ADM").upper()
+                turno = "ADM"
+                if "1" in turno_raw:
+                    turno = "TURNO_1"
+                elif "2" in turno_raw:
+                    turno = "TURNO_2"
+                elif "3" in turno_raw:
+                    turno = "TURNO_3"
+                elif "12" in turno_raw:
+                    turno = "12X36"
+
+                status_raw = str(get_val(["STATUS"]) or "ATIVO").upper()
+                is_active = False if ("INATIVO" in status_raw or "DEMITIDO" in status_raw) else True
+
+                sal_raw = get_val(["SALARIO"]) or None
+                salario = float(str(sal_raw).replace(',', '.')) if sal_raw else None
+
+                obj, created = Colaborador.objects.update_or_create(
+                    matricula=matricula,
+                    defaults={
+                        'nome_completo': nome.upper(),
+                        'cpf': cpf,
+                        'cargo': get_val(["CARGO", "FUNCAO"]) or "Não Informado",
+                        'grupo': get_val(["GRUPO", "MACRO"]) or "Geral",
+                        'setor': setor_obj,
+                        'centro_custo': cc_obj,
+                        'turno': turno,
+                        'salario': salario,
+                        'is_active': is_active,
+                    }
+                )
+                if created:
+                    count_new += 1
+                else:
+                    count_upd += 1
+
+            # vínculo liderança
+            from .models import Colaborador as C
+            for _, row in df.iterrows():
+                def get_val_h(keys):
+                    for k in keys:
+                        for col in df.columns:
+                            if k in col and pd.notna(row[col]):
+                                return str(row[col]).strip()
+                    return None
+                matricula = (get_val_h(["MATRICULA", "MAT", "RE"]) or '').split('.')[0]
+                def norm_mat(v):
+                    return v.split('.') [0] if v else None
+                mat_lider = norm_mat(get_val_h(["MAT_LIDER", "LIDER", "COD_LIDER"]))
+                mat_super = norm_mat(get_val_h(["MAT_SUPERVISOR", "SUPERVISOR", "COD_SUPERVISOR"]))
+                mat_ger = norm_mat(get_val_h(["MAT_GERENTE", "GERENTE", "COD_GERENTE"]))
+                if matricula:
+                    colab = C.objects.filter(matricula=matricula).first()
+                    if not colab:
+                        continue
+                    update_fields = []
+                    if mat_lider and mat_lider != matricula:
+                        lider = C.objects.filter(matricula=mat_lider).first()
+                        if lider:
+                            colab.lider = lider; update_fields.append('lider'); count_lider += 1
+                    if mat_super and mat_super != matricula:
+                        superv = C.objects.filter(matricula=mat_super).first()
+                        if superv:
+                            colab.supervisor = superv; update_fields.append('supervisor'); count_super += 1
+                    if mat_ger and mat_ger != matricula:
+                        ger = C.objects.filter(matricula=mat_ger).first()
+                        if ger:
+                            colab.gerente = ger; update_fields.append('gerente'); count_gerente += 1
+                    if update_fields:
+                        colab.save(update_fields=update_fields)
+
+        job.status = 'SUCCESS'
+        job.result = (f"RH: {count_new} Novos, {count_upd} Atualizados, "
+                      f"{count_lider} líderes, {count_super} supervisores, {count_gerente} gerentes vinculados.")
+        job.save()
+        return {'job_id': str(job_id), 'status': 'SUCCESS'}
+    except Exception as exc:
+        job.status = 'FAILURE'
+        job.result = f'Error: {str(exc)}'
+        job.save()
+        return {'job_id': str(job_id), 'status': 'FAILURE', 'error': str(exc)}
+
+
+@shared_task
+def import_hierarquia_task(job_id, filepath):
+    """Importa hierarquia Setor/Turno (RH) a partir de planilha."""
+    import pandas as pd
+    from django.db import transaction
+    from .models import ImportJob, Setor, HierarquiaSetor, Colaborador
+
+    try:
+        job = ImportJob.objects.get(id=job_id)
+        job.status = 'STARTED'
+        job.save()
+    except ImportJob.DoesNotExist:
+        return {'error': 'job not found', 'job_id': job_id}
+
+    try:
+        if filepath.endswith('.csv'):
+            try:
+                df = pd.read_csv(filepath, sep=None, engine='python', encoding='latin1')
+            except Exception:
+                df = pd.read_csv(filepath, sep=None, engine='python', encoding='utf-8')
+        else:
+            df = pd.read_excel(filepath)
+
+        df.columns = df.columns.str.strip().str.upper()
+
+        def get_val(row, keys):
+            for k in keys:
+                if k in df.columns and pd.notna(row.get(k)):
+                    return str(row.get(k)).strip()
+            return None
+
+        count = 0
+        with transaction.atomic():
+            for _, row in df.iterrows():
+                setor_nome = get_val(row, ["SETOR", "DEPARTAMENTO", "AREA", "ÁREA"]) or None
+                turno_raw = (get_val(row, ["TURNO"]) or "ADM").upper()
+                turno = "ADM"
+                if "1" in turno_raw:
+                    turno = "TURNO_1"
+                elif "2" in turno_raw:
+                    turno = "TURNO_2"
+                elif "3" in turno_raw:
+                    turno = "TURNO_3"
+                elif "12" in turno_raw:
+                    turno = "12X36"
+                if not setor_nome:
+                    continue
+                setor_obj, _ = Setor.objects.get_or_create(nome=str(setor_nome).upper())
+                def norm_mat(v):
+                    return v.split('.') [0] if v else None
+                mat_lider = norm_mat(get_val(row, ["MAT_LIDER", "LIDER", "COD_LIDER"]))
+                mat_super = norm_mat(get_val(row, ["MAT_SUPERVISOR", "SUPERVISOR", "COD_SUPERVISOR"]))
+                mat_ger = norm_mat(get_val(row, ["MAT_GERENTE", "GERENTE", "COD_GERENTE"]))
+                mat_dir = norm_mat(get_val(row, ["MAT_DIRETOR", "DIRETOR", "COD_DIRETOR"]))
+                def find_colab(mat):
+                    if not mat:
+                        return None
+                    return Colaborador.objects.filter(matricula=mat).first()
+                HierarquiaSetor.objects.update_or_create(
+                    setor=setor_obj,
+                    turno=turno,
+                    defaults={
+                        'lider': find_colab(mat_lider),
+                        'supervisor': find_colab(mat_super),
+                        'gerente': find_colab(mat_ger),
+                        'diretor': find_colab(mat_dir),
+                    }
+                )
+                count += 1
+
+        job.status = 'SUCCESS'
+        job.result = f"Hierarquia importada: {count} linhas processadas."
+        job.save()
+        return {'job_id': str(job_id), 'status': 'SUCCESS', 'processed': count}
+    except Exception as exc:
+        job.status = 'FAILURE'
+        job.result = f'Error: {str(exc)}'
+        job.save()
+        return {'job_id': str(job_id), 'status': 'FAILURE', 'error': str(exc)}
+
+
+@shared_task
+def import_ferias_task(job_id, filepath):
+    """Importa férias (RH) a partir de planilha."""
+    import pandas as pd
+    from django.db import transaction
+    from .models import ImportJob, Colaborador, Ferias
+
+    try:
+        job = ImportJob.objects.get(id=job_id)
+        job.status = 'STARTED'
+        job.save()
+    except ImportJob.DoesNotExist:
+        return {'error': 'job not found', 'job_id': job_id}
+
+    def parse_date(val):
+        try:
+            if pd.isnull(val):
+                return None
+            s = str(val).strip()
+            if not s or s in {'-', 'NaT', 'nan'}:
+                return None
+            try:
+                return pd.to_datetime(s, dayfirst=True).date()
+            except Exception:
+                pass
+            try:
+                f = float(s)
+                from datetime import datetime, timedelta
+                return (datetime(1899, 12, 30) + timedelta(days=f)).date()
+            except Exception:
+                return None
+        except Exception:
+            return None
+
+    try:
+        if filepath.endswith('.csv'):
+            try:
+                df = pd.read_csv(filepath, sep=None, engine='python', encoding='latin1')
+            except Exception:
+                df = pd.read_csv(filepath, sep=None, engine='python', encoding='utf-8')
+        else:
+            df = pd.read_excel(filepath)
+
+        df.columns = df.columns.str.strip().str.upper()
+
+        count = 0
+        with transaction.atomic():
+            for _, row in df.iterrows():
+                matricula = str(row.get('MATRICULA') or '').strip()
+                if not matricula:
+                    continue
+                colab = Colaborador.objects.filter(matricula=matricula.split('.') [0]).first()
+                if not colab:
+                    continue
+                dt_aq_ini = parse_date(row.get('AQUISITIVO_INICIO'))
+                dt_aq_fim = parse_date(row.get('AQUISITIVO_FIM'))
+                dt_ini = parse_date(row.get('DATA_INICIO'))
+                dt_fim = parse_date(row.get('DATA_FIM'))
+                dias_vend = row.get('DIAS_VENDIDOS')
+                try:
+                    dias_vend = int(float(dias_vend)) if dias_vend not in [None, ''] else 0
+                except Exception:
+                    dias_vend = 0
+                if not dt_aq_fim:
+                    continue
+                Ferias.objects.update_or_create(
+                    colaborador=colab,
+                    periodo_aquisitivo_fim=dt_aq_fim,
+                    defaults={
+                        'periodo_aquisitivo_inicio': dt_aq_ini,
+                        'data_inicio': dt_ini,
+                        'data_fim': dt_fim,
+                        'dias_vendidos': dias_vend,
+                        'status': (str(row.get('STATUS') or 'PROGRAMADAS').strip() or 'PROGRAMADAS'),
+                    }
+                )
+                count += 1
+
+        job.status = 'SUCCESS'
+        job.result = f"{count} registros de férias importados!"
+        job.save()
+        return {'job_id': str(job_id), 'status': 'SUCCESS', 'processed': count}
+    except Exception as exc:
+        job.status = 'FAILURE'
+        job.result = f'Error: {str(exc)}'
+        job.save()
+        return {'job_id': str(job_id), 'status': 'FAILURE', 'error': str(exc)}

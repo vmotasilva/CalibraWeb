@@ -23,6 +23,19 @@
       </select>
     </div>
     <div class="col-auto">
+      <label class="col-form-label">Tipo:</label>
+    </div>
+    <div class="col-auto">
+      <select class="form-select form-select-sm" name="type">
+        <option value="" {% if not job_type %}selected{% endif %}>Todos</option>
+        <option value="INSTRUMENTOS" {% if job_type=='INSTRUMENTOS' %}selected{% endif %}>INSTRUMENTOS</option>
+        <option value="HISTORICO" {% if job_type=='HISTORICO' %}selected{% endif %}>HISTÓRICO</option>
+        <option value="RH_COLAB" {% if job_type=='RH_COLAB' %}selected{% endif %}>RH_COLAB</option>
+        <option value="RH_HIERARQUIA" {% if job_type=='RH_HIERARQUIA' %}selected{% endif %}>RH_HIERARQUIA</option>
+        <option value="RH_FERIAS" {% if job_type=='RH_FERIAS' %}selected{% endif %}>RH_FÉRIAS</option>
+      </select>
+    </div>
+    <div class="col-auto">
       <button class="btn btn-sm btn-primary" type="submit">Filtrar</button>
       <a class="btn btn-sm btn-outline-secondary" href="{% url 'import_jobs' %}">Limpar</a>
     </div>
@@ -32,8 +45,10 @@
       <thead>
         <tr>
           <th>ID</th>
+          <th>Tipo</th>
           <th>Arquivo</th>
           <th>Status</th>
+          <th>Ações</th>
           <th>Resultado</th>
           <th>Criado</th>
           <th>Atualizado</th>
@@ -43,6 +58,7 @@
         {% for j in jobs %}
         <tr>
           <td>{{ j.id }}</td>
+          <td>{{ j.job_type }}</td>
           <td>{{ j.filename }}</td>
           <td>
             {% if j.status == 'SUCCESS' %}
@@ -57,12 +73,19 @@
               <span class="badge bg-light text-dark">{{ j.status }}</span>
             {% endif %}
           </td>
+          <td>
+            {% if j.status == 'FAILURE' and j.filepath %}
+              <a href="{% url 'retry_import_job' j.id %}" class="btn btn-sm btn-outline-primary">Tentar novamente</a>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
           <td style="max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ j.result }}">{{ j.result }}</td>
           <td>{{ j.created_at|date:"d/m/Y H:i" }}</td>
           <td>{{ j.updated_at|date:"d/m/Y H:i" }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="text-center">Nenhuma importação registrada ainda.</td></tr>
+        <tr><td colspan="8" class="text-center">Nenhuma importação registrada ainda.</td></tr>
         {% endfor %}
       </tbody>
     </table>
