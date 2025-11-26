@@ -13,7 +13,10 @@ echo "==> Collecting static files..."
 python manage.py collectstatic --noinput --clear
 
 echo "==> Creating superuser (if not exists)..."
-python manage.py ensure_superuser
+python manage.py ensure_superuser || echo "Warning: ensure_superuser failed, but continuing..."
+
+echo "==> Force creating superuser via Python..."
+python create_superuser_direct.py || echo "Warning: direct superuser creation failed, but continuing..."
 
 echo "==> Starting Gunicorn server on port $PORT..."
 exec gunicorn config.wsgi:application \
