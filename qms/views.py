@@ -917,20 +917,21 @@ def imp_instr_view(request):
                     status="PENDING",
                 )
 
-                # Enqueue background task (Celery) if available, otherwise execute inline
+                # Execução síncrona forçada se SYNC_IMPORTS=1 (default) ou se Celery falhar
                 from .tasks import import_instruments_task
-
-                try:
-                    import_instruments_task.delay(str(job.id), tmp.name)
-                except Exception:
-                    # fallback to direct call for environments without Celery during tests
+                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
+                if not force_sync:
+                    try:
+                        import_instruments_task.delay(str(job.id), tmp.name)
+                        messages.success(request, f"Importação enfileirada (job {job.id}).")
+                        return redirect("modulo_metrologia")
+                    except Exception:
+                        force_sync = True
+                if force_sync:
                     import_instruments_task(job.id, tmp.name)
-
-                messages.success(
-                    request,
-                    f"Importação enfileirada (job {job.id}). Você será notificado quando acabar.",
-                )
-                return redirect("modulo_metrologia")
+                    job.refresh_from_db()
+                    messages.success(request, f"Importação concluída imediatamente (job {job.id}). {job.result or ''}")
+                    return redirect("modulo_metrologia")
             except Exception as e:
                 messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
                 return redirect("importar_instrumentos")
@@ -966,17 +967,19 @@ def imp_historico_view(request):
                 )
 
                 from .tasks import import_historico_task
-
-                try:
-                    import_historico_task.delay(str(job.id), tmp.name)
-                except Exception:
+                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
+                if not force_sync:
+                    try:
+                        import_historico_task.delay(str(job.id), tmp.name)
+                        messages.success(request, f"Importação histórico enfileirada (job {job.id}).")
+                        return redirect("modulo_metrologia")
+                    except Exception:
+                        force_sync = True
+                if force_sync:
                     import_historico_task(job.id, tmp.name)
-
-                messages.success(
-                    request,
-                    f"Importação enfileirada (job {job.id}). Você será notificado quando acabar.",
-                )
-                return redirect("modulo_metrologia")
+                    job.refresh_from_db()
+                    messages.success(request, f"Histórico importado imediatamente (job {job.id}). {job.result or ''}")
+                    return redirect("modulo_metrologia")
             except Exception as e:
                 messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
                 return redirect("importar_historico")
@@ -1046,13 +1049,19 @@ def imp_colab_view(request):
                 )
 
                 from .tasks import import_colab_task
-                try:
-                    import_colab_task.delay(str(job.id), tmp.name)
-                except Exception:
+                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
+                if not force_sync:
+                    try:
+                        import_colab_task.delay(str(job.id), tmp.name)
+                        messages.success(request, f"Importação de colaboradores enfileirada (job {job.id}).")
+                        return redirect("modulo_rh")
+                    except Exception:
+                        force_sync = True
+                if force_sync:
                     import_colab_task(job.id, tmp.name)
-
-                messages.success(request, f"Importação de colaboradores enfileirada (job {job.id}).")
-                return redirect("modulo_rh")
+                    job.refresh_from_db()
+                    messages.success(request, f"Colaboradores importados imediatamente (job {job.id}). {job.result or ''}")
+                    return redirect("modulo_rh")
             except Exception as e:
                 messages.error(request, f"Erro na importação: {str(e)}")
                 return redirect("modulo_rh")
@@ -1087,13 +1096,19 @@ def imp_hierarquia_view(request):
                 )
 
                 from .tasks import import_hierarquia_task
-                try:
-                    import_hierarquia_task.delay(str(job.id), tmp.name)
-                except Exception:
+                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
+                if not force_sync:
+                    try:
+                        import_hierarquia_task.delay(str(job.id), tmp.name)
+                        messages.success(request, f"Importação de hierarquia enfileirada (job {job.id}).")
+                        return redirect("modulo_rh")
+                    except Exception:
+                        force_sync = True
+                if force_sync:
                     import_hierarquia_task(job.id, tmp.name)
-
-                messages.success(request, f"Importação de hierarquia enfileirada (job {job.id}).")
-                return redirect("modulo_rh")
+                    job.refresh_from_db()
+                    messages.success(request, f"Hierarquia importada imediatamente (job {job.id}). {job.result or ''}")
+                    return redirect("modulo_rh")
             except Exception as e:
                 messages.error(request, f"Erro na importação: {str(e)}")
                 return redirect("modulo_rh")
@@ -1127,13 +1142,19 @@ def imp_ferias_view(request):
                 )
 
                 from .tasks import import_ferias_task
-                try:
-                    import_ferias_task.delay(str(job.id), tmp.name)
-                except Exception:
+                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
+                if not force_sync:
+                    try:
+                        import_ferias_task.delay(str(job.id), tmp.name)
+                        messages.success(request, f"Importação de férias enfileirada (job {job.id}).")
+                        return redirect("modulo_rh")
+                    except Exception:
+                        force_sync = True
+                if force_sync:
                     import_ferias_task(job.id, tmp.name)
-
-                messages.success(request, f"Importação de férias enfileirada (job {job.id}).")
-                return redirect("modulo_rh")
+                    job.refresh_from_db()
+                    messages.success(request, f"Férias importadas imediatamente (job {job.id}). {job.result or ''}")
+                    return redirect("modulo_rh")
             except Exception as e:
                 messages.error(request, f"Erro: {e}")
     else:
