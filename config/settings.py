@@ -97,12 +97,46 @@ DATABASES = {
 }
 
 # Configuração de Produção (Railway)
-# Se o Railway injetar a variável DATABASE_URL, o Django troca para PostgreSQL automaticamente
-if os.environ.get("DATABASE_URL"):
-    DATABASES["default"] = dj_database_url.config(conn_max_age=600, ssl_require=True)
+def _build_db_from_pg_env() -> str | None:
+    """Build a PostgreSQL URL from Railway-style PG* env vars if present.
+    Expected vars: PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE
+    Returns a DSN string or None if insufficient info.
+    """
+    pg_host = os.environ.get("PGHOST")
+    pg_port = os.environ.get("PGPORT", "5432")
+    pg_user = os.environ.get("PGUSER")
+    pg_pass = os.environ.get("PGPASSWORD")
+    pg_db = os.environ.get("PGDATABASE")
+    if all([pg_host, pg_user, pg_db]):
+        # Password may be optional in some setups
+        if pg_pass:
+            return f"postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+        return f"postgresql://{pg_user}@{pg_host}:{pg_port}/{pg_db}"
+    return None
 
-    # Cole o seu link GIGANTE do Railway entre as aspas abaixo:
-# DATABASES['default'] = dj_database_url.parse("postgresql://postgres:nArNnTKgOHhWttgLSJrnruMjJtaeSrZI@interchange.proxy.rlwy.net:54683/railway", conn_max_age=600, ssl_require=True)
+# Prefer an explicit DATABASE_URL; fall back to common alt names and PG* vars
+database_url = (
+    os.environ.get("DATABASE_URL")
+    or os.environ.get("RAILWAY_DATABASE_URL")
+    or os.environ.get("POSTGRES_URL")
+    or os.environ.get("POSTGRESQL_URL")
+)
+
+if database_url:
+    # Guard against placeholder URLs like ...@host:port/db
+    malformed_placeholder = "@host:" in database_url or database_url.endswith("@host")
+    if malformed_placeholder:
+        built = _build_db_from_pg_env()
+        if built:
+            database_url = built
+    DATABASES["default"] = dj_database_url.parse(database_url, conn_max_age=600, ssl_require=True)
+else:
+    built = _build_db_from_pg_env()
+    if built:
+        DATABASES["default"] = dj_database_url.parse(built, conn_max_age=600, ssl_require=True)
+
+# Cole o seu link GIGANTE do Railway entre as aspas abaixo para forçar manualmente, se necessário:
+# DATABASES['default'] = dj_database_url.parse("postgresql://<user>:<pass>@<host>:<port>/<db>", conn_max_age=600, ssl_require=True)
 
 
 # Password validation

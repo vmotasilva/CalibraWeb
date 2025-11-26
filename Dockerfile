@@ -17,10 +17,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Collect static at build time (can be moved to release command on some platforms)
-ARG DJANGO_STATIC=1
-ENV DJANGO_SETTINGS_MODULE=config.settings
-RUN python manage.py collectstatic --noinput || echo "Skipping collectstatic if settings not configured"
+# Skip collectstatic during build; handled by start.sh at runtime
+# to ensure SECRET_KEY and DATABASE_URL are available.
+# ARG DJANGO_STATIC=1
+# ENV DJANGO_SETTINGS_MODULE=config.settings
+# RUN python manage.py collectstatic --noinput || echo "Skipping collectstatic if settings not configured"
 
 EXPOSE 8000
 CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3 --timeout 120 --access-logfile - --error-logfile -"]
