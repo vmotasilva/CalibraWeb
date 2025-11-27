@@ -102,6 +102,9 @@
                                     <input id="etq_pad" type="number" min="0" max="30" value="5" class="form-control">
                                 </div>
                             </div>
+                            <div id="etqSummary" class="mt-3 p-2 bg-light border rounded small text-muted">
+                                Serão geradas etiquetas para 0 instrumentos. Ajuste filtros e configurações.
+                            </div>
                         </div>
                         <div class="modal-footer">
                             <a id="btnEtiquetas" href="#" class="btn btn-primary" target="_blank">Gerar PDF</a>
@@ -324,8 +327,8 @@ document.addEventListener('DOMContentLoaded', function() {
     filtrar();
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
-    searchInput.addEventListener('keyup', function(){ filtrar(); updateExportLink(); updateEtiquetasLink(); });
-    checkboxes.forEach(cb => cb.addEventListener('change', function(){ filtrar(); updateExportLink(); updateEtiquetasLink(); }));
+    searchInput.addEventListener('keyup', function(){ filtrar(); updateExportLink(); updateEtiquetasLink(); renderEtiquetasSummary(); });
+    checkboxes.forEach(cb => cb.addEventListener('change', function(){ filtrar(); updateExportLink(); updateEtiquetasLink(); renderEtiquetasSummary(); }));
 
     // Append filter state to detail links
     document.querySelectorAll('.detail-link').forEach(a => {
@@ -365,8 +368,17 @@ document.addEventListener('DOMContentLoaded', function() {
         updateEtiquetasLink();
         ['etq_orient','etq_cols','etq_rows','etq_margin','etq_pad'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.addEventListener('change', updateEtiquetasLink);
-            if (el) el.addEventListener('keyup', updateEtiquetasLink);
+            if (el) el.addEventListener('change', function(){ updateEtiquetasLink(); renderEtiquetasSummary(); });
+            if (el) el.addEventListener('keyup', function(){ updateEtiquetasLink(); renderEtiquetasSummary(); });
+        });
+    }
+
+    // Atualiza o resumo quando o modal abre (Bootstrap)
+    const etqModal = document.getElementById('etqModal');
+    if (etqModal) {
+        etqModal.addEventListener('shown.bs.modal', function(){
+            updateEtiquetasLink();
+            renderEtiquetasSummary();
         });
     }
 });
@@ -508,6 +520,22 @@ function updateEtiquetasLink(){
     const extras = `orient=${encodeURIComponent(orient)}&cols=${encodeURIComponent(cols)}&rows=${encodeURIComponent(rows)}&margin_mm=${encodeURIComponent(margin)}&pad_mm=${encodeURIComponent(pad)}`;
     const finalQs = qs ? (qs + '&' + extras) : extras;
     btnEtiquetas.href = '{% url 'export_etiquetas' %}' + (finalQs ? ('?' + finalQs) : '');
+}
+
+function renderEtiquetasSummary(){
+    const box = document.getElementById('etqSummary');
+    if(!box) return;
+    const countTxt = document.getElementById('countDisplay')?.innerText || '0';
+    const count = parseInt(countTxt, 10) || 0;
+    const state = getFilterState();
+    function fmt(arr){ return arr.length ? arr.join(', ') : 'Todos'; }
+    const parts = [];
+    parts.push(`<strong>${count}</strong> instrumento${count===1?'':'s'}`);
+    if (state.sit.length) parts.push(`Situação: ${fmt(state.sit)}`);
+    if (state.st.length) parts.push(`Status: ${fmt(state.st)}`);
+    if (state.cat.length) parts.push(`Categoria: ${state.cat.length} selecionada${state.cat.length===1?'':'s'}`);
+    if (state.set.length) parts.push(`Setor: ${state.set.length} selecionado${state.set.length===1?'':'s'}`);
+    box.innerHTML = `Serão geradas etiquetas para ${parts[0]}. <span class="ms-2">${parts.slice(1).join(' • ')}</span>`;
 }
 </script>
 {% endblock %}
