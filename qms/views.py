@@ -401,6 +401,24 @@ def export_etiquetas_view(request):
         c.setLineWidth(1)
         c.rect(x, y, cell_w, cell_h)
 
+        # Compute last calibration date and last certificate number
+        last_calib_date = getattr(inst, 'data_ultima_calibracao', None)
+        last_cert_num = ''
+        if not last_calib_date or not isinstance(last_calib_date, (date, datetime)):
+            last_calib_date = None
+        try:
+            hist_qs = getattr(inst, 'historico_calibracoes', None)
+            if hist_qs is not None:
+                last_hist = hist_qs.order_by('-data_calibracao').first()
+                if last_hist:
+                    if not last_calib_date:
+                        last_calib_date = last_hist.data_calibracao
+                    last_cert_num = last_hist.numero_certificado or ''
+        except Exception:
+            pass
+        calib_str = last_calib_date.strftime('%d/%m/%Y') if last_calib_date else ''
+        prox_str = inst.data_proxima_calibracao.strftime('%m/%Y') if getattr(inst, 'data_proxima_calibracao', None) else ''
+
         if template_cfg:
             # Optional background image (PNG) to match exact artwork
             try:
@@ -450,9 +468,9 @@ def export_etiquetas_view(request):
             ])
             values = [
                 inst.tag or '',
-                '',
-                hoje.strftime('%d/%m/%Y'),
-                (inst.data_proxima_calibracao.strftime('%m/%Y') if inst.data_proxima_calibracao else ''),
+                last_cert_num,
+                calib_str,
+                prox_str,
             ]
             for idx, f in enumerate(fields):
                 fx, fy = rel(float(f.get('x',0.03)), float(f.get('y',0.70)))
@@ -490,10 +508,9 @@ def export_etiquetas_view(request):
                     c.drawString(x+125, line_y, value)
                 line_y -= 16
             field('Cód do instrumento:', inst.tag or '')
-            field('N° Certificado:', '')
-            field('Realizado em:', hoje.strftime('%d/%m/%Y'))
-            prox = inst.data_proxima_calibracao.strftime('%m/%Y') if inst.data_proxima_calibracao else ''
-            field('Vencimento (mês/ano):', prox)
+            field('N° Certificado:', last_cert_num)
+            field('Realizado em:', calib_str)
+            field('Vencimento (mês/ano):', prox_str)
             # Removed status badge in fallback layout
 
     i = 0
