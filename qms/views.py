@@ -194,8 +194,14 @@ def modulo_rh_view(request):
     if can_view_all:
         ids_permitidos = set(Colaborador.objects.all().values_list("id", flat=True))
     elif colab:
+        # Inclui subordinados diretos (por relação de líder) e a própria pessoa
         ids_permitidos = get_all_subordinates(colab)
         ids_permitidos.add(colab.id)
+        # Também inclui quem o usuário lidera/supervisiona/gerencia diretamente
+        diretos = Colaborador.objects.filter(
+            Q(lider=colab) | Q(supervisor=colab) | Q(gerente=colab)
+        ).values_list('id', flat=True)
+        ids_permitidos.update(diretos)
     else:
         ids_permitidos = set()
 

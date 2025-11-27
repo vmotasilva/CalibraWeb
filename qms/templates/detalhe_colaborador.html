@@ -96,7 +96,11 @@
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
                             <span class="text-muted">CPF:</span>
-                            <span style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
+                            {% if can_see_salary and alvo.cpf %}
+                                <span>{{ alvo.cpf|slice:":3" }}.{{ alvo.cpf|slice:"3:6" }}.{{ alvo.cpf|slice:"6:9" }}-{{ alvo.cpf|slice:"9:11" }}</span>
+                            {% else %}
+                                <span style="filter: blur(4px);" title="Oculto por segurança">###.###.###-##</span>
+                            {% endif %}
                         </li>
                         
                         <li class="list-group-item d-flex justify-content-between align-items-center bg-light mt-2 border">
