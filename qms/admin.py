@@ -141,6 +141,8 @@ class ColaboradorAdmin(admin.ModelAdmin):
         "nome_completo",
         "cargo",
         "lider",
+        "supervisor",
+        "gerente",
         "grupo",
         "get_setor_nome",
         "salario",
@@ -149,7 +151,7 @@ class ColaboradorAdmin(admin.ModelAdmin):
     )
     search_fields = ("matricula", "cpf", "nome_completo", "cargo")
     list_filter = ("is_active", "em_ferias", "grupo", SetorPorGrupoFilter, "turno")
-    autocomplete_fields = ["setor", "centro_custo", "lider"]
+    autocomplete_fields = ["setor", "centro_custo", "lider", "supervisor", "gerente"]
     filter_horizontal = ("pacotes_treinamento",)
 
     # CORREÇÃO: Usando o Inline correto para RH
@@ -167,7 +169,7 @@ class ColaboradorAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     ("cargo", "salario"),
-                    "lider",
+                    ("lider", "supervisor", "gerente"),
                     ("grupo", "turno"),
                     ("setor", "centro_custo"),
                 )
