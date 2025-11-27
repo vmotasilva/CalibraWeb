@@ -21,7 +21,7 @@
             </span>
         </div>
         <div>
-            <a href="javascript:history.back()" class="btn btn-outline-secondary me-2">
+            <a href="{% url 'modulo_metrologia' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary me-2">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
             {% if instrumento.ativo %}

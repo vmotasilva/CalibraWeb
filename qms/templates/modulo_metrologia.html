@@ -246,7 +246,7 @@
                             </td>
 
                             <td class="text-end pe-4 py-2">
-                                <a href="{% url 'detalhe_instrumento' i.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill" style="font-size: 0.75rem;">
+                                <a href="{% url 'detalhe_instrumento' i.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill detail-link" style="font-size: 0.75rem;">
                                     Detalhes
                                 </a>
                             </td>
@@ -263,12 +263,71 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    applyStateFromQuery();
     filtrar();
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
     searchInput.addEventListener('keyup', filtrar);
     checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
+
+    // Append filter state to detail links
+    document.querySelectorAll('.detail-link').forEach(a => {
+        a.addEventListener('click', function(ev){
+            ev.preventDefault();
+            const state = getFilterState();
+            const qs = buildQueryString(state);
+            const base = this.getAttribute('href');
+            window.location.href = base + (qs ? ('?' + qs) : '');
+        });
+    });
 });
+
+function getFilterState() {
+    const state = { q: '', st: [], sit: [], cat: [], set: [] };
+    const qEl = document.getElementById('searchInput');
+    state.q = (qEl && qEl.value) ? qEl.value : '';
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        if (!cb.checked) return;
+        const val = cb.value;
+        switch(cb.dataset.category){
+            case 'status': state.st.push(val); break;
+            case 'situacao': state.sit.push(val); break;
+            case 'categoria': state.cat.push(val); break;
+            case 'setor': state.set.push(val); break;
+        }
+    });
+    return state;
+}
+
+function buildQueryString(state){
+    const params = [];
+    if (state.q) params.push('q=' + encodeURIComponent(state.q));
+    if (state.st.length) params.push('st=' + encodeURIComponent(state.st.join(',')));
+    if (state.sit.length) params.push('sit=' + encodeURIComponent(state.sit.join(',')));
+    if (state.cat.length) params.push('cat=' + encodeURIComponent(state.cat.join(',')));
+    if (state.set.length) params.push('set=' + encodeURIComponent(state.set.join(',')));
+    return params.join('&');
+}
+
+function applyStateFromQuery(){
+    const sp = new URLSearchParams(window.location.search);
+    const q = sp.get('q') || '';
+    const st = (sp.get('st') || '').split(',').filter(Boolean);
+    const sit = (sp.get('sit') || '').split(',').filter(Boolean);
+    const cat = (sp.get('cat') || '').split(',').filter(Boolean);
+    const set = (sp.get('set') || '').split(',').filter(Boolean);
+    const qEl = document.getElementById('searchInput');
+    if (qEl) qEl.value = q;
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        const val = cb.value;
+        switch(cb.dataset.category){
+            case 'status': cb.checked = st.includes(val) || (st.length===0 && cb.id==='st_ativo'); break;
+            case 'situacao': cb.checked = sit.includes(val); break;
+            case 'categoria': cb.checked = cat.includes(val); break;
+            case 'setor': cb.checked = set.includes(val); break;
+        }
+    });
+}
 
 function toggleFilterGroup(element) {
     element.parentElement.classList.toggle('open');
