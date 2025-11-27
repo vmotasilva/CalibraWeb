@@ -529,13 +529,30 @@ function renderEtiquetasSummary(){
     const count = parseInt(countTxt, 10) || 0;
     const state = getFilterState();
     function fmt(arr){ return arr.length ? arr.join(', ') : 'Todos'; }
+
+    // Coleta nomes legíveis de categorias e setores selecionados
+    const catNames = Array.from(document.querySelectorAll('.filter-checkbox[data-category="categoria"]:checked'))
+        .map(cb => (cb.nextElementSibling ? cb.nextElementSibling.textContent.trim() : cb.value));
+    const setNames = Array.from(document.querySelectorAll('.filter-checkbox[data-category="setor"]:checked'))
+        .map(cb => (cb.nextElementSibling ? cb.nextElementSibling.textContent.trim() : cb.value));
+
     const parts = [];
     parts.push(`<strong>${count}</strong> instrumento${count===1?'':'s'}`);
     if (state.sit.length) parts.push(`Situação: ${fmt(state.sit)}`);
     if (state.st.length) parts.push(`Status: ${fmt(state.st)}`);
-    if (state.cat.length) parts.push(`Categoria: ${state.cat.length} selecionada${state.cat.length===1?'':'s'}`);
-    if (state.set.length) parts.push(`Setor: ${state.set.length} selecionado${state.set.length===1?'':'s'}`);
-    box.innerHTML = `Serão geradas etiquetas para ${parts[0]}. <span class="ms-2">${parts.slice(1).join(' • ')}</span>`;
+
+    // Monta chips de categoria e setor quando houver seleção
+    let chipsHTML = '';
+    if (catNames.length) {
+        chipsHTML += `<div class=\"mt-1\"><span class=\"me-2 text-muted\">Categorias:</span>` +
+            catNames.map(n => `<span class=\"badge bg-light text-dark border me-1\">${n}</span>`).join(' ') + `</div>`;
+    }
+    if (setNames.length) {
+        chipsHTML += `<div class=\"mt-1\"><span class=\"me-2 text-muted\">Setores:</span>` +
+            setNames.map(n => `<span class=\"badge bg-light text-dark border me-1\">${n}</span>`).join(' ') + `</div>`;
+    }
+
+    box.innerHTML = `Serão geradas etiquetas para ${parts[0]}. <span class=\"ms-2\">${parts.slice(1).join(' • ')}</span>${chipsHTML}`;
 }
 </script>
 {% endblock %}
