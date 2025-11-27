@@ -63,6 +63,9 @@
                 
                 <label>Texto:</label> {{ form.status_validacao }}
                 <label style="color:#e65100">Data:</label> {{ form.data_validacao }}
+                <div id="live-result" style="margin-top:8px; font-weight:600;">
+                    Resultado: <span id="live-result-text" class="badge bg-secondary">—</span>
+                </div>
             </div>
 
             <!-- E/U/T agora serão informados por arquivo (associado ao instrumento) -->
@@ -175,6 +178,8 @@
                 // Auto-preencher tolerância com base no instrumento selecionado
                 const sel = div.querySelector(`select[name="instrument_id_${index}"]`);
                 const tolInput = div.querySelector(`#tol-input-${index}`);
+                const errInput = div.querySelector(`#err-input-${index}`);
+                const incInput = div.querySelector(`#inc-input-${index}`);
                 const applyTol = () => {
                     if(!sel || !tolInput) return;
                     const opt = sel.options[sel.selectedIndex];
@@ -182,8 +187,12 @@
                     if(tol && (tolInput.value === '' || tolInput.value === '0' || tolInput.value === '0.0000')) {
                         tolInput.value = tol;
                     }
+                    computeResultFor(index);
                 };
                 if(sel){ sel.addEventListener('change', applyTol); }
+                if(errInput){ errInput.addEventListener('input', () => computeResultFor(index)); }
+                if(incInput){ incInput.addEventListener('input', () => computeResultFor(index)); }
+                if(tolInput){ tolInput.addEventListener('input', () => computeResultFor(index)); }
                 applyTol();
             });
             loadFilePreview(0);
@@ -215,7 +224,7 @@
                 if(globalPH) globalPH.value = viewport.height;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = "white"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                page.render({ canvasContext: ctx, viewport: viewport }).promise.then(() => { drawSavedBox(); });
+                page.render({ canvasContext: ctx, viewport: viewport }).promise.then(() => { drawSavedBox(); drawStampPreview(); });
                 const pageHidden = document.getElementById('page-index-hidden');
                 if(pageHidden) pageHidden.value = (num - 1);
             });
@@ -313,7 +322,47 @@
             document.getElementById(`input-h-${currentFileIndex}`).value = rect.height;
             const ind = document.getElementById(`status-${currentFileIndex}`);
             if(ind) { ind.innerText = "Posição OK"; ind.classList.add('ok'); }
+            drawStampPreview();
         });
+
+        function drawStampPreview(){
+            // Draw a lightweight text preview inside selection box
+            if(selectionBox.style.display !== 'block') return;
+            const rect = selectionBox.getBoundingClientRect();
+            const r = canvas.getBoundingClientRect();
+            const lx = rect.left - r.left; const ly = rect.top - r.top;
+            const lw = rect.width; const lh = rect.height;
+            // Overlay text
+            ctx.save();
+            ctx.globalAlpha = 0.85;
+            ctx.fillStyle = '#2e7d32';
+            ctx.font = 'bold 14px Segoe UI';
+            const statusSelect = document.querySelector('select[name="status_validacao"]');
+            const statusText = statusSelect ? statusSelect.options[statusSelect.selectedIndex].text : 'APROVADO';
+            ctx.fillText(statusText, lx + 6, ly + 18);
+            ctx.fillStyle = '#000';
+            const dateInput = document.querySelector('input[name="data_validacao"]');
+            const dv = dateInput ? dateInput.value : '';
+            ctx.font = '12px Segoe UI';
+            ctx.fillText(dv || '', lx + 6, ly + 34);
+            ctx.fillText('RESP.: ' + (document.querySelector('input[disabled]')?.value || ''), lx + 6, ly + 50);
+            ctx.restore();
+        }
+
+        // Live result preview for E/U/T
+        function computeResultFor(index){
+            const e = parseFloat(document.getElementById(`err-input-${index}`).value || 'NaN');
+            const u = parseFloat(document.getElementById(`inc-input-${index}`).value || 'NaN');
+            const t = parseFloat(document.getElementById(`tol-input-${index}`).value || 'NaN');
+            const badge = document.getElementById('live-result-text');
+            if(!badge) return;
+            const setBadge = (txt, cls) => { badge.textContent = txt; badge.className = `badge ${cls}`; };
+            if(Number.isNaN(e) || Number.isNaN(u) || Number.isNaN(t)) { setBadge('—', 'bg-secondary'); return; }
+            const ema = Math.abs(t) / 2.0; const eme = Math.abs(e) + Math.abs(u);
+            if(eme <= ema) setBadge('Aprovado sem correções', 'bg-success');
+            else if(eme > ema * 3.0) setBadge('Reprovado', 'bg-danger');
+            else setBadge('Aprovado com correções', 'bg-warning text-dark');
+        }
     </script>
 </body>
 </html>
