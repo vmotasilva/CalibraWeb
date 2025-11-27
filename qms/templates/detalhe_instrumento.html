@@ -186,7 +186,15 @@
                                     </td>
                                     <td class="text-end">
                                         {% if item.certificado %}
-                                            <a href="{{ item.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-file-pdf"></i></a>
+                                            <a href="{{ item.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Abrir PDF"><i class="bi bi-file-pdf"></i></a>
+                                        {% else %}
+                                            <form method="post" action="{% url 'anexar_certificado_historico' item.id %}" enctype="multipart/form-data" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="file" name="certificado_pdf" accept="application/pdf" class="form-control form-control-sm d-inline" style="width: 220px; display:inline-block;" />
+                                                <button type="submit" class="btn btn-sm btn-outline-success ms-1" title="Anexar PDF">
+                                                    <i class="bi bi-paperclip"></i>
+                                                </button>
+                                            </form>
                                         {% endif %}
                                     </td>
                                 </tr>

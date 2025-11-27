@@ -49,6 +49,11 @@ urlpatterns = [
         views.remover_historico_view,
         name="remover_historico",
     ),
+    path(
+        "metrologia/historico/<int:historico_id>/anexar/",
+        views.anexar_certificado_historico_view,
+        name="anexar_certificado_historico",
+    ),
     # 7. Downloads de Templates (CORRIGIDO: Os nomes agora batem com o HTML)
     path("dl-template-inst/", views.dl_template_instr, name="template_instrumentos"),
     path(

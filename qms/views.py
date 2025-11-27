@@ -693,6 +693,40 @@ def remover_historico_view(request, historico_id):
     return redirect("detalhe_instrumento", instrumento_id=i_id)
 
 
+@login_required
+def anexar_certificado_historico_view(request, historico_id):
+    """Anexa um arquivo PDF ao registro de histórico que ainda não tenha certificado."""
+    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    inst_id = hist.instrumento.id if hist.instrumento else None
+    if request.method != "POST":
+        messages.error(request, "Método inválido.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    if hist.certificado:
+        messages.warning(request, "Este histórico já possui certificado anexado.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    up = request.FILES.get("certificado_pdf")
+    if not up:
+        messages.error(request, "Selecione um arquivo PDF para anexar.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    # Validação simples de tipo
+    ctype = getattr(up, "content_type", "") or ""
+    if "pdf" not in ctype.lower():
+        messages.error(request, "Arquivo inválido. Envie um PDF.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    # Salva no campo FileField; o nome ficará em certificados/
+    try:
+        filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag}.pdf" if hist.instrumento else up.name
+        hist.certificado.save(filename, up, save=True)
+        messages.success(request, "Certificado anexado com sucesso!")
+    except Exception as e:
+        messages.error(request, f"Falha ao anexar certificado: {e}")
+    return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+
 # ==============================================================================
 # CARIMBO (VALIDAÇÃO)
 # ==============================================================================
