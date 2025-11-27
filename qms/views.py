@@ -748,9 +748,6 @@ def carimbar_view(request):
                     screen_w,
                     screen_h,
                 )
-                pdf_buffer = apply_stamp_logic(
-                    f, user_full_name, status_txt, ui, dt_validacao
-                )
                 inst_id = request.POST.get(f"instrument_id_{i}")
                 calib_date_str = request.POST.get(f"calib_date_{i}")
                 cert_num = request.POST.get(f"cert_num_{i}", f.name)
@@ -821,6 +818,10 @@ def carimbar_view(request):
                             hist.observacoes = f"Revalidado: {status_item}"
                         if not is_rbc and padroes_selecionados:
                             hist.padroes_utilizados.set(padroes_selecionados)
+                        # Gera PDF com carimbo usando o status calculado para ESTE item
+                        pdf_buffer = apply_stamp_logic(
+                            f, user_full_name, status_item, ui, dt_validacao
+                        )
                         filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"
                         hist.certificado.save(
                             filename, ContentFile(pdf_buffer.getvalue())
@@ -828,8 +829,13 @@ def carimbar_view(request):
                         hist.save()
                     except Exception as e:
                         print(f"Erro: {e}")
-                pdf_buffer.seek(0)
-                processed_files.append((f.name, pdf_buffer))
+                # Adiciona saída para download em lote (usa o buffer gerado)
+                if inst_id and calib_date_str:
+                    try:
+                        pdf_buffer.seek(0)
+                        processed_files.append((f.name, pdf_buffer))
+                    except Exception:
+                        processed_files.append((f.name, io.BytesIO()))
 
             if len(processed_files) == 1:
                 fname, fbuf = processed_files[0]
