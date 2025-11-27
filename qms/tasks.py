@@ -86,6 +86,21 @@ def import_instruments_task(job_id, filepath):
             except Exception:
                 return None
 
+        # Helper to find a matching category when not explicitly provided
+        def infer_categoria(descricao, fabricante, modelo):
+            try:
+                texto = ' '.join([str(x) for x in [descricao, fabricante, modelo] if x]).upper()
+                if not texto:
+                    return None
+                # simple contains match against existing CategoriaInstrumento names
+                for cat in CategoriaInstrumento.objects.all():
+                    nome = (cat.nome or '').upper()
+                    if nome and nome in texto:
+                        return cat
+                return None
+            except Exception:
+                return None
+
         with transaction.atomic():
             for _, row in df.iterrows():
                 def get_val(k_list):
@@ -154,6 +169,9 @@ def import_instruments_task(job_id, filepath):
                 categoria_obj = None
                 if categoria_nome:
                     categoria_obj, _ = CategoriaInstrumento.objects.get_or_create(nome=str(categoria_nome).upper())
+                else:
+                    # Try infer by description/manufacturer/model
+                    categoria_obj = infer_categoria(descricao, fabricante, modelo)
 
                 defaults_map = {
                     'descricao': descricao,
@@ -203,6 +221,17 @@ def import_instruments_task(job_id, filepath):
                     except Exception as e:
                         if len(sample_errors) < 5:
                             sample_errors.append(f'Faixa inválida para {tag}: {faixa_txt}')
+
+                # If no faixa provided and categoria has unidade_padrao, create a placeholder faixa
+                try:
+                    if not faixa_txt and categoria_obj and getattr(categoria_obj, 'unidade_padrao', None):
+                        FaixaMedicao.objects.get_or_create(
+                            instrumento=obj,
+                            unidade=categoria_obj.unidade_padrao,
+                            defaults={'valor_minimo': None, 'valor_maximo': None}
+                        )
+                except Exception:
+                    pass
 
         job.status = 'SUCCESS'
         msg = f'Instruments: {count_new} new, {count_upd} updated, {count_faixas} ranges'
