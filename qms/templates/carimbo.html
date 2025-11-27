@@ -39,8 +39,8 @@
 
     <select id="template-instrument-select" style="display: none;">
         <option value="">-- Selecione a TAG --</option>
-        {% for inst in instrumentos %}
-            <option value="{{ inst.id }}">{{ inst.tag }} — {{ inst.descricao|truncatechars:30 }}</option>
+        {% for item in instrumentos_data %}
+            <option value="{{ item.id }}" data-tol="{{ item.tolerancia|default:'' }}">{{ item.tag }} — {{ item.descricao|truncatechars:30 }}</option>
         {% endfor %}
     </select>
 
@@ -170,6 +170,20 @@
                     <input type="hidden" name="h_${index}" id="input-h-${index}">
                 `;
                 listContainer.appendChild(div);
+
+                // Auto-preencher tolerância com base no instrumento selecionado
+                const sel = div.querySelector(`select[name="instrument_id_${index}"]`);
+                const tolInput = div.querySelector(`#tol-input-${index}`);
+                const applyTol = () => {
+                    if(!sel || !tolInput) return;
+                    const opt = sel.options[sel.selectedIndex];
+                    const tol = opt ? opt.getAttribute('data-tol') : '';
+                    if(tol && (tolInput.value === '' || tolInput.value === '0' || tolInput.value === '0.0000')) {
+                        tolInput.value = tol;
+                    }
+                };
+                if(sel){ sel.addEventListener('change', applyTol); }
+                applyTol();
             });
             loadFilePreview(0);
         }

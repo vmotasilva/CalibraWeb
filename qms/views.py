@@ -699,7 +699,24 @@ def remover_historico_view(request, historico_id):
 @login_required
 def carimbar_view(request):
     colab = get_colab(request)
-    instrumentos_disponiveis = Instrumento.objects.filter(ativo=True).order_by("tag")
+    instrumentos_disponiveis = Instrumento.objects.filter(ativo=True).prefetch_related('faixas').order_by("tag")
+    # Prepara dados de tolerância (+/-) por instrumento (primeira faixa com valor)
+    instrumentos_data = []
+    for inst in instrumentos_disponiveis:
+        tol_val = None
+        try:
+            for fx in inst.faixas.all():
+                if getattr(fx, 'tolerancia_mais_menos', None) is not None:
+                    tol_val = fx.tolerancia_mais_menos
+                    break
+        except Exception:
+            tol_val = None
+        instrumentos_data.append({
+            'id': inst.id,
+            'tag': inst.tag,
+            'descricao': inst.descricao,
+            'tolerancia': tol_val,
+        })
     user_full_name = f"{request.user.first_name} {request.user.last_name}".strip()
     if not user_full_name:
         user_full_name = request.user.username.upper()
@@ -768,6 +785,16 @@ def carimbar_view(request):
                         erro_in = parse_dec(request.POST.get(f"err_{i}"))
                         inc_in = parse_dec(request.POST.get(f"inc_{i}"))
                         tol_in = parse_dec(request.POST.get(f"tol_{i}"))
+                        # Fallback: se tolerância não informada, usa a do instrumento (primeira faixa disponível)
+                        if tol_in is None:
+                            try:
+                                for fx in instrumento.faixas.all():
+                                    v = getattr(fx, 'tolerancia_mais_menos', None)
+                                    if v is not None:
+                                        tol_in = Decimal(str(v))
+                                        break
+                            except Exception:
+                                tol_in = None
 
                         status_item = status_txt
                         resultado_item = "APROVADO"
@@ -861,6 +888,7 @@ def carimbar_view(request):
             "colaborador": colab,
             "user_full_name": user_full_name,
             "instrumentos": instrumentos_disponiveis,
+            "instrumentos_data": instrumentos_data,
         },
     )
 
