@@ -727,6 +727,29 @@ def anexar_certificado_historico_view(request, historico_id):
     return redirect("detalhe_instrumento", instrumento_id=inst_id)
 
 
+@login_required
+def remover_certificado_historico_view(request, historico_id):
+    """Remove apenas o arquivo de certificado do histórico, mantendo o registro."""
+    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    inst_id = hist.instrumento.id if hist.instrumento else None
+    if request.method != "POST":
+        messages.error(request, "Método inválido.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    if not hist.certificado:
+        messages.warning(request, "Este histórico não possui certificado anexado.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    try:
+        hist.certificado.delete(save=False)
+        hist.certificado = None
+        hist.save(update_fields=["certificado"])
+        messages.success(request, "Certificado removido. Você pode anexar um novo.")
+    except Exception as e:
+        messages.error(request, f"Falha ao remover certificado: {e}")
+    return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+
 # ==============================================================================
 # CARIMBO (VALIDAÇÃO)
 # ==============================================================================

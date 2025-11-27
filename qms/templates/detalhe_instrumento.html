@@ -21,6 +21,9 @@
             </span>
         </div>
         <div>
+            <a href="{% url 'modulo_metrologia' %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
             {% if instrumento.ativo %}
                 <span class="badge bg-success fs-6 px-3 py-2">ATIVO</span>
             {% else %}
@@ -187,6 +190,10 @@
                                     <td class="text-end">
                                         {% if item.certificado %}
                                             <a href="{{ item.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Abrir PDF"><i class="bi bi-file-pdf"></i></a>
+                                            <form method="post" action="{% url 'remover_certificado_historico' item.id %}" class="d-inline" onsubmit="return confirm('Remover apenas o PDF deste registro?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-warning ms-1" title="Remover PDF"><i class="bi bi-trash"></i></button>
+                                            </form>
                                         {% else %}
                                             <form method="post" action="{% url 'anexar_certificado_historico' item.id %}" enctype="multipart/form-data" class="d-inline">
                                                 {% csrf_token %}
@@ -196,6 +203,9 @@
                                                 </button>
                                             </form>
                                         {% endif %}
+                                        <a href="{% url 'remover_historico' item.id %}" class="btn btn-sm btn-outline-danger ms-1" title="Apagar registro" onclick="return confirm('Tem certeza que deseja remover este registro do histórico? Esta ação não pode ser desfeita.');">
+                                            <i class="bi bi-x-circle"></i>
+                                        </a>
                                     </td>
                                 </tr>
                                 {% empty %}
