@@ -185,8 +185,18 @@ def dashboard_view(request):
 def modulo_metrologia_view(request):
     colab = get_colab(request)
 
-    # Busca todos os instrumentos
-    instrumentos = Instrumento.objects.filter(ativo=True).select_related('categoria','setor').order_by("tag")
+    # Busca instrumentos (inclui ativos e inativos para permitir filtro na interface)
+    instrumentos = Instrumento.objects.all().select_related('categoria','setor').order_by("tag")
+
+    # Filtro opcional de status de atividade (st=ATIVO, st=INATIVO ou ambos separados por vírgula)
+    st_param = (request.GET.get('st') or '').upper()
+    if st_param:
+        parts = {p.strip() for p in st_param.split(',') if p.strip()}
+        if 'ATIVO' in parts and 'INATIVO' not in parts:
+            instrumentos = instrumentos.filter(ativo=True)
+        elif 'INATIVO' in parts and 'ATIVO' not in parts:
+            instrumentos = instrumentos.filter(ativo=False)
+        # Se ambos presentes, mantém todos
 
     # --- NOVA LÓGICA DE FILTRO VINDO DO DASHBOARD ---
     status_filter = request.GET.get("status")  # Pega o parâmetro da URL

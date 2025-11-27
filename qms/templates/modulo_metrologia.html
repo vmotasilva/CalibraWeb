@@ -277,8 +277,8 @@ document.addEventListener('DOMContentLoaded', function() {
     filtrar();
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
-    searchInput.addEventListener('keyup', filtrar);
-    checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
+    searchInput.addEventListener('keyup', function(){ filtrar(); updateExportLink(); });
+    checkboxes.forEach(cb => cb.addEventListener('change', function(){ filtrar(); updateExportLink(); }));
 
     // Append filter state to detail links
     document.querySelectorAll('.detail-link').forEach(a => {
@@ -310,8 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Export button points to export endpoint with same query
     const btnExport = document.getElementById('btnExport');
     if (btnExport) {
-        const qs = buildQueryString(getFilterState());
-        btnExport.href = '{% url 'export_metrologia' %}' + (qs ? ('?' + qs) : '');
+        updateExportLink();
     }
 });
 
@@ -402,6 +401,7 @@ function limparFiltros() {
         cb.checked = (cb.id === 'st_ativo');
     });
     filtrar();
+    updateExportLink();
 }
 
 function toggleSidebar() {
@@ -420,6 +420,13 @@ function toggleSidebar() {
         content.classList.remove('col-lg-10');
         icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
     }
+}
+
+function updateExportLink(){
+    const btnExport = document.getElementById('btnExport');
+    if(!btnExport) return;
+    const qs = buildQueryString(getFilterState());
+    btnExport.href = '{% url 'export_metrologia' %}' + (qs ? ('?' + qs) : '');
 }
 </script>
 {% endblock %}

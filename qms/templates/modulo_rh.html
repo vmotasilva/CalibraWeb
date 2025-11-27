@@ -503,18 +503,31 @@ function toggleSidebar() {
     const icon = document.getElementById('sidebarIcon');
 
     if (sidebar.classList.contains('d-none')) {
+        // EXPANDIR: restaurar largura original (col-md-9 col-lg-10)
         sidebar.classList.remove('d-none');
-        content.classList.replace('col-md-9', 'col-12'); // Adiciona col-12 para tela cheia
-        content.classList.add('col-lg-12'); // Garante que em tela grande ocupe tudo
-        content.classList.remove('col-lg-10'); 
+        if (content.classList.contains('col-12')) {
+            content.classList.replace('col-12', 'col-md-9');
+        }
+        content.classList.remove('col-lg-12');
+        if (!content.classList.contains('col-lg-10')) {
+            content.classList.add('col-lg-10');
+        }
         icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
     } else {
+        // RECOLHER: ocupar toda a largura (col-12 col-lg-12)
         sidebar.classList.add('d-none');
-        content.classList.replace('col-12', 'col-md-9'); // Volta para a proporção original
-        content.classList.add('col-lg-10'); // Volta para a proporção original
-        content.classList.remove('col-lg-12');
+        if (content.classList.contains('col-md-9')) {
+            content.classList.replace('col-md-9', 'col-12');
+        }
+        content.classList.remove('col-lg-10');
+        if (!content.classList.contains('col-lg-12')) {
+            content.classList.add('col-lg-12');
+        }
         icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
     }
+
+    // Reforça visibilidade da tabela após transição
+    try { filtrar(); } catch(e) { /* ignore */ }
 }
 
 // Restaura filtros do localStorage
