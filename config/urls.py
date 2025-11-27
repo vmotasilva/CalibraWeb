@@ -23,6 +23,7 @@ urlpatterns = [
     path("home/", views.dashboard_view, name="home"),
     # 5. Módulos Principais
     path("metrologia/", views.modulo_metrologia_view, name="modulo_metrologia"),
+    path("metrologia/export/", views.export_metrologia_view, name="export_metrologia"),
     path("rh/", views.modulo_rh_view, name="modulo_rh"),
     # Detalhes e Edição
     path(
@@ -73,6 +74,7 @@ urlpatterns = [
     path("fix-historico/", views.fix_historico_proxima_view, name="fix_historico_proxima"),
     # 8. Importações (Excel)
     path("imp-inst/", views.imp_instr_view, name="importar_instrumentos"),
+    path("imp-categorias/", views.imp_categorias_view, name="importar_categorias"),
     # Import jobs listing and retry actions
     path("import-jobs/", views.import_jobs_view, name="import_jobs"),
     path("import-jobs/<uuid:job_id>/retry/", views.retry_import_job_view, name="retry_import_job"),

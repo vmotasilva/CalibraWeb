@@ -59,12 +59,22 @@
         </div>
         
         <div class="d-flex gap-2">
+            <button id="btnCopyFilters" type="button" class="btn btn-outline-secondary btn-sm shadow-sm" title="Copiar link com filtros">🔗 Copiar Link</button>
+            <a id="btnExport" href="#" class="btn btn-outline-success btn-sm shadow-sm" title="Exportar Excel">
+                <i class="bi bi-download"></i> Exportar
+            </a>
             <!-- LINK CORRIGIDO PARA 'carimbar' -->
             <a href="{% url 'carimbar' %}" class="btn btn-warning shadow-sm text-dark fw-bold btn-sm">
                 <i class="bi bi-patch-check-fill"></i> Validar Certificado
             </a>
             <a href="{% url 'importar_instrumentos' %}" class="btn btn-success btn-sm shadow-sm">
                 <i class="bi bi-file-earmark-spreadsheet"></i> Importar
+            </a>
+            <a href="/admin/qms/categoriainstrumento/" target="_blank" class="btn btn-outline-primary btn-sm shadow-sm" title="Gerenciar Categorias">
+                <i class="bi bi-tags"></i> Categorias
+            </a>
+            <a href="{% url 'importar_categorias' %}" class="btn btn-outline-primary btn-sm shadow-sm" title="Importar Categorias">
+                <i class="bi bi-upload"></i> Importar Categorias
             </a>
             <a href="{% url 'import_jobs' %}" class="btn btn-outline-info btn-sm shadow-sm">
                 <i class="bi bi-clock-history"></i> Ver Importações
@@ -280,6 +290,29 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = base + (qs ? ('?' + qs) : '');
         });
     });
+
+    // Copy link with current filters
+    const btnCopy = document.getElementById('btnCopyFilters');
+    if (btnCopy) {
+        btnCopy.addEventListener('click', async function(){
+            const qs = buildQueryString(getFilterState());
+            const url = window.location.origin + window.location.pathname + (qs ? ('?' + qs) : '');
+            try {
+                await navigator.clipboard.writeText(url);
+                btnCopy.innerText = '✅ Copiado!';
+                setTimeout(()=> btnCopy.innerText = '🔗 Copiar Link', 1500);
+            } catch (e) {
+                alert('Não foi possível copiar o link.');
+            }
+        });
+    }
+
+    // Export button points to export endpoint with same query
+    const btnExport = document.getElementById('btnExport');
+    if (btnExport) {
+        const qs = buildQueryString(getFilterState());
+        btnExport.href = '{% url 'export_metrologia' %}' + (qs ? ('?' + qs) : '');
+    }
 });
 
 function getFilterState() {

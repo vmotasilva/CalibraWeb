@@ -34,6 +34,7 @@ from .models import (CategoriaInstrumento, CentroCusto, Colaborador,
                      OrdemCalibracao, Padrao, Procedimento, ProcessoCotacao,
                      RegistroTreinamento, Setor, SolicitacaoInstrumento,
                      UnidadeMedida, ImportJob)
+from django.views.decorators.http import require_POST
 
 
 # --- FUNÇÕES AUXILIARES ---
@@ -185,7 +186,7 @@ def modulo_metrologia_view(request):
     colab = get_colab(request)
 
     # Busca todos os instrumentos
-    instrumentos = Instrumento.objects.filter(ativo=True).order_by("tag")
+    instrumentos = Instrumento.objects.filter(ativo=True).select_related('categoria','setor').order_by("tag")
 
     # --- NOVA LÓGICA DE FILTRO VINDO DO DASHBOARD ---
     status_filter = request.GET.get("status")  # Pega o parâmetro da URL
@@ -227,6 +228,80 @@ def modulo_metrologia_view(request):
         "can_edit": True,
     }
     return render(request, "modulo_metrologia.html", ctx)
+
+
+@login_required
+def export_metrologia_view(request):
+    """Exporta os instrumentos (respeitando filtros por querystring) para Excel."""
+    q = (request.GET.get('q') or '').strip().lower()
+    st = set((request.GET.get('st') or '').split(',')) if request.GET.get('st') else set()
+    sit = set((request.GET.get('sit') or '').split(',')) if request.GET.get('sit') else set()
+    cat = set((request.GET.get('cat') or '').split(',')) if request.GET.get('cat') else set()
+    st_setor = set((request.GET.get('set') or '').split(',')) if request.GET.get('set') else set()
+
+    qs = Instrumento.objects.all().select_related('categoria','setor').prefetch_related('faixas','faixas__unidade')
+    if st:
+        if 'ATIVO' in st and 'INATIVO' not in st:
+            qs = qs.filter(ativo=True)
+        elif 'INATIVO' in st and 'ATIVO' not in st:
+            qs = qs.filter(ativo=False)
+    if cat:
+        try:
+            cat_ids = [int(x) for x in cat if x.isdigit()]
+            qs = qs.filter(categoria_id__in=cat_ids)
+        except Exception:
+            pass
+    if st_setor:
+        try:
+            setor_ids = [int(x) for x in st_setor if x.isdigit()]
+            qs = qs.filter(setor_id__in=setor_ids)
+        except Exception:
+            pass
+    if q:
+        qs = qs.filter(models.Q(tag__icontains=q) | models.Q(descricao__icontains=q) | models.Q(fabricante__icontains=q) | models.Q(modelo__icontains=q))
+
+    # Situação (vencido/avencer/em_dia) é derivada de datas - filtra após fetch
+    hoje = date.today()
+    alerta_30d = hoje + timedelta(days=30)
+    rows = []
+    for inst in qs:
+        situacao = 'EM_DIA'
+        if inst.data_proxima_calibracao:
+            if inst.data_proxima_calibracao < hoje:
+                situacao = 'VENCIDO'
+            elif inst.data_proxima_calibracao <= alerta_30d:
+                situacao = 'AVENCER'
+        if sit and situacao not in sit:
+            continue
+        unidade = ''
+        try:
+            fx = inst.faixas.all().first()
+            if fx and fx.unidade:
+                unidade = fx.unidade.sigla
+        except Exception:
+            unidade = ''
+        rows.append({
+            'TAG': inst.tag,
+            'DESCRICAO': inst.descricao,
+            'CATEGORIA': inst.categoria.nome if inst.categoria else '',
+            'SETOR': inst.setor.nome if inst.setor else '',
+            'FABRICANTE': inst.fabricante or '',
+            'MODELO': inst.modelo or '',
+            'SERIE': inst.serie or '',
+            'SITUACAO': situacao,
+            'ULTIMA_CALIB': inst.data_ultima_calibracao.strftime('%Y-%m-%d') if inst.data_ultima_calibracao else '',
+            'PROXIMA_CALIB': inst.data_proxima_calibracao.strftime('%Y-%m-%d') if inst.data_proxima_calibracao else '',
+            'UNIDADE': unidade,
+        })
+    import pandas as pd
+    import io
+    b = io.BytesIO()
+    df = pd.DataFrame(rows)
+    df.to_excel(b, index=False, engine='openpyxl')
+    b.seek(0)
+    r = HttpResponse(b, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    r['Content-Disposition'] = 'attachment; filename="instrumentos_export.xlsx"'
+    return r
 
 
 @login_required
@@ -1241,6 +1316,48 @@ def imp_padroes_view(request):
         "importar_historico.html",
         {"form": form, "titulo": "Importar Padrões", "colaborador": get_colab(request)},
     )
+
+
+@login_required
+def imp_categorias_view(request):
+    """Importa categorias em massa a partir de CSV (nome,descricao,unidade_sigla)."""
+    if request.method == 'POST':
+        f = request.FILES.get('arquivo')
+        if not f:
+            messages.error(request, 'Selecione um arquivo CSV.')
+            return redirect('importar_categorias')
+        import csv, io
+        try:
+            decoded = io.TextIOWrapper(f.file, encoding='utf-8')
+        except Exception:
+            decoded = io.TextIOWrapper(f, encoding='utf-8')
+        reader = csv.DictReader(decoded)
+        created = 0; updated = 0; not_found_units = 0
+        for row in reader:
+            nome = (row.get('nome') or '').strip()
+            if not nome:
+                continue
+            desc = (row.get('descricao') or '').strip() or None
+            unidade_sigla = (row.get('unidade_sigla') or '').strip()
+            unidade_obj = None
+            if unidade_sigla:
+                unidade_obj = UnidadeMedida.objects.filter(sigla__iexact=unidade_sigla).first()
+                if not unidade_obj:
+                    not_found_units += 1
+            obj, was_created = CategoriaInstrumento.objects.update_or_create(
+                nome=nome,
+                defaults={
+                    'descricao': desc,
+                    'unidade_padrao': unidade_obj,
+                }
+            )
+            if was_created:
+                created += 1
+            else:
+                updated += 1
+        messages.success(request, f"Categorias criadas: {created}, atualizadas: {updated}. Unidades não encontradas: {not_found_units}")
+        return redirect('modulo_metrologia')
+    return render(request, 'importar_categorias.html', { 'colaborador': get_colab(request) })
 
 
 @login_required
