@@ -393,10 +393,14 @@ class SolicitacaoInstrumento(models.Model):
 # --- 2. Registro de Ocorrências ---
 class OcorrenciaInstrumento(models.Model):
     TIPO_OCORRENCIA = [
-        ("MANUTENCAO", "Manutenção Corretiva"),
-        ("QUEDA", "Queda/Dano Físico"),
-        ("AJUSTE", "Ajuste Interno"),
-        ("OUTRO", "Outros"),
+        ("CALIBRACAO", "Calibração"),
+        ("VERIFICACAO", "Verificação"),
+        ("INSPECAO", "Inspeção"),
+        ("AJUSTE", "Ajuste"),
+        ("MANUTENCAO", "Manutenção"),
+        ("AVARIA", "Avaria/Dano"),
+        ("EXTRAVIO", "Extravio/Perda"),
+        ("OUTRO", "Outro"),
     ]
 
     instrumento = models.ForeignKey(
@@ -466,7 +470,7 @@ class OrdemCalibracao(models.Model):
     )
 
     def __str__(self):
-        return f"Calibração {self.instrumento.codigo} - {self.status}"
+        return f"Calibração {self.instrumento.codigo if self.instrumento else ''} - {self.status}"
 
     # Validação simples para saber se está fora da empresa
     @property

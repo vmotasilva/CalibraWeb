@@ -1285,6 +1285,24 @@ def imp_historico_view(request):
                 if force_sync:
                     import_historico_task(job.id, tmp.name)
                     job.refresh_from_db()
+                    try:
+                        # Após importar, força recálculo das datas nos instrumentos afetados
+                        afetados = HistoricoCalibracao.objects.filter(
+                            criado_em__gte=job.created_at
+                        ).values_list("instrumento_id", flat=True).distinct()
+                        for iid in afetados:
+                            inst = Instrumento.objects.filter(id=iid).first()
+                            if inst:
+                                ultima = inst.historico_calibracoes.order_by("-data_calibracao").first()
+                                if ultima:
+                                    inst.data_ultima_calibracao = ultima.data_calibracao
+                                    inst.data_proxima_calibracao = ultima.proxima_calibracao
+                                else:
+                                    inst.data_ultima_calibracao = None
+                                    inst.data_proxima_calibracao = None
+                                inst.save(update_fields=["data_ultima_calibracao", "data_proxima_calibracao"])
+                    except Exception:
+                        pass
                     messages.success(request, f"Histórico importado imediatamente (job {job.id}). {job.result or ''}")
                     return redirect("modulo_metrologia")
             except Exception as e:
