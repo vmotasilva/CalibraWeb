@@ -25,6 +25,7 @@ urlpatterns = [
     path("metrologia/", views.modulo_metrologia_view, name="modulo_metrologia"),
     path("metrologia/export/", views.export_metrologia_view, name="export_metrologia"),
     path("metrologia/etiquetas/", views.export_etiquetas_view, name="export_etiquetas"),
+    path("metrologia/novo/", views.novo_instrumento_view, name="novo_instrumento"),
     path("rh/", views.modulo_rh_view, name="modulo_rh"),
     # Detalhes e Edição
     path(
