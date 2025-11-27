@@ -12,11 +12,12 @@ No Railway, configure as seguintes variáveis:
 
 ```bash
 SECRET_KEY=<sua-chave-gerada-securely>
-ALLOWED_HOSTS=your-app.up.railway.app,your-custom-domain.com
+ALLOWED_HOSTS=your-app.up.railway.app,*.up.railway.app,your-custom-domain.com
 DATABASE_URL=<fornecido-automaticamente-pelo-railway-postgres>
-CSRF_TRUSTED_ORIGINS=https://your-app.up.railway.app,https://your-custom-domain.com
+CSRF_TRUSTED_ORIGINS=https://your-app.up.railway.app,https://*.up.railway.app,https://your-custom-domain.com
 DEBUG=False
 TIME_ZONE=America/Sao_Paulo
+SYNC_IMPORTS=1
 CELERY_BROKER_URL=<redis-url-se-usar-celery>
 ```
 
@@ -61,16 +62,16 @@ Railway detecta automaticamente:
 
 **Processos configurados:**
 - `web`: Gunicorn server (porta dinâmica via `$PORT`)
-- `worker`: Celery worker (opcional)
-- `beat`: Celery beat scheduler (opcional)
+- `worker`: Celery worker (opcional; fica inativo se não houver `CELERY_BROKER_URL`/`REDIS_URL`)
+- `beat`: Celery beat scheduler (opcional; fica inativo se não houver `CELERY_BROKER_URL`/`REDIS_URL`)
 
 ## 🔍 Verificação de Saúde
 
 Teste o health endpoint após deploy:
 
 ```bash
-curl https://your-app.up.railway.app/healthz/
-# Esperado: {"status": "ok", "service": "CalibraWeb"}
+curl -i https://your-app.up.railway.app/healthz/
+# Esperado: HTTP 200 e corpo: OK
 ```
 
 ## 🗄️ Gerenciamento de Banco de Dados
