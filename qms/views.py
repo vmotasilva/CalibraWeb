@@ -897,6 +897,10 @@ def carimbar_view(request):
                     screen_w,
                     screen_h,
                 )
+                try:
+                    page_index = int(request.POST.get(f"page_{i}", 0))
+                except Exception:
+                    page_index = 0
                 inst_id = request.POST.get(f"instrument_id_{i}")
                 calib_date_str = request.POST.get(f"calib_date_{i}")
                 cert_num = request.POST.get(f"cert_num_{i}", f.name)
@@ -979,7 +983,7 @@ def carimbar_view(request):
                             hist.padroes_utilizados.set(padroes_selecionados)
                         # Gera PDF com carimbo usando o status calculado para ESTE item
                         pdf_buffer = apply_stamp_logic(
-                            f, user_full_name, status_item, ui, dt_validacao
+                            f, user_full_name, status_item, ui, dt_validacao, page_index
                         )
                         filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"
                         hist.certificado.save(
@@ -996,20 +1000,15 @@ def carimbar_view(request):
                     except Exception:
                         processed_files.append((f.name, io.BytesIO()))
 
+            # Single-file flow: return the stamped PDF if exactly one file, else show error
             if len(processed_files) == 1:
                 fname, fbuf = processed_files[0]
                 r = HttpResponse(fbuf, content_type="application/pdf")
                 r["Content-Disposition"] = f'attachment; filename="Validado_{fname}"'
                 return r
-            elif len(processed_files) > 1:
-                zb = io.BytesIO()
-            with zipfile.ZipFile(zb, "w") as zf:
-                for fname, fbuf in processed_files:
-                    zf.writestr(f"Validado_{fname}", fbuf.getvalue())
-            zb.seek(0)
-            r = HttpResponse(zb, content_type="application/zip")
-            r["Content-Disposition"] = 'attachment; filename="Lote_Validados.zip"'
-            return r
+            else:
+                messages.error(request, "Selecione apenas um arquivo por vez para carimbar.")
+                return redirect("carimbar")
     else:
         form = CarimboForm()
     return render(
@@ -1025,11 +1024,16 @@ def carimbar_view(request):
     )
 
 
-def apply_stamp_logic(f, user_name, status, ui, data_validacao):
+def apply_stamp_logic(f, user_name, status, ui, data_validacao, page_index=0):
     ipdf = PdfReader(f)
     o = PdfWriter()
+    # Clamp page index
+    if page_index < 0:
+        page_index = 0
+    if page_index >= len(ipdf.pages):
+        page_index = 0
     if len(ipdf.pages) > 0:
-        p = ipdf.pages[0]
+        p = ipdf.pages[page_index]
         try:
             pdf_w = float(p.mediabox.width)
             pdf_h = float(p.mediabox.height)
@@ -1062,9 +1066,12 @@ def apply_stamp_logic(f, user_name, status, ui, data_validacao):
         b.seek(0)
         st = PdfReader(b)
         p.merge_page(st.pages[0])
-        o.add_page(p)
-        for pg in ipdf.pages[1:]:
-            o.add_page(pg)
+        # Add all pages, replacing only the selected index
+        for idx, pg in enumerate(ipdf.pages):
+            if idx == page_index:
+                o.add_page(p)
+            else:
+                o.add_page(pg)
     out = io.BytesIO()
     o.write(out)
     out.seek(0)

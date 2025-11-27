@@ -77,7 +77,8 @@
             {{ form.page_width }} {{ form.page_height }}
             {{ form.x }} {{ form.y }} {{ form.w }} {{ form.h }}
 
-            <button type="submit" class="btn-primary">PROCESSAR TODOS</button>
+            <input type="hidden" name="page_0" id="page-index-hidden" value="0">
+            <button type="submit" class="btn-primary">PROCESSAR</button>
         </form>
     </div>
 
@@ -199,7 +200,7 @@
                 reader.onload = function() {
                     const typedarray = new Uint8Array(this.result);
                     pdfjsLib.getDocument(typedarray).promise.then(pdf => {
-                        pdfDoc = pdf; rotation = 0; renderPage(pageNum);
+                        pdfDoc = pdf; rotation = 0; pageNum = 1; renderPage(pageNum);
                     });
                 };
                 reader.readAsArrayBuffer(file);
@@ -215,8 +216,19 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = "white"; ctx.fillRect(0, 0, canvas.width, canvas.height);
                 page.render({ canvasContext: ctx, viewport: viewport }).promise.then(() => { drawSavedBox(); });
+                const pageHidden = document.getElementById('page-index-hidden');
+                if(pageHidden) pageHidden.value = (num - 1);
             });
         }
+
+        // Simple page navigation
+        const toolbar = document.querySelector('.pdf-toolbar');
+        const prevBtn = document.createElement('button'); prevBtn.type='button'; prevBtn.className='btn-icon'; prevBtn.innerText='◀';
+        const nextBtn = document.createElement('button'); nextBtn.type='button'; nextBtn.className='btn-icon'; nextBtn.innerText='▶';
+        prevBtn.onclick = () => { if(pdfDoc && pageNum > 1){ pageNum -= 1; renderPage(pageNum);} };
+        nextBtn.onclick = () => { if(pdfDoc && pageNum < pdfDoc.numPages){ pageNum += 1; renderPage(pageNum);} };
+        toolbar.insertBefore(prevBtn, toolbar.firstChild);
+        toolbar.appendChild(nextBtn);
 
         function drawSavedBox() {
             if(currentFileIndex === -1) return;
