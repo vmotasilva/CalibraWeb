@@ -11,4 +11,5 @@ urlpatterns = [
 	path("imp-colab/", views.imp_colab_view, name="importar_colaboradores"),
 	path("imp-hierarquia/", views.imp_hierarquia_view, name="importar_hierarquia"),
 	path("imp-ferias/", views.imp_ferias_view, name="importar_ferias"),
+	path("novo/", views.novo_instrumento_view, name="novo_instrumento"),
 ]

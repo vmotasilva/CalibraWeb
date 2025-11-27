@@ -27,7 +27,7 @@ from .forms import (CarimboForm, ColaboradorForm, ImportacaoColaboradoresForm,
                     ImportacaoFeriasForm, ImportacaoHierarquiaForm,
                     ImportacaoHistoricoForm, ImportacaoInstrumentosForm,
                     ImportacaoPadroesForm, ImportacaoProcedimentosForm,
-                    OcorrenciaForm, SolicitacaoForm)
+                    OcorrenciaForm, SolicitacaoForm, InstrumentoForm)
 # IMPORTA TODOS OS MODELOS
 from .models import (CategoriaInstrumento, CentroCusto, Colaborador,
                      FaixaMedicao, Ferias, Fornecedor, HierarquiaSetor,
@@ -894,6 +894,26 @@ def nova_solicitacao(request):
         "form_generico.html",
         {"form": form, "titulo": "Nova Solicitação", "colaborador": get_colab(request)},
     )
+
+
+# --- NOVA VIEW: CADASTRO DE INSTRUMENTO (IN-APP) ---
+@login_required
+def novo_instrumento_view(request):
+    if request.method == 'POST':
+        form = InstrumentoForm(request.POST)
+        if form.is_valid():
+            inst = form.save()
+            messages.success(request, f"Instrumento '{inst.tag}' cadastrado!")
+            return redirect('modulo_metrologia')
+        else:
+            messages.error(request, "Verifique os dados do instrumento.")
+    else:
+        form = InstrumentoForm()
+    return render(request, 'form_generico.html', {
+        'form': form,
+        'titulo': 'Novo Instrumento',
+        'colaborador': get_colab(request)
+    })
 
 
 # --- VIEW ATUALIZADA: DETALHE DO INSTRUMENTO (COM OCORRÊNCIAS E ORDENS) ---

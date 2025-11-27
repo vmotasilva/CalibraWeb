@@ -206,6 +206,25 @@ class DateInput(forms.DateInput):
     input_type = "date"
 
 
+class InstrumentoForm(forms.ModelForm):
+    class Meta:
+        model = Instrumento
+        fields = [
+            'tag','descricao','categoria','setor','fabricante','modelo','serie','frequencia_meses','ativo'
+        ]
+        widgets = {
+            'tag': forms.TextInput(attrs={'class':'form-control','placeholder':'TAG / Código'}),
+            'descricao': forms.TextInput(attrs={'class':'form-control','placeholder':'Descrição do instrumento'}),
+            'categoria': forms.Select(attrs={'class':'form-select'}),
+            'setor': forms.Select(attrs={'class':'form-select'}),
+            'fabricante': forms.TextInput(attrs={'class':'form-control'}),
+            'modelo': forms.TextInput(attrs={'class':'form-control'}),
+            'serie': forms.TextInput(attrs={'class':'form-control'}),
+            'frequencia_meses': forms.NumberInput(attrs={'class':'form-control','min':'0','step':'1'}),
+            'ativo': forms.CheckboxInput(attrs={'class':'form-check-input'}),
+        }
+
+
 class SolicitacaoForm(forms.ModelForm):
     class Meta:
         model = SolicitacaoInstrumento
