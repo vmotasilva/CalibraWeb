@@ -40,7 +40,7 @@
     <select id="template-instrument-select" style="display: none;">
         <option value="">-- Selecione a TAG --</option>
         {% for inst in instrumentos %}
-            <option value="{{ inst.id }}">{{ inst.codigo }} - {{ inst.equipamento|truncatechars:20 }}</option>
+            <option value="{{ inst.id }}">{{ inst.tag }} — {{ inst.descricao|truncatechars:30 }}</option>
         {% endfor %}
     </select>
 
@@ -63,6 +63,25 @@
                 
                 <label>Texto:</label> {{ form.status_validacao }}
                 <label style="color:#e65100">Data:</label> {{ form.data_validacao }}
+            </div>
+
+            <div style="background:#fff3e0; padding:10px; border-radius:6px; border:1px solid #ffe0b2; margin-top:10px;">
+                <label style="margin-top:0">Análise Automática (opcional)</label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                    <div>
+                        <label>Erro (E)</label>
+                        {{ form.erro_encontrado }}
+                    </div>
+                    <div>
+                        <label>Incerteza (U)</label>
+                        {{ form.incerteza }}
+                    </div>
+                    <div>
+                        <label>Tolerância (+/−)</label>
+                        {{ form.tolerancia }}
+                    </div>
+                </div>
+                <small style="color:#8d6e63;">Se os três campos forem informados, o status do carimbo será calculado automaticamente.</small>
             </div>
 
             <hr style="border-color: #e0e0e0; margin: 15px 0;">

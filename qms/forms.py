@@ -43,6 +43,30 @@ class CarimboForm(forms.Form):
         label="Status / Texto do Carimbo",
     )
 
+    # Parâmetros para análise automática (opcionais)
+    erro_encontrado = forms.DecimalField(
+        required=False,
+        decimal_places=4,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.0001"}),
+        label="Erro Encontrado (E)",
+        help_text="Se preenchido com Incerteza e Tolerância, o status será calculado",
+    )
+    incerteza = forms.DecimalField(
+        required=False,
+        decimal_places=4,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.0001"}),
+        label="Incerteza (U)",
+    )
+    tolerancia = forms.DecimalField(
+        required=False,
+        decimal_places=4,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.0001"}),
+        label="Tolerância (+/−)",
+    )
+
     # --- NOVOS CAMPOS PARA RASTREABILIDADE ---
     is_rbc = forms.BooleanField(
         required=False,

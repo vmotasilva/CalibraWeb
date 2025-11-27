@@ -713,11 +713,33 @@ def carimbar_view(request):
             is_rbc = form.cleaned_data.get("is_rbc", False)
             padroes_selecionados = form.cleaned_data.get("padroes", [])
 
+            # Leitura dos parâmetros de análise (opcionais)
+            erro_in = form.cleaned_data.get("erro_encontrado")
+            inc_in = form.cleaned_data.get("incerteza")
+            tol_in = form.cleaned_data.get("tolerancia")
+
+            # Determina resultado: se E/U/T informados, calcula; senão segue texto escolhido
             resultado_banco = "APROVADO"
-            if status_txt == "Reprovado":
-                resultado_banco = "REPROVADO"
-            elif status_txt == "Aprovado com correções":
-                resultado_banco = "CONDICIONAL"
+            if erro_in is not None and inc_in is not None and tol_in is not None:
+                try:
+                    ema = abs(Decimal(str(tol_in))) / Decimal(2)
+                    eme = abs(Decimal(str(erro_in))) + abs(Decimal(str(inc_in)))
+                    if eme <= ema:
+                        resultado_banco = "APROVADO"
+                        status_txt = "Aprovado sem correções"
+                    elif eme > (ema * Decimal(3)):
+                        resultado_banco = "REPROVADO"
+                        status_txt = "Reprovado"
+                    else:
+                        resultado_banco = "CONDICIONAL"
+                        status_txt = "Aprovado com correções"
+                except Exception:
+                    pass
+            else:
+                if status_txt == "Reprovado":
+                    resultado_banco = "REPROVADO"
+                elif status_txt == "Aprovado com correções":
+                    resultado_banco = "CONDICIONAL"
 
             fs = request.FILES.getlist("arquivo_pdf")
             processed_files = []
@@ -774,6 +796,14 @@ def carimbar_view(request):
                                 "tipo_calibracao": "EXTERNA",
                             },
                         )
+                        # Preenche dados numéricos quando houverem
+                        if erro_in is not None:
+                            hist.erro_encontrado = erro_in
+                        if inc_in is not None:
+                            hist.incerteza = inc_in
+                        if tol_in is not None:
+                            hist.tolerancia_usada = tol_in
+
                         if not created:
                             hist.resultado = resultado_banco
                             hist.observacoes = f"Revalidado: {status_txt}"
