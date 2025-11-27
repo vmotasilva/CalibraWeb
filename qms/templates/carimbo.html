@@ -136,18 +136,21 @@
                     <div class="item-row">
                         <span class="item-label">Instrumento:</span> ${selectClone.outerHTML}
                     </div>
-                    <div class="item-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;">
+                    <div class="item-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:8px; align-items:end;">
                         <div>
                             <span class="item-label">Erro (E)</span>
-                            <input type="number" step="0.0001" name="err_${index}" class="form-control" placeholder="0.0000">
+                            <input type="number" step="0.0001" name="err_${index}" id="err-input-${index}" class="form-control" placeholder="0.0000">
                         </div>
                         <div>
                             <span class="item-label">Incerteza (U)</span>
-                            <input type="number" step="0.0001" name="inc_${index}" class="form-control" placeholder="0.0000">
+                            <input type="number" step="0.0001" name="inc_${index}" id="inc-input-${index}" class="form-control" placeholder="0.0000">
                         </div>
                         <div>
                             <span class="item-label">Tolerância (+/−)</span>
-                            <input type="number" step="0.0001" name="tol_${index}" class="form-control" placeholder="0.0000">
+                            <input type="number" step="0.0001" name="tol_${index}" id="tol-input-${index}" class="form-control" placeholder="0.0000">
+                        </div>
+                        <div>
+                            <button type="button" class="btn-replicate" onclick="replicateEUT(${index})" title="Aplicar E/U/T deste item em todos">Replicar E/U/T</button>
                         </div>
                     </div>
                     <div class="item-row">
@@ -232,6 +235,22 @@
             if(!srcVal) { alert("Preencha uma data primeiro!"); return; }
             document.querySelectorAll('input[type="date"][name^="calib_date_"]').forEach(input => input.value = srcVal);
             alert("Data replicada!");
+        }
+
+        window.replicateEUT = function(srcIndex) {
+            const e = document.getElementById(`err-input-${srcIndex}`).value;
+            const u = document.getElementById(`inc-input-${srcIndex}`).value;
+            const t = document.getElementById(`tol-input-${srcIndex}`).value;
+            if(e === '' || u === '' || t === '') {
+                alert('Preencha E, U e T neste item antes de replicar.');
+                return;
+            }
+            const confirmAll = confirm('Aplicar estes valores (E/U/T) em todos os arquivos?');
+            if(!confirmAll) return;
+            document.querySelectorAll('input[name^="err_"]').forEach(inp => inp.value = e);
+            document.querySelectorAll('input[name^="inc_"]').forEach(inp => inp.value = u);
+            document.querySelectorAll('input[name^="tol_"]').forEach(inp => inp.value = t);
+            alert('E/U/T replicados!');
         }
 
         window.rotatePDF = function(deg) { if(!pdfDoc) return; rotation += deg; renderPage(pageNum); }
