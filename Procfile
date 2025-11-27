@@ -1,3 +1,3 @@
 web: bash start.sh
-worker: celery -A config.celery.app worker -l info --concurrency=4
-beat: celery -A config.celery.app beat -l info
+worker: bash start-worker.sh
+beat: bash start-beat.sh
