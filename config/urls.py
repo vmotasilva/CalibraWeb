@@ -68,6 +68,7 @@ urlpatterns = [
     path("dl-template-hier/", views.dl_template_hierarquia, name="template_hierarquia"),
     path("dl-template-hist/", views.dl_template_historico, name="template_historico"),
     path("dl-template-ferias/", views.dl_template_ferias, name="dl_template_ferias"),
+    path("dl-template-categorias/", views.dl_template_categorias, name="dl_template_categorias"),
     path("dl-dados-colab/", views.dl_template_colab_dados, name="dl_colaboradores_dados"),
     # Admin-only endpoint to seed demo data quickly
     path("seed-demo/", views.seed_demo_view, name="seed_demo"),

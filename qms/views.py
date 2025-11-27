@@ -1165,6 +1165,22 @@ def dl_template_ferias(request):
     return dl_df(df, "template_ferias.xlsx")
 
 
+def dl_template_categorias(request):
+    import pandas as pd
+    df = pd.DataFrame(
+        {
+            "nome": ["PAQUIMETROS", "MICROMETROS", "TORQUIMETROS"],
+            "descricao": [
+                "Instrumentos do tipo paquímetro",
+                "Instrumentos do tipo micrômetro",
+                "Instrumentos para torque",
+            ],
+            "unidade_sigla": ["mm", "mm", "Nm"],
+        }
+    )
+    return dl_df(df, "template_categorias.xlsx")
+
+
 def dl_generic(cols, fname):
     df = pd.DataFrame(columns=cols)
     return dl_df(df, fname)
@@ -1320,25 +1336,48 @@ def imp_padroes_view(request):
 
 @login_required
 def imp_categorias_view(request):
-    """Importa categorias em massa a partir de CSV (nome,descricao,unidade_sigla)."""
+    """Importa categorias em massa a partir de CSV/Excel (nome,descricao,unidade_sigla)."""
     if request.method == 'POST':
-        f = request.FILES.get('arquivo')
-        if not f:
-            messages.error(request, 'Selecione um arquivo CSV.')
+        up = request.FILES.get('arquivo')
+        if not up:
+            messages.error(request, 'Selecione um arquivo CSV ou Excel.')
             return redirect('importar_categorias')
-        import csv, io
+
+        import pandas as pd
+        import io
+        import os
+
+        fname = getattr(up, 'name', '') or ''
+        ext = os.path.splitext(fname)[1].lower()
         try:
-            decoded = io.TextIOWrapper(f.file, encoding='utf-8')
-        except Exception:
-            decoded = io.TextIOWrapper(f, encoding='utf-8')
-        reader = csv.DictReader(decoded)
-        created = 0; updated = 0; not_found_units = 0
-        for row in reader:
-            nome = (row.get('nome') or '').strip()
+            if ext in {'.xlsx', '.xls', '.xlsm'}:
+                df = pd.read_excel(up)
+            else:
+                # Assume CSV; let pandas infer delimiter
+                # io.BytesIO to reset pointer if needed
+                if hasattr(up, 'read'):
+                    content = up.read()
+                    up = io.BytesIO(content)
+                df = pd.read_csv(up, sep=None, engine='python')
+        except Exception as e:
+            messages.error(request, f'Falha ao ler arquivo: {e}. Use CSV ou Excel com colunas nome, descricao, unidade_sigla.')
+            return redirect('importar_categorias')
+
+        # Normaliza colunas
+        df.columns = df.columns.map(lambda c: str(c).strip().lower())
+        for col in ['nome', 'descricao', 'unidade_sigla']:
+            if col not in df.columns:
+                df[col] = None
+
+        created = 0
+        updated = 0
+        not_found_units = 0
+        for _, row in df.iterrows():
+            nome = str(row.get('nome') or '').strip()
             if not nome:
                 continue
-            desc = (row.get('descricao') or '').strip() or None
-            unidade_sigla = (row.get('unidade_sigla') or '').strip()
+            desc = str(row.get('descricao') or '').strip() or None
+            unidade_sigla = str(row.get('unidade_sigla') or '').strip()
             unidade_obj = None
             if unidade_sigla:
                 unidade_obj = UnidadeMedida.objects.filter(sigla__iexact=unidade_sigla).first()
@@ -1346,10 +1385,7 @@ def imp_categorias_view(request):
                     not_found_units += 1
             obj, was_created = CategoriaInstrumento.objects.update_or_create(
                 nome=nome,
-                defaults={
-                    'descricao': desc,
-                    'unidade_padrao': unidade_obj,
-                }
+                defaults={'descricao': desc, 'unidade_padrao': unidade_obj}
             )
             if was_created:
                 created += 1
