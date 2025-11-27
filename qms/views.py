@@ -5,6 +5,7 @@ import zipfile
 from datetime import date, datetime, timedelta
 import tempfile
 from decimal import Decimal
+import unicodedata
 
 import pandas as pd
 from django.contrib import messages
@@ -38,22 +39,80 @@ from .models import (CategoriaInstrumento, CentroCusto, Colaborador,
 # --- FUNÇÕES AUXILIARES ---
 def get_colab(request):
     """
-    Tenta identificar qual Colaborador (RH) corresponde ao Usuário Logado (Django).
+    Mapeia o usuário Django logado para um Colaborador.
+    Ordem:
+      1) vínculo direto em `user_django`
+      2) FIRST+LAST iexact com `nome_completo`
+      3) FIRST como prefixo e LAST como sufixo (ignorando acentos/caixa)
+      4) fallback por `username` == `matricula`
+    Se encontrar um único Colaborador e o vínculo estiver vazio, salva `user_django`.
     """
-    # 1. Tenta pelo vínculo manual
+    u = request.user
+    # 1) vínculo direto
     try:
-        return Colaborador.objects.get(user_django=request.user)
+        col = Colaborador.objects.get(user_django=u)
+        return col
     except Colaborador.DoesNotExist:
         pass
     except Exception:
         pass
 
-    # 2. Tenta pelo Nome (Feature Automática)
-    if request.user.first_name and request.user.last_name:
-        nome_montado = f"{request.user.first_name} {request.user.last_name}".strip()
-        colab = Colaborador.objects.filter(nome_completo__iexact=nome_montado).first()
-        if colab:
-            return colab
+    def norm(s: str) -> str:
+        if not s:
+            return ""
+        s = unicodedata.normalize('NFD', s)
+        s = ''.join(ch for ch in s if unicodedata.category(ch) != 'Mn')
+        s = re.sub(r"[^A-Za-z0-9\s]", " ", s)
+        s = re.sub(r"\s+", " ", s).strip().upper()
+        return s
+
+    fn = (u.first_name or "").strip()
+    ln = (u.last_name or "").strip()
+
+    # 2) FIRST+LAST iexact
+    if fn and ln:
+        nome_montado = f"{fn} {ln}".strip()
+        c = Colaborador.objects.filter(nome_completo__iexact=nome_montado).first()
+        if c:
+            # vincula se possível
+            try:
+                if c.user_django_id is None:
+                    c.user_django = u
+                    c.save(update_fields=["user_django"])
+            except Exception:
+                pass
+            return c
+
+    # 3) prefixo/sufixo ignorando acentos
+    if fn and ln:
+        fn_n = norm(fn)
+        ln_n = norm(ln)
+        candidatos = []
+        for c in Colaborador.objects.all().only("id", "nome_completo"):
+            nc = norm(c.nome_completo)
+            if nc.startswith(fn_n + " ") and nc.endswith(" " + ln_n):
+                candidatos.append(c)
+        if len(candidatos) == 1:
+            c = candidatos[0]
+            try:
+                if c.user_django_id is None:
+                    c.user_django = u
+                    c.save(update_fields=["user_django"])
+            except Exception:
+                pass
+            return c
+
+    # 4) username == matricula
+    if u.username:
+        c = Colaborador.objects.filter(matricula__iexact=u.username).first()
+        if c:
+            try:
+                if c.user_django_id is None:
+                    c.user_django = u
+                    c.save(update_fields=["user_django"])
+            except Exception:
+                pass
+            return c
     return None
 
 
