@@ -174,33 +174,44 @@ def modulo_metrologia_view(request):
 def modulo_rh_view(request):
     colab = get_colab(request)
 
-    # 1. VISIBILIDADE (Definição dos IDs permitidos)
+    # 1. VISIBILIDADE (quem pode ver TODOS e quem vê sua árvore)
     ids_permitidos = set()
     can_see_salary = False
 
-    if request.user.is_superuser or request.user.is_staff:
-        ids_permitidos = Colaborador.objects.filter(is_active=True).values_list(
-            "id", flat=True
-        )
+    can_view_all = False
+    if request.user.is_superuser:
+        can_view_all = True
+    elif colab:
+        setor_nome = (colab.setor.nome.upper() if colab.setor else "")
+        if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
+            can_view_all = True
+        elif (
+            "GERENTE" in str(colab.cargo).upper()
+            or HierarquiaSetor.objects.filter(gerente=colab).exists()
+        ):
+            can_view_all = True
+
+    if can_view_all:
+        ids_permitidos = set(Colaborador.objects.all().values_list("id", flat=True))
+    elif colab:
+        ids_permitidos = get_all_subordinates(colab)
+        ids_permitidos.add(colab.id)
+    else:
+        ids_permitidos = set()
+
+    # Regra 2.2: salário/CPF apenas para superusuários, gerentes e diretores
+    if request.user.is_superuser:
         can_see_salary = True
     elif colab:
-        if colab.setor and "RH" in colab.setor.nome.upper():
-            ids_permitidos = Colaborador.objects.filter(is_active=True).values_list(
-                "id", flat=True
-            )
+        if "GERENTE" in str(colab.cargo).upper() or \
+           HierarquiaSetor.objects.filter(gerente=colab).exists() or \
+           ("DIRETOR" in str(colab.cargo).upper()) or \
+           HierarquiaSetor.objects.filter(diretor=colab).exists():
             can_see_salary = True
-        else:
-            ids_permitidos = get_all_subordinates(colab)
-            ids_permitidos.add(colab.id)
-            if (
-                "GERENTE" in str(colab.cargo).upper()
-                or HierarquiaSetor.objects.filter(gerente=colab).exists()
-            ):
-                can_see_salary = True
 
-    # QuerySet BASE: Apenas colaboradores visíveis pelo usuário logado
+    # QuerySet BASE: inclui ativos e desligados; filtro por ids_permitidos
     funcionarios_base = Colaborador.objects.filter(
-        id__in=ids_permitidos, is_active=True
+        id__in=list(ids_permitidos)
     ).select_related('setor', 'centro_custo', 'lider', 'supervisor', 'gerente').prefetch_related('treinamentos', 'treinamentos__procedimento').order_by("nome_completo")
 
     # 2. CÁLCULO DAS OPÇÕES DE FILTRO - BASEADO APENAS NA BASE DE DADOS DE COLABORADORES
@@ -328,13 +339,20 @@ def detalhe_colaborador_view(request, colab_id):
             supervisor_rh = hierarquia.supervisor
             gerente_rh = hierarquia.gerente
 
-    # Segurança
-    if not (request.user.is_superuser or request.user.is_staff):
+    # Segurança: pode ver todos se for superuser, gerente, RH/DP/Qualidade
+    if not request.user.is_superuser:
         permitido = False
         if usuario_logado:
-            if usuario_logado.id == alvo.id:
+            setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
+            pode_ver_todos = False
+            if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
+                pode_ver_todos = True
+            if ("GERENTE" in str(usuario_logado.cargo).upper() or
+                HierarquiaSetor.objects.filter(gerente=usuario_logado).exists()):
+                pode_ver_todos = True
+            if pode_ver_todos:
                 permitido = True
-            elif usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
+            elif usuario_logado.id == alvo.id:
                 permitido = True
             else:
                 meus_subordinados = get_all_subordinates(usuario_logado)
@@ -344,15 +362,15 @@ def detalhe_colaborador_view(request, colab_id):
             messages.error(request, "Acesso Negado.")
             return redirect("modulo_rh")
 
+    # Regra 2.2: salário/CPF apenas para superusuários, gerentes e diretores
     can_see_salary = False
-    if request.user.is_superuser or request.user.is_staff:
+    if request.user.is_superuser:
         can_see_salary = True
     elif usuario_logado:
-        if "GERENTE" in str(usuario_logado.cargo).upper():
-            can_see_salary = True
-        if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists():
-            can_see_salary = True
-        if usuario_logado.id == alvo.id:
+        if ("GERENTE" in str(usuario_logado.cargo).upper() or
+            HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or
+            ("DIRETOR" in str(usuario_logado.cargo).upper()) or
+            HierarquiaSetor.objects.filter(diretor=usuario_logado).exists()):
             can_see_salary = True
 
     # Permissões específicas para Ocorrências de RH

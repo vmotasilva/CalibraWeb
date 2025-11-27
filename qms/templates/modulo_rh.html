@@ -321,7 +321,6 @@
                             <th class="py-3">Turno</th>
                             <th class="py-3">Líder</th>
                             <th class="py-3">Treinamentos</th>
-                            <th class="py-3">Salário</th>
                             <th class="text-end pe-4 py-3">Ações</th>
                         </tr>
                     </thead>
@@ -396,13 +395,7 @@
                                 </div>
                             </td>
                             
-                            <td class="py-2">
-                                {% if can_see_salary %}
-                                    <span class="text-success fw-bold small" style="font-size: 0.85rem;">R$ {{ f.salario|floatformat:2 }}</span>
-                                {% else %}
-                                    <i class="bi bi-lock-fill text-muted small opacity-50" title="Acesso Restrito"></i>
-                                {% endif %}
-                            </td>
+                            
                             
                             <td class="text-end pe-4 py-2">
                                 <a href="{% url 'detalhe_colaborador' f.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill" style="font-size: 0.75rem;">
@@ -412,7 +405,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted bg-light">
+                            <td colspan="7" class="text-center py-5 text-muted bg-light">
                                 <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
                                 <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
                             </td>
@@ -427,12 +420,12 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Inicializa filtros e contagem
-    filtrar();
-    
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
-    
+
+    restoreFiltros();
+    filtrar();
+
     // Event listeners para busca e checkboxes
     searchInput.addEventListener('keyup', filtrar);
     checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
@@ -488,6 +481,12 @@ function filtrar() {
     });
 
     if(countDisplay) countDisplay.innerText = visiveis;
+
+    // Persistência dos filtros
+    try {
+        const estado = { search: searchInput.value || '', filtros: filtrosAtivos };
+        localStorage.setItem('rh_filtros_v1', JSON.stringify(estado));
+    } catch (e) { /* ignore */ }
 }
 
 function limparFiltros() {
@@ -516,6 +515,28 @@ function toggleSidebar() {
         content.classList.remove('col-lg-12');
         icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
     }
+}
+
+// Restaura filtros do localStorage
+function restoreFiltros() {
+    try {
+        const raw = localStorage.getItem('rh_filtros_v1');
+        if (!raw) return;
+        const estado = JSON.parse(raw);
+        if (estado && typeof estado === 'object') {
+            if (estado.search !== undefined) {
+                document.getElementById('searchInput').value = estado.search;
+            }
+            const filtros = estado.filtros || {};
+            document.querySelectorAll('.filter-checkbox').forEach(cb => {
+                const cat = cb.dataset.category;
+                const val = cb.value;
+                if (filtros[cat] && Array.isArray(filtros[cat])) {
+                    cb.checked = filtros[cat].includes(val);
+                }
+            });
+        }
+    } catch (e) { /* ignore */ }
 }
 </script>
 {% endblock %}
