@@ -19,6 +19,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from PyPDF2 import PdfReader, PdfWriter
 from reportlab.lib.colors import Color as RColor
+from reportlab.lib.pagesizes import A4, landscape, portrait
 from reportlab.pdfgen import canvas
 
 # IMPORTA OS FORMS
@@ -198,28 +199,20 @@ def modulo_metrologia_view(request):
             instrumentos = instrumentos.filter(ativo=False)
         # Se ambos presentes, mantém todos
 
-    # --- NOVA LÓGICA DE FILTRO VINDO DO DASHBOARD ---
-    status_filter = request.GET.get("status")  # Pega o parâmetro da URL
+    # --- Parâmetro vindo do dashboard: apenas pré-seleciona situação no cliente ---
+    status_filter = request.GET.get("status")  # "vencidos" | "avencer"
     hoje = date.today()
     alerta_30d = hoje + timedelta(days=30)
-
     if status_filter == "vencidos":
-        # Filtra onde a data é menor que hoje
-        instrumentos = instrumentos.filter(data_proxima_calibracao__lt=hoje)
-        messages.info(request, "Exibindo apenas instrumentos VENCIDOS.")
-
+        messages.info(request, "Filtro sugerido: VENCIDOS (aplicado na interface).")
     elif status_filter == "avencer":
-        # Filtra no intervalo entre hoje e 30 dias
-        instrumentos = instrumentos.filter(
-            data_proxima_calibracao__range=[hoje, alerta_30d]
-        )
-        messages.info(request, "Exibindo instrumentos a vencer em 30 dias.")
+        messages.info(request, "Filtro sugerido: A Vencer (30d) (aplicado na interface).")
 
-    # Preparação dos Filtros (Extraindo valores únicos presentes na lista)
-    setores_ids = instrumentos.values_list("setor", flat=True).distinct()
+    # Preparação dos Filtros (Extraindo valores únicos presentes na base completa)
+    setores_ids = Instrumento.objects.all().values_list("setor", flat=True).distinct()
     setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by("nome")
 
-    categorias_ids = instrumentos.values_list("categoria", flat=True).distinct()
+    categorias_ids = Instrumento.objects.all().values_list("categoria", flat=True).distinct()
     categorias_filtro = CategoriaInstrumento.objects.filter(
         id__in=categorias_ids
     ).order_by("nome")
@@ -312,6 +305,228 @@ def export_metrologia_view(request):
     r = HttpResponse(b, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     r['Content-Disposition'] = 'attachment; filename="instrumentos_export.xlsx"'
     return r
+
+
+@login_required
+def export_etiquetas_view(request):
+    """Gera um PDF A4 com etiquetas dos instrumentos filtrados.
+
+    Query params:
+      - orient: 'portrait' (default) ou 'landscape'
+      - cols: número de colunas (default 2)
+      - rows: número de linhas (default 5)
+      - margin_mm: margem externa em mm (default 10)
+      - pad_mm: espaçamento interno entre etiquetas em mm (default 5)
+    Respeita os mesmos filtros de export_metrologia_view: q, st, sit, cat, set.
+    """
+    q = (request.GET.get('q') or '').strip().lower()
+    st = set((request.GET.get('st') or '').split(',')) if request.GET.get('st') else set()
+    sit = set((request.GET.get('sit') or '').split(',')) if request.GET.get('sit') else set()
+    cat = set((request.GET.get('cat') or '').split(',')) if request.GET.get('cat') else set()
+    st_setor = set((request.GET.get('set') or '').split(',')) if request.GET.get('set') else set()
+
+    orient = (request.GET.get('orient') or 'portrait').lower()
+    try:
+        cols = max(1, int(request.GET.get('cols') or 2))
+        rows = max(1, int(request.GET.get('rows') or 5))
+    except Exception:
+        cols, rows = 2, 5
+    margin_mm = float(request.GET.get('margin_mm') or 10)
+    pad_mm = float(request.GET.get('pad_mm') or 5)
+
+    # Filtro base igual ao Excel
+    qs = Instrumento.objects.all().select_related('categoria','setor')
+    if st:
+        if 'ATIVO' in st and 'INATIVO' not in st:
+            qs = qs.filter(ativo=True)
+        elif 'INATIVO' in st and 'ATIVO' not in st:
+            qs = qs.filter(ativo=False)
+    if cat:
+        try:
+            cat_ids = [int(x) for x in cat if x.isdigit()]
+            qs = qs.filter(categoria_id__in=cat_ids)
+        except Exception:
+            pass
+    if st_setor:
+        try:
+            setor_ids = [int(x) for x in st_setor if x.isdigit()]
+            qs = qs.filter(setor_id__in=setor_ids)
+        except Exception:
+            pass
+    if q:
+        qs = qs.filter(models.Q(tag__icontains=q) | models.Q(descricao__icontains=q) | models.Q(fabricante__icontains=q) | models.Q(modelo__icontains=q))
+
+    # Situação derivada
+    hoje = date.today()
+    alerta_30d = hoje + timedelta(days=30)
+    instrumentos = []
+    for inst in qs.order_by('tag'):
+        situacao = 'EM_DIA'
+        if inst.data_proxima_calibracao:
+            if inst.data_proxima_calibracao < hoje:
+                situacao = 'VENCIDO'
+            elif inst.data_proxima_calibracao <= alerta_30d:
+                situacao = 'AVENCER'
+        if sit and situacao not in sit:
+            continue
+        instrumentos.append((inst, situacao))
+
+    # Monta PDF
+    buf = io.BytesIO()
+    page_size = portrait(A4) if orient != 'landscape' else landscape(A4)
+    c = canvas.Canvas(buf, pagesize=page_size)
+    pw, ph = page_size
+
+    mm = 2.834645669291339
+    margin = margin_mm * mm
+    pad = pad_mm * mm
+    grid_w = pw - 2*margin
+    grid_h = ph - 2*margin
+    cell_w = (grid_w - (cols-1)*pad) / cols
+    cell_h = (grid_h - (rows-1)*pad) / rows
+
+    # Optional: load template positions from config file for exact layout
+    template_cfg = None
+    try:
+        import json
+        cfg_path = os.path.join(os.path.dirname(__file__), 'label_template.json')
+        if os.path.exists(cfg_path):
+            with open(cfg_path, 'r', encoding='utf-8') as fh:
+                template_cfg = json.load(fh)
+    except Exception:
+        template_cfg = None
+
+    def draw_label(x, y, inst, situacao):
+        # Label frame
+        c.setLineWidth(1)
+        c.rect(x, y, cell_w, cell_h)
+
+        if template_cfg:
+            # Optional background image (PNG) to match exact artwork
+            try:
+                bg_img = template_cfg.get('background_image')
+                if bg_img:
+                    # Resolve path relative to project root
+                    img_path = bg_img
+                    if not os.path.isabs(img_path):
+                        # Try relative to repo root
+                        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+                        candidate = os.path.join(repo_root, img_path)
+                        if os.path.exists(candidate):
+                            img_path = candidate
+                    c.drawImage(img_path, x, y, width=cell_w, height=cell_h, preserveAspectRatio=True, anchor='sw')
+            except Exception:
+                pass
+            # Use exact positions from template config (relative 0..1 in the label box)
+            def rel(px, py):
+                return (x + px * cell_w, y + py * cell_h)
+            # Header bar
+            hb = template_cfg.get('header_bar', {'h': 0.08})
+            bar_h = cell_h * float(hb.get('h', 0.08))
+            c.setFillColor(RColor(0,0,0))
+            c.rect(x, y+cell_h-bar_h, cell_w, bar_h, fill=1, stroke=0)
+            c.setFillColor(RColor(1,1,1))
+            c.setFont(template_cfg.get('header_font','Helvetica-Bold'), int(template_cfg.get('header_size', 12)))
+            tx, ty = rel(0.02, 1 - (bar_h/cell_h) + 0.02)
+            c.drawString(tx, ty, template_cfg.get('header_left', ''))
+            rx, ry = rel(0.98, 1 - (bar_h/cell_h) + 0.02)
+            c.drawRightString(rx, ry, template_cfg.get('header_right', 'FOR.152.R1'))
+            # Bullets
+            c.setFillColor(RColor(0,0,0))
+            c.setFont(template_cfg.get('label_font','Helvetica-Bold'), int(template_cfg.get('label_size', 11)))
+            b1 = template_cfg.get('bullet_calibracao', {'x':0.05,'y':0.82})
+            b2 = template_cfg.get('bullet_verificacao', {'x':0.45,'y':0.82})
+            c.circle(x + float(b1['x'])*cell_w, y + float(b1['y'])*cell_h, 5, stroke=1, fill=1)
+            c.drawString(x + (float(b1['x'])*cell_w) + 12, y + (float(b1['y'])*cell_h) - 3, 'Calibração')
+            c.circle(x + float(b2['x'])*cell_w, y + float(b2['y'])*cell_h, 5, stroke=1, fill=0)
+            c.drawString(x + (float(b2['x'])*cell_w) + 12, y + (float(b2['y'])*cell_h) - 3, 'Verificação')
+            # Fields
+            c.setFont(template_cfg.get('field_font','Helvetica'), int(template_cfg.get('field_size', 9)))
+            fields = template_cfg.get('fields', [
+                {'label':'Cód do instrumento:', 'x':0.03, 'y':0.70},
+                {'label':'N° Certificado:', 'x':0.03, 'y':0.60},
+                {'label':'Realizado em:', 'x':0.03, 'y':0.50},
+                {'label':'Vencimento (mês/ano):', 'x':0.03, 'y':0.40},
+            ])
+            values = [
+                inst.tag or '',
+                '',
+                hoje.strftime('%d/%m/%Y'),
+                (inst.data_proxima_calibracao.strftime('%m/%Y') if inst.data_proxima_calibracao else ''),
+            ]
+            for idx, f in enumerate(fields):
+                fx, fy = rel(float(f.get('x',0.03)), float(f.get('y',0.70)))
+                c.drawString(fx, fy, f.get('label',''))
+                # underline
+                line_start = fx + 110
+                c.line(line_start, fy-2, x+cell_w-10, fy-2)
+                val = values[idx] if idx < len(values) else ''
+                if val:
+                    c.drawString(line_start + 5, fy, val)
+            # Situacao badge
+            badge = {'VENCIDO': RColor(0.8,0,0), 'AVENCER': RColor(1,0.7,0), 'EM_DIA': RColor(0,0.6,0)}.get(situacao, RColor(0,0,0))
+            c.setFillColor(badge)
+            c.setFont(template_cfg.get('badge_font','Helvetica-Bold'), int(template_cfg.get('badge_size', 8)))
+            bx, by = rel(0.95, 0.05)
+            c.drawRightString(bx, by, situacao)
+        else:
+            # Fallback generic layout
+            bar_h = 18
+            c.setFillColor(RColor(0,0,0))
+            c.rect(x, y+cell_h-bar_h, cell_w, bar_h, fill=1, stroke=0)
+            c.setFillColor(RColor(1,1,1))
+            c.setFont('Helvetica-Bold', 12)
+            c.drawString(x+6, y+cell_h-bar_h+4, (inst.setor.nome if inst.setor else 'Metrologia'))
+            c.drawRightString(x+cell_w-6, y+cell_h-bar_h+4, (inst.categoria.nome if inst.categoria else 'FOR.152.R1'))
+            c.setFillColor(RColor(0,0,0))
+            c.setFont('Helvetica-Bold', 11)
+            cx = x+12; cy = y+cell_h- bar_h - 12
+            c.circle(cx, cy, 5, stroke=1, fill=1)
+            c.drawString(cx+12, cy-3, 'Calibração')
+            c.circle(cx+140, cy, 5, stroke=1, fill=0)
+            c.drawString(cx+152, cy-3, 'Verificação')
+            c.setFont('Helvetica', 9)
+            line_y = cy - 14
+            def field(label, value=''):
+                nonlocal line_y
+                c.drawString(x+10, line_y, f"{label}")
+                c.line(x+120, line_y-2, x+cell_w-10, line_y-2)
+                if value:
+                    c.drawString(x+125, line_y, value)
+                line_y -= 16
+            field('Cód do instrumento:', inst.tag or '')
+            field('N° Certificado:', '')
+            field('Realizado em:', hoje.strftime('%d/%m/%Y'))
+            prox = inst.data_proxima_calibracao.strftime('%m/%Y') if inst.data_proxima_calibracao else ''
+            field('Vencimento (mês/ano):', prox)
+            badge = {'VENCIDO': RColor(0.8,0,0), 'AVENCER': RColor(1,0.7,0), 'EM_DIA': RColor(0,0.6,0)}.get(situacao, RColor(0,0,0))
+            c.setFillColor(badge)
+            c.setFont('Helvetica-Bold', 8)
+            c.drawRightString(x+cell_w-8, y+10, situacao)
+
+    i = 0
+    for inst, situ in instrumentos:
+        r = (i // cols) % rows
+        cidx = i % cols
+        # Page break
+        if i and (i // (cols*rows)) != ((i-1) // (cols*rows)):
+            c.showPage()
+        # Compute origin for this cell on current page
+        page_index = i // (cols*rows)
+        # within current page, compute row/col
+        r = (i - page_index*cols*rows) // cols
+        cidx = (i - page_index*cols*rows) % cols
+        ox = margin + cidx * (cell_w + pad)
+        oy = margin + (rows-1-r) * (cell_h + pad)
+        draw_label(ox, oy, inst, situ)
+        i += 1
+
+    c.showPage()
+    c.save()
+    buf.seek(0)
+    resp = HttpResponse(buf, content_type='application/pdf')
+    resp['Content-Disposition'] = 'attachment; filename="etiquetas_instrumentos.pdf"'
+    return resp
 
 
 @login_required

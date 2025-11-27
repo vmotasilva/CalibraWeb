@@ -24,6 +24,7 @@ urlpatterns = [
     # 5. Módulos Principais
     path("metrologia/", views.modulo_metrologia_view, name="modulo_metrologia"),
     path("metrologia/export/", views.export_metrologia_view, name="export_metrologia"),
+    path("metrologia/etiquetas/", views.export_etiquetas_view, name="export_etiquetas"),
     path("rh/", views.modulo_rh_view, name="modulo_rh"),
     # Detalhes e Edição
     path(

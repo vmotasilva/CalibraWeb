@@ -58,11 +58,24 @@
             </div>
         </div>
         
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
             <button id="btnCopyFilters" type="button" class="btn btn-outline-secondary btn-sm shadow-sm" title="Copiar link com filtros">🔗 Copiar Link</button>
             <a id="btnExport" href="#" class="btn btn-outline-success btn-sm shadow-sm" title="Exportar Excel">
                 <i class="bi bi-download"></i> Exportar
             </a>
+            <a id="btnEtiquetas" href="#" class="btn btn-outline-primary btn-sm shadow-sm" title="Exportar Etiquetas PDF">
+                🏷️ Etiquetas
+            </a>
+            <div class="d-inline-flex align-items-center gap-2 ms-1">
+                <select id="etq_orient" class="form-select form-select-sm" style="width: 120px;" title="Orientação">
+                    <option value="portrait" selected>Retrato</option>
+                    <option value="landscape">Paisagem</option>
+                </select>
+                <input id="etq_cols" type="number" min="1" max="5" value="2" class="form-control form-control-sm" style="width: 64px;" title="Colunas">
+                <input id="etq_rows" type="number" min="1" max="10" value="5" class="form-control form-control-sm" style="width: 64px;" title="Linhas">
+                <input id="etq_margin" type="number" min="0" max="30" value="10" class="form-control form-control-sm" style="width: 90px;" title="Margem (mm)" placeholder="Margem (mm)">
+                <input id="etq_pad" type="number" min="0" max="30" value="5" class="form-control form-control-sm" style="width: 90px;" title="Espaço (mm)" placeholder="Espaço (mm)">
+            </div>
             <!-- LINK CORRIGIDO PARA 'carimbar' -->
             <a href="{% url 'carimbar' %}" class="btn btn-warning shadow-sm text-dark fw-bold btn-sm">
                 <i class="bi bi-patch-check-fill"></i> Validar Certificado
@@ -312,6 +325,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnExport) {
         updateExportLink();
     }
+
+    const btnEtiquetas = document.getElementById('btnEtiquetas');
+    if (btnEtiquetas) {
+        updateEtiquetasLink();
+        ['etq_orient','etq_cols','etq_rows','etq_margin','etq_pad'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', updateEtiquetasLink);
+            if (el) el.addEventListener('keyup', updateEtiquetasLink);
+        });
+    }
 });
 
 function getFilterState() {
@@ -346,6 +369,15 @@ function applyStateFromQuery(){
     const q = sp.get('q') || '';
     const st = (sp.get('st') || '').split(',').filter(Boolean);
     const sit = (sp.get('sit') || '').split(',').filter(Boolean);
+    // Dashboard hint: status=vencidos|avencer maps to situacao checkboxes
+    const dashStatus = (sp.get('status') || '').toLowerCase();
+    if (!sit.length && dashStatus) {
+        if (dashStatus === 'vencidos') {
+            sit.push('VENCIDO');
+        } else if (dashStatus === 'avencer') {
+            sit.push('AVENCER');
+        }
+    }
     const cat = (sp.get('cat') || '').split(',').filter(Boolean);
     const set = (sp.get('set') || '').split(',').filter(Boolean);
     const qEl = document.getElementById('searchInput');
@@ -402,6 +434,7 @@ function limparFiltros() {
     });
     filtrar();
     updateExportLink();
+    updateEtiquetasLink();
 }
 
 function toggleSidebar() {
@@ -427,6 +460,20 @@ function updateExportLink(){
     if(!btnExport) return;
     const qs = buildQueryString(getFilterState());
     btnExport.href = '{% url 'export_metrologia' %}' + (qs ? ('?' + qs) : '');
+}
+
+function updateEtiquetasLink(){
+    const btnEtiquetas = document.getElementById('btnEtiquetas');
+    if(!btnEtiquetas) return;
+    const qs = buildQueryString(getFilterState());
+    const orient = (document.getElementById('etq_orient')?.value || 'portrait');
+    const cols = (document.getElementById('etq_cols')?.value || 2);
+    const rows = (document.getElementById('etq_rows')?.value || 5);
+    const margin = (document.getElementById('etq_margin')?.value || 10);
+    const pad = (document.getElementById('etq_pad')?.value || 5);
+    const extras = `orient=${encodeURIComponent(orient)}&cols=${encodeURIComponent(cols)}&rows=${encodeURIComponent(rows)}&margin_mm=${encodeURIComponent(margin)}&pad_mm=${encodeURIComponent(pad)}`;
+    const finalQs = qs ? (qs + '&' + extras) : extras;
+    btnEtiquetas.href = '{% url 'export_etiquetas' %}' + (finalQs ? ('?' + finalQs) : '');
 }
 </script>
 {% endblock %}
