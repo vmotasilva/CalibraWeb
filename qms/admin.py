@@ -227,8 +227,9 @@ class UnidadeMedidaAdmin(admin.ModelAdmin):
 
 @admin.register(CategoriaInstrumento)
 class CategoriaInstrumentoAdmin(admin.ModelAdmin):
-    list_display = ("nome", "descricao")
-    search_fields = ("nome",)
+    list_display = ("nome", "descricao", "unidade_padrao")
+    search_fields = ("nome", "descricao", "unidade_padrao__sigla")
+    autocomplete_fields = ["unidade_padrao"]
 
 
 @admin.register(Padrao)
