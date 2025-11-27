@@ -714,32 +714,16 @@ def carimbar_view(request):
             padroes_selecionados = form.cleaned_data.get("padroes", [])
 
             # Leitura dos parâmetros de análise (opcionais)
-            erro_in = form.cleaned_data.get("erro_encontrado")
-            inc_in = form.cleaned_data.get("incerteza")
-            tol_in = form.cleaned_data.get("tolerancia")
+            # Campos E/U/T serão informados por arquivo (por índice) – ver laço abaixo
 
-            # Determina resultado: se E/U/T informados, calcula; senão segue texto escolhido
-            resultado_banco = "APROVADO"
-            if erro_in is not None and inc_in is not None and tol_in is not None:
+            # Função auxiliar para parse decimal com vírgula
+            def parse_dec(v):
+                if v is None or v == "":
+                    return None
                 try:
-                    ema = abs(Decimal(str(tol_in))) / Decimal(2)
-                    eme = abs(Decimal(str(erro_in))) + abs(Decimal(str(inc_in)))
-                    if eme <= ema:
-                        resultado_banco = "APROVADO"
-                        status_txt = "Aprovado sem correções"
-                    elif eme > (ema * Decimal(3)):
-                        resultado_banco = "REPROVADO"
-                        status_txt = "Reprovado"
-                    else:
-                        resultado_banco = "CONDICIONAL"
-                        status_txt = "Aprovado com correções"
+                    return Decimal(str(v).replace(',', '.'))
                 except Exception:
-                    pass
-            else:
-                if status_txt == "Reprovado":
-                    resultado_banco = "REPROVADO"
-                elif status_txt == "Aprovado com correções":
-                    resultado_banco = "CONDICIONAL"
+                    return None
 
             fs = request.FILES.getlist("arquivo_pdf")
             processed_files = []
@@ -783,15 +767,43 @@ def carimbar_view(request):
                                 days=instrumento.frequencia_meses * 30
                             )
 
+                        # Lê E/U/T por arquivo e calcula o resultado deste item
+                        erro_in = parse_dec(request.POST.get(f"err_{i}"))
+                        inc_in = parse_dec(request.POST.get(f"inc_{i}"))
+                        tol_in = parse_dec(request.POST.get(f"tol_{i}"))
+
+                        status_item = status_txt
+                        resultado_item = "APROVADO"
+                        if erro_in is not None and inc_in is not None and tol_in is not None:
+                            try:
+                                ema = abs(tol_in) / Decimal(2)
+                                eme = abs(erro_in) + abs(inc_in)
+                                if eme <= ema:
+                                    resultado_item = "APROVADO"
+                                    status_item = "Aprovado sem correções"
+                                elif eme > (ema * Decimal(3)):
+                                    resultado_item = "REPROVADO"
+                                    status_item = "Reprovado"
+                                else:
+                                    resultado_item = "CONDICIONAL"
+                                    status_item = "Aprovado com correções"
+                            except Exception:
+                                pass
+                        else:
+                            if status_item == "Reprovado":
+                                resultado_item = "REPROVADO"
+                            elif status_item == "Aprovado com correções":
+                                resultado_item = "CONDICIONAL"
+
                         hist, created = HistoricoCalibracao.objects.get_or_create(
                             instrumento=instrumento,
                             data_calibracao=dt_calibracao,
                             numero_certificado=cert_num,
                             defaults={
                                 "proxima_calibracao": prox_calib,
-                                "resultado": resultado_banco,
+                                "resultado": resultado_item,
                                 "responsavel": str(c_resp),
-                                "observacoes": f"Validado por {user_full_name}: {status_txt}",
+                                "observacoes": f"Validado por {user_full_name}: {status_item}",
                                 "tem_selo_rbc": is_rbc,
                                 "tipo_calibracao": "EXTERNA",
                             },
@@ -805,8 +817,8 @@ def carimbar_view(request):
                             hist.tolerancia_usada = tol_in
 
                         if not created:
-                            hist.resultado = resultado_banco
-                            hist.observacoes = f"Revalidado: {status_txt}"
+                            hist.resultado = resultado_item
+                            hist.observacoes = f"Revalidado: {status_item}"
                         if not is_rbc and padroes_selecionados:
                             hist.padroes_utilizados.set(padroes_selecionados)
                         filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"
