@@ -63,19 +63,53 @@
             <a id="btnExport" href="#" class="btn btn-outline-success btn-sm shadow-sm" title="Exportar Excel">
                 <i class="bi bi-download"></i> Exportar
             </a>
-            <a id="btnEtiquetas" href="#" class="btn btn-outline-primary btn-sm shadow-sm" title="Exportar Etiquetas PDF">
+            <button class="btn btn-outline-primary btn-sm shadow-sm" title="Exportar Etiquetas PDF" data-bs-toggle="modal" data-bs-target="#etqModal">
                 🏷️ Etiquetas
-            </a>
-            <div class="d-inline-flex align-items-center gap-2 ms-1">
-                <select id="etq_orient" class="form-select form-select-sm" style="width: 120px;" title="Orientação">
-                    <option value="portrait" selected>Retrato</option>
-                    <option value="landscape">Paisagem</option>
-                </select>
-                <input id="etq_cols" type="number" min="1" max="5" value="2" class="form-control form-control-sm" style="width: 64px;" title="Colunas">
-                <input id="etq_rows" type="number" min="1" max="10" value="5" class="form-control form-control-sm" style="width: 64px;" title="Linhas">
-                <input id="etq_margin" type="number" min="0" max="30" value="10" class="form-control form-control-sm" style="width: 90px;" title="Margem (mm)" placeholder="Margem (mm)">
-                <input id="etq_pad" type="number" min="0" max="30" value="5" class="form-control form-control-sm" style="width: 90px;" title="Espaço (mm)" placeholder="Espaço (mm)">
+            </button>
             </div>
+
+            <!-- Modal compacto para Etiquetas -->
+            <div class="modal fade" id="etqModal" tabindex="-1" aria-labelledby="etqModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="etqModalLabel">Configurar Etiquetas</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label class="form-label">Orientação</label>
+                                    <select id="etq_orient" class="form-select">
+                                        <option value="portrait" selected>Retrato</option>
+                                        <option value="landscape">Paisagem</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Colunas</label>
+                                    <input id="etq_cols" type="number" min="1" max="5" value="2" class="form-control">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Linhas</label>
+                                    <input id="etq_rows" type="number" min="1" max="10" value="5" class="form-control">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Margem (mm)</label>
+                                    <input id="etq_margin" type="number" min="0" max="30" value="10" class="form-control">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Espaço (mm)</label>
+                                    <input id="etq_pad" type="number" min="0" max="30" value="5" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <a id="btnEtiquetas" href="#" class="btn btn-primary" target="_blank">Gerar PDF</a>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            }
             <!-- LINK CORRIGIDO PARA 'carimbar' -->
             <a href="{% url 'carimbar' %}" class="btn btn-warning shadow-sm text-dark fw-bold btn-sm">
                 <i class="bi bi-patch-check-fill"></i> Validar Certificado
