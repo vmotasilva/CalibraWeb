@@ -463,12 +463,7 @@ def export_etiquetas_view(request):
                 val = values[idx] if idx < len(values) else ''
                 if val:
                     c.drawString(line_start + 5, fy, val)
-            # Situacao badge
-            badge = {'VENCIDO': RColor(0.8,0,0), 'AVENCER': RColor(1,0.7,0), 'EM_DIA': RColor(0,0.6,0)}.get(situacao, RColor(0,0,0))
-            c.setFillColor(badge)
-            c.setFont(template_cfg.get('badge_font','Helvetica-Bold'), int(template_cfg.get('badge_size', 8)))
-            bx, by = rel(0.95, 0.05)
-            c.drawRightString(bx, by, situacao)
+            # Removed status badge on label per request
         else:
             # Fallback generic layout
             bar_h = 18
@@ -499,10 +494,7 @@ def export_etiquetas_view(request):
             field('Realizado em:', hoje.strftime('%d/%m/%Y'))
             prox = inst.data_proxima_calibracao.strftime('%m/%Y') if inst.data_proxima_calibracao else ''
             field('Vencimento (mês/ano):', prox)
-            badge = {'VENCIDO': RColor(0.8,0,0), 'AVENCER': RColor(1,0.7,0), 'EM_DIA': RColor(0,0.6,0)}.get(situacao, RColor(0,0,0))
-            c.setFillColor(badge)
-            c.setFont('Helvetica-Bold', 8)
-            c.drawRightString(x+cell_w-8, y+10, situacao)
+            # Removed status badge in fallback layout
 
     i = 0
     for inst, situ in instrumentos:
