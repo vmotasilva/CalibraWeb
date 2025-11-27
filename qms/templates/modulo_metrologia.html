@@ -324,8 +324,8 @@ document.addEventListener('DOMContentLoaded', function() {
     filtrar();
     const searchInput = document.getElementById('searchInput');
     const checkboxes = document.querySelectorAll('.filter-checkbox');
-    searchInput.addEventListener('keyup', function(){ filtrar(); updateExportLink(); });
-    checkboxes.forEach(cb => cb.addEventListener('change', function(){ filtrar(); updateExportLink(); }));
+    searchInput.addEventListener('keyup', function(){ filtrar(); updateExportLink(); updateEtiquetasLink(); });
+    checkboxes.forEach(cb => cb.addEventListener('change', function(){ filtrar(); updateExportLink(); updateEtiquetasLink(); }));
 
     // Append filter state to detail links
     document.querySelectorAll('.detail-link').forEach(a => {
