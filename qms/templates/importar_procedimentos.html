@@ -2,7 +2,7 @@
 {% block content %}
 <div class="container py-4">
   <h3 class="mb-3">Importar Procedimentos</h3>
-  <p class="text-muted small">Planilha esperada (colunas mínimas): <code>codigo</code>, <code>titulo</code>, <code>tipo</code>, <code>revisao</code>, <code>data_revisao</code>, <code>data_aprovacao</code>, <code>setor</code>, <code>area</code>, <code>elaborador</code>, <code>revisor</code>, <code>aprovador</code>.<br/>Use matrículas para elaborador/revisor/aprovador e nomes exatos para setor/area.</p>
+  <p class="text-muted small">Planilha esperada (colunas mínimas): <code>no</code>, <code>codigo</code>, <code>nome</code>, <code>descricao</code>, <code>pasta</code>, <code>classificacao</code>, <code>autor</code>, <code>numero_revisao</code>, <code>ultima_revisao</code>, <code>data_aprovacao</code>, <code>proxima_revisao</code>, <code>data_validade</code>, <code>documentos_controlados</code>, <code>matriz</code>, <code>sub_area</code>.<br/>Preencha as datas no formato DD/MM/AAAA ou AAAA-MM-DD.</p>
   <div class="mb-3">
     <a href="{% url 'template_procedimentos' %}" class="btn btn-sm btn-outline-secondary">Baixar Template</a>
     <a href="{% url 'procedimentos_lista' %}" class="btn btn-sm btn-outline-primary">Voltar</a>
