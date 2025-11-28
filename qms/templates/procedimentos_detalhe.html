@@ -9,7 +9,7 @@
         <a href="{{ proc.arquivo.url }}" class="btn btn-outline-primary btn-sm" target="_blank">Baixar PDF</a>
       {% endif %}
       <a href="{% url 'editar_procedimento' proc.id %}" class="btn btn-outline-secondary btn-sm">Editar</a>
-      <a href="{% url 'procedimentos_list' %}" class="btn btn-outline-dark btn-sm">Voltar</a>
+      <a href="{% url 'procedimentos_lista' %}" class="btn btn-outline-dark btn-sm">Voltar</a>
     </div>
   </div>
   <div class="row g-4">
@@ -76,7 +76,7 @@
         <div class="card-header bg-light fw-bold">Ações</div>
         <div class="card-body">
           <a href="{% url 'editar_procedimento' proc.id %}" class="btn btn-primary btn-sm me-2">Editar</a>
-          <a href="{% url 'procedimentos_list' %}" class="btn btn-secondary btn-sm">Voltar</a>
+          <a href="{% url 'procedimentos_lista' %}" class="btn btn-secondary btn-sm">Voltar</a>
         </div>
       </div>
     </div>
