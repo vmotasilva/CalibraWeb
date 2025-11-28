@@ -1858,11 +1858,24 @@ def imp_procedimentos_view(request):
                 if ext in {'.xlsx','.xls','.xlsm'}:
                     df = pd.read_excel(up)
                 else:
-                    content = up.read(); df = pd.read_csv(io.BytesIO(content), sep=None, engine='python')
+                    content = up.read()
+                    try:
+                        df = pd.read_csv(io.BytesIO(content), sep=None, engine='python')
+                        if len(df.columns) == 1:
+                            # Try semicolon delimiter if only one column detected
+                            df = pd.read_csv(io.BytesIO(content), sep=';', engine='python')
+                    except Exception:
+                        # fallback: try semicolon
+                        df = pd.read_csv(io.BytesIO(content), sep=';', engine='python')
             except Exception as e:
                 messages.error(request, f'Falha ao ler planilha: {e}')
                 return redirect('importar_procedimentos')
             df.columns = df.columns.map(lambda c: str(c).strip().lower())
+            # Garante que todas as colunas do template estejam presentes
+            expected_cols = ['no','codigo','nome','descricao','pasta','classificacao','autor','numero_revisao','ultima_revisao','data_aprovacao','proxima_revisao','data_validade','documentos_controlados','matriz','sub_area']
+            for col in expected_cols:
+                if col not in df.columns:
+                    df[col] = None
             created = 0; updated = 0; errors = 0
             for _, row in df.iterrows():
                 def clean(val):
