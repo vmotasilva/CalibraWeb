@@ -258,28 +258,26 @@ class ProcedimentoForm(forms.ModelForm):
     class Meta:
         model = Procedimento
         fields = [
-            'codigo', 'titulo', 'tipo', 'revisao_atual', 'data_revisao', 'data_aprovacao_revisao',
-            'setor', 'area', 'elaborador', 'revisor', 'aprovador', 'arquivo',
-            'aplica_treinamento', 'tem_copia_fisica', 'prioridade', 'habilidade_vinculada', 'link_externo'
+            'no', 'codigo', 'nome', 'descricao', 'pasta', 'classificacao', 'autor',
+            'numero_revisao', 'ultima_revisao', 'data_aprovacao', 'proxima_revisao',
+            'data_validade', 'documentos_controlados', 'matriz', 'sub_area'
         ]
         widgets = {
+            'no': forms.TextInput(attrs={'class':'form-control','placeholder':'Chave única'}),
             'codigo': forms.TextInput(attrs={'class':'form-control','placeholder':'Ex: POP.001'}),
-            'titulo': forms.TextInput(attrs={'class':'form-control'}),
-            'tipo': forms.Select(attrs={'class':'form-select'}),
-            'revisao_atual': forms.TextInput(attrs={'class':'form-control','placeholder':'Ex: 01'}),
-            'data_revisao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
-            'data_aprovacao_revisao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
-            'setor': forms.Select(attrs={'class':'form-select'}),
-            'area': forms.Select(attrs={'class':'form-select'}),
-            'elaborador': forms.Select(attrs={'class':'form-select'}),
-            'revisor': forms.Select(attrs={'class':'form-select'}),
-            'aprovador': forms.Select(attrs={'class':'form-select'}),
-            'arquivo': forms.ClearableFileInput(attrs={'class':'form-control','accept':'.pdf'}),
-            'aplica_treinamento': forms.CheckboxInput(attrs={'class':'form-check-input'}),
-            'tem_copia_fisica': forms.CheckboxInput(attrs={'class':'form-check-input'}),
-            'prioridade': forms.TextInput(attrs={'class':'form-control'}),
-            'habilidade_vinculada': forms.TextInput(attrs={'class':'form-control'}),
-            'link_externo': forms.URLInput(attrs={'class':'form-control','placeholder':'https://'}),
+            'nome': forms.TextInput(attrs={'class':'form-control'}),
+            'descricao': forms.Textarea(attrs={'class':'form-control','rows':2}),
+            'pasta': forms.TextInput(attrs={'class':'form-control'}),
+            'classificacao': forms.TextInput(attrs={'class':'form-control'}),
+            'autor': forms.TextInput(attrs={'class':'form-control'}),
+            'numero_revisao': forms.TextInput(attrs={'class':'form-control','placeholder':'Ex: 01'}),
+            'ultima_revisao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'data_aprovacao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'proxima_revisao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'data_validade': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'documentos_controlados': forms.TextInput(attrs={'class':'form-control'}),
+            'matriz': forms.TextInput(attrs={'class':'form-control'}),
+            'sub_area': forms.TextInput(attrs={'class':'form-control'}),
         }
 
 

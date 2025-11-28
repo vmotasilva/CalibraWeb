@@ -1648,19 +1648,30 @@ def dl_template_categorias(request):
 @login_required
 def dl_template_procedimentos(request):
     import pandas as pd, io
-    df = pd.DataFrame({
-        'codigo':['POP.001'],
-        'titulo':['EXEMPLO DE PROCEDIMENTO'],
-        'tipo':['POP'],
-        'revisao':['01'],
-        'data_revisao':['01/10/2025'],
-        'data_aprovacao':['05/10/2025'],
-        'setor':['QUALIDADE'],
-        'area':['OPERACIONAL'],
-        'elaborador':['100'],
-        'revisor':['101'],
-        'aprovador':['102'],
-    })
+    # Colunas e ordem exatas do novo model
+    cols = [
+        'no', 'codigo', 'nome', 'descricao', 'pasta', 'classificacao', 'autor',
+        'numero_revisao', 'ultima_revisao', 'data_aprovacao', 'proxima_revisao',
+        'data_validade', 'documentos_controlados', 'matriz', 'sub_area'
+    ]
+    exemplo = {
+        'no': ['1'],
+        'codigo': ['POP.001'],
+        'nome': ['EXEMPLO DE PROCEDIMENTO'],
+        'descricao': ['Objetivo ou função do procedimento'],
+        'pasta': ['QUALIDADE'],
+        'classificacao': ['POP'],
+        'autor': ['João da Silva'],
+        'numero_revisao': ['01'],
+        'ultima_revisao': ['01/10/2025'],
+        'data_aprovacao': ['05/10/2025'],
+        'proxima_revisao': ['05/10/2026'],
+        'data_validade': ['05/10/2026'],
+        'documentos_controlados': ['Sim'],
+        'matriz': ['Matriz A'],
+        'sub_area': ['Subárea 1'],
+    }
+    df = pd.DataFrame({col: exemplo.get(col, ['']) for col in cols})
     b = io.BytesIO()
     df.to_excel(b, index=False)
     b.seek(0)
@@ -1861,44 +1872,45 @@ def imp_procedimentos_view(request):
             df.columns = df.columns.map(lambda c: str(c).strip().lower())
             created = 0; updated = 0; errors = 0
             for _, row in df.iterrows():
+                no = str(row.get('no') or '').strip()
                 codigo = str(row.get('codigo') or '').strip().upper()
                 if not codigo: continue
-                titulo = str(row.get('titulo') or '').strip()
-                tipo = str(row.get('tipo') or '').strip().upper() or 'OUTRO'
-                revisao = str(row.get('revisao') or row.get('revisao_atual') or '').strip() or '00'
-                data_rev = str(row.get('data_revisao') or '').strip()
-                data_aprov = str(row.get('data_aprovacao') or row.get('data_aprovacao_revisao') or '').strip()
-                setor_nome = str(row.get('setor') or '').strip()
-                area_nome = str(row.get('area') or '').strip()
-                elaborador_mat = str(row.get('elaborador') or '').strip()
-                revisor_mat = str(row.get('revisor') or '').strip()
-                aprovador_mat = str(row.get('aprovador') or '').strip()
+                nome = str(row.get('nome') or row.get('titulo') or '').strip()
+                descricao = str(row.get('descricao') or '').strip()
+                pasta = str(row.get('pasta') or '').strip()
+                classificacao = str(row.get('classificacao') or '').strip()
+                autor = str(row.get('autor') or '').strip()
+                numero_revisao = str(row.get('numero_revisao') or row.get('revisao') or '').strip()
                 def parse_date(val):
                     if not val: return None
                     try:
                         return pd.to_datetime(val, dayfirst=True).date()
                     except: return None
-                d_rev = parse_date(data_rev)
-                d_aprov = parse_date(data_aprov)
-                setor_obj = Setor.objects.filter(nome__iexact=setor_nome).first() if setor_nome else None
-                area_obj = Area.objects.filter(nome__iexact=area_nome).first() if area_nome else None
-                elaborador_obj = Colaborador.objects.filter(matricula__iexact=elaborador_mat).first() if elaborador_mat else None
-                revisor_obj = Colaborador.objects.filter(matricula__iexact=revisor_mat).first() if revisor_mat else None
-                aprovador_obj = Colaborador.objects.filter(matricula__iexact=aprovador_mat).first() if aprovador_mat else None
+                ultima_revisao = parse_date(row.get('ultima_revisao') or row.get('data_revisao') or '')
+                data_aprovacao = parse_date(row.get('data_aprovacao') or '')
+                proxima_revisao = parse_date(row.get('proxima_revisao') or '')
+                data_validade = parse_date(row.get('data_validade') or '')
+                documentos_controlados = str(row.get('documentos_controlados') or '').strip()
+                matriz = str(row.get('matriz') or '').strip()
+                sub_area = str(row.get('sub_area') or '').strip()
                 try:
                     obj, was_created = Procedimento.objects.update_or_create(
                         codigo=codigo,
                         defaults={
-                            'titulo': titulo.upper(),
-                            'tipo': tipo if tipo in {'POP','DOC','FOR','TAB','DEX','OUTRO'} else 'OUTRO',
-                            'revisao_atual': revisao,
-                            'data_revisao': d_rev,
-                            'data_aprovacao_revisao': d_aprov,
-                            'setor': setor_obj,
-                            'area': area_obj,
-                            'elaborador': elaborador_obj,
-                            'revisor': revisor_obj,
-                            'aprovador': aprovador_obj,
+                            'no': no or None,
+                            'nome': nome,
+                            'descricao': descricao,
+                            'pasta': pasta,
+                            'classificacao': classificacao,
+                            'autor': autor,
+                            'numero_revisao': numero_revisao,
+                            'ultima_revisao': ultima_revisao,
+                            'data_aprovacao': data_aprovacao,
+                            'proxima_revisao': proxima_revisao,
+                            'data_validade': data_validade,
+                            'documentos_controlados': documentos_controlados,
+                            'matriz': matriz,
+                            'sub_area': sub_area,
                         }
                     )
                     created += 1 if was_created else 0

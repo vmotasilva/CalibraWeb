@@ -422,12 +422,9 @@ admin.site.register(Orcamento)
 
 @admin.register(Procedimento, site=admin_site)
 class ProcedimentoAdmin(admin.ModelAdmin):
-    def get_setor_nome(self, obj):
-        return obj.setor.nome if obj.setor else "-"
-
-    list_display = ("codigo", "titulo", "revisao_atual", "get_setor_nome")
-    search_fields = ("codigo", "titulo")
-    list_filter = ("setor",)
+    list_display = ("no", "codigo", "nome", "numero_revisao", "classificacao", "autor")
+    search_fields = ("no", "codigo", "nome", "autor", "classificacao")
+    list_filter = ("classificacao",)
 
 
 @admin.register(RegistroTreinamento, site=admin_site)

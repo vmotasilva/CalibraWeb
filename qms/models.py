@@ -795,70 +795,27 @@ class Orcamento(models.Model):
 # ==============================================================================
 # MÓDULO 7: DOCUMENTOS E TREINAMENTOS
 # ==============================================================================
-class Procedimento(models.Model):
-    TIPO_CHOICES = [
-        ("POP", "POP"),
-        ("DOC", "DOC"),
-        ("FOR", "FOR"),
-        ("TAB", "TAB"),
-        ("DEX", "DEX"),
-        ("OUTRO", "OUTRO"),
-    ]
-    codigo = models.CharField(max_length=50, unique=True, verbose_name="Código")
-    titulo = models.CharField(max_length=200, verbose_name="Título")
-    revisao_atual = models.CharField(max_length=10, verbose_name="Nº Revisão")
-    data_revisao = models.DateField(verbose_name="Data da Revisão", null=True, blank=True)
-    data_aprovacao_revisao = models.DateField(verbose_name="Data Aprovação Revisão", null=True, blank=True)
-    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, verbose_name="Tipo de Procedimento", default="OUTRO")
-    setor = models.ForeignKey(
-        Setor,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="Setor Associado",
-    )
-    # Área associada (opcional) - modelo simples para agrupamento macro
-    # Criar modelo Area se não existir
-    prioridade = models.CharField(max_length=50, null=True, blank=True)
-    habilidade_vinculada = models.CharField(max_length=100, null=True, blank=True)
-    tem_copia_fisica = models.BooleanField(default=False)
-    aplica_treinamento = models.BooleanField(default=False)
-    link_externo = models.URLField(null=True, blank=True)
-    area = models.ForeignKey('Area', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Área Associada')
-    elaborador = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='procedimentos_elaborados', verbose_name='Elaborador')
-    revisor = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='procedimentos_revisados', verbose_name='Revisor')
-    aprovador = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='procedimentos_aprovados', verbose_name='Aprovador')
-    arquivo = models.FileField(upload_to='procedimentos/', null=True, blank=True, verbose_name='Arquivo do Procedimento (PDF)')
 
-    def save(self, *args, **kwargs):
-        creating = self.pk is None
-        prev_rev = None
-        prev_file = None
-        if not creating:
-            try:
-                old = Procedimento.objects.get(pk=self.pk)
-                prev_rev = old.revisao_atual
-                prev_file = old.arquivo
-            except Procedimento.DoesNotExist:
-                pass
-        self.codigo = self.codigo.upper().strip()
-        self.titulo = self.titulo.upper().strip()
-        super().save(*args, **kwargs)
-        # Se revisão mudou e não é criação inicial, registra histórico
-        if prev_rev and prev_rev != self.revisao_atual:
-            ProcedimentoRevisao.objects.create(
-                procedimento=self,
-                revisao=prev_rev,
-                data_revisao=self.data_revisao,
-                data_aprovacao=self.data_aprovacao_revisao,
-                elaborador=self.elaborador,
-                revisor=self.revisor,
-                aprovador=self.aprovador,
-                arquivo_prev=prev_file if prev_file else None,
-            )
+# NOVO MODELO DE PROCEDIMENTO (conforme especificação do usuário)
+class Procedimento(models.Model):
+    no = models.CharField(max_length=50, unique=True, verbose_name="No.", null=True, blank=True)  # Chave única
+    codigo = models.CharField(max_length=50, unique=True, verbose_name="Código", null=True, blank=True)
+    nome = models.CharField(max_length=200, verbose_name="Nome/Título do Documento", null=True, blank=True)
+    descricao = models.TextField(null=True, blank=True, verbose_name="Descrição/Objetivo/Função")
+    pasta = models.CharField(max_length=200, null=True, blank=True, verbose_name="Pasta (Local no Qualiex)")
+    classificacao = models.CharField(max_length=100, verbose_name="Classificação (Tipo de Procedimento)", null=True, blank=True)
+    autor = models.CharField(max_length=100, verbose_name="Autor (Texto Livre)", null=True, blank=True)
+    numero_revisao = models.CharField(max_length=10, verbose_name="Número da Revisão", null=True, blank=True)
+    ultima_revisao = models.DateField(null=True, blank=True, verbose_name="Última Revisão")
+    data_aprovacao = models.DateField(null=True, blank=True, verbose_name="Data de Aprovação")
+    proxima_revisao = models.DateField(null=True, blank=True, verbose_name="Próxima Revisão")
+    data_validade = models.DateField(null=True, blank=True, verbose_name="Data de Validade")
+    documentos_controlados = models.CharField(max_length=50, null=True, blank=True, verbose_name="Documentos Controlados")
+    matriz = models.CharField(max_length=100, null=True, blank=True, verbose_name="Matriz")
+    sub_area = models.CharField(max_length=100, null=True, blank=True, verbose_name="Sub-Área")
 
     def __str__(self):
-        return f"{self.codigo} - {self.titulo}"
+        return f"{self.codigo} - {self.nome}"
 
     class Meta:
         verbose_name = "Procedimento"
