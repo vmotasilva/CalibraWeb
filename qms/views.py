@@ -1878,6 +1878,8 @@ def imp_procedimentos_view(request):
                     df[col] = None
             created = 0; updated = 0; errors = 0
             for _, row in df.iterrows():
+                # Normalize row keys to avoid invisible character issues
+                row_dict = {str(k).strip().lower(): v for k, v in row.items()}
                 def clean(val):
                     import pandas as pd
                     if pd.isna(val) or val is None:
@@ -1886,28 +1888,28 @@ def imp_procedimentos_view(request):
                     if sval.lower() == 'nan' or sval == '':
                         return None
                     return sval
-                no = clean(row.get('no'))
-                codigo = clean(row.get('codigo'))
+                no = clean(row_dict.get('no'))
+                codigo = clean(row_dict.get('codigo'))
                 if not codigo: continue
                 codigo = codigo.upper()
-                nome = clean(row.get('nome') or row.get('titulo'))
-                descricao = clean(row.get('descricao'))
-                pasta = clean(row.get('pasta'))
-                classificacao = clean(row.get('classificacao'))
-                autor = clean(row.get('autor'))
-                numero_revisao = clean(row.get('numero_revisao') or row.get('revisao'))
+                nome = clean(row_dict.get('nome') or row_dict.get('titulo'))
+                descricao = clean(row_dict.get('descricao'))
+                pasta = clean(row_dict.get('pasta'))
+                classificacao = clean(row_dict.get('classificacao'))
+                autor = clean(row_dict.get('autor'))
+                numero_revisao = clean(row_dict.get('numero_revisao') or row_dict.get('revisao'))
                 def parse_date(val):
                     if not val or str(val).lower() == 'nan': return None
                     try:
                         return pd.to_datetime(val, dayfirst=True).date()
                     except: return None
-                ultima_revisao = parse_date(row.get('ultima_revisao') or row.get('data_revisao'))
-                data_aprovacao = parse_date(row.get('data_aprovacao'))
-                proxima_revisao = parse_date(row.get('proxima_revisao'))
-                data_validade = parse_date(row.get('data_validade'))
-                documentos_controlados = clean(row.get('documentos_controlados'))
-                matriz = clean(row.get('matriz'))
-                sub_area = clean(row.get('sub_area'))
+                ultima_revisao = parse_date(row_dict.get('ultima_revisao') or row_dict.get('data_revisao'))
+                data_aprovacao = parse_date(row_dict.get('data_aprovacao'))
+                proxima_revisao = parse_date(row_dict.get('proxima_revisao'))
+                data_validade = parse_date(row_dict.get('data_validade'))
+                documentos_controlados = clean(row_dict.get('documentos_controlados'))
+                matriz = clean(row_dict.get('matriz'))
+                sub_area = clean(row_dict.get('sub_area'))
                 try:
                     obj, was_created = Procedimento.objects.update_or_create(
                         codigo=codigo,
