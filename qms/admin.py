@@ -83,7 +83,7 @@ class CustomUserChangeForm(DjangoUserChangeForm):
         super().__init__(*args, **kwargs)
         # Dicionário para personalizar rótulos de modelos
         label_map = {
-            'Faixa medicao': 'Faixa de Medição',
+            'Faixamedicao': 'Faixa de Medição',
             'Categoria instrumento': 'Categoria do Instrumento',
             'Padrao': 'Padrão de Rastreabilidade',
             'Historico calibracao': 'Histórico de Calibração',
@@ -104,7 +104,7 @@ class CustomUserChangeForm(DjangoUserChangeForm):
             'Solicitacao instrumento': 'Solicitação de Instrumento',
         }
         area_map = {
-            'Faixa medicao': 'Metrologia',
+            'Faixamedicao': 'Metrologia',
             'Categoria instrumento': 'Metrologia',
             'Padrao': 'Metrologia',
             'Historico calibracao': 'Metrologia',
