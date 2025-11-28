@@ -671,7 +671,7 @@ def procedimentos_list_view(request):
       elaborador / revisor / aprovador: colaborador id
     """
     termo = (request.GET.get('q') or '').strip().upper()
-    tipo = (request.GET.get('tipo') or '').strip().upper()
+    classificacao = (request.GET.get('classificacao') or '').strip().upper()
     setor_id = request.GET.get('setor')
     area_id = request.GET.get('area')
     rev = (request.GET.get('rev') or '').strip()
@@ -679,23 +679,18 @@ def procedimentos_list_view(request):
     revisor_id = request.GET.get('revisor')
     aprovador_id = request.GET.get('aprovador')
 
-    qs = Procedimento.objects.all().select_related('setor','area','elaborador','revisor','aprovador')
+    qs = Procedimento.objects.all()
     if termo:
-        qs = qs.filter(models.Q(codigo__icontains=termo) | models.Q(titulo__icontains=termo))
-    if tipo in {"POP","DOC","FOR","TAB","DEX","OUTRO"}:
-        qs = qs.filter(tipo=tipo)
+        qs = qs.filter(models.Q(codigo__icontains=termo) | models.Q(nome__icontains=termo))
+    if classificacao:
+        qs = qs.filter(classificacao__iexact=classificacao)
     if setor_id and setor_id.isdigit():
-        qs = qs.filter(setor_id=int(setor_id))
+        qs = qs.filter(pasta__icontains=setor_id)  # Ajuste conforme novo modelo, se necessário
     if area_id and area_id.isdigit():
-        qs = qs.filter(area_id=int(area_id))
+        qs = qs.filter(sub_area__icontains=area_id)  # Ajuste conforme novo modelo, se necessário
     if rev:
-        qs = qs.filter(revisao_atual__iexact=rev)
-    if elaborador_id and elaborador_id.isdigit():
-        qs = qs.filter(elaborador_id=int(elaborador_id))
-    if revisor_id and revisor_id.isdigit():
-        qs = qs.filter(revisor_id=int(revisor_id))
-    if aprovador_id and aprovador_id.isdigit():
-        qs = qs.filter(aprovador_id=int(aprovador_id))
+        qs = qs.filter(numero_revisao__iexact=rev)
+    # Remover filtros de elaborador, revisor, aprovador se não existirem mais
 
     from django.core.paginator import Paginator
     page_number = request.GET.get('page','1')
@@ -703,33 +698,23 @@ def procedimentos_list_view(request):
     page_obj = paginator.get_page(page_number)
     procedimentos = page_obj.object_list
 
-    tipos_stats = {t: Procedimento.objects.filter(tipo=t).count() for t in ["POP","DOC","FOR","TAB","DEX","OUTRO"]}
+    # tipos_stats removido pois campo 'tipo' não existe mais
 
     ctx = {
         'procedimentos': procedimentos,
         'termo': termo,
-        'tipo': tipo,
-        'tipos_stats': tipos_stats,
+        'classificacao': classificacao,
         'page_obj': page_obj,
         'paginator': paginator,
-        'setores': Setor.objects.all().order_by('nome'),
-        'areas': Area.objects.all().order_by('nome'),
-        'colaboradores': Colaborador.objects.all().order_by('nome_completo'),
         'rev': rev,
         'setor_id': setor_id,
         'area_id': area_id,
-        'elaborador_id': elaborador_id,
-        'revisor_id': revisor_id,
-        'aprovador_id': aprovador_id,
         'querystring_base': '&'.join([p for p in [
             f"q={termo}" if termo else '',
-            f"tipo={tipo}" if tipo else '',
+            f"classificacao={classificacao}" if classificacao else '',
             f"setor={setor_id}" if setor_id else '',
             f"area={area_id}" if area_id else '',
             f"rev={rev}" if rev else '',
-            f"elaborador={elaborador_id}" if elaborador_id else '',
-            f"revisor={revisor_id}" if revisor_id else '',
-            f"aprovador={aprovador_id}" if aprovador_id else '',
         ] if p])
     }
     return render(request, 'procedimentos_lista.html', ctx)
@@ -739,44 +724,40 @@ def procedimentos_list_view(request):
 def export_procedimentos_excel_view(request):
     # Reusa lógica de filtros
     termo = (request.GET.get('q') or '').strip().upper()
-    tipo = (request.GET.get('tipo') or '').strip().upper()
+    classificacao = (request.GET.get('classificacao') or '').strip().upper()
     setor_id = request.GET.get('setor')
     area_id = request.GET.get('area')
     rev = (request.GET.get('rev') or '').strip()
     elaborador_id = request.GET.get('elaborador')
     revisor_id = request.GET.get('revisor')
     aprovador_id = request.GET.get('aprovador')
-    qs = Procedimento.objects.all().select_related('setor','area','elaborador','revisor','aprovador')
+    qs = Procedimento.objects.all()
     if termo:
-        qs = qs.filter(models.Q(codigo__icontains=termo) | models.Q(titulo__icontains=termo))
-    if tipo in {"POP","DOC","FOR","TAB","DEX","OUTRO"}:
-        qs = qs.filter(tipo=tipo)
+        qs = qs.filter(models.Q(codigo__icontains=termo) | models.Q(nome__icontains=termo))
+    if classificacao:
+        qs = qs.filter(classificacao__iexact=classificacao)
     if setor_id and setor_id.isdigit():
-        qs = qs.filter(setor_id=int(setor_id))
+        qs = qs.filter(pasta__icontains=setor_id)  # Ajuste conforme novo modelo
     if area_id and area_id.isdigit():
-        qs = qs.filter(area_id=int(area_id))
+        qs = qs.filter(sub_area__icontains=area_id)  # Ajuste conforme novo modelo
     if rev:
-        qs = qs.filter(revisao_atual__iexact=rev)
-    if elaborador_id and elaborador_id.isdigit():
-        qs = qs.filter(elaborador_id=int(elaborador_id))
-    if revisor_id and revisor_id.isdigit():
-        qs = qs.filter(revisor_id=int(revisor_id))
-    if aprovador_id and aprovador_id.isdigit():
-        qs = qs.filter(aprovador_id=int(aprovador_id))
+        qs = qs.filter(numero_revisao__iexact=rev)
     rows = []
     for p in qs.order_by('codigo'):
         rows.append({
             'CODIGO': p.codigo,
-            'TITULO': p.titulo,
-            'TIPO': p.tipo,
-            'REVISAO': p.revisao_atual,
-            'DATA_REVISAO': p.data_revisao.strftime('%Y-%m-%d') if p.data_revisao else '',
-            'DATA_APROVACAO': p.data_aprovacao_revisao.strftime('%Y-%m-%d') if p.data_aprovacao_revisao else '',
-            'SETOR': p.setor.nome if p.setor else '',
-            'AREA': p.area.nome if p.area else '',
-            'ELABORADOR': p.elaborador.nome_completo if p.elaborador else '',
-            'REVISOR': p.revisor.nome_completo if p.revisor else '',
-            'APROVADOR': p.aprovador.nome_completo if p.aprovador else '',
+            'NOME': p.nome,
+            'CLASSIFICACAO': p.classificacao,
+            'NUMERO_REVISAO': p.numero_revisao,
+            'ULTIMA_REVISAO': p.ultima_revisao.strftime('%Y-%m-%d') if p.ultima_revisao else '',
+            'DATA_APROVACAO': p.data_aprovacao.strftime('%Y-%m-%d') if p.data_aprovacao else '',
+            'PROXIMA_REVISAO': p.proxima_revisao.strftime('%Y-%m-%d') if p.proxima_revisao else '',
+            'DATA_VALIDADE': p.data_validade.strftime('%Y-%m-%d') if p.data_validade else '',
+            'PASTA': p.pasta,
+            'AUTOR': p.autor,
+            'DOCUMENTOS_CONTROLADOS': p.documentos_controlados,
+            'MATRIZ': p.matriz,
+            'SUB_AREA': p.sub_area,
         })
     import pandas as pd, io
     b = io.BytesIO()
