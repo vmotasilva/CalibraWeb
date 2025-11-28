@@ -8,6 +8,7 @@ from django.urls import path
 from django.views.generic.base import RedirectView
 
 from qms import views
+from qms import views_treinamentos
 
 urlpatterns = [
     # 1. Redireciona a raiz do site direto para o login
@@ -105,6 +106,9 @@ urlpatterns = [
 
     # Treinamentos
     path("treinamentos/", views.treinamentos_list_view, name="treinamentos_lista"),
+    path("treinamentos/novo/", views_treinamentos.novo_treinamento_view, name="novo_treinamento"),
+    path("treinamentos/<int:treinamento_id>/", views_treinamentos.treinamentos_detalhe_view, name="treinamentos_detalhe"),
+    path("treinamentos/<int:treinamento_id>/editar/", views_treinamentos.editar_treinamento_view, name="editar_treinamento"),
 ]
 
 # Configuração para servir arquivos de mídia/estáticos em modo Debug

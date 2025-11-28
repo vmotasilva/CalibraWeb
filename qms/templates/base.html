@@ -55,14 +55,16 @@
                         <li><a class="dropdown-item" href="{% url 'importar_historico' %}">📜 Importar Histórico</a></li>
                     </ul>
                 </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-journal-bookmark"></i> Procedimentos & Treinamentos
+
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'procedimentos_list' %}">
+                        <i class="bi bi-journal-bookmark"></i> Procedimentos
                     </a>
-                    <ul class="dropdown-menu shadow">
-                        <li><a class="dropdown-item" href="{% url 'procedimentos_list' %}">📄 Procedimentos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'treinamentos_lista' %}">🎓 Treinamentos</a></li>
-                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'treinamentos_lista' %}">
+                        <i class="bi bi-mortarboard"></i> Treinamentos
+                    </a>
                 </li>
 
                 <li class="nav-item dropdown">

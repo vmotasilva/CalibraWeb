@@ -2,7 +2,7 @@ from django import forms
 
 from .models import (Colaborador, Instrumento, Ocorrencia,
                      OcorrenciaInstrumento, OrdemCalibracao, Padrao,
-                     SolicitacaoInstrumento, Procedimento, Area)
+                     SolicitacaoInstrumento, Procedimento, Area, RegistroTreinamento)
 
 
 # --- WIDGET PARA MÚLTIPLOS ARQUIVOS (CARIMBO) ---
@@ -258,7 +258,7 @@ class ProcedimentoForm(forms.ModelForm):
     class Meta:
         model = Procedimento
         fields = [
-            'codigo', 'titulo', 'tipo', 'revisao_atual', 'data_revisao', 'data_aprovacao_revisao',
+            'codigo', 'titulo', 'tipo', 'revisao_atual', 'data_revisao', 'data_aprovaçao_revisao',
             'setor', 'area', 'elaborador', 'revisor', 'aprovador', 'arquivo',
             'aplica_treinamento', 'tem_copia_fisica', 'prioridade', 'habilidade_vinculada', 'link_externo'
         ]
@@ -280,4 +280,20 @@ class ProcedimentoForm(forms.ModelForm):
             'prioridade': forms.TextInput(attrs={'class':'form-control'}),
             'habilidade_vinculada': forms.TextInput(attrs={'class':'form-control'}),
             'link_externo': forms.URLInput(attrs={'class':'form-control','placeholder':'https://'}),
+        }
+
+
+class RegistroTreinamentoForm(forms.ModelForm):
+    class Meta:
+        model = RegistroTreinamento
+        fields = [
+            'colaborador', 'procedimento', 'revisao_treinada', 'data_treinamento', 'validade_treinamento', 'observacoes'
+        ]
+        widgets = {
+            'colaborador': forms.Select(attrs={'class':'form-select'}),
+            'procedimento': forms.Select(attrs={'class':'form-select'}),
+            'revisao_treinada': forms.TextInput(attrs={'class':'form-control'}),
+            'data_treinamento': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'validade_treinamento': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'observacoes': forms.Textarea(attrs={'class':'form-control','rows':2}),
         }

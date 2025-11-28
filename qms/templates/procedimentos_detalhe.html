@@ -1,0 +1,85 @@
+{% extends 'procedimentos_base.html' %}
+{% block title %}Detalhe do Procedimento{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">{{ proc.codigo }} - {{ proc.titulo }}</h2>
+    <div class="d-flex gap-2">
+      {% if proc.arquivo %}
+        <a href="{{ proc.arquivo.url }}" class="btn btn-outline-primary btn-sm" target="_blank">Baixar PDF</a>
+      {% endif %}
+      <a href="{% url 'editar_procedimento' proc.id %}" class="btn btn-outline-secondary btn-sm">Editar</a>
+      <a href="{% url 'procedimentos_list' %}" class="btn btn-outline-dark btn-sm">Voltar</a>
+    </div>
+  </div>
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light fw-bold">Metadados</div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4">Código</dt><dd class="col-sm-8">{{ proc.codigo }}</dd>
+            <dt class="col-sm-4">Título</dt><dd class="col-sm-8">{{ proc.titulo }}</dd>
+            <dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">{{ proc.tipo }}</dd>
+            <dt class="col-sm-4">Revisão Atual</dt><dd class="col-sm-8">{{ proc.revisao_atual }}</dd>
+            <dt class="col-sm-4">Data Revisão</dt><dd class="col-sm-8">{% if proc.data_revisao %}{{ proc.data_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</dd>
+            <dt class="col-sm-4">Aprovação</dt><dd class="col-sm-8">{% if proc.data_aprovacao_revisao %}{{ proc.data_aprovacao_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</dd>
+            <dt class="col-sm-4">Setor</dt><dd class="col-sm-8">{% if proc.setor %}{{ proc.setor.nome }}{% else %}-{% endif %}</dd>
+            <dt class="col-sm-4">Área</dt><dd class="col-sm-8">{% if proc.area %}{{ proc.area.nome }}{% else %}-{% endif %}</dd>
+            <dt class="col-sm-4">Elaborador</dt><dd class="col-sm-8">{% if proc.elaborador %}{{ proc.elaborador.nome_completo }}{% else %}-{% endif %}</dd>
+            <dt class="col-sm-4">Revisor</dt><dd class="col-sm-8">{% if proc.revisor %}{{ proc.revisor.nome_completo }}{% else %}-{% endif %}</dd>
+            <dt class="col-sm-4">Aprovador</dt><dd class="col-sm-8">{% if proc.aprovador %}{{ proc.aprovador.nome_completo }}{% else %}-{% endif %}</dd>
+            <dt class="col-sm-4">Prioridade</dt><dd class="col-sm-8">{{ proc.prioridade|default:'-' }}</dd>
+            <dt class="col-sm-4">Habilidade Vinculada</dt><dd class="col-sm-8">{{ proc.habilidade_vinculada|default:'-' }}</dd>
+            <dt class="col-sm-4">Cópia Física?</dt><dd class="col-sm-8">{% if proc.tem_copia_fisica %}Sim{% else %}Não{% endif %}</dd>
+            <dt class="col-sm-4">Aplica Treinamento?</dt><dd class="col-sm-8">{% if proc.aplica_treinamento %}Sim{% else %}Não{% endif %}</dd>
+            <dt class="col-sm-4">Link Externo</dt><dd class="col-sm-8">{% if proc.link_externo %}<a href="{{ proc.link_externo }}" target="_blank">Abrir</a>{% else %}-{% endif %}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light fw-bold">Histórico de Revisões</div>
+        <div class="card-body p-0">
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr class="small text-uppercase">
+                <th>Revisão</th>
+                <th>Data</th>
+                <th>Aprovação</th>
+                <th>Elaborador</th>
+                <th>Revisor</th>
+                <th>Aprovador</th>
+                <th>Arquivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rev in proc.historico_revisoes.all %}
+              <tr>
+                <td>{{ rev.revisao }}</td>
+                <td>{% if rev.data_revisao %}{{ rev.data_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+                <td>{% if rev.data_aprovacao %}{{ rev.data_aprovacao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+                <td>{% if rev.elaborador %}{{ rev.elaborador.nome_completo }}{% else %}-{% endif %}</td>
+                <td>{% if rev.revisor %}{{ rev.revisor.nome_completo }}{% else %}-{% endif %}</td>
+                <td>{% if rev.aprovador %}{{ rev.aprovador.nome_completo }}{% else %}-{% endif %}</td>
+                <td>{% if rev.arquivo_prev %}<a href="{{ rev.arquivo_prev.url }}" target="_blank">PDF</a>{% else %}-{% endif %}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="7" class="text-center text-muted">Sem revisões anteriores.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card shadow-sm">
+        <div class="card-header bg-light fw-bold">Ações</div>
+        <div class="card-body">
+          <a href="{% url 'editar_procedimento' proc.id %}" class="btn btn-primary btn-sm me-2">Editar</a>
+          <a href="{% url 'procedimentos_list' %}" class="btn btn-secondary btn-sm">Voltar</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

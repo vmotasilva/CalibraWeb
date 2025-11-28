@@ -1,0 +1,43 @@
+{% extends 'procedimentos_base.html' %}
+{% block title %}{{ form.instance.pk|yesno:'Editar,Adicionar' }} Treinamento{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">{{ form.instance.pk|yesno:'Editar,Adicionar' }} Treinamento</h2>
+    <a href="{% url 'treinamentos_lista' %}" class="btn btn-outline-dark btn-sm">Voltar</a>
+  </div>
+  <form method="post" class="card shadow-sm p-4">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Colaborador *</label>
+        {{ form.colaborador|as_crispy_field }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Procedimento *</label>
+        {{ form.procedimento|as_crispy_field }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Revisão Treinada *</label>
+        {{ form.revisao_treinada|as_crispy_field }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Data Treinamento *</label>
+        {{ form.data_treinamento|as_crispy_field }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Validade</label>
+        {{ form.validade_treinamento|as_crispy_field }}
+      </div>
+      <div class="col-md-10">
+        <label class="form-label">Observações</label>
+        {{ form.observacoes|as_crispy_field }}
+      </div>
+    </div>
+    <div class="mt-4 d-flex justify-content-end gap-2">
+      <button type="submit" class="btn btn-primary">Salvar</button>
+      <a href="{% url 'treinamentos_lista' %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

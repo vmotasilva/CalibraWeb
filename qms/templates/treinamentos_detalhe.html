@@ -1,0 +1,36 @@
+{% extends 'procedimentos_base.html' %}
+{% block title %}Detalhe do Treinamento{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Treinamento: {{ treinamento.colaborador.nome_completo }} - {{ treinamento.procedimento.codigo }} ({{ treinamento.procedimento.titulo }})</h2>
+    <a href="{% url 'treinamentos_lista' %}" class="btn btn-outline-dark btn-sm">Voltar</a>
+  </div>
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light fw-bold">Dados do Treinamento</div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4">Colaborador</dt><dd class="col-sm-8">{{ treinamento.colaborador.nome_completo }}</dd>
+            <dt class="col-sm-4">Procedimento</dt><dd class="col-sm-8">{{ treinamento.procedimento.codigo }} - {{ treinamento.procedimento.titulo }}</dd>
+            <dt class="col-sm-4">Revisão Treinada</dt><dd class="col-sm-8">{{ treinamento.revisao_treinada }}</dd>
+            <dt class="col-sm-4">Data Treinamento</dt><dd class="col-sm-8">{{ treinamento.data_treinamento|date:'d/m/Y' }}</dd>
+            <dt class="col-sm-4">Status</dt><dd class="col-sm-8">{% if treinamento.status_treinamento == 'VIGENTE' %}<span class="badge bg-success">Vigente</span>{% else %}<span class="badge bg-warning text-dark">Pendente</span>{% endif %}</dd>
+            <dt class="col-sm-4">Observações</dt><dd class="col-sm-8">{{ treinamento.observacoes|default:'-' }}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light fw-bold">Ações</div>
+        <div class="card-body">
+          <a href="{% url 'editar_treinamento' treinamento.id %}" class="btn btn-primary btn-sm me-2">Editar</a>
+          <a href="{% url 'treinamentos_lista' %}" class="btn btn-secondary btn-sm">Voltar</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

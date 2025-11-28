@@ -2349,7 +2349,34 @@ def fix_historico_proxima_view(request):
 
 @login_required
 def treinamentos_list_view(request):
-    """Listagem simples de treinamentos para o menu funcionar e evitar erro 500."""
-    from .models import RegistroTreinamento
-    treinamentos = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()[:50]
-    return render(request, "treinamentos_lista.html", {"treinamentos": treinamentos})
+    from .models import RegistroTreinamento, Colaborador, Procedimento
+    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
+    colaboradores = Colaborador.objects.order_by('nome_completo')
+    procedimentos = Procedimento.objects.order_by('codigo')
+    status = request.GET.get('status')
+    colaborador_id = request.GET.get('colaborador')
+    procedimento_id = request.GET.get('procedimento')
+    busca = request.GET.get('q')
+
+    if status:
+        qs = qs.filter(status_treinamento=status)
+    if colaborador_id:
+        qs = qs.filter(colaborador_id=colaborador_id)
+    if procedimento_id:
+        qs = qs.filter(procedimento_id=procedimento_id)
+    if busca:
+        qs = qs.filter(
+            Q(colaborador__nome_completo__icontains=busca) |
+              Q(procedimento__codigo__icontains=busca) |
+              Q(procedimento__titulo__icontains=busca)
+        )
+    treinamentos = qs.order_by('-data_treinamento')[:100]
+    return render(request, "treinamentos_lista.html", {
+        "treinamentos": treinamentos,
+        "colaboradores": colaboradores,
+        "procedimentos": procedimentos,
+        "status": status,
+        "colaborador_id": colaborador_id,
+        "procedimento_id": procedimento_id,
+        "busca": busca,
+    })
