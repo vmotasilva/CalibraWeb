@@ -896,7 +896,7 @@ def detalhe_colaborador_view(request, colab_id):
     usuario_logado = get_colab(request)
     alvo = get_object_or_404(Colaborador, id=colab_id)
 
-    # --- NOVO: BUSCA DE HIERARQUIA POR SETOR/TURNO (para visualização) ---
+    # --- NOVO: BUSCA DE HIERARQUA POR SETOR/TURNO (para visualização) ---
     supervisor_rh = None
     gerente_rh = None
 
@@ -947,7 +947,7 @@ def detalhe_colaborador_view(request, colab_id):
         if ("GERENTE" in str(usuario_logado.cargo).upper() or
             HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or
             ("DIRETOR" in str(usuario_logado.cargo).upper()) or
-            HierarquiaSetor.objects.filter(diretor=usuario_logado).exists()):
+            HierarquiaSetor.objects.filter(diretor=usuario_logado).exists():
             can_see_salary = True
 
     # Permissões específicas para Ocorrências de RH
@@ -1701,8 +1701,7 @@ def imp_instr_view(request):
                 for chunk in uploaded.chunks():
                     tmp.write(chunk)
                 tmp.flush()
-                tmp.close()
-
+               
                 # create import job record
                 job = ImportJob.objects.create(
                     user=request.user if request.user.is_authenticated else None,
@@ -2118,7 +2117,6 @@ def imp_ferias_view(request):
 
 
 @login_required
-@login_required
 def dl_template_colab_dados(request):
     """Gera um arquivo Excel com dados completos dos Colaboradores ativos."""
 
@@ -2347,3 +2345,11 @@ def fix_historico_proxima_view(request):
     except Exception as e:
         messages.error(request, f'Falha no recalculo: {e}')
     return redirect('modulo_metrologia')
+
+
+@login_required
+def treinamentos_list_view(request):
+    """Listagem simples de treinamentos para o menu funcionar e evitar erro 500."""
+    from .models import RegistroTreinamento
+    treinamentos = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()[:50]
+    return render(request, "treinamentos_lista.html", {"treinamentos": treinamentos})

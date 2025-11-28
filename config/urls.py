@@ -1,3 +1,4 @@
+path("treinamentos/", views.treinamentos_list_view, name="treinamentos_lista"),
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
