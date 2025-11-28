@@ -796,27 +796,66 @@ class Orcamento(models.Model):
 # MÓDULO 7: DOCUMENTOS E TREINAMENTOS
 # ==============================================================================
 class Procedimento(models.Model):
+    TIPO_CHOICES = [
+        ("POP", "POP"),
+        ("DOC", "DOC"),
+        ("FOR", "FOR"),
+        ("TAB", "TAB"),
+        ("DEX", "DEX"),
+        ("OUTRO", "OUTRO"),
+    ]
     codigo = models.CharField(max_length=50, unique=True, verbose_name="Código")
     titulo = models.CharField(max_length=200, verbose_name="Título")
-    revisao_atual = models.CharField(max_length=10, verbose_name="Revisão Atual")
-    data_revisao = models.DateField(verbose_name="Data Rev.", null=True, blank=True)
+    revisao_atual = models.CharField(max_length=10, verbose_name="Nº Revisão")
+    data_revisao = models.DateField(verbose_name="Data da Revisão", null=True, blank=True)
+    data_aprovacao_revisao = models.DateField(verbose_name="Data Aprovação Revisão", null=True, blank=True)
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, verbose_name="Tipo de Procedimento", default="OUTRO")
     setor = models.ForeignKey(
         Setor,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="Setor Aplicável",
+        verbose_name="Setor Associado",
     )
+    # Área associada (opcional) - modelo simples para agrupamento macro
+    # Criar modelo Area se não existir
     prioridade = models.CharField(max_length=50, null=True, blank=True)
     habilidade_vinculada = models.CharField(max_length=100, null=True, blank=True)
     tem_copia_fisica = models.BooleanField(default=False)
     aplica_treinamento = models.BooleanField(default=False)
     link_externo = models.URLField(null=True, blank=True)
+    area = models.ForeignKey('Area', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Área Associada')
+    elaborador = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='procedimentos_elaborados', verbose_name='Elaborador')
+    revisor = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='procedimentos_revisados', verbose_name='Revisor')
+    aprovador = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='procedimentos_aprovados', verbose_name='Aprovador')
+    arquivo = models.FileField(upload_to='procedimentos/', null=True, blank=True, verbose_name='Arquivo do Procedimento (PDF)')
 
     def save(self, *args, **kwargs):
+        creating = self.pk is None
+        prev_rev = None
+        prev_file = None
+        if not creating:
+            try:
+                old = Procedimento.objects.get(pk=self.pk)
+                prev_rev = old.revisao_atual
+                prev_file = old.arquivo
+            except Procedimento.DoesNotExist:
+                pass
         self.codigo = self.codigo.upper().strip()
         self.titulo = self.titulo.upper().strip()
         super().save(*args, **kwargs)
+        # Se revisão mudou e não é criação inicial, registra histórico
+        if prev_rev and prev_rev != self.revisao_atual:
+            ProcedimentoRevisao.objects.create(
+                procedimento=self,
+                revisao=prev_rev,
+                data_revisao=self.data_revisao,
+                data_aprovacao=self.data_aprovacao_revisao,
+                elaborador=self.elaborador,
+                revisor=self.revisor,
+                aprovador=self.aprovador,
+                arquivo_prev=prev_file if prev_file else None,
+            )
 
     def __str__(self):
         return f"{self.codigo} - {self.titulo}"
@@ -840,6 +879,40 @@ class PacoteTreinamento(models.Model):
     class Meta:
         verbose_name = "Pacote de Treinamento"
         verbose_name_plural = "7.3 Pacotes de Treinamento"
+
+
+# --- NOVO: Área Macro para Procedimentos ---
+class Area(models.Model):
+    nome = models.CharField(max_length=100, unique=True, verbose_name='Nome da Área')
+    descricao = models.CharField(max_length=200, null=True, blank=True)
+
+    def __str__(self):
+        return self.nome
+
+    class Meta:
+        verbose_name = 'Área'
+        verbose_name_plural = '7.0 Áreas (Macro)'  
+        ordering = ['nome']
+
+
+class ProcedimentoRevisao(models.Model):
+    procedimento = models.ForeignKey(Procedimento, on_delete=models.CASCADE, related_name='historico_revisoes')
+    revisao = models.CharField(max_length=10)
+    data_revisao = models.DateField(null=True, blank=True)
+    data_aprovacao = models.DateField(null=True, blank=True)
+    elaborador = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='revisoes_elaboradas')
+    revisor = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='revisoes_revisadas')
+    aprovador = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='revisoes_aprovadas')
+    arquivo_prev = models.FileField(upload_to='procedimentos/rev/', null=True, blank=True, verbose_name='Arquivo Revisão Anterior')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Histórico de Revisão de Procedimento'
+        verbose_name_plural = '7.1.1 Histórico de Revisões'
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f"{self.procedimento.codigo} Rev {self.revisao}" 
 
 
 class RegistroTreinamento(models.Model):

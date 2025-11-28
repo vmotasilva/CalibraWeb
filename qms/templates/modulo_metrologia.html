@@ -250,6 +250,7 @@
                 <table class="table table-hover align-middle mb-0" id="metrologiaTable">
                     <thead class="small text-uppercase text-muted font-monospace">
                         <tr>
+                            <th class="ps-3 py-3"><input type="checkbox" id="selectAll" title="Selecionar todos visíveis"></th>
                             <th class="ps-4 py-3">Tag / Código</th>
                             <th class="py-3">Descrição</th>
                             <th class="py-3">Categoria</th>
@@ -267,6 +268,7 @@
                             data-categoria="{{ i.categoria_id|default:'' }}"
                             data-setor="{{ i.setor_id|default:'' }}"
                             data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
+                            <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" /></td>
                             
                             <td class="ps-4 py-2 fw-bold text-primary font-monospace">
                                 {{ i.tag }}
@@ -553,6 +555,69 @@ function renderEtiquetasSummary(){
     }
 
     box.innerHTML = `Serão geradas etiquetas para ${parts[0]}. <span class=\"ms-2\">${parts.slice(1).join(' • ')}</span>${chipsHTML}`;
+}
+</script>
+<script>
+// Seleção de linhas e integração com Etiquetas
+document.addEventListener('DOMContentLoaded', function(){
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', function(){
+            const rows = document.querySelectorAll('.instrumento-row');
+            rows.forEach(r => {
+                if (r.style.display === 'none') return; // aplica somente aos visíveis
+                const cb = r.querySelector('.row-select');
+                if (cb) cb.checked = selectAll.checked;
+            });
+            updateEtiquetasLink();
+            renderEtiquetasSummary();
+        });
+    }
+    document.querySelectorAll('.row-select').forEach(cb => {
+        cb.addEventListener('change', function(){
+            updateEtiquetasLink();
+            renderEtiquetasSummary();
+        });
+    });
+});
+
+function getSelectedIds(){
+    const ids = [];
+    document.querySelectorAll('.instrumento-row').forEach(r => {
+        if (r.style.display === 'none') return; // só da página visível
+        const cb = r.querySelector('.row-select');
+        if (cb && cb.checked) ids.push(cb.value);
+    });
+    return ids;
+}
+
+// Extende updateEtiquetasLink para incluir ids selecionados (se houver)
+const __origUpdateEtiquetasLink = updateEtiquetasLink;
+updateEtiquetasLink = function(){
+    __origUpdateEtiquetasLink();
+    const btnEtiquetas = document.getElementById('btnEtiquetas');
+    if (!btnEtiquetas) return;
+    const ids = getSelectedIds();
+    if (ids.length) {
+        const u = new URL(btnEtiquetas.href);
+        u.searchParams.set('ids', ids.join(','));
+        btnEtiquetas.href = u.toString();
+    }
+}
+
+// Atualiza o resumo para mostrar se há seleção manual
+const __origRenderEtiquetasSummary = renderEtiquetasSummary;
+renderEtiquetasSummary = function(){
+    __origRenderEtiquetasSummary();
+    const box = document.getElementById('etqSummary');
+    if (!box) return;
+    const ids = getSelectedIds();
+    if (ids.length) {
+        const note = document.createElement('div');
+        note.className = 'mt-2 text-primary small';
+        note.innerHTML = `Selecionados manualmente nesta página: <strong>${ids.length}</strong> (prioriza estes no PDF)`;
+        box.appendChild(note);
+    }
 }
 </script>
 {% endblock %}

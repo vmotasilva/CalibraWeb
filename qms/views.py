@@ -27,13 +27,13 @@ from .forms import (CarimboForm, ColaboradorForm, ImportacaoColaboradoresForm,
                     ImportacaoFeriasForm, ImportacaoHierarquiaForm,
                     ImportacaoHistoricoForm, ImportacaoInstrumentosForm,
                     ImportacaoPadroesForm, ImportacaoProcedimentosForm,
-                    OcorrenciaForm, SolicitacaoForm, InstrumentoForm)
+                    OcorrenciaForm, SolicitacaoForm, InstrumentoForm, ProcedimentoForm)
 # IMPORTA TODOS OS MODELOS
 from .models import (CategoriaInstrumento, CentroCusto, Colaborador,
                      FaixaMedicao, Ferias, Fornecedor, HierarquiaSetor,
                      HistoricoCalibracao, Instrumento, Ocorrencia,
                      OrdemCalibracao, Padrao, Procedimento, ProcessoCotacao,
-                     RegistroTreinamento, Setor, SolicitacaoInstrumento,
+                     RegistroTreinamento, Setor, SolicitacaoInstrumento, Area,
                      UnidadeMedida, ImportJob)
 from django.views.decorators.http import require_POST
 
@@ -356,11 +356,23 @@ def export_etiquetas_view(request):
     if q:
         qs = qs.filter(models.Q(tag__icontains=q) | models.Q(descricao__icontains=q) | models.Q(fabricante__icontains=q) | models.Q(modelo__icontains=q))
 
+    # Se houver lista explícita de IDs selecionados, prioriza apenas esses
+    selected_ids = []
+    try:
+        raw_ids = (request.GET.get('ids') or '').strip()
+        if raw_ids:
+            selected_ids = [int(x) for x in raw_ids.split(',') if x.strip().isdigit()]
+    except Exception:
+        selected_ids = []
+
     # Situação derivada
     hoje = date.today()
     alerta_30d = hoje + timedelta(days=30)
     instrumentos = []
-    for inst in qs.order_by('tag'):
+    base_iter = qs.order_by('tag')
+    if selected_ids:
+        base_iter = base_iter.filter(id__in=selected_ids)
+    for inst in base_iter:
         situacao = 'EM_DIA'
         if inst.data_proxima_calibracao:
             if inst.data_proxima_calibracao < hoje:
@@ -649,43 +661,234 @@ def modulo_rh_view(request):
 
 @login_required
 def procedimentos_list_view(request):
-    """Lista pública (pós-login) de procedimentos com filtros simples.
-    Parâmetros GET:
-      q: termo de busca (código ou parte do título)
-      tipo: prefixo (POP, DOC, FOR, TAB, DEX)
+    """Lista de Procedimentos com filtros avançados.
+    GET params:
+      q: busca em código / título
+      tipo: POP|DOC|FOR|TAB|DEX|OUTRO
+      setor: setor id
+      area: area id
+      rev: revisão exata
+      elaborador / revisor / aprovador: colaborador id
     """
-    termo = (request.GET.get("q") or "").strip().upper()
-    tipo = (request.GET.get("tipo") or "").strip().upper()
+    termo = (request.GET.get('q') or '').strip().upper()
+    tipo = (request.GET.get('tipo') or '').strip().upper()
+    setor_id = request.GET.get('setor')
+    area_id = request.GET.get('area')
+    rev = (request.GET.get('rev') or '').strip()
+    elaborador_id = request.GET.get('elaborador')
+    revisor_id = request.GET.get('revisor')
+    aprovador_id = request.GET.get('aprovador')
 
-    qs = Procedimento.objects.all().select_related("setor")
+    qs = Procedimento.objects.all().select_related('setor','area','elaborador','revisor','aprovador')
     if termo:
         qs = qs.filter(models.Q(codigo__icontains=termo) | models.Q(titulo__icontains=termo))
-    if tipo in {"POP", "DOC", "FOR", "TAB", "DEX"}:
-        qs = qs.filter(codigo__startswith=f"{tipo}.")
+    if tipo in {"POP","DOC","FOR","TAB","DEX","OUTRO"}:
+        qs = qs.filter(tipo=tipo)
+    if setor_id and setor_id.isdigit():
+        qs = qs.filter(setor_id=int(setor_id))
+    if area_id and area_id.isdigit():
+        qs = qs.filter(area_id=int(area_id))
+    if rev:
+        qs = qs.filter(revisao_atual__iexact=rev)
+    if elaborador_id and elaborador_id.isdigit():
+        qs = qs.filter(elaborador_id=int(elaborador_id))
+    if revisor_id and revisor_id.isdigit():
+        qs = qs.filter(revisor_id=int(revisor_id))
+    if aprovador_id and aprovador_id.isdigit():
+        qs = qs.filter(aprovador_id=int(aprovador_id))
 
-    # Limita para paginação simples (pode evoluir depois)
-    # Paginação
     from django.core.paginator import Paginator
-    page_number = request.GET.get("page", "1")
-    paginator = Paginator(qs.order_by("codigo"), 50)
+    page_number = request.GET.get('page','1')
+    paginator = Paginator(qs.order_by('codigo'), 50)
     page_obj = paginator.get_page(page_number)
     procedimentos = page_obj.object_list
 
-    tipos_stats = {
-        t: Procedimento.objects.filter(codigo__startswith=f"{t}.").count()
-        for t in ["POP", "DOC", "FOR", "TAB", "DEX"]
-    }
+    tipos_stats = {t: Procedimento.objects.filter(tipo=t).count() for t in ["POP","DOC","FOR","TAB","DEX","OUTRO"]}
 
     ctx = {
-        "procedimentos": procedimentos,
-        "termo": termo,
-        "tipo": tipo,
-        "tipos_stats": tipos_stats,
-        "page_obj": page_obj,
-        "paginator": paginator,
-        "querystring_base": f"q={termo}&tipo={tipo}" if (termo or tipo) else "",
+        'procedimentos': procedimentos,
+        'termo': termo,
+        'tipo': tipo,
+        'tipos_stats': tipos_stats,
+        'page_obj': page_obj,
+        'paginator': paginator,
+        'setores': Setor.objects.all().order_by('nome'),
+        'areas': Area.objects.all().order_by('nome'),
+        'colaboradores': Colaborador.objects.all().order_by('nome_completo'),
+        'rev': rev,
+        'setor_id': setor_id,
+        'area_id': area_id,
+        'elaborador_id': elaborador_id,
+        'revisor_id': revisor_id,
+        'aprovador_id': aprovador_id,
+        'querystring_base': '&'.join([p for p in [
+            f"q={termo}" if termo else '',
+            f"tipo={tipo}" if tipo else '',
+            f"setor={setor_id}" if setor_id else '',
+            f"area={area_id}" if area_id else '',
+            f"rev={rev}" if rev else '',
+            f"elaborador={elaborador_id}" if elaborador_id else '',
+            f"revisor={revisor_id}" if revisor_id else '',
+            f"aprovador={aprovador_id}" if aprovador_id else '',
+        ] if p])
     }
-    return render(request, "procedimentos_lista.html", ctx)
+    return render(request, 'procedimentos_lista.html', ctx)
+
+
+@login_required
+def export_procedimentos_excel_view(request):
+    # Reusa lógica de filtros
+    termo = (request.GET.get('q') or '').strip().upper()
+    tipo = (request.GET.get('tipo') or '').strip().upper()
+    setor_id = request.GET.get('setor')
+    area_id = request.GET.get('area')
+    rev = (request.GET.get('rev') or '').strip()
+    elaborador_id = request.GET.get('elaborador')
+    revisor_id = request.GET.get('revisor')
+    aprovador_id = request.GET.get('aprovador')
+    qs = Procedimento.objects.all().select_related('setor','area','elaborador','revisor','aprovador')
+    if termo:
+        qs = qs.filter(models.Q(codigo__icontains=termo) | models.Q(titulo__icontains=termo))
+    if tipo in {"POP","DOC","FOR","TAB","DEX","OUTRO"}:
+        qs = qs.filter(tipo=tipo)
+    if setor_id and setor_id.isdigit():
+        qs = qs.filter(setor_id=int(setor_id))
+    if area_id and area_id.isdigit():
+        qs = qs.filter(area_id=int(area_id))
+    if rev:
+        qs = qs.filter(revisao_atual__iexact=rev)
+    if elaborador_id and elaborador_id.isdigit():
+        qs = qs.filter(elaborador_id=int(elaborador_id))
+    if revisor_id and revisor_id.isdigit():
+        qs = qs.filter(revisor_id=int(revisor_id))
+    if aprovador_id and aprovador_id.isdigit():
+        qs = qs.filter(aprovador_id=int(aprovador_id))
+    rows = []
+    for p in qs.order_by('codigo'):
+        rows.append({
+            'CODIGO': p.codigo,
+            'TITULO': p.titulo,
+            'TIPO': p.tipo,
+            'REVISAO': p.revisao_atual,
+            'DATA_REVISAO': p.data_revisao.strftime('%Y-%m-%d') if p.data_revisao else '',
+            'DATA_APROVACAO': p.data_aprovacao_revisao.strftime('%Y-%m-%d') if p.data_aprovacao_revisao else '',
+            'SETOR': p.setor.nome if p.setor else '',
+            'AREA': p.area.nome if p.area else '',
+            'ELABORADOR': p.elaborador.nome_completo if p.elaborador else '',
+            'REVISOR': p.revisor.nome_completo if p.revisor else '',
+            'APROVADOR': p.aprovador.nome_completo if p.aprovador else '',
+        })
+    import pandas as pd, io
+    b = io.BytesIO()
+    pd.DataFrame(rows).to_excel(b, index=False)
+    b.seek(0)
+    r = HttpResponse(b, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    r['Content-Disposition'] = 'attachment; filename="procedimentos_export.xlsx"'
+    return r
+
+
+@login_required
+def export_procedimentos_pdf_view(request):
+    # Simple tabular PDF using reportlab
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    termo = (request.GET.get('q') or '').strip().upper()
+    tipo = (request.GET.get('tipo') or '').strip().upper()
+    qs = Procedimento.objects.all()
+    if termo:
+        qs = qs.filter(models.Q(codigo__icontains=termo) | models.Q(titulo__icontains=termo))
+    if tipo in {"POP","DOC","FOR","TAB","DEX","OUTRO"}:
+        qs = qs.filter(tipo=tipo)
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    w, h = A4
+    y = h - 40
+    c.setFont('Helvetica-Bold', 14)
+    c.drawString(40, y, 'Relatório de Procedimentos')
+    y -= 25
+    c.setFont('Helvetica', 8)
+    headers = ['Código','Título','Tipo','Rev','Data Rev','Aprov']
+    c.drawString(40, y, ' | '.join(headers))
+    y -= 12
+    c.setFont('Helvetica', 7)
+    for p in qs.order_by('codigo'):
+        line = [p.codigo, (p.titulo[:40] + ('...' if len(p.titulo)>40 else '')), p.tipo, p.revisao_atual,
+                p.data_revisao.strftime('%d/%m/%Y') if p.data_revisao else '',
+                p.data_aprovacao_revisao.strftime('%d/%m/%Y') if p.data_aprovacao_revisao else '']
+        c.drawString(40, y, ' | '.join(line))
+        y -= 10
+        if y < 50:
+            c.showPage(); y = h - 50; c.setFont('Helvetica', 7)
+    c.showPage(); c.save(); buf.seek(0)
+    r = HttpResponse(buf, content_type='application/pdf')
+    r['Content-Disposition'] = 'attachment; filename="procedimentos.pdf"'
+    return r
+
+
+@login_required
+def novo_procedimento_view(request):
+    if not can_manage_procedimentos(request.user):
+        messages.error(request, 'Sem permissão para criar procedimentos.')
+        return redirect('procedimentos_list')
+    if request.method == 'POST':
+        form = ProcedimentoForm(request.POST, request.FILES)
+        if form.is_valid():
+            proc = form.save()
+            messages.success(request, f"Procedimento {proc.codigo} criado.")
+            return redirect('procedimentos_list')
+    else:
+        form = ProcedimentoForm()
+    return render(request, 'form_generico.html', {
+        'form': form,
+        'titulo': 'Novo Procedimento',
+        'colaborador': get_colab(request)
+    })
+
+
+@login_required
+def editar_procedimento_view(request, procedimento_id):
+    proc = get_object_or_404(Procedimento, id=procedimento_id)
+    if not can_manage_procedimentos(request.user):
+        messages.error(request, 'Sem permissão para editar procedimentos.')
+        return redirect('detalhe_procedimento', procedimento_id=proc.id)
+    if request.method == 'POST':
+        form = ProcedimentoForm(request.POST, request.FILES, instance=proc)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Atualizado.")
+            return redirect('detalhe_procedimento', procedimento_id=proc.id)
+    else:
+        form = ProcedimentoForm(instance=proc)
+    return render(request, 'form_generico.html', {
+        'form': form,
+        'titulo': f'Editar {proc.codigo}',
+        'colaborador': get_colab(request)
+    })
+
+
+@login_required
+def detalhe_procedimento_view(request, procedimento_id):
+    proc = get_object_or_404(Procedimento, id=procedimento_id)
+    return render(request, 'procedimento_detalhe.html', {
+        'proc': proc,
+        'colaborador': get_colab(request)
+    })
+
+
+# --- Permissões internas ---
+def can_manage_procedimentos(user):
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    # Qualidade / RH (exige que nome de setor contenha palavra-chave) via Colaborador mapping
+    try:
+        col = Colaborador.objects.filter(user_django=user).select_related('setor').first()
+        if col and col.setor and any(k in col.setor.nome.upper() for k in ['QUALIDADE','RH','ENGENHARIA']):
+            return True
+    except Exception:
+        pass
+    return False
 
 
 @login_required
@@ -1442,6 +1645,30 @@ def dl_template_categorias(request):
     return dl_df(df, "template_categorias.xlsx")
 
 
+@login_required
+def dl_template_procedimentos(request):
+    import pandas as pd, io
+    df = pd.DataFrame({
+        'codigo':['POP.001'],
+        'titulo':['EXEMPLO DE PROCEDIMENTO'],
+        'tipo':['POP'],
+        'revisao':['01'],
+        'data_revisao':['01/10/2025'],
+        'data_aprovacao':['05/10/2025'],
+        'setor':['QUALIDADE'],
+        'area':['OPERACIONAL'],
+        'elaborador':['100'],
+        'revisor':['101'],
+        'aprovador':['102'],
+    })
+    b = io.BytesIO()
+    df.to_excel(b, index=False)
+    b.seek(0)
+    r = HttpResponse(b, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    r['Content-Disposition'] = 'attachment; filename="template_procedimentos.xlsx"'
+    return r
+
+
 def dl_generic(cols, fname):
     df = pd.DataFrame(columns=cols)
     return dl_df(df, fname)
@@ -1611,6 +1838,79 @@ def imp_padroes_view(request):
         "importar_historico.html",
         {"form": form, "titulo": "Importar Padrões", "colaborador": get_colab(request)},
     )
+
+
+@login_required
+def imp_procedimentos_view(request):
+    if request.method == 'POST':
+        form = ImportacaoProcedimentosForm(request.POST, request.FILES)
+        if form.is_valid():
+            up = request.FILES.get('arquivo_excel')
+            if not up:
+                messages.error(request, 'Arquivo não enviado.')
+                return redirect('importar_procedimentos')
+            import pandas as pd, io, os
+            ext = os.path.splitext(up.name)[1].lower()
+            try:
+                if ext in {'.xlsx','.xls','.xlsm'}:
+                    df = pd.read_excel(up)
+                else:
+                    content = up.read(); df = pd.read_csv(io.BytesIO(content), sep=None, engine='python')
+            except Exception as e:
+                messages.error(request, f'Falha ao ler planilha: {e}')
+                return redirect('importar_procedimentos')
+            df.columns = df.columns.map(lambda c: str(c).strip().lower())
+            created = 0; updated = 0; errors = 0
+            for _, row in df.iterrows():
+                codigo = str(row.get('codigo') or '').strip().upper()
+                if not codigo: continue
+                titulo = str(row.get('titulo') or '').strip()
+                tipo = str(row.get('tipo') or '').strip().upper() or 'OUTRO'
+                revisao = str(row.get('revisao') or row.get('revisao_atual') or '').strip() or '00'
+                data_rev = str(row.get('data_revisao') or '').strip()
+                data_aprov = str(row.get('data_aprovacao') or row.get('data_aprovacao_revisao') or '').strip()
+                setor_nome = str(row.get('setor') or '').strip()
+                area_nome = str(row.get('area') or '').strip()
+                elaborador_mat = str(row.get('elaborador') or '').strip()
+                revisor_mat = str(row.get('revisor') or '').strip()
+                aprovador_mat = str(row.get('aprovador') or '').strip()
+                def parse_date(val):
+                    if not val: return None
+                    try:
+                        return pd.to_datetime(val, dayfirst=True).date()
+                    except: return None
+                d_rev = parse_date(data_rev)
+                d_aprov = parse_date(data_aprov)
+                setor_obj = Setor.objects.filter(nome__iexact=setor_nome).first() if setor_nome else None
+                area_obj = Area.objects.filter(nome__iexact=area_nome).first() if area_nome else None
+                elaborador_obj = Colaborador.objects.filter(matricula__iexact=elaborador_mat).first() if elaborador_mat else None
+                revisor_obj = Colaborador.objects.filter(matricula__iexact=revisor_mat).first() if revisor_mat else None
+                aprovador_obj = Colaborador.objects.filter(matricula__iexact=aprovador_mat).first() if aprovador_mat else None
+                try:
+                    obj, was_created = Procedimento.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'titulo': titulo.upper(),
+                            'tipo': tipo if tipo in {'POP','DOC','FOR','TAB','DEX','OUTRO'} else 'OUTRO',
+                            'revisao_atual': revisao,
+                            'data_revisao': d_rev,
+                            'data_aprovacao_revisao': d_aprov,
+                            'setor': setor_obj,
+                            'area': area_obj,
+                            'elaborador': elaborador_obj,
+                            'revisor': revisor_obj,
+                            'aprovador': aprovador_obj,
+                        }
+                    )
+                    created += 1 if was_created else 0
+                    updated += 0 if was_created else 1
+                except Exception:
+                    errors += 1
+            messages.success(request, f"Procedimentos criados: {created}, atualizados: {updated}, erros: {errors}")
+            return redirect('procedimentos_list')
+    else:
+        form = ImportacaoProcedimentosForm()
+    return render(request, 'importar_procedimentos.html', {'form': form, 'colaborador': get_colab(request)})
 
 
 @login_required

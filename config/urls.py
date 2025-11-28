@@ -71,6 +71,7 @@ urlpatterns = [
     path("dl-template-hist/", views.dl_template_historico, name="template_historico"),
     path("dl-template-ferias/", views.dl_template_ferias, name="dl_template_ferias"),
     path("dl-template-categorias/", views.dl_template_categorias, name="dl_template_categorias"),
+    path("dl-template-procedimentos/", views.dl_template_procedimentos, name="template_procedimentos"),
     path("dl-dados-colab/", views.dl_template_colab_dados, name="dl_colaboradores_dados"),
     # Admin-only endpoint to seed demo data quickly
     path("seed-demo/", views.seed_demo_view, name="seed_demo"),
@@ -84,6 +85,12 @@ urlpatterns = [
     path("import-jobs.json", views.import_jobs_json_view, name="import_jobs_json"),
         # Procedimentos público (consulta)
         path("procedimentos/", views.procedimentos_list_view, name="procedimentos_list"),
+        path("procedimentos/export/xlsx/", views.export_procedimentos_excel_view, name="export_procedimentos_excel"),
+        path("procedimentos/export/pdf/", views.export_procedimentos_pdf_view, name="export_procedimentos_pdf"),
+        path("procedimentos/importar/", views.imp_procedimentos_view, name="importar_procedimentos"),
+        path("procedimentos/novo/", views.novo_procedimento_view, name="novo_procedimento"),
+        path("procedimentos/<int:procedimento_id>/", views.detalhe_procedimento_view, name="detalhe_procedimento"),
+        path("procedimentos/<int:procedimento_id>/editar/", views.editar_procedimento_view, name="editar_procedimento"),
     path("imp-colab/", views.imp_colab_view, name="importar_colaboradores"),
     path("imp-hist/", views.imp_historico_view, name="importar_historico"),
     path("imp-hierarquia/", views.imp_hierarquia_view, name="importar_hierarquia"),

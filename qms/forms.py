@@ -2,7 +2,7 @@ from django import forms
 
 from .models import (Colaborador, Instrumento, Ocorrencia,
                      OcorrenciaInstrumento, OrdemCalibracao, Padrao,
-                     SolicitacaoInstrumento)
+                     SolicitacaoInstrumento, Procedimento, Area)
 
 
 # --- WIDGET PARA MÚLTIPLOS ARQUIVOS (CARIMBO) ---
@@ -251,4 +251,33 @@ class OcorrenciaForm(forms.ModelForm):
             'tipo': forms.Select(attrs={'class': 'form-select'}),
             'colaborador': forms.Select(attrs={'class': 'form-select'}),
             'data_ocorrencia': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        }
+
+
+class ProcedimentoForm(forms.ModelForm):
+    class Meta:
+        model = Procedimento
+        fields = [
+            'codigo', 'titulo', 'tipo', 'revisao_atual', 'data_revisao', 'data_aprovacao_revisao',
+            'setor', 'area', 'elaborador', 'revisor', 'aprovador', 'arquivo',
+            'aplica_treinamento', 'tem_copia_fisica', 'prioridade', 'habilidade_vinculada', 'link_externo'
+        ]
+        widgets = {
+            'codigo': forms.TextInput(attrs={'class':'form-control','placeholder':'Ex: POP.001'}),
+            'titulo': forms.TextInput(attrs={'class':'form-control'}),
+            'tipo': forms.Select(attrs={'class':'form-select'}),
+            'revisao_atual': forms.TextInput(attrs={'class':'form-control','placeholder':'Ex: 01'}),
+            'data_revisao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'data_aprovacao_revisao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'setor': forms.Select(attrs={'class':'form-select'}),
+            'area': forms.Select(attrs={'class':'form-select'}),
+            'elaborador': forms.Select(attrs={'class':'form-select'}),
+            'revisor': forms.Select(attrs={'class':'form-select'}),
+            'aprovador': forms.Select(attrs={'class':'form-select'}),
+            'arquivo': forms.ClearableFileInput(attrs={'class':'form-control','accept':'.pdf'}),
+            'aplica_treinamento': forms.CheckboxInput(attrs={'class':'form-check-input'}),
+            'tem_copia_fisica': forms.CheckboxInput(attrs={'class':'form-check-input'}),
+            'prioridade': forms.TextInput(attrs={'class':'form-control'}),
+            'habilidade_vinculada': forms.TextInput(attrs={'class':'form-control'}),
+            'link_externo': forms.URLInput(attrs={'class':'form-control','placeholder':'https://'}),
         }
