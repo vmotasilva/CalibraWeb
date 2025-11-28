@@ -87,7 +87,7 @@ urlpatterns = [
     path("import-jobs/<uuid:job_id>/retry/", views.retry_import_job_view, name="retry_import_job"),
     path("import-jobs.json", views.import_jobs_json_view, name="import_jobs_json"),
         # Procedimentos público (consulta)
-        path("procedimentos/", views.procedimentos_list_view, name="procedimentos_list"),
+        path("procedimentos/", views.procedimentos_list_view, name="procedimentos_lista"),
         path("procedimentos/export/xlsx/", views.export_procedimentos_excel_view, name="export_procedimentos_excel"),
         path("procedimentos/export/pdf/", views.export_procedimentos_pdf_view, name="export_procedimentos_pdf"),
         path("procedimentos/importar/", views.imp_procedimentos_view, name="importar_procedimentos"),
