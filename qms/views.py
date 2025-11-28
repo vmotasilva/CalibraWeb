@@ -1877,8 +1877,9 @@ def imp_procedimentos_view(request):
                 if col not in df.columns:
                     df[col] = None
             created = 0; updated = 0; errors = 0
-            for _, row in df.iterrows():
-                # Normalize row keys to avoid invisible character issues
+            import logging
+            logger = logging.getLogger("qms.import_procedimentos")
+            for idx, row in df.iterrows():
                 row_dict = {str(k).strip().lower(): v for k, v in row.items()}
                 def clean(val):
                     import pandas as pd
@@ -1890,7 +1891,9 @@ def imp_procedimentos_view(request):
                     return sval
                 no = clean(row_dict.get('no'))
                 codigo = clean(row_dict.get('codigo'))
-                if not codigo: continue
+                if not codigo:
+                    logger.warning(f"Linha {idx+1}: código vazio, linha ignorada. Dados: {row_dict}")
+                    continue
                 codigo = codigo.upper()
                 nome = clean(row_dict.get('nome') or row_dict.get('titulo'))
                 descricao = clean(row_dict.get('descricao'))
@@ -1902,7 +1905,9 @@ def imp_procedimentos_view(request):
                     if not val or str(val).lower() == 'nan': return None
                     try:
                         return pd.to_datetime(val, dayfirst=True).date()
-                    except: return None
+                    except Exception as e:
+                        logger.warning(f"Linha {idx+1}: erro ao converter data '{val}': {e}")
+                        return None
                 ultima_revisao = parse_date(row_dict.get('ultima_revisao') or row_dict.get('data_revisao'))
                 data_aprovacao = parse_date(row_dict.get('data_aprovacao'))
                 proxima_revisao = parse_date(row_dict.get('proxima_revisao'))
@@ -1930,9 +1935,11 @@ def imp_procedimentos_view(request):
                             'sub_area': sub_area,
                         }
                     )
+                    logger.info(f"Linha {idx+1}: Procedimento {codigo} {'criado' if was_created else 'atualizado'}.")
                     created += 1 if was_created else 0
                     updated += 0 if was_created else 1
-                except Exception:
+                except Exception as e:
+                    logger.error(f"Linha {idx+1}: erro ao importar procedimento {codigo}. Dados: {row_dict}. Erro: {e}")
                     errors += 1
             messages.success(request, f"Procedimentos criados: {created}, atualizados: {updated}, erros: {errors}")
             return redirect('procedimentos_lista')
