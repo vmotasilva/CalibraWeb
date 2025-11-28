@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from qms.admin import admin_site
 from django.contrib.auth import views as auth_views
 from django.urls import path
 from django.views.generic.base import RedirectView
@@ -11,7 +12,7 @@ urlpatterns = [
     # 1. Redireciona a raiz do site direto para o login
     path("", RedirectView.as_view(url="/login/")),
     # 2. Admin
-    path("admin/", admin.site.urls),
+    path("admin/", admin_site.urls),
     # 3. Autenticação
     path(
         "login/",

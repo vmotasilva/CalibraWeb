@@ -1,24 +1,70 @@
 from datetime import date
 
 from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.http import urlencode
 
-# Importando todos os models
-from .models import AvaliacaoFornecedor  # Models de Ocorrência e Solicitação
-from .models import Ocorrencia  # Ocorrência de RH (Colaborador)
-from .models import \
-    OcorrenciaInstrumento  # Ocorrência de Metrologia (Instrumento)
-from .models import (CategoriaInstrumento, CentroCusto, Colaborador,
-                     DocumentoPessoal, FaixaMedicao, Ferias, Fornecedor,
-                     HierarquiaSetor, HistoricoCalibracao, Instrumento,
-                     Orcamento, OrdemCalibracao, PacoteTreinamento, Padrao,
-                     Procedimento, ProcessoCotacao, RegistroTreinamento, Setor,
-                     SolicitacaoInstrumento, UnidadeMedida)
+from .models import (
+    AvaliacaoFornecedor, Ocorrencia, OcorrenciaInstrumento,
+    CategoriaInstrumento, CentroCusto, Colaborador, DocumentoPessoal, FaixaMedicao, Ferias, Fornecedor,
+    HierarquiaSetor, HistoricoCalibracao, Instrumento, Orcamento, OrdemCalibracao, PacoteTreinamento, Padrao,
+    Procedimento, ProcessoCotacao, RegistroTreinamento, Setor, SolicitacaoInstrumento, UnidadeMedida, Area, ProcedimentoRevisao
+)
 
-# --- INLINES GERAIS (Tabelas dentro de outras telas) ---
+
+# --- Customização do AdminSite para Agrupamento ---
+class CalibraAdminSite(admin.AdminSite):
+    site_header = 'Calibra QMS - Administração'
+    site_title = 'Calibra QMS Admin'
+    index_title = 'Site administration'
+
+    def get_app_list(self, request):
+        # Agrupamento customizado
+        app_dict = self._build_app_dict(request)
+        # Ordem e títulos customizados
+        ordering = [
+            ('HR', _('HR'), [
+                'Colaborador', 'Ferias', 'DocumentoPessoal', 'Ocorrencia', 'Vacation periods', 'Employee documents', 'Employee occurrences', 'Employees',
+            ]),
+            ('METROLOGY', _('Metrology'), [
+                'Instrumento', 'FaixaMedicao', 'CategoriaInstrumento', 'Padrao', 'HistoricoCalibracao', 'OrdemCalibracao',
+            ]),
+            ('GED', _('Procedures & Training'), [
+                'Procedimento', 'ProcedimentoRevisao', 'Area', 'RegistroTreinamento', 'PacoteTreinamento',
+            ]),
+            ('PERIODIC TASKS', _('Periodic Tasks'), [
+                'Clocked', 'Crontabs', 'Intervals',
+            ]),
+            ('SUPPLY', _('Suppliers & Quotes'), [
+                'Fornecedor', 'ProcessoCotacao', 'Orcamento',
+            ]),
+            ('REQUESTS', _('Requests'), [
+                'SolicitacaoInstrumento',
+            ]),
+        ]
+        custom_apps = []
+        for code, title, models in ordering:
+            app_models = []
+            for model in models:
+                for app in app_dict.values():
+                    for m in app['models']:
+                        if m['object_name'] == model or m['name'] == model:
+                            app_models.append(m)
+            if app_models:
+                custom_apps.append({'name': title, 'app_label': code, 'models': app_models})
+        # Adiciona apps não agrupados
+        grouped = set(m['object_name'] for app in custom_apps for m in app['models'])
+        for app in app_dict.values():
+            extra_models = [m for m in app['models'] if m['object_name'] not in grouped]
+            if extra_models:
+                custom_apps.append({'name': app['name'], 'app_label': app['app_label'], 'models': extra_models})
+        return custom_apps
+
+# Substitui o site padrão
+admin_site = CalibraAdminSite(name='calibra_admin')
 
 
 class CentroCustoInline(admin.TabularInline):
@@ -111,7 +157,7 @@ class SetorPorGrupoFilter(admin.SimpleListFilter):
 # --- CADASTROS PRINCIPAIS (RH / ESTRUTURA) ---
 
 
-@admin.register(Setor)
+@admin.register(Setor, site=admin_site)
 class SetorAdmin(admin.ModelAdmin):
     list_display = ("nome", "listar_ccs", "responsavel")
     search_fields = ("nome",)
@@ -121,13 +167,13 @@ class SetorAdmin(admin.ModelAdmin):
         return ", ".join([c.codigo for c in obj.centros_custo.all()])
 
 
-@admin.register(CentroCusto)
+@admin.register(CentroCusto, site=admin_site)
 class CentroCustoAdmin(admin.ModelAdmin):
     search_fields = ("codigo", "descricao", "setor__nome")
     list_display = ("codigo", "descricao", "setor")
 
 
-@admin.register(Colaborador)
+@admin.register(Colaborador, site=admin_site)
 class ColaboradorAdmin(admin.ModelAdmin):
     def get_setor_nome(self, obj):
         return obj.setor.nome if obj.setor else "-"
@@ -180,7 +226,7 @@ class ColaboradorAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(HierarquiaSetor)
+@admin.register(HierarquiaSetor, site=admin_site)
 class HierarquiaSetorAdmin(admin.ModelAdmin):
     list_display = ("setor", "turno", "lider", "supervisor", "gerente")
     list_filter = ("setor", "turno")
@@ -219,20 +265,20 @@ class HierarquiaSetorAdmin(admin.ModelAdmin):
 # --- CONFIGURAÇÕES DE METROLOGIA (INSTRUMENTOS) ---
 
 
-@admin.register(UnidadeMedida)
+@admin.register(UnidadeMedida, site=admin_site)
 class UnidadeMedidaAdmin(admin.ModelAdmin):
     list_display = ("nome", "sigla")
     search_fields = ("nome", "sigla")
 
 
-@admin.register(CategoriaInstrumento)
+@admin.register(CategoriaInstrumento, site=admin_site)
 class CategoriaInstrumentoAdmin(admin.ModelAdmin):
     list_display = ("nome", "descricao", "unidade_padrao")
     search_fields = ("nome", "descricao", "unidade_padrao__sigla")
     autocomplete_fields = ["unidade_padrao"]
 
 
-@admin.register(Padrao)
+@admin.register(Padrao, site=admin_site)
 class PadraoAdmin(admin.ModelAdmin):
     list_display = ("codigo", "descricao", "data_validade", "status_validade", "ativo")
     search_fields = ("codigo", "descricao", "numero_certificado")
@@ -248,7 +294,7 @@ class PadraoAdmin(admin.ModelAdmin):
     status_validade.short_description = "Validade"
 
 
-@admin.register(Instrumento)
+@admin.register(Instrumento, site=admin_site)
 class InstrumentoAdmin(admin.ModelAdmin):
     list_display = (
         "tag",
@@ -298,7 +344,7 @@ class InstrumentoAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(HistoricoCalibracao)
+@admin.register(HistoricoCalibracao, site=admin_site)
 class HistoricoCalibracaoAdmin(admin.ModelAdmin):
     list_display = (
         "instrumento",
@@ -322,7 +368,7 @@ class HistoricoCalibracaoAdmin(admin.ModelAdmin):
 # --- NOVOS PAINEIS (SOLICITAÇÕES E OCORRÊNCIAS AVULSAS) ---
 
 
-@admin.register(SolicitacaoInstrumento)
+@admin.register(SolicitacaoInstrumento, site=admin_site)
 class SolicitacaoAdmin(admin.ModelAdmin):
     list_display = (
         "tipo",
@@ -336,7 +382,7 @@ class SolicitacaoAdmin(admin.ModelAdmin):
 
 
 # CORREÇÃO: OcorrenciaAdmin separado para RH
-@admin.register(Ocorrencia)
+@admin.register(Ocorrencia, site=admin_site)
 class OcorrenciaAdmin(admin.ModelAdmin):
     # Ajuste os campos conforme seu model de RH
     list_display = ("colaborador", "data_ocorrencia")
@@ -344,14 +390,14 @@ class OcorrenciaAdmin(admin.ModelAdmin):
 
 
 # CORREÇÃO: OcorrenciaInstrumentoAdmin separado para Metrologia
-@admin.register(OcorrenciaInstrumento)
+@admin.register(OcorrenciaInstrumento, site=admin_site)
 class OcorrenciaInstrumentoAdmin(admin.ModelAdmin):
     list_display = ("instrumento", "tipo", "data_ocorrencia", "usuario_responsavel")
     list_filter = ("tipo", "data_ocorrencia")
     search_fields = ("instrumento__tag",)
 
 
-@admin.register(OrdemCalibracao)
+@admin.register(OrdemCalibracao, site=admin_site)
 class OrdemCalibracaoAdmin(admin.ModelAdmin):
     list_display = ("instrumento", "fornecedor", "status", "data_prevista")
     list_filter = ("status", "tipo_local")
@@ -367,7 +413,7 @@ admin.site.register(Orcamento)
 # --- PROCEDIMENTOS E TREINAMENTOS ---
 
 
-@admin.register(Procedimento)
+@admin.register(Procedimento, site=admin_site)
 class ProcedimentoAdmin(admin.ModelAdmin):
     def get_setor_nome(self, obj):
         return obj.setor.nome if obj.setor else "-"
@@ -377,7 +423,7 @@ class ProcedimentoAdmin(admin.ModelAdmin):
     list_filter = ("setor",)
 
 
-@admin.register(RegistroTreinamento)
+@admin.register(RegistroTreinamento, site=admin_site)
 class RegistroTreinamentoAdmin(admin.ModelAdmin):
     def procedimento_info(self, obj):
         return f"{obj.procedimento.codigo} (Rev. {obj.procedimento.revisao_atual})"
@@ -400,8 +446,22 @@ class RegistroTreinamentoAdmin(admin.ModelAdmin):
     autocomplete_fields = ["colaborador", "procedimento"]
 
 
-@admin.register(PacoteTreinamento)
+@admin.register(PacoteTreinamento, site=admin_site)
 class PacoteTreinamentoAdmin(admin.ModelAdmin):
+    @admin.register(Area, site=admin_site)
+    class AreaAdmin(admin.ModelAdmin):
+        list_display = ("nome", "descricao")
+        search_fields = ("nome", "descricao")
+
+    @admin.register(ProcedimentoRevisao, site=admin_site)
+    class ProcedimentoRevisaoAdmin(admin.ModelAdmin):
+        list_display = ("procedimento", "revisao", "data_revisao", "data_aprovacao", "elaborador", "revisor", "aprovador", "criado_em")
+        search_fields = ("procedimento__codigo", "revisao")
+
+    # Registros simples
+    admin_site.register(Fornecedor)
+    admin_site.register(ProcessoCotacao)
+    admin_site.register(Orcamento)
     filter_horizontal = ("procedimentos",)
     list_display = ("nome", "count_docs")
 
