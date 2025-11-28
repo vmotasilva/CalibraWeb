@@ -96,20 +96,20 @@
         {% if procedimentos %}
           {% for p in procedimentos %}
             <tr class="align-middle">
-              <td class="small">{{ p.no }}</td>
-              <td class="fw-semibold"><a href="{% url 'detalhe_procedimento' p.id %}" class="text-decoration-none">{{ p.codigo }}</a></td>
-              <td class="small">{{ p.nome|truncatechars:80 }}</td>
-              <td class="small">{{ p.classificacao }}</td>
-              <td class="small">{{ p.autor }}</td>
-              <td class="small">{{ p.numero_revisao }}</td>
+              <td class="small">{{ p.no|default_if_none:"-"|yesno:"-,-" }}</td>
+              <td class="fw-semibold"><a href="{% url 'detalhe_procedimento' p.id %}" class="text-decoration-none">{{ p.codigo|default_if_none:"-" }}</a></td>
+              <td class="small">{{ p.nome|default_if_none:"-"|truncatechars:80 }}</td>
+              <td class="small">{{ p.classificacao|default_if_none:"-" }}</td>
+              <td class="small">{{ p.autor|default_if_none:"-" }}</td>
+              <td class="small">{{ p.numero_revisao|default_if_none:"-" }}</td>
               <td class="small">{% if p.ultima_revisao %}{{ p.ultima_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
               <td class="small">{% if p.data_aprovacao %}{{ p.data_aprovacao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
               <td class="small">{% if p.proxima_revisao %}{{ p.proxima_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
               <td class="small">{% if p.data_validade %}{{ p.data_validade|date:'d/m/Y' }}{% else %}-{% endif %}</td>
-              <td class="small">{{ p.pasta }}</td>
-              <td class="small">{{ p.documentos_controlados }}</td>
-              <td class="small">{{ p.matriz }}</td>
-              <td class="small">{{ p.sub_area }}</td>
+              <td class="small">{{ p.pasta|default_if_none:"-" }}</td>
+              <td class="small">{{ p.documentos_controlados|default_if_none:"-" }}</td>
+              <td class="small">{{ p.matriz|default_if_none:"-" }}</td>
+              <td class="small">{{ p.sub_area|default_if_none:"-" }}</td>
             </tr>
           {% endfor %}
         {% else %}
