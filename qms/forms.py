@@ -258,7 +258,7 @@ class ProcedimentoForm(forms.ModelForm):
     class Meta:
         model = Procedimento
         fields = [
-            'codigo', 'titulo', 'tipo', 'revisao_atual', 'data_revisao', 'data_aprovaçao_revisao',
+            'codigo', 'titulo', 'tipo', 'revisao_atual', 'data_revisao', 'data_aprovacao_revisao',
             'setor', 'area', 'elaborador', 'revisor', 'aprovador', 'arquivo',
             'aplica_treinamento', 'tem_copia_fisica', 'prioridade', 'habilidade_vinculada', 'link_externo'
         ]
