@@ -774,12 +774,12 @@ def export_procedimentos_pdf_view(request):
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     termo = (request.GET.get('q') or '').strip().upper()
-    tipo = (request.GET.get('tipo') or '').strip().upper()
+    classificacao = (request.GET.get('classificacao') or '').strip().upper()
     qs = Procedimento.objects.all()
     if termo:
-        qs = qs.filter(models.Q(codigo__icontains=termo) | models.Q(titulo__icontains=termo))
-    if tipo in {"POP","DOC","FOR","TAB","DEX","OUTRO"}:
-        qs = qs.filter(tipo=tipo)
+        qs = qs.filter(models.Q(codigo__icontains=termo) | models.Q(nome__icontains=termo))
+    if classificacao:
+        qs = qs.filter(classificacao__iexact=classificacao)
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
     w, h = A4
@@ -788,14 +788,26 @@ def export_procedimentos_pdf_view(request):
     c.drawString(40, y, 'Relatório de Procedimentos')
     y -= 25
     c.setFont('Helvetica', 8)
-    headers = ['Código','Título','Tipo','Rev','Data Rev','Aprov']
+    headers = ['Código','Nome','Classificação','Número Revisão','Última Revisão','Data Aprovação','Próxima Revisão','Data Validade','Pasta','Autor','Documentos Controlados','Matriz','Sub-Área']
     c.drawString(40, y, ' | '.join(headers))
     y -= 12
     c.setFont('Helvetica', 7)
     for p in qs.order_by('codigo'):
-        line = [p.codigo, (p.titulo[:40] + ('...' if len(p.titulo)>40 else '')), p.tipo, p.revisao_atual,
-                p.data_revisao.strftime('%d/%m/%Y') if p.data_revisao else '',
-                p.data_aprovacao_revisao.strftime('%d/%m/%Y') if p.data_aprovacao_revisao else '']
+        line = [
+            str(p.codigo or ''),
+            (p.nome[:40] + ('...' if p.nome and len(p.nome)>40 else '')) if p.nome else '',
+            str(p.classificacao or ''),
+            str(p.numero_revisao or ''),
+            p.ultima_revisao.strftime('%d/%m/%Y') if p.ultima_revisao else '',
+            p.data_aprovacao.strftime('%d/%m/%Y') if p.data_aprovacao else '',
+            p.proxima_revisao.strftime('%d/%m/%Y') if p.proxima_revisao else '',
+            p.data_validade.strftime('%d/%m/%Y') if p.data_validade else '',
+            str(p.pasta or ''),
+            str(p.autor or ''),
+            str(p.documentos_controlados or ''),
+            str(p.matriz or ''),
+            str(p.sub_area or ''),
+        ]
         c.drawString(40, y, ' | '.join(line))
         y -= 10
         if y < 50:
