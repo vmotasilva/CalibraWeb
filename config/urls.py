@@ -1,4 +1,4 @@
-path("treinamentos/", views.treinamentos_list_view, name="treinamentos_lista"),
+from django.conf import settings
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -102,6 +102,9 @@ urlpatterns = [
     path("healthz/", views.health_check, name="healthz"),
     # 9. Ocorrência de Colaborador
     path("rh/ocorrencia/nova/", views.registrar_ocorrencia_view, name="registrar_ocorrencia"),
+
+    # Treinamentos
+    path("treinamentos/", views.treinamentos_list_view, name="treinamentos_lista"),
 ]
 
 # Configuração para servir arquivos de mídia/estáticos em modo Debug
