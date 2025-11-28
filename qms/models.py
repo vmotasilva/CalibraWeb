@@ -35,7 +35,7 @@ class Setor(models.Model):
 
     class Meta:
         verbose_name = "Setor"
-        verbose_name_plural = "0.1 Cadastro de Setores"
+        verbose_name_plural = "Cadastro de Setores"
         ordering = ["nome"]
 
 
@@ -56,7 +56,7 @@ class CentroCusto(models.Model):
 
     class Meta:
         verbose_name = "Centro de Custo"
-        verbose_name_plural = "0.2 Centros de Custo"
+        verbose_name_plural = "Centros de Custo"
         unique_together = ("setor", "codigo")
 
 
@@ -153,7 +153,7 @@ class Colaborador(models.Model):
 
     class Meta:
         verbose_name = "Colaborador"
-        verbose_name_plural = "1. Colaboradores (RH)"
+        verbose_name_plural = "Colaboradores (RH)"
 
 
 class HierarquiaSetor(models.Model):
@@ -199,7 +199,7 @@ class HierarquiaSetor(models.Model):
 
     class Meta:
         verbose_name = "Hierarquia"
-        verbose_name_plural = "1.1 Hierarquia (Setor x Turno)"
+        verbose_name_plural = "Hierarquia (Setor x Turno)"
         unique_together = ("setor", "turno")
 
 
@@ -271,7 +271,7 @@ class Ocorrencia(models.Model):
 
     class Meta:
         verbose_name = "Ocorrência"
-        verbose_name_plural = "1.3 Ocorrências"
+        verbose_name_plural = "Ocorrências"
 
 
 class DocumentoPessoal(models.Model):
@@ -316,7 +316,7 @@ class Padrao(models.Model):
 
     class Meta:
         verbose_name = "Padrão / Kit"
-        verbose_name_plural = "3. Padrões de Rastreabilidade"
+        verbose_name_plural = "Padrões de Rastreabilidade"
 
 
 # ==============================================================================
@@ -332,7 +332,7 @@ class UnidadeMedida(models.Model):
         return f"{self.nome} ({self.sigla})"
 
     class Meta:
-        verbose_name_plural = "2.1 Unidades de Medida"
+        verbose_name_plural = "Unidades de Medida"
 
 
 class CategoriaInstrumento(models.Model):
@@ -346,7 +346,7 @@ class CategoriaInstrumento(models.Model):
         return self.nome
 
     class Meta:
-        verbose_name_plural = "2.2 Categorias de Instrumentos"
+        verbose_name_plural = "Categorias de Instrumentos"
 
 
 # --- 1. Solicitação de Instrumentos ---
@@ -507,7 +507,7 @@ class Instrumento(models.Model):
 
     class Meta:
         verbose_name = "Instrumento"
-        verbose_name_plural = "2. Instrumentos"
+        verbose_name_plural = "Instrumentos"
 
     def __str__(self):
         return f"{self.tag} - {self.descricao}"
@@ -576,7 +576,7 @@ class FaixaMedicao(models.Model):
         return f"{self.valor_minimo} a {self.valor_maximo} {self.unidade.sigla}"
 
     class Meta:
-        verbose_name_plural = "2.3 Faixas de Medição"
+        verbose_name_plural = "Faixas de Medição"
 
 
 class HistoricoCalibracao(models.Model):
@@ -652,7 +652,7 @@ class HistoricoCalibracao(models.Model):
 
     class Meta:
         verbose_name = "Histórico de Calibração"
-        verbose_name_plural = "4. Histórico de Calibrações"
+        verbose_name_plural = "Histórico de Calibrações"
         ordering = ["-data_calibracao"]
         unique_together = (
             "instrumento",
@@ -732,7 +732,7 @@ class Fornecedor(models.Model):
         return f"{self.nome_fantasia}"
 
     class Meta:
-        verbose_name_plural = "5. Fornecedores"
+        verbose_name_plural = "Fornecedores"
 
 
 class AvaliacaoFornecedor(models.Model):
@@ -774,7 +774,7 @@ class ProcessoCotacao(models.Model):
         return f"{self.titulo} ({self.status})"
 
     class Meta:
-        verbose_name_plural = "6. Processos de Cotação"
+        verbose_name_plural = "Processos de Cotação"
 
 
 class Orcamento(models.Model):
@@ -862,7 +862,7 @@ class Procedimento(models.Model):
 
     class Meta:
         verbose_name = "Procedimento"
-        verbose_name_plural = "7.1 Procedimentos (GED)"
+        verbose_name_plural = "Procedimentos (GED)"
         ordering = ["codigo"]
 
 
@@ -878,7 +878,7 @@ class PacoteTreinamento(models.Model):
 
     class Meta:
         verbose_name = "Pacote de Treinamento"
-        verbose_name_plural = "7.3 Pacotes de Treinamento"
+        verbose_name_plural = "Pacotes de Treinamento"
 
 
 # --- NOVO: Área Macro para Procedimentos ---
@@ -891,7 +891,7 @@ class Area(models.Model):
 
     class Meta:
         verbose_name = 'Área'
-        verbose_name_plural = '7.0 Áreas (Macro)'  
+        verbose_name_plural = 'Áreas (Macro)'
         ordering = ['nome']
 
 
@@ -908,7 +908,7 @@ class ProcedimentoRevisao(models.Model):
 
     class Meta:
         verbose_name = 'Histórico de Revisão de Procedimento'
-        verbose_name_plural = '7.1.1 Histórico de Revisões'
+        verbose_name_plural = 'Histórico de Revisões'
         ordering = ['-criado_em']
 
     def __str__(self):
@@ -937,7 +937,7 @@ class RegistroTreinamento(models.Model):
         return "PENDENTE"
 
     class Meta:
-        verbose_name_plural = "7.2 Matriz de Treinamentos"
+        verbose_name_plural = "Matriz de Treinamentos"
         unique_together = ("colaborador", "procedimento")
 
 

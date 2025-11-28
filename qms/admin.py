@@ -1,6 +1,7 @@
 from datetime import date
 
 from django.contrib import admin
+from django.contrib.auth.models import User, Group
 from django.utils.translation import gettext_lazy as _
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -63,8 +64,11 @@ class CalibraAdminSite(admin.AdminSite):
                 custom_apps.append({'name': app['name'], 'app_label': app['app_label'], 'models': extra_models})
         return custom_apps
 
+
 # Substitui o site padrão
 admin_site = CalibraAdminSite(name='calibra_admin')
+admin_site.register(User)
+admin_site.register(Group)
 
 
 class CentroCustoInline(admin.TabularInline):
