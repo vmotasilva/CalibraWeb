@@ -1867,12 +1867,16 @@ def imp_procedimentos_view(request):
             for _, row in df.iterrows():
                 def clean(val):
                     import pandas as pd
-                    if pd.isna(val) or str(val).lower() == 'nan':
-                        return ''
-                    return str(val).strip()
+                    if pd.isna(val) or val is None:
+                        return None
+                    sval = str(val).strip()
+                    if sval.lower() == 'nan' or sval == '':
+                        return None
+                    return sval
                 no = clean(row.get('no'))
-                codigo = clean(row.get('codigo')).upper()
+                codigo = clean(row.get('codigo'))
                 if not codigo: continue
+                codigo = codigo.upper()
                 nome = clean(row.get('nome') or row.get('titulo'))
                 descricao = clean(row.get('descricao'))
                 pasta = clean(row.get('pasta'))
