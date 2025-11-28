@@ -76,34 +76,40 @@
     <table class="table table-sm table-striped mb-0">
       <thead class="table-light">
         <tr class="small text-uppercase">
+          <th style="width:80px;">No.</th>
           <th style="width:120px;">Código</th>
-          <th style="width:220px;">Título</th>
-          <th style="width:70px;">Tipo</th>
-          <th style="width:90px;">Revisão</th>
-          <th style="width:110px;">Data Rev.</th>
+          <th style="width:220px;">Nome</th>
+          <th style="width:120px;">Classificação</th>
+          <th style="width:100px;">Autor</th>
+          <th style="width:80px;">Revisão</th>
+          <th style="width:110px;">Últ. Revisão</th>
           <th style="width:110px;">Aprovação</th>
-          <th style="width:140px;">Setor</th>
-          <th style="width:140px;">Área</th>
-          <th style="width:140px;">Elaborador</th>
-          <th style="width:140px;">Revisor</th>
-          <th style="width:140px;">Aprovador</th>
+          <th style="width:110px;">Próx. Revisão</th>
+          <th style="width:110px;">Validade</th>
+          <th style="width:120px;">Pasta</th>
+          <th style="width:120px;">Doc. Controlados</th>
+          <th style="width:120px;">Matriz</th>
+          <th style="width:120px;">Sub-Área</th>
         </tr>
       </thead>
       <tbody>
         {% if procedimentos %}
           {% for p in procedimentos %}
             <tr class="align-middle">
+              <td class="small">{{ p.no }}</td>
               <td class="fw-semibold"><a href="{% url 'detalhe_procedimento' p.id %}" class="text-decoration-none">{{ p.codigo }}</a></td>
-              <td class="small">{{ p.titulo|truncatechars:80 }}</td>
-              <td class="small">{{ p.tipo }}</td>
-              <td class="small">{{ p.revisao_atual }}</td>
-              <td class="small">{% if p.data_revisao %}{{ p.data_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
-              <td class="small">{% if p.data_aprovacao_revisao %}{{ p.data_aprovacao_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
-              <td class="small">{% if p.setor %}{{ p.setor.nome }}{% else %}-{% endif %}</td>
-              <td class="small">{% if p.area %}{{ p.area.nome }}{% else %}-{% endif %}</td>
-              <td class="small">{% if p.elaborador %}{{ p.elaborador.nome_completo }}{% else %}-{% endif %}</td>
-              <td class="small">{% if p.revisor %}{{ p.revisor.nome_completo }}{% else %}-{% endif %}</td>
-              <td class="small">{% if p.aprovador %}{{ p.aprovador.nome_completo }}{% else %}-{% endif %}</td>
+              <td class="small">{{ p.nome|truncatechars:80 }}</td>
+              <td class="small">{{ p.classificacao }}</td>
+              <td class="small">{{ p.autor }}</td>
+              <td class="small">{{ p.numero_revisao }}</td>
+              <td class="small">{% if p.ultima_revisao %}{{ p.ultima_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+              <td class="small">{% if p.data_aprovacao %}{{ p.data_aprovacao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+              <td class="small">{% if p.proxima_revisao %}{{ p.proxima_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+              <td class="small">{% if p.data_validade %}{{ p.data_validade|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+              <td class="small">{{ p.pasta }}</td>
+              <td class="small">{{ p.documentos_controlados }}</td>
+              <td class="small">{{ p.matriz }}</td>
+              <td class="small">{{ p.sub_area }}</td>
             </tr>
           {% endfor %}
         {% else %}
