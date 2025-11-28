@@ -2359,7 +2359,8 @@ def treinamentos_list_view(request):
     busca = request.GET.get('q')
 
     if status:
-        qs = qs.filter(status_treinamento=status)
+        # status_treinamento é uma property, não pode ser filtrada no queryset
+        qs = [t for t in qs if t.status_treinamento == status]
     if colaborador_id:
         qs = qs.filter(colaborador_id=colaborador_id)
     if procedimento_id:
