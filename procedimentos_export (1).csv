@@ -1,0 +1,1331 @@
+﻿CODIGO;NOME;CLASSIFICACAO;NUMERO_REVISAO;ULTIMA_REVISAO;DATA_APROVACAO;PROXIMA_REVISAO;DATA_VALIDADE;PASTA;AUTOR;DOCUMENTOS_CONTROLADOS;MATRIZ;SUB_AREA
+DEX.002;ISO 9001:2015 - Sistemas de gestão da qualidade - Requisitos;Documentos Externos;;2019-02-28;2019-02-28;2026-08-19;2026-11-18;Normas;Vagner Domingos;Sim;;
+DEX.003;;;;;;;;;;;;
+DEX.004;;;;;;;;;;;;
+DEX.005;;;;;;;;;;;;
+DEX.006;ABNT NBR ISO.IEC17025 - Requisitos gerais para a competência de laboratórios de ensaio e calibração;Documentos Externos;;2019-04-08;2019-04-08;2026-08-19;2026-11-17;Normas;Vagner Domingos;Sim;;
+DEX.008;ICR08041 - HC Control Plan for Rx Labs;Documentos Externos;2;2024-08-14;2024-08-26;2026-08-26;2026-11-24;Rx Referencial;José Hamilton;Sim;;
+DEX.009;;;;;;;;;;;;
+DEX.010;;;;;;;;;;;;
+DEX.011;Finished lenses optical standard ISTM 04.025;Documentos Externos;3;2025-06-09;2025-08-12;2026-08-12;2026-11-10;Geral;Jessika Menacho;Sim;;
+DEX.012;ISTM04 - 024  - Rx Cosmetic Standard;Documentos Externos;4;2023-08-02;2023-08-04;2026-08-03;2026-11-03;Geral;Lucineide Pereira;Sim;;
+DEX.014;;;;;;;;;;;;
+DEX.015;;;;;;;;;;;;
+DEX.016;;;;;;;;;;;;
+DEX.017;;;;;;;;;;;;
+DEX.018;;;;;;;;;;;;
+DEX.019;;;;;;;;;;;;
+DEX.020;;;;;;;;;;;;
+DEX.021;;;;;;;;;;;;
+DEX.022;;;;;;;;;;;;
+DEX.023;;;;;;;;;;;;
+DEX.024;;;;;;;;;;;;
+DEX.025;;;;;;;;;;;;
+DEX.026;;;;;;;;;;;;
+DEX.027;;;;;;;;;;;;
+DEX.030;;;;;;;;;;;;
+DEX.033;Manual de aplicação 5S;Documentos Externos;;2020-10-08;2020-12-03;2026-07-09;2026-10-08;07-MELHORIA CONTÍNUA;Humberto Serra - Lab Rio;Não;QUALIDADE;5S
+DEX.034;ABNT NBR ISO13485:2016 - Produtos para saúde - Sistemas de gestão da qualidade - Requisitos para fins regulamentares;Documentos Externos;;2020-11-12;2020-11-12;2026-05-18;2026-08-17;Normas;Taís Flores;Sim;;
+DEX.035;Cross Hatch Adhesion Test for Hard Coating - ISTM-02-010;Documentos Externos;8;2025-03-11;2025-03-11;2026-03-11;2026-06-09;04-Testes;Taís Flores;Sim;;
+DEX.036;;;;;;;;;;;;
+DEX.038;Rótulos de Classe I  e Recicláveis;Documentos Externos;;2021-04-12;2021-04-13;2025-10-13;2025-12-29;Gestão de Resíduos;Aleksander Oliveira;Sim;;
+DEX.039;ABNT NBR ISO 8980-2:2021 Parte 2: Especificações para lentes de potência variável;Documentos Externos;1;2023-09-04;2023-09-04;2025-09-04;2025-12-04;Normas;Taís Flores;Sim;;
+DEX.040;DIP PROCESSES PARAMETERS - HC - DO-ENG02.0488;Documentos Externos;15;2021-06-30;2021-06-30;2026-06-30;2026-09-29;02-HC;Taís Flores;Sim;Doc's de Referência do STL;HC
+DEX.041;NR05 - COMISSÃO INTERNA DE PREVENÇÃO DE ACIDENTES E DE ASSÉDIO - CIPA;Documentos Externos;1;2023-09-04;2023-09-04;2025-09-04;2025-12-04;Normas;Taís Flores;Sim;;
+DEX.042;ICR08043 - ICR Titanium;Documentos Externos;1;2021-07-27;2021-07-27;2025-11-03;2026-02-02;Geral;Taís Flores;Sim;;
+DEX.043;DQO 04.020 - Standard for Storage and Transportations of lenses NEW Rev10;Documentos Externos;1;2023-01-30;2023-01-30;2026-01-30;2026-04-30;Geral;Taís Flores;Sim;;
+DEX.044;IMS 18253 - Validade Materiais Produtos;Documentos Externos;2;2021-08-24;2021-08-24;2025-11-03;2026-02-02;Geral;Taís Flores;Sim;;
+DEX.045;DQO-07.527 - Tracking Code Description;Documentos Externos;1;2024-04-10;2024-05-06;2026-05-06;2026-08-05;Geral;Taís Flores;Sim;;
+DEX.046;Specs - HVAC - HMC - Clean Room for HMC Processes;Documentos Externos;1;2019-01-17;2021-08-26;2026-02-02;2026-05-02;Geral;Taís Flores;Sim;;
+DEX.048;ISTM 01 - 002 E - Cosmetic Defect Glossary;Documentos Externos;3;2021-09-10;2021-09-10;2026-01-08;2026-04-08;Geral;Taís Flores;Sim;;
+DEX.049;ISTM 02- 020 - Inspeção Cosmética;Documentos Externos;4;2021-09-10;2021-09-10;2025-09-12;2026-01-05;Geral;Taís Flores;Sim;;
+DEX.050;ISTM 02 - 373 - Rx Cosmetic Inspection;Documentos Externos;1;2021-09-10;2021-09-10;2025-09-12;2026-01-05;Geral;Taís Flores;Sim;;
+DEX.051;NBR 5426 Nb 309 01 - Planos Amostragem Procedimentos Inspeção Atributos;Documentos Externos;;2021-09-15;2021-09-15;2026-06-03;2026-09-02;Normas;Taís Flores;Sim;;
+DEX.052;Portaria GM MS Nº 888, de 4 de maio de 2021;Documentos Externos;;2021-09-27;2021-12-07;2025-09-27;2025-11-28;Higienização;Aleksander Oliveira;Sim;;
+DEX.053;Programa de Proteção Respiratória - Fundacentro;Documentos Externos;;2021-09-27;2021-12-07;2025-09-27;2025-12-27;Programa de Proteção Respiratória;Fabricio Cunha;Sim;;
+DEX.054;NR 6 - Equipamento de Proteção Individual;Documentos Externos;1;2024-04-17;2024-04-18;2026-04-20;2026-07-20;Programa de Proteção Respiratória;Fabricio Cunha;Sim;;
+DEX.055;NR 01 - Disposições Gerais e Gerenciamento de Riscos Ocupacionais;Documentos Externos;1;2024-04-17;2024-08-22;2026-08-21;2026-11-19;Programa de Proteção Respiratória;Fabricio Cunha;Sim;;
+DEX.056;Workflow Novo Produto_v2003_V10_2;Documentos Externos;10;2021-10-07;2021-10-07;2026-08-14;2026-11-13;Qualidade;Taís Flores;Sim;QUALIDADE;QUALIDADE
+DEX.057;Solicitação de procedimento LIMS (português);Documentos Externos;2;2021-11-01;2021-11-03;2026-02-03;2026-05-03;08-EQC;Maurício Acioli;Sim;;
+DEX.058;General Specifications for Ventilation and air-conditionning in HMC Clean Rooms (Process Rooms);Documentos Externos;1;2019-01-17;2019-01-17;2026-02-09;2026-05-09;02-HC;Nathália Brandão;Sim;Doc's de Referência do STL;HC
+DEX.059;Lab Product Resume - Produtos Calculados pelo ADOC;Documentos Externos;;2021-12-17;2021-12-27;2025-09-27;2026-01-05;Resumo do Produto;Thiago Ribeiro;Sim;;
+DEX.060;Lab Product Resume - Produtos Calculados pelo SCG;Documentos Externos;;2021-12-17;2021-12-27;2025-09-27;2026-01-05;Resumo do Produto;Thiago Ribeiro;Sim;;
+DEX.061;NR 10 - Segurança em Instalações e Serviços em Eletricidade;Documentos Externos;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;LOTO - Bloqueio e Etiquetagem;Rodrigo Braga;Sim;;
+DEX.062;Lock-Out Tag-Out;Documentos Externos;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;LOTO - Bloqueio e Etiquetagem;Rodrigo Braga;Sim;;
+DEX.063;Workplace Risk Assessment;Documentos Externos;;2021-12-28;2022-01-03;2026-06-09;2026-09-08;Análise de Riscos;Rodrigo Braga;Sim;;
+DEX.064;Emergency Procedures;Documentos Externos;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;PAE - Plano de Atendimento a Emergência;Rodrigo Braga;Sim;;
+DEX.065;Fire Prevention and Response;Documentos Externos;1;2021-12-28;2022-02-23;2026-06-09;2026-09-08;PAE - Plano de Atendimento a Emergência;Rodrigo Braga;Sim;;
+DEX.066;Confined Spaces;Documentos Externos;1;2021-12-28;2022-02-23;2026-06-09;2026-09-08;Trabalhos Perigosos;Rodrigo Braga;Sim;;
+DEX.067;Hot Work;Documentos Externos;1;2021-12-28;2022-02-23;2026-06-09;2026-09-08;Trabalhos Perigosos;Rodrigo Braga;Sim;;
+DEX.068;Work at Height;Documentos Externos;1;2021-12-28;2022-02-23;2026-06-09;2026-09-08;Trabalhos Perigosos;Rodrigo Braga;Sim;;
+DEX.069;NR 33 - Segurança e Saúde nos Trabalhos em Espaços Confinados;Documentos Externos;;2021-12-28;2022-02-23;2026-06-09;2026-09-08;Trabalhos Perigosos;Rodrigo Braga;Sim;;
+DEX.070;NR 35 - Trabalho em Altura;Documentos Externos;;2021-12-28;2022-02-23;2026-06-09;2026-09-08;Trabalhos Perigosos;Rodrigo Braga;Sim;;
+DEX.071;Lei Nº 6.367, de 19 de Outubro de 1976;Documentos Externos;;2021-12-28;2021-12-28;2026-06-09;2026-09-09;Comunicações de Acidentes;Rodrigo Braga;Sim;;
+DEX.072;Lei Nº 6.514, de 22 de Dezembro de 1977;Documentos Externos;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;Comunicações de Acidentes;Rodrigo Braga;Sim;;
+DEX.073;Lei Nº 8.213, de 24 de Julho de 1991;Documentos Externos;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;Comunicações de Acidentes;Rodrigo Braga;Sim;;
+DEX.074;Design and Use Of;Documentos Externos;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;EMS - Segurança em Máquinas e Equipamentos;Rodrigo Braga;Sim;;
+DEX.075;Essilor Machinery Safety Policy;Documentos Externos;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;EMS - Segurança em Máquinas e Equipamentos;Rodrigo Braga;Sim;;
+DEX.076;NR-12 - Segurança no Trabalho em Máquinas e Equipamentos;Documentos Externos;;2021-12-28;2022-02-10;2026-06-09;2026-09-08;EMS - Segurança em Máquinas e Equipamentos;Rodrigo Braga;Sim;EHS;#Proteção em Máquinas e Equipamentos
+DEX.148;EMS - Acceptance Report;Documentos Externos;;2021-12-28;2022-02-10;2026-06-09;2026-09-08;EMS - Segurança em Máquinas e Equipamentos;Rodrigo Braga;Sim;;
+DEX.149;Essilor Machinery Safety Guide;Documentos Externos;;2021-12-28;2022-02-10;2026-06-09;2026-09-08;EMS - Segurança em Máquinas e Equipamentos;Rodrigo Braga;Sim;;
+DEX.150;Pre-Risk Assessment;Documentos Externos;;2021-12-28;2022-02-10;2026-06-09;2026-09-08;EMS - Segurança em Máquinas e Equipamentos;Rodrigo Braga;Sim;;
+DEX.151;Verificação de Alinhamento de Aro;Documentos Externos;;2022-01-18;2022-01-31;2026-06-09;2026-09-08;Montagem e Inspeção;Nathália Brandão;Sim;MONTAGEM;Encaixe
+DEX.152;Measurement of the Solid Content - HC - DO-ENG02.0476;Documentos Externos;8;2025-03-11;2025-03-11;2026-03-11;2026-06-11;04-Testes;Nathália Brandão;Sim;Doc's de Referência do STL;HC
+DEX.153;Measurement of Viscosity - HC - DO-ENG02.0838;Documentos Externos;6;2025-03-11;2025-03-11;2026-03-11;2026-06-09;04-Testes;Nathália Brandão;Sim;Doc's de Referência do STL;HC
+DEX.154;New Strip-K Formulation -  DO-ENGENG 02.1346;Documentos Externos;4;2022-04-19;2022-09-20;2025-09-13;2025-12-13;02-HC;Carlos Anselme;Sim;Doc's de Referência do STL;HC
+DEX.156;DO-ENG02-1745 - Reception of Varnish and Primer Carboys e Incoming Tests;Documentos Externos;5;2024-03-20;2024-04-17;2025-04-17;2026-07-24;02-HC;Aluney Junior;Sim;Doc's de Referência do STL;HC
+DEX.157;Mithril 1.6 Maintenance - DO-ENG02.1348;Documentos Externos;12;2025-04-02;2025-04-02;2026-04-02;2026-07-02;02-HC;Carlos Anselme;Sim;Doc's de Referência do STL;HC
+DEX.158;Chemical Solutions Preparation Methods for Dip Processes - DO-ENG02.484;Documentos Externos;8;2022-04-19;2022-09-20;2026-07-07;2026-10-06;02-HC;Carlos Anselme;Sim;Doc's de Referência do STL;HC
+DEX.159;Preparation of Newstrip solution from C/11 Concentrated - DO-ENG02.1378;Documentos Externos;2;2022-04-19;2022-09-20;2026-07-07;2026-11-06;02-HC;Carlos Anselme;Sim;Doc's de Referência do STL;HC
+DEX.161;Preparation and Maintenance of J2L9 Solution in Rx Hard Coat Production;Documentos Externos;2;2022-04-20;2022-09-20;2026-07-07;2026-11-06;02-HC;Carlos Anselme;Sim;Doc's de Referência do STL;HC
+DEX.162;Water guideline in HC process - DO-ENG02.1324;Documentos Externos;4;2022-04-20;2022-09-20;2026-06-01;2026-08-31;02-HC;Carlos Anselme;Sim;Doc's de Referência do STL;HC
+DEX.165;Manual de Compras Essilor - Orgalent;Documentos Externos;2;2022-05-06;2022-10-18;2025-09-20;2025-12-21;LabRio;Nathália Brandão;Não;;
+DEX.166;Modelo NOE NORIA Acompanhamento DO-ENG02.1348;Documentos Externos;;2022-05-24;2024-11-25;2025-11-25;2026-02-23;02-HC;Carlos Anselme;Sim;;
+DEX.169;Nova Formulação de Strip-K - DO-ENGENG 02.1346;Documentos Externos;4;2022-05-24;2023-10-10;2025-10-09;2026-01-07;02-HC;Carlos Anselme;Sim;;
+DEX.172;Métodos de Preparação de Soluções Químicas para Processos de Mergulho - DO-ENG02.484;Documentos Externos;8;2022-05-24;2023-10-10;2025-10-09;2026-01-07;02-HC;Carlos Anselme;Sim;;
+DEX.173;Preparação de solução de Newstrip de C/11 Concentrado - DO-ENG02.1378;Documentos Externos;2;2022-05-24;2023-10-10;2025-10-09;2026-01-07;02-HC;Carlos Anselme;Sim;;
+DEX.174;Preparação e Manutenção da Solução J2L9 na Produção de Revestimento Duro Rx;Documentos Externos;3;2024-12-02;2024-12-30;2025-12-30;2026-03-30;02-HC;Carlos Anselme;Sim;;
+DEX.175;Diretriz de água no processo HC - DO-ENG02.1324;Documentos Externos;4;2022-05-24;2023-10-10;2025-10-09;2026-01-07;02-HC;Carlos Anselme;Sim;;
+DEX.176;NR 24 - Condições Sanitárias e de Conforto nos Locais de Trabalho;Documentos Externos;;2022-05-27;2022-05-27;2026-05-27;2026-08-26;Higienização;Taís Flores;Sim;;
+DEX.178;ISTM 02258 - user_guide_SMR Thickness;Documentos Externos;;2017-07-10;2017-07-10;2026-05-29;2026-08-28;04-Testes;Taís Flores;Sim;Doc's de Referência do STL;Testes
+DEX.179;ISTM 09-069-05-EF - Selection of crown for reflectance measurement with SMR;Documentos Externos;5;2022-06-10;2022-06-10;2025-11-11;2026-02-10;04-Testes;Taís Flores;Sim;Doc's de Referência do STL;Testes
+DEX.181;ABNT NBR ISO 8980-1:2021 Parte 1: Especificações para lentes de visão simples e multifocal;Documentos Externos;1;2023-09-04;2023-09-04;2025-09-04;2025-12-04;Normas;Taís Flores;Sim;;
+DEX.182;;;;;;;;;;;;
+DEX.183;Crizal Prevencia UV35 Mithril 1.6 - DO-ENG02.0850;Documentos Externos;2;2022-09-02;2023-10-10;2025-10-09;2026-01-07;03-Antirreflexo;Alvaro Christofoli;Sim;Doc's de Referência do STL;Anti-Reflexo
+DEX.184;LEI Nº 12.903, DE 14 DE JANEIRO DE 2008 - Constituição do Estado - RS;Documentos Externos;;2022-12-14;2022-12-14;2025-12-14;2026-03-14;Regulatório;Taís Flores;Sim;;
+DEX.188;AR Color Distribution Control;Documentos Externos;3;2023-05-22;2023-07-03;2026-07-02;2026-10-01;03-Antirreflexo;Matheus Silva;Sim;HMC;Antirreflexo
+DEX.189;P 8.1-06 V01 - Gerenciamento de Resíduos Industriais;Documentos Externos;1;2023-05-17;2023-05-17;2026-05-18;2026-08-17;Sumaré - EHS;Taís Flores;Sim;;
+DEX.190;P 8.1-08 V01 - Infor. Segurança Produtos Químicos;Documentos Externos;1;2023-05-17;2023-05-17;2026-05-18;2026-08-17;Sumaré - EHS;Taís Flores;Sim;;
+DEX.191;P 8.1-16 V01 Utilização de EPIs;Documentos Externos;1;2023-05-17;2023-05-17;2026-05-18;2026-08-17;Sumaré - EHS;Taís Flores;Sim;;
+DEX.192;ABNT NBR ISO 31000:2018 - Gestão de Riscos - Diretrizes;Documentos Externos;2;2023-05-18;2023-05-18;2026-05-18;2026-08-17;Normas;Taís Flores;Sim;;
+DEX.193;Vocabulário Internacional de Metrologia - (VIM 2012);Documentos Externos;1;2023-05-18;2023-05-18;2026-05-18;2026-08-17;Normas;Taís Flores;Sim;;
+DEX.196;Leak Rate Package for AR in Mass Production and Rx;Documentos Externos;2;2024-04-05;2024-04-16;2026-04-16;2026-07-15;03-Antirreflexo;Matheus Silva;Sim;Doc's de Referência do STL;Anti-Reflexo
+DEX.197;Certificado de Regularidade Técnica - Óptico - Repro - MAURILIO ROBERTO PEREIRA;Documentos Externos;2;2025-03-14;2025-06-13;2026-06-13;2026-09-11;Regulatório;Taís Flores;Sim;;
+DEX.201;Decreto Nº 5711 - 23/05/2002 do Paraná PR codigo estado;Documentos Externos;;2023-05-24;2023-05-24;2026-05-25;2026-08-24;Regulatório;Taís Flores;Sim;;
+DEX.202;Certificado de Regularidade Técnica - Óptico - Optilab - RICARDO MARCEL CABRAL DE OLIVEIRA;Documentos Externos;2;2024-12-20;2024-12-20;2025-12-20;2026-03-20;Regulatório;Taís Flores;Sim;;
+DEX.203;Certificado de Regularidade Técnica - Óptico - Optilab - MARCIO AUGUSTO MARTINS;Documentos Externos;2;2024-12-20;2024-12-20;2026-11-25;2026-11-25;Regulatório;Taís Flores;Sim;;
+DEX.204;Decreto Estadual Nº 12.479 de 18 de outubro de 1978 - ESTADO DE SÃO PAULO;Documentos Externos;;2023-05-24;2023-05-24;2026-05-25;2026-08-24;Regulatório;Taís Flores;Sim;;
+DEX.205;Decreto Nº 5711 - 23/05/2002 do Paraná PR codigo estado;Documentos Externos;;2023-05-24;2023-05-24;2026-05-25;2026-08-24;Regulatório;Taís Flores;Sim;;
+DEX.207;Certificado de Regularidade Técnica - Óptico - Ceditop - Luiz Fernando Sturmer;Documentos Externos;2;2025-02-13;2025-04-29;2026-04-29;2026-07-28;Regulatório;Taís Flores;Sim;;
+DEX.209;Decreto nº 24.492, de 28 de junho de 1934;Documentos Externos;;2023-05-24;2023-05-24;2026-05-25;2026-08-24;Regulatório;Taís Flores;Sim;;
+DEX.210;Ion Gun - 7 Passos de Rotina (MARK II e II+);Documentos Externos;3;2023-05-30;2023-07-03;2026-07-02;2026-10-01;03-Antirreflexo;Matheus Silva;Sim;HMC;ION GUN
+DEX.211;Lei  Nº 18.561, de 21 de Dezembro de 2022;Documentos Externos;;2023-05-31;2023-05-31;2026-06-01;2026-08-28;Regulatório;Taís Flores;Sim;;
+DEX.212;Decreto N. 24.492, de 28 de Junho de 1934 - RJ;Documentos Externos;;2023-05-31;2023-05-31;2026-06-01;2026-08-28;Regulatório;Taís Flores;Sim;;
+DEX.213;;;;;;;;;;;;
+DEX.214;Gerenciamento do Cabeçote do Cristal de Quartzo e sua Manutenção para Máquina de AR - DO-ENG-021011;Documentos Externos;;2023-06-06;2023-07-03;2026-07-02;2026-10-01;03-Antirreflexo;Matheus Silva;Sim;HMC;Anti-Reflexo: STL
+DEX.216;Medição de Densidade de Potência Ultra-Sônica para Máquina SCL - DO-ENG-02OPR-00659;Documentos Externos;1;2023-07-03;2023-10-10;2025-10-09;2026-01-07;02-HC;Matheus Silva;Sim;HMC;Anti-Reflexo: STL
+DEX.217;Medição de Densidade de Potência Ultrassônica para Máquina LVM e D - DO-ENG02-0891;Documentos Externos;3;2023-07-03;2023-10-10;2025-10-09;2026-01-07;02-HC;Matheus Silva;Sim;HMC;Anti-Reflexo: STL
+DEX.218;Configuração do SiO2 Material - ENG-02-161;Documentos Externos;2;2023-07-03;2023-10-10;2025-10-09;2026-01-07;03-Antirreflexo;Matheus Silva;Sim;HMC;Anti-Reflexo: STL
+DEX.220;Modo de Operação - Configuração do material ZrO2 - DO-ENG-02-630;Documentos Externos;2;2023-07-03;2023-10-10;2025-10-09;2026-01-07;03-Antirreflexo;Matheus Silva;Sim;HMC;Anti-Reflexo: STL
+DEX.221;Ta2O5 (Pentóxido de Tântalo, Tântalo(V)-Óxido) - Arquivo de configuração de material - DO-ENG-02-1313;Documentos Externos;6;2023-07-03;2023-10-10;2025-10-09;2026-01-07;03-Antirreflexo;Matheus Silva;Sim;HMC;Anti-Reflexo: STL
+DEX.222;Rx Manufacturing Referential - GIB/BIG System;Documentos Externos;1;2023-08-04;2023-08-04;2026-08-03;2026-11-03;Auditoria de Produto;Lucineide Pereira;Sim;;
+DEX.223;ISTM 03 - 020 - Visual Inspection - Lens Inspection Checking Operation Mode;Documentos Externos;3;2023-08-04;2023-08-04;2026-08-03;2026-11-03;Geral;Lucineide Pereira;Sim;;
+DEX.224;DSX Top Coat Checking Using The Magic INK Nº500 Pen;Documentos Externos;3;2023-08-08;2023-08-11;2026-08-10;2026-11-09;Geral;Lucineide Pereira;Sim;;
+DEX.225;KY-130 Top Coat Checking Using The Mc Kee Zebra Pen;Documentos Externos;2;2023-08-08;2023-08-11;2026-08-10;2026-11-09;Geral;Lucineide Pereira;Sim;;
+DEX.226;Spectral Reflectance Measurement of Lenses With SMR - ISTM 02-016;Documentos Externos;;2023-03-15;2023-03-17;2026-06-09;2026-09-08;04-Testes;Lucineide Pereira;Sim;Doc's de Referência do STL;Testes
+DEX.227;New SMR Validation;Documentos Externos;1;2018-03-20;2018-03-28;2026-08-10;2026-11-09;04-Testes;Lucineide Pereira;Sim;Doc's de Referência do STL;Testes
+DEX.228;ISTM 02-036 - Installation Guide SMR - System of Measurements by Reflection of AR Coatings;Documentos Externos;8;2017-03-01;2017-03-01;2026-08-10;2026-11-09;04-Testes;Taís Flores;Sim;Doc's de Referência do STL;Testes
+DEX.230;Aquisição (Materiais/Serviços) - Laboratório Sumaré;Documentos Externos;;2023-08-21;2023-08-21;2026-08-20;2026-11-18;Sumaré Laboratório;Denise Miranda;Sim;;
+DEX.231;ISTM 02-026 - Operating Mode RCO2 Test;Documentos Externos;2;2018-05-14;2018-05-30;2025-08-28;2025-11-28;04-Testes;Lucineide Pereira;Sim;Doc's de Referência do STL;Testes
+DEX.233;ISTM 09-146 - RCO2 Test;Documentos Externos;1;2016-02-16;2016-02-16;2025-08-28;2025-11-28;04-Testes;Lucineide Pereira;Sim;Doc's de Referência do STL;Testes
+DEX.234;ISTM 09-018 - Ink Test;Documentos Externos;2;2018-05-03;2018-05-03;2025-08-28;2025-11-28;04-Testes;Lucineide Pereira;Sim;Doc's de Referência do STL;Testes
+DEX.235;ISTM 09-082 - Ink Test;Documentos Externos;3;2018-07-06;2018-07-06;2025-08-28;2025-11-28;04-Testes;Lucineide Pereira;Sim;Doc's de Referência do STL;Testes
+DEX.236;NX 10 Blows Test - ISTM-02-011;Documentos Externos;9;2025-03-11;2025-03-11;2026-03-11;2026-06-11;04-Testes;Lucineide Pereira;Sim;Doc's de Referência do STL;Testes
+DEX.238;ABNT NBR ISO 8980-4:2013 Parte 4: Especificações e métodos de ensaio para revestimentos antirrefletivos;Documentos Externos;1;2023-09-04;2023-09-04;2025-09-03;2025-12-02;Normas;Taís Flores;Sim;;
+DEX.239;ABNT NBR ISO 8980-5:2022 Parte 5: Requisitos mínimos para superfícies de lentes para óculos resistentes à abrasão;Documentos Externos;1;2023-09-04;2023-09-04;2025-09-03;2025-12-02;Normas;Taís Flores;Sim;;
+DEX.241;UV Monitoring Procedure - DO-ENG-02OPR-00529;Documentos Externos;2;2022-04-08;2022-04-08;2025-09-08;2025-12-27;Doc;José Roberto;Sim;;
+DEX.242;ART Blocker Glue Consumption;Documentos Externos;1;2018-12-17;2018-12-17;2025-09-27;2025-12-27;Doc;José Roberto;Sim;;
+DEX.243;Chuck Positioning Control - DO-ENG02.567;Documentos Externos;5;2022-01-06;2022-01-06;2025-09-06;2025-12-06;Doc;José Roberto;Sim;;
+DEX.244;Coolant Guidelines - DO-ENG02.1477;Documentos Externos;11;2022-11-25;2022-11-25;2025-11-25;2026-02-23;Doc;José Roberto;Sim;;
+DEX.245;Generator Calibration Procedure - DO-ENG02.0814;Documentos Externos;8;2022-04-24;2022-04-24;2025-09-24;2025-12-23;Doc;José Roberto;Sim;;
+DEX.246;Surface Quality Evaluation Gloss Meter Device - DO-ENG02.904;Documentos Externos;3;2016-01-13;2016-01-13;2026-09-15;2026-12-14;Doc;José Roberto;Sim;;
+DEX.247;VFT Orbit 1 Plano Calibration Procedure - DO-ENG-02OPR-00532;Documentos Externos;2;2022-05-23;2022-05-23;2025-09-23;2025-12-23;Doc;José Roberto;Sim;;
+DEX.248;VFT Orbit 2 Auto Calibration Procedure - DO-ENG02.903;Documentos Externos;2;2022-03-22;2022-03-22;2025-09-22;2025-12-20;Doc;José Roberto;Sim;;
+DEX.249;VFT Refrigerant Guidelines - DO-ENG02.1724;Documentos Externos;3;2022-10-07;2022-10-07;2025-10-07;2026-01-05;Doc;José Roberto;Sim;;
+DEX.250;VFT Orbit Preventive Maintenance - DO-ENG02.0897;Documentos Externos;3;2020-08-24;2020-08-24;2026-08-24;2026-11-23;Doc;José Roberto;Sim;;
+DEX.251;VFT Orbit Fast Tool Holder Adjustment - DO-ENG02.1653;Documentos Externos;4;2021-11-09;2021-11-09;2025-11-09;2026-02-07;Doc;José Roberto;Sim;;
+DEX.252;VFT Orbit 2 Plano Calibration Procedure - DO-ENG-02OPR-00527;Documentos Externos;2;2022-05-21;2022-05-21;2025-11-22;2025-12-19;Doc;José Roberto;Sim;;
+DEX.253;ICR08049 - Vx XR_v1_30052023 - VARILUX XR SERIES;Documentos Externos;1;2023-10-02;2023-10-02;2025-10-01;2025-12-30;Geral;Taís Flores;Sim;;
+DEX.254;ART Deblocker - Gripper Force Measurement - DO-ENG-02OPR-00279;Documentos Externos;;2019-12-01;2019-12-01;2025-11-22;2026-02-21;Doc;José Roberto;Sim;;
+DEX.256;ART Deblocker - Ultra Sonic Cleaning Conditions - DO-ENG-02OPR-00525;Documentos Externos;;2023-11-22;2023-11-22;2025-11-21;2026-02-19;Doc;José Roberto;Sim;;
+DEX.257;ART Deblocker - Preventive Maintenance;Documentos Externos;;2022-10-01;2023-11-01;2025-10-31;2026-01-29;Doc;José Roberto;Sim;;
+DEX.258;Lensmappers - Verification with Standard Mineral Lenses;Documentos Externos;2;2022-06-14;2022-06-14;2025-11-22;2026-02-21;Doc;José Roberto;Sim;;
+DEX.259;Coating Tank Caustic Cleaning in D-Machines - DO-ENG02.1486;Documentos Externos;2;2023-11-23;2024-02-26;2026-02-25;2026-05-26;02-HC;Carlos Anselme;Sim;Doc's de Referência do STL;HC
+DEX.260;Limpeza Cáustica de Tanques de Primer e Revestimento em D-Machines - DO-ENG02.1486;Documentos Externos;3;2025-05-28;2025-08-28;2026-08-28;2026-11-26;02-HC;Matheus Silva;Sim;;
+DEX.261;Automated Taping Machine - DO-ENG02.0892;Documentos Externos;2;2014-06-26;2014-06-26;2026-06-26;2026-09-25;Doc;José Roberto;Sim;;
+DEX.262;CLBS - Camera Delay Troubleshooting;Documentos Externos;;2014-01-01;2014-01-01;2026-04-01;2026-07-01;Doc;José Roberto;Sim;;
+DEX.263;CLBS1 - Operating Mode;Documentos Externos;1;2012-04-10;2012-04-10;2026-04-10;2026-07-09;Doc;José Roberto;Sim;;
+DEX.264;CLBS2 - Montagem Porta;Documentos Externos;2;2013-01-01;2013-01-01;2026-04-01;2026-07-01;Doc;José Roberto;Sim;;
+DEX.265;CLBS2 - Operating Mode;Documentos Externos;1;2012-04-10;2012-04-10;2026-04-10;2026-07-09;Doc;José Roberto;Sim;;
+DEX.266;iCLBS2 - Acceptance and Daily Checking;Documentos Externos;;2022-08-01;2022-08-01;2025-10-17;2026-01-19;Doc;José Roberto;Sim;;
+DEX.267;iCLBS1 - Operating mode;Documentos Externos;;2014-05-28;2014-06-11;2026-06-11;2026-09-10;Doc;José Roberto;Sim;;
+DEX.268;CLBS - Installation Guide;Documentos Externos;;2023-11-23;2023-11-23;2025-11-22;2026-02-20;Doc;José Roberto;Sim;;
+DEX.269;CLBS - Maintenance Guide;Documentos Externos;;2023-11-23;2023-11-23;2025-11-22;2026-02-20;Doc;José Roberto;Sim;;
+DEX.270;CLBS - User Guide;Documentos Externos;;2023-11-23;2023-11-23;2025-11-22;2026-02-20;Doc;José Roberto;Sim;;
+DEX.271;iCLBS1 - Software Setup Procedure and Barcode Reader Settings;Documentos Externos;;2014-05-09;2014-06-11;2026-06-11;2026-09-10;Doc;José Roberto;Sim;;
+DEX.272;Rx Consumables Catalog - DO-ENG-10CAT-00020;Documentos Externos;1;2024-04-01;2024-04-01;2026-04-01;2026-07-01;Doc;José Roberto;Sim;;
+DEX.273;DSPC - Measurement with a DLM - DO-ENG02.1034;Documentos Externos;2;2023-11-23;2023-11-23;2025-11-22;2026-02-20;Doc;José Roberto;Sim;;
+DEX.274;DSPC - Sphere Error at PRP Monitoring - DO-ENG09.0269;Documentos Externos;;2023-11-23;2023-11-23;2025-11-22;2026-02-20;Doc;José Roberto;Sim;;
+DEX.276;PRA - Nikon Black Insert Drawing;Documentos Externos;;2023-11-23;2023-11-23;2025-11-22;2026-02-20;Doc;José Roberto;Sim;;
+DEX.277;PRA - Essilor Pin Drawing;Documentos Externos;;2023-11-23;2023-11-23;2025-11-22;2026-02-20;Doc;José Roberto;Sim;;
+DEX.278;PRA - Calibration and Control - DO-ENG02-0568;Documentos Externos;7;2022-09-23;2022-09-23;2025-09-23;2025-12-22;Doc;Nathália Brandão;Sim;;
+DEX.279;WW RX Optical Standard;Documentos Externos;;2007-09-01;2007-09-01;2025-08-31;2025-11-29;Francês;Edgar Casallas;Sim;;
+DEX.280;;;;;;;;;;;;
+DEX.281;Tampografia de Lentes Ray-Ban - Sumaré Laboratório;Documentos Externos;;2023-12-19;2023-12-20;2025-12-19;2026-03-19;Sumaré Laboratório;Jesse Rodrigues;Sim;;
+DEX.282;Gravação Ez Marker Lentes Ray-Ban - Sumaré Laboratório;Documentos Externos;;2023-12-19;2023-12-20;2025-12-19;2026-03-19;Sumaré Laboratório;Jesse Rodrigues;Sim;;
+DEX.283;MadgeTech Temperature for Check Pre-Cure and Post-Cure Ovens - DO-ENG02-1989;Documentos Externos;3;2024-01-08;2024-02-26;2026-02-25;2026-05-26;03-Antirreflexo;Matheus Silva;Sim;Doc's de Referência do STL;Anti-Reflexo
+DEX.284;SnO2 (Tin Oxide) - Material Setting - DO-ENG02-779;Documentos Externos;2;2024-01-08;2024-02-28;2026-02-27;2026-05-28;03-Antirreflexo;Matheus Silva;Sim;Doc's de Referência do STL;Anti-Reflexo
+DEX.285;ITO (Indium Tin Oxide) - Material Setting - ENG02-165;Documentos Externos;4;2024-01-08;2024-02-28;2026-02-27;2026-05-28;03-Antirreflexo;Matheus Silva;Sim;Doc's de Referência do STL;Anti-Reflexo
+DEX.286;MgF2 - Material Setting - ENG02-167;Documentos Externos;;2024-01-08;2024-02-28;2026-02-27;2026-05-28;03-Antirreflexo;Matheus Silva;Sim;Doc's de Referência do STL;Anti-Reflexo
+DEX.287;MgO - Material Setting - ENG02-166;Documentos Externos;2;2024-01-08;2024-02-28;2026-02-27;2026-05-28;03-Antirreflexo;Matheus Silva;Sim;Doc's de Referência do STL;Anti-Reflexo
+DEX.288;DSX - Material Setting - DO-ENG02-0160;Documentos Externos;;2024-01-08;2024-02-28;2026-02-27;2026-05-28;03-Antirreflexo;Matheus Silva;Sim;Doc's de Referência do STL;Anti-Reflexo
+DEX.289;A.C.D.C. AR Color Distribution Control (MP & Rx) - DO-ENG02-1673;Documentos Externos;5;2024-01-09;2024-02-28;2026-02-27;2026-05-28;03-Antirreflexo;Matheus Silva;Sim;Doc's de Referência do STL;Anti-Reflexo
+DEX.290;Medição de Contagem de Partícula - KANOMAX;Documentos Externos;;2024-02-26;2024-11-08;2025-11-08;2026-02-06;02-HC;Matheus Silva;Sim;;
+DEX.291;Calibration and Cross-Checks in the Labs;Documentos Externos;1;2024-03-14;2024-11-26;2025-11-26;2026-02-24;Geral;Lucineide Pereira;Sim;;
+DEX.292;ICR 08-048 - International Control Requirements - MC6 AR Control;Documentos Externos;1;2024-03-14;2024-08-26;2026-08-26;2026-11-24;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.293;ICR 08-046 - AR Control Plan in Rx Labs;Documentos Externos;1;2024-03-14;2024-08-26;2026-08-26;2026-11-24;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.296;ICR 08-043 - International Control Requirements - Titanium AR Control;Documentos Externos;4;2024-03-14;2024-08-26;2026-08-26;2026-11-24;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.297;ICR 08-040 - International Control Requirements - Mirrors Control in Rx Labs;Documentos Externos;3;2024-03-14;2025-01-17;2026-01-17;2026-04-17;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.298;ICR 08-041 - International Control Requirements - HC Control Plan in Rx Labs;Documentos Externos;3;2024-03-14;2024-08-26;2026-08-26;2026-11-24;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.299;ICR 08-045 - International Control Requirements - Scratch Shields (Sun XProtect) AR Control;Documentos Externos;3;2024-08-14;2025-01-17;2026-01-17;2026-04-17;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.300;Résistance à la Chute de Bille FDA - ISTM-02028-05-F;Documentos Externos;5;2024-03-14;2024-11-26;2025-11-26;2026-02-24;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.301;ISTM-02028 - FDA Drop Ball Impact Resistance;Documentos Externos;5;2024-03-14;2024-08-26;2026-08-26;2026-11-24;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.302;Plan&Transform Gap analysis_ Laboratório - Sigla Estado - Brazil;Documentos Externos;16;2025-07-29;2025-08-01;2026-08-01;2026-10-30;Rx Referencial;Jessika Menacho;Sim;;
+DEX.305;Calibração - Orbit II;Documentos Externos;;2024-03-27;2024-04-08;2026-04-08;2026-07-07;Doc;Sergio Meza;Sim;;
+DEX.307;Liberação Diária (DRL) - Art Blocker;Documentos Externos;;2024-03-27;2024-04-08;2026-04-08;2026-07-07;Doc;Marcelo Bastos;Sim;;
+DEX.308;Troubleshoot - Alloy e LensMapper - DSPC;Documentos Externos;;2024-04-17;2024-07-10;2026-07-10;2026-10-09;00-Controle de Processo e DSPC;Marcelo Bastos;Sim;;
+DEX.309;Troubleshoot - Alloy y LensMapper - DSPC;Documentos Externos;;2024-04-17;2024-07-10;2026-07-10;2026-10-09;00-Control de Proceso y DSPC;Marcelo Bastos;Sim;;
+DEX.310;Caustic Cleaning of Primer and Coating Tanks in SCL Machines - DO-ENG02.1728;Documentos Externos;2;2025-06-16;2025-11-07;2025-11-08;2026-06-15;02-HC;Leonardo Pennetta;Sim;Doc's de Referência do STL;HC
+DEX.311;;;;;;;;;;;;
+DEX.312;ABNT NBR 14725 - Produtos Químicos - Informações sobre Segurança, Saúde e Meio Ambiente;Documentos Externos;1;2024-02-28;2024-02-28;2026-02-27;2026-05-28;Normas;Nathália Brandão;Sim;;
+DEX.314;ART Blocker A - Axis Adjustment;Documentos Externos;;2018-07-30;2018-07-30;2026-07-30;2026-10-28;Doc;Marcelo Bastos;Sim;;
+DEX.315;ART Blocker A - Machine Calibration;Documentos Externos;;2018-07-30;2018-07-30;2026-07-30;2026-10-28;Doc;Marcelo Bastos;Sim;;
+DEX.316;ART Blocker A - Video Calibration;Documentos Externos;;2024-07-30;2024-07-30;2026-07-30;2026-10-28;Doc;Marcelo Bastos;Sim;;
+DEX.317;ART Deblocker 2 - Calibration of the Collet Chuck Height;Documentos Externos;;2022-10-31;2022-10-31;2026-07-30;2026-10-28;Doc;Marcelo Bastos;Sim;;
+DEX.318;ART Deblocker 2 - Nozzle Calibration by Chuck;Documentos Externos;;2023-11-30;2023-11-30;2026-07-30;2026-10-28;Doc;Marcelo Bastos;Sim;;
+DEX.319;Multi FLEX - B-Axis and X-Axis Alignment;Documentos Externos;;2024-07-30;2024-07-30;2026-07-30;2026-10-28;Doc;Marcelo Bastos;Sim;;
+DEX.320;Multi FLEX - C-Axis Alignment;Documentos Externos;;2024-07-30;2024-07-30;2026-07-30;2026-10-28;Doc;Marcelo Bastos;Sim;;
+DEX.321;Multi FLEX - Loading System Alignment;Documentos Externos;;2024-07-30;2024-07-30;2026-07-30;2026-10-28;Doc;Marcelo Bastos;Sim;;
+DEX.325;GQS-LIS-001 - GQS Applicable Documents;Documentos Externos;7;2024-08-14;2024-08-26;2026-08-26;2026-11-24;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.327;Procedure: On Site DSPC(Digital Surfacing Process Control)- DO-ENG08.0017;Documentos Externos;4;2024-08-14;2024-08-26;2026-08-26;2026-11-24;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.328;ICR 08046 - AR Control Plan in Rx Labs;Documentos Externos;;2024-08-14;2024-08-26;2026-08-26;2026-11-24;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.329;ISTM-02028-FDA Drop Ball Impact Resistance;Documentos Externos;5;2024-08-14;2024-08-26;2026-08-26;2026-11-24;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.335;GQS-LIS-003 Returns Motives List;Documentos Externos;2;2024-08-14;2024-11-22;2025-11-22;2026-02-20;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.336;GQS-LIS-004 List of Global QMS Qualified Auditors 2024;Documentos Externos;2;2024-08-14;2025-01-17;2026-01-17;2026-04-17;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.338;ICR 08-045 - International Control Requirements - Scratch Shields (Sun XProtect) AR Control;Documentos Externos;3;2024-08-14;2024-11-22;2025-11-22;2026-02-20;Rx Referencial;Lucineide Pereira;Sim;;
+DEX.341;Manual DIG 3.0.4;Documentos Externos;;2024-08-20;2024-11-22;2025-11-22;2026-02-20;Geral;Lucineide Pereira;Sim;;
+DEX.343;ISTM02020 - Inspeção Cosmética;Documentos Externos;4;2024-08-20;2025-05-21;2026-05-21;2026-08-19;Geral;Lucineide Pereira;Sim;;
+DEX.344;DO-QUA-I 01.070_ Rx Cosmetic Calibration Procedure;Documentos Externos;;2024-09-09;2024-11-22;2025-11-22;2026-02-20;Geral;Lucineide Pereira;Sim;;
+DEX.345;Operating Procedure of Sandblasting - DO-ENG-02OPR-00920;Documentos Externos;1;2024-09-19;2024-11-08;2025-11-08;2026-02-06;03-Antirreflexo;Renan Barbosa;Sim;;
+DEX.346;Lens Clipping and Basket Loading for Dip Rx Process - DO-ENG02-0486;Documentos Externos;6;2024-10-02;2024-11-08;2025-11-08;2026-02-06;02-HC;Nathália Brandão;Sim;;
+DEX.347;Manual DIG 3.0.4_ Português;Documentos Externos;;2024-11-18;2024-11-22;2025-11-22;2026-02-20;Geral;Lucineide Pereira;Sim;;
+DEX.348;Manual DIG 3.0.4_ Espanhol;Documentos Externos;;2024-11-18;2024-11-22;2025-11-22;2026-02-20;Geral;Lucineide Pereira;Sim;;
+DEX.349;Thickness Measurement of Hard Coat or Monolayer with the SMR - ISTM-02-017;Documentos Externos;7;2025-03-11;2025-03-11;2026-03-11;2026-06-11;04-Testes;Nathália Brandão;Sim;;
+DEX.350;Checking of SMR for Reflectance Measurement of Lenses - ISTM-03-016;Documentos Externos;12;2025-03-11;2025-03-11;2026-03-11;2026-06-11;04-Testes;Nathália Brandão;Sim;;
+DEX.351;Checking of N10 Blows Equipment - ISTM-03-077;Documentos Externos;;2025-03-11;2025-03-11;2026-03-11;2026-06-11;04-Testes;Nathália Brandão;Sim;;
+DEX.352;Auditoria do Método de Teste - Cross Hatch Teste Adesão - QUA-TM-AUD-079;Documentos Externos;2;2025-03-11;2025-03-11;2026-03-11;2026-06-11;Testes;Jessika Menacho;Sim;;
+DEX.353;Auditoria de Método de Teste - Ink Test - QUA-TM-AUD-077;Documentos Externos;1;2025-03-11;2025-03-11;2026-03-11;2026-06-11;Testes;Jessika Menacho;Sim;;
+DEX.354;Auditoria de Método de Teste - NX10 - QUA-TM-AUD-076;Documentos Externos;1;2025-03-11;2025-03-11;2026-03-11;2026-06-11;Testes;Jessika Menacho;Sim;;
+DEX.355;Supply Sheet - RCO2 Test - QUA-TM-SUP-005;Documentos Externos;1;2025-03-11;2025-03-11;2026-03-11;2026-06-11;04-Testes;Nathália Brandão;Sim;;
+DEX.356;Auditoria de Método de Teste - RC02 - QUA-TM-AUD-075;Documentos Externos;1;2025-03-11;2025-03-11;2026-03-11;2026-06-09;Testes;Jessika Menacho;Sim;;
+DEX.357;Aprovação, Liberação ou Reprovação dos Testes de Qualidade - LATAM-PR-QMS-07;Documentos Externos;;2025-03-11;2025-05-30;2026-05-30;2026-08-28;Testes;Jessika Menacho;Sim;HMC;Teste de Qualidade GERAL
+DEX.358;Certificado de Regularidade Técnica - Óptico - digiTOP - Silvério Trzaskos;Documentos Externos;;2025-03-17;2025-04-23;2026-04-23;2026-07-22;Regulatório;Nickolle Rodrigues;Sim;;
+DEX.359;Template Máquina D Rx AEL - M1.6 Ajuste e acompanhamento - DO-ENG02.1348;Documentos Externos;;2025-04-04;2025-05-30;2026-05-30;2026-08-28;02-HC;Nathália Brandão;Sim;;
+DEX.360;Template Máquinas CDC-CDS 1000 - M1.6 Ajuste e acompanhamento - DO-ENG02.1348;Documentos Externos;;2025-04-04;2025-05-30;2026-05-30;2026-08-28;02-HC;Nathália Brandão;Sim;;
+DEX.361;ISTM 09-023-02-E/F Top coat control using arcotec ink 30mn/m;Documentos Externos;;2021-09-09;2021-11-15;2026-04-22;2026-07-22;Geral;Nathália Brandão;Sim;;
+DEX.362;Medição da Reflexão de Lentes com AR Usando SMR - QUA-FORM-002-08;Documentos Externos;;2025-04-22;2025-04-22;2026-04-22;2026-07-21;Testes;Jessika Menacho;Sim;;
+DEX.363;Testes AR - LATAM-FR-QMS-13;Documentos Externos;1;2025-04-22;2025-05-30;2026-05-30;2026-08-28;Testes;Lucineide Pereira;Sim;;
+DEX.364;Medição da Espessura de HC Usando SMR - QUA-FORM-002-09;Documentos Externos;;2025-04-22;2025-04-22;2026-04-22;2026-07-21;Testes;Jessika Menacho;Sim;;
+DEX.365;Gestão de Desvios - LATAM-PR-QMS-08;Documentos Externos;;2025-04-25;2025-05-30;2026-05-30;2026-08-28;Gestão de Desvio;Jessika Menacho;Sim;;
+DEX.366;Gerenciamento de Risco de Processo (para Fabricação) - GQS-TEMP-015;Documentos Externos;;2025-04-25;2025-05-30;2026-05-30;2026-08-28;Gestão de Desvio;Jessika Menacho;Sim;;
+DEX.367;Solicitação de Desvio - GQS-TEMP-032;Documentos Externos;4;2025-04-25;2025-05-30;2026-05-30;2026-08-28;Gestão de Desvio;Jessika Menacho;Sim;;
+DEX.368;;;;;;;;;;;;
+DEX.369;;;;;;;;;;;;
+DEX.370;;;;;;;;;;;;
+DEX.371;Procedure For Vaccum Gauge Calibration (MP&Rx) - DO-ENG02.0798;Documentos Externos;5;2025-07-25;2025-08-28;2026-08-28;2026-11-26;03-Antirreflexo;Jessika Menacho;Sim;;
+DEX.372;RX Lens Inspection List of Lens Defects - ISTM 01.068;Documentos Externos;1;2025-07-30;2025-08-01;2026-08-01;2026-10-30;Rx Referencial;Jessika Menacho;Sim;;
+DOC.001;;;;;;;;;;;;
+DOC.011;Modelo Padrão para 5S;Documentos;;2020-10-07;2020-12-03;2026-07-08;2026-10-07;07-MELHORIA CONTÍNUA;Humberto Serra - Lab Rio;Não;QUALIDADE;5S
+DOC.012;DA - Gerente de Laboratório;Documentos;1;2021-08-11;2021-10-21;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.013;DA - Gerente de Métodos e Processos;Documentos;1;2021-08-11;2021-10-21;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.014;DA - Analista de Processos;Documentos;1;2021-08-09;2021-10-08;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.015;DA - Coordenador de Processos;Documentos;1;2021-08-09;2021-10-21;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.016;DA - Abastecedor de Linha;Documentos;1;2021-08-11;2021-10-08;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.017;DA - Supervisor de Produção;Documentos;1;2021-08-11;2021-10-21;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.018;DA - Líder de Produção;Documentos;1;2021-08-11;2022-06-02;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.021;DA - Analista de Qualidade;Documentos;1;2021-08-09;2021-10-08;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.022;DA - Gerente de Qualidade;Documentos;1;2021-08-11;2021-10-21;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.023;DA - Técnico em Óptica;Documentos;1;2021-08-11;2021-10-08;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.024;DA - Assistente de Qualidade;Documentos;1;2021-08-09;2021-10-08;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.025;DA - Operador de Produção;Documentos;1;2021-08-11;2021-10-08;2026-04-01;2026-07-01;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.028;Padronização de Uniformes;Documentos;3;2022-07-06;2022-09-05;2026-07-02;2026-10-01;Uniformes;Taís Flores;Sim;;
+DOC.029;Controle de Cópias Físicas;Procedimento Operacional Padrão;5;2023-01-25;2023-01-30;2026-01-30;2026-04-25;11-APRENDIZAGEM QUALIEX;Taís Flores;Sim;QUALIDADE;QUALIEX
+DOC.030;Carta Cliente - Autorização - Defeitos de Bloco - Brasil;Documentos;;2021-09-01;2021-09-10;2026-05-20;2026-08-20;Estoque / Expedição;Taís Flores;Sim;;
+DOC.032;Política da Qualidade;Documentos;1;2022-04-08;2022-04-12;2026-07-08;2026-10-07;Qualidade;Taís Flores;Sim;QUALIDADE;QUALIDADE
+DOC.033;Fluxograma de Processos - LabRio;Documentos;4;2025-03-20;2025-03-21;2026-03-21;2026-06-19;LabRio;Renan Barbosa;Sim;;
+DOC.035;Manual de Procedimentos - Garantias e Programas de Parceria;Documentos;3;2025-04-17;2025-11-03;2026-11-03;2027-02-01;SAC;Melissa Grandolfo;Sim;Atendimento;Garantia
+DOC.036;Fluxograma de Processo Padrão - HMC;Documentos;;2022-05-02;2024-05-13;2026-05-13;2026-08-12;00-Geral HMC;Nathália Brandão;Sim;;
+DOC.037;Procedimento de Devolução de Lentes - Technopark;Documentos;3;2025-09-15;2025-09-19;2026-09-19;2026-12-18;Technopark;Aline Franco;Sim;;
+DOC.038;Fluxograma de Processo Padrão - Surfaçagem;Documentos;;2022-06-10;2024-05-13;2026-05-13;2026-08-12;00-Geral SURFACE;William Karasiaki;Sim;;
+DOC.039;Fluxograma de Processo Padrão - Montagem;Documentos;;2022-06-13;2024-05-13;2026-05-13;2026-08-12;00 - Controle de Processo;William Karasiaki;Sim;;
+DOC.040;Diagrama de Flujo Estándar del Proceso - Montagem;Documentos;;2022-06-29;2024-05-13;2026-05-13;2026-08-12;00-Control de Procesos;William Karasiaki;Sim;;
+DOC.041;Diagrama de Flujo Estándar del Proceso - HMC;Documentos;;2022-06-30;2024-05-13;2026-05-13;2026-08-12;00-Control de Procesos;William Karasiaki;Sim;;
+DOC.042;Diagrama de Flujo Estándar del Proceso - Surfaçagem;Documentos;;2022-06-30;2024-05-13;2026-05-13;2026-08-12;00-Control de Proceso y DSPC;William Karasiaki;Sim;;
+DOC.043;Fluxo de Atendimento de Chamado para Manutenção Preventiva e Corretiva - Lab Rio;Documentos;;2022-08-10;2022-09-22;2025-09-20;2025-12-21;LabRio;Renan Barbosa;Sim;;
+DOC.044;Procedimiento de Creación de Imagen HD;Documentos;;2022-08-11;2022-08-11;2026-08-11;2026-11-09;Español;Edgar Casallas;Sim;;
+DOC.045;Procedimento de Criação de Imagem HD;Documentos;;2022-08-11;2022-08-11;2026-08-11;2026-11-09;Português;Edgar Casallas;Sim;;
+DOC.046;Alinhamento de Repasse de Pedidos para Novos Laboratórios - Lab Rio;Documentos;;2022-08-11;2022-08-18;2025-09-20;2025-12-21;LabRio;Renan Barbosa;Sim;;
+DOC.047;Fluxograma de Processos - Grown;Documentos;3;2025-01-09;2025-02-12;2026-02-12;2026-05-13;Grown;Natalia Silva;Sim;;
+DOC.048;Fluxograma de Processos - Repro;Documentos;3;2025-09-05;2025-10-24;2026-10-24;2027-01-22;Repro;Laura Vaz;Sim;;
+DOC.050;Política de Compras de Suprimentos - Ceditop;Documentos;;2022-11-16;2022-11-28;2026-08-28;2026-11-27;Ceditop;João Martins;Sim;;
+DOC.051;Política de Compras de Insumos - Ceditop;Documentos;1;2023-01-20;2023-01-25;2026-05-18;2026-08-17;Ceditop;João Martins;Sim;;
+DOC.052;Política de Compras de Peças - Ceditop;Documentos;;2022-11-16;2022-11-28;2025-11-28;2026-02-16;Ceditop;João Martins;Sim;;
+DOC.053;Política de Compras - Repro;Documentos;2;2025-11-21;2025-11-26;2026-11-26;2027-02-24;Repro;Debora Rocha;Sim;;
+DOC.054;Fluxograma de Processos - Ceditop;Documentos;2;2024-10-02;2024-10-16;2025-10-16;2026-01-14;Ceditop;Leticia Santos;Sim;;
+DOC.055;Fluxograma de Processos - Sumaré CD;Documentos;1;2023-09-25;2023-10-03;2025-10-02;2025-12-31;Sumaré CD;Juliana Gomes Ferreira;Sim;;
+DOC.057;Manual de Compras - Grown;Documentos;4;2024-10-02;2024-10-07;2025-10-07;2026-01-05;Grown;Cauê Emerenciano;Sim;;
+DOC.058;Comunicação com o Cliente - Lab Rio;Documentos;;2022-12-06;2022-12-07;2026-06-09;2026-09-08;LabRio;Renan Barbosa;Sim;;
+DOC.059;Recusa de Nota Fiscal - Technopark;Documentos;1;2023-02-02;2023-02-06;2026-02-06;2026-04-25;Technopark;Felipe Costa;Sim;;
+DOC.060;Manual de Compras - Technoaprk;Documentos;2;2023-02-16;2023-03-10;2025-05-17;2025-12-30;Technopark;Benicio Souza;Sim;;
+DOC.063;Critérios de Conformidade Cosmética;Documentos;13;2024-11-19;2024-11-22;2025-11-22;2026-02-20;Produtos e Informações;Lucineide Pereira;Sim;QUALIDADE;RX_REFERENCIAL
+DOC.066;Manual de Compras - digiTOP;Documentos;1;2025-03-13;2025-03-17;2026-03-17;2026-06-15;digiTOP;Nickolle Rodrigues;Sim;;
+DOC.067;Comunicação com o Cliente - Repro;Documentos;;2023-05-11;2023-05-25;2026-05-25;2026-08-24;Repro;Ovanir Lima Junior;Sim;;
+DOC.068;Fluxograma de Processos - digiTOP;Documentos;3;2025-04-30;2025-05-30;2026-05-30;2026-08-28;digiTOP;Nickolle Rodrigues;Sim;;
+DOC.069;Descrição de Atividade - Utilização;Documentos;;2023-06-01;2023-07-18;2026-07-17;2026-10-16;Descrição de Atividade;Taís Flores;Sim;QUALIDADE;RH/DP
+DOC.070;Fluxograma de Processos - Coating RS;Documentos;;2023-06-19;2023-07-19;2026-07-17;2026-10-16;Coating RS;Christiano Silva;Sim;;
+DOC.071;Fluxograma de Processos - Tecnolens;Documentos;1;2023-09-06;2023-09-11;2025-09-10;2025-12-09;Tecnolens;Vinicius Silva;Sim;QUALIDADE;TECNOLENS
+DOC.073;Manual de Compras - Tecnolens;Documentos;;2023-07-11;2023-07-19;2026-07-17;2026-10-16;Tecnolens;Tatiana Andrade;Sim;QUALIDADE;COMPRAS
+DOC.074;Descrição de Atividade DA - Modelo;Documentos;;2023-07-17;2023-07-17;2026-07-16;2026-10-15;Descrição de Atividade;Lucineide Pereira;Sim;;
+DOC.075;Padrão Cosmético - RX Referencial - Repro;Documentos;1;2024-07-30;2024-08-08;2026-08-08;2026-11-06;Repro;Laura Vaz;Sim;;
+DOC.076;Tolerâncias para Lentes - Repro;Documentos;;2023-07-26;2023-07-26;2026-07-24;2026-10-23;Repro;Renata Turri;Sim;;
+DOC.077;Pilares da Tomada de Decisão - Aprovado, Liberado Sob Concessão ou Reprovado;Documentos;;2023-08-04;2023-08-04;2026-08-04;2026-11-03;Auditoria de Produto;Lucineide Pereira;Sim;QUALIDADE;QUALIDADE
+DOC.078;Priorização de Serviços - Laboratório Sumaré;Documentos;1;2023-10-31;2023-12-14;2025-12-13;2026-03-13;Sumaré Laboratório;Rafael Medeiros;Sim;;
+DOC.079;Fluxograma de Processos - Sumaré Laboratório;Documentos;1;2024-09-30;2024-10-16;2025-10-16;2026-01-14;Sumaré Laboratório;Gustavo Grangeiro;Sim;;
+DOC.080;DA - Coordenador de Qualidade;Documentos;;2023-10-23;2023-10-27;2025-10-26;2026-01-24;Descrição de Atividade;Juliana Costa Barros;Sim;;
+DOC.081;DA - Gerente Técnico;Documentos;;2023-10-23;2023-10-27;2025-10-26;2026-01-24;Descrição de Atividade;Juliana Costa Barros;Sim;;
+DOC.082;Manual de Compras - Optilab;Documentos;;2023-11-21;2023-12-04;2025-12-03;2026-03-03;Optilab;Nickolle Rodrigues;Sim;;
+DOC.083;Fluxograma de Processos - Optilab;Documentos;1;2025-04-29;2025-05-30;2026-05-30;2026-08-28;Optilab;Nickolle Rodrigues;Sim;;
+DOC.084;Gestão de Troca dos Pads (Descarte) - Padrão;Documentos;;2024-02-01;2024-02-02;2026-02-01;2026-05-02;00-Geral SURFACE;Jesse Rodrigues;Sim;SURFAÇAGEM;Polimento
+DOC.085;Manual de compras - Visolab;Documentos;;2024-02-09;2024-02-21;2026-02-20;2026-05-21;Visolab;Jaldo Reis;Sim;;
+DOC.086;Fotos - Cadinho Processo Essilor - Lab Sumaré;Documentos;;2024-02-21;2024-02-21;2026-05-20;2026-08-20;00-Geral AR;Miguel Soares Lima;Sim;;
+DOC.087;Fluxograma de Processos - Visolab;Documentos;2;2024-08-16;2024-08-16;2026-08-17;2026-11-16;Visolab;Jaldo Reis;Sim;;
+DOC.088;Fluxo do Rack - Technopark;Documentos;1;2025-09-09;2025-10-28;2026-10-28;2027-01-26;Technopark;Thiago Francelino;Sim;;
+DOC.089;Acompanhamento dos Pedidos por Cores - Visolab;Documentos;;2024-05-06;2024-05-07;2026-05-07;2026-08-06;Visolab;Jaldo Reis;Sim;;
+DOC.090;Montagem de Garra - Gabarito;Documentos;1;2024-09-18;2024-10-16;2025-10-16;2026-01-14;01-Pré-Inspeção - Preparação;Rodrigo Lima;Sim;;
+DOC.092;Padrão de Envio de Fotos de Lentes para Garantia - Visolab;Documentos;;2024-07-17;2024-07-19;2026-07-20;2026-10-19;Visolab;Jaldo Reis;Sim;;
+DOC.095;Gabarito de Direcionamento - Prisma;Documentos;;2024-07-25;2024-07-30;2026-07-30;2026-10-29;00-Controle de Processo e DSPC;Renan Barbosa;Sim;;
+DOC.101;Organograma - Visolab;Documentos;;2024-08-20;2024-08-20;2026-08-20;2026-11-18;Visolab;Jaldo Reis;Sim;;
+DOC.102;Organograma - Ceditop;Documentos;1;2025-09-27;2025-09-30;2026-09-30;2026-12-29;Ceditop;Leticia Santos;Sim;;
+DOC.103;Codificação_Padrão DIG;Documentos;;2024-11-18;2024-11-22;2025-11-22;2026-02-20;Produtos e Informações;Lucineide Pereira;Sim;;
+DOC.104;Processo em Casos de Emergência - Ceditop;Documentos;;2024-12-12;2025-02-18;2026-02-18;2026-05-19;Ceditop;Gislaine Teixeira Nobre;Sim;;
+DOC.106;Gabarito de Utlização de Blue Tape - Fitadeira Manual;Documentos;;2025-02-12;2025-06-10;2026-06-10;2026-09-08;00-Geral;Silvano Silva;Sim;;
+DOC.107;Política de Estoque - Repro;Documentos;;2025-02-12;2025-02-12;2026-02-12;2027-01-21;Repro;Laura Vaz;Sim;;
+DOC.108;Softwares para Validação - Lab Rio;Documentos;;2025-05-01;2025-06-05;2026-06-05;2026-09-03;LabRio;Renan Barbosa;Sim;;
+DOC.109;Critério de Conformidade Cosmética - Lentes Stellest - Lab Rio;Documentos;;2025-05-01;2025-05-15;2026-05-15;2026-08-13;LabRio;Renan Barbosa;Sim;;
+DOC.110;Procedimento para armações Danificadas - Visolab;Documentos;;2025-05-22;2025-05-29;2026-05-29;2026-08-27;Visolab;Lealdo dos Santos;Sim;;
+DOC.111;Softwares para Validação - Visolab;Documentos;;2025-06-09;2025-06-25;2026-06-25;2026-09-23;Visolab;Evany Rabelo;Sim;;
+DOC.113;Organograma - Technopark;Documentos;;2025-08-08;2025-09-04;2026-09-04;2026-12-03;Technopark;Rodrigo Lima;Sim;;
+DOC.114;Leitura do Pedido de Defeito e Quebra no Estoque - Repro;Documentos;;2025-08-28;2025-08-29;2026-08-29;2026-11-27;Repro;Debora Rocha;Sim;;
+DOC.115;Bases Diferentes no Estoque - Repro;Documentos;;2025-08-28;2025-08-29;2026-08-29;2026-11-27;Repro;Debora Rocha;Sim;;
+DOC.116;Avaliação de Conferência Óptica - Lab Rio;Documentos;;2025-09-24;2025-09-30;2026-09-30;2026-12-29;LabRio;Renan Barbosa;Sim;;
+DOC.117;Avaliação de Conferência de Montagem - Lab Rio;Documentos;;2025-09-24;2025-09-29;2026-09-29;2026-12-28;LabRio;Renan Barbosa;Sim;;
+DOC.118;Avaliação de FOG-ID para Lentes com Antirreflexo Crizal e No Reflex - Lab Rio;Documentos;;2025-10-08;2025-10-13;2026-10-13;2027-01-11;LabRio;Renan Barbosa;Sim;;
+DOC.EHS.011;EPI's Coating;EHS;3;2023-12-15;2023-12-15;2025-12-14;2026-03-14;EPI's;Caroline Oliveira;Sim;EHS;EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.012;EPI's Estoque;EHS;2;2023-12-15;2023-12-15;2025-12-14;2026-03-14;EPI's;Caroline Oliveira;Sim;EHS;EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.013;EPI's Manutenção;EHS;2;2023-12-15;2023-12-15;2025-12-14;2026-03-14;EPI's;Caroline Oliveira;Sim;EHS;EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.014;EPI's Setor Limpeza;EHS;2;2023-12-15;2023-12-15;2025-12-14;2026-03-14;EPI's;Caroline Oliveira;Sim;EHS;EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.015;EPI's Montagem;EHS;2;2023-12-15;2023-12-15;2025-12-14;2026-03-14;EPI's;Caroline Oliveira;Sim;EHS;EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.016;EPI's Coloração;EHS;2;2023-12-15;2023-12-15;2025-12-14;2026-03-14;EPI's;Caroline Oliveira;Sim;EHS;EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.017;EPI's Surfaçagem;EHS;2;2023-12-15;2023-12-15;2025-12-14;2026-03-14;EPI's;Caroline Oliveira;Sim;EHS;EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.018;EPI;EHS;2;2024-05-07;2024-05-10;2026-05-11;2026-08-10;EPI's;Guilherme Rosa;Sim;EHS;EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.019;Qualificação Ambiental em Fornecedores e Prestadores de Serviços;EHS;;2021-04-09;2021-07-22;2025-10-13;2025-12-29;Gestão de Resíduos;Aleksander Oliveira;Sim;EHS;#GESTÃO DE RESÍDUOS
+DOC.EHS.020;Procedimento Gestão de Resíduos;EHS;2;2023-09-22;2023-09-25;2025-09-24;2025-12-23;Gestão de Resíduos;Aleksander Oliveira;Sim;EHS;Gerenciamento de Resíduos
+DOC.EHS.024;Circular Interna de Implantação do PPR;EHS;;2021-09-27;2021-12-07;2026-05-20;2026-08-20;Programa de Proteção Respiratória;Fabricio Cunha;Sim;EHS;#Programa de Proteção Respiratória
+DOC.EHS.025;Limpeza, Higienização e Manutenção;EHS;;2021-09-27;2021-12-07;2026-05-20;2026-08-20;Programa de Proteção Respiratória;Fabricio Cunha;Sim;EHS;#Programa de Proteção Respiratória
+DOC.EHS.026;Troca de Filtros;EHS;;2021-09-27;2021-12-07;2026-05-20;2026-08-21;Programa de Proteção Respiratória;Fabricio Cunha;Sim;EHS;#Programa de Proteção Respiratória
+DOC.EHS.029;Modelo de Programa de Proteção Respiratória;EHS;;2021-09-28;2021-12-07;2026-05-20;2026-08-20;Programa de Proteção Respiratória;Fabricio Cunha;Sim;EHS;#Programa de Proteção Respiratória
+DOC.EHS.030;Avaliação Química da Concentração dos Contaminantes;EHS;;2021-09-28;2021-12-07;2026-05-22;2026-08-21;Programa de Proteção Respiratória;Fabricio Cunha;Sim;EHS;#Programa de Proteção Respiratória
+DOC.EHS.031;Procedimento de Limpeza nos Bebedouros;EHS;;2021-09-28;2021-12-07;2026-05-20;2026-08-20;Higienização;Aleksander Oliveira;Sim;EHS;Procedimento de Limpeza nos Bebedouros
+DOC.EHS.032;Gestão de Contratados;EHS;;2021-09-28;2021-12-07;2026-05-20;2026-08-20;Prestadores de Serviço;Aleksander Oliveira;Sim;EHS;Gestão de Contratados
+DOC.EHS.033;Programa de Proteção Respiratória;EHS;1;2024-04-17;2024-08-22;2026-08-21;2026-11-19;Programa de Proteção Respiratória;Fabricio Cunha;Sim;EHS;Programa de Proteção Respiratória
+DOC.EHS.034;Política do Papel Ambientalmente Responsável;EHS;;2021-10-18;2021-10-21;2026-01-19;2026-04-19;Gestão de Resíduos;Caroline Oliveira;Sim;EHS;Política do Papel Ambientalmente Responsável
+DOC.EHS.035;Formulário de Aprovação de Produtos Químicos;EHS;;2021-11-25;2021-11-25;2026-02-17;2026-05-15;Produtos Químicos;Patrícia Tozzi;Sim;EHS;Gestão de Produtos Químicos
+DOC.EHS.036;Tabela de Incompatibilidade Química;EHS;;2021-11-25;2021-11-25;2026-02-17;2026-05-15;Produtos Químicos;Patrícia Tozzi;Sim;EHS;Gestão de Produtos Químicos
+DOC.EHS.037;Lista de Produtos Químicos Aprovados;EHS;;2021-11-25;2021-11-25;2026-02-17;2026-05-15;Produtos Químicos;Patrícia Tozzi;Sim;EHS;Gestão de Produtos Químicos
+DOC.EHS.038;Inventário de Produtos Químicos;EHS;;2021-11-25;2021-11-25;2026-02-17;2026-05-15;Produtos Químicos;Patrícia Tozzi;Sim;EHS;Gestão de Produtos Químicos
+DOC.EHS.039;Gestão de Produtos Químicos;EHS;;2021-11-25;2021-11-25;2026-02-17;2026-05-15;Produtos Químicos;Patrícia Tozzi;Sim;EHS;Gestão de Produtos Químicos
+DOC.EHS.040;Bloqueio e Etiquetagem - LOTO;EHS;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;LOTO - Bloqueio e Etiquetagem;Rodrigo Braga;Sim;EHS;LOTO
+DOC.EHS.041;Análise de Riscos;EHS;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;Análise de Riscos;Rodrigo Braga;Sim;EHS;#Análise de Riscos
+DOC.EHS.042;Plano de Atendimento a Emergência - PAE;EHS;1;2021-12-28;2021-12-28;2026-06-09;2026-09-08;PAE - Plano de Atendimento a Emergência;Rodrigo Braga;Sim;EHS;Treinamento PAE
+DOC.EHS.043;Trabalhos Perigosos;EHS;;2021-12-28;2022-02-23;2026-07-27;2026-10-26;Trabalhos Perigosos;Rodrigo Braga;Sim;EHS;TRABALHOS PERIGOSOS
+DOC.EHS.044;Comunicação de Acidentes;EHS;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;Comunicações de Acidentes;Rodrigo Braga;Sim;EHS;Prevenção e Report de Acidentes + Comunicação e Investigação de Acidentes
+DOC.EHS.045;Segurança em Máquinas e Equipamentos - EMS;EHS;;2021-12-28;2022-02-10;2026-02-09;2026-05-10;EMS - Segurança em Máquinas e Equipamentos;Rodrigo Braga;Sim;EHS;Proteção em Máquinas e Equipamentos
+DOC.EHS.046;Checklist - LOTO;EHS;;2023-03-10;2023-11-08;2025-11-07;2026-02-05;LOTO - Bloqueio e Etiquetagem;Rodrigo Braga;Sim;EHS;#LOTO
+DOC.EHS.047;Instrução de Bloqueio e Etiquetagem - LOTO;EHS;;2023-03-10;2023-11-08;2025-11-07;2026-02-05;LOTO - Bloqueio e Etiquetagem;Rodrigo Braga;Sim;EHS;#LOTO
+DOC.EHS.048;Guia Classificação de Resíduos MTR;EHS;1;2024-05-06;2024-05-06;2026-05-06;2026-08-05;Gestão de Resíduos;Ryan Alves da Silva;Sim;EHS;#Guia Classificação de Resíduos MTR
+DOC.EHS.049;EPI's EQC;EHS;;2023-12-15;2023-12-15;2025-12-14;2026-03-14;EPI's;Caroline Oliveira;Sim;EHS;#EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.050;EPI's SPIN;EHS;;2023-12-15;2023-12-15;2025-12-14;2026-03-14;EPI's;Caroline Oliveira;Sim;EHS;#EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.051;EPI's Serviços Técnicos e STL;EHS;;2023-12-15;2023-12-15;2025-12-14;2026-03-14;EPI's;Caroline Oliveira;Sim;EHS;#EPI - Importância do Uso Correto dos Equipamentos
+DOC.EHS.052;Ordem de Serviços - Área Administrativa;EHS;;2024-01-31;2024-03-20;2026-06-09;2026-09-08;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.053;Ordem de Serviços - Teleatendimento;EHS;;2024-01-31;2024-03-20;2026-06-09;2026-09-08;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.054;Ordem de Serviços - Surfaçagem;EHS;;2024-01-31;2024-08-22;2026-08-21;2026-11-19;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.055;Ordem de Serviços - Manutenção Industrial;EHS;;2024-01-31;2024-03-20;2026-06-09;2026-09-08;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.056;Ordem de Serviços - Setor Limpeza (Serviços Gerais);EHS;;2024-01-31;2024-03-20;2026-06-09;2026-09-08;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.057;Ordem de Serviços - Estoque;EHS;;2024-01-31;2024-03-20;2026-06-09;2026-09-08;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.058;Ordem de Serviços - Produção (Coating);EHS;;2024-01-31;2024-03-20;2026-06-09;2026-09-08;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.059;Ordem de Serviços - Manutenção Predial;EHS;;2024-01-31;2024-10-08;2025-10-08;2026-01-06;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.060;Ordem de Serviços - Produção (Coloração);EHS;1;2024-04-08;2024-10-08;2025-10-08;2026-01-06;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.061;Ordem de Serviços - Produção (SPIN);EHS;;2024-01-31;2024-10-08;2025-10-08;2026-01-06;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.062;Ordem de Serviços - Serviços Técnicos e STL;EHS;;2024-01-31;2024-03-12;2026-05-20;2026-08-20;Ordens de Serviços;Guilherme Rosa;Sim;;
+DOC.EHS.063;Ordem de Serviços - Produção (Montagem);EHS;;2024-01-31;2024-03-12;2026-05-20;2026-08-20;Ordens de Serviços;Guilherme Rosa;Sim;;
+FOR.002;Auditoria 5S de Limpeza e Organização;Formulário;2;2022-05-12;2022-05-23;2025-10-18;2026-01-19;07-MELHORIA CONTÍNUA;Taís Flores;Sim;QUALIDADE;5S
+FOR.006;Inspeção e Testes de Recebimento de Insumos;Formulário;7;2024-05-28;2024-06-03;2026-06-03;2026-09-02;Estoque / Expedição;Lucineide Pereira;Sim;HMC;Primer e Vernizes
+FOR.007;Controle de Troca de Lentes com Defeito de Fábrica;Formulário;3;2023-08-04;2024-01-31;2026-05-25;2026-05-25;Estoque / Expedição;Lucineide Pereira;Sim;;
+FOR.020;;;;;;;;;;;;
+FOR.021;;;;;;;;;;;;
+FOR.022;;;;;;;;;;;;
+FOR.025;;;;;;;;;;;;
+FOR.027;;;;;;;;;;;;
+FOR.028;;;;;;;;;;;;
+FOR.031;;;;;;;;;;;;
+FOR.033;Lista de Presença de Treinamento;Formulário;7;2023-12-05;2024-02-05;2026-05-20;2026-08-20;Treinamento;Taís Flores;Sim;QUALIDADE;Treinamentos
+FOR.050;;;;;;;;;;;;
+FOR.051;;;;;;;;;;;;
+FOR.055;;;;;;;;;;;;
+FOR.060;;;;;;;;;;;;
+FOR.062;;;;;;;;;;;;
+FOR.064;;;;;;;;;;;;
+FOR.065;;;;;;;;;;;;
+FOR.066;;;;;;;;;;;;
+FOR.071;Formulário RNC - Relatório de Não Conformidade;Formulário;5;2023-08-25;2023-08-30;2026-08-28;2026-11-27;Qualidade;Taís Flores;Sim;QUALIDADE;QUALIDADE
+FOR.080;Formulário Surfaçagem - PCP Latam Português - Lab Geral;Formulário;15;2025-03-06;2025-03-11;2026-03-11;2026-06-09;00-Controle de Processo e DSPC;Nathália Brandão;Sim;SURFAÇAGEM;PCP
+FOR.081;Formulário HMC - PCP Latam Português - Lab Geral;Formulário;6;2025-02-10;2025-03-20;2026-03-20;2026-06-18;00-Controle do Processo HMC;Nathália Brandão;Sim;HMC;PCP
+FOR.085;Análise da Pinça do Gerador;Formulário;3;2020-11-18;2021-03-24;2026-08-11;2026-11-10;00-Controle de Processo e DSPC;Taís Flores;Sim;SURFAÇAGEM;Corte
+FOR.086;Análise da pinça do Laser;Formulário;3;2020-11-18;2021-03-24;2026-08-11;2026-11-10;00-Controle de Processo e DSPC;Taís Flores;Sim;MAN. SURF.;0
+FOR.087;Análise da pinça do Microscópio;Formulário;4;2020-11-18;2021-03-24;2026-08-10;2026-11-09;00-Controle de Processo e DSPC;Taís Flores;Sim;SURFAÇAGEM;PROCESSOS
+FOR.088;Análise da pinça do CLBS2;Formulário;1;2020-11-18;2021-03-24;2026-08-18;2026-11-16;00-Controle de Processo e DSPC;Taís Flores;Sim;SURFAÇAGEM;Blocagem
+FOR.090;Formulário de Limpeza - SatisLoh 1200;Formulário;1;2024-03-05;2024-04-16;2026-04-16;2026-07-15;1200;Deyved Silva;Sim;HMC;Antirreflexo
+FOR.091;Formulário de Limpeza - Boxer;Formulário;;2020-12-23;2021-05-24;2025-10-07;2025-12-07;Boxer PRO;Humberto Serra - Lab Rio;Sim;;
+FOR.092;Controle de Treinamento;Formulário;2;2023-10-13;2024-02-05;2026-05-20;2026-08-20;Treinamento;Taís Flores;Sim;QUALIDADE;Treinamentos
+FOR.093;Mapa de Gestão dos Resíduos;Formulário;1;2023-09-22;2023-09-25;2025-09-24;2025-12-23;Gestão de Resíduos;Aleksander Oliveira;Sim;;
+FOR.094;Controle de Saída de Resíduos;Formulário;;2021-04-09;2021-04-12;2025-10-13;2025-12-29;Gestão de Resíduos;Aleksander Oliveira;Sim;;
+FOR.095;Contratação - Transportador;Formulário;;2021-04-09;2021-04-12;2025-10-13;2025-12-29;Gestão de Resíduos;Aleksander Oliveira;Sim;;
+FOR.096;Contratação - Receptor;Formulário;;2021-04-09;2021-04-12;2025-10-13;2025-12-29;Gestão de Resíduos;Aleksander Oliveira;Sim;;
+FOR.097;Inspeção de Veículos;Formulário;;2021-04-09;2021-04-12;2025-10-13;2025-12-29;Gestão de Resíduos;Aleksander Oliveira;Sim;;
+FOR.098;Prestadores de Serviço;Formulário;;2021-04-09;2021-04-12;2025-10-13;2025-12-29;Gestão de Resíduos;Aleksander Oliveira;Sim;;
+FOR.099;Formulário de Qualificação De Fornecedores e/ou Prestadores De Serviços;Formulário;;2021-04-09;2021-07-22;2025-10-13;2025-12-29;Gestão de Resíduos;Aleksander Oliveira;Sim;;
+FOR.100;Avaliação de Aspecto e Impacto Ambiental;Formulário;;2021-04-19;2021-04-20;2025-10-13;2025-12-29;Aspecto e Impacto Ambiental;Patrícia Tozzi;Sim;;
+FOR.101;Formulário de Limpeza - Syrus;Formulário;1;2024-03-05;2024-04-16;2026-04-16;2026-07-15;Syrus 3C;Deyved Silva;Sim;;
+FOR.104;ALTIUS DRIVING TOOL- Máquina CCM;Formulário;4;2021-04-23;2021-05-05;2026-05-19;2026-08-18;00-Controle do Processo HMC;Taís Flores;Sim;HMC;0
+FOR.106;Formulário 8D - Método para Solução de Problemas;Formulário;2;2023-08-29;2024-05-14;2026-05-14;2026-08-13;Solução de Problemas;Lucineide Pereira;Sim;;
+FOR.107;Formulário Montagem - PCP Latam - Lab Geral;Formulário;8;2024-09-30;2024-09-30;2025-09-30;2026-12-22;00 - Controle de Processo;Nathália Brandão;Sim;MONTAGEM;PCP
+FOR.109;Matriz de Habilidade;Formulário;5;2023-09-12;2023-09-13;2026-05-20;2026-08-20;Treinamento;Taís Flores;Sim;QUALIDADE;Treinamentos
+FOR.114;Formulário A3  - Método para Solução de Problemas;Formulário;2;2024-09-19;2025-05-30;2026-05-30;2026-08-28;Solução de Problemas;Lucineide Pereira;Sim;;
+FOR.116;Testes HC - Monitoramento Primer e Verniz;Formulário;11;2025-10-23;2025-10-31;2026-10-31;2027-01-29;Testes HC;Leonardo Pennetta;Sim;HMC;Teste de Qualidade HC
+FOR.118;Nomeação RD;Formulário;1;2022-09-29;2022-09-29;2025-09-29;2025-12-28;Qualidade;Taís Flores;Sim;QUALIDADE;QUALIDADE
+FOR.120;Formulário - Permissão de Trabalho;Formulário;;2021-07-26;2021-07-27;2025-10-13;2025-12-29;Prestadores de Serviço;Patrícia Tozzi;Sim;;
+FOR.121;Modelo Recibo de EPI;Formulário;1;2023-02-17;2023-03-17;2026-05-20;2026-08-20;EPI's;Rodrigo Braga;Sim;EHS;#EPI - Importância do Uso Correto dos Equipamentos
+FOR.122;Controle de Umidade e Temperatura: Estoque;Formulário;;2021-08-24;2021-09-10;2025-09-10;2025-12-09;Estoque / Expedição;Taís Flores;Sim;QUALIDADE;ESTOQUE
+FOR.123;Agenda de Auditoria;Formulário;1;2022-12-15;2022-12-22;2026-06-09;2026-09-08;Qualidade;Nathália Brandão;Sim;QUALIDADE;AUDITORIA
+FOR.124;Etiquetas de Validação de Primer e Verniz;Formulário;4;2024-07-24;2024-07-24;2026-07-24;2026-10-23;Estoque / Expedição;Nathália Brandão;Sim;HMC;Primer e Vernizes
+FOR.125;Etiqueta Composição Quimica - Primer e Verniz - EHS;Formulário;3;2024-09-03;2024-10-08;2025-10-08;2026-01-06;Estoque / Expedição;Nathália Brandão;Sim;HMC;Primer e Vernizes
+FOR.126;Análise de Modos de Falhas e Efeitos (FMEA);Formulário;6;2024-10-24;2024-11-26;2025-11-26;2026-02-24;Qualidade;Nathália Brandão;Sim;QUALIDADE;QUALIDADE
+FOR.127;Avaliação e Seleção de Fornecedor;Formulário;7;2023-12-14;2024-02-27;2026-05-20;2026-08-26;Qualidade;Nathália Brandão;Sim;QUALIDADE;FORNECEDOR
+FOR.128;Controle de Higienização dos Bebedouros;Formulário;;2021-09-27;2021-12-07;2026-05-27;2026-08-27;Higienização;Aleksander Oliveira;Sim;;
+FOR.129;Formulário de Análise de Acidente e Incidente do Trabalho;Formulário;;2021-09-28;2021-12-07;2026-05-20;2026-08-20;Programa de Proteção Respiratória;Fabricio Cunha;Sim;;
+FOR.130;Guia de Avaliação do Programa de Proteção Respiratória;Formulário;;2021-09-28;2021-12-07;2026-05-20;2026-08-20;Programa de Proteção Respiratória;Fabricio Cunha;Sim;;
+FOR.131;Registro de Ensaio de Vedação Qualitativo;Formulário;;2021-09-28;2021-12-07;2026-05-20;2026-08-20;Programa de Proteção Respiratória;Fabricio Cunha;Sim;;
+FOR.132;Controle de Utilização do UV 400;Formulário;;2021-09-28;2021-11-03;2026-07-07;2026-10-06;04-COLORAÇÃO;Taís Flores;Sim;COLORAÇÃO;COLORAÇÃO
+FOR.133;Planejamento de Treinamento;Formulário;1;2023-12-14;2024-01-31;2026-05-20;2026-08-20;Treinamento;Nathália Brandão;Sim;QUALIDADE;Treinamentos
+FOR.134;Plano de Ação;Formulário;2;2023-05-03;2023-05-03;2026-07-20;2026-10-19;Solução de Problemas;William Karasiaki;Sim;;
+FOR.135;Relatório de Revisão Gerencial;Formulário;3;2023-05-04;2023-05-05;2026-05-04;2026-08-03;Qualidade;Nathália Brandão;Sim;QUALIDADE;QUALIDADE
+FOR.136;Reavaliação de Fornecedor;Formulário;6;2023-12-14;2024-02-27;2026-05-20;2026-08-20;Qualidade;Nathália Brandão;Sim;QUALIDADE;FORNECEDOR
+FOR.137;Relatório de Gestão de Mudança;Formulário;5;2024-03-18;2024-03-20;2026-06-09;2026-09-08;Qualidade;Taís Flores;Sim;QUALIDADE;QUALIDADE
+FOR.139;Controle de Calibração e Verificação;Formulário;1;2023-05-23;2023-06-27;2026-06-26;2026-09-25;00.Geral;Lucineide Pereira;Sim;QUALIDADE;CALIBRAÇÃO
+FOR.140;Relatório de Auditoria Interna;Formulário;1;2022-12-15;2022-12-22;2026-06-09;2026-09-08;Qualidade;Taís Flores;Sim;QUALIDADE;AUDITORIA
+FOR.141;Auto Avaliação;Formulário;2;2022-04-20;2022-04-26;2026-05-20;2026-08-19;Treinamento;Lucineide Pereira;Sim;QUALIDADE;Treinamentos
+FOR.142;Avaliação de Eficácia do Treinamento;Formulário;1;2022-02-16;2022-02-21;2026-05-20;2026-08-20;Treinamento;Lucineide Pereira;Sim;QUALIDADE;Treinamentos
+FOR.143;Formulário de Check List da Auditoria ISO 13485;Formulário;1;2022-11-18;2022-12-05;2026-05-02;2026-08-02;Qualidade;Nathália Brandão;Sim;QUALIDADE;AUDITORIA
+FOR.145;Formulário GMR KPIs - Acompanhamento Semanal;Formulário;;2021-12-28;2021-12-28;2022-12-28;2025-12-06;Acompanhamento de Resultados;Lucineide Pereira;Sim;;
+FOR.147;Formulário - Workplace Risk Assessment;Formulário;;2021-12-28;2021-12-28;2026-06-09;2026-09-08;Análise de Riscos;Rodrigo Braga;Sim;;
+FOR.148;Monitoramento Anual de Desempenho de Fornecedor;Formulário;5;2023-06-28;2023-07-03;2026-07-02;2026-10-01;Qualidade;Nathália Brandão;Sim;QUALIDADE;FORNECEDOR
+FOR.149;Formulário SPIN - Português - Lab Geral;Formulário;2;2025-04-10;2025-05-12;2026-05-12;2026-08-10;05-SPIN;Nathália Brandão;Sim;SPIN;SPIN
+FOR.150;Plano de Manutenção Preventiva - Laboratório Industrial;Formulário;2;2025-02-14;2025-03-20;2026-03-20;2026-06-18;00-Geral;Lucas Silva;Sim;;
+FOR.151;Análise Crítica do Certificado de Calibração;Formulário;1;2023-06-02;2023-06-27;2026-06-26;2026-09-25;00.Geral;Nathália Brandão;Sim;;
+FOR.152;Etiqueta de Calibração;Formulário;1;2023-08-10;2023-08-15;2026-08-14;2026-11-12;00.Geral;Taís Flores;Sim;;
+FOR.153;Formulário de Calibração do Lensômetro;Formulário;1;2022-04-14;2023-06-27;2026-06-26;2026-09-25;Lensômetro;Lucas Silva;Sim;;
+FOR.155;Controle de Temperatura de Armazenamento: Primers e Vernizes;Formulário;2;2024-05-27;2024-06-03;2026-06-03;2026-09-02;Estoque / Expedição;Lucineide Pereira;Sim;HMC;Primer e Vernizes
+FOR.157;Controle do Kit de Calibração do SMR;Formulário;;2022-05-27;2022-10-18;2025-10-18;2026-01-19;Testes AR;Taís Flores;Sim;HMC;"Antirreflexo:
+Ajustes de Processo"
+FOR.159;Validação de Software;Formulário;1;2023-11-16;2024-03-07;2026-05-29;2026-08-28;Qualidade;Nathália Brandão;Sim;QUALIDADE;TI
+FOR.161;Requisição de Compras;Formulário;3;2024-03-20;2024-07-24;2026-07-24;2026-10-23;Compras;Benicio Souza;Sim;;
+FOR.162;Controle de Temperatura (DataLogger) de Armazenamento - Primers e Vernizes - Repro;Formulário;1;2024-05-28;2024-06-03;2026-06-03;2026-09-02;Repro;Laura Vaz;Sim;;
+FOR.164;Controle Anual dos Registros;Formulário;;2023-01-26;2023-01-30;2026-01-30;2026-04-29;Solução de Problemas;Taís Flores;Sim;;
+FOR.166;Carta de Esclarecimento;Formulário;;2023-03-21;2023-03-21;2026-06-09;2026-09-08;Laudos;Taís Flores;Sim;;
+FOR.167;Cronograma de Auditoria;Formulário;;2023-05-11;2023-05-18;2026-05-17;2026-08-17;Qualidade;Taís Flores;Sim;;
+FOR.169;Avaliação do Auditor Interno de QMS;Formulário;;2023-05-12;2023-05-18;2026-05-18;2026-08-17;Qualidade;Taís Flores;Sim;QUALIDADE;AUDITORIA
+FOR.170;Interpolação e Correção;Formulário;;2023-06-05;2023-06-27;2026-06-26;2026-09-25;00.Geral;Taís Flores;Sim;;
+FOR.171;Alterações de Aquisição - Português;Formulário;;2023-06-05;2023-08-02;2025-10-18;2026-01-19;Qualidade;Taís Flores;Sim;;
+FOR.172;Alterações de Aquisição - Inglês;Formulário;;2023-06-05;2023-08-02;2025-10-18;2026-01-19;Qualidade;Taís Flores;Sim;;
+FOR.173;Checklist de Envio de Equipamento;Formulário;1;2023-08-21;2023-08-21;2026-08-20;2026-11-18;00.Geral;Renan Barbosa;Sim;;
+FOR.174;Reembolso - Quebra de Armação - Technopark;Formulário;1;2024-10-25;2024-10-28;2025-10-28;2026-01-26;Technopark;Fabrina Souza;Sim;;
+FOR.175;Plano de Manutenção Preventiva - Básico;Formulário;;2023-06-15;2023-06-27;2026-06-26;2026-09-25;00-Geral;Lucas Silva;Sim;;
+FOR.177;Requisição de Serviços - digiTOP;Formulário;2;2024-03-26;2024-04-02;2026-07-01;2026-09-30;digiTOP;Nickolle Rodrigues;Sim;;
+FOR.179;Controle da Entrega de Produtos recebidos aos colaboradores - Grown;Formulário;;2023-07-18;2023-09-11;2025-09-10;2025-12-09;Grown;Sonia Lima;Sim;;
+FOR.180;Auditoria de Produto - Qualidade Intrínseca;Formulário;1;2024-11-18;2024-11-22;2025-11-22;2026-02-20;Auditoria de Produto;Lucineide Pereira;Sim;QUALIDADE;AUDITORIA DE PRODUTO
+FOR.181;Auditoria de Produto - GIB&BIG;Formulário;1;2024-11-18;2024-11-22;2025-11-22;2026-02-20;Auditoria de Produto;Lucineide Pereira;Sim;QUALIDADE;AUDITORIA DE PRODUTO
+FOR.182;Etiquetas de Cartões - Quadro PCP;Formulário;;2023-09-01;2023-09-21;2025-09-20;2025-12-19;07-MELHORIA CONTÍNUA;Gabriely Gonçalves;Sim;;
+FOR.183;Tabela Hora Hora;Formulário;;2023-09-11;2023-10-03;2025-10-02;2025-12-31;07-MELHORIA CONTÍNUA;Gabriely Gonçalves;Sim;;
+FOR.185;Etiquetas de Envio de Testes para o EQC;Formulário;2;2024-09-19;2024-09-26;2025-09-26;2025-12-25;08-EQC;Lucineide Pereira;Sim;;
+FOR.188;Carta de Esclarecimento - Autenticidade de Tratamento;Formulário;;2023-10-03;2024-11-26;2025-11-26;2026-02-24;Laudos;Taís Flores;Sim;;
+FOR.191;Formulário de Testes - Lentes Stellest;Formulário;;2023-10-10;2023-12-28;2025-12-27;2026-03-27;00-Geral Testes;Renan Barbosa;Sim;SURFAÇAGEM;QUALIDADE
+FOR.192;Retrabalho CF - Lab Geral;Formulário;3;2025-02-24;2025-05-30;2026-05-30;2026-08-28;00-Controle do Processo HMC;Nathália Brandão;Sim;;
+FOR.193;Rendimento HC - Lab Geral;Formulário;3;2025-02-24;2025-05-30;2026-05-30;2026-08-28;00-Controle do Processo HMC;Nathália Brandão;Sim;;
+FOR.194;Carta de Esclarecimento – Proteção/Bloqueio Luzes Ultravioleta e Azul Nocivas;Formulário;;2023-11-16;2024-03-18;2026-06-09;2026-09-08;Laudos;Nathália Brandão;Sim;;
+FOR.195;Identificação de Quebras - Grown;Formulário;1;2024-02-09;2024-02-19;2026-02-18;2026-05-19;Grown;Priscila Souza;Sim;;
+FOR.196;Controle de Quebra Geral;Formulário;;2024-02-07;2024-02-08;2026-02-07;2026-05-08;Acompanhamento de Resultados;Victor Olivares;Sim;;
+FOR.197;Expedição de Vernizes - Envios;Formulário;;2024-02-08;2024-02-19;2026-05-20;2026-08-20;Caxias CD;Miguel Soares Lima;Sim;;
+FOR.198;Retorno de serviço - Visolab;Formulário;;2024-02-15;2024-02-21;2026-02-20;2026-05-21;Visolab;Jaldo Reis;Sim;;
+FOR.199;Acompanhamento de Cliente Detrator - Pesquisa de Satisfação;Formulário;1;2024-03-28;2024-09-26;2025-09-26;2025-12-25;Pesquisa de Satisfação;Rafael Medeiros;Sim;;
+FOR.200;Validação de Armação;Formulário;;2024-04-29;2024-04-29;2026-04-29;2026-07-28;00 - Controle de Processo;Nickolle Rodrigues;Sim;;
+FOR.201;Carta de Esclarecimento - Parecer Técnico;Formulário;;2024-05-14;2024-11-26;2025-11-26;2026-02-24;Laudos;Nathália Brandão;Sim;;
+FOR.203;Agrupamento de Malotes dos Correios - Tecnolens;Formulário;2;2024-09-02;2024-09-03;2025-09-03;2025-12-02;Tecnolens;Vinicius Silva;Sim;Expedição e/ou Faturamento;Faturamento
+FOR.204;Gestão à Vista - Acompanhamento de Trocas de Insumos e Limpeza das Máquinas - Tecnolens;Formulário;;2024-06-28;2024-06-28;2026-06-29;2026-09-28;Tecnolens;Vinicius Silva;Sim;QUALIDADE;LIMPEZA
+FOR.205;Alerta de Qualidade (AQ);Formulário;;2024-08-01;2024-08-12;2026-08-12;2026-11-10;Solução de Problemas;Nathália Brandão;Sim;;
+FOR.206;Verificação Lux - Caixa Preta;Formulário;;2024-08-16;2024-08-27;2026-08-27;2026-11-25;Verificação Lux;Nathália Brandão;Sim;;
+FOR.207;Verificação Lux - Lâmpada Waldmann;Formulário;;2024-08-16;2024-08-27;2026-08-27;2026-11-25;Verificação Lux;Nathália Brandão;Sim;;
+FOR.208;Retrabalho Diário - Tecnolens;Formulário;;2024-09-03;2024-09-03;2025-09-03;2025-12-02;Tecnolens;Ramon Gonçalves;Sim;QUALIDADE;0
+FOR.209;Automatic Calibration (Calibração Inspetor Referência);Formulário;;2024-09-09;2024-09-26;2025-09-26;2025-12-25;Inspetor Referência;Lucineide Pereira;Sim;;
+FOR.210;Identification Mapping lenses (Calibração Inspetor Referência);Formulário;;2024-09-09;2024-09-26;2025-09-26;2025-12-25;Inspetor Referência;Lucineide Pereira;Sim;;
+FOR.211;Carta de Esclarecimento - Lentes sem marcação FOG-ID;Formulário;;2024-09-13;2024-09-18;2025-09-18;2025-12-17;Laudos;Jessika Menacho;Sim;;
+FOR.212;Envio de Material para Cliente - Technopark;Formulário;;2024-10-25;2024-11-01;2025-11-01;2026-01-30;Technopark;Fabrina Souza;Sim;;
+FOR.213;Controle de Entrada de Materiais na Expedição - Technopark;Formulário;;2024-10-25;2024-11-01;2025-11-01;2026-01-30;Technopark;Fabrina Souza;Sim;;
+FOR.214;Aprovação de Perdas por Extravio e Testes de Qualidade - Technopark;Formulário;;2025-02-20;2025-02-21;2026-02-21;2026-05-22;Technopark;Fabrina Souza;Sim;;
+FOR.216;Gestão à Vista - Quebras individuais do Operador - Tecnolens;Formulário;;2025-03-06;2025-03-13;2026-03-13;2026-06-11;Tecnolens;Vinicius Silva;Sim;QUALIDADE;0
+FOR.217;CheckList Genérico - Tecnolens;Formulário;;2025-03-06;2025-03-13;2026-03-13;2026-06-11;Tecnolens;Vinicius Silva;Sim;QUALIDADE;0
+FOR.218;Start-Stop da Fábrica - Technopark;Formulário;;2025-04-15;2025-08-25;2026-08-25;2026-11-23;Technopark;Fabrina Souza;Sim;;
+FOR.219;Controle de Documentos EHS - Grown;Formulário;;2025-05-30;2025-06-03;2026-06-03;2026-09-01;Grown;Natalia Silva;Sim;;
+FOR.220;Calculadora Regeneração de Soda Cáustica;Formulário;3;2025-10-23;2025-10-31;2026-10-31;2027-01-29;Testes HC;Leonardo Pennetta;Sim;;
+FOR.221;Calculadora Regeneração  A1100;Formulário;1;2025-08-15;2025-08-28;2026-08-28;2026-11-26;Testes HC;Leonardo Pennetta;Sim;;
+FOR.223;Gestão à Vista - Troca de PADS - Tecnolens;Formulário;;2025-08-06;2025-09-12;2026-09-12;2026-12-11;00-Geral;Vinicius Silva;Sim;SURFAÇAGEM;Polimento
+FOR.224;Gestão à Vista - Troca de Membranas - Toroflex - Tecnolens;Formulário;;2025-08-06;2025-09-12;2026-09-12;2026-12-11;Toroflex;Vinicius Silva;Sim;SURFAÇAGEM;Polimento
+FOR.225;Reposição de Estoque - Tecnolens;Formulário;;2025-08-06;2025-09-04;2026-09-04;2026-12-03;Tecnolens;Vinicius Silva;Sim;Estoque;Reposição de Estoque
+FOR.226;Regeneração Raptex;Formulário;1;2025-08-19;2025-08-19;2026-08-19;2026-11-17;Testes HC;Leonardo Pennetta;Sim;;
+FOR.227;Lista de Softwares - Tecnolens;Formulário;;2025-09-04;2025-09-12;2026-09-12;2026-12-11;Tecnolens;Vinicius Silva;Sim;QUALIDADE;TI
+FOR.228;Relatório de Condição de ativo_Intenção de transferência Interna;Formulário;4;2025-09-16;2025-09-16;2026-09-16;2026-12-15;Português;Victor Cardoso;Sim;;
+FOR.229;Solicitação de Atualização do Plano de Manutenção Preventiva;Formulário;1;2025-09-15;2025-09-23;2026-09-23;2026-12-22;Português;Victor Cardoso;Sim;;
+FOR.230;Solicitud de Actualización del Plan de Mantenimiento Preventivo;Formulário;;2025-09-09;2025-09-09;2026-09-09;2026-12-08;Español;Victor Cardoso;Sim;;
+FOR.233;Plano de Manutenção Preventiva Ceditop;Formulário;;2025-10-01;2025-10-01;2026-10-01;2026-12-30;Ceditop;Leticia Santos;Sim;;
+FOR.234;Registro de Entrada ao EQC;Formulário;1;2025-10-07;2025-10-07;2026-10-07;2027-01-05;EQC;Jessika Menacho;Sim;;
+FOR.246;Regeneração: Químicos HC (Mithril 1.6);Formulário;1;2025-10-27;2025-10-31;2026-10-31;2027-01-29;00-Controle do Processo HMC;Jessika Menacho;Sim;;
+GEQC.01001;;;;;;;;;;;;
+GEQC.01002;;;;;;;;;;;;
+GEQC.01003;;;;;;;;;;;;
+GEQC.01004;;;;;;;;;;;;
+GEQC.01005;;;;;;;;;;;;
+GEQC.01006;;;;;;;;;;;;
+GEQC.01007;;;;;;;;;;;;
+GEQC.01008;;;;;;;;;;;;
+GEQC.01009;;;;;;;;;;;;
+GEQC.01010;;;;;;;;;;;;
+GEQC.01011;;;;;;;;;;;;
+GEQC.02011;;;;;;;;;;;;
+GEQC.03001;;;;;;;;;;;;
+GQS-POL.001;POLÍTICA DE CONFORMIDADE;Políticas de Qualidade;1;2019-01-01;2019-04-01;2026-03-30;2026-06-28;Políticas;Taís Flores;Sim;;
+GQS-POL.002;POLÍTICA DE GESTÃO DE REIVINDICAÇÕES DE PRODUTOS E SERVIÇOS;Políticas de Qualidade;1;2018-04-02;2018-09-03;2026-05-27;2026-08-26;Políticas;Taís Flores;Sim;;
+GQS-POL.003;POLÍTICA DE GESTÃO DE RISCOS;Políticas de Qualidade;1;2019-10-01;2020-02-03;2026-02-01;2026-05-02;Políticas;Taís Flores;Sim;;
+GQS-POL.004;POLÍTICA DE GESTÃO DE MUDANÇAS;Políticas de Qualidade;1;2020-12-01;2021-02-01;2026-01-31;2026-05-01;Políticas;Taís Flores;Sim;;
+GQS-POL.005;GESTÃO DE DOCUMENTAÇÃO;Políticas de Qualidade;1;2021-06-14;2021-06-14;2026-06-13;2026-09-11;Políticas;Taís Flores;Sim;;
+GQS-POL.006;POLÍTICA DE DESIGN E DESENVOLVIMENTO;Políticas de Qualidade;1;2020-06-01;2020-08-03;2026-08-02;2026-10-31;Políticas;Taís Flores;Sim;;
+GQS-POL.007;POLÍTICA DE VALIDAÇÃO ONE;Políticas de Qualidade;2;2020-03-02;2021-02-01;2026-01-31;2026-05-01;Políticas;Taís Flores;Sim;;
+GQS-POL.008;POLÍTICA DE ESPECIFICAÇÕES;Políticas de Qualidade;1;2019-09-02;2021-06-14;2026-06-13;2026-09-11;Políticas;Taís Flores;Sim;;
+GQS-POL.009;POLÍTICA DE GESTÃO DE MÉTODOS DE TESTE;Políticas de Qualidade;2;2020-07-01;2020-12-01;2025-11-30;2026-02-28;Políticas;Taís Flores;Sim;;
+GQS-POL.010;POLÍTICA DE FABRICAÇÃO;Políticas de Qualidade;1;2020-02-03;2020-02-03;2026-02-01;2026-05-02;Políticas;Taís Flores;Sim;;
+GQS-POL.011;IDENTIFICAÇÃO, RASTREABILIDADE e RECALL;Políticas de Qualidade;1;2019-02-04;2019-07-01;2026-06-29;2026-09-27;Políticas;Taís Flores;Sim;;
+GQS-POL.012;POLÍTICA DE PRESERVAÇÃO DE PRODUTOS;Políticas de Qualidade;1;2020-04-01;2020-04-01;2026-03-31;2026-06-29;Políticas;Taís Flores;Sim;;
+GQS-POL.013;POLÍTICA DE GESTÃO DE FORNECEDORES;Políticas de Qualidade;1;2020-03-02;2020-04-01;2026-03-31;2026-06-29;Políticas;Taís Flores;Sim;;
+GQS-POL.014;POLÍTICA DE FEEDBACK DE CLIENTES;Políticas de Qualidade;1;2020-04-01;2020-04-01;2026-03-31;2026-06-29;Políticas;Taís Flores;Sim;;
+GQS-POL.015;NÃO CONFORMIDADE - POLÍTICA DE AÇÕES CORRETIVAS E PREVENTIVAS;Políticas de Qualidade;1;2019-10-01;2019-11-01;2025-10-30;2026-01-28;Políticas;Taís Flores;Sim;;
+GQS-POL.016;POLÍTICA DE TREINAMENTO;Políticas de Qualidade;1;2019-12-02;2020-02-03;2026-02-01;2026-05-02;Políticas;Taís Flores;Sim;;
+GQS-POL.017;Política de Auditoria da Qualidade;Políticas de Qualidade;1;2019-12-02;2020-02-03;2026-02-01;2026-05-02;Políticas;Taís Flores;Sim;;
+GQS-POL.018;ANÁLISE POR PARTE DA ADMINISTRAÇÃO;Políticas de Qualidade;1;2019-01-01;2019-04-01;2026-03-30;2026-06-28;Políticas;Taís Flores;Sim;;
+MAN.001;;;;;;;;;;;;
+MAN.002;;;;;;;;;;;;
+MAN.003;;;;;;;;;;;;
+MAN.004;;;;;;;;;;;;
+MAN.005;;;;;;;;;;;;
+MAN.006;;;;;;;;;;;;
+MAN.007;;;;;;;;;;;;
+MAN.008;;;;;;;;;;;;
+MAN.009;;;;;;;;;;;;
+MAN.010;;;;;;;;;;;;
+MAN.011;;;;;;;;;;;;
+MAN.012;;;;;;;;;;;;
+MAN.013;;;;;;;;;;;;
+MAN.014;;;;;;;;;;;;
+MAN.015;;;;;;;;;;;;
+MAN.016;;;;;;;;;;;;
+MAN.017;;;;;;;;;;;;
+MAN.018;;;;;;;;;;;;
+MAN.019;;;;;;;;;;;;
+MAN.020;;;;;;;;;;;;
+MAN.021;;;;;;;;;;;;
+MAN.022;;;;;;;;;;;;
+MAN.023;;;;;;;;;;;;
+MAN.024;;;;;;;;;;;;
+MAN.025;;;;;;;;;;;;
+MAN.026;;;;;;;;;;;;
+MAN.027;;;;;;;;;;;;
+MAN.028;;;;;;;;;;;;
+MAN.029;;;;;;;;;;;;
+MAN.030;;;;;;;;;;;;
+MAN.031;;;;;;;;;;;;
+MAN.032;;;;;;;;;;;;
+MAN.033;;;;;;;;;;;;
+MAN.034;;;;;;;;;;;;
+MAN.035;ART Blocker A - Probe Station Calibration;Manual Máquina;;2023-09-27;2023-09-27;2025-09-26;2025-12-25;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.036;ART Blocker A - Video Calibration;Manual Máquina;;2023-09-27;2023-09-27;2025-09-26;2025-12-25;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.037;ART Blocker A - Dosing Unit Adjustment;Manual Máquina;;2023-09-27;2023-09-27;2025-09-26;2025-12-25;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.038;ART Blocker A - Glue Position;Manual Máquina;;2019-05-01;2019-05-01;2025-09-27;2025-12-27;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.039;ART Blocker A - Control of The Loading Force;Manual Máquina;;2021-03-01;2021-03-01;2025-09-27;2025-12-27;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.040;ART Blocker - Productivity Increase;Manual Máquina;;2017-06-01;2017-06-01;2025-09-27;2025-12-27;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.041;ART Blocker A - VCA Labels;Manual Máquina;;2019-07-05;2019-07-05;2025-09-27;2025-12-27;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.042;ART Blocker - Remplacement de la Colle;Manual Máquina;;2019-01-01;2019-01-01;2025-09-27;2025-12-27;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.043;ART Blocker A - Parameters;Manual Máquina;;2022-03-01;2022-03-01;2025-09-27;2025-12-27;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.044;ART Blocker A - Maintenance;Manual Máquina;;2023-09-27;2023-09-27;2025-09-26;2025-12-25;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.045;;;;;;;;;;;;
+MAN.046;ART Blocker - Installation Requirements;Manual Máquina;1;2013-11-06;2013-11-06;2025-09-27;2025-12-27;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.047;;;;;;;;;;;;
+MAN.048;VFT Orbit 2 - All Format Generator;Manual Máquina;;2023-09-28;2023-09-28;2025-09-27;2025-12-26;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.049;ART Deblocker - Alinhamento de Máquinas, Calibração e Ensino de Eixos;Manual Máquina;1;2020-12-17;2020-12-17;2025-11-22;2026-02-22;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.050;ART Deblocker - Block Piece Controller;Manual Máquina;;2023-11-22;2023-11-22;2025-11-21;2026-02-19;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.051;ART Deblocker - Clamping Force Rapid Test;Manual Máquina;;2022-10-01;2022-10-01;2025-09-23;2025-12-20;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.052;ART Deblocker - Maintenance;Manual Máquina;;2020-02-05;2020-02-05;2025-11-22;2026-02-21;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.053;ART Deblocker - Instructions de Montage et de Service pour Installations de Réfrigération;Manual Máquina;1;2018-09-24;2018-09-24;2025-09-24;2025-12-23;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.054;ART Deblocker - Machine Settings;Manual Máquina;;2018-01-01;2018-01-01;2025-11-22;2026-02-21;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.055;ART Deblocker - Maintenance Operations;Manual Máquina;;2021-02-10;2021-02-10;2025-11-22;2026-02-21;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.056;ART Deblocker - Mapa;Manual Máquina;;2023-11-22;2023-11-22;2025-11-21;2026-02-19;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.057;ART Deblocker - Nozzle jet Control for Essilor;Manual Máquina;;2023-11-22;2023-11-22;2025-11-21;2026-02-19;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.058;ART Deblocker - Parameters;Manual Máquina;;2021-12-01;2021-12-01;2025-12-01;2026-03-01;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.059;ART Deblocker M - Maintenance;Manual Máquina;;2023-11-22;2023-11-22;2025-11-21;2026-02-19;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.060;AutoMapper - User Manual;Manual Máquina;1;2014-11-01;2014-11-01;2025-11-22;2026-02-21;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.061;Fitadeira - Automatic Surface Tape Applicator (ASTA);Manual Máquina;2;2003-02-18;2003-02-18;2025-11-23;2026-02-24;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.062;Fitadeira - Maintenance for the ASTA;Manual Máquina;;2023-11-23;2023-11-23;2025-11-22;2026-02-20;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.063;Flash UV - Family Wavelenght 266 nm;Manual Máquina;;2023-11-23;2023-11-23;2025-11-22;2026-02-20;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.064;PRA - Adjust the Blocking Height;Manual Máquina;;2023-11-23;2023-11-23;2025-11-22;2026-02-20;01-Manual do Fabricante;José Roberto;Sim;;
+MAN.065;CB Bond E - Manual de Operação;Manual Máquina;;2024-09-19;2024-09-19;2025-09-19;2025-12-18;01-Manual do Fabricante;Marcelo Bastos;Sim;;
+MAN.066;CCL C Mark - Manual de Operação;Manual Máquina;;2024-09-19;2024-09-19;2025-09-19;2025-12-18;01-Manual do Fabricante;Marcelo Bastos;Sim;;
+MAN.067;CCP Swiff - Manual de Operação;Manual Máquina;;2024-09-19;2024-09-19;2025-09-19;2025-12-18;01-Manual do Fabricante;Marcelo Bastos;Sim;;
+MAN.068;High Speed Cutting Machine HSC Sprint - Manual de Utilização;Manual Máquina;1;2024-09-19;2024-09-19;2025-09-19;2025-12-18;01-Manual do Fabricante;Marcelo Bastos;Sim;;
+MAQ.002;Manual da Qualidade;Manual da Qualidade;10;2024-09-02;2024-09-04;2025-09-04;2025-12-03;Qualidade;Nathália Brandão;Sim;QUALIDADE;QUALIDADE
+PCP.043;PCP - Finishing español;Parâmetros e Controle de Processos;8;2024-07-04;2024-07-08;2026-07-08;2026-10-07;Espanhol;Edgar Casallas;Sim;;
+PCP.045;PCP - Finishing português;Parâmetros e Controle de Processos;8;2024-07-04;2024-07-08;2026-07-08;2026-10-07;Português;Edgar Casallas;Sim;;
+PCP.048;PCP Mithril 1.6 D645;Parâmetros e Controle de Processos;10;2025-03-20;2025-05-12;2026-05-12;2026-08-10;01-PCP;Leonardo Pennetta;Sim;;
+PCP.049;PCP Surfacing Process Rx;Parâmetros e Controle de Processos;15;2025-03-05;2025-03-13;2026-03-13;2026-06-11;PCP;Alessandro Barros;Sim;;
+PCP.054;PCP Mithril 1.6 Rx SCL Machines;Parâmetros e Controle de Processos;9;2024-04-17;2025-05-12;2026-05-12;2026-08-10;01-PCP;Leonardo Pennetta;Sim;;
+PCP.055;PCP Mithril 1.6 Rx D Machines;Parâmetros e Controle de Processos;22;2025-03-20;2025-05-12;2026-05-12;2026-08-10;01-PCP;Leonardo Pennetta;Sim;;
+PCP.056;PCP - Finishing - Inglês;Parâmetros e Controle de Processos;8;2024-07-04;2024-07-08;2026-07-08;2026-10-07;Inglês;Edgar Casallas;Sim;;
+PCP.057;PCP Mithril 1.5 CCM;Parâmetros e Controle de Processos;1;2024-04-19;2024-11-25;2025-11-25;2026-02-23;01-PCP;Carlos Anselme;Sim;;
+PCP.058;PCP - Spin MRIII;Parâmetros e Controle de Processos;;2025-04-10;2025-05-12;2026-05-12;2026-08-10;PCP;Leonardo Pennetta;Sim;;
+POP.076;Preparação de Químicos - DSX e SP;Procedimento Operacional Padrão;7;2023-10-16;2024-02-28;2026-02-27;2026-05-28;00-Geral AR;Aluney Junior;Sim;HMC;Antirreflexo
+POP.080;ACOMPANHAMENTO DO PROCESSO;Procedimento Operacional Padrão;2;2019-02-22;2019-02-22;2026-07-03;2026-10-02;380;Vagner Domingos;Sim;HMC;Antirreflexo
+POP.087;Manual Operacional - Satisloh MC 380;Procedimento Operacional Padrão;3;2023-05-18;2023-07-17;2026-07-16;2026-10-15;380;Francisco Glauber;Sim;HMC;Antirreflexo
+POP.088;Limpeza e Manutenção - Satisloh MC 380;Procedimento Operacional Padrão;5;2023-05-18;2024-03-18;2025-03-18;2026-09-18;380;Francisco Glauber;Sim;HMC;Antirreflexo
+POP.089;;;;;;;;;;;;
+POP.1000;Manual Operacional - Certificação e Faturamento da Expedição - Visolab;Procedimento Operacional Padrão;;2023-12-01;2024-01-22;2026-01-21;2026-04-21;Visolab;Jaldo Reis;Sim;;
+POP.1001;Manual Operacional - Produtos e Insumos Não Conforme - Visolab;Procedimento Operacional Padrão;2;2025-06-11;2025-06-23;2026-06-23;2026-09-21;Visolab;Evany Rabelo;Sim;;
+POP.1002;Manual Operacional - Rastreabilidade de pedidos - Visolab;Procedimento Operacional Padrão;1;2024-04-16;2024-04-17;2026-04-17;2026-07-16;Visolab;Jaldo Reis;Sim;;
+POP.1003;Manual Operacional - Casamento de Armação - Visolab;Procedimento Operacional Padrão;1;2024-04-17;2024-04-18;2026-04-17;2026-07-17;Visolab;Jaldo Reis;Sim;;
+POP.1004;Manual Operacional - Rastreabilidade de Produtos - Laboratório Sumaré;Procedimento Operacional Padrão;;2023-12-15;2023-12-18;2025-12-17;2026-03-17;Sumaré Laboratório;Denise Miranda;Sim;;
+POP.1005;Calibração Operacional - ProMapper;Procedimento Operacional Padrão;;2023-12-18;2023-12-18;2025-12-17;2026-03-17;ProMapper;Renan Barbosa;Sim;SURFAÇAGEM;Conferência
+POP.1006;Monitoramento de Realimentação do Cliente - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-12-18;2023-12-18;2025-12-17;2026-03-17;Sumaré Laboratório;Rafael Medeiros;Sim;;
+POP.1007;Manual Operacional - Focovision SPV-3;Procedimento Operacional Padrão;;2024-01-03;2024-01-04;2026-01-03;2026-04-03;Focovision;Renan Barbosa;Sim;;
+POP.1012;Monitoramento de Realimentação do Cliente - Visolab;Procedimento Operacional Padrão;1;2024-08-19;2024-08-19;2026-08-19;2026-11-17;Visolab;Jaldo Reis;Sim;;
+POP.1013;Verificação ProMapper - Lentes Mineral;Procedimento Operacional Padrão;;2024-01-29;2024-02-02;2026-02-01;2026-05-02;ProMapper;Pauline Gomez;Sim;SURFAÇAGEM;Conferência
+POP.1014;Manual Operacional - Lapidação de Lentes - Repro;Procedimento Operacional Padrão;;2024-01-31;2024-03-18;2026-05-20;2026-08-20;Repro;Laura Vaz;Sim;;
+POP.1015;Manual Operacional - Liberação de Lentes Prontas e Blocos do Estoque - Visolab;Procedimento Operacional Padrão;1;2024-08-15;2024-08-15;2026-08-14;2026-11-12;Visolab;Jaldo Reis;Sim;;
+POP.1016;Manual Operacional - Aprovação e Cancelamento de Pedidos - Visolab;Procedimento Operacional Padrão;;2024-01-31;2024-02-09;2026-02-08;2026-05-09;Visolab;Jaldo Reis;Sim;;
+POP.1017;Manual Operacional - Spin Coat Tool;Procedimento Operacional Padrão;;2024-01-31;2024-03-18;2025-03-18;2026-09-18;05-SPIN;Jaldo Reis;Sim;;
+POP.1018;Manual Operacional - Abertura de Perdas Interna da Produção - Grown;Procedimento Operacional Padrão;2;2025-05-16;2025-06-16;2026-06-16;2026-09-14;Grown;Priscila Souza;Sim;;
+POP.1019;Teste de Viscosidade - Automático com Brookfield DVPLUS;Procedimento Operacional Padrão;;2024-01-31;2024-02-02;2025-02-01;2026-02-12;Testes HC;Jessika Menacho;Sim;;
+POP.1020;Manual Operacional - Estoque Atacado - Grown;Procedimento Operacional Padrão;;2024-02-02;2024-02-19;2026-02-18;2026-05-19;Grown;João Sales;Sim;;
+POP.1021;Manual Operacional - Recebimento e Armazenamento - Grown;Procedimento Operacional Padrão;;2024-02-02;2024-02-19;2026-02-18;2026-05-19;Grown;João Sales;Sim;;
+POP.1024;Manual Operacional - Abertura da requisição de quebra - Visolab;Procedimento Operacional Padrão;;2024-02-21;2024-02-21;2026-02-20;2026-05-21;Visolab;Jaldo Reis;Sim;;
+POP.1025;Manual Operacional - Consultoria - Visolab;Procedimento Operacional Padrão;;2024-02-26;2024-04-01;2026-06-30;2026-09-29;Visolab;Jaldo Reis;Sim;;
+POP.1028;Manual Operacional - Emissão de Carta de Correção - Sumaré CD;Procedimento Operacional Padrão;1;2025-05-14;2025-05-15;2026-05-15;2026-08-13;Sumaré CD;Erika Fagundes;Sim;;
+POP.1029;Manual Operacional - Entrada de pedidos na Montagem - Optilab;Procedimento Operacional Padrão;1;2025-04-23;2025-04-29;2026-04-29;2026-07-28;Optilab;Nickolle Rodrigues;Sim;;
+POP.1030;Manual Operacional - Inspeção de Saída do HC - LabRio;Procedimento Operacional Padrão;;2024-02-27;2024-04-02;2026-06-09;2026-09-08;00-Geral HC;Renan Barbosa;Sim;;
+POP.1031;Manual Operacional - Expedição de Vernizes e Primers - CD Caxias;Procedimento Operacional Padrão;1;2024-10-01;2024-10-01;2025-10-01;2025-12-30;Caxias CD;Miguel Soares Lima;Sim;;
+POP.1032;Manual Operacional - Produto Não Conforme - Sumaré CD;Procedimento Operacional Padrão;1;2025-02-18;2025-07-14;2026-07-14;2026-10-12;Sumaré CD;Denise Miranda;Sim;;
+POP.1033;Calibração Operacional - Focovision SPV-3;Procedimento Operacional Padrão;;2024-03-01;2024-03-05;2026-06-09;2026-09-08;Focovision;Renan Barbosa;Sim;;
+POP.1035;Manual Operacional - Medidor e Descarte - Block Piece;Procedimento Operacional Padrão;;2024-03-04;2024-03-05;2026-06-09;2026-09-08;01-Preparação;Jesse Rodrigues;Sim;;
+POP.1037;Manual Operacional - Etiqueta de Identificação da Nota Fiscal - Sumaré CD;Procedimento Operacional Padrão;1;2025-05-14;2025-05-15;2026-05-15;2026-08-13;Sumaré CD;Denise Miranda;Sim;;
+POP.1038;Manual Operacional - Entrada de Pedidos da Montagem - Grown;Procedimento Operacional Padrão;;2024-03-11;2024-03-12;2026-05-22;2026-08-21;Grown;Priscila Souza;Sim;;
+POP.1039;Manual Operacional - Spin MiniII;Procedimento Operacional Padrão;;2024-03-11;2024-04-17;2026-04-17;2026-07-16;05-SPIN;Nickolle Rodrigues;Sim;;
+POP.104;;;;;;;;;;;;
+POP.1040;Manutenção Preventiva - Promapper;Procedimento Operacional Padrão;;2024-03-21;2024-04-09;2026-04-09;2026-07-08;Português;Rodrigo Brandão;Sim;;
+POP.1041;Limpeza e Manutenção - Porta Blocos;Procedimento Operacional Padrão;;2024-03-26;2024-04-08;2026-07-07;2026-10-06;00-Geral;Pauline Gomez;Sim;SURFAÇAGEM;Blocagem
+POP.1042;Limpieza y Mantenimiento - Chapetas de Bloqueadora;Procedimento Operacional Padrão;;2024-03-26;2024-04-08;2026-07-07;2026-10-06;00-General;Pauline Gomez;Sim;;
+POP.1044;Manual Operacional - Inspeção de Porta Bloco;Procedimento Operacional Padrão;;2024-03-26;2024-07-10;2026-07-10;2026-10-09;00-Geral;Pauline Gomez;Sim;SURFAÇAGEM;Blocagem
+POP.1046;Manual Operacional - Reenvio de XML - Faturamento - Sumaré CD;Procedimento Operacional Padrão;1;2025-05-15;2025-05-15;2026-05-15;2026-08-13;Sumaré CD;Denise Miranda;Sim;;
+POP.1047;Manual Operacional - Fluxo de Pedidos - Grown;Procedimento Operacional Padrão;1;2025-02-05;2025-02-12;2026-02-12;2026-05-13;Grown;Rodrigo Silva;Sim;;
+POP.1048;Manual Operacional - Fluxo dos Pedidos HMC - Grown;Procedimento Operacional Padrão;2;2025-02-05;2025-02-12;2026-02-12;2026-05-13;Grown;Marcia Alves;Sim;;
+POP.1049;Manual Operacional - Extração de Relatório no Hodie para Controle de NF - Sumaré CD;Procedimento Operacional Padrão;1;2025-05-15;2025-05-15;2026-05-15;2026-08-13;Sumaré CD;Denise Miranda;Sim;;
+POP.105;Manual Operacional - Estufa Memmert;Procedimento Operacional Padrão;7;2022-03-18;2022-03-21;2026-06-19;2026-09-18;04-Cura;Taís Flores;Sim;HMC;Forno / Estufa
+POP.1050;Manual Operacional - Casamento de Nota Fiscal x Produto Faturado - Sumaré CD;Procedimento Operacional Padrão;1;2025-07-07;2025-07-14;2026-07-14;2026-10-12;Sumaré CD;Denise Miranda;Sim;;
+POP.1051;Manual Operacional - Lente de Gabarito para Polimento;Procedimento Operacional Padrão;;2024-04-05;2024-04-05;2026-04-06;2026-07-06;00-Geral;Renato Dias;Sim;;
+POP.1052;Manual Operacional - Backup de Máquinas Satisloh;Procedimento Operacional Padrão;;2024-04-08;2024-07-10;2026-07-10;2026-10-09;00-Geral SURFACE;José Roberto;Sim;;
+POP.1053;Manual Operacional - Cortesia Voucher PPE - Grown;Procedimento Operacional Padrão;;2024-04-10;2024-04-12;2026-04-13;2026-07-13;Grown;Ronald Witzke;Sim;;
+POP.1054;Manual Operacional - Procedimento de Testes Para Novos Blocos - Grown;Procedimento Operacional Padrão;;2024-04-10;2024-04-12;2026-04-13;2026-07-13;Grown;Michel Vieira;Sim;;
+POP.1057;Manual Operacional - Comunicação com o Cliente - Visolab;Procedimento Operacional Padrão;;2024-04-18;2024-04-18;2026-04-17;2026-07-17;Visolab;Jaldo Reis;Sim;;
+POP.1058;Manual Operacional - Inspeção de Saída do HC - Visolab;Procedimento Operacional Padrão;;2024-04-19;2024-04-19;2026-04-20;2026-07-20;00-Geral HC;Jaldo Reis;Sim;;
+POP.1059;Manual Operacional - Aplicação de Tratamento em Blocos - Visolab;Procedimento Operacional Padrão;;2024-04-19;2024-04-19;2026-04-20;2026-07-20;Visolab;Jaldo Reis;Sim;;
+POP.106;Limpeza e Manutenção - Estufa Memmert;Procedimento Operacional Padrão;5;2022-03-18;2022-03-21;2025-03-21;2026-09-18;04-Cura;Lucineide Pereira;Sim;HMC;Forno / Estufa
+POP.1060;Manual Operacional - Indicadores do Engeman - Visolab;Procedimento Operacional Padrão;;2024-04-19;2024-04-19;2026-04-20;2026-07-20;Visolab;Jaldo Reis;Sim;;
+POP.1061;Manual Operacional - Faturamento da Expedição - Lab Rio;Procedimento Operacional Padrão;;2024-04-22;2024-05-08;2026-05-08;2026-08-07;LabRio;Samira Amaro;Sim;;
+POP.1064;Manual Operacional - Emissão Minutas de Embarque - Sumaré CD;Procedimento Operacional Padrão;1;2025-07-08;2025-07-14;2026-07-14;2026-10-12;Sumaré CD;Denise Miranda;Sim;;
+POP.1065;Manual Operacional - Emissão de Romaneio na Plataforma Hodie - Sumaré CD;Procedimento Operacional Padrão;1;2025-05-14;2025-05-15;2026-05-15;2026-08-13;Sumaré CD;Denise Miranda;Sim;;
+POP.1066;Manual Operacional - Operação do Varilux XR - Visolab;Procedimento Operacional Padrão;;2024-05-17;2024-06-05;2026-06-05;2026-09-04;Visolab;Jaldo Reis;Sim;;
+POP.1067;Calibración Operativa - Angulo de Prisma - PRA;Procedimento Operacional Padrão;;2024-05-22;2024-07-10;2026-07-10;2026-10-09;PRA;Pauline Gomez;Sim;;
+POP.1068;Manual Operacional - Compra de Matéria-Prima - Grown;Procedimento Operacional Padrão;;2024-06-03;2024-06-06;2026-06-05;2026-09-04;Grown;João Sales;Sim;;
+POP.1069;Calibración Operativa - Perpendicularidad - VFT Orbti 1;Procedimento Operacional Padrão;2;2024-08-23;2024-09-19;2025-09-19;2025-12-18;VFT Orbit 1;Pauline Gomez;Sim;;
+POP.107;Controle de Parâmetros -  Estufa Memmert;Procedimento Operacional Padrão;4;2022-10-06;2023-10-03;2025-10-02;2025-12-31;04-Cura;Marília Novais;Sim;HMC;Forno / Estufa
+POP.1070;Manual Operacional - Abertura de chamados no Engeman - Visolab;Procedimento Operacional Padrão;;2024-06-18;2024-07-01;2026-07-01;2026-09-30;Visolab;Jaldo Reis;Sim;;
+POP.1071;Manual Operacional - Blocadora Weco C6;Procedimento Operacional Padrão;;2024-06-21;2025-11-11;2026-11-11;2027-02-09;Outros;Evany Rabelo;Sim;;
+POP.1072;Manual Operacional - Produto Não Conforme - Repro;Procedimento Operacional Padrão;1;2025-11-21;2025-11-24;2026-11-24;2027-02-22;Repro;Laura Vaz;Sim;;
+POP.1073;Manual Operacional - Compra e Recebimento de Blocos e Lentes - Tecnolens;Procedimento Operacional Padrão;;2024-07-19;2024-07-23;2026-07-23;2026-10-22;Tecnolens;Vinicius Silva;Sim;RECEBIMENTO;"Recebimento
+Blocos e Lentes"
+POP.1075;Manual Operacional - Estoque de Blocos (FIFO) - Grown;Procedimento Operacional Padrão;1;2025-10-24;2025-11-07;2026-11-07;2027-02-05;Grown;Rubens Paixão;Sim;;
+POP.1076;Manual Operacional - Embalagem dos Serviços da Montagem - Grown;Procedimento Operacional Padrão;;2024-07-25;2024-08-06;2026-08-06;2026-11-04;Grown;Priscila Souza;Sim;;
+POP.1078;Manual Operacional - Elaboração e Revisão de Documentos;Procedimento Operacional Padrão;;2024-08-07;2024-08-27;2026-08-27;2026-11-25;11-APRENDIZAGEM QUALIEX;Nathália Brandão;Sim;;
+POP.1079;Manual Operacional Pré-Inspeção (Repro);Procedimento Operacional Padrão;;2024-08-07;2024-08-07;2026-08-07;2026-11-05;01-Pré-Inspeção - Preparação;Larissa Alves;Sim;;
+POP.108;Manual Operacional - Forno Essemtec;Procedimento Operacional Padrão;3;2020-09-23;2021-01-04;2025-10-27;2025-12-27;04-Cura;Taís Flores;Sim;HMC;Forno / Estufa
+POP.1080;Manual Operacional Pré-Inspeção (Visolab);Procedimento Operacional Padrão;;2024-08-08;2024-08-12;2026-08-12;2026-11-10;01-Pré-Inspeção - Preparação;Jaldo Reis;Sim;;
+POP.1081;Manual Operacional - Inspeção Final - Visolab;Procedimento Operacional Padrão;;2024-08-08;2024-08-12;2026-08-12;2026-11-10;09-Inspeção Final;Jaldo Reis;Sim;;
+POP.1082;Manual Operacional - Embalagem de Lentes - Visolab;Procedimento Operacional Padrão;;2024-08-15;2024-08-15;2026-08-14;2026-11-12;Visolab;Jaldo Reis;Sim;;
+POP.1083;Manual Operacional - Verificação Lux;Procedimento Operacional Padrão;;2024-08-16;2024-08-27;2026-08-27;2026-11-25;Verificação Lux;Nathália Brandão;Sim;QUALIDADE;CALIBRAÇÃO
+POP.1084;Calibracion Operativa - Laser Flash UV;Procedimento Operacional Padrão;;2024-09-03;2024-09-18;2025-09-18;2025-12-17;Laser Flash UV;Nathália Brandão;Sim;;
+POP.1085;Calibração Operacional - Laser Flash UV;Procedimento Operacional Padrão;;2024-09-05;2024-09-18;2025-09-18;2025-12-17;Laser Flash UV;Marcelo Bastos;Sim;;
+POP.1086;Manual Operacional - Calibração do Inspetor Referência;Procedimento Operacional Padrão;;2024-09-09;2024-09-26;2025-09-26;2026-12-25;Inspetor Referência;Lucineide Pereira;Sim;;
+POP.1087;Calibração Operacional - Perpendicularidade - VFT Orbit 1;Procedimento Operacional Padrão;;2024-09-16;2024-09-18;2025-09-18;2025-12-17;VFT Orbit 1;Robson Azevedo;Sim;;
+POP.1088;Manual Operacional - Devolução - Sumaré CD;Procedimento Operacional Padrão;;2024-09-16;2024-09-16;2025-09-16;2025-12-15;Sumaré CD;Nathália Brandão;Sim;;
+POP.1089;Manual Operacional - Triagem de Pedidos da Expedição e Faturamento do Sedex - Grown;Procedimento Operacional Padrão;;2024-09-27;2024-10-14;2025-10-14;2026-01-12;Grown;Luis Felipe;Sim;;
+POP.109;Manual Operacional - Forno Dima;Procedimento Operacional Padrão;4;2023-05-17;2023-07-17;2026-07-16;2026-10-15;04-Cura;Christiano Silva;Sim;HMC;0
+POP.1090;Manual Operacional - Importação de Pedidos da Expedição - Grown;Procedimento Operacional Padrão;;2024-09-27;2024-10-14;2025-10-14;2026-01-12;Grown;Luis Felipe;Sim;;
+POP.1091;Manual Operacional - Higienização da Câmara de Trabalho (VFT Orbit 1 e 2) - Technopark;Procedimento Operacional Padrão;;2024-10-01;2024-10-21;2025-10-21;2026-01-19;Technopark;Rodrigo Brandão;Sim;;
+POP.1092;Manual Operacional - Pós-Vendas - Ceditop;Procedimento Operacional Padrão;1;2025-09-09;2025-09-27;2026-09-27;2026-12-26;Ceditop;Giovana Sturmer;Sim;;
+POP.1095;Manual Operacional - Chamado de Compras Opex - Repro;Procedimento Operacional Padrão;;2024-10-25;2024-10-28;2025-10-28;2026-01-26;Repro;Debora Rocha;Sim;;
+POP.1096;Manual Operacional - Lançamento de Notas Fiscais (Garantia, Beneficiário e Simples remessa) - Grown;Procedimento Operacional Padrão;;2024-10-29;2024-11-04;2025-11-04;2026-02-02;Grown;Maisa Silva;Sim;;
+POP.1097;Manual Operacional Pré-Inspeção (Grown);Procedimento Operacional Padrão;1;2025-02-12;2025-02-12;2026-02-12;2026-05-13;01-Pré-Inspeção - Preparação;Bruno Cangussu;Sim;;
+POP.1098;Manual Operacional - Detector de UV Martinato AM-221N;Procedimento Operacional Padrão;;2024-10-29;2024-11-08;2025-11-08;2026-02-06;04-COLORAÇÃO;Renan Barbosa;Sim;;
+POP.1099;Manual Operacional - Estoque de Lentes Prontas (FIFO) - Grown;Procedimento Operacional Padrão;;2024-10-31;2024-11-04;2025-11-04;2026-02-02;Grown;Matheus Gomes;Sim;;
+POP.1100;Calibração Operacional - VFT Orbit 2i;Procedimento Operacional Padrão;;2024-10-31;2024-11-18;2025-11-18;2026-02-16;VFT Orbit 2i;Robson Azevedo;Sim;;
+POP.1102;Manual Operacional - Operação do Varilux XR - Grown;Procedimento Operacional Padrão;1;2025-03-11;2025-03-25;2026-03-25;2026-06-23;Grown;Natalia Silva;Sim;;
+POP.1103;Manual Operacional - Criação de Local de Estoques de Blocos e Lentes Prontas - Grown;Procedimento Operacional Padrão;;2024-12-13;2025-01-13;2026-01-13;2026-04-13;Grown;Rodrigo Silva;Sim;;
+POP.1104;Manual Operacional - Ajuste de Saldo - Grown;Procedimento Operacional Padrão;;2024-12-13;2025-01-13;2026-01-13;2026-04-13;Grown;Rodrigo Silva;Sim;;
+POP.1105;Manual Operacional – Conferência de Montagem com Gabarito – Repro;Procedimento Operacional Padrão;;2024-12-19;2024-12-26;2025-12-26;2026-03-26;Repro;Anderson Smaniotto;Sim;;
+POP.1106;Manual Operacional - Inventário de Estoques - Grown;Procedimento Operacional Padrão;;2024-12-24;2025-01-13;2026-01-13;2026-04-13;Grown;Rodrigo Silva;Sim;;
+POP.1107;Manual Operacional - Processos e Relatórios de Garantia - Visolab;Procedimento Operacional Padrão;;2025-01-10;2025-02-17;2026-02-17;2026-05-18;Visolab;Jaldo Reis;Sim;;
+POP.1108;Manual Operacional - Fluxo de Entrada de Material na Expedição - Technopark;Procedimento Operacional Padrão;;2025-01-13;2025-02-21;2026-02-21;2026-05-22;Technopark;Fabrina Souza;Sim;;
+POP.1109;Manual Operacional - Ações Preventivas e Corretivas Laser Flash UV - Technopark;Procedimento Operacional Padrão;1;2025-08-19;2025-09-05;2026-09-05;2026-12-04;Technopark;Fabrina Souza;Sim;;
+POP.111;Limpeza do Forno DIMA;Procedimento Operacional Padrão;4;2019-12-03;2019-12-10;2025-09-10;2025-12-10;04-Cura;Carlos Anselme;Sim;HMC;0
+POP.1110;Manual Operacional - Aprovação de quebra - Technopark;Procedimento Operacional Padrão;;2025-01-13;2025-02-21;2026-02-21;2026-05-22;Technopark;Fabrina Souza;Sim;;
+POP.1112;Manual Operacional – Limpeza de Pipeta - Repro;Procedimento Operacional Padrão;;2025-01-31;2025-02-04;2026-02-04;2026-05-05;Repro;Laura Vaz;Sim;;
+POP.1113;Manual Operacional - Inventário de Estoque - digiTOP;Procedimento Operacional Padrão;;2025-02-11;2025-02-14;2026-02-14;2026-05-15;digiTOP;Nickolle Rodrigues;Sim;;
+POP.1114;Calibração Operacional - Spin MRIII;Procedimento Operacional Padrão;;2025-02-17;2025-02-20;2026-02-20;2026-05-21;05-SPIN;Renan Barbosa;Sim;;
+POP.1115;Manual Operacional - Mapa de Produção Industrial - Tecnolens;Procedimento Operacional Padrão;;2025-02-19;2025-03-05;2026-03-05;2026-06-03;Tecnolens;Vinicius Silva;Sim;QUALIDADE;TI
+POP.1118;Manual Operacional - Montagem de Garra - SCL CDC1000;Procedimento Operacional Padrão;;2025-02-26;2025-07-09;2026-07-09;2026-10-07;01-Pré-Inspeção - Preparação;Larissa Alves;Sim;;
+POP.1119;Manual Operacional - Certificação de Pedidos - Grown;Procedimento Operacional Padrão;1;2025-10-21;2025-11-05;2026-11-05;2027-02-03;Grown;Luis Felipe;Sim;;
+POP.112;Manutenção do Forno Dima;Procedimento Operacional Padrão;3;2019-11-27;2019-12-13;2025-09-10;2025-12-10;04-Cura;Robson Soares;Sim;HMC;0
+POP.1120;Requisição de Insumos - digiTOP;Procedimento Operacional Padrão;;2025-03-13;2025-03-17;2026-03-17;2026-06-15;digiTOP;Nickolle Rodrigues;Sim;;
+POP.1121;Manual Operacional - Conferência Final da Surfaçagem - Grown;Procedimento Operacional Padrão;;2025-03-17;2025-05-08;2026-05-08;2026-08-06;Grown;Silvio Silva;Sim;;
+POP.1122;Manual Operacional - Armazenamento de blocos e lentes no estoque - Visolab;Procedimento Operacional Padrão;;2025-03-18;2025-05-02;2026-05-02;2026-07-31;Visolab;Jaldo Reis;Sim;;
+POP.1124;Procedimento Ordem de Serviço - Fracttal;Procedimento Operacional Padrão;;2025-04-29;2025-06-09;2026-06-09;2026-09-07;00-Fracttal;Rodrigo Brandão;Sim;;
+POP.1125;Manual Operacional - Lançamentos de Notas Fiscais (Tratamento Antirreflexo) - digiTOP;Procedimento Operacional Padrão;;2025-04-30;2025-05-07;2026-05-07;2026-08-05;digiTOP;Nickolle Rodrigues;Sim;;
+POP.1126;Manual Operacional - Inspeção Final - Grown;Procedimento Operacional Padrão;;2025-04-30;2025-07-10;2026-07-10;2026-10-08;09-Inspeção Final;Silvio Silva;Sim;;
+POP.1127;Manual Operacional - Armazenagem - Sumaré CD;Procedimento Operacional Padrão;1;2025-05-16;2025-06-17;2026-06-17;2026-09-15;Sumaré CD;Denise Miranda;Sim;;
+POP.1128;Manual Operacional - Embalagem - Sumaré CD;Procedimento Operacional Padrão;1;2025-07-10;2025-07-14;2026-07-14;2026-10-12;Sumaré CD;Denise Miranda;Sim;;
+POP.1129;Manual Operacional - Etiqueta de Identificação Exportação - Sumaré CD;Procedimento Operacional Padrão;;2025-05-14;2025-05-15;2026-05-15;2026-07-17;Sumaré CD;Denise Miranda;Sim;;
+POP.113;Limpeza e Manutenção - Forno Essemtec;Procedimento Operacional Padrão;4;2022-09-02;2022-11-03;2026-01-19;2026-04-18;04-Cura;Marília Novais;Sim;HMC;Forno / Estufa
+POP.1130;Serviços de Garantia - Visolab;Procedimento Operacional Padrão;2;2025-05-21;2025-05-29;2026-05-29;2026-08-27;Visolab;Jaldo Reis;Sim;;
+POP.1132;Limpieza del sistema de pulido centralizado;Procedimento Operacional Padrão;;2025-06-03;2025-06-10;2026-06-10;2026-09-08;00-General;Pauline Gomez;Sim;;
+POP.1133;Limpeza do sistema de polimento centralizado;Procedimento Operacional Padrão;;2025-06-03;2025-06-10;2026-06-10;2026-09-08;00-Geral;Pauline Gomez;Sim;;
+POP.1134;Manual Operacional - Bazel HC6 - Lab Rio;Procedimento Operacional Padrão;;2025-06-04;2025-06-10;2026-06-10;2026-09-08;LabRio;Jéssica de Aquino;Sim;;
+POP.1135;Manual Operacional - Retrabalho Surfaçagem - Lab Rio;Procedimento Operacional Padrão;;2025-06-04;2025-06-10;2026-06-10;2026-09-08;LabRio;Jéssica de Aquino;Sim;;
+POP.1136;Limpeza e Manutenção - Bazell HC6 - Lab Rio;Procedimento Operacional Padrão;;2025-06-04;2025-06-10;2026-06-10;2026-09-08;LabRio;Jéssica de Aquino;Sim;;
+POP.1137;Limpeza e Manutenção - Slurry System - Lab Rio;Procedimento Operacional Padrão;;2025-06-04;2025-06-10;2026-06-10;2026-09-08;LabRio;Jéssica de Aquino;Sim;;
+POP.1138;Limpeza e Manutenção da Derretedora de Alloy - Lab Rio;Procedimento Operacional Padrão;;2025-06-04;2025-06-10;2026-06-10;2026-09-08;LabRio;Jéssica de Aquino;Sim;;
+POP.1139;Manual Operacional - Digitação para Pré-Produção Lab Rio;Procedimento Operacional Padrão;;2025-06-04;2025-06-10;2026-06-10;2026-08-08;LabRio;Vanessa Santana da Silva;Sim;;
+POP.114;Controle de Parâmetros - Forno Essemtec;Procedimento Operacional Padrão;2;2019-11-27;2022-02-22;2026-08-10;2026-11-09;04-Cura;Lucineide Pereira;Sim;HMC;Forno / Estufa
+POP.1141;Manual Operacional - Conferência de Pedidos Manual - Sumaré CD;Procedimento Operacional Padrão;;2025-06-17;2025-07-14;2026-07-14;2026-10-12;Sumaré CD;Denise Miranda;Sim;;
+POP.1142;Manual Operacional - Controle de Quantidade de Quebras - Grown;Procedimento Operacional Padrão;;2025-06-24;2025-08-29;2026-08-29;2026-11-27;Grown;Rodrigo Silva;Sim;;
+POP.1143;Manual Operacional – Lançamento de Notas Fiscais (Tratamento Antirreflexo) – Optilab;Procedimento Operacional Padrão;;2025-06-26;2025-07-09;2026-07-09;2026-10-07;Optilab;Nickolle Rodrigues;Sim;;
+POP.1144;Manual Operacional - Conferência de Pedidos Automática - Sumaré CD;Procedimento Operacional Padrão;;2025-07-07;2025-07-14;2026-07-14;2026-10-12;Sumaré CD;Denise Miranda;Sim;;
+POP.1145;Salvar Resultados dos Testes de HC - Lab Rio;Procedimento Operacional Padrão;;2025-07-08;2025-07-14;2026-07-14;2026-10-12;LabRio;Renan Barbosa;Sim;;
+POP.1146;Remoção da Camada de Proteção do Antirreflexo (Blue Pad) - Lab Rio;Procedimento Operacional Padrão;;2025-07-09;2025-07-14;2026-07-14;2026-10-12;LabRio;Renan Barbosa;Sim;;
+POP.1147;Simulação de Documento;Procedimento Operacional Padrão;;2025-07-10;2025-07-10;2026-07-10;2026-10-08;Backup;Jessika Menacho;Sim;;
+POP.1148;Manual Operacional - Recebimento Matéria-Prima e Insumos - Sumaré Laboratório;Procedimento Operacional Padrão;;2025-07-18;2025-07-24;2026-07-24;2026-10-22;Sumaré Laboratório;Denise Miranda;Sim;;
+POP.1150;Manual Operacional - Lançamento de Quebras e Defeito de Bloco - digiTOP;Procedimento Operacional Padrão;;2025-08-02;2025-08-05;2026-08-05;2026-11-03;digiTOP;Nickolle Rodrigues;Sim;;
+POP.1151;Manual Operacional - Manutenção Iogun - Mark I;Procedimento Operacional Padrão;;2025-08-05;2025-08-28;2026-08-28;2026-11-26;00-Geral AR;Alexander Mendes;Sim;;
+POP.1154;POP.Manual Operacional-  Cálculo de Serviços- Ceditop;Procedimento Operacional Padrão;;2025-08-11;2025-09-05;2026-09-05;2026-12-04;Ceditop;Leticia Santos;Sim;;
+POP.1156;Manual Operacional - Limpeza das Evaporadoras - Grown;Procedimento Operacional Padrão;;2025-08-14;2025-08-29;2026-08-29;2026-11-27;00-Geral AR;Bruno Cangussu;Sim;;
+POP.1157;Manual Operacional - Retirada de Serviço no Balcão - Repro;Procedimento Operacional Padrão;1;2025-08-21;2025-08-27;2026-08-27;2026-11-25;Repro;Debora Rocha;Sim;;
+POP.1158;Expedição, Faturamento e Envio de Pedidos - Repro;Procedimento Operacional Padrão;1;2025-08-21;2025-08-27;2026-08-27;2026-11-25;Repro;Debora Rocha;Sim;;
+POP.1159;Manual Operacional - Quebras de Armação - Repro;Procedimento Operacional Padrão;;2025-08-20;2025-08-29;2026-08-29;2026-11-27;Repro;Laura Vaz;Sim;;
+POP.1160;Manual Operacional - Reembolso de  Armação - Technopark;Procedimento Operacional Padrão;;2025-08-22;2025-10-30;2026-10-30;2027-01-28;Technopark;Rodrigo Lima;Sim;;
+POP.1161;Perda e danificação de propriedade do Cliente - Tecnolens;Procedimento Operacional Padrão;;2025-08-29;2025-09-12;2026-09-12;2026-12-11;Tecnolens;Vinicius Silva;Sim;Atendimento;0
+POP.1162;Reposição de Estoque - Tecnolens;Procedimento Operacional Padrão;;2025-09-01;2025-09-12;2026-09-12;2026-12-11;Tecnolens;Vinicius Silva;Sim;Estoque;Reposição de Estoque
+POP.1178;Manual Operacional - Inventário de Estoque - Optilab;Procedimento Operacional Padrão;;2025-10-02;2025-10-13;2026-10-13;2027-01-11;Optilab;Nickolle Rodrigues;Sim;;
+POP.1180;Manual Operacional – Inicio e Término de Separação do Estoque de Blocos - Grown;Procedimento Operacional Padrão;;2025-10-14;2025-10-28;2026-10-28;2027-01-26;Grown;Rubens Paixão;Sim;;
+POP.119;;;;;;;;;;;;
+POP.1190;Manual Operacional - Recebimento de Mercadoria - Repro;Procedimento Operacional Padrão;;2025-11-21;2025-11-26;2026-11-26;2027-02-24;Repro;Debora Rocha;Sim;;
+POP.1191;Manual Operacional - Armazenamento de Mercadoria - Repro;Procedimento Operacional Padrão;;2025-11-21;2025-11-26;2026-11-26;2027-02-24;Repro;Debora Rocha;Sim;;
+POP.120;;;;;;;;;;;;
+POP.123;Padrão de Qualidade do FOG-ID;Procedimento Operacional Padrão;1;2019-02-22;2019-02-22;2025-11-11;2026-02-11;07-FOG;Vagner Domingos;Não;HMC;"Inspeção Final: 
+Controle Final"
+POP.125;Manual Operacional - 3DT FOG-ID;Procedimento Operacional Padrão;3;2023-11-29;2023-12-28;2025-12-27;2026-03-27;07-FOG;Evellyn Santos;Sim;HMC;"Inspeção Final: 
+Controle Final"
+POP.132;Limpeza e Manutenção - CCM Mithril 1.5;Procedimento Operacional Padrão;6;2024-04-19;2024-04-25;2026-04-24;2026-07-24;CCM;Christiano Silva;Sim;HMC;0
+POP.138;Manual Operacional - CCM Mithril 1.5;Procedimento Operacional Padrão;3;2019-09-18;2021-02-23;2026-02-02;2026-05-02;CCM;Nathália Brandão;Sim;HMC;0
+POP.142;Limpeza e Manutenção da D9-DP e  D9-PAC;Procedimento Operacional Padrão;3;2019-12-04;2019-12-19;2026-01-03;2026-05-02;D9 DP;Carlos Anselme;Sim;;
+POP.146;Descontaminação do Sistema de Água DI - D13;Procedimento Operacional Padrão;3;2019-12-02;2020-12-04;2026-01-19;2026-04-19;D13;Carlos Anselme;Sim;;
+POP.148;Manual Operacional – D13 (Mithril 1.6);Procedimento Operacional Padrão;2;2023-06-30;2023-10-27;2025-10-26;2026-01-24;D13;Felipe Costa;Sim;;
+POP.149;Limpeza e Manutenção da D13;Procedimento Operacional Padrão;3;2019-12-18;2019-12-19;2026-04-16;2026-07-15;D13;Carlos Anselme;Sim;;
+POP.150;Preparação de Químicos – D13 (Mithril 1.6);Procedimento Operacional Padrão;5;2023-06-30;2024-07-15;2026-07-15;2026-10-14;D13;Felipe Costa;Sim;;
+POP.152;Limpeza e Manutenção – D645 (Mithril 1.6);Procedimento Operacional Padrão;6;2023-05-17;2024-01-31;2025-01-30;2026-02-12;D645;Christiano Silva;Sim;;
+POP.155;Preparação de Químicos – D645 (Mithril 1.6);Procedimento Operacional Padrão;6;2025-02-12;2025-05-30;2026-05-30;2026-08-28;D645;Christiano Silva;Sim;;
+POP.156;Manual Operacional – D645 (Mithril 1.6);Procedimento Operacional Padrão;5;2025-02-12;2025-05-30;2026-05-30;2026-08-28;D645;Christiano Silva;Sim;;
+POP.157;;;;;;;;;;;;
+POP.159;Manual Operacional - Jateamento CMV;Procedimento Operacional Padrão;5;2024-09-19;2024-10-16;2025-10-16;2026-01-14;06-Jateamento;Renan Barbosa;Sim;HMC;Antirreflexo
+POP.160;Limpeza e Manutenção - Jateamento CMV;Procedimento Operacional Padrão;4;2023-06-01;2023-07-17;2026-07-16;2026-10-15;06-Jateamento;Renan Barbosa;Sim;HMC;Antirreflexo
+POP.164;Limpeza e Manutenção - CTA Automática 25L;Procedimento Operacional Padrão;5;2022-09-23;2024-05-20;2026-05-20;2026-08-19;CTA Automática;Marília Novais;Sim;;
+POP.165;Manual Operacional - CTA Automática 25L;Procedimento Operacional Padrão;4;2022-09-02;2023-10-03;2025-10-02;2025-12-31;CTA Automática;Marília Novais;Sim;;
+POP.196;Retirada do Antirreflexo com Alkalisol BFA (Ingenchem);Procedimento Operacional Padrão;4;2022-04-27;2022-05-11;2026-08-10;2026-11-09;00-Geral Destratamento;Solange Viana;Sim;HMC;Antirrisco: Destratamento e Verniz
+POP.210;Materiais e Peças de Instalação HMC;Procedimento Operacional Padrão;2;2019-12-04;2022-09-20;2025-09-20;2026-01-19;00-Geral HMC;Carlos Anselme;Não;HMC;0
+POP.211;Matriz Troubleshooting HMC;Procedimento Operacional Padrão;2;2019-08-07;2019-12-13;2026-02-19;2026-05-20;00-Troubleshooting;Fábio Silva;Não;HMC;0
+POP.212;;;;;;;;;;;;
+POP.213;Troubleshooting HMC;Procedimento Operacional Padrão;2;2019-08-07;2019-11-26;2026-02-17;2026-05-17;00-Troubleshooting;Fábio Silva;Não;HMC;0
+POP.214;Chiller;Procedimento Operacional Padrão;3;2019-08-07;2019-12-12;2025-07-20;2025-11-30;Utilidades;Fábio Silva;Sim;MAN. HMC;CHILLER
+POP.216;Manual Operacional Pré (MG);Procedimento Operacional Padrão;4;2020-03-18;2020-08-19;2024-06-01;2026-09-02;01-Pré-Inspeção - Preparação;Vagner Domingos;Sim;HMC;0
+POP.241;Montagem de Garra (16 e 32 Lentes);Procedimento Operacional Padrão;8;2025-02-10;2025-05-30;2026-05-30;2026-08-28;01-Pré-Inspeção - Preparação;Evellyn Santos;Sim;HMC;Antirrisco: Destratamento e Verniz
+POP.242;Fluxo de Retonos Garantias e Laudos - Coatings;Procedimento Operacional Padrão;1;2019-02-27;2019-02-27;2026-08-10;2026-11-09;Laudos;Vagner Domingos;Sim;;
+POP.251;;;;;;;;;;;;
+POP.253;Curva Teórica Crizal Prevencia M1.5;Procedimento Operacional Padrão;4;2022-05-20;2022-09-20;2025-09-20;2025-12-19;00-Curvas de Antirreflexo;Dalson Souza;Sim;HMC;0
+POP.254;;;;;;;;;;;;
+POP.255;;;;;;;;;;;;
+POP.256;Fluxo Testes Qualidade AR;Procedimento Operacional Padrão;11;2024-04-09;2024-04-11;2026-04-13;2026-07-13;Testes AR;Lucineide Pereira;Sim;HMC;Teste de Qualidade AR
+POP.257;;;;;;;;;;;;
+POP.258;;;;;;;;;;;;
+POP.262;Teste da Borracha - NX 10;Procedimento Operacional Padrão;8;2021-04-19;2021-10-15;2022-10-15;2026-11-09;Testes AR;Jessika Menacho;Sim;HMC;Teste de Qualidade AR
+POP.263;Teste do Sal - RCO2;Procedimento Operacional Padrão;12;2025-04-24;2025-05-30;2026-05-30;2026-08-28;Testes AR;Jessika Menacho;Sim;HMC;Teste de Qualidade AR
+POP.264;Teste Caneta (Ink Test);Procedimento Operacional Padrão;11;2023-08-08;2023-08-11;2026-08-10;2026-11-09;Testes AR;Lucineide Pereira;Sim;HMC;Teste de Qualidade AR
+POP.266;Teste Bola de Plasma;Procedimento Operacional Padrão;11;2023-08-09;2023-08-11;2026-08-10;2026-11-09;Testes AR;Lucineide Pereira;Sim;HMC;Teste de Qualidade AR
+POP.267;Calibração do SMR (Sistema de Medição por Reflexão);Procedimento Operacional Padrão;9;2023-07-13;2023-09-13;2025-09-12;2025-12-11;Testes AR;Taís Flores;Sim;HMC;Teste de Qualidade AR
+POP.268;Medição e Calibração do SMR-UV;Procedimento Operacional Padrão;8;2025-04-24;2025-05-30;2026-05-30;2026-08-28;Testes AR;Jessika Menacho;Sim;HMC;Teste de Qualidade AR
+POP.269;Fluxo de Testes de Qualidade HC;Procedimento Operacional Padrão;5;2024-03-07;2024-03-12;2026-05-20;2026-08-20;Testes HC;Nathália Brandão;Sim;HMC;Teste de Qualidade HC
+POP.270;;;;;;;;;;;;
+POP.272;;;;;;;;;;;;
+POP.273;Teste de Medição de Espessura;Procedimento Operacional Padrão;6;2019-06-25;2019-07-03;2026-06-30;2026-09-29;Testes HC;Priscila Mourão;Sim;HMC;Teste de Qualidade HC
+POP.274;Teste de Extrato Seco - Mithril 1.5 - Sartorius;Procedimento Operacional Padrão;6;2025-04-22;2025-05-15;2026-05-15;2026-08-13;Testes HC;Jessika Menacho;Não;HMC;Teste de Qualidade HC
+POP.275;Teste de Adesão - Mithril 1.5, 1.6 e UV-NV / UV-XBT;Procedimento Operacional Padrão;6;2025-04-24;2025-05-30;2026-05-30;2026-08-28;Testes HC;Jessika Menacho;Sim;HMC;Teste de Qualidade HC
+POP.276;;;;;;;;;;;;
+POP.283;Teste de Concentração de Soda 10% com densímetro;Procedimento Operacional Padrão;3;2021-06-30;2022-04-13;2025-10-13;2026-01-13;Testes HC;Taís Flores;Sim;HMC;0
+POP.285;Teste de Viscosidade - Automático com Brookfield LVDVE;Procedimento Operacional Padrão;5;2023-04-06;2023-08-18;2025-08-17;2026-02-12;Testes HC;Jessika Menacho;Sim;HMC;0
+POP.293;Teste de Concentração da Soda 10%;Procedimento Operacional Padrão;5;2019-12-04;2020-12-04;2026-04-21;2026-07-21;Testes HC;Carlos Anselme;Sim;HMC;0
+POP.295;Preparação de Químicos - Solução Indicadora de pH;Procedimento Operacional Padrão;6;2021-11-09;2022-02-21;2026-08-20;2026-11-18;00-Geral Testes;Lucineide Pereira;Sim;HMC;0
+POP.296;Teste de Concentração do Citrikleen + Novastrip;Procedimento Operacional Padrão;4;2019-12-11;2019-12-13;2025-10-17;2026-01-19;Testes HC;Carlos Anselme;Sim;HMC;0
+POP.297;Teste de Concentração da Soda 10%;Procedimento Operacional Padrão;5;2019-12-11;2019-12-30;2025-10-01;2025-12-02;Testes HC;Fábio Silva;Sim;HMC;0
+POP.300;Preparação do Removedor de Marcação Amarela (RMA);Procedimento Operacional Padrão;6;2019-12-04;2019-12-13;2025-10-10;2026-01-19;00-Geral Destratamento;Aluysio Rougemont;Sim;HMC;0
+POP.301;Preparação da Solução Detergente Tropical Strip;Procedimento Operacional Padrão;5;2019-12-04;2019-12-13;2025-11-03;2026-01-31;00-Geral Destratamento;Aluysio Rougemont;Sim;HMC;"Antirrisco:
+Prep. de Químicos e Manutenção"
+POP.306;;;;;;;;;;;;
+POP.307;;;;;;;;;;;;
+POP.308;;;;;;;;;;;;
+POP.309;Manual Operacional - Conferência da Montagem;Procedimento Operacional Padrão;4;2022-06-30;2022-09-06;2025-09-06;2025-12-05;Montagem e Inspeção;Nathália Brandão;Sim;MONTAGEM;Conferência
+POP.310;;;;;;;;;;;;
+POP.351;Procedimento do Teste do RMA e Tropical Strip;Procedimento Operacional Padrão;3;2019-12-04;2019-12-13;2025-11-01;2026-02-03;Testes HC;Solange Viana;Não;HMC;Teste de Qualidade HC
+POP.364;Inspeção de Recebimento dos Verniz e Primer;Procedimento Operacional Padrão;7;2024-09-12;2024-11-26;2025-11-26;2026-02-24;Estoque / Expedição;Lucineide Pereira;Sim;Estoque;Primer e Vernizes
+POP.378;;;;;;;;;;;;
+POP.379;;;;;;;;;;;;
+POP.380;;;;;;;;;;;;
+POP.381;;;;;;;;;;;;
+POP.382;;;;;;;;;;;;
+POP.383;;;;;;;;;;;;
+POP.384;;;;;;;;;;;;
+POP.385;;;;;;;;;;;;
+POP.386;;;;;;;;;;;;
+POP.387;;;;;;;;;;;;
+POP.388;;;;;;;;;;;;
+POP.389;;;;;;;;;;;;
+POP.390;;;;;;;;;;;;
+POP.391;;;;;;;;;;;;
+POP.392;;;;;;;;;;;;
+POP.393;;;;;;;;;;;;
+POP.394;;;;;;;;;;;;
+POP.395;;;;;;;;;;;;
+POP.396;;;;;;;;;;;;
+POP.397;;;;;;;;;;;;
+POP.398;;;;;;;;;;;;
+POP.399;;;;;;;;;;;;
+POP.400;;;;;;;;;;;;
+POP.401;;;;;;;;;;;;
+POP.402;;;;;;;;;;;;
+POP.403;;;;;;;;;;;;
+POP.404;;;;;;;;;;;;
+POP.405;;;;;;;;;;;;
+POP.406;;;;;;;;;;;;
+POP.407;;;;;;;;;;;;
+POP.408;;;;;;;;;;;;
+POP.409;;;;;;;;;;;;
+POP.410;;;;;;;;;;;;
+POP.411;;;;;;;;;;;;
+POP.414;;;;;;;;;;;;
+POP.422;;;;;;;;;;;;
+POP.425;;;;;;;;;;;;
+POP.427;Manual Operacional Pré-Inspeção (CE);Procedimento Operacional Padrão;1;2022-07-05;2025-08-26;2026-08-26;2026-11-24;01-Pré-Inspeção - Preparação;Francisco Glauber;Sim;HMC;0
+POP.429;Manual Operacional - Pré-Inspeção (SP);Procedimento Operacional Padrão;6;2025-07-08;2025-08-01;2026-08-01;2026-10-30;01-Pré-Inspeção - Preparação;Solange Viana;Sim;HMC;0
+POP.430;Teste de Medição de Espessura – SMR Thickness (New SMR Flame);Procedimento Operacional Padrão;3;2025-04-23;2025-05-30;2026-05-30;2026-08-28;Testes HC;Jessika Menacho;Sim;HMC;Teste de Qualidade HC
+POP.431;Teste de Extrato Seco - SARTORIUS MA35;Procedimento Operacional Padrão;3;2025-04-22;2025-05-30;2026-05-30;2026-08-28;Testes HC;Jessika Menacho;Sim;HMC;Teste de Qualidade HC
+POP.441;Confecção Lentes Referência de Potência_Essilor Version;Procedimento Operacional Padrão;;2019-07-18;2019-12-17;2025-10-13;2026-01-19;Lens Mark;Renato Dias;Sim;SURFAÇAGEM;Laser
+POP.442;Confecção Lentes Referência de Potência_SL Version;Procedimento Operacional Padrão;;2019-07-18;2019-12-17;2022-06-01;2026-04-29;Lens Mark;Renato Dias;Sim;SURFAÇAGEM;0
+POP.444;Manual Operacional - Inspeção Final - RS;Procedimento Operacional Padrão;2;2023-06-13;2023-08-21;2026-08-20;2026-11-18;09-Inspeção Final;Christiano Silva;Sim;HMC;0
+POP.446;Tempo de Estabilização e Normalização_Versão Essilor;Procedimento Operacional Padrão;;2019-07-24;2019-10-30;2025-10-13;2026-01-13;Lens Mark;Renato Dias;Sim;SURFAÇAGEM;Laser
+POP.447;Teste de homogeneidade;Procedimento Operacional Padrão;;2019-07-24;2019-09-18;2025-09-23;2025-12-23;Lens Mark;Renato Dias;Sim;MAN. SURF.;0
+POP.448;Teste de Segurança do Laser;Procedimento Operacional Padrão;;2019-07-24;2019-09-18;2026-08-19;2026-11-17;Lens Mark;Renato Dias;Sim;SURFAÇAGEM;Laser
+POP.450;Carregamento Logos LensMark III;Procedimento Operacional Padrão;;2019-07-26;2019-09-18;2025-10-13;2026-01-19;Lens Mark;Marcelo Bastos;Sim;SURFAÇAGEM;Laser
+POP.453;Manual Operacional - Acesso ao Sistema AR SPC;Procedimento Operacional Padrão;2;2022-03-09;2022-09-20;2025-09-20;2026-01-05;00-Controle do Processo HMC;Dalson Souza;Sim;HMC;"Antirreflexo:
+Ajustes de Processo"
+POP.454;Manual Inspeção HC (PR);Procedimento Operacional Padrão;;2019-08-08;2019-09-02;2025-05-05;2025-12-18;00-Geral HC;Leandra Martins;Sim;;
+POP.455;Troubleshooting iCLBS;Procedimento Operacional Padrão;1;2020-08-19;2023-08-23;2026-08-21;2026-11-19;03-CLBS;José Roberto;Não;SURFAÇAGEM;Blocagem
+POP.458;Procedimento Instalação SPC Mapper V3;Procedimento Operacional Padrão;1;2019-12-16;2019-12-17;2025-09-23;2025-12-23;00-Controle de Processo e DSPC;José Roberto;Sim;STL;STL
+POP.459;Troubleshooting CLBS;Procedimento Operacional Padrão;;2019-08-09;2019-12-15;2026-02-19;2026-05-20;03-CLBS;José Roberto;Sim;SURFAÇAGEM;Blocagem
+POP.460;Manual Operacional - CLBS2;Procedimento Operacional Padrão;1;2021-11-01;2021-11-05;2026-08-05;2026-11-06;03-CLBS;Nathália Brandão;Sim;SURFAÇAGEM;Blocagem
+POP.461;Manual Operacional - CLBS 1 e iCLBS 1;Procedimento Operacional Padrão;1;2021-11-24;2022-02-18;2026-08-18;2026-11-16;03-CLBS;Rogério Nogueira;Sim;SURFAÇAGEM;Blocagem
+POP.464;Manutenção CLBS;Procedimento Operacional Padrão;;2019-08-12;2019-12-15;2025-07-07;2025-11-30;03-CLBS;José Roberto;Sim;SURFAÇAGEM;Blocagem
+POP.466;;;;;;;;;;;;
+POP.467;;;;;;;;;;;;
+POP.469;Curva Teórica Crizal Prevencia M1.6;Procedimento Operacional Padrão;1;2022-09-02;2023-10-10;2025-10-09;2026-01-07;00-Curvas de Antirreflexo;Alvaro Christofoli;Sim;HMC;"Antirreflexo:
+Ajustes de Processo"
+POP.473;Manual Operacional - Inspeção Final - CE;Procedimento Operacional Padrão;1;2022-04-22;2022-05-10;2026-05-22;2026-08-22;09-Inspeção Final;Francisco Glauber;Sim;HMC;0
+POP.474;Manual Operacional - Conferência Óptica (Decide);Procedimento Operacional Padrão;4;2024-08-12;2024-08-14;2026-08-14;2026-11-12;DECIDE;Renan Barbosa;Sim;SURFAÇAGEM;Conferência
+POP.475;Troubleshooting DSPC;Procedimento Operacional Padrão;;2019-09-05;2019-12-15;2026-02-19;2026-05-20;00-Controle de Processo e DSPC;Renato Dias;Não;SURFAÇAGEM;Preparação
+POP.476;Manual Operacional - Inspeção Final - SP;Procedimento Operacional Padrão;5;2024-12-03;2025-01-09;2026-01-09;2026-04-09;09-Inspeção Final;Solange Viana;Sim;HMC;0
+POP.478;Calibração LensMark III;Procedimento Operacional Padrão;;2019-09-13;2019-12-15;2025-10-13;2026-01-19;Lens Mark;Patricia França;Sim;SURFAÇAGEM;Laser
+POP.479;Determinação Concentração da Soda com Refratômetro Digital;Procedimento Operacional Padrão;;2019-09-16;2019-09-19;2025-11-01;2026-02-03;Testes HC;Ana Carolina Americo;Sim;HMC;Teste de Qualidade HC
+POP.482;Calibración Automática VFT Macro;Procedimento Operacional Padrão;;2019-09-25;2019-12-26;2025-10-13;2026-01-19;VFT Macro;Diego Galindo;Sim;;
+POP.483;Calibração Operacional - VFT Macro;Procedimento Operacional Padrão;1;2023-08-18;2023-08-23;2026-08-21;2026-11-19;VFT Macro;Diego Galindo;Sim;SURFAÇAGEM;CORTE
+POP.491;Calibração Operacional - Toroflex;Procedimento Operacional Padrão;1;2023-09-15;2023-10-12;2025-10-11;2026-01-09;Toroflex;Alessandro Barros;Sim;SURFAÇAGEM;Polimento
+POP.495;Manual Operacional Pré-Inspeção (RS);Procedimento Operacional Padrão;3;2023-04-12;2023-07-17;2026-07-16;2026-10-15;01-Pré-Inspeção - Preparação;Christiano Silva;Sim;HMC;0
+POP.497;Calibração Fitadeira Semi-Auto;Procedimento Operacional Padrão;;2019-11-07;2019-12-15;2025-10-13;2026-01-19;Optic D-79364;Marcelo Bastos;Sim;SURFAÇAGEM;Fitagem
+POP.498;Controle de Posicionamento da Pinça;Procedimento Operacional Padrão;4;2022-05-19;2024-07-10;2026-07-10;2026-10-09;00-Controle de Processo e DSPC;José Roberto;Sim;SURFAÇAGEM;CORTE
+POP.499;Limpeza dos Sensores de Vácuo máquinas de AR;Procedimento Operacional Padrão;;2019-11-29;2019-12-09;2025-12-01;2026-03-01;Antirreflexo;Ana Carolina Americo;Sim;MAN. HMC;DLX 1200
+POP.503;Código de Barras para DSPC;Procedimento Operacional Padrão;;2019-12-06;2019-12-15;2026-08-17;2026-11-16;00-Controle de Processo e DSPC;José Roberto;Sim;SURFAÇAGEM;Preparação
+POP.505;Procedimento DSPC nas Máquinas Schneider;Procedimento Operacional Padrão;;2019-12-10;2019-12-15;2025-10-15;2026-01-18;00-Controle de Processo e DSPC;Robson Azevedo;Sim;;
+POP.506;Ajuste Eixo B para CPP – VFT'S;Procedimento Operacional Padrão;;2019-12-11;2019-12-15;2025-12-01;2026-03-01;00-Controle de Processo e DSPC;Robson Azevedo;Sim;SURFAÇAGEM;CORTE
+POP.507;Manual Operacional - D9 PAC Mithril 1.6;Procedimento Operacional Padrão;1;2022-11-10;2023-03-03;2026-03-02;2026-05-31;D9 PAC;Fernando Maciel;Sim;;
+POP.513;Calibração Operacional - PRA;Procedimento Operacional Padrão;3;2025-02-14;2025-03-11;2026-03-11;2026-06-09;PRA;Robson Azevedo;Sim;SURFAÇAGEM;Blocagem
+POP.514;Control Diario DSPC - Línea Schneider;Procedimento Operacional Padrão;1;2019-12-16;2019-12-23;2026-08-19;2026-11-17;00-Control de Proceso y DSPC;Rômulo Cursino;Sim;;
+POP.516;Operação Refratômetro Manual_Digital;Procedimento Operacional Padrão;2;2022-05-19;2024-03-26;2026-06-19;2026-09-18;00-Controle de Processo e DSPC;Robson Azevedo;Sim;SURFAÇAGEM;CORTE
+POP.518;Calibração Operacional - DLP;Procedimento Operacional Padrão;6;2023-08-29;2024-02-01;2026-01-31;2026-04-30;DLP;Renato Dias;Sim;SURFAÇAGEM;Polimento
+POP.520;MP´s Surfacing Area V3_BR;Procedimento Operacional Padrão;1;2019-12-18;2019-12-23;2026-08-10;2026-11-09;Português;José Roberto;Sim;MAN. SURF.;0
+POP.521;MP´s Surfacing Area V3_ES;Procedimento Operacional Padrão;1;2019-12-18;2019-12-23;2026-08-13;2026-11-11;Español;José Roberto;Sim;;
+POP.522;Calibração Automática HSC Smart;Procedimento Operacional Padrão;1;2019-12-19;2019-12-23;2025-10-13;2026-01-19;HSC Smart;Robson Azevedo;Sim;SURFAÇAGEM;0
+POP.527;Calibración Operativa - VFT Orbit 1;Procedimento Operacional Padrão;6;2024-07-18;2024-08-05;2026-08-05;2026-11-03;VFT Orbit 1;Pauline Gomez;Sim;;
+POP.528;Calibración Operativa - VFT Ultra;Procedimento Operacional Padrão;2;2023-10-10;2024-02-01;2026-01-31;2026-04-30;VFT Ultra;Marcelo Bastos;Sim;;
+POP.530;Calibracão Máquina HSC Smart;Procedimento Operacional Padrão;1;2019-12-20;2019-12-23;2026-02-01;2026-05-01;HSC Smart;Marcelo Bastos;Sim;;
+POP.532;POP Calibración y Operación Encintadora Manual;Procedimento Operacional Padrão;1;2019-12-20;2019-12-26;2025-07-07;2025-11-30;01-Cinta;Diego Galindo;Não;;
+POP.534;Calibración Operativa - Duoflex;Procedimento Operacional Padrão;2;2023-10-10;2024-02-01;2026-01-31;2026-04-30;Duoflex;Pauline Gomez;Sim;;
+POP.547;Manutenção Preventiva - Diff Pump;Procedimento Operacional Padrão;2;2022-03-11;2022-03-18;2025-09-09;2025-12-09;Antirreflexo;Nathália Brandão;Sim;MAN. HMC;Bomba Difusora
+POP.548;Satis 1200DLX - Bombas - PtBr;Procedimento Operacional Padrão;1;2020-01-28;2020-10-15;2026-05-26;2026-08-25;Antirreflexo;Dalson Souza;Sim;MAN. HMC;DLX 1200
+POP.549;Satis 1200DLF - Bombas - PtBr;Procedimento Operacional Padrão;1;2020-01-28;2020-10-15;2026-07-20;2026-10-19;Antirreflexo;Dalson Souza;Sim;MAN. HMC;DLX 1200
+POP.551;Loader Orbit II Español;Procedimento Operacional Padrão;1;2020-01-29;2020-12-02;2026-08-17;2026-11-16;VFT Orbit 2;Tommy CHONGO;Sim;;
+POP.554;Preparação de Químicos – CDC1000/CDS1000 Mithril 1.6;Procedimento Operacional Padrão;4;2025-07-23;2025-08-05;2026-08-05;2026-11-03;CDC1000/CDS1000;Marcelo Capeletto;Sim;HMC;Antirrisco: Destratamento e Verniz
+POP.555;Manual Operacional – CDC1000 (Mithril 1.6);Procedimento Operacional Padrão;2;2022-06-23;2022-11-03;2025-11-03;2026-02-01;CDC1000/CDS1000;Laura Vaz;Sim;HMC;Antirrisco: Destratamento e Verniz
+POP.556;Limpeza e Manutenção – CDC1000/CDS1000 Mithril 1.6;Procedimento Operacional Padrão;3;2023-08-17;2025-08-05;2026-08-05;2026-11-03;CDC1000/CDS1000;Jeferson Lourenço;Sim;HMC;Antirrisco: Destratamento e Verniz
+POP.560;Biseladora KAPPA o GAMMA;Procedimento Operacional Padrão;1;2020-04-03;2020-07-15;2025-09-08;2025-12-08;Biseladora;Victor Olivares;Sim;;
+POP.562;Biseladora PRO E600;Procedimento Operacional Padrão;;2020-07-15;2020-07-15;2025-09-08;2025-12-08;Biseladora;Victor Olivares;Sim;;
+POP.564;Bloqueo 3B;Procedimento Operacional Padrão;;2020-07-15;2020-07-15;2026-04-29;2026-07-29;3B Blocker;Victor Olivares;Sim;;
+POP.568;Inspeccion final Focovision  SPF;Procedimento Operacional Padrão;;2020-07-15;2020-07-15;2025-09-08;2025-12-08;Montado e Inspeccion;Victor Olivares;Sim;;
+POP.573;Traceado & Bloqueo KAPPA;Procedimento Operacional Padrão;;2020-07-15;2020-07-15;2026-06-26;2026-09-25;Biseladora;Victor Olivares;Sim;;
+POP.574;Traceado E-TESS;Procedimento Operacional Padrão;;2020-07-15;2020-07-15;2025-09-08;2025-12-08;TESS;Victor Olivares;Sim;MONTAGEM;Leitura no Tracer
+POP.576;Traceado TESS;Procedimento Operacional Padrão;;2020-07-15;2020-07-15;2025-09-08;2025-12-08;TESS;Victor Olivares;Sim;MONTAGEM;Leitura no Tracer
+POP.577;Traceado, bloqueo y biselado Mr. Blue;Procedimento Operacional Padrão;;2020-07-15;2020-07-15;2025-09-08;2025-12-08;Biseladora;Victor Olivares;Sim;;
+POP.578;Traceado, Bloqueo y biselado Mr. Orange;Procedimento Operacional Padrão;;2020-07-15;2020-07-15;2025-09-08;2025-12-08;Biseladora;Victor Olivares;Sim;;
+POP.580;Limpeza de las lentes optifog;Procedimento Operacional Padrão;1;2020-07-17;2020-07-30;2026-06-30;2026-09-29;00-General AR;Martin Becker;Sim;;
+POP.582;Preparación DSX y SP;Procedimento Operacional Padrão;1;2020-07-17;2020-07-30;2025-11-03;2026-02-03;00-General AR;Martin Becker;Sim;;
+POP.584;Lentes de Teste Espessura - Máquinas D;Procedimento Operacional Padrão;2;2020-08-19;2020-08-21;2026-05-04;2026-08-03;Testes HC;Dalson Souza;Sim;HMC;0
+POP.586;Medición_y_Calibración_del_SMR-UV;Procedimento Operacional Padrão;4;2020-08-03;2020-10-15;2025-10-13;2026-01-05;Teste de AR;Martin Becker;Sim;;
+POP.587;Test de Sal - RCO2;Procedimento Operacional Padrão;9;2020-08-05;2021-04-20;2025-05-05;2026-01-05;Teste de AR;Martin Becker;Sim;;
+POP.588;Teste de la Goma - NX 10;Procedimento Operacional Padrão;7;2020-08-05;2021-04-20;2025-05-05;2026-01-05;Teste de AR;Martin Becker;Sim;;
+POP.589;Test Bola de Plasma;Procedimento Operacional Padrão;9;2020-08-05;2021-04-20;2025-05-05;2026-01-05;Teste de AR;Martin Becker;Sim;;
+POP.590;Desprendimento da Cola da Fita na Lente;Procedimento Operacional Padrão;;2020-08-05;2020-10-15;2025-10-13;2026-01-19;00-Troubleshooting;Fábio Silva;Sim;;
+POP.591;Test de Marcador (Ink_Test);Procedimento Operacional Padrão;9;2020-08-12;2021-05-21;2025-08-25;2025-11-30;Teste de AR;Martin Becker;Não;;
+POP.594;Manual Operacional - Controle Final (Coating BH);Procedimento Operacional Padrão;;2020-08-12;2020-12-03;2026-06-09;2026-09-08;09-Inspeção Final;Elizete Silva;Sim;HMC;0
+POP.595;Teste de Adesão Maquina SCL;Procedimento Operacional Padrão;;2020-08-14;2020-08-17;2025-12-18;2026-03-18;Testes HC;Dalson Souza;Sim;HMC;Teste de Qualidade HC
+POP.596;Lentes de Teste Espessura SCL;Procedimento Operacional Padrão;;2020-08-14;2020-08-17;2025-12-18;2026-03-18;Testes HC;Dalson Souza;Sim;HMC;Teste de Qualidade HC
+POP.598;Procedimento Control de Posicionamiento de la Pinza;Procedimento Operacional Padrão;1;2020-11-18;2021-03-24;2025-07-07;2025-11-30;00-Control de Proceso y DSPC;José Roberto;Não;;
+POP.599;Calibração da força do Clamping;Procedimento Operacional Padrão;;2020-08-20;2020-09-03;2025-09-08;2025-12-09;Português;Renato Dias;Sim;MAN. SURF.;Blocadora
+POP.600;Controle de Refrigeração dos Eixos do Gerador VFT;Procedimento Operacional Padrão;;2020-08-20;2020-09-03;2025-10-13;2026-01-19;VFT Orbit 1;José Roberto;Sim;SURFAÇAGEM;CORTE
+POP.602;Checar a vazão de fluxo do líquido polidor  DLP;Procedimento Operacional Padrão;;2020-08-20;2020-09-03;2026-07-31;2026-10-30;DLP;José Roberto;Sim;SURFAÇAGEM;Polimento
+POP.606;Calibración Operativa - DLP;Procedimento Operacional Padrão;5;2023-09-22;2023-10-12;2025-10-11;2026-01-09;DLP;Renato Dias;Sim;;
+POP.607;Calibración del Grabado Mecánico_VFTs_Ultra__Compact_y_Micro;Procedimento Operacional Padrão;1;2020-08-24;2020-09-03;2026-02-01;2026-05-29;Mechnical Engraving;Marcelo Bastos;Sim;;
+POP.609;Calibração Operacional - VFT Orbit 2;Procedimento Operacional Padrão;2;2024-02-01;2024-02-02;2026-02-01;2026-05-02;VFT Orbit 2;Robson Azevedo;Sim;SURFAÇAGEM;CORTE
+POP.610;Calibração Duoflex;Procedimento Operacional Padrão;;2020-08-24;2020-09-03;2026-02-01;2026-05-01;Duoflex;Robson Azevedo;Sim;SURFAÇAGEM;0
+POP.611;Calibración Operativa - CCP Swift;Procedimento Operacional Padrão;1;2023-10-10;2024-02-01;2026-01-31;2026-04-30;CCP Swfit;Pauline Gomez;Sim;;
+POP.613;Calibração da Posição do Clamping;Procedimento Operacional Padrão;;2020-08-24;2020-09-03;2025-09-08;2025-12-09;Português;Renato Dias;Sim;MAN. SURF.;Blocadora
+POP.615;Calibración Operativa - Toroflex;Procedimento Operacional Padrão;1;2023-10-11;2025-03-11;2026-03-11;2026-06-09;Toroflex;Alessandro Barros;Sim;;
+POP.616;Calibración Operativa - CCL CMARK;Procedimento Operacional Padrão;1;2023-10-11;2025-11-27;2026-11-27;2027-02-25;CCL Mark;Robson Azevedo;Sim;;
+POP.617;Confeccao Lentes Referencia de Potencia Essilor;Procedimento Operacional Padrão;;2020-08-28;2020-09-03;2026-08-25;2026-11-24;Lensmark;Pauline Gomez;Não;SURFAÇAGEM;Laser
+POP.618;Controle do Líquido Refrigerante e Posicionamento dos Bicos;Procedimento Operacional Padrão;;2020-08-28;2020-09-03;2025-10-13;2026-01-19;VFT Orbit 1;Renato Dias;Sim;SURFAÇAGEM;Polimento
+POP.620;Flujo Teste de Calidad AR;Procedimento Operacional Padrão;8;2020-08-28;2020-12-07;2026-06-30;2026-09-29;Teste de AR;Martin Becker;Sim;;
+POP.625;Calibração manual VFT Macro;Procedimento Operacional Padrão;1;2020-08-28;2020-09-03;2026-02-01;2026-05-01;VFT Macro;Alessandro Barros;Sim;SURFAÇAGEM;CORTE
+POP.626;Calibração Operacional - VFT Orbit 1;Procedimento Operacional Padrão;6;2024-07-17;2024-07-30;2026-07-30;2026-10-29;VFT Orbit 1;Robson Azevedo;Sim;SURFAÇAGEM;CORTE
+POP.627;Calibração Operacional - VFT Ultra;Procedimento Operacional Padrão;2;2024-03-15;2024-03-26;2026-06-19;2026-09-18;VFT Ultra;Renato Dias;Sim;SURFAÇAGEM;CORTE
+POP.628;Calibración Operativa - LensMark III;Procedimento Operacional Padrão;1;2023-10-11;2024-02-01;2026-01-31;2026-04-30;Lensmark;Marcelo Bastos;Sim;;
+POP.629;Calibración PRA ES V1;Procedimento Operacional Padrão;1;2020-08-31;2021-03-24;2026-02-01;2026-05-01;PRA;Diego Galindo;Sim;;
+POP.631;Confeccion Lentes Referencia de Potencia CCL CMARK ES;Procedimento Operacional Padrão;;2020-08-31;2020-09-03;2026-08-17;2026-11-16;CCL Mark;Diego Galindo;Sim;;
+POP.632;Calibración Maquina HSC MASTER ES;Procedimento Operacional Padrão;1;2020-08-31;2020-09-02;2026-02-01;2026-05-01;HSC Master;Diego Galindo;Sim;;
+POP.633;Calibración Operativa - CB Bond ES;Procedimento Operacional Padrão;1;2023-10-10;2024-02-01;2026-01-31;2026-05-01;CB Bond;Pauline Gomez;Sim;;
+POP.634;Calibración Operativa - VFT Orbit 2 (automática);Procedimento Operacional Padrão;1;2023-10-10;2025-03-13;2026-03-13;2026-06-11;VFT Orbit 2;José Roberto;Sim;;
+POP.637;Test de Adherencia Maquina SCL;Procedimento Operacional Padrão;;2020-09-11;2021-05-21;2025-07-07;2025-11-30;Teste de HC;Martin Becker;Não;;
+POP.638;Lentes de Test Espesor SCL;Procedimento Operacional Padrão;;2020-09-11;2021-05-21;2025-05-05;2026-01-05;Teste de HC;Martin Becker;Sim;;
+POP.641;Modelo de Procedimento Operacional Padrão;Procedimento Operacional Padrão;7;2022-08-29;2022-09-05;2025-09-05;2026-01-31;Modelos de Documentos;Taís Flores;Sim;QUALIDADE;QUALIEX
+POP.643;Manutenção Preventiva - Forno Essemtec;Procedimento Operacional Padrão;1;2022-07-07;2023-10-31;2025-10-30;2026-01-28;Forno;Lucas Silva;Sim;MAN. HMC;Forno / Estufa
+POP.646;Manual Operacional - DSPC Confecção e Verificação da Lente;Procedimento Operacional Padrão;;2020-11-06;2020-11-24;2025-04-24;2026-01-05;00-Controle de Processo e DSPC;José Roberto;Sim;SURFAÇAGEM;Preparação
+POP.647;Manual Operacional - PRA e PRA iCLBS;Procedimento Operacional Padrão;1;2021-09-03;2021-09-13;2025-09-17;2025-11-30;PRA;Humberto Serra - Lab Rio;Sim;SURFAÇAGEM;Blocagem
+POP.649;;;;;;;;;;;;
+POP.650;;;;;;;;;;;;
+POP.651;Limpeza e Manutenção - VFT Orbit 1 e 2;Procedimento Operacional Padrão;1;2022-07-29;2024-02-01;2026-01-31;2026-05-01;00-Geral Gerador;Felipe Barros;Sim;SURFAÇAGEM;CORTE
+POP.652;Limpeza e Manutenção - Toroflex;Procedimento Operacional Padrão;;2020-11-19;2020-12-17;2025-10-13;2026-01-19;Toroflex;Elisa Peres;Sim;SURFAÇAGEM;Polimento
+POP.653;Calibración Operativa - Lensômetros (Essilor y Nidek);Procedimento Operacional Padrão;2;2023-10-11;2024-05-10;2026-05-11;2026-08-10;00-Control de Proceso y DSPC;Alessandro Barros;Sim;;
+POP.655;Limpeza e Manutenção - DLP;Procedimento Operacional Padrão;;2020-11-23;2020-12-17;2025-09-02;2025-12-02;DLP;Humberto Serra - Lab Rio;Sim;SURFAÇAGEM;Polimento
+POP.656;Manual Operacional - Toroflex;Procedimento Operacional Padrão;2;2022-01-21;2022-01-24;2025-08-31;2025-11-30;Toroflex;Rogério Nogueira;Sim;SURFAÇAGEM;Polimento
+POP.657;Manual Operacional - DLP;Procedimento Operacional Padrão;2;2024-03-05;2024-03-26;2026-06-19;2026-09-18;DLP;Rogério Nogueira;Sim;SURFAÇAGEM;Polimento
+POP.658;Procedimento Abertura de chamados - Fracttal;Procedimento Operacional Padrão;;2020-12-09;2021-05-03;2025-08-09;2026-11-10;00-Fracttal;Lucas Silva;Não;;
+POP.663;Manual Operacional - Fita Semiautomática Optic D-79364;Procedimento Operacional Padrão;2;2022-07-25;2023-08-23;2026-08-21;2026-11-19;Optic D-79364;Renan Barbosa;Sim;SURFAÇAGEM;Fitagem
+POP.664;Limpeza e Manutenção - SatisLoh 1200;Procedimento Operacional Padrão;;2020-12-22;2021-02-23;2025-10-10;2026-01-10;1200;Taís Flores;Sim;HMC;Antirreflexo
+POP.665;Manual Operacional - SatisLoh 1200;Procedimento Operacional Padrão;;2020-12-22;2021-02-23;2025-10-13;2026-01-13;1200;Lucineide Pereira;Sim;HMC;Antirreflexo
+POP.666;Limpeza e Manutenção - PRA e PRA iCLBS;Procedimento Operacional Padrão;;2020-12-23;2020-12-23;2026-06-09;2026-09-08;PRA;Humberto Serra - Lab Rio;Não;SURFAÇAGEM;Blocagem
+POP.668;Manual Operacional - Preparação / Pré-inspeção (Lab Rio);Procedimento Operacional Padrão;1;2022-04-13;2022-05-10;2025-11-10;2026-01-31;01-Pré-Inspeção - Preparação;Renan Barbosa;Sim;HMC;0
+POP.669;Manual Operacional - VFT Orbit 1;Procedimento Operacional Padrão;1;2022-01-21;2022-02-09;2025-10-13;2026-01-19;VFT Orbit 1;Rogério Nogueira;Sim;SURFAÇAGEM;CORTE
+POP.670;Limpeza e Manutenção - Boxer PRO;Procedimento Operacional Padrão;1;2022-07-25;2022-08-08;2026-08-10;2026-11-09;Boxer PRO;Deyved Silva;Sim;;
+POP.672;Manual Operacional - Boxer PRO;Procedimento Operacional Padrão;2;2023-08-31;2024-11-26;2025-11-26;2026-02-24;Boxer PRO;Deyved Silva;Sim;;
+POP.674;Preparação de Químicos - D9DP - Mithril 1.6;Procedimento Operacional Padrão;;2021-02-23;2022-05-04;2026-08-10;2026-11-09;D9 DP;Maria Riclecia da Silva;Sim;;
+POP.676;Manual Operacional - D9DP - Mithril 1.5 e 1.6;Procedimento Operacional Padrão;;2021-02-23;2021-05-05;2026-08-20;2026-11-18;D9 DP;Taís Flores;Sim;;
+POP.677;Limpeza e Manutenção - D6 (Destratadora);Procedimento Operacional Padrão;;2021-03-09;2021-07-27;2025-10-07;2026-01-19;D6;Christiano Silva;Sim;;
+POP.678;Manual de instrucciones - Conferencia de Óptica y Cosmética (Decide);Procedimento Operacional Padrão;2;2021-03-22;2021-03-23;2026-07-03;2026-10-02;07-Conferencia;Sergio Meza;Sim;;
+POP.680;Manual Operacional - Syrus;Procedimento Operacional Padrão;;2021-04-20;2021-05-24;2026-06-19;2026-09-18;Syrus 3C;Humberto Serra - Lab Rio;Sim;;
+POP.681;Limpeza e Manutenção - LensMark III;Procedimento Operacional Padrão;1;2023-04-18;2023-08-23;2026-08-21;2026-11-19;Lens Mark;Evellyn Santos;Sim;SURFAÇAGEM;Laser
+POP.682;Manual Operacional - LensMark III;Procedimento Operacional Padrão;2;2024-04-02;2024-04-08;2026-07-08;2026-10-07;Lens Mark;Renan Barbosa;Sim;SURFAÇAGEM;Laser
+POP.684;Limpeza e Manutenção - D20 Mithril 1.6;Procedimento Operacional Padrão;1;2022-11-07;2022-12-01;2025-12-01;2026-03-01;D20;Maria Riclecia da Silva;Sim;;
+POP.685;Manual Operacional - D20 Mithril 1.6;Procedimento Operacional Padrão;1;2022-11-07;2023-03-03;2026-03-02;2026-05-31;D20;Maria Riclecia da Silva;Sim;;
+POP.686;Preparação de Químicos - D20 Mithril 1.6;Procedimento Operacional Padrão;2;2024-02-29;2024-03-12;2026-06-10;2026-09-09;D20;Deyved Silva;Sim;;
+POP.691;Manual Operacional - VFT Orbit 2;Procedimento Operacional Padrão;1;2022-01-21;2022-01-24;2025-08-31;2025-11-30;VFT Orbit 2;Rogério Nogueira;Sim;SURFAÇAGEM;CORTE
+POP.692;Limpeza e Manutenção - Fita Semiautomatica Optic D-79364;Procedimento Operacional Padrão;;2021-05-05;2021-10-14;2026-07-31;2026-10-30;Optic D-79364;Elisa Peres;Sim;SURFAÇAGEM;Fitagem
+POP.693;Política de Devolução de Blocos e Lentes com Defeito de Fábrica;Procedimento Operacional Padrão;4;2023-08-04;2024-01-31;2026-05-25;2026-08-25;Estoque / Expedição;Denise Miranda;Sim;Estoque;DEVOLUÇÃO
+POP.694;Preparação de Químicos - CTA Automática 25L;Procedimento Operacional Padrão;;2021-05-11;2021-08-05;2026-08-21;2026-11-19;CTA Automática;Nathália Brandão;Sim;;
+POP.695;Manual Operacional - Coloração (Phantom);Procedimento Operacional Padrão;;2021-05-14;2022-05-30;2026-09-01;2026-10-30;04-COLORAÇÃO;Aluysio Rougemont;Sim;COLORAÇÃO;COLORAÇÃO
+POP.696;Preparação de Químicos - Coloração;Procedimento Operacional Padrão;2;2024-03-26;2024-04-17;2026-04-17;2026-07-16;04-COLORAÇÃO;Humberto Serra - Lab Rio;Sim;COLORAÇÃO;COLORAÇÃO
+POP.697;Controle de Parâmetros - Coloração;Procedimento Operacional Padrão;;2021-05-14;2021-09-13;2026-07-15;2026-10-14;04-COLORAÇÃO;Elisa Peres;Sim;COLORAÇÃO;COLORAÇÃO
+POP.698;Limpeza e Manutenção - Coloração;Procedimento Operacional Padrão;;2021-05-14;2021-09-13;2025-09-13;2025-12-12;04-COLORAÇÃO;Elisa Peres;Sim;COLORAÇÃO;COLORAÇÃO
+POP.701;Manual Operacional - D6 (Destratadora);Procedimento Operacional Padrão;;2021-06-01;2021-06-04;2026-07-20;2026-10-19;D6;Christiano Silva;Sim;;
+POP.703;Limpeza e Manutenção - EzFit;Procedimento Operacional Padrão;1;2022-06-22;2022-08-08;2026-06-09;2026-09-08;EzFit;Edgar Casallas;Sim;MONTAGEM;0
+POP.704;Calibração Operacional - EzFit;Procedimento Operacional Padrão;1;2022-06-22;2022-06-30;2026-06-10;2026-09-09;EzFit;Edgar Casallas;Sim;MONTAGEM;0
+POP.707;Curva Teórica Crizal EasyPro UV 35 M1.6;Procedimento Operacional Padrão;;2021-06-25;2022-02-21;2025-10-13;2026-01-13;00-Curvas de Antirreflexo;Dalson Souza;Sim;HMC;"Antirreflexo:
+Ajustes de Processo"
+POP.708;Curva Teorica Crizal EasyPro UV 35 M1.5;Procedimento Operacional Padrão;;2021-06-25;2022-09-20;2025-10-20;2026-01-19;00-Curvas de Antirreflexo;Dalson Souza;Sim;HMC;0
+POP.710;Limpeza e Manutenção - PROB 300;Procedimento Operacional Padrão;;2021-06-25;2021-10-07;2025-06-09;2026-09-09;PROB300;Humberto Serra - Lab Rio;Sim;MONTAGEM;0
+POP.711;Manual Operacional - PROB 300;Procedimento Operacional Padrão;;2021-06-25;2021-07-27;2026-06-09;2026-09-08;PROB300;Humberto Serra - Lab Rio;Sim;MONTAGEM;0
+POP.712;Calibração Operacional - Densímetro;Procedimento Operacional Padrão;;2021-07-05;2021-10-01;2025-12-20;2026-02-16;Testes HC;Taís Flores;Sim;HMC;0
+POP.714;Limpeza e Manutenção - Leitor TESS;Procedimento Operacional Padrão;;2021-07-22;2021-09-13;2025-09-08;2025-12-08;TESS;Elisa Peres;Sim;MONTAGEM;Leitura no Tracer
+POP.717;Manual Operacional - Fita manual CM 9300;Procedimento Operacional Padrão;;2021-08-05;2021-10-07;2026-08-19;2026-11-17;CM 9300;Nathália Brandão;Sim;SURFAÇAGEM;Fitagem
+POP.718;Manual Operacional - Toroflex;Procedimento Operacional Padrão;;2021-08-18;2022-08-18;2026-08-18;2026-11-16;Toroflex;Pauline Gomez;Sim;SURFAÇAGEM;Polimento
+POP.719;Limpieza y Mantenimiento - Toroflex;Procedimento Operacional Padrão;;2021-08-18;2022-08-18;2026-08-18;2026-11-16;Toroflex;Pauline Gomez;Sim;;
+POP.720;Preparação de Químicos - D6 (Destratadora);Procedimento Operacional Padrão;1;2023-05-18;2025-11-07;2026-11-07;2027-02-05;D6;Francisco Glauber;Sim;;
+POP.721;Preparação de Químicos - CCM Mithril 1.5;Procedimento Operacional Padrão;1;2023-01-20;2024-03-24;2026-03-24;2026-06-22;CCM;Francisco Glauber;Sim;HMC;0
+POP.722;Fluxograma - Troca de Blocos com Defeitos;Procedimento Operacional Padrão;;2021-09-01;2021-09-13;2026-04-06;2026-07-08;Estoque / Expedição;Taís Flores;Sim;QUALIDADE;0
+POP.725;Limpeza e Manutenção - Bisphera;Procedimento Operacional Padrão;1;2022-05-19;2022-06-15;2026-06-15;2026-09-14;MEI Bisphera;Edgar Casallas;Sim;MONTAGEM;Corte Armação MEI
+POP.726;Manual Operacional - FOG ID MK 200;Procedimento Operacional Padrão;;2021-11-04;2021-11-05;2026-07-07;2026-10-06;07-FOG;Lucineide Pereira;Sim;HMC;0
+POP.727;Manual Operacional - Extração de Defeito Cosmético (Decide);Procedimento Operacional Padrão;;2021-11-04;2022-03-08;2026-08-10;2026-11-09;DECIDE;José Roberto;Sim;SURFAÇAGEM;0
+POP.728;Manual Operacional - Desblocagem;Procedimento Operacional Padrão;2;2024-05-22;2024-08-05;2026-08-05;2026-11-03;08-Desblocadora;Laura Vaz;Sim;SURFAÇAGEM;Desblocagem
+POP.729;Limpeza e Manutenção - Desblocagem;Procedimento Operacional Padrão;;2021-12-02;2021-12-08;2026-08-07;2026-11-06;08-Desblocadora;Nathália Brandão;Sim;SURFAÇAGEM;Desblocagem
+POP.730;Limpeza e Manutenção - Coloração;Procedimento Operacional Padrão;1;2022-10-10;2023-03-03;2026-03-02;2026-05-31;04-COLORAÇÃO;Nathália Brandão;Sim;COLORAÇÃO;COLORAÇÃO
+POP.731;Limpeza e Manutenção - Syrus;Procedimento Operacional Padrão;;2021-11-18;2021-11-23;2026-07-07;2026-10-06;Syrus 3C;Renan Barbosa;Sim;;
+POP.732;Processo de Impressão e Certificação da Expedição - Lab Rio;Procedimento Operacional Padrão;1;2024-04-22;2024-05-08;2026-05-08;2026-08-07;LabRio;Samira Amaro;Sim;;
+POP.733;Manual Operacional - Planejamento e Controle da Produção - Lab Rio;Procedimento Operacional Padrão;1;2022-05-05;2022-05-23;2026-08-21;2026-11-19;LabRio;Renan Barbosa;Sim;;
+POP.734;Manual Operacional - Produto Não Conforme - Lab Rio;Procedimento Operacional Padrão;1;2023-06-15;2023-06-15;2026-06-15;2026-09-14;LabRio;Renan Barbosa;Sim;;
+POP.735;Manual Operacional - Abastecimento de Lentes - LabRio;Procedimento Operacional Padrão;2;2023-06-12;2023-10-02;2025-10-01;2025-12-30;LabRio;Maria Riclecia da Silva;Sim;;
+POP.736;Manual Operacional - Cancelamento de Pedido - Lab Rio;Procedimento Operacional Padrão;2;2025-07-10;2025-08-25;2026-08-25;2026-11-23;LabRio;Evellyn Santos;Sim;;
+POP.737;Manual Operacional - Digitação de Pedido - Lab Rio;Procedimento Operacional Padrão;1;2023-10-16;2024-04-29;2026-05-15;2026-11-14;LabRio;Evellyn Santos;Sim;;
+POP.738;Manual Operacional - Spin MRIII;Procedimento Operacional Padrão;1;2025-02-21;2025-02-21;2026-02-21;2026-05-22;05-SPIN;Renan Barbosa;Sim;SPIN;SPIN
+POP.739;Limpeza e Manutenção - Spin MRIII;Procedimento Operacional Padrão;1;2025-02-21;2025-02-21;2026-02-21;2026-05-22;05-SPIN;Renan Barbosa;Sim;SPIN;SPIN
+POP.740;Preparação de Químicos - Spin MRIII;Procedimento Operacional Padrão;1;2025-02-21;2025-02-21;2026-02-21;2026-05-22;05-SPIN;Renan Barbosa;Sim;SPIN;SPIN
+POP.741;Controle de Parâmetros - Spin MRIII;Procedimento Operacional Padrão;1;2025-02-21;2025-02-21;2026-02-21;2026-05-22;05-SPIN;Renan Barbosa;Sim;SPIN;SPIN
+POP.742;Manual Operacional - Coloração (manual);Procedimento Operacional Padrão;1;2022-06-20;2022-06-20;2025-12-15;2026-03-01;04-COLORAÇÃO;Stephany Christine;Sim;COLORAÇÃO;COLORAÇÃO
+POP.743;Manual Operacional - Abertura de Perdas Interna da Produção - Technopark;Procedimento Operacional Padrão;1;2025-08-25;2025-08-29;2026-08-29;2026-11-27;Technopark;Laura do Amaral Gurgel;Sim;;
+POP.744;Manual Operacional - Recebimento de Pedido no Relacionamento - LabRio;Procedimento Operacional Padrão;2;2025-07-10;2025-08-25;2026-08-25;2026-11-23;LabRio;Vanessa Santana da Silva;Sim;;
+POP.745;Manual Operacional - Produto e Insumo Não Conforme - Technopark;Procedimento Operacional Padrão;4;2023-10-31;2023-11-03;2025-11-02;2026-01-31;Technopark;Aline Franco;Sim;;
+POP.747;Monitoramento de Realimentação do Cliente - LabRio;Procedimento Operacional Padrão;4;2024-06-03;2024-06-03;2026-06-03;2026-09-02;LabRio;Renan Barbosa;Sim;;
+POP.748;Manual Operacional - Inspeção Final - Technopark;Procedimento Operacional Padrão;;2022-04-01;2022-05-11;2026-01-19;2026-04-20;09-Inspeção Final;Guilherme Alves;Sim;HMC;0
+POP.749;Calibração Operacional - Lensômetros Digitais;Procedimento Operacional Padrão;1;2024-12-02;2024-12-23;2025-12-23;2026-03-23;Lensômetro;Anderson Smaniotto;Sim;QUALIDADE;CALIBRAÇÃO
+POP.750;Manual Operacional - Sala de Armação - LabRio;Procedimento Operacional Padrão;;2022-04-07;2022-04-13;2026-07-07;2026-10-06;LabRio;Maria Riclecia da Silva;Sim;;
+POP.751;Limpieza y Mantenimiento - 4Racer;Procedimento Operacional Padrão;;2022-04-14;2022-04-19;2026-06-11;2026-09-10;4Racer;Edgar Casallas;Sim;;
+POP.752;Limpeza e Manutenção - 4Racer;Procedimento Operacional Padrão;;2022-04-14;2022-06-02;2026-06-10;2026-09-09;4Racer;Edgar Casallas;Sim;MONTAGEM;0
+POP.753;Calibración Operativa - 4Racer;Procedimento Operacional Padrão;;2022-04-14;2022-05-09;2026-06-10;2026-09-09;4Racer;Edgar Casallas;Sim;;
+POP.754;Control de Parámetros - 4Racer;Procedimento Operacional Padrão;;2022-04-14;2022-05-09;2026-06-10;2026-09-09;4Racer;Edgar Casallas;Sim;;
+POP.755;Calibração Operacional - 4Racer;Procedimento Operacional Padrão;;2022-04-14;2022-04-19;2026-06-10;2026-09-09;4Racer;Edgar Casallas;Sim;MONTAGEM;0
+POP.756;Controle de Parâmetros - 4Racer;Procedimento Operacional Padrão;;2022-04-14;2022-05-09;2026-06-10;2026-09-09;4Racer;Edgar Casallas;Sim;MONTAGEM;0
+POP.757;Manual Operacional - Sala de Armação - Technopark;Procedimento Operacional Padrão;1;2023-06-19;2023-08-11;2026-08-10;2026-11-09;Technopark;Felipe Costa;Sim;;
+POP.758;Manual Operacional - Digitação, Alteração e Solicitação de Cancelamento de Pedido - Technopark;Procedimento Operacional Padrão;2;2023-10-09;2023-11-03;2025-11-02;2026-01-31;Technopark;Felipe Costa;Sim;;
+POP.759;Calibração Operacional - Bisphera;Procedimento Operacional Padrão;1;2022-09-14;2023-02-17;2026-02-17;2026-05-17;MEI Bisphera;Edgar Casallas;Sim;MONTAGEM;Corte Armação MEI
+POP.760;Controle de Parâmetros - Bisphera;Procedimento Operacional Padrão;;2022-05-19;2022-06-15;2026-06-15;2026-09-14;MEI Bisphera;Edgar Casallas;Sim;MONTAGEM;Corte Armação MEI
+POP.761;Limpieza y Mantenimiento - Bisphera;Procedimento Operacional Padrão;;2022-05-19;2022-08-18;2026-08-18;2026-11-16;MEI Bisphera;Edgar Casallas;Sim;;
+POP.762;Calibración Operativa - Bisphera;Procedimento Operacional Padrão;1;2022-09-14;2023-02-17;2026-02-17;2026-05-17;MEI Bisphera;Edgar Casallas;Sim;;
+POP.763;Control de Parámetros - Bisphera;Procedimento Operacional Padrão;;2022-05-19;2022-06-15;2026-06-15;2026-09-14;MEI Bisphera;Edgar Casallas;Sim;;
+POP.764;Manual Operacional - Inspeção Final - Lab Rio;Procedimento Operacional Padrão;;2022-05-27;2022-05-31;2026-06-08;2026-09-07;09-Inspeção Final;Deyved Silva;Sim;HMC;0
+POP.765;Manual Operacional - Rastreabilidade de Pedidos - Lab Rio;Procedimento Operacional Padrão;1;2025-04-17;2025-04-23;2026-04-23;2026-07-22;LabRio;Renan Barbosa;Sim;;
+POP.766;Manual Operacional - Abertura de Perdas Internas - LabRio;Procedimento Operacional Padrão;;2022-06-17;2022-06-20;2025-09-22;2025-12-25;LabRio;Maria Riclecia da Silva;Sim;;
+POP.769;Limpieza y Mantenimiento - EzFit;Procedimento Operacional Padrão;;2022-06-22;2022-08-18;2026-06-10;2026-09-09;EzFit;Edgar Casallas;Sim;;
+POP.770;Calibración Operativa - EzFit;Procedimento Operacional Padrão;;2022-06-22;2022-06-30;2026-06-10;2026-09-09;EzFit;Edgar Casallas;Sim;;
+POP.771;Limpeza e Manutenção - MEI 641;Procedimento Operacional Padrão;;2022-06-22;2022-08-08;2026-08-10;2026-11-09;MEI 641;Edgar Casallas;Sim;MONTAGEM;0
+POP.772;Calibração Operacional - MEI 641;Procedimento Operacional Padrão;;2022-06-22;2022-06-30;2026-06-30;2026-09-29;MEI 641;Edgar Casallas;Sim;MONTAGEM;0
+POP.773;Calibración Operativa - MEI 641;Procedimento Operacional Padrão;;2022-06-22;2022-06-30;2026-06-30;2026-09-29;MEI 641;Edgar Casallas;Sim;;
+POP.774;Limpieza y Mantenimiento - MEI 641;Procedimento Operacional Padrão;;2022-06-22;2022-08-18;2026-08-18;2026-11-16;MEI 641;Edgar Casallas;Sim;;
+POP.775;Manual Operacional - Bisphera;Procedimento Operacional Padrão;;2022-06-22;2022-06-23;2026-06-23;2026-09-22;MEI Bisphera;Nathália Brandão;Sim;MONTAGEM;Corte Armação MEI
+POP.776;Limpeza e Manutenção - LT1200;Procedimento Operacional Padrão;;2022-06-23;2023-02-17;2026-02-17;2026-05-17;LT 1200;Edgar Casallas;Sim;MONTAGEM;Leitura no Tracer
+POP.778;Limpieza y Mantenimiento - LT 1200;Procedimento Operacional Padrão;;2022-06-23;2023-02-17;2026-02-17;2026-05-17;LT 1200;Edgar Casallas;Sim;;
+POP.779;Calibración Operativa - LT 1200;Procedimento Operacional Padrão;1;2022-06-30;2022-07-01;2026-06-10;2026-09-09;LT 1200;Edgar Casallas;Sim;;
+POP.780;Manual Operacional -  Clareamento de Lentes da Coloração;Procedimento Operacional Padrão;;2022-06-30;2023-01-18;2026-01-18;2026-04-17;04-COLORAÇÃO;Renan Barbosa;Sim;COLORAÇÃO;COLORAÇÃO
+POP.781;Manual Operacional - Análise Técnica Pré venda - Technopark;Procedimento Operacional Padrão;1;2024-03-26;2024-04-09;2026-04-09;2026-07-08;Technopark;Guilherme Alves;Sim;;
+POP.782;Manual Operacional - Liberação de Lentes Prontas e Blocos do Estoque - Technopark;Procedimento Operacional Padrão;2;2024-02-01;2024-04-09;2026-04-09;2026-07-08;Technopark;Felipe Costa;Sim;;
+POP.783;Manual Operacional - Processo de Certificação e Faturamento da Expedição - Technopark;Procedimento Operacional Padrão;2;2024-02-01;2024-02-19;2026-02-18;2026-11-11;Technopark;Rodrigo Lima;Sim;;
+POP.784;Manual Operacional - Controle de Urgência da Produção - Technopark;Procedimento Operacional Padrão;3;2025-09-11;2025-10-28;2026-10-28;2027-01-26;Technopark;Rodrigo Lima;Sim;;
+POP.785;Manual Operacional - Reembalagem de Serviços;Procedimento Operacional Padrão;;2022-09-30;2022-10-18;2025-10-18;2026-01-19;Controle de Qualidade;Leandro Augusto;Sim;QUALIDADE;0
+POP.786;Teste de Extrato Seco - OHAUS MB;Procedimento Operacional Padrão;1;2025-02-12;2025-05-30;2026-05-30;2026-08-28;Testes HC;Jessika Menacho;Sim;;
+POP.787;Limpieza y Matenimiento - ES3.ES4;Procedimento Operacional Padrão;;2022-08-30;2022-08-31;2026-06-10;2026-09-09;ES3/ES4;Edgar Casallas;Sim;;
+POP.788;Calibración Operativa - ES3.ES4;Procedimento Operacional Padrão;;2022-08-30;2022-08-31;2026-06-10;2026-09-09;ES3/ES4;Edgar Casallas;Sim;;
+POP.789;Limpeza e Manutenção - ES3.ES4;Procedimento Operacional Padrão;;2022-08-30;2022-11-25;2025-11-25;2026-02-23;ES3/ES4;Edgar Casallas;Sim;;
+POP.790;Calibração Operacional - ES3.ES4;Procedimento Operacional Padrão;;2022-08-30;2022-11-25;2025-11-25;2026-02-23;ES3/ES4;Edgar Casallas;Sim;;
+POP.791;Limpeiza y Matenimiento - 3B Blocker;Procedimento Operacional Padrão;;2022-09-05;2023-02-17;2026-02-17;2026-05-17;3B Blocker;Edgar Casallas;Sim;;
+POP.792;Limpeza e Manutenção - 3B Blocker;Procedimento Operacional Padrão;;2022-09-05;2023-02-17;2026-02-17;2026-05-17;3B Blocker;Edgar Casallas;Sim;MONTAGEM;0
+POP.793;Manual Operacional - Envio de Testes para EQC;Procedimento Operacional Padrão;8;2025-09-17;2025-09-17;2026-09-17;2026-12-16;08-EQC;Jessika Menacho;Sim;HMC;QUALIDADE
+POP.796;Limpeza e Manutenção - Bloqueadoras;Procedimento Operacional Padrão;;2022-09-14;2022-11-25;2025-11-25;2026-02-23;Outros;Edgar Casallas;Sim;MONTAGEM;0
+POP.797;Limpeiza y Matenimiento - Bloqueadoras;Procedimento Operacional Padrão;;2022-09-14;2023-02-17;2026-02-17;2026-05-17;Outros;Edgar Casallas;Sim;;
+POP.798;Limpeza e Manutenção - Mr.Blue;Procedimento Operacional Padrão;;2022-09-14;2023-02-17;2026-02-17;2026-05-17;Outros;Edgar Casallas;Sim;MONTAGEM;Leitura no Tracer
+POP.799;Limpeiza y Matenimiento - Mr.Blue;Procedimento Operacional Padrão;;2022-09-14;2023-02-17;2026-02-17;2026-05-17;Outros;Edgar Casallas;Sim;;
+POP.800;Manual Operativa - Mr. Orange;Procedimento Operacional Padrão;;2022-09-30;2023-07-17;2026-07-16;2026-10-15;Mr. Orange;Renan Barbosa;Sim;;
+POP.801;Manual Operacional - Mr. Orange;Procedimento Operacional Padrão;;2022-09-30;2024-04-17;2026-04-17;2026-07-16;Mr. Orange;Renan Barbosa;Sim;;
+POP.802;Monitoramento de Realimentação do Cliente - Technopark;Procedimento Operacional Padrão;2;2023-01-11;2023-01-12;2026-05-11;2026-07-10;Technopark;Aline Franco;Sim;;
+POP.803;Teste de Viscosidade - Automático com Brookfield DV2TLV;Procedimento Operacional Padrão;2;2023-07-31;2023-12-28;2025-12-27;2026-04-17;Testes HC;Jessika Menacho;Sim;HMC;Teste de Qualidade HC
+POP.804;Manual Operacional - Rastreabilidade de Pedidos - Grown;Procedimento Operacional Padrão;;2022-10-28;2022-12-06;2025-12-06;2026-03-05;Grown;Michel Vieira;Sim;;
+POP.805;Manual Operacional - Rastreabilidade de Pedidos - Repro;Procedimento Operacional Padrão;3;2025-06-09;2025-08-29;2026-08-29;2026-11-27;Repro;Laura Vaz;Sim;;
+POP.806;Manual Operacional - Digitação de Entrada, Alteração e Cancelamento de Pedidos - Grown;Procedimento Operacional Padrão;1;2023-07-18;2023-10-02;2025-10-01;2025-12-30;Grown;Angela Pinto;Sim;;
+POP.807;Limpeza e Manutenção - D9 PAC Mithril 1.6;Procedimento Operacional Padrão;;2022-11-10;2023-03-03;2026-03-02;2026-05-31;D9 PAC;Fernando Maciel;Sim;;
+POP.808;Preparação de Químicos  - DP PAC Mithril 1.6;Procedimento Operacional Padrão;;2022-11-10;2023-03-03;2026-03-02;2026-05-31;D9 PAC;Fernando Maciel;Sim;;
+POP.810;Rastreabilidade de Pedidos - Ceditop;Procedimento Operacional Padrão;3;2023-07-31;2023-08-01;2025-10-11;2025-12-11;Ceditop;Leticia Santos;Sim;;
+POP.811;Monitoramento de Realimentação do Cliente - Ceditop;Procedimento Operacional Padrão;2;2023-06-26;2023-06-27;2026-06-26;2026-09-25;Ceditop;Leticia Santos;Sim;;
+POP.812;Manual Operacional - Controle de Temperatura (DataLogger) de Armazenamento - Primers e Vernizes - Repro;Procedimento Operacional Padrão;1;2025-05-30;2025-06-13;2026-06-13;2026-09-11;Repro;Ruanyta Goulart;Sim;;
+POP.813;Monitoramento de Realimentação do Cliente - Repro;Procedimento Operacional Padrão;2;2024-08-08;2024-08-09;2026-08-10;2026-11-09;Repro;Laura Vaz;Sim;;
+POP.814;Manual Operacional - Produto Não Conforme (Produção) - Grown;Procedimento Operacional Padrão;;2022-12-06;2022-12-13;2025-12-13;2026-03-12;Grown;Michel Vieira;Sim;;
+POP.815;Manual Operacional - Devolução com Nota Fiscal - Grown;Procedimento Operacional Padrão;2;2025-06-12;2025-06-30;2026-06-30;2026-09-28;Grown;Iara Almeida;Sim;;
+POP.817;Manual Operacional - Retornos Recebidos pelo SAC - Grown;Procedimento Operacional Padrão;1;2023-11-14;2024-02-01;2026-01-31;2026-05-01;Grown;Ronald Witzke;Sim;;
+POP.818;Manual Operacional - Tratativa de Pendências de Pedidos com Montagem - Grown;Procedimento Operacional Padrão;1;2023-11-14;2024-02-01;2026-01-31;2026-05-01;Grown;Renata Adreolli;Sim;;
+POP.819;Manual Operacional - Tratativa de Pendências de Pedidos com Surfaçagem - Grown;Procedimento Operacional Padrão;1;2023-11-14;2024-02-01;2026-01-31;2026-05-01;Grown;Renata Adreolli;Sim;;
+POP.820;Manual Operacional - Pedidos Urgentes - Grown;Procedimento Operacional Padrão;;2022-12-06;2022-12-07;2025-12-07;2026-03-06;Grown;Angela Pinto;Sim;;
+POP.821;Manual Operacional - Expedição de Pedidos - Grown;Procedimento Operacional Padrão;1;2024-12-26;2025-01-13;2026-01-13;2026-04-13;Grown;Luis Felipe;Sim;;
+POP.822;Manual Operacional - Sala de Armação - Grown;Procedimento Operacional Padrão;;2022-12-06;2022-12-07;2025-12-07;2026-03-06;Grown;Robson Silva;Sim;;
+POP.823;Manual Operacional - Recebimento de Mercadoria - Grown;Procedimento Operacional Padrão;1;2023-07-18;2023-10-02;2025-10-01;2025-12-30;Grown;Sonia Lima;Sim;;
+POP.824;Manual Operacional - Embalagem da Surfaçagem - Grown;Procedimento Operacional Padrão;3;2025-05-20;2025-05-29;2026-05-29;2026-08-27;Grown;Luis Felipe;Sim;;
+POP.825;Manual Operacional - Processo de Quebra, Retrabalho e Liberado com Concessão - Ceditop;Procedimento Operacional Padrão;;2022-12-13;2022-12-16;2025-12-16;2026-03-15;Ceditop;João Martins;Sim;;
+POP.826;Manual Operacional - Comunicação com o Cliente - Ceditop;Procedimento Operacional Padrão;;2022-12-13;2022-12-16;2025-12-16;2026-03-15;Ceditop;João Martins;Sim;;
+POP.827;Curva Teórica Crizal Rock;Procedimento Operacional Padrão;;2022-12-20;2023-06-02;2026-06-01;2026-08-31;00-Curvas de Antirreflexo;Carlos Anselme;Sim;HMC;"Antirreflexo:
+Ajustes de Processo"
+POP.828;Manual Operacional - Atendimento do SAC - Technopark;Procedimento Operacional Padrão;2;2024-03-26;2024-04-09;2026-04-09;2026-07-08;Technopark;Felipe Costa;Sim;;
+POP.830;Manual Operacional - Recebimento de Mercadoria - Technopark;Procedimento Operacional Padrão;1;2023-01-30;2023-02-06;2026-02-06;2026-05-06;Technopark;Felipe Costa;Sim;;
+POP.831;Manual Operacional - Recebimento de Produtos e Insumos - LabRio;Procedimento Operacional Padrão;1;2023-06-22;2023-10-02;2025-10-01;2025-12-30;LabRio;Evellyn Santos;Sim;;
+POP.832;Teste de Extrato Seco - i-Thermo 163L Bel;Procedimento Operacional Padrão;2;2025-04-22;2025-05-30;2026-05-30;2026-08-28;Testes HC;Jessika Menacho;Sim;HMC;Teste de Qualidade HC
+POP.834;Manual Operacional - Compra de Matéria Prima - Technopark;Procedimento Operacional Padrão;2;2023-10-31;2024-02-19;2026-02-18;2026-05-19;Technopark;Felipe Costa;Sim;;
+POP.835;Manual Operacional - Compras Indiretas - Technopark;Procedimento Operacional Padrão;1;2024-02-28;2024-04-09;2026-04-09;2026-07-08;Technopark;Benicio Souza;Sim;;
+POP.836;Teste de Viscosidade - Automático com Brookfield DV -II+ PRO, DV-I+ e DV-I;Procedimento Operacional Padrão;1;2023-04-06;2023-08-18;2025-08-17;2026-04-17;Testes HC;Jessika Menacho;Sim;HMC;Teste de Qualidade HC
+POP.837;Manual Operacional - Faturamento - Grown;Procedimento Operacional Padrão;2;2024-10-31;2024-11-04;2025-11-04;2026-02-02;Grown;Luis Felipe;Sim;;
+POP.838;Calibração Operacional - E-Tess e Nidek LT-980 – Sistema SIOU;Procedimento Operacional Padrão;1;2023-07-04;2023-11-22;2025-11-21;2026-02-19;Geral;Felipe Costa;Sim;MONTAGEM;PCP Tracer
+POP.839;Manual Operacional - E-Tess e Nidek LT-980;Procedimento Operacional Padrão;;2023-02-17;2023-03-17;2025-03-16;2026-09-18;Geral;Felipe Costa;Sim;MONTAGEM;Leitura no Tracer
+POP.840;Manual Operacional - Reclamação e Elogio de Clientes - Technopark;Procedimento Operacional Padrão;1;2024-03-07;2024-04-09;2026-04-09;2026-07-08;Technopark;Aline Franco;Sim;;
+POP.841;Manual Operacional - Cancelamento de Pedido no Estoque - Technopark;Procedimento Operacional Padrão;;2023-03-03;2023-03-10;2026-05-22;2026-08-21;Technopark;Felipe Costa;Sim;;
+POP.842;Comunicação com o Cliente - Grown;Procedimento Operacional Padrão;1;2024-06-10;2024-06-17;2026-06-17;2026-09-16;Grown;Angela Pinto;Sim;;
+POP.843;Manual Operacional - Recuperação de Alloy e Distribuição de porta bloco (Central de Alloy);Procedimento Operacional Padrão;;2023-03-10;2023-03-17;2026-06-09;2026-09-08;08-Desblocadora;Felipe Costa;Sim;SURFAÇAGEM;Desblocagem
+POP.844;;;;;;;;;;;;
+POP.845;Manual Operacional – Auditoria Técnica;Procedimento Operacional Padrão;;2023-03-22;2023-06-26;2026-06-25;2026-09-24;SAC;Marília Novais;Sim;QUALIDADE;AUDITORIA
+POP.846;Manual Operacional - Encaixe de Lentes na Armação Acetato;Procedimento Operacional Padrão;;2023-03-29;2023-03-29;2026-06-19;2026-09-18;Montagem e Inspeção;Edgar Casallas;Sim;MONTAGEM;Encaixe
+POP.847;Manual Operacional - Encaixe de Lentes na Armação 3 Peças;Procedimento Operacional Padrão;;2023-03-29;2023-03-29;2026-06-19;2026-09-18;Montagem e Inspeção;Edgar Casallas;Sim;MONTAGEM;Encaixe
+POP.848;Manual Operacional - Encaixe de Lentes na Armação Metal;Procedimento Operacional Padrão;1;2023-05-05;2023-05-05;2026-05-04;2026-08-03;Montagem e Inspeção;Edgar Casallas;Sim;MONTAGEM;Encaixe
+POP.849;Manual Operacional - Encaixe de Lentes na Armação Nylon;Procedimento Operacional Padrão;;2023-03-29;2023-03-29;2026-06-19;2026-09-18;Montagem e Inspeção;Edgar Casallas;Sim;MONTAGEM;Encaixe
+POP.852;Manual Operacional - Conferência de Mesa - Grown;Procedimento Operacional Padrão;1;2024-04-02;2024-04-09;2026-04-10;2026-07-09;Grown;Luis Paulo;Sim;;
+POP.853;Manual Operacional - Separação de Blocos - Grown;Procedimento Operacional Padrão;1;2024-04-02;2024-04-09;2026-04-10;2026-07-09;Grown;Luis Paulo;Sim;;
+POP.854;Manual Operacional - Caixas da Produção - LabRio;Procedimento Operacional Padrão;;2023-04-17;2023-05-31;2025-09-27;2025-12-27;LabRio;Evellyn Santos;Sim;;
+POP.855;Manual Operacional - Separação do Estoque - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-04-24;2023-04-26;2025-04-25;2025-12-31;Sumaré Laboratório;Melissa Grandolfo;Sim;;
+POP.856;Manual Operacional - Rastreabilidade de Pedidos - Digitop;Procedimento Operacional Padrão;1;2024-06-12;2024-06-18;2026-06-18;2026-09-17;digiTOP;Nickolle Rodrigues;Sim;;
+POP.857;Manual Operacional - Ticket e Envelope na Produção - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-04-25;2023-04-27;2026-04-27;2026-07-27;Sumaré Laboratório;Jesse Rodrigues;Sim;;
+POP.858;Manual Operacional - Sala de Armação sem Aro - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-04-26;2023-04-27;2026-04-27;2026-07-27;Sumaré Laboratório;Jesse Rodrigues;Sim;;
+POP.859;Manual Operacional  - Entrada e Impressão de Serviços - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-04-26;2023-08-03;2026-08-03;2026-11-02;Sumaré Laboratório;Jesse Rodrigues;Sim;;
+POP.860;Manual Operacional - Sala de Armação com Aro - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-04-26;2023-04-27;2025-04-26;2025-12-31;Sumaré Laboratório;Jesse Rodrigues;Sim;;
+POP.861;Manual Operacional - Recebimento, Triagem e Armazenamento de Serviços - Sumaré Laboratório;Procedimento Operacional Padrão;1;2023-08-11;2023-08-18;2026-08-17;2026-11-16;Sumaré Laboratório;Rafael Medeiros;Sim;;
+POP.862;Manual Operacional - Embalagem dos Produtos - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-04-27;2023-05-03;2026-05-01;2026-07-31;Sumaré Laboratório;Jesse Rodrigues;Sim;;
+POP.863;Manual Operacional - Entrada de Serviços na Monatgem - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-04-27;2023-05-03;2026-05-01;2026-07-31;Sumaré Laboratório;Jesse Rodrigues;Sim;;
+POP.864;Manual Operacional - Armazenagem da Armação na BIN - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-04-27;2023-05-03;2026-05-01;2026-07-31;Sumaré Laboratório;Jesse Rodrigues;Sim;;
+POP.865;Manual Operacional - Separação de Pedidos - Sumaré CD;Procedimento Operacional Padrão;2;2025-07-07;2025-07-15;2026-07-15;2026-10-13;Sumaré CD;Denise Miranda;Sim;;
+POP.866;Manual Operacional - Faturamento - Sumaré CD;Procedimento Operacional Padrão;1;2025-07-07;2025-07-14;2026-07-14;2026-10-12;Sumaré CD;Denise Miranda;Sim;;
+POP.867;Manual Operacional - Recebimento e Conferência de Lentes, Blocos, Insumos e Materiais Gerais - Sumaré CD;Procedimento Operacional Padrão;2;2025-05-13;2025-05-13;2026-05-13;2026-08-11;Sumaré CD;Denise Miranda;Sim;;
+POP.868;Manual Operacional - Reembalagem - Sumaré CD;Procedimento Operacional Padrão;;2023-05-05;2023-05-12;2025-10-11;2025-12-11;Sumaré CD;Juliana Gomes Ferreira;Sim;;
+POP.869;Manual Operacional - Expedição - Sumaré CD;Procedimento Operacional Padrão;1;2024-06-03;2024-06-04;2025-06-04;2026-11-02;Sumaré CD;Erika Fagundes;Sim;;
+POP.870;Manual Operacional - Impressão de Etiquetas e Certificados - digiTOP;Procedimento Operacional Padrão;1;2023-06-27;2023-06-29;2025-09-27;2025-12-27;digiTOP;Nickolle Rodrigues;Sim;;
+POP.871;Manual Operacional - Separação de Pedidos - digiTOP;Procedimento Operacional Padrão;2;2024-06-27;2024-07-09;2026-07-09;2026-10-08;digiTOP;Nickolle Rodrigues;Sim;;
+POP.872;Manual Operacional - Consulta de Disponibilidade de Lentes - Repro;Procedimento Operacional Padrão;;2023-05-11;2023-05-25;2026-05-21;2026-08-21;Repro;Ovanir Lima Junior;Sim;;
+POP.874;Manual Operacional - Garantias - Repro;Procedimento Operacional Padrão;;2023-05-11;2023-07-13;2025-12-22;2026-02-05;Repro;Laura Vaz;Sim;;
+POP.875;Manual Operacional - Aprovação de Pedidos - Repro;Procedimento Operacional Padrão;1;2025-02-11;2025-02-14;2026-02-14;2026-05-15;Repro;Ovanir Lima Junior;Sim;;
+POP.876;Manual Operacional - Embalagem e Certificação - Repro;Procedimento Operacional Padrão;1;2024-08-09;2024-08-09;2026-08-10;2026-11-09;Repro;José Neto;Sim;;
+POP.877;Manual Operacional - Recebimento de Aro - Repro;Procedimento Operacional Padrão;1;2024-08-09;2024-08-09;2026-08-10;2026-11-09;Repro;José Neto;Sim;;
+POP.878;Manual Operacional - Atendimento ao Cliente - Repro;Procedimento Operacional Padrão;;2023-05-11;2023-05-25;2026-08-21;2026-11-20;Repro;Ovanir Lima Junior;Sim;;
+POP.880;Manual Operacional - Separação de Lentes e Blocos - Repro;Procedimento Operacional Padrão;2;2025-01-31;2025-02-03;2026-02-03;2026-05-04;Repro;Debora Rocha;Sim;;
+POP.881;Manual Operacional - Envio de Malote - Repro;Procedimento Operacional Padrão;;2023-05-15;2023-07-10;2025-10-04;2025-12-04;Repro;Silvano Silva;Sim;;
+POP.882;Manual Operacional - Faturamento e Expedição - digiTOP;Procedimento Operacional Padrão;3;2025-03-13;2025-03-17;2026-03-17;2026-06-15;digiTOP;Nickolle Rodrigues;Sim;;
+POP.883;Manual Operacional - Produto Não Conforme - digiTOP;Procedimento Operacional Padrão;2;2024-10-29;2024-11-01;2025-11-01;2026-01-30;digiTOP;Nickolle Rodrigues;Sim;;
+POP.884;Manual Operacional - Monitoramento de Realimentação do Cliente - digiTOP;Procedimento Operacional Padrão;4;2025-07-21;2025-07-25;2026-07-25;2026-10-23;digiTOP;Nickolle Rodrigues;Sim;;
+POP.885;Manual Operacional - Encerramento de Pedidos e Atacado - Ceditop;Procedimento Operacional Padrão;1;2024-04-29;2024-06-24;2026-06-24;2026-09-23;Ceditop;Leticia Santos;Sim;;
+POP.886;Manual Operacional - Garantia - Ceditop;Procedimento Operacional Padrão;3;2025-08-14;2025-09-05;2026-09-05;2026-12-04;Ceditop;Leticia Santos;Sim;;
+POP.887;Manual Operacional - Compra de Matéria Prima - Ceditop;Procedimento Operacional Padrão;;2023-05-29;2023-06-02;2026-08-10;2026-11-09;Ceditop;Leticia Santos;Sim;;
+POP.888;Manual Operacional - Recebimento e Estocagem de Blocos - Ceditop;Procedimento Operacional Padrão;2;2025-01-28;2025-02-18;2026-02-18;2026-05-19;Ceditop;Leticia Santos;Sim;;
+POP.889;Manual Operacional - Alteração e Cancelamento de Pedidos - Ceditop;Procedimento Operacional Padrão;;2023-06-01;2023-06-02;2025-10-11;2025-12-11;Ceditop;Leticia Santos;Sim;;
+POP.890;Manual Operacional - Armazenamento de Lentes e Armações - Ceditop;Procedimento Operacional Padrão;2;2025-07-10;2025-08-11;2026-08-11;2026-11-09;Ceditop;Leticia Santos;Sim;;
+POP.891;Manual Operacional - Análise Crítica dos Certificados de Calibração;Procedimento Operacional Padrão;;2023-06-05;2023-06-27;2026-06-26;2026-09-25;00.Geral;Renan Barbosa;Sim;QUALIDADE;CALIBRAÇÃO
+POP.892;Manual Operacional - Envio e Recebimento de Serviço do Coating - Ceditop;Procedimento Operacional Padrão;2;2025-07-10;2025-08-01;2026-08-01;2026-10-30;Ceditop;Leticia Santos;Sim;;
+POP.893;Manual Operacional - Digitação e Emissão de Serviços - Ceditop;Procedimento Operacional Padrão;2;2024-09-30;2024-10-07;2025-10-07;2026-01-05;Ceditop;Leticia Santos;Sim;;
+POP.894;Manual Operacional - Pré-Expedição e Certificação - Ceditop;Procedimento Operacional Padrão;2;2025-08-04;2025-08-22;2026-08-22;2026-11-20;Ceditop;Leticia Santos;Sim;;
+POP.895;Manual Operacional - Expedição - Ceditop;Procedimento Operacional Padrão;1;2024-09-16;2024-09-23;2025-09-23;2025-12-22;Ceditop;Leticia Santos;Sim;;
+POP.898;Manual Operacional - Lista de Pedidos - Ceditop;Procedimento Operacional Padrão;3;2025-08-04;2025-09-04;2026-09-04;2026-12-03;Ceditop;Leticia Santos;Sim;;
+POP.901;Manual Operacional - Armazenamento de Lentes no Bob Complete Frame - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-06-09;2023-08-03;2026-08-03;2026-11-02;Sumaré Laboratório;Jesse Rodrigues;Sim;;
+POP.902;Manual Operacional - Rastreabilidade de Pedidos - Technopark;Procedimento Operacional Padrão;;2023-06-09;2023-09-11;2025-09-10;2025-12-09;Technopark;Felipe Costa;Sim;;
+POP.903;Manual Operacional - Entrada de pedidos na Expedição - Technopark;Procedimento Operacional Padrão;1;2024-03-11;2024-04-03;2026-07-02;2026-10-01;Technopark;Luiz Mendonça;Sim;;
+POP.904;Manual Operacional - Cálculo de Serviços - Technopark;Procedimento Operacional Padrão;1;2025-07-11;2025-08-06;2026-08-06;2026-11-04;Technopark;Rodrigo Lima;Sim;;
+POP.905;Manual Operacional - Abastecimento de Blocos - LabRio;Procedimento Operacional Padrão;;2023-06-12;2023-10-02;2025-10-01;2025-12-30;LabRio;Maria Riclecia da Silva;Sim;;
+POP.906;Monitoramento de Realimentação do Cliente - Coating RS;Procedimento Operacional Padrão;1;2024-07-25;2024-12-11;2025-12-11;2026-03-11;Coating RS;Christiano Silva;Sim;;
+POP.907;Monitoramento de Realimentação do Cliente - Grown;Procedimento Operacional Padrão;;2023-06-13;2023-07-17;2026-07-16;2026-10-15;Grown;Angela Pinto;Sim;;
+POP.908;Manual Operacional - Devolução de Produtos - Grown;Procedimento Operacional Padrão;;2023-06-13;2023-07-17;2026-07-16;2026-10-14;Grown;João Sales;Sim;;
+POP.909;Manual Operacional - Registro de Falta Produto - Grown;Procedimento Operacional Padrão;;2023-06-13;2023-07-17;2026-07-16;2026-10-14;Grown;João Sales;Sim;;
+POP.910;Manual Operacional - Upgrade e Downgrade de Produto - Grown;Procedimento Operacional Padrão;;2023-06-13;2023-07-17;2026-07-16;2026-10-15;Grown;João Sales;Sim;;
+POP.911;Manual Operacional - Triagem de Serviços - Ceditop;Procedimento Operacional Padrão;1;2024-09-16;2024-09-23;2025-09-23;2025-12-22;Ceditop;Leticia Santos;Sim;;
+POP.912;Manual Operacional - Faturamento de Pedidos - Tecnolens;Procedimento Operacional Padrão;3;2024-07-26;2024-08-05;2026-08-05;2026-11-03;Tecnolens;Vinicius Silva;Sim;Expedição e/ou Faturamento;Faturamento
+POP.913;Manual Operacional - Digitação, Alteração e Solicitação de Cancelamento de Pedido - Tecnolens;Procedimento Operacional Padrão;4;2025-08-29;2025-09-12;2026-09-12;2026-12-11;Tecnolens;Vinicius Silva;Sim;Atendimento;ATENDIMENTO
+POP.914;Manual Operacional - Liberação de Lentes Prontas e Blocos do Estoque - Tecnolens;Procedimento Operacional Padrão;2;2025-02-19;2025-03-05;2026-03-05;2026-06-03;Tecnolens;Vinicius Silva;Sim;Estoque;BAIXA DE BLOCO
+POP.915;Manual Operacional - Solicitação de Pedidos em Atacado no Estoque - LabRio;Procedimento Operacional Padrão;;2023-06-22;2023-10-02;2025-10-01;2025-12-30;LabRio;Evellyn Santos;Sim;;
+POP.916;Manual Operacional - Armazenamento de Produtos e Insumos - LabRio;Procedimento Operacional Padrão;;2023-06-22;2023-10-02;2025-10-01;2025-12-30;LabRio;Evellyn Santos;Sim;;
+POP.918;Manual Operacional - Envio e Recebimento de Serviço - digiTOP;Procedimento Operacional Padrão;2;2024-08-12;2024-08-26;2026-08-26;2026-11-24;digiTOP;Nickolle Rodrigues;Sim;;
+POP.919;Manual Operacional - Recebimento e Armazenamento de Blocos - digiTOP;Procedimento Operacional Padrão;;2023-06-27;2023-06-29;2025-09-27;2025-12-27;digiTOP;Nickolle Rodrigues;Sim;;
+POP.920;Manual Operacional - Certificação de Pedidos - Tecnolens;Procedimento Operacional Padrão;;2023-06-27;2023-07-19;2026-07-17;2026-10-16;Tecnolens;Vinicius Silva;Sim;Estoque;TRIAGEM/CERTIFICAÇÃO
+POP.921;Manual Operacional - Rastreabilidade de Pedidos - Tecnolens;Procedimento Operacional Padrão;2;2023-09-06;2023-09-11;2025-09-10;2025-12-09;Tecnolens;Breno Santos;Sim;Atendimento;ATENDIMENTO
+POP.922;Manual Operacional - Produto e Insumo Não Conforme - Tecnolens;Procedimento Operacional Padrão;2;2024-04-10;2024-04-11;2026-06-19;2026-09-18;Tecnolens;Francisco Paulo;Sim;QUALIDADE;QUALIDADE
+POP.923;Manual Operacional - Sala de Armação - Tecnolens;Procedimento Operacional Padrão;1;2024-04-10;2024-04-11;2026-06-19;2026-09-18;Tecnolens;Breno Santos;Sim;Sala de Armação;Sala de Armação
+POP.924;Manual Operacional - Monitoramento de Realimentacao do Cliente - Tecnolens;Procedimento Operacional Padrão;2;2024-05-13;2024-05-14;2026-05-14;2026-08-13;Tecnolens;Francisco Paulo;Sim;Atendimento;ATENDIMENTO
+POP.925;Manual Operacional - Compras de Insumos e Peças - Repro;Procedimento Operacional Padrão;;2023-07-13;2023-07-21;2025-10-14;2026-01-14;Repro;Silvano Silva;Sim;;
+POP.926;Manual Operacional - Compras de Lentes e Blocos - Repro;Procedimento Operacional Padrão;2;2025-11-21;2025-11-26;2026-11-26;2027-02-24;Repro;Debora Rocha;Sim;;
+POP.927;Manual Operacional - Garantia de Produtos no SAC - Grown;Procedimento Operacional Padrão;2;2025-05-08;2025-05-19;2026-05-19;2026-08-17;Grown;Iara Almeida;Sim;;
+POP.928;Manual Operacional - Produto Não Conforme - Coating RS;Procedimento Operacional Padrão;1;2024-03-18;2024-03-22;2026-06-09;2026-09-08;Coating RS;Christiano Silva;Sim;;
+POP.929;Manual Operacional - Atendimento Comercial - Ceditop;Procedimento Operacional Padrão;1;2024-10-04;2024-10-07;2025-10-07;2026-01-05;Ceditop;Leticia Santos;Sim;;
+POP.932;Manual Operacional - CS10 12L;Procedimento Operacional Padrão;;2023-08-03;2023-08-11;2026-08-10;2026-11-09;CS10;Alan Ferrer;Sim;;
+POP.933;Limpeza e Manutenção - CS10 12L;Procedimento Operacional Padrão;;2023-08-03;2023-08-14;2026-08-13;2026-11-11;CS10;Alan Ferrer;Sim;;
+POP.934;Preparação de Químicos - CS10 12L;Procedimento Operacional Padrão;;2023-08-03;2023-08-14;2026-08-13;2026-11-11;CS10;Alan Ferrer;Sim;;
+POP.935;Manual Operacional - Auditoria de Produto;Procedimento Operacional Padrão;1;2024-11-18;2024-11-22;2025-11-22;2026-02-20;Auditoria de Produto;Lucineide Pereira;Sim;QUALIDADE;AUDITORIA DE PRODUTO
+POP.936;Manual Operacional - Inspeção Óptica de Lentes;Procedimento Operacional Padrão;;2023-08-04;2023-08-04;2026-08-03;2026-11-03;Auditoria de Produto;Lucineide Pereira;Sim;QUALIDADE;Conferência Óptica
+POP.937;Manual Operacional - Faturamento e Expedição - Coating RS;Procedimento Operacional Padrão;;2023-08-07;2023-08-21;2026-08-20;2026-11-18;Coating RS;Christiano Silva;Sim;;
+POP.938;Manual Operacional - Operação do Varilux XR e Varilux Physio Extensee - Repro;Procedimento Operacional Padrão;1;2025-10-03;2025-11-24;2026-11-24;2027-02-22;Repro;Laura Vaz;Sim;;
+POP.939;Manual Operacional - Operação do Varilux XR - Technopark;Procedimento Operacional Padrão;;2023-08-10;2023-08-11;2026-08-10;2026-11-09;Technopark;Taís Flores;Sim;;
+POP.940;Manual Operacional - Operação do Varilux XR - Ceditop;Procedimento Operacional Padrão;;2023-08-10;2023-08-11;2026-08-10;2026-11-09;Ceditop;João Martins;Sim;;
+POP.941;Manual Operacional - Preparação / Pré-inspeção (Sumaré Laboratório);Procedimento Operacional Padrão;;2023-08-11;2023-08-13;2026-08-12;2026-11-10;01-Pré-Inspeção - Preparação;Alan Ferrer;Sim;;
+POP.942;Manual Operacional - Faturamento por Transportadora e Troca Antecipada - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-08-11;2023-08-18;2026-08-17;2026-11-16;Sumaré Laboratório;Rafael Medeiros;Sim;;
+POP.943;Manual Operacional - Faturamento por Garantia (Delivery) - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-08-11;2023-08-18;2026-08-17;2026-11-16;Sumaré Laboratório;Rafael Medeiros;Sim;;
+POP.944;Manual Operacional - Faturamento por E-commerce - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-08-11;2023-08-18;2026-08-17;2026-11-16;Sumaré Laboratório;Rafael Medeiros;Sim;;
+POP.945;Manual Operacional - Operação do Varilux XR - digiTOP;Procedimento Operacional Padrão;;2023-08-14;2023-08-15;2026-08-14;2026-11-12;digiTOP;Nickolle Rodrigues;Sim;;
+POP.946;Manual Operacional - Facetadoras Essilor;Procedimento Operacional Padrão;;2023-08-14;2023-11-22;2025-11-21;2026-02-19;Outros;Felipe Costa;Sim;;
+POP.947;Limpeza e Manutenção - Facetadoras Essilor;Procedimento Operacional Padrão;;2023-08-14;2023-11-22;2025-11-21;2026-02-19;Outros;Felipe Costa;Sim;;
+POP.949;Manual Operacional - CDS1000 Mithril 1.6;Procedimento Operacional Padrão;;2023-08-17;2023-08-18;2025-08-17;2026-11-13;CDC1000/CDS1000;Marcelo Capeletto;Sim;;
+POP.950;Manual Operacional - Processo de Polimerização - Pós-Cura;Procedimento Operacional Padrão;1;2024-02-02;2024-03-12;2025-03-12;2026-09-11;04-Cura;Deyved Silva;Sim;;
+POP.951;Manual Operacional - Inspeção HC - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-08-17;2023-08-18;2026-08-17;2026-11-16;CDC1000/CDS1000;Alan Ferrer;Sim;;
+POP.952;Manual Operacional - Produto e Insumo Não Conforme - Laboratório Sumaré;Procedimento Operacional Padrão;1;2023-11-23;2023-11-28;2024-11-27;2026-02-14;Sumaré Laboratório;Denise Miranda;Sim;;
+POP.953;Manual Operacional - Inspeção Final - Laboratóriol Sumaré;Procedimento Operacional Padrão;;2023-08-21;2023-08-31;2025-08-30;2025-11-28;09-Inspeção Final;Alan Ferrer;Sim;;
+POP.954;Manual Operacional - Art Blocker A;Procedimento Operacional Padrão;;2023-08-22;2023-08-23;2026-08-21;2026-11-19;Art Blocker A;Jesse Rodrigues;Sim;;
+POP.956;Manual Operacional - Block Piece;Procedimento Operacional Padrão;;2023-08-22;2023-08-23;2026-08-21;2026-11-19;01-Preparação;Jesse Rodrigues;Sim;;
+POP.957;Manual Operacional - Alteração de Base (Debasing) em Lentes Varilux XR - Opticlick;Procedimento Operacional Padrão;;2023-08-22;2023-08-22;2026-08-21;2026-11-19;Digitação;José Hamilton;Sim;SURFAÇAGEM;Cálculo
+POP.958;Manual Operacional - Laser Flash UV;Procedimento Operacional Padrão;;2023-08-23;2023-09-12;2025-09-11;2025-12-12;Laser Flash UV;Jesse Rodrigues;Sim;;
+POP.960;Manual Operacional - Envio e Recebimento de Serviço - Optilab;Procedimento Operacional Padrão;;2023-08-28;2023-09-06;2025-09-05;2025-12-04;Optilab;Nickolle Rodrigues;Sim;;
+POP.961;Manual Operacional - Separação de pedidos - Optilab;Procedimento Operacional Padrão;;2023-08-28;2023-09-06;2025-09-05;2025-12-04;Optilab;Nickolle Rodrigues;Sim;;
+POP.962;Manual Operacional Pré-Inspeção (Tecnolens);Procedimento Operacional Padrão;;2023-08-28;2023-09-05;2025-09-04;2025-12-03;01-Pré-Inspeção - Preparação;Breno Santos;Sim;HMC;Preparação: Pré Inspeção
+POP.963;Manual Operacional - Recebimento de Insumos e Produtos - Optilab;Procedimento Operacional Padrão;;2023-08-31;2023-10-05;2025-10-04;2026-01-02;Optilab;Nickolle Rodrigues;Sim;;
+POP.964;Manual Operacional - Transferências de Produtos e Insumos - Optilab;Procedimento Operacional Padrão;;2023-08-31;2023-09-06;2025-09-05;2025-12-04;Optilab;Nickolle Rodrigues;Sim;;
+POP.965;Manual Operacional - Operação da Área SAT - Grown;Procedimento Operacional Padrão;2;2024-12-16;2025-03-21;2026-03-21;2026-06-19;Grown;Luiz Felippe Santos;Sim;;
+POP.966;Manual Operacional - Garantias - Tecnolens;Procedimento Operacional Padrão;1;2024-07-15;2024-07-17;2026-07-17;2026-10-16;Tecnolens;Francisco Paulo;Sim;Atendimento;Garantia
+POP.967;Manual Operacional - Pesagem e Descarte de Resíduos - Repro;Procedimento Operacional Padrão;1;2024-03-12;2024-03-18;2026-05-14;2026-08-14;Repro;Thiago Zanotto;Sim;;
+POP.968;Manual Operacional - Operação do Varilux XR - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-08-31;2023-12-14;2025-12-13;2026-03-13;Sumaré Laboratório;Rafael Medeiros;Sim;;
+POP.969;Manual Operacional - Preenchimento de Cartões - Quadro PCP;Procedimento Operacional Padrão;;2023-09-01;2023-09-21;2025-09-20;2025-12-19;07-MELHORIA CONTÍNUA;Gabriely Gonçalves;Sim;;
+POP.970;Manual Operacional - Operação do Varilux XR - Tecnolens;Procedimento Operacional Padrão;1;2024-07-15;2024-07-17;2026-07-17;2026-10-16;Tecnolens;Ramon Gonçalves;Sim;SURFAÇAGEM;Preparação
+POP.971;Manual Operacional - Medição do Jarvis (Lentes Stellest);Procedimento Operacional Padrão;1;2023-12-12;2024-01-31;2026-01-30;2026-04-30;00-Geral Testes;Renan Barbosa;Sim;;
+POP.972;Manual Operacional - Aprovação de Cupom - Grown;Procedimento Operacional Padrão;;2023-09-04;2023-10-02;2025-10-01;2025-12-30;Grown;Renata Adreolli;Sim;;
+POP.973;Manual Operacional - Inspeção Final - Tecnolens;Procedimento Operacional Padrão;;2023-09-06;2023-09-06;2025-09-05;2025-12-04;09-Inspeção Final;Breno Santos;Sim;HMC;"Inspeção Final: 
+Controle Final"
+POP.974;Manunal Operacional - Tabela Hora Hora;Procedimento Operacional Padrão;;2023-09-11;2023-10-03;2025-10-02;2025-12-31;07-MELHORIA CONTÍNUA;Gabriely Gonçalves;Sim;;
+POP.975;Manual Operacional - Criação de Janelas Hodie (Expedição) - Sumaré CD;Procedimento Operacional Padrão;;2023-09-25;2023-09-25;2025-09-24;2025-12-23;Sumaré CD;Aline Lopes;Sim;;
+POP.976;Manual Operacional - Inspeção de Saída do HC - Sumaré Laboratório;Procedimento Operacional Padrão;;2023-09-25;2024-01-31;2026-01-30;2026-04-30;00-Geral HC;Alan Ferrer;Sim;;
+POP.977;Manual Operacional - Garantias - Optilab;Procedimento Operacional Padrão;;2023-09-26;2023-10-05;2025-10-04;2026-01-02;Optilab;Nickolle Rodrigues;Sim;;
+POP.978;Manual Operacional - Digitação, Alteração e Cancelamento de Pedidos - Optilab;Procedimento Operacional Padrão;;2023-09-26;2023-10-05;2025-10-04;2026-01-02;Optilab;Nickolle Rodrigues;Sim;;
+POP.979;Manual Operacional - Embalagem de Lentes - LabRio;Procedimento Operacional Padrão;1;2024-06-18;2025-04-23;2026-04-23;2026-07-22;LabRio;Stephany Christine;Sim;;
+POP.980;Manual Operacional - TECO X304V2;Procedimento Operacional Padrão;;2023-10-03;2023-10-27;2025-10-26;2026-01-24;TECO X304V2;Evellyn Santos;Sim;;
+POP.981;Manual Operacional - ProMapper;Procedimento Operacional Padrão;;2023-10-03;2023-10-27;2025-10-26;2026-01-24;ProMapper;Renan Barbosa;Sim;SURFAÇAGEM;Conferência
+POP.986;Manual Operativa - Aprendizaje de Grabados de Diseños - Promapper;Procedimento Operacional Padrão;;2023-10-11;2024-02-01;2026-01-31;2026-05-01;07-Conferencia;Pauline Gomez;Sim;;
+POP.987;Verificación con Lentes Minerales Essilor - Promapper;Procedimento Operacional Padrão;;2023-10-11;2024-02-01;2026-01-31;2026-04-30;07-Conferencia;Pauline Gomez;Sim;;
+POP.988;Manual Operacional - Rastreabilidade de Pedidos - Optilab;Procedimento Operacional Padrão;;2023-10-16;2023-10-25;2025-10-24;2026-01-22;Optilab;Nickolle Rodrigues;Sim;;
+POP.989;Manual Operacional - Operação da Stellest - LabRio;Procedimento Operacional Padrão;;2023-10-16;2024-02-19;2025-02-18;2026-05-19;LabRio;Evellyn Santos;Sim;;
+POP.990;Manual Operacional - Operação do Varilux XR - LabRio;Procedimento Operacional Padrão;;2023-10-16;2024-03-11;2026-06-09;2026-09-08;LabRio;Renan Barbosa;Sim;;
+POP.991;Manual Operacional - Rastreabilidade de Pedidos - Coating RS;Procedimento Operacional Padrão;;2023-10-31;2023-11-01;2025-10-31;2026-01-29;Coating RS;Christiano Silva;Sim;;
+POP.992;Manual Operacional - Cálculo de Serviços - Grown;Procedimento Operacional Padrão;1;2024-04-02;2024-04-09;2026-04-10;2026-07-09;Grown;Flávio Ferreira;Sim;;
+POP.994;Manual Operacional - Monitoramento de Realimentação do Cliente - Optilab;Procedimento Operacional Padrão;;2023-11-21;2023-11-22;2025-11-21;2026-02-19;Optilab;Nickolle Rodrigues;Sim;;
+POP.995;Manual Operacional - Lançamento de Quebras - Optilab;Procedimento Operacional Padrão;;2023-11-21;2023-11-22;2025-11-21;2026-02-19;Optilab;Nickolle Rodrigues;Sim;;
+POP.996;Manual Operacional - Conferência Final - digiTOP;Procedimento Operacional Padrão;;2023-11-21;2023-11-22;2025-11-21;2026-02-19;digiTOP;Nickolle Rodrigues;Sim;;
+POP.997;Manual Operacional - Produto Não Conforme - Optilab;Procedimento Operacional Padrão;;2023-11-27;2023-12-04;2025-12-03;2026-03-03;Optilab;Nickolle Rodrigues;Sim;;
+POP.998;Manual Operacional - Expedição e Faturamento - Optilab;Procedimento Operacional Padrão;;2023-11-27;2023-12-04;2025-12-03;2026-03-03;Optilab;Nickolle Rodrigues;Sim;;
+POP.999;Manual Operacional - Rastreabilidade de Pedidos - Sumaré CD;Procedimento Operacional Padrão;1;2025-07-11;2025-07-14;2026-07-14;2026-10-12;Sumaré CD;Denise Miranda;Sim;;
+PSQ.001;Apostila Padrão Cosmético;Procedimento do Sistema da Qualidade;14;2024-07-03;2024-08-30;2026-08-31;2026-11-30;Produtos e Informações;Miguel Soares Lima;Sim;QUALIDADE;Conferência Cosmética
+PSQ.017;Controle de Documentos e Registros;Procedimento do Sistema da Qualidade;3;2024-04-11;2024-04-11;2026-06-19;2026-09-18;Qualidade;Taís Flores;Sim;QUALIDADE;QUALIDADE
+PSQ.018;Realização de Produto;Procedimento do Sistema da Qualidade;2;2023-03-21;2023-07-18;2026-07-17;2026-10-16;Qualidade;Taís Flores;Sim;QUALIDADE;QUALIDADE
+PSQ.019;Preservação de Insumo e Produto;Procedimento do Sistema da Qualidade;2;2023-05-19;2023-06-07;2026-06-05;2026-09-04;Qualidade;Taís Flores;Sim;QUALIDADE;PRODUTO
+PSQ.020;Gestão de Fornecedores;Procedimento do Sistema da Qualidade;7;2024-10-24;2024-11-22;2025-11-22;2026-02-20;Qualidade;Nathália Brandão;Sim;QUALIDADE;FORNECEDOR
+PSQ.022;Não Conformidade - Ações Corretivas e Preventivas;Procedimento do Sistema da Qualidade;5;2023-08-24;2023-08-29;2026-08-28;2026-11-26;Qualidade;Taís Flores;Sim;QUALIDADE;QUALIDADE
+PSQ.023;Treinamentos;Procedimento do Sistema da Qualidade;3;2023-08-31;2023-09-05;2026-05-20;2026-09-08;Qualidade;Dayanna Duarte;Sim;QUALIDADE;QUALIDADE
+PSQ.024;Auditoria;Procedimento do Sistema da Qualidade;3;2023-05-12;2023-05-18;2026-05-18;2026-08-17;Qualidade;Taís Flores;Sim;QUALIDADE;AUDITORIA
+PSQ.025;Revisão Gerencial;Procedimento do Sistema da Qualidade;1;2023-05-03;2023-05-03;2026-05-01;2026-07-31;Qualidade;Nathália Brandão;Sim;QUALIDADE;GERENCIAL
+PSQ.026;Identificação e Rastreabilidade;Procedimento do Sistema da Qualidade;1;2023-06-06;2023-06-26;2026-06-25;2026-09-24;Qualidade;Taís Flores;Sim;QUALIDADE;PRODUTO
+PSQ.027;Procedimento de Validação;Procedimento do Sistema da Qualidade;2;2022-06-06;2022-06-10;2025-09-08;2025-12-09;Qualidade;Taís Flores;Sim;QUALIDADE;PRODUTO
+PSQ.028;Gestão de Riscos;Procedimento do Sistema da Qualidade;5;2024-10-24;2024-11-21;2025-11-21;2026-02-19;Qualidade;Nathália Brandão;Sim;QUALIDADE;QUALIDADE
+PSQ.029;Procedimento de Gestão de Mudança;Procedimento do Sistema da Qualidade;3;2024-03-19;2024-03-20;2026-06-09;2026-09-08;Qualidade;Taís Flores;Sim;QUALIDADE;QUALIDADE
+PSQ.030;Procedimento Feedback de Clientes;Procedimento do Sistema da Qualidade;1;2022-03-14;2022-03-15;2023-10-13;2026-08-17;Qualidade;Lucineide Pereira;Sim;QUALIDADE;VENDAS
+PSQ.031;Procedimento de Gerenciamento de Claim de Produtos e Serviços;Procedimento do Sistema da Qualidade;;2021-11-17;2022-03-03;2026-05-26;2026-08-25;Qualidade;Nathália Brandão;Sim;QUALIDADE;CLAIM
+PSQ.032;Monitoramento de Equipamento de Medição;Procedimento do Sistema da Qualidade;7;2024-06-19;2024-06-20;2026-06-19;2026-09-18;Qualidade;Taís Flores;Sim;QUALIDADE;CALIBRAÇÃO
+PSQ.033;Procedimento de Manutenção;Procedimento do Sistema da Qualidade;1;2023-06-15;2023-06-26;2026-06-25;2026-09-24;Qualidade;Lucas Silva;Sim;QUALIDADE;MANUTENÇÃO
+TAB.002;Logotipos - Marcação das Lentes;Tabela;22;2023-08-15;2023-08-18;2026-08-17;2026-11-16;Produtos e Informações;Nathália Brandão;Sim;;
+TAB.007;Manual de Indicadores - Itens de Controle;Tabela;1;2022-12-01;2023-09-04;2025-09-03;2025-12-02;Acompanhamento de Resultados;Lucineide Pereira;Sim;QUALIDADE;QUALIDADE
+TAB.008;Lista Mestra - Especificação de Produtos DS Rx;Tabela;;2021-12-17;2022-03-03;2026-09-01;2026-10-30;Qualidade;José Hamilton;Sim;QUALIDADE;PRODUÇÃO
+TAB.009;Tabela de Kit de Entrega por Produto;Tabela;2;2025-09-03;2025-09-04;2026-09-04;2026-12-03;Qualidade;Taís Flores;Sim;QUALIDADE;PRODUÇÃO
+TAB.010;Herramientas y Equipos de Montaje;Tabela;3;2023-06-15;2023-06-21;2026-06-19;2026-09-18;Montado e Inspeccion;Edgar Casallas;Sim;;
+TAB.011;Ferramentas e Equipamentos de Montagem;Tabela;3;2023-06-15;2023-06-21;2026-06-19;2026-09-18;Montagem e Inspeção;Edgar Casallas;Sim;MONTAGEM;Encaixe
+TAB.012;Velocidade Noe e Noria - CDC1000 Mithril 1.6;Tabela;;2022-12-19;2023-03-03;2026-08-20;2026-11-18;CDC1000/CDS1000;Breno Santos;Sim;HMC;Antirrisco: Destratamento e Verniz
+TAB.014;Siglas - Nomenclaturas - Codificações;Tabela;1;2024-05-02;2024-05-02;2026-05-01;2026-07-31;11-APRENDIZAGEM QUALIEX;Nathália Brandão;Sim;QUALIDADE;Codificações
+TAB.015;Horários de Corte para Faturamento de Serviços - Sumaré Laboratório;Tabela;;2023-08-11;2023-08-18;2026-08-17;2026-11-16;Sumaré Laboratório;Rafael Medeiros;Sim;;
+TAB.016;Velocidade Zoe e Noria - CDS1000 Mithril 1.6;Tabela;;2023-08-17;2023-08-18;2025-08-17;2026-11-16;CDC1000/CDS1000;Alan Ferrer;Sim;;
+TAB.017;PCP Surfaçagem - Impressão;Tabela;15;2025-03-06;2025-03-11;2026-03-11;2026-06-09;00-Controle de Processo e DSPC;Nathália Brandão;Sim;SURFAÇAGEM;PCP
+TAB.018;PCP HMC - Impressão;Tabela;5;2024-03-08;2024-03-12;2026-06-10;2026-09-09;00-Controle do Processo HMC;Nathália Brandão;Sim;;
+TAB.020;Identificação de Cores de Bacias na Produção - Tecnolens;Tabela;;2024-04-10;2024-04-11;2026-06-19;2026-09-18;Tecnolens;Vinicius Silva;Sim;SURFAÇAGEM;#Identificação
+TAB.021;PCP SPIN - Impressão;Tabela;2;2025-04-10;2025-05-12;2026-05-12;2026-09-17;05-SPIN;Jessika Menacho;Sim;;
+TAB.022;PCP Montagem - Impressão;Tabela;8;2024-09-30;2024-09-30;2025-09-30;2025-12-29;00 - Controle de Processo;Nathália Brandão;Sim;;
+TAB.023;Identificação de Cores de Boletas na Produção - Tecnolens;Tabela;1;2024-10-31;2025-03-05;2026-03-05;2026-06-03;Tecnolens;Ramon Gonçalves;Sim;Estoque;TRIAGEM/CERTIFICAÇÃO
+TAB.024;Sequência Pré-Inspeção - Technopark;Tabela;;2024-09-19;2024-09-23;2025-09-23;2025-12-22;Technopark;Rodrigo Lima;Sim;;
+TAB.025;Tab - Tabela de identificação de insumos do armário Azul do HMC;Tabela;;2025-08-06;2025-09-04;2026-09-04;2026-12-03;Tecnolens;Vinicius Silva;Sim;;
+TAB.026;Códigos Motivos Optifacts - Technopark;Tabela;;2025-08-19;2025-08-29;2026-08-29;2026-11-27;Technopark;Rodrigo Lima;Sim;;
+TAB.027;Tabela de identificação de cores de bacias para a Montagem;Tabela;;2025-09-04;2025-09-12;2026-09-12;2026-12-11;Tecnolens;Vinicius Silva;Sim;;
