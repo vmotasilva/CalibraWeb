@@ -71,40 +71,42 @@ class CalibraAdminSite(admin.AdminSite):
 
 # Substitui o site padrão
 admin_site = CalibraAdminSite(name='calibra_admin')
+
 class CustomUserAdmin(BaseUserAdmin):
-        def formfield_for_manytomany(self, db_field, request, **kwargs):
-            from django.contrib.auth.models import Permission
-            if db_field.name == 'user_permissions':
-                # Mapeamento de áreas/metamódulos para models
-                area_map = {
-                    'Faixa medicao': 'Metrologia',
-                    'Categoria instrumento': 'Metrologia',
-                    'Padrao': 'Metrologia',
-                    'Historico calibracao': 'Metrologia',
-                    'Ordem calibracao': 'Metrologia',
-                    'Instrumento': 'Metrologia',
-                    'Colaborador': 'RH',
-                    'Ferias': 'RH',
-                    'Documento pessoal': 'RH',
-                    'Ocorrencia': 'RH',
-                    'Procedimento': 'Procedures & Training',
-                    'Procedimentorevisao': 'Procedures & Training',
-                    'Area': 'Procedures & Training',
-                    'Registro treinamento': 'Procedures & Training',
-                    'Pacote treinamento': 'Procedures & Training',
-                    'Fornecedor': 'Suppliers & Quotes',
-                    'Processo cotacao': 'Suppliers & Quotes',
-                    'Orcamento': 'Suppliers & Quotes',
-                    'Solicitacao instrumento': 'Requests',
-                }
-                def custom_label(perm):
-                    ct = perm.content_type
-                    model_verbose = ct.model.replace('_', ' ').title()
-                    area = area_map.get(model_verbose, ct.app_label.title())
-                    return f"{area} | {model_verbose} | {perm.name.capitalize()}"
-                kwargs['queryset'] = Permission.objects.all().select_related('content_type')
-                kwargs['label_from_instance'] = custom_label
-            return super().formfield_for_manytomany(db_field, request, **kwargs)
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        from django.contrib.auth.models import Permission
+        if db_field.name == 'user_permissions':
+            # Mapeamento de áreas/metamódulos para models
+            area_map = {
+                'Faixa medicao': 'Metrologia',
+                'Categoria instrumento': 'Metrologia',
+                'Padrao': 'Metrologia',
+                'Historico calibracao': 'Metrologia',
+                'Ordem calibracao': 'Metrologia',
+                'Instrumento': 'Metrologia',
+                'Colaborador': 'RH',
+                'Ferias': 'RH',
+                'Documento pessoal': 'RH',
+                'Ocorrencia': 'RH',
+                'Procedimento': 'Procedures & Training',
+                'Procedimentorevisao': 'Procedures & Training',
+                'Area': 'Procedures & Training',
+                'Registro treinamento': 'Procedures & Training',
+                'Pacote treinamento': 'Procedures & Training',
+                'Fornecedor': 'Suppliers & Quotes',
+                'Processo cotacao': 'Suppliers & Quotes',
+                'Orcamento': 'Suppliers & Quotes',
+                'Solicitacao instrumento': 'Requests',
+            }
+            def custom_label(perm):
+                ct = perm.content_type
+                model_verbose = ct.model.replace('_', ' ').title()
+                area = area_map.get(model_verbose, ct.app_label.title())
+                return f"{area} | {model_verbose} | {perm.name.capitalize()}"
+            kwargs['queryset'] = Permission.objects.all().select_related('content_type')
+            kwargs['label_from_instance'] = custom_label
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Informações pessoais', {'fields': ('first_name', 'last_name', 'email')}),
