@@ -2,6 +2,7 @@ from datetime import date
 
 from django.contrib import admin
 from django.contrib.auth.models import User, Group
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -70,7 +71,29 @@ class CalibraAdminSite(admin.AdminSite):
 
 # Substitui o site padrão
 admin_site = CalibraAdminSite(name='calibra_admin')
-admin_site.register(User)
+class CustomUserAdmin(BaseUserAdmin):
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        ('Informações pessoais', {'fields': ('first_name', 'last_name', 'email')}),
+        ('Permissões', {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+            'description': 'Defina o nível de acesso do usuário. Para acesso total, marque "Superuser". Para acesso restrito, selecione grupos e permissões específicas.'
+        }),
+        ('Datas importantes', {'fields': ('last_login', 'date_joined')}),
+    )
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('username', 'password1', 'password2', 'first_name', 'last_name', 'email', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+        }),
+    )
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_superuser', 'is_active')
+    list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups')
+    search_fields = ('username', 'first_name', 'last_name', 'email')
+    ordering = ('username',)
+    filter_horizontal = ('groups', 'user_permissions')
+
+admin_site.register(User, CustomUserAdmin)
 admin_site.register(Group)
 
 
