@@ -9,8 +9,13 @@ import django
 from pathlib import Path
 from typing import Dict, Any
 
+
 # Setup Django
-BASE_DIR = Path(__file__).resolve().parent.parent
+try:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+except NameError:
+    # __file__ não existe no shell interativo, usa cwd
+    BASE_DIR = Path.cwd()
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
