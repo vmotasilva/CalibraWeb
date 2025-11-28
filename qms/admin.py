@@ -27,6 +27,9 @@ class CalibraAdminSite(admin.AdminSite):
         app_dict = self._build_app_dict(request)
         # Ordem e títulos customizados
         ordering = [
+            ('AUTH', _('Authentication and Authorization'), [
+                'User', 'Group',
+            ]),
             ('HR', _('HR'), [
                 'Colaborador', 'Ferias', 'DocumentoPessoal', 'Ocorrencia', 'Vacation periods', 'Employee documents', 'Employee occurrences', 'Employees',
             ]),
