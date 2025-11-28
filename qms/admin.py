@@ -81,6 +81,28 @@ from django.contrib.auth.forms import UserChangeForm as DjangoUserChangeForm
 class CustomUserChangeForm(DjangoUserChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Dicionário para personalizar rótulos de modelos
+        label_map = {
+            'Faixa medicao': 'Faixa de Medição',
+            'Categoria instrumento': 'Categoria do Instrumento',
+            'Padrao': 'Padrão de Rastreabilidade',
+            'Historico calibracao': 'Histórico de Calibração',
+            'Ordem calibracao': 'Ordem de Calibração',
+            'Instrumento': 'Instrumento',
+            'Colaborador': 'Colaborador (RH)',
+            'Ferias': 'Férias',
+            'Documento pessoal': 'Documento Pessoal',
+            'Ocorrencia': 'Ocorrência',
+            'Procedimento': 'Procedimento',
+            'Procedimentorevisao': 'Revisão de Procedimento',
+            'Area': 'Área',
+            'Registro treinamento': 'Registro de Treinamento',
+            'Pacote treinamento': 'Pacote de Treinamento',
+            'Fornecedor': 'Fornecedor',
+            'Processo cotacao': 'Processo de Cotação',
+            'Orcamento': 'Orçamento',
+            'Solicitacao instrumento': 'Solicitação de Instrumento',
+        }
         area_map = {
             'Faixa medicao': 'Metrologia',
             'Categoria instrumento': 'Metrologia',
@@ -106,7 +128,8 @@ class CustomUserChangeForm(DjangoUserChangeForm):
             ct = perm.content_type
             model_verbose = ct.model.replace('_', ' ').title()
             area = area_map.get(model_verbose, ct.app_label.title())
-            return f"{area} | {model_verbose} | {perm.name.capitalize()}"
+            model_label = label_map.get(model_verbose, model_verbose)
+            return f"{area} | {model_label} | {perm.name.capitalize()}"
         self.fields['user_permissions'].label_from_instance = custom_label
 
 class CustomUserAdmin(BaseUserAdmin):
