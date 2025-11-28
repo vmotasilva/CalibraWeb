@@ -1906,7 +1906,7 @@ def imp_procedimentos_view(request):
                 except Exception:
                     errors += 1
             messages.success(request, f"Procedimentos criados: {created}, atualizados: {updated}, erros: {errors}")
-            return redirect('procedimentos_list')
+            return redirect('procedimentos_lista')
     else:
         form = ImportacaoProcedimentosForm()
     return render(request, 'importar_procedimentos.html', {'form': form, 'colaborador': get_colab(request)})
