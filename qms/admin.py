@@ -131,6 +131,10 @@ class CustomUserChangeForm(DjangoUserChangeForm):
             model_label = label_map.get(model_verbose, model_verbose)
             return f"{area} | {model_label} | {perm.name.capitalize()}"
         self.fields['user_permissions'].label_from_instance = custom_label
+        # Ordenar permissões pelo rótulo customizado
+        perms = list(self.fields['user_permissions'].queryset)
+        perms.sort(key=custom_label)
+        self.fields['user_permissions'].queryset = Permission.objects.filter(pk__in=[p.pk for p in perms])
 
 class CustomUserAdmin(BaseUserAdmin):
     form = CustomUserChangeForm
