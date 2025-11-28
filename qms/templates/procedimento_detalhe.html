@@ -2,7 +2,7 @@
 {% block content %}
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">{{ proc.codigo }} - {{ proc.titulo }}</h3>
+    <h3 class="mb-0">{{ proc.codigo }} - {{ proc.nome }}</h3>
     <div class="d-flex gap-2">
       <a href="{% url 'editar_procedimento' proc.id %}" class="btn btn-sm btn-outline-primary">Editar</a>
       <a href="{% url 'procedimentos_lista' %}" class="btn btn-sm btn-secondary">Voltar</a>
@@ -15,11 +15,11 @@
         <div class="card-header small text-muted">Identificação</div>
         <div class="card-body small">
           <p class="mb-1"><strong>Código:</strong> {{ proc.codigo }}</p>
-          <p class="mb-1"><strong>Título:</strong> {{ proc.titulo }}</p>
-          <p class="mb-1"><strong>Tipo:</strong> {{ proc.tipo }}</p>
-          <p class="mb-1"><strong>Revisão:</strong> {{ proc.revisao_atual }}</p>
-          <p class="mb-1"><strong>Data Revisão:</strong> {% if proc.data_revisao %}{{ proc.data_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</p>
-          <p class="mb-1"><strong>Data Aprovação:</strong> {% if proc.data_aprovacao_revisao %}{{ proc.data_aprovacao_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</p>
+          <p class="mb-1"><strong>Nome:</strong> {{ proc.nome }}</p>
+          <p class="mb-1"><strong>Classificação:</strong> {{ proc.classificacao }}</p>
+          <p class="mb-1"><strong>Revisão:</strong> {{ proc.numero_revisao }}</p>
+          <p class="mb-1"><strong>Última Revisão:</strong> {% if proc.ultima_revisao %}{{ proc.ultima_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</p>
+          <p class="mb-1"><strong>Data Aprovação:</strong> {% if proc.data_aprovacao %}{{ proc.data_aprovacao|date:'d/m/Y' }}{% else %}-{% endif %}</p>
         </div>
       </div>
     </div>
@@ -75,42 +75,7 @@
           </div>
         </div>
       </div>
-        <div class="card-header small text-muted">Responsáveis</div>
-        <div class="card-body small">
-          <p class="mb-1"><strong>Elaborador:</strong> {% if proc.elaborador %}{{ proc.elaborador.nome_completo }}{% else %}-{% endif %}</p>
-          <p class="mb-1"><strong>Revisor:</strong> {% if proc.revisor %}{{ proc.revisor.nome_completo }}{% else %}-{% endif %}</p>
-          <p class="mb-1"><strong>Aprovador:</strong> {% if proc.aprovador %}{{ proc.aprovador.nome_completo }}{% else %}-{% endif %}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="card shadow-sm">
-        <div class="card-header small text-muted">Escopo</div>
-        <div class="card-body small">
-          <p class="mb-1"><strong>Setor:</strong> {% if proc.setor %}{{ proc.setor.nome }}{% else %}-{% endif %}</p>
-          <p class="mb-1"><strong>Área:</strong> {% if proc.area %}{{ proc.area.nome }}{% else %}-{% endif %}</p>
-          <p class="mb-1"><strong>Aplica Treinamento:</strong> {% if proc.aplica_treinamento %}Sim{% else %}Não{% endif %}</p>
-          <p class="mb-1"><strong>Habilidade Vinculada:</strong> {{ proc.habilidade_vinculada|default:'-' }}</p>
-          <p class="mb-1"><strong>Prioridade:</strong> {{ proc.prioridade|default:'-' }}</p>
-          <p class="mb-1"><strong>Cópia Física:</strong> {% if proc.tem_copia_fisica %}Sim{% else %}Não{% endif %}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="card shadow-sm">
-        <div class="card-header small text-muted">Arquivo</div>
-        <div class="card-body small">
-          {% if proc.arquivo %}
-            <a href="{{ proc.arquivo.url }}" target="_blank" class="btn btn-sm btn-outline-success">Abrir / Download</a>
-          {% else %}
-            <p class="text-muted mb-0">Nenhum arquivo anexado.</p>
-          {% endif %}
-          {% if proc.link_externo %}
-            <p class="mt-2 mb-0"><a href="{{ proc.link_externo }}" target="_blank">Link Externo</a></p>
-          {% endif %}
-        </div>
-      </div>
-    </div>
+        <!-- Blocos de responsáveis, escopo e arquivo removidos pois não existem no modelo atual -->
   </div>
 </div>
 {% endblock %}

@@ -662,13 +662,12 @@ def modulo_rh_view(request):
 @login_required
 def procedimentos_list_view(request):
     """Lista de Procedimentos com filtros avançados.
-    GET params:
-      q: busca em código / título
-      tipo: POP|DOC|FOR|TAB|DEX|OUTRO
-      setor: setor id
-      area: area id
-      rev: revisão exata
-      elaborador / revisor / aprovador: colaborador id
+        GET params:
+            q: busca em código / nome
+            setor: setor id
+            area: area id
+            rev: revisão exata
+            elaborador / revisor / aprovador: colaborador id
     """
     termo = (request.GET.get('q') or '').strip().upper()
     classificacao = (request.GET.get('classificacao') or '').strip().upper()

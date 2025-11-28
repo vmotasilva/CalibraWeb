@@ -14,14 +14,7 @@
     <div class="col-md-3">
       <input type="text" name="q" value="{{ termo }}" placeholder="Código ou título" class="form-control" />
     </div>
-    <div class="col-md-2">
-      <select name="tipo" class="form-select">
-        <option value="">Tipo</option>
-        {% for t, qtd in tipos_stats.items %}
-          <option value="{{ t }}" {% if tipo == t %}selected{% endif %}>{{ t }}</option>
-        {% endfor %}
-      </select>
-    </div>
+    <!-- Filtro por tipo removido pois campo não existe mais no modelo -->
     <div class="col-md-2">
       <input type="text" name="rev" value="{{ rev }}" placeholder="Revisão" class="form-control" />
     </div>
