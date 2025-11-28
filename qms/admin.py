@@ -3,6 +3,7 @@ from datetime import date
 from django.contrib import admin
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django import forms
 from django.utils.translation import gettext_lazy as _
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -72,40 +73,44 @@ class CalibraAdminSite(admin.AdminSite):
 # Substitui o site padrão
 admin_site = CalibraAdminSite(name='calibra_admin')
 
+
+# Formulário customizado para exibir permissões agrupadas
+from django.contrib.auth.models import Permission
+from django.contrib.auth.forms import UserChangeForm as DjangoUserChangeForm
+
+class CustomUserChangeForm(DjangoUserChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        area_map = {
+            'Faixa medicao': 'Metrologia',
+            'Categoria instrumento': 'Metrologia',
+            'Padrao': 'Metrologia',
+            'Historico calibracao': 'Metrologia',
+            'Ordem calibracao': 'Metrologia',
+            'Instrumento': 'Metrologia',
+            'Colaborador': 'RH',
+            'Ferias': 'RH',
+            'Documento pessoal': 'RH',
+            'Ocorrencia': 'RH',
+            'Procedimento': 'Procedures & Training',
+            'Procedimentorevisao': 'Procedures & Training',
+            'Area': 'Procedures & Training',
+            'Registro treinamento': 'Procedures & Training',
+            'Pacote treinamento': 'Procedures & Training',
+            'Fornecedor': 'Suppliers & Quotes',
+            'Processo cotacao': 'Suppliers & Quotes',
+            'Orcamento': 'Suppliers & Quotes',
+            'Solicitacao instrumento': 'Requests',
+        }
+        def custom_label(perm):
+            ct = perm.content_type
+            model_verbose = ct.model.replace('_', ' ').title()
+            area = area_map.get(model_verbose, ct.app_label.title())
+            return f"{area} | {model_verbose} | {perm.name.capitalize()}"
+        self.fields['user_permissions'].label_from_instance = custom_label
+
 class CustomUserAdmin(BaseUserAdmin):
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        from django.contrib.auth.models import Permission
-        if db_field.name == 'user_permissions':
-            # Mapeamento de áreas/metamódulos para models
-            area_map = {
-                'Faixa medicao': 'Metrologia',
-                'Categoria instrumento': 'Metrologia',
-                'Padrao': 'Metrologia',
-                'Historico calibracao': 'Metrologia',
-                'Ordem calibracao': 'Metrologia',
-                'Instrumento': 'Metrologia',
-                'Colaborador': 'RH',
-                'Ferias': 'RH',
-                'Documento pessoal': 'RH',
-                'Ocorrencia': 'RH',
-                'Procedimento': 'Procedures & Training',
-                'Procedimentorevisao': 'Procedures & Training',
-                'Area': 'Procedures & Training',
-                'Registro treinamento': 'Procedures & Training',
-                'Pacote treinamento': 'Procedures & Training',
-                'Fornecedor': 'Suppliers & Quotes',
-                'Processo cotacao': 'Suppliers & Quotes',
-                'Orcamento': 'Suppliers & Quotes',
-                'Solicitacao instrumento': 'Requests',
-            }
-            def custom_label(perm):
-                ct = perm.content_type
-                model_verbose = ct.model.replace('_', ' ').title()
-                area = area_map.get(model_verbose, ct.app_label.title())
-                return f"{area} | {model_verbose} | {perm.name.capitalize()}"
-            kwargs['queryset'] = Permission.objects.all().select_related('content_type')
-            kwargs['label_from_instance'] = custom_label
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
+    form = CustomUserChangeForm
 
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
