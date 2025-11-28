@@ -258,12 +258,11 @@ class ProcedimentoForm(forms.ModelForm):
     class Meta:
         model = Procedimento
         fields = [
-            'no', 'codigo', 'nome', 'descricao', 'pasta', 'classificacao', 'autor',
+            'codigo', 'nome', 'descricao', 'pasta', 'classificacao', 'autor',
             'numero_revisao', 'ultima_revisao', 'data_aprovacao', 'proxima_revisao',
             'data_validade', 'documentos_controlados', 'matriz', 'sub_area'
         ]
         widgets = {
-            'no': forms.TextInput(attrs={'class':'form-control','placeholder':'Chave única'}),
             'codigo': forms.TextInput(attrs={'class':'form-control','placeholder':'Ex: POP.001'}),
             'nome': forms.TextInput(attrs={'class':'form-control'}),
             'descricao': forms.Textarea(attrs={'class':'form-control','rows':2}),

@@ -1,8 +1,8 @@
-no;codigo;nome;descricao;pasta;classificacao;autor;numero_revisao;ultima_revisao;data_aprovacao;proxima_revisao;data_validade;documentos_controlados;matriz;sub_area
-1;DEX.002;ISO 9001:2015 - Sistemas de gestão da qualidade - Requisitos;;Normas;Documentos Externos;Vagner Domingos;;2019-02-28;2019-02-28;2026-08-19;2026-11-18;Sim;;
-2;DEX.003;;;;;;;;;;;;;
-3;DEX.004;;;;;;;;;;;;;
-4;DEX.005;;;;;;;;;;;;;
+codigo;nome;descricao;pasta;classificacao;autor;numero_revisao;ultima_revisao;data_aprovacao;proxima_revisao;data_validade;documentos_controlados;matriz;sub_area
+DEX.002;ISO 9001:2015 - Sistemas de gestão da qualidade - Requisitos;;Normas;Documentos Externos;Vagner Domingos;;2019-02-28;2019-02-28;2026-08-19;2026-11-18;Sim;;
+DEX.003;;;;;;;;;;;;;
+DEX.004;;;;;;;;;;;;;
+DEX.005;;;;;;;;;;;;;
 5;DEX.006;ABNT NBR ISO.IEC17025 - Requisitos gerais para a competência de laboratórios de ensaio e calibração;;Normas;Documentos Externos;Vagner Domingos;;2019-04-08;2019-04-08;2026-08-19;2026-11-17;Sim;;
 6;DEX.008;ICR08041 - HC Control Plan for Rx Labs;;Rx Referencial;Documentos Externos;José Hamilton;2;2024-08-14;2024-08-26;2026-08-26;2026-11-24;Sim;;
 7;DEX.009;;;;;;;;;;;;;

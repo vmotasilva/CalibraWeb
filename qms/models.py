@@ -798,7 +798,6 @@ class Orcamento(models.Model):
 
 # NOVO MODELO DE PROCEDIMENTO (conforme especificação do usuário)
 class Procedimento(models.Model):
-    no = models.CharField(max_length=50, unique=True, verbose_name="No.", null=True, blank=True)  # Chave única
     codigo = models.CharField(max_length=50, unique=True, verbose_name="Código", null=True, blank=True)
     nome = models.CharField(max_length=200, verbose_name="Nome/Título do Documento", null=True, blank=True)
     descricao = models.TextField(null=True, blank=True, verbose_name="Descrição/Objetivo/Função")

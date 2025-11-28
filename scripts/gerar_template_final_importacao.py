@@ -5,14 +5,13 @@ CSV_ORIGINAL = Path('Relatorio_de_Lista_Mestra_Selecao_adaptado.csv')
 CSV_TEMPLATE = Path('Relatorio_de_Lista_Mestra_Selecao_template_final.csv')
 
 COLUNAS_TEMPLATE = [
-    'no', 'codigo', 'nome', 'descricao', 'pasta', 'classificacao', 'autor',
+    'codigo', 'nome', 'descricao', 'pasta', 'classificacao', 'autor',
     'numero_revisao', 'ultima_revisao', 'data_aprovacao', 'proxima_revisao',
     'data_validade', 'documentos_controlados', 'matriz', 'sub_area'
 ]
 
 # Mapeamento do arquivo adaptado para o template final
 MAP_ORIGEM = {
-    'no': 'no',
     'codigo': 'codigo',
     'nome': 'titulo',
     'descricao': 'descricao',

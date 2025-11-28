@@ -69,7 +69,6 @@
     <table class="table table-sm table-striped mb-0">
       <thead class="table-light">
         <tr class="small text-uppercase">
-          <th style="width:80px;">No.</th>
           <th style="width:120px;">Código</th>
           <th style="width:220px;">Nome</th>
           <th style="width:120px;">Classificação</th>
@@ -89,7 +88,6 @@
         {% if procedimentos %}
           {% for p in procedimentos %}
             <tr class="align-middle">
-              <td class="small">{{ p.no|default_if_none:"-"|yesno:"-,-" }}</td>
               <td class="fw-semibold"><a href="{% url 'detalhe_procedimento' p.id %}" class="text-decoration-none">{{ p.codigo|default_if_none:"-" }}</a></td>
               <td class="small">{{ p.nome|default_if_none:"-"|truncatechars:80 }}</td>
               <td class="small">{{ p.classificacao|default_if_none:"-" }}</td>

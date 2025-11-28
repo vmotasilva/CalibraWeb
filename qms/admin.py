@@ -422,8 +422,8 @@ admin.site.register(Orcamento)
 
 @admin.register(Procedimento, site=admin_site)
 class ProcedimentoAdmin(admin.ModelAdmin):
-    list_display = ("no", "codigo", "nome", "numero_revisao", "classificacao", "autor")
-    search_fields = ("no", "codigo", "nome", "autor", "classificacao")
+    list_display = ("codigo", "nome", "numero_revisao", "classificacao", "autor")
+    search_fields = ("codigo", "nome", "autor", "classificacao")
     list_filter = ("classificacao",)
 
 
