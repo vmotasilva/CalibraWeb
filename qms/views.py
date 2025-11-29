@@ -1305,7 +1305,8 @@ def carimbar_view(request):
     if request.method == "POST":
         form = CarimboForm(request.POST, request.FILES)
         if form.is_valid():
-            c_resp = colab
+            # Usa o valor do campo editável, se enviado
+            responsavel_tecnico = request.POST.get("responsavel_tecnico") or str(colab)
             dt_validacao = form.cleaned_data["data_validacao"]
             status_txt = form.cleaned_data["status_validacao"]
             is_rbc = form.cleaned_data.get("is_rbc", False)
@@ -1411,8 +1412,8 @@ def carimbar_view(request):
                             defaults={
                                 "proxima_calibracao": prox_calib,
                                 "resultado": resultado_item,
-                                "responsavel": str(c_resp),
-                                "observacoes": f"Validado por {user_full_name}: {status_item}",
+                                "responsavel": responsavel_tecnico,
+                                "observacoes": f"Validado por {responsavel_tecnico}: {status_item}",
                                 "tem_selo_rbc": is_rbc,
                                 "tipo_calibracao": "EXTERNA",
                             },
@@ -1432,7 +1433,7 @@ def carimbar_view(request):
                             hist.padroes_utilizados.set(padroes_selecionados)
                         # Gera PDF com carimbo usando o status calculado para ESTE item
                         pdf_buffer = apply_stamp_logic(
-                            f, user_full_name, status_item, ui, dt_validacao, page_index
+                            f, responsavel_tecnico, status_item, ui, dt_validacao, page_index
                         )
                         filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"
                         hist.certificado.save(

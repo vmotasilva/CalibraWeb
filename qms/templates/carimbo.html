@@ -49,6 +49,7 @@
         <h2 style="margin:0 0 10px 0; color:#0277bd; border-bottom:2px solid #e3f2fd; font-size:1.4rem;">Validação em Lote</h2>
         
         <form method="post" enctype="multipart/form-data" id="stampForm">
+            <button type="button" class="btn-replicate" style="float:right; margin-bottom:10px;" onclick="clearAllStamps()">Limpar todos os carimbos</button>
             {% csrf_token %}
             <div style="background: #f1f8e9; padding: 10px; border-radius: 6px; border: 1px solid #c5e1a5;">
                 <!-- RESPONSÁVEL TÉCNICO -->
@@ -93,6 +94,20 @@
     </div>
 
     <script>
+                // Limpa todas as posições de carimbo
+                function clearAllStamps() {
+                    filesData.forEach((data, idx) => {
+                        data.x = 0; data.y = 0; data.w = 0; data.h = 0;
+                        document.getElementById(`input-x-${idx}`).value = '';
+                        document.getElementById(`input-y-${idx}`).value = '';
+                        document.getElementById(`input-w-${idx}`).value = '';
+                        document.getElementById(`input-h-${idx}`).value = '';
+                        const ind = document.getElementById(`status-${idx}`);
+                        if(ind) { ind.innerText = "Sem Posição"; ind.classList.remove('ok'); }
+                    });
+                    selectionBox.style.display = 'none';
+                    drawSavedBox();
+                }
         let pdfDoc = null; let pageNum = 1; let scale = 1.2; let rotation = 0; 
         let currentFileIndex = -1; let filesData = [];
         const canvas = document.getElementById('pdf-render');
