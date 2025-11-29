@@ -1469,6 +1469,7 @@ def carimbar_view(request):
             "user_full_name": user_full_name,
             "instrumentos": instrumentos_disponiveis,
             "instrumentos_data": instrumentos_data,
+            "is_superuser": request.user.is_superuser,
         },
     )
 

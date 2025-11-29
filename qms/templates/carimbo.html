@@ -51,35 +51,30 @@
         <form method="post" enctype="multipart/form-data" id="stampForm">
             {% csrf_token %}
             <div style="background: #f1f8e9; padding: 10px; border-radius: 6px; border: 1px solid #c5e1a5;">
-                
-                <!-- RESPONSÁVEL TÉCNICO (USER LOGADO) -->
+                <!-- RESPONSÁVEL TÉCNICO -->
                 <label style="margin-top:0">Responsável Técnico:
                     {% if colaborador %}
                         <a href="{% url 'detalhe_colaborador' colaborador.id %}" class="text-decoration-none" style="margin-left:8px; font-weight:600; color:#0277bd;">Ver perfil</a>
                     {% endif %}
                 </label>
-                <input type="text" class="form-control" value="{{ user_full_name }}" disabled 
-                       style="background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; font-weight: bold;">
-                
-                <label>Texto:</label> {{ form.status_validacao }}
+                {% if is_superuser %}
+                    <input type="text" name="responsavel_tecnico" class="form-control" value="{{ user_full_name }}" style="background-color: #fffde7; border-color: #ffe082; color: #0277bd; font-weight: bold;">
+                {% else %}
+                    <input type="text" name="responsavel_tecnico" class="form-control" value="{{ user_full_name }}" readonly style="background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; font-weight: bold;">
+                {% endif %}
                 <label style="color:#e65100">Data:</label> {{ form.data_validacao }}
-                <div id="live-result" style="margin-top:8px; font-weight:600;">
-                    Resultado: <span id="live-result-text" class="badge bg-secondary">—</span>
-                </div>
+                <label>Resultado:</label> {{ form.status_validacao }}
             </div>
 
             <!-- E/U/T agora serão informados por arquivo (associado ao instrumento) -->
 
             <hr style="border-color: #e0e0e0; margin: 15px 0;">
             <label>Certificados (PDF):</label> {{ form.arquivo_pdf }}
-            
             <div id="file-list-container" style="margin-top: 15px;">
                 <p style="color: #90a4ae; text-align: center; padding: 20px; border: 2px dashed #cfd8dc;">Selecione arquivos...</p>
             </div>
-            
             {{ form.page_width }} {{ form.page_height }}
             {{ form.x }} {{ form.y }} {{ form.w }} {{ form.h }}
-
             <input type="hidden" name="page_0" id="page-index-hidden" value="0">
             <button type="submit" class="btn-primary">PROCESSAR</button>
         </form>
