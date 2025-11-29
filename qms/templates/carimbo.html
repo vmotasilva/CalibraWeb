@@ -91,7 +91,6 @@
     <div class="preview-area">
         <div class="pdf-toolbar">
             <button type="button" class="btn-icon" onclick="rotatePDF(-90)">↺</button>
-            <button type="button" class="btn-icon" onclick="replicatePosition()" title="Aplicar esta posição em todos">📍 Replicar Posição</button>
             <button type="button" class="btn-icon" onclick="rotatePDF(90)">↻</button>
         </div>
         <div id="canvas-container">
@@ -124,6 +123,8 @@
         let pdfDoc = null; let pageNum = 1; let scale = 1.2; let rotation = 0; 
         let currentFileIndex = -1; let filesData = [];
         const canvas = document.getElementById('pdf-render');
+
+        function handleFileSelect(event) {
             const files = Array.from(event.target.files);
             const listContainer = document.getElementById('file-list-container');
             const templateSelect = document.getElementById('template-instrument-select');
@@ -164,7 +165,7 @@
                 <div class="item-row">
                     <span class="item-label">Instrumento:</span> ${selectClone.outerHTML}
                 </div>
-                <div class="item-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:8px; align-items:end;">
+                <div class="item-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; align-items:end;">
                     <div>
                         <span class="item-label">Erro (E)</span>
                         <input type="number" step="0.0001" name="err_${index}" id="err-input-${index}" class="form-control" placeholder="0.0000">
@@ -177,15 +178,9 @@
                         <span class="item-label">Tolerância (+/−)</span>
                         <input type="number" step="0.0001" name="tol_${index}" id="tol-input-${index}" class="form-control" placeholder="0.0000">
                     </div>
-                    <div>
-                        <button type="button" class="btn-replicate" onclick="replicateEUT(${index})" title="Aplicar E/U/T deste item em todos">Replicar E/U/T</button>
-                    </div>
                 </div>
                 <div class="item-row">
-                    <span class="item-label" style="color: #e65100;">
-                        Data Calibração: 
-                        <button type="button" class="btn-replicate" onclick="replicateDate(${index})">Replicar</button>
-                    </span>
+                    <span class="item-label" style="color: #e65100;">Data Calibração:</span>
                     <input type="date" name="calib_date_${index}" id="date-input-${index}" required class="form-control" style="padding:5px;">
                 </div>
                 <div class="item-row">
@@ -199,7 +194,7 @@
                 <input type="hidden" name="x_${index}" id="input-x-${index}">
                 <input type="hidden" name="y_${index}" id="input-y-${index}">
                 <input type="hidden" name="w_${index}" id="input-w-${index}">
-                <input type="hidden" name="h_${index}" id="input-h-${index}">
+                <input type="hidden" name="h_${index}" id="input-h_${index}">
             `;
             listContainer.appendChild(div);
             // Auto-preencher tolerância com base no instrumento selecionado
@@ -222,6 +217,16 @@
             incInput.addEventListener('input', () => computeResultFor(index));
             tolInput.addEventListener('input', () => computeResultFor(index));
             loadFilePreview(0);
+        }
+
+        // Garante que o input de arquivo aceite apenas um arquivo e listener ativo
+        document.addEventListener('DOMContentLoaded', function() {
+            var fileInput = document.querySelector('input[type="file"]');
+            if (fileInput) {
+                fileInput.removeAttribute('multiple');
+                fileInput.addEventListener('change', handleFileSelect);
+            }
+        });
                     }
                     computeResultFor(index);
                 };
