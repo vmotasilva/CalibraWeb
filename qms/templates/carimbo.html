@@ -70,7 +70,10 @@
             <!-- E/U/T agora serão informados por arquivo (associado ao instrumento) -->
 
             <hr style="border-color: #e0e0e0; margin: 15px 0;">
-            <label>Certificados (PDF):</label> {{ form.arquivo_pdf }}
+            <label>Certificados (PDF):</label>
+            {% with form.arquivo_pdf as file_field %}
+                {{ file_field.as_widget(attrs={'id': 'arquivo_pdf'}) }}
+            {% endwith %}
             <script>
             // Garante que o input de arquivo aceite apenas um arquivo
             document.addEventListener('DOMContentLoaded', function() {
@@ -220,12 +223,20 @@
         }
 
         // Garante que o input de arquivo aceite apenas um arquivo e listener ativo
-        document.addEventListener('DOMContentLoaded', function() {
-            var fileInput = document.querySelector('input[type="file"]');
+        function attachFileInputListener() {
+            var fileInput = document.getElementById('arquivo_pdf');
             if (fileInput) {
                 fileInput.removeAttribute('multiple');
+                // Remove listeners duplicados
+                fileInput.removeEventListener('change', handleFileSelect);
                 fileInput.addEventListener('change', handleFileSelect);
             }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            attachFileInputListener();
+            // Fallback: observa mudanças no DOM para reanexar listener se o campo for recriado
+            const observer = new MutationObserver(attachFileInputListener);
+            observer.observe(document.body, { childList: true, subtree: true });
         });
                     }
                     computeResultFor(index);
