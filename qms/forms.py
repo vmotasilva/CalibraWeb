@@ -91,6 +91,7 @@ class CarimboForm(forms.Form):
                 "class": "form-control",
                 "accept": "application/pdf",
                 "multiple": True,
+                "id": "arquivo_pdf",
             }
         ),
     )

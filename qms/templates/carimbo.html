@@ -70,10 +70,7 @@
             <!-- E/U/T agora serão informados por arquivo (associado ao instrumento) -->
 
             <hr style="border-color: #e0e0e0; margin: 15px 0;">
-            <label>Certificados (PDF):</label>
-            {% with form.arquivo_pdf as file_field %}
-                {{ file_field.as_widget(attrs={'id': 'arquivo_pdf'}) }}
-            {% endwith %}
+            <label>Certificados (PDF):</label> {{ form.arquivo_pdf }}
             <script>
             // Garante que o input de arquivo aceite apenas um arquivo
             document.addEventListener('DOMContentLoaded', function() {
