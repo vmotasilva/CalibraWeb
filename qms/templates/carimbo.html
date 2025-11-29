@@ -178,6 +178,10 @@
                         <span class="item-label">N° Certificado:</span>
                         <input type="text" name="cert_num_${index}" value="${certName}" required class="form-control" style="padding:5px;">
                     </div>
+                    <div class="item-row">
+                        <span class="item-label">Resultado:</span>
+                        <span id="live-result-text-${index}" class="badge bg-secondary">—</span>
+                    </div>
                     <input type="hidden" name="x_${index}" id="input-x-${index}">
                     <input type="hidden" name="y_${index}" id="input-y-${index}">
                     <input type="hidden" name="w_${index}" id="input-w-${index}">
@@ -364,7 +368,7 @@
             const e = parseFloat(document.getElementById(`err-input-${index}`).value || 'NaN');
             const u = parseFloat(document.getElementById(`inc-input-${index}`).value || 'NaN');
             const t = parseFloat(document.getElementById(`tol-input-${index}`).value || 'NaN');
-            const badge = document.getElementById('live-result-text');
+            const badge = document.getElementById(`live-result-text-${index}`);
             if(!badge) return;
             const setBadge = (txt, cls) => { badge.textContent = txt; badge.className = `badge ${cls}`; };
             if(Number.isNaN(e) || Number.isNaN(u) || Number.isNaN(t)) { setBadge('—', 'bg-secondary'); return; }
