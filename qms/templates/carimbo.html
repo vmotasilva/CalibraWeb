@@ -71,6 +71,13 @@
 
             <hr style="border-color: #e0e0e0; margin: 15px 0;">
             <label>Certificados (PDF):</label> {{ form.arquivo_pdf }}
+            <script>
+            // Garante que o input de arquivo aceite apenas um arquivo
+            document.addEventListener('DOMContentLoaded', function() {
+                var fileInput = document.querySelector('input[type="file"]');
+                if (fileInput) fileInput.removeAttribute('multiple');
+            });
+            </script>
             <div id="file-list-container" style="margin-top: 15px;">
                 <p style="color: #90a4ae; text-align: center; padding: 20px; border: 2px dashed #cfd8dc;">Selecione arquivos...</p>
             </div>
@@ -96,110 +103,125 @@
     <script>
                 // Limpa todas as posições de carimbo
                 function clearAllStamps() {
+                    // Limpa todos os dados de carimbo
                     filesData.forEach((data, idx) => {
                         data.x = 0; data.y = 0; data.w = 0; data.h = 0;
-                        document.getElementById(`input-x-${idx}`).value = '';
-                        document.getElementById(`input-y-${idx}`).value = '';
-                        document.getElementById(`input-w-${idx}`).value = '';
-                        document.getElementById(`input-h-${idx}`).value = '';
+                        if(document.getElementById(`input-x-${idx}`)) document.getElementById(`input-x-${idx}`).value = '';
+                        if(document.getElementById(`input-y-${idx}`)) document.getElementById(`input-y-${idx}`).value = '';
+                        if(document.getElementById(`input-w-${idx}`)) document.getElementById(`input-w-${idx}`).value = '';
+                        if(document.getElementById(`input-h-${idx}`)) document.getElementById(`input-h-${idx}`).value = '';
                         const ind = document.getElementById(`status-${idx}`);
                         if(ind) { ind.innerText = "Sem Posição"; ind.classList.remove('ok'); }
                     });
                     selectionBox.style.display = 'none';
-                    drawSavedBox();
+                    // Limpa visualmente o canvas
+                    if (pdfDoc && pageNum) {
+                        renderPage(pageNum);
+                    } else {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    }
                 }
         let pdfDoc = null; let pageNum = 1; let scale = 1.2; let rotation = 0; 
         let currentFileIndex = -1; let filesData = [];
         const canvas = document.getElementById('pdf-render');
-        const ctx = canvas.getContext('2d');
-        const selectionBox = document.getElementById('selection-box');
-        const container = document.getElementById('canvas-container');
-        const fileInput = document.querySelector('input[type="file"]');
-        const globalPW = document.getElementsByName('page_width')[0];
-        const globalPH = document.getElementsByName('page_height')[0];
-
-        if(fileInput) fileInput.addEventListener('change', handleFileSelect);
-
-        function handleFileSelect(event) {
             const files = Array.from(event.target.files);
             const listContainer = document.getElementById('file-list-container');
             const templateSelect = document.getElementById('template-instrument-select');
             listContainer.innerHTML = ''; filesData = []; currentFileIndex = -1;
             if (files.length === 0) return;
-
-            files.forEach((file, index) => {
-                filesData.push({ file: file, x: 0, y: 0, w: 0, h: 0 });
-                const div = document.createElement('div');
-                div.className = 'file-item';
-                div.dataset.index = index;
-                div.onclick = (e) => {
-                    if(e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-                    loadFilePreview(index);
-                };
-                const selectClone = templateSelect.cloneNode(true);
-                selectClone.id = ''; selectClone.style.display = 'block';
-                selectClone.name = `instrument_id_${index}`;
-                selectClone.className = 'form-select'; selectClone.required = true;
-                const certName = file.name.replace('.pdf', '').substring(0, 20);
-
-                div.innerHTML = `
-                    <div class="file-name">
-                        <span>📄 ${file.name.substring(0, 20)}...</span>
-                        <span class="status-indicator" id="status-${index}">Sem Posição</span>
+            // Permitir apenas um arquivo/carimbo
+            const file = files[0];
+            filesData.push({ file: file, x: 0, y: 0, w: 0, h: 0 });
+            const index = 0;
+            const div = document.createElement('div');
+            div.className = 'file-item';
+            div.dataset.index = index;
+            div.onclick = (e) => {
+                if(e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+                loadFilePreview(index);
+            };
+            const selectClone = templateSelect.cloneNode(true);
+            selectClone.id = ''; selectClone.style.display = 'block';
+            selectClone.name = `instrument_id_${index}`;
+            selectClone.className = 'form-select'; selectClone.required = true;
+            // Preencher automaticamente o instrumento se houver instrument_id na URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const instrumentId = urlParams.get('instrument_id');
+            if (instrumentId) {
+                for (let i = 0; i < selectClone.options.length; i++) {
+                    if (selectClone.options[i].value == instrumentId) {
+                        selectClone.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            const certName = file.name.replace('.pdf', '').substring(0, 20);
+            div.innerHTML = `
+                <div class="file-name">
+                    <span>📄 ${file.name.substring(0, 20)}...</span>
+                    <span class="status-indicator" id="status-${index}">Sem Posição</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">Instrumento:</span> ${selectClone.outerHTML}
+                </div>
+                <div class="item-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:8px; align-items:end;">
+                    <div>
+                        <span class="item-label">Erro (E)</span>
+                        <input type="number" step="0.0001" name="err_${index}" id="err-input-${index}" class="form-control" placeholder="0.0000">
                     </div>
-                    <div class="item-row">
-                        <span class="item-label">Instrumento:</span> ${selectClone.outerHTML}
+                    <div>
+                        <span class="item-label">Incerteza (U)</span>
+                        <input type="number" step="0.0001" name="inc_${index}" id="inc-input-${index}" class="form-control" placeholder="0.0000">
                     </div>
-                    <div class="item-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:8px; align-items:end;">
-                        <div>
-                            <span class="item-label">Erro (E)</span>
-                            <input type="number" step="0.0001" name="err_${index}" id="err-input-${index}" class="form-control" placeholder="0.0000">
-                        </div>
-                        <div>
-                            <span class="item-label">Incerteza (U)</span>
-                            <input type="number" step="0.0001" name="inc_${index}" id="inc-input-${index}" class="form-control" placeholder="0.0000">
-                        </div>
-                        <div>
-                            <span class="item-label">Tolerância (+/−)</span>
-                            <input type="number" step="0.0001" name="tol_${index}" id="tol-input-${index}" class="form-control" placeholder="0.0000">
-                        </div>
-                        <div>
-                            <button type="button" class="btn-replicate" onclick="replicateEUT(${index})" title="Aplicar E/U/T deste item em todos">Replicar E/U/T</button>
-                        </div>
+                    <div>
+                        <span class="item-label">Tolerância (+/−)</span>
+                        <input type="number" step="0.0001" name="tol_${index}" id="tol-input-${index}" class="form-control" placeholder="0.0000">
                     </div>
-                    <div class="item-row">
-                        <span class="item-label" style="color: #e65100;">
-                            Data Calibração: 
-                            <button type="button" class="btn-replicate" onclick="replicateDate(${index})">Replicar</button>
-                        </span>
-                        <input type="date" name="calib_date_${index}" id="date-input-${index}" required class="form-control" style="padding:5px;">
+                    <div>
+                        <button type="button" class="btn-replicate" onclick="replicateEUT(${index})" title="Aplicar E/U/T deste item em todos">Replicar E/U/T</button>
                     </div>
-                    <div class="item-row">
-                        <span class="item-label">N° Certificado:</span>
-                        <input type="text" name="cert_num_${index}" value="${certName}" required class="form-control" style="padding:5px;">
-                    </div>
-                    <div class="item-row">
-                        <span class="item-label">Resultado:</span>
-                        <span id="live-result-text-${index}" class="badge bg-secondary">—</span>
-                    </div>
-                    <input type="hidden" name="x_${index}" id="input-x-${index}">
-                    <input type="hidden" name="y_${index}" id="input-y-${index}">
-                    <input type="hidden" name="w_${index}" id="input-w-${index}">
-                    <input type="hidden" name="h_${index}" id="input-h-${index}">
-                `;
-                listContainer.appendChild(div);
-
-                // Auto-preencher tolerância com base no instrumento selecionado
-                const sel = div.querySelector(`select[name="instrument_id_${index}"]`);
-                const tolInput = div.querySelector(`#tol-input-${index}`);
-                const errInput = div.querySelector(`#err-input-${index}`);
-                const incInput = div.querySelector(`#inc-input-${index}`);
-                const applyTol = () => {
-                    if(!sel || !tolInput) return;
-                    const opt = sel.options[sel.selectedIndex];
-                    const tol = opt ? opt.getAttribute('data-tol') : '';
-                    if(tol && (tolInput.value === '' || tolInput.value === '0' || tolInput.value === '0.0000')) {
-                        tolInput.value = tol;
+                </div>
+                <div class="item-row">
+                    <span class="item-label" style="color: #e65100;">
+                        Data Calibração: 
+                        <button type="button" class="btn-replicate" onclick="replicateDate(${index})">Replicar</button>
+                    </span>
+                    <input type="date" name="calib_date_${index}" id="date-input-${index}" required class="form-control" style="padding:5px;">
+                </div>
+                <div class="item-row">
+                    <span class="item-label">N° Certificado:</span>
+                    <input type="text" name="cert_num_${index}" value="${certName}" required class="form-control" style="padding:5px;">
+                </div>
+                <div class="item-row">
+                    <span class="item-label">Resultado:</span>
+                    <span id="live-result-text-${index}" class="badge bg-secondary">—</span>
+                </div>
+                <input type="hidden" name="x_${index}" id="input-x-${index}">
+                <input type="hidden" name="y_${index}" id="input-y-${index}">
+                <input type="hidden" name="w_${index}" id="input-w-${index}">
+                <input type="hidden" name="h_${index}" id="input-h-${index}">
+            `;
+            listContainer.appendChild(div);
+            // Auto-preencher tolerância com base no instrumento selecionado
+            const sel = div.querySelector(`select[name="instrument_id_${index}"]`);
+            const tolInput = div.querySelector(`#tol-input-${index}`);
+            const errInput = div.querySelector(`#err-input-${index}`);
+            const incInput = div.querySelector(`#inc-input-${index}`);
+            const applyTol = () => {
+                if(!sel || !tolInput) return;
+                const opt = sel.options[sel.selectedIndex];
+                const tol = opt ? opt.getAttribute('data-tol') : '';
+                if(tol && (tolInput.value === '' || tolInput.value === '0' || tolInput.value === '0.0000')) {
+                    tolInput.value = tol;
+                }
+                computeResultFor(index);
+            };
+            sel.addEventListener('change', applyTol);
+            applyTol();
+            errInput.addEventListener('input', () => computeResultFor(index));
+            incInput.addEventListener('input', () => computeResultFor(index));
+            tolInput.addEventListener('input', () => computeResultFor(index));
+            loadFilePreview(0);
                     }
                     computeResultFor(index);
                 };
@@ -359,7 +381,10 @@
             const dv = dateInput ? dateInput.value : '';
             ctx.font = '12px Segoe UI';
             ctx.fillText(dv || '', lx + 6, ly + 34);
-            ctx.fillText('RESP.: ' + (document.querySelector('input[disabled]')?.value || ''), lx + 6, ly + 50);
+            // Busca o valor do campo responsavel_tecnico (editável ou readonly)
+            const respInput = document.querySelector('input[name="responsavel_tecnico"]');
+            const respValue = respInput ? respInput.value : '';
+            ctx.fillText('RESP.: ' + respValue, lx + 6, ly + 50);
             ctx.restore();
         }
 
