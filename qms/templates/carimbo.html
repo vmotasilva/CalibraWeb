@@ -125,6 +125,7 @@
         const canvas = document.getElementById('pdf-render');
 
         function handleFileSelect(event) {
+            console.log('[carimbo] handleFileSelect chamado', event);
             const files = Array.from(event.target.files);
             const listContainer = document.getElementById('file-list-container');
             const templateSelect = document.getElementById('template-instrument-select');
@@ -227,6 +228,9 @@
                 // Remove listeners duplicados
                 fileInput.removeEventListener('change', handleFileSelect);
                 fileInput.addEventListener('change', handleFileSelect);
+                console.log('[carimbo] Listener de arquivo anexado ao input', fileInput);
+            } else {
+                console.log('[carimbo] Input de arquivo não encontrado');
             }
         }
         document.addEventListener('DOMContentLoaded', function() {
