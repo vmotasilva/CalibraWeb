@@ -125,6 +125,7 @@
         const canvas = document.getElementById('pdf-render');
 
         function handleFileSelect(event) {
+            alert('[carimbo] handleFileSelect chamado!');
             console.log('[carimbo] handleFileSelect chamado', event);
             const files = Array.from(event.target.files);
             const listContainer = document.getElementById('file-list-container');
