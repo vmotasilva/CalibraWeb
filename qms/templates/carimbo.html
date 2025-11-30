@@ -133,6 +133,12 @@
                         <input type="text" name="responsavel_tecnico" class="form-control" value="{{ user_full_name }}" readonly style="background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; font-weight: bold;">
                     {% endif %}
                 </div>
+                <!-- Campos ocultos para posição do carimbo -->
+                <input type="hidden" name="x" id="input-x">
+                <input type="hidden" name="y" id="input-y">
+                <input type="hidden" name="w" id="input-w">
+                <input type="hidden" name="h" id="input-h">
+                </div>
             </div>
             <input type="hidden" name="page_0" id="page-index-hidden" value="0">
             <button type="submit" class="btn-primary">PROCESSAR</button>
@@ -210,8 +216,7 @@
             }
         }
 
-        let pdfDoc = null; let pageNum = 1; let scale = 1.2; let rotation = 0; 
-        let currentFileIndex = -1; let filesData = [];
+        let pdfDoc = null; let pageNum = 1; let scale = 1.2; let rotation = 0;
         const canvas = document.getElementById('pdf-render');
         const selectionBox = document.getElementById('selection-box');
         const container = document.getElementById('canvas-container');
@@ -219,6 +224,24 @@
         const globalPW = document.querySelector('input[name="page_width"]');
         const globalPH = document.querySelector('input[name="page_height"]');
 
+
+        // Extração automática da data de calibração do PDF
+        function extractCalibrationDateFromPDF(pdfDoc) {
+            pdfDoc.getPage(1).then(function(page) {
+                page.getTextContent().then(function(textContent) {
+                    const text = textContent.items.map(item => item.str).join(' ');
+                    // Busca padrão de data dd/mm/aaaa ou dd-mm-aaaa
+                    const match = text.match(/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/);
+                    if (match) {
+                        // Converte para yyyy-mm-dd
+                        const parts = match[0].replace(/\-/g, '/').split('/');
+                        const formatted = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                        const input = document.getElementById('date-input');
+                        if (input) input.value = formatted;
+                    }
+                });
+            });
+        }
 
         function handleFileSelect(event) {
             const files = Array.from(event.target.files);
@@ -230,13 +253,14 @@
                 const name = file.name.replace('.pdf', '').substring(0, 30);
                 certNumInput.value = name;
             }
-            // Carrega preview do PDF
+            // Carrega preview do PDF e extrai data de calibração
             if (file.type === "application/pdf") {
                 const reader = new FileReader();
                 reader.onload = function() {
                     const typedarray = new Uint8Array(this.result);
                     pdfjsLib.getDocument(typedarray).promise.then(pdf => {
                         pdfDoc = pdf; rotation = 0; pageNum = 1; renderPage(pageNum);
+                        extractCalibrationDateFromPDF(pdf);
                     });
                 };
                 reader.readAsArrayBuffer(file);
@@ -327,9 +351,9 @@
 
         window.rotatePDF = function(deg) { if(!pdfDoc) return; rotation += deg; renderPage(pageNum); }
 
-        let isDragging = false; let startX, startY;
+        // Seleção de posição do carimbo para campos estáticos
+        let isDragging = false, startX, startY;
         container.addEventListener('mousedown', (e) => {
-            if(currentFileIndex === -1) return;
             const rect = canvas.getBoundingClientRect();
             startX = e.clientX - rect.left; startY = e.clientY - rect.top;
             isDragging = true; selectionBox.style.display = 'block';
@@ -351,14 +375,12 @@
             const rect = selectionBox.getBoundingClientRect();
             const canvasRect = canvas.getBoundingClientRect();
             const x = rect.left - canvasRect.left; const y = rect.top - canvasRect.top;
-            filesData[currentFileIndex].x = x; filesData[currentFileIndex].y = y;
-            filesData[currentFileIndex].w = rect.width; filesData[currentFileIndex].h = rect.height;
-            document.getElementById(`input-x-${currentFileIndex}`).value = x;
-            document.getElementById(`input-y-${currentFileIndex}`).value = y;
-            document.getElementById(`input-w-${currentFileIndex}`).value = rect.width;
-            document.getElementById(`input-h-${currentFileIndex}`).value = rect.height;
-            const ind = document.getElementById(`status-${currentFileIndex}`);
-            if(ind) { ind.innerText = "Posição OK"; ind.classList.add('ok'); }
+            const w = rect.width; const h = rect.height;
+            // Preenche campos ocultos
+            document.getElementById('input-x').value = x;
+            document.getElementById('input-y').value = y;
+            document.getElementById('input-w').value = w;
+            document.getElementById('input-h').value = h;
             drawStampPreview();
         });
 
