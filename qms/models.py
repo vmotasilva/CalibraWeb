@@ -2,19 +2,6 @@
 from django.conf import settings
 from django.db import models
 
-class CarimboPlaceholder(models.Model):
-    instrumento = models.CharField(max_length=50, blank=True, null=True, help_text="Código do instrumento ou global")
-    page_index = models.IntegerField(default=0, help_text="Página do PDF (0-based)")
-    x = models.FloatField(help_text="Posição X do carimbo (px)")
-    y = models.FloatField(help_text="Posição Y do carimbo (px)")
-    w = models.FloatField(help_text="Largura do carimbo (px)")
-    h = models.FloatField(help_text="Altura do carimbo (px)")
-    screen_w = models.FloatField(help_text="Largura da tela usada na seleção (px)")
-    screen_h = models.FloatField(help_text="Altura da tela usada na seleção (px)")
-    criado_em = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Placeholder {self.instrumento or 'global'} página {self.page_index} ({self.x},{self.y})"
 from datetime import date, timedelta
 from decimal import Decimal
 
