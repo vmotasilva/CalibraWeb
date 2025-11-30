@@ -205,7 +205,7 @@ def salvar_placeholder_carimbo(request):
     if request.method == 'POST':
         try:
             data = request.POST
-            instrumento = data.get('instrumento')
+            instrumento = str(data.get('instrumento')) if data.get('instrumento') is not None else None
             page_index = int(data.get('page_index', 0))
             x = float(data.get('x'))
             y = float(data.get('y'))
