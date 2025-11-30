@@ -59,10 +59,93 @@
             });
             </script>
             <div id="file-list-container" style="margin-top: 15px;"></div>
-            <!-- Os campos abaixo são dinâmicos após upload -->
-            <div id="dynamic-fields-container"></div>
+            <!-- Campos SEMPRE visíveis -->
+            <div id="static-fields-container">
+                <div class="item-row">
+                    <span class="item-label">Código do Instrumento:</span>
+                    <select id="instrument-select" name="instrument_id" class="form-select" required>
+                        <option value="">Selecione...</option>
+                        {% for item in instrumentos_data %}
+                        <option value="{{ item.id }}" data-tol="{{ item.tolerancia|default:'' }}">{{ item.tag }} — {{ item.descricao|truncatechars:30 }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="item-row">
+                    <span class="item-label" style="color: #e65100;">Data Calibração:</span>
+                    <input type="date" name="calib_date" id="date-input" required class="form-control" style="padding:5px;">
+                </div>
+                <div class="item-row">
+                    <span class="item-label">Data de Validação:</span>
+                    <input type="date" name="data_validacao" id="data-validacao-input" required class="form-control" style="padding:5px;">
+                </div>
+                <div class="item-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; align-items:end;">
+                    <div>
+                        <span class="item-label">Erro (E)</span>
+                        <input type="number" step="0.0001" name="err" id="err-input" class="form-control" placeholder="0.0000">
+                    </div>
+                    <div>
+                        <span class="item-label">Incerteza (U)</span>
+                        <input type="number" step="0.0001" name="inc" id="inc-input" class="form-control" placeholder="0.0000">
+                    </div>
+                    <div>
+                        <span class="item-label">Tolerância (+/−)</span>
+                        <input type="number" step="0.0001" name="tol" id="tol-input" class="form-control" placeholder="0.0000">
+                    </div>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">N° Certificado:</span>
+                    <input type="text" name="cert_num" id="cert-num-input" required class="form-control" style="padding:5px;">
+                </div>
+                <div class="item-row">
+                    <span class="item-label">Resultado:</span>
+                    <span id="live-result-text" class="badge bg-secondary">—</span>
+                </div>
+                <div class="item-row">
+                    <span class="item-label">Responsável Técnico:</span>
+                    {% if is_superuser %}
+                        <input type="text" name="responsavel_tecnico" class="form-control" value="{{ user_full_name }}" style="background-color: #fffde7; border-color: #ffe082; color: #0277bd; font-weight: bold;">
+                    {% else %}
+                        <input type="text" name="responsavel_tecnico" class="form-control" value="{{ user_full_name }}" readonly style="background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; font-weight: bold;">
+                    {% endif %}
+                </div>
+            </div>
             <input type="hidden" name="page_0" id="page-index-hidden" value="0">
             <button type="submit" class="btn-primary">PROCESSAR</button>
+                // Preenchimento automático dos campos
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Instrumento pelo parâmetro da URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const instrumentId = urlParams.get('instrument_id');
+                    const instrumentSelect = document.getElementById('instrument-select');
+                    if (instrumentId && instrumentSelect) {
+                        for (let i = 0; i < instrumentSelect.options.length; i++) {
+                            if (instrumentSelect.options[i].value == instrumentId) {
+                                instrumentSelect.selectedIndex = i;
+                                // Preenche tolerância se disponível
+                                const tol = instrumentSelect.options[i].getAttribute('data-tol');
+                                if (tol) document.getElementById('tol-input').value = tol;
+                                break;
+                            }
+                        }
+                    }
+                    // Data de validação = hoje
+                    const dataValInput = document.getElementById('data-validacao-input');
+                    if (dataValInput) {
+                        const today = new Date().toISOString().split('T')[0];
+                        dataValInput.value = today;
+                    }
+                    // Sugestão para nome do certificado ao selecionar arquivo
+                    const fileInput = document.querySelector('input[type="file"]');
+                    const certNumInput = document.getElementById('cert-num-input');
+                    if (fileInput && certNumInput) {
+                        fileInput.addEventListener('change', function(e) {
+                            if (fileInput.files.length > 0) {
+                                const name = fileInput.files[0].name.replace('.pdf', '').substring(0, 30);
+                                certNumInput.value = name;
+                            }
+                        });
+                    }
+                });
         </form>
     </div>
 
