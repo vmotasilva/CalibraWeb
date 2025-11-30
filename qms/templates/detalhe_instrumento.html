@@ -24,7 +24,6 @@
             <a href="{% url 'modulo_metrologia' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary me-2">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
-                <a href="/carimbar/?instrument_id={{ instrumento.id }}" class="btn btn-primary">Carimbar</a>
             {% if instrumento.ativo %}
                 <span class="badge bg-success fs-6 px-3 py-2">ATIVO</span>
             {% else %}
