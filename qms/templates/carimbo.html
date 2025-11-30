@@ -100,29 +100,34 @@
     </div>
 
     <script>
-                // Limpa todas as posições de carimbo
-                function clearAllStamps() {
-                    // Limpa todos os dados de carimbo
-                    filesData.forEach((data, idx) => {
-                        data.x = 0; data.y = 0; data.w = 0; data.h = 0;
-                        if(document.getElementById(`input-x-${idx}`)) document.getElementById(`input-x-${idx}`).value = '';
-                        if(document.getElementById(`input-y-${idx}`)) document.getElementById(`input-y-${idx}`).value = '';
-                        if(document.getElementById(`input-w-${idx}`)) document.getElementById(`input-w-${idx}`).value = '';
-                        if(document.getElementById(`input-h-${idx}`)) document.getElementById(`input-h-${idx}`).value = '';
-                        const ind = document.getElementById(`status-${idx}`);
-                        if(ind) { ind.innerText = "Sem Posição"; ind.classList.remove('ok'); }
-                    });
-                    selectionBox.style.display = 'none';
-                    // Limpa visualmente o canvas
-                    if (pdfDoc && pageNum) {
-                        renderPage(pageNum);
-                    } else {
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    }
-                }
+
+        // Limpa todas as posições de carimbo
+        function clearAllStamps() {
+            filesData.forEach((data, idx) => {
+                data.x = 0; data.y = 0; data.w = 0; data.h = 0;
+                if(document.getElementById(`input-x-${idx}`)) document.getElementById(`input-x-${idx}`).value = '';
+                if(document.getElementById(`input-y-${idx}`)) document.getElementById(`input-y-${idx}`).value = '';
+                if(document.getElementById(`input-w-${idx}`)) document.getElementById(`input-w-${idx}`).value = '';
+                if(document.getElementById(`input-h-${idx}`)) document.getElementById(`input-h-${idx}`).value = '';
+                const ind = document.getElementById(`status-${idx}`);
+                if(ind) { ind.innerText = "Sem Posição"; ind.classList.remove('ok'); }
+            });
+            selectionBox.style.display = 'none';
+            if (pdfDoc && pageNum) {
+                renderPage(pageNum);
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
         let pdfDoc = null; let pageNum = 1; let scale = 1.2; let rotation = 0; 
         let currentFileIndex = -1; let filesData = [];
         const canvas = document.getElementById('pdf-render');
+        const selectionBox = document.getElementById('selection-box');
+        const container = document.getElementById('canvas-container');
+        const ctx = canvas.getContext('2d');
+        const globalPW = document.querySelector('input[name="page_width"]');
+        const globalPH = document.querySelector('input[name="page_height"]');
 
         function handleFileSelect(event) {
             alert('[carimbo] handleFileSelect chamado!');
@@ -221,20 +226,21 @@
             loadFilePreview(0);
         }
 
-        // Garante que o input de arquivo aceite apenas um arquivo e listener ativo
         function attachFileInputListener() {
-            var fileInput = document.getElementById('arquivo_pdf');
-            if (fileInput) {
+            var fileInputs = document.querySelectorAll('input[type="file"]');
+            if (fileInputs.length === 0) {
+                console.log('[carimbo] Nenhum input type=file encontrado');
+            }
+            fileInputs.forEach(function(fileInput) {
                 fileInput.removeAttribute('multiple');
-                // Remove listeners duplicados
                 fileInput.removeEventListener('change', handleFileSelect);
                 fileInput.addEventListener('change', handleFileSelect);
-                fileInput.style.border = '2px solid #1976d2'; // destaque visual
-                console.log('[carimbo] Listener de arquivo anexado ao input', fileInput);
-            } else {
-                console.log('[carimbo] Input de arquivo não encontrado');
-            }
+                fileInput.style.border = '2px solid #1976d2';
+                fileInput.style.background = '#e3f2fd';
+                console.log('[carimbo] Listener anexado a', fileInput);
+            });
         }
+
         document.addEventListener('DOMContentLoaded', function() {
             attachFileInputListener();
             // Observa mudanças no DOM para reanexar listener se o campo for recriado
@@ -247,17 +253,6 @@
             });
             observer.observe(document.body, { childList: true, subtree: true });
         });
-                    }
-                    computeResultFor(index);
-                };
-                if(sel){ sel.addEventListener('change', applyTol); }
-                if(errInput){ errInput.addEventListener('input', () => computeResultFor(index)); }
-                if(incInput){ incInput.addEventListener('input', () => computeResultFor(index)); }
-                if(tolInput){ tolInput.addEventListener('input', () => computeResultFor(index)); }
-                applyTol();
-            });
-            loadFilePreview(0);
-        }
 
         function loadFilePreview(index) {
             document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
