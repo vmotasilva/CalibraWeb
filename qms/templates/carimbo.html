@@ -135,6 +135,50 @@
                 </div>
                 <button type="submit" class="btn-primary" style="width: 60%; margin: 18px auto 0 auto; display: block; font-size: 1rem; padding: 10px 0;">PROCESSAR</button>
                 <button type="button" id="clear-stamp-btn" class="btn-icon" style="width: 38%; margin: 10px auto 0 0; display: inline-block; font-size: 0.95rem; padding: 8px 0; background: #eee; color: #d32f2f; border: 1px solid #d32f2f; border-radius: 6px;">Limpar Carimbo</button>
+                <button type="button" id="save-placeholder-btn" class="btn-icon" style="width: 60%; margin: 10px auto 0 auto; display: block; background: #e3f2fd; color: #0277bd; border: 1px solid #90caf9; border-radius: 6px;">Salvar posição do carimbo como padrão</button>
+                <div id="save-placeholder-msg" style="margin-top:8px; font-size:0.95rem;"></div>
+                        <script>
+                        // Salvar placeholder do carimbo via AJAX
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const saveBtn = document.getElementById('save-placeholder-btn');
+                            if (!saveBtn) return;
+                            saveBtn.addEventListener('click', function() {
+                                const x = document.getElementById('input-x').value;
+                                const y = document.getElementById('input-y').value;
+                                const w = document.getElementById('input-w').value;
+                                const h = document.getElementById('input-h').value;
+                                const screen_w = document.getElementById('pdf-render').width;
+                                const screen_h = document.getElementById('pdf-render').height;
+                                const page_index = document.getElementById('page-index-hidden').value || 0;
+                                const instrumento = document.getElementById('instrument-select').value;
+                                if (!x || !y || !w || !h) {
+                                    document.getElementById('save-placeholder-msg').innerText = 'Selecione a área do carimbo no PDF antes de salvar.';
+                                    return;
+                                }
+                                const formData = new FormData();
+                                formData.append('x', x);
+                                formData.append('y', y);
+                                formData.append('w', w);
+                                formData.append('h', h);
+                                formData.append('screen_w', screen_w);
+                                formData.append('screen_h', screen_h);
+                                formData.append('page_index', page_index);
+                                formData.append('instrumento', instrumento);
+                                fetch('/salvar_placeholder_carimbo/', {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value }
+                                })
+                                .then(resp => resp.json())
+                                .then(data => {
+                                    document.getElementById('save-placeholder-msg').innerText = data.msg;
+                                })
+                                .catch(() => {
+                                    document.getElementById('save-placeholder-msg').innerText = 'Erro ao salvar placeholder.';
+                                });
+                            });
+                        });
+                        </script>
                 </div>
                 <!-- Campos ocultos para posição do carimbo -->
                 <input type="hidden" name="x" id="input-x">

@@ -190,20 +190,71 @@ def carimbar_view(request):
 from .views import get_colab
 
 
-def apply_stamp_logic(pdf_file, responsavel, status, ui, dt_validacao, page_index):
+
+# Nova versão: usa placeholder salvo e campos dinâmicos
+from qms.models import CarimboPlaceholder
+
+def apply_stamp_logic(pdf_file, responsavel, resultado, instrumento, dt_validacao):
     """
-    Aplica o carimbo na página indicada do PDF, cobrindo a área com branco e desenhando o carimbo apenas uma vez.
+    Aplica o carimbo na posição do placeholder salvo para o instrumento (ou global), preenchendo campos dinâmicos.
     """
+        # View para salvar o placeholder do carimbo
+        from django.views.decorators.csrf import csrf_exempt
+        from django.http import JsonResponse
+        from qms.models import CarimboPlaceholder
+
+        @csrf_exempt
+        def salvar_placeholder_carimbo(request):
+            if request.method == 'POST':
+                try:
+                    data = request.POST
+                    instrumento = data.get('instrumento')
+                    page_index = int(data.get('page_index', 0))
+                    x = float(data.get('x'))
+                    y = float(data.get('y'))
+                    w = float(data.get('w'))
+                    h = float(data.get('h'))
+                    screen_w = float(data.get('screen_w'))
+                    screen_h = float(data.get('screen_h'))
+                    CarimboPlaceholder.objects.create(
+                        instrumento=instrumento,
+                        page_index=page_index,
+                        x=x, y=y, w=w, h=h, screen_w=screen_w, screen_h=screen_h
+                    )
+                    return JsonResponse({'success': True, 'msg': 'Placeholder salvo com sucesso!'})
+                except Exception as e:
+                    return JsonResponse({'success': False, 'msg': f'Erro ao salvar: {e}'})
+            return JsonResponse({'success': False, 'msg': 'Método não permitido.'})
     from reportlab.pdfgen import canvas
     from reportlab.lib.colors import black, white, HexColor
     from PyPDF2 import PdfReader, PdfWriter
     import io
 
+    # Busca placeholder salvo
+    try:
+        placeholder = CarimboPlaceholder.objects.filter(instrumento=instrumento).order_by('-criado_em').first()
+        if not placeholder:
+            placeholder = CarimboPlaceholder.objects.filter(instrumento__isnull=True).order_by('-criado_em').first()
+        if not placeholder:
+            raise Exception("Nenhum placeholder de carimbo configurado.")
+    except Exception as e:
+        raise Exception(f"Erro ao buscar placeholder: {e}")
+
+    x, y, w, h, screen_w, screen_h = placeholder.x, placeholder.y, placeholder.w, placeholder.h, placeholder.screen_w, placeholder.screen_h
+    page_index = placeholder.page_index
+
+    # Cores do resultado
+    resultado_map = {
+        'Aprovado sem Correções': '#388e3c',
+        'Aprovado com correções': '#fbc02d',
+        'Reprovado': '#d32f2f',
+    }
+    cor = resultado_map.get(resultado, '#388e3c')
+
     pdf_file.seek(0)
     reader = PdfReader(pdf_file)
     writer = PdfWriter()
 
-    x, y, w, h, screen_w, screen_h = ui
     page = reader.pages[page_index]
     mediabox = page.mediabox
     page_width = float(mediabox.width)
@@ -226,13 +277,13 @@ def apply_stamp_logic(pdf_file, responsavel, status, ui, dt_validacao, page_inde
     c.setFillColor(white)
     c.rect(cx, cy, cw, ch, fill=1, stroke=0)
     # Borda
-    c.setStrokeColor(HexColor('#388e3c'))
+    c.setStrokeColor(HexColor(cor))
     c.setLineWidth(2)
     c.rect(cx, cy, cw, ch, fill=0, stroke=1)
     # Texto do carimbo
     c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(HexColor('#388e3c'))
-    c.drawString(cx + 8, cy + ch - 18, status)
+    c.setFillColor(HexColor(cor))
+    c.drawString(cx + 8, cy + ch - 18, resultado)
     c.setFont("Helvetica", 10)
     c.setFillColor(black)
     c.drawString(cx + 8, cy + ch - 34, str(dt_validacao))
@@ -244,8 +295,6 @@ def apply_stamp_logic(pdf_file, responsavel, status, ui, dt_validacao, page_inde
     for i in range(len(reader.pages)):
         base = reader.pages[i]
         if i == page_index:
-            # Cria uma cópia da página e aplica o overlay apenas uma vez
-            base = base
             base.merge_page(overlay.pages[0])
         writer.add_page(base)
 
