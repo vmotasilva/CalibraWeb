@@ -15,8 +15,20 @@
             --selected-item: #e1f5fe;
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-body); color: var(--text-main); margin: 0; padding: 20px; display: flex; gap: 20px; height: 100vh; box-sizing: border-box; }
-        .sidebar { background-color: var(--bg-sidebar); padding: 20px; border-radius: 8px; width: 420px; min-width: 420px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-y: auto; border: 1px solid #bbdefb; }
-        .preview-area { flex-grow: 1; background-color: #546e7a; border-radius: 8px; display: flex; justify-content: center; overflow: auto; position: relative; padding: 20px; box-shadow: inset 0 0 20px rgba(0,0,0,0.2); }
+        .sidebar { background-color: var(--bg-sidebar); padding: 20px; border-radius: 8px; width: 420px; min-width: 320px; max-width: 98vw; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-y: auto; border: 1px solid #bbdefb; }
+        .preview-area { flex-grow: 1; background-color: #546e7a; border-radius: 8px; display: flex; justify-content: center; overflow: auto; position: relative; padding: 20px; box-shadow: inset 0 0 20px rgba(0,0,0,0.2); min-width: 0; }
+        @media (max-width: 900px) {
+            body { flex-direction: column; padding: 8px; height: auto; }
+            .sidebar { width: 100%; min-width: 0; max-width: 100vw; margin-bottom: 12px; }
+            .preview-area { padding: 8px; min-width: 0; }
+        }
+        @media (max-width: 600px) {
+            body { padding: 2px; }
+            .sidebar { padding: 10px; font-size: 0.98rem; }
+            .preview-area { padding: 2px; }
+            .pdf-toolbar { top: 4px; left: 50%; transform: translateX(-50%) scale(0.95); padding: 4px 8px; }
+            #canvas-container { border-radius: 4px; }
+        }
         label { font-weight: 600; font-size: 0.85rem; color: var(--text-label); display: block; margin-bottom: 5px; margin-top: 10px; }
         .form-control, .form-select, input[type="text"], input[type="date"], select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-input); background-color: var(--bg-input); color: #333; box-sizing: border-box; transition: 0.2s; }
         .file-item { background: #f9f9f9; padding: 10px; border-radius: 6px; border: 1px solid #eee; border-left: 4px solid #ccc; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
@@ -134,9 +146,13 @@
                     {% endif %}
                 </div>
                 <button type="submit" class="btn-primary" style="width: 60%; margin: 18px auto 0 auto; display: block; font-size: 1rem; padding: 10px 0;">PROCESSAR</button>
-                <button type="button" id="clear-stamp-btn" class="btn-icon" style="width: 38%; margin: 10px auto 0 0; display: inline-block; font-size: 0.95rem; padding: 8px 0; background: #eee; color: #d32f2f; border: 1px solid #d32f2f; border-radius: 6px;">Limpar Carimbo</button>
+                <button type="button" id="clear-stamp-btn" class="btn-icon" style="width: 38%; margin: 10px auto 0 0; display: inline-block; font-size: 0.95rem; padding: 8px 0; background: #eee; color: #d32f2f; border: 1px solid #d32f2f; border-radius: 6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:6px;"><path fill="currentColor" d="M9 3v1H4v2h16V4h-5V3H9m2 2h2V4h-2v1M5 7v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7H5m2 2h2v9H7V9m4 0h2v9h-2V9m4 0h2v9h-2V9Z"/></svg>
+                    Limpar Carimbo
+                </button>
                 <button type="button" id="save-placeholder-btn" class="btn-icon" style="width: 60%; margin: 10px auto 0 auto; display: block; background: #e3f2fd; color: #0277bd; border: 1px solid #90caf9; border-radius: 6px;">Salvar posição do carimbo como padrão</button>
-                <div id="save-placeholder-msg" style="margin-top:8px; font-size:0.95rem;"></div>
+                <!-- Toast de feedback visual -->
+                <div id="save-placeholder-toast" style="display:none;position:fixed;top:30px;right:30px;z-index:9999;min-width:220px;padding:16px 28px;background:#2e7d32;color:white;font-weight:bold;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.18);font-size:1.08rem;transition:opacity 0.3s;opacity:0;"></div>
                         <script>
                         // Salvar placeholder do carimbo via AJAX
                         document.addEventListener('DOMContentLoaded', function() {
@@ -171,11 +187,22 @@
                                 })
                                 .then(resp => resp.json())
                                 .then(data => {
-                                    document.getElementById('save-placeholder-msg').innerText = data.msg;
+                                    showSaveToast(data.success, data.msg);
                                 })
                                 .catch(() => {
-                                    document.getElementById('save-placeholder-msg').innerText = 'Erro ao salvar placeholder.';
+                                    showSaveToast(false, 'Erro ao salvar placeholder.');
                                 });
+                                                    // Toast/alerta visual ao salvar placeholder
+                                                    function showSaveToast(success, msg) {
+                                                        const toast = document.getElementById('save-placeholder-toast');
+                                                        toast.innerText = msg;
+                                                        toast.style.background = success ? '#2e7d32' : '#d32f2f';
+                                                        toast.style.color = 'white';
+                                                        toast.style.display = 'block';
+                                                        toast.style.opacity = '1';
+                                                        setTimeout(() => { toast.style.opacity = '0'; }, 2200);
+                                                        setTimeout(() => { toast.style.display = 'none'; }, 2600);
+                                                    }
                             });
                         });
                         </script>
@@ -501,17 +528,34 @@
             ctx.globalAlpha = 0.85;
             const badge = document.getElementById('live-result-text');
             const statusText = badge ? badge.textContent : '';
-            ctx.fillStyle = '#2e7d32';
-            ctx.font = 'bold 14px Segoe UI';
-            ctx.fillText(statusText, lx + 6, ly + 18);
-            ctx.fillStyle = '#000';
+            // Cores conforme resultado
+            let cor = '#388e3c';
+            if(statusText.includes('correções')) cor = '#fbc02d';
+            if(statusText.includes('Reprovado')) cor = '#d32f2f';
+            // Fundo branco e borda
+            ctx.save();
+            ctx.fillStyle = 'white';
+            ctx.fillRect(lx, ly, lw, lh);
+            ctx.strokeStyle = cor;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(lx, ly, lw, lh);
+            // Padding interno
+            const padX = 16, padY = 14, lineGap = 18;
+            // Texto do resultado
+            ctx.font = 'bold 15px Segoe UI';
+            ctx.fillStyle = cor;
+            ctx.fillText(statusText, lx + padX, ly + padY + 2);
+            // Data
+            ctx.font = '12.5px Segoe UI';
+            ctx.fillStyle = '#222';
             const dateInput = document.getElementById('data-validacao-input');
             const dv = dateInput ? dateInput.value : '';
-            ctx.font = '12px Segoe UI';
-            ctx.fillText(dv || '', lx + 6, ly + 34);
-            const respInput = document.querySelector('input[name="responsavel_tecnico"]');
+            ctx.fillText(dv || '', lx + padX, ly + padY + lineGap + 2);
+            // Responsável
+            let respInput = document.querySelector('input[name="responsavel_tecnico_0"]');
+            if(!respInput) respInput = document.querySelector('input[name="responsavel_tecnico"]');
             const respValue = respInput ? respInput.value : '';
-            ctx.fillText('RESP.: ' + respValue, lx + 6, ly + 50);
+            ctx.fillText('RESP: ' + respValue, lx + padX, ly + lh - padY);
             ctx.restore();
         }
 
@@ -563,6 +607,8 @@
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         renderPage(pageNum);
                     }
+                    // Toast visual de limpeza
+                    showSaveToast(true, 'Seleção do carimbo limpa!');
                 });
             }
         });

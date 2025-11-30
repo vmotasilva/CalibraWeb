@@ -213,6 +213,8 @@ def salvar_placeholder_carimbo(request):
             h = float(data.get('h'))
             screen_w = float(data.get('screen_w'))
             screen_h = float(data.get('screen_h'))
+            # Remove placeholders antigos para o mesmo instrumento e página
+            CarimboPlaceholder.objects.filter(instrumento=instrumento, page_index=page_index).delete()
             CarimboPlaceholder.objects.create(
                 instrumento=instrumento,
                 page_index=page_index,
@@ -283,14 +285,16 @@ def apply_stamp_logic(pdf_file, responsavel, resultado, instrumento, dt_validaca
     c.setStrokeColor(HexColor(cor))
     c.setLineWidth(2)
     c.rect(cx, cy, cw, ch, fill=0, stroke=1)
+    # Padding interno
+    pad_x, pad_y, line_gap = 16, 14, 18
     # Texto do carimbo
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont("Helvetica-Bold", 13)
     c.setFillColor(HexColor(cor))
-    c.drawString(cx + 8, cy + ch - 18, resultado)
-    c.setFont("Helvetica", 10)
+    c.drawString(cx + pad_x, cy + ch - pad_y, resultado)
+    c.setFont("Helvetica", 11)
     c.setFillColor(black)
-    c.drawString(cx + 8, cy + ch - 34, str(dt_validacao))
-    c.drawString(cx + 8, cy + 10, f"RESP: {responsavel}")
+    c.drawString(cx + pad_x, cy + ch - pad_y - line_gap, str(dt_validacao))
+    c.drawString(cx + pad_x, cy + pad_y, f"RESP: {responsavel}")
     c.save()
     packet.seek(0)
     overlay = PdfReader(packet)
