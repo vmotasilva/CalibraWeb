@@ -111,6 +111,45 @@
             </div>
             <input type="hidden" name="page_0" id="page-index-hidden" value="0">
             <button type="submit" class="btn-primary">PROCESSAR</button>
+        </form>
+
+        <script>
+        // Preenchimento automático dos campos
+        document.addEventListener('DOMContentLoaded', function() {
+            // Instrumento pelo parâmetro da URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const instrumentId = urlParams.get('instrument_id');
+            const instrumentSelect = document.getElementById('instrument-select');
+            if (instrumentId && instrumentSelect) {
+                for (let i = 0; i < instrumentSelect.options.length; i++) {
+                    if (instrumentSelect.options[i].value == instrumentId) {
+                        instrumentSelect.selectedIndex = i;
+                        // Preenche tolerância se disponível
+                        const tol = instrumentSelect.options[i].getAttribute('data-tol');
+                        if (tol) document.getElementById('tol-input').value = tol;
+                        break;
+                    }
+                }
+            }
+            // Data de validação = hoje
+            const dataValInput = document.getElementById('data-validacao-input');
+            if (dataValInput) {
+                const today = new Date().toISOString().split('T')[0];
+                dataValInput.value = today;
+            }
+            // Sugestão para nome do certificado ao selecionar arquivo
+            const fileInput = document.querySelector('input[type="file"]');
+            const certNumInput = document.getElementById('cert-num-input');
+            if (fileInput && certNumInput) {
+                fileInput.addEventListener('change', function(e) {
+                    if (fileInput.files.length > 0) {
+                        const name = fileInput.files[0].name.replace('.pdf', '').substring(0, 30);
+                        certNumInput.value = name;
+                    }
+                });
+            }
+        });
+        </script>
                 // Preenchimento automático dos campos
                 document.addEventListener('DOMContentLoaded', function() {
                     // Instrumento pelo parâmetro da URL
