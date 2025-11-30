@@ -188,3 +188,76 @@ def carimbar_view(request):
 
 # Função utilitária (pode ser importada do views.py original ou movida para cá)
 from .views import get_colab
+
+def apply_stamp_logic(pdf_file, responsavel, status, ui, dt_validacao, page_index):
+    """
+    Aplica o carimbo na página indicada do PDF, removendo qualquer carimbo anterior.
+    Garante que só exista um carimbo por vez.
+    pdf_file: arquivo PDF (InMemoryUploadedFile)
+    responsavel: nome do responsável
+    status: texto do carimbo
+    ui: (x, y, w, h, screen_w, screen_h)
+    dt_validacao: data da validação
+    page_index: página do PDF (0-based)
+    """
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.colors import Color, black, white, HexColor
+    from PyPDF2 import PdfReader, PdfWriter
+    import io
+
+    # Lê o PDF original
+    pdf_file.seek(0)
+    reader = PdfReader(pdf_file)
+    writer = PdfWriter()
+
+    # Parâmetros do carimbo
+    x, y, w, h, screen_w, screen_h = ui
+    page = reader.pages[page_index]
+    mediabox = page.mediabox
+    page_width = float(mediabox.width)
+    page_height = float(mediabox.height)
+
+    # Ajusta posição e tamanho do carimbo para escala do PDF
+    scale_x = page_width / screen_w if screen_w else 1
+    scale_y = page_height / screen_h if screen_h else 1
+    cx = x * scale_x
+    cy = page_height - (y * scale_y) - (h * scale_y)
+    cw = w * scale_x
+    ch = h * scale_y
+    if cw < 80: cw = 180
+    if ch < 30: ch = 40
+
+    # Cria um overlay com o carimbo
+    packet = io.BytesIO()
+    c = canvas.Canvas(packet, pagesize=(page_width, page_height))
+    # Limpa área do carimbo (branco)
+    c.setFillColor(white)
+    c.rect(cx, cy, cw, ch, fill=1, stroke=0)
+    # Borda
+    c.setStrokeColor(HexColor('#388e3c'))
+    c.setLineWidth(2)
+    c.rect(cx, cy, cw, ch, fill=0, stroke=1)
+    # Texto do carimbo
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(HexColor('#388e3c'))
+    c.drawString(cx + 8, cy + ch - 18, status)
+    c.setFont("Helvetica", 10)
+    c.setFillColor(black)
+    c.drawString(cx + 8, cy + ch - 34, str(dt_validacao))
+    c.drawString(cx + 8, cy + 10, f"RESP: {responsavel}")
+    c.save()
+    packet.seek(0)
+
+    # Aplica overlay na página correta
+    overlay = PdfReader(packet)
+    for i in range(len(reader.pages)):
+        base = reader.pages[i]
+        if i == page_index:
+            base.merge_page(overlay.pages[0])
+        writer.add_page(base)
+
+    output = io.BytesIO()
+    writer.write(output)
+    output.seek(0)
+    return output
