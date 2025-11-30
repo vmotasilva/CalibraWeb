@@ -134,8 +134,7 @@
                     {% endif %}
                 </div>
                 <button type="submit" class="btn-primary" style="width: 60%; margin: 18px auto 0 auto; display: block; font-size: 1rem; padding: 10px 0;">PROCESSAR</button>
-                                <button type="button" id="clear-stamp-btn" class="btn-icon" style="width: 38%; margin: 10px auto 0 0; display: inline-block; font-size: 0.95rem; padding: 8px 0; background: #eee; color: #d32f2f; border: 1px solid #d32f2f; border-radius: 6px;">Limpar Carimbo</button>
-                                <button type="submit" class="btn-primary" style="width: 60%; margin: 18px auto 0 auto; display: inline-block; font-size: 1rem; padding: 10px 0;">PROCESSAR</button>
+                <button type="button" id="clear-stamp-btn" class="btn-icon" style="width: 38%; margin: 10px auto 0 0; display: inline-block; font-size: 0.95rem; padding: 8px 0; background: #eee; color: #d32f2f; border: 1px solid #d32f2f; border-radius: 6px;">Limpar Carimbo</button>
                 </div>
                 <!-- Campos ocultos para posição do carimbo -->
                 <input type="hidden" name="x" id="input-x">
@@ -441,18 +440,22 @@
             }
         });
 
-        // Botão para limpar carimbo
+        // Botão para limpar TODOS os carimbos
         document.addEventListener('DOMContentLoaded', function() {
             const clearBtn = document.getElementById('clear-stamp-btn');
             if(clearBtn) {
                 clearBtn.addEventListener('click', function() {
-                    selectionBox.style.display = 'none';
-                    // Limpa campos ocultos de posição
-                    document.getElementById('input-x').value = '';
-                    document.getElementById('input-y').value = '';
-                    document.getElementById('input-w').value = '';
-                    document.getElementById('input-h').value = '';
-                    drawStampPreview();
+                    // Esconde qualquer seleção de carimbo
+                    if (window.selectionBox) selectionBox.style.display = 'none';
+                    // Limpa todos os campos ocultos de posição (se houver mais de um)
+                    const campos = ['input-x','input-y','input-w','input-h','page-index-hidden'];
+                    campos.forEach(id => { let el = document.getElementById(id); if(el) el.value = ''; });
+                    // Se houver múltiplos carimbos, limpe todos (ajuste para múltiplos arquivos se necessário)
+                    // Limpa o preview
+                    if (window.ctx && window.canvas) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        renderPage(pageNum);
+                    }
                 });
             }
         });
