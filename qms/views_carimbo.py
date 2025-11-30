@@ -248,13 +248,14 @@ def apply_stamp_logic(pdf_file, responsavel, resultado, instrumento, dt_validaca
     x, y, w, h, screen_w, screen_h = placeholder.x, placeholder.y, placeholder.w, placeholder.h, placeholder.screen_w, placeholder.screen_h
     page_index = placeholder.page_index
 
-    # Cores do resultado
-    resultado_map = {
-        'Aprovado sem Correções': '#388e3c',
-        'Aprovado com correções': '#fbc02d',
-        'Reprovado': '#d32f2f',
-    }
-    cor = resultado_map.get(resultado, '#388e3c')
+    # Cores do resultado (case-insensitive, tolerante a variações)
+    resultado_key = (resultado or '').strip().lower()
+    if 'reprovado' in resultado_key:
+        cor = '#d32f2f'
+    elif 'correç' in resultado_key:
+        cor = '#fbc02d'
+    else:
+        cor = '#388e3c'
 
     pdf_file.seek(0)
     reader = PdfReader(pdf_file)
