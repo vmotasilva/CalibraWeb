@@ -148,7 +148,7 @@ def carimbar_view(request):
                         if not is_rbc and padroes_selecionados:
                             hist.padroes_utilizados.set(padroes_selecionados)
                         pdf_buffer = apply_stamp_logic(
-                            f, responsavel_tecnico, status_item, ui, dt_validacao, page_index
+                            f, responsavel_tecnico, status_item, instrumento.id, dt_validacao
                         )
                         filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"
                         hist.certificado.save(
