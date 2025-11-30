@@ -49,40 +49,18 @@
         <h2 style="margin:0 0 10px 0; color:#0277bd; border-bottom:2px solid #e3f2fd; font-size:1.4rem;">Validação em Lote</h2>
         
         <form method="post" enctype="multipart/form-data" id="stampForm">
-            <button type="button" class="btn-replicate" style="float:right; margin-bottom:10px;" onclick="clearAllStamps()">Limpar todos os carimbos</button>
             {% csrf_token %}
-            <div style="background: #f1f8e9; padding: 10px; border-radius: 6px; border: 1px solid #c5e1a5;">
-                <!-- RESPONSÁVEL TÉCNICO -->
-                <label style="margin-top:0">Responsável Técnico:
-                    {% if colaborador %}
-                        <a href="{% url 'detalhe_colaborador' colaborador.id %}" class="text-decoration-none" style="margin-left:8px; font-weight:600; color:#0277bd;">Ver perfil</a>
-                    {% endif %}
-                </label>
-                {% if is_superuser %}
-                    <input type="text" name="responsavel_tecnico" class="form-control" value="{{ user_full_name }}" style="background-color: #fffde7; border-color: #ffe082; color: #0277bd; font-weight: bold;">
-                {% else %}
-                    <input type="text" name="responsavel_tecnico" class="form-control" value="{{ user_full_name }}" readonly style="background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; font-weight: bold;">
-                {% endif %}
-                <label style="color:#e65100">Data:</label> {{ form.data_validacao }}
-                <label>Resultado:</label> {{ form.status_validacao }}
-            </div>
-
-            <!-- E/U/T agora serão informados por arquivo (associado ao instrumento) -->
-
-            <hr style="border-color: #e0e0e0; margin: 15px 0;">
-            <label>Certificados (PDF):</label> {{ form.arquivo_pdf }}
+            <!-- 1. Upload do arquivo PDF -->
+            <label>Certificado (PDF):</label> {{ form.arquivo_pdf }}
             <script>
-            // Garante que o input de arquivo aceite apenas um arquivo
             document.addEventListener('DOMContentLoaded', function() {
                 var fileInput = document.querySelector('input[type="file"]');
                 if (fileInput) fileInput.removeAttribute('multiple');
             });
             </script>
-            <div id="file-list-container" style="margin-top: 15px;">
-                <p style="color: #90a4ae; text-align: center; padding: 20px; border: 2px dashed #cfd8dc;">Selecione arquivos...</p>
-            </div>
-            {{ form.page_width }} {{ form.page_height }}
-            {{ form.x }} {{ form.y }} {{ form.w }} {{ form.h }}
+            <div id="file-list-container" style="margin-top: 15px;"></div>
+            <!-- Os campos abaixo são dinâmicos após upload -->
+            <div id="dynamic-fields-container"></div>
             <input type="hidden" name="page_0" id="page-index-hidden" value="0">
             <button type="submit" class="btn-primary">PROCESSAR</button>
         </form>
@@ -164,13 +142,19 @@
                 }
             }
             const certName = file.name.replace('.pdf', '').substring(0, 20);
-            div.innerHTML = `
-                <div class="file-name">
-                    <span>📄 ${file.name.substring(0, 20)}...</span>
-                    <span class="status-indicator" id="status-${index}">Sem Posição</span>
+            // Renderiza campos na ordem desejada
+            const dynamicFields = document.getElementById('dynamic-fields-container');
+            dynamicFields.innerHTML = `
+                <div class="item-row">
+                    <span class="item-label">Código do Instrumento:</span> ${selectClone.outerHTML}
                 </div>
                 <div class="item-row">
-                    <span class="item-label">Instrumento:</span> ${selectClone.outerHTML}
+                    <span class="item-label" style="color: #e65100;">Data Calibração:</span>
+                    <input type="date" name="calib_date_${index}" id="date-input-${index}" required class="form-control" style="padding:5px;">
+                </div>
+                <div class="item-row">
+                    <span class="item-label">Data de Validação:</span>
+                    <input type="date" name="data_validacao_${index}" id="data-validacao-input-${index}" required class="form-control" style="padding:5px;">
                 </div>
                 <div class="item-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; align-items:end;">
                     <div>
@@ -187,10 +171,6 @@
                     </div>
                 </div>
                 <div class="item-row">
-                    <span class="item-label" style="color: #e65100;">Data Calibração:</span>
-                    <input type="date" name="calib_date_${index}" id="date-input-${index}" required class="form-control" style="padding:5px;">
-                </div>
-                <div class="item-row">
                     <span class="item-label">N° Certificado:</span>
                     <input type="text" name="cert_num_${index}" value="${certName}" required class="form-control" style="padding:5px;">
                 </div>
@@ -198,12 +178,13 @@
                     <span class="item-label">Resultado:</span>
                     <span id="live-result-text-${index}" class="badge bg-secondary">—</span>
                 </div>
-                <input type="hidden" name="x_${index}" id="input-x-${index}">
-                <input type="hidden" name="y_${index}" id="input-y-${index}">
-                <input type="hidden" name="w_${index}" id="input-w-${index}">
-                <input type="hidden" name="h_${index}" id="input-h_${index}">
             `;
-            listContainer.appendChild(div);
+            // Preenche data de validação com hoje
+            const dataValInput = document.getElementById(`data-validacao-input-${index}`);
+            if (dataValInput) {
+                const today = new Date().toISOString().split('T')[0];
+                dataValInput.value = today;
+            }
             // Auto-preencher tolerância com base no instrumento selecionado
             const sel = div.querySelector(`select[name="instrument_id_${index}"]`);
             const tolInput = div.querySelector(`#tol-input-${index}`);
@@ -305,44 +286,8 @@
             } else { selectionBox.style.display = 'none'; }
         }
 
-        window.replicatePosition = function() {
-            if(currentFileIndex === -1) return;
-            const srcData = filesData[currentFileIndex];
-            if(srcData.w === 0) { alert("Defina uma posição primeiro!"); return; }
-            filesData.forEach((data, idx) => {
-                data.x = srcData.x; data.y = srcData.y; data.w = srcData.w; data.h = srcData.h;
-                document.getElementById(`input-x-${idx}`).value = srcData.x;
-                document.getElementById(`input-y-${idx}`).value = srcData.y;
-                document.getElementById(`input-w-${idx}`).value = srcData.w;
-                document.getElementById(`input-h-${idx}`).value = srcData.h;
-                const ind = document.getElementById(`status-${idx}`);
-                if(ind) { ind.innerText = "Posição OK"; ind.classList.add('ok'); }
-            });
-            alert("Posição aplicada a todos!");
-        }
 
-        window.replicateDate = function(srcIndex) {
-            const srcVal = document.getElementById(`date-input-${srcIndex}`).value;
-            if(!srcVal) { alert("Preencha uma data primeiro!"); return; }
-            document.querySelectorAll('input[type="date"][name^="calib_date_"]').forEach(input => input.value = srcVal);
-            alert("Data replicada!");
-        }
-
-        window.replicateEUT = function(srcIndex) {
-            const e = document.getElementById(`err-input-${srcIndex}`).value;
-            const u = document.getElementById(`inc-input-${srcIndex}`).value;
-            const t = document.getElementById(`tol-input-${srcIndex}`).value;
-            if(e === '' || u === '' || t === '') {
-                alert('Preencha E, U e T neste item antes de replicar.');
-                return;
-            }
-            const confirmAll = confirm('Aplicar estes valores (E/U/T) em todos os arquivos?');
-            if(!confirmAll) return;
-            document.querySelectorAll('input[name^="err_"]').forEach(inp => inp.value = e);
-            document.querySelectorAll('input[name^="inc_"]').forEach(inp => inp.value = u);
-            document.querySelectorAll('input[name^="tol_"]').forEach(inp => inp.value = t);
-            alert('E/U/T replicados!');
-        }
+        // Funções de replicação removidas para evitar redundância e simplificar o fluxo
 
         window.rotatePDF = function(deg) { if(!pdfDoc) return; rotation += deg; renderPage(pageNum); }
 
