@@ -1,0 +1,190 @@
+import io
+from datetime import datetime, timedelta
+from decimal import Decimal
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.core.files.base import ContentFile
+from django.http import HttpResponse
+from django.shortcuts import render, redirect
+from .forms import CarimboForm
+from .models import Instrumento, HistoricoCalibracao
+from PyPDF2 import PdfReader, PdfWriter
+
+@login_required
+def carimbar_view(request):
+    colab = get_colab(request)
+    instrumentos_disponiveis = Instrumento.objects.filter(ativo=True).prefetch_related('faixas').order_by("tag")
+    instrumentos_data = []
+    for inst in instrumentos_disponiveis:
+        tol_val = None
+        try:
+            for fx in inst.faixas.all():
+                if getattr(fx, 'tolerancia_mais_menos', None) is not None:
+                    tol_val = fx.tolerancia_mais_menos
+                    break
+        except Exception:
+            tol_val = None
+        instrumentos_data.append({
+            'id': inst.id,
+            'tag': inst.tag,
+            'descricao': inst.descricao,
+            'tolerancia': tol_val,
+        })
+    user_full_name = f"{request.user.first_name} {request.user.last_name}".strip()
+    if not user_full_name:
+        user_full_name = request.user.username.upper()
+
+    if request.method == "POST":
+        form = CarimboForm(request.POST, request.FILES)
+        if form.is_valid():
+            responsavel_tecnico = request.POST.get("responsavel_tecnico_0") or str(colab)
+            dt_validacao = form.cleaned_data["data_validacao"]
+            status_txt = form.cleaned_data["status_validacao"]
+            is_rbc = form.cleaned_data.get("is_rbc", False)
+            padroes_selecionados = form.cleaned_data.get("padroes", [])
+            def parse_dec(v):
+                if v is None or v == "":
+                    return None
+                try:
+                    return Decimal(str(v).replace(',', '.'))
+                except Exception:
+                    return None
+            fs = request.FILES.getlist("arquivo_pdf")
+            processed_files = []
+            try:
+                screen_w = float(request.POST.get("page_width", 0))
+                screen_h = float(request.POST.get("page_height", 0))
+            except:
+                screen_w = 0
+                screen_h = 0
+            processed_files = []
+            for i, f in enumerate(fs):
+                raw_x = request.POST.get(f"x_{i}", 0)
+                raw_y = request.POST.get(f"y_{i}", 0)
+                raw_w = request.POST.get(f"w_{i}", 0)
+                raw_h = request.POST.get(f"h_{i}", 0)
+                ui = (
+                    float(raw_x),
+                    float(raw_y),
+                    float(raw_w),
+                    float(raw_h),
+                    screen_w,
+                    screen_h,
+                )
+                try:
+                    page_index = int(request.POST.get(f"page_{i}", 0))
+                except Exception:
+                    page_index = 0
+                inst_id = request.POST.get(f"instrument_id_{i}")
+                calib_date_str = request.POST.get(f"calib_date_{i}")
+                cert_num = request.POST.get(f"cert_num_{i}", f.name)
+                if inst_id and calib_date_str:
+                    try:
+                        instrumento = Instrumento.objects.get(id=inst_id)
+                        dt_calibracao = datetime.strptime(
+                            calib_date_str, "%Y-%m-%d"
+                        ).date()
+                        prox_calib = None
+                        if instrumento.frequencia_meses:
+                            prox_calib = dt_calibracao + timedelta(
+                                days=instrumento.frequencia_meses * 30
+                            )
+                        erro_in = parse_dec(request.POST.get(f"err_{i}"))
+                        inc_in = parse_dec(request.POST.get(f"inc_{i}"))
+                        tol_in = parse_dec(request.POST.get(f"tol_{i}"))
+                        if tol_in is None:
+                            try:
+                                for fx in instrumento.faixas.all():
+                                    v = getattr(fx, 'tolerancia_mais_menos', None)
+                                    if v is not None:
+                                        tol_in = Decimal(str(v))
+                                        break
+                            except Exception:
+                                tol_in = None
+                        status_item = status_txt
+                        resultado_item = "APROVADO"
+                        if erro_in is not None and inc_in is not None and tol_in is not None:
+                            try:
+                                ema = abs(tol_in) / Decimal(2)
+                                eme = abs(erro_in) + abs(inc_in)
+                                if eme <= ema:
+                                    resultado_item = "APROVADO"
+                                    status_item = "Aprovado sem correções"
+                                elif eme > (ema * Decimal(3)):
+                                    resultado_item = "REPROVADO"
+                                    status_item = "Reprovado"
+                                else:
+                                    resultado_item = "CONDICIONAL"
+                                    status_item = "Aprovado com correções"
+                            except Exception:
+                                pass
+                        else:
+                            if status_item == "Reprovado":
+                                resultado_item = "REPROVADO"
+                            elif status_item == "Aprovado com correções":
+                                resultado_item = "CONDICIONAL"
+                        hist, created = HistoricoCalibracao.objects.get_or_create(
+                            instrumento=instrumento,
+                            data_calibracao=dt_calibracao,
+                            numero_certificado=cert_num,
+                            defaults={
+                                "proxima_calibracao": prox_calib,
+                                "resultado": resultado_item,
+                                "responsavel": responsavel_tecnico,
+                                "observacoes": f"Validado por {responsavel_tecnico}: {status_item}",
+                                "tem_selo_rbc": is_rbc,
+                                "tipo_calibracao": "EXTERNA",
+                            },
+                        )
+                        if erro_in is not None:
+                            hist.erro_encontrado = erro_in
+                        if inc_in is not None:
+                            hist.incerteza = inc_in
+                        if tol_in is not None:
+                            hist.tolerancia_usada = tol_in
+                        if not created:
+                            hist.resultado = resultado_item
+                            hist.observacoes = f"Revalidado: {status_item}"
+                        if not is_rbc and padroes_selecionados:
+                            hist.padroes_utilizados.set(padroes_selecionados)
+                        pdf_buffer = apply_stamp_logic(
+                            f, responsavel_tecnico, status_item, ui, dt_validacao, page_index
+                        )
+                        filename = f"Cert_{cert_num}_{instrumento.tag}.pdf"
+                        hist.certificado.save(
+                            filename, ContentFile(pdf_buffer.getvalue())
+                        )
+                        hist.save()
+                    except Exception as e:
+                        print(f"Erro: {e}")
+                if inst_id and calib_date_str:
+                    try:
+                        pdf_buffer.seek(0)
+                        processed_files.append((f.name, pdf_buffer))
+                    except Exception:
+                        processed_files.append((f.name, io.BytesIO()))
+            if len(processed_files) == 1:
+                fname, fbuf = processed_files[0]
+                r = HttpResponse(fbuf, content_type="application/pdf")
+                r["Content-Disposition"] = f'attachment; filename="Validado_{fname}"'
+                return r
+            else:
+                messages.error(request, "Selecione apenas um arquivo por vez para carimbar.")
+                return redirect("carimbar")
+    else:
+        form = CarimboForm()
+    return render(
+        request,
+        "carimbo.html",
+        {
+            "form": form,
+            "colaborador": colab,
+            "user_full_name": user_full_name,
+            "instrumentos": instrumentos_disponiveis,
+            "instrumentos_data": instrumentos_data,
+            "is_superuser": request.user.is_superuser,
+        },
+    )
+
+# Função utilitária (pode ser importada do views.py original ou movida para cá)
+from .views import get_colab, apply_stamp_logic
