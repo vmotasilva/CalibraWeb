@@ -193,9 +193,11 @@ from .views import get_colab
 
 
 # Nova versão: usa placeholder salvo e campos dinâmicos
+
 from qms.models import CarimboPlaceholder
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
+
 
 # View para salvar o placeholder do carimbo (fora de qualquer função)
 @csrf_exempt
@@ -222,36 +224,10 @@ def salvar_placeholder_carimbo(request):
     return JsonResponse({'success': False, 'msg': 'Método não permitido.'})
 
 def apply_stamp_logic(pdf_file, responsavel, resultado, instrumento, dt_validacao):
+
     """
     Aplica o carimbo na posição do placeholder salvo para o instrumento (ou global), preenchendo campos dinâmicos.
     """
-        # View para salvar o placeholder do carimbo
-        from django.views.decorators.csrf import csrf_exempt
-        from django.http import JsonResponse
-        from qms.models import CarimboPlaceholder
-
-        @csrf_exempt
-        def salvar_placeholder_carimbo(request):
-            if request.method == 'POST':
-                try:
-                    data = request.POST
-                    instrumento = data.get('instrumento')
-                    page_index = int(data.get('page_index', 0))
-                    x = float(data.get('x'))
-                    y = float(data.get('y'))
-                    w = float(data.get('w'))
-                    h = float(data.get('h'))
-                    screen_w = float(data.get('screen_w'))
-                    screen_h = float(data.get('screen_h'))
-                    CarimboPlaceholder.objects.create(
-                        instrumento=instrumento,
-                        page_index=page_index,
-                        x=x, y=y, w=w, h=h, screen_w=screen_w, screen_h=screen_h
-                    )
-                    return JsonResponse({'success': True, 'msg': 'Placeholder salvo com sucesso!'})
-                except Exception as e:
-                    return JsonResponse({'success': False, 'msg': f'Erro ao salvar: {e}'})
-            return JsonResponse({'success': False, 'msg': 'Método não permitido.'})
     from reportlab.pdfgen import canvas
     from reportlab.lib.colors import black, white, HexColor
     from PyPDF2 import PdfReader, PdfWriter
