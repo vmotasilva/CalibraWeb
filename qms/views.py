@@ -23,7 +23,7 @@ from reportlab.lib.pagesizes import A4, landscape, portrait
 from reportlab.pdfgen import canvas
 
 # IMPORTA OS FORMS
-from .forms import (CarimboForm, ColaboradorForm, ImportacaoColaboradoresForm,
+from .forms import (ColaboradorForm, ImportacaoColaboradoresForm,
                     ImportacaoFeriasForm, ImportacaoHierarquiaForm,
                     ImportacaoHistoricoForm, ImportacaoInstrumentosForm,
                     ImportacaoPadroesForm, ImportacaoProcedimentosForm,
