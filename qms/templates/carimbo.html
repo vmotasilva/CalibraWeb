@@ -134,6 +134,8 @@
                     {% endif %}
                 </div>
                 <button type="submit" class="btn-primary" style="width: 60%; margin: 18px auto 0 auto; display: block; font-size: 1rem; padding: 10px 0;">PROCESSAR</button>
+                                <button type="button" id="clear-stamp-btn" class="btn-icon" style="width: 38%; margin: 10px auto 0 0; display: inline-block; font-size: 0.95rem; padding: 8px 0; background: #eee; color: #d32f2f; border: 1px solid #d32f2f; border-radius: 6px;">Limpar Carimbo</button>
+                                <button type="submit" class="btn-primary" style="width: 60%; margin: 18px auto 0 auto; display: inline-block; font-size: 1rem; padding: 10px 0;">PROCESSAR</button>
                 </div>
                 <!-- Campos ocultos para posição do carimbo -->
                 <input type="hidden" name="x" id="input-x">
@@ -384,17 +386,14 @@
         });
 
         function drawStampPreview(){
-            // Limpa o preview do carimbo
             renderPage(pageNum);
             if(selectionBox.style.display !== 'block') return;
             const rect = selectionBox.getBoundingClientRect();
             const r = canvas.getBoundingClientRect();
             const lx = rect.left - r.left; const ly = rect.top - r.top;
             const lw = rect.width; const lh = rect.height;
-            // Overlay text
             ctx.save();
             ctx.globalAlpha = 0.85;
-            // Usa o texto do campo Resultado
             const badge = document.getElementById('live-result-text');
             const statusText = badge ? badge.textContent : '';
             ctx.fillStyle = '#2e7d32';
@@ -405,12 +404,37 @@
             const dv = dateInput ? dateInput.value : '';
             ctx.font = '12px Segoe UI';
             ctx.fillText(dv || '', lx + 6, ly + 34);
-            // Busca o valor do campo responsavel_tecnico (editável ou readonly)
             const respInput = document.querySelector('input[name="responsavel_tecnico"]');
             const respValue = respInput ? respInput.value : '';
             ctx.fillText('RESP.: ' + respValue, lx + 6, ly + 50);
             ctx.restore();
         }
+
+        // Atualiza preview do carimbo ao mudar campos relevantes
+        document.addEventListener('DOMContentLoaded', function() {
+            const resultBadge = document.getElementById('live-result-text');
+            const dateInput = document.getElementById('data-validacao-input');
+            const respInput = document.querySelector('input[name="responsavel_tecnico"]');
+            if(resultBadge) resultBadge.addEventListener('DOMSubtreeModified', drawStampPreview);
+            if(dateInput) dateInput.addEventListener('input', drawStampPreview);
+            if(respInput) respInput.addEventListener('input', drawStampPreview);
+        });
+
+        // Botão para limpar carimbo
+        document.addEventListener('DOMContentLoaded', function() {
+            const clearBtn = document.getElementById('clear-stamp-btn');
+            if(clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    selectionBox.style.display = 'none';
+                    // Limpa campos ocultos de posição
+                    document.getElementById('input-x').value = '';
+                    document.getElementById('input-y').value = '';
+                    document.getElementById('input-w').value = '';
+                    document.getElementById('input-h').value = '';
+                    drawStampPreview();
+                });
+            }
+        });
 
         // Live result preview for E/U/T
         function computeResultFor(index){
