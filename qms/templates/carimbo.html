@@ -141,11 +141,11 @@
                 <input type="hidden" name="y" id="input-y">
                 <input type="hidden" name="w" id="input-w">
                 <input type="hidden" name="h" id="input-h">
-                    <input type="hidden" name="page_0" id="page-index-hidden" value="0">
+                <input type="hidden" name="page_0" id="page-index-hidden" value="0">
             </form>
 
         <script>
-        // Preenchimento automático dos campos
+        // --- NOVA LÓGICA DO CARIMBO ---
         document.addEventListener('DOMContentLoaded', function() {
             // Instrumento pelo parâmetro da URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -179,6 +179,69 @@
                     }
                 });
             }
+
+            // --- LÓGICA DO CARIMBO ÚNICO ---
+            let isDragging = false, startX, startY;
+            const canvas = document.getElementById('pdf-render');
+            const selectionBox = document.getElementById('selection-box');
+            function clearStamp() {
+                selectionBox.style.display = 'none';
+                document.getElementById('input-x').value = '';
+                document.getElementById('input-y').value = '';
+                document.getElementById('input-w').value = '';
+                document.getElementById('input-h').value = '';
+                drawStampPreview();
+            }
+            // Ao iniciar seleção, limpa qualquer carimbo anterior
+            if (canvas && selectionBox) {
+                canvas.addEventListener('mousedown', function(e) {
+                    clearStamp();
+                    const rect = canvas.getBoundingClientRect();
+                    startX = e.clientX - rect.left; startY = e.clientY - rect.top;
+                    isDragging = true;
+                    selectionBox.style.display = 'block';
+                    selectionBox.style.left = startX + 'px';
+                    selectionBox.style.top = startY + 'px';
+                    selectionBox.style.width = '0px';
+                    selectionBox.style.height = '0px';
+                });
+                canvas.addEventListener('mousemove', function(e) {
+                    if (!isDragging) return;
+                    const rect = canvas.getBoundingClientRect();
+                    const currentX = e.clientX - rect.left; const currentY = e.clientY - rect.top;
+                    const width = currentX - startX; const height = currentY - startY;
+                    selectionBox.style.width = Math.abs(width) + 'px';
+                    selectionBox.style.height = Math.abs(height) + 'px';
+                    selectionBox.style.left = (width < 0 ? currentX : startX) + 'px';
+                    selectionBox.style.top = (height < 0 ? currentY : startY) + 'px';
+                });
+                canvas.addEventListener('mouseup', function(e) {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    // Atualiza campos ocultos
+                    const rect = selectionBox.getBoundingClientRect();
+                    const r = canvas.getBoundingClientRect();
+                    document.getElementById('input-x').value = rect.left - r.left;
+                    document.getElementById('input-y').value = rect.top - r.top;
+                    document.getElementById('input-w').value = rect.width;
+                    document.getElementById('input-h').value = rect.height;
+                    drawStampPreview();
+                });
+            }
+            // Botão Limpar Carimbo
+            const clearBtn = document.getElementById('clear-stamp-btn');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    clearStamp();
+                });
+            }
+            // Atualiza preview do carimbo ao mudar campos relevantes
+            const resultBadge = document.getElementById('live-result-text');
+            const dateInput = document.getElementById('data-validacao-input');
+            const respInput = document.querySelector('input[name="responsavel_tecnico_0"]');
+            if(resultBadge) resultBadge.addEventListener('DOMSubtreeModified', drawStampPreview);
+            if(dateInput) dateInput.addEventListener('input', drawStampPreview);
+            if(respInput) respInput.addEventListener('input', drawStampPreview);
         });
         </script>
         </form>
