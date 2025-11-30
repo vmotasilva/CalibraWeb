@@ -8,8 +8,6 @@ from django.urls import path
 from django.views.generic.base import RedirectView
 
 from qms import views
-from qms.views_carimbo import carimbar_view
-from qms.views_carimbo import carimbar_view, salvar_placeholder_carimbo
 from qms import views_treinamentos
 
 urlpatterns = [
@@ -51,8 +49,6 @@ urlpatterns = [
     # --- NOVA ROTA PARA SOLICITAÇÕES ---
     path("solicitacao/nova/", views.nova_solicitacao, name="nova_solicitacao"),
     # 6. Funcionalidades Específicas
-    path("carimbar/", carimbar_view, name="carimbar"),
-        path('salvar_placeholder_carimbo/', salvar_placeholder_carimbo, name='salvar_placeholder_carimbo'),
     path(
         "metrologia/historico/remover/<int:historico_id>/",
         views.remover_historico_view,
