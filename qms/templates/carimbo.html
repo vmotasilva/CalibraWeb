@@ -140,11 +140,8 @@
                 <input type="hidden" name="y" id="input-y">
                 <input type="hidden" name="w" id="input-w">
                 <input type="hidden" name="h" id="input-h">
-                </div>
-            </div>
-            <input type="hidden" name="page_0" id="page-index-hidden" value="0">
-            <button type="submit" class="btn-primary">PROCESSAR</button>
-        </form>
+                <input type="hidden" name="page_0" id="page-index-hidden" value="0">
+            </form>
 
         <script>
         // Preenchimento automático dos campos
@@ -339,7 +336,7 @@
         toolbar.appendChild(nextBtn);
 
         function drawSavedBox() {
-            if(currentFileIndex === -1) return;
+            if(typeof currentFileIndex === 'undefined' || currentFileIndex === -1) return;
             const data = filesData[currentFileIndex];
             if (data.w > 0 && data.h > 0) {
                 selectionBox.style.left = data.x + 'px'; selectionBox.style.top = data.y + 'px';
