@@ -52,7 +52,7 @@
             {% csrf_token %}
             <!-- 1. Upload do arquivo PDF -->
             <label>Certificado (PDF):</label> {{ form.arquivo_pdf }}
-            <script>
+                <script>
                     // Atualiza o campo Resultado em tempo real
                     function computeResult() {
                         const e = parseFloat(document.getElementById('err-input').value || 'NaN');
@@ -93,33 +93,33 @@
                         {% for item in instrumentos_data %}
                         <option value="{{ item.id }}" data-tol="{{ item.tolerancia|default:'' }}">{{ item.tag }} — {{ item.descricao|truncatechars:30 }}</option>
                         {% endfor %}
-                    </select>
+                          </select>
                 </div>
                 <div class="item-row">
                     <span class="item-label" style="color: #e65100;">Data Calibração:</span>
-                    <input type="date" name="calib_date" id="date-input" required class="form-control" style="padding:5px;">
+                        <input type="date" name="calib_date_0" id="date-input" required class="form-control" style="padding:5px;">
                 </div>
                 <div class="item-row">
                     <span class="item-label">Data de Validação:</span>
-                    <input type="date" name="data_validacao" id="data-validacao-input" required class="form-control" style="padding:5px;">
+                        <input type="date" name="data_validacao_0" id="data-validacao-input" required class="form-control" style="padding:5px;">
                 </div>
                 <div class="item-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; align-items:end;">
                     <div>
                         <span class="item-label">Erro (E)</span>
-                        <input type="number" step="0.0001" name="err" id="err-input" class="form-control" placeholder="0.0000">
+                            <input type="number" step="0.0001" name="err_0" id="err-input" class="form-control" placeholder="0.0000">
                     </div>
                     <div>
                         <span class="item-label">Incerteza (U)</span>
-                        <input type="number" step="0.0001" name="inc" id="inc-input" class="form-control" placeholder="0.0000">
+                            <input type="number" step="0.0001" name="inc_0" id="inc-input" class="form-control" placeholder="0.0000">
                     </div>
                     <div>
                         <span class="item-label">Tolerância (+/−)</span>
-                        <input type="number" step="0.0001" name="tol" id="tol-input" class="form-control" placeholder="0.0000">
+                            <input type="number" step="0.0001" name="tol_0" id="tol-input" class="form-control" placeholder="0.0000">
                     </div>
                 </div>
                 <div class="item-row">
                     <span class="item-label">N° Certificado:</span>
-                    <input type="text" name="cert_num" id="cert-num-input" required class="form-control" style="padding:5px;">
+                        <input type="text" name="cert_num_0" id="cert-num-input" required class="form-control" style="padding:5px;">
                 </div>
                 <div class="item-row">
                     <span class="item-label">Resultado:</span>
@@ -128,9 +128,9 @@
                 <div class="item-row">
                     <span class="item-label">Responsável Técnico:</span>
                     {% if is_superuser %}
-                        <input type="text" name="responsavel_tecnico" class="form-control" value="{{ user_full_name }}" style="background-color: #fffde7; border-color: #ffe082; color: #0277bd; font-weight: bold;">
+                            <input type="text" name="responsavel_tecnico_0" class="form-control" value="{{ user_full_name }}" style="background-color: #fffde7; border-color: #ffe082; color: #0277bd; font-weight: bold;">
                     {% else %}
-                        <input type="text" name="responsavel_tecnico" class="form-control" value="{{ user_full_name }}" readonly style="background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; font-weight: bold;">
+                            <input type="text" name="responsavel_tecnico_0" class="form-control" value="{{ user_full_name }}" readonly style="background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; font-weight: bold;">
                     {% endif %}
                 </div>
                 <button type="submit" class="btn-primary" style="width: 60%; margin: 18px auto 0 auto; display: block; font-size: 1rem; padding: 10px 0;">PROCESSAR</button>
@@ -141,7 +141,7 @@
                 <input type="hidden" name="y" id="input-y">
                 <input type="hidden" name="w" id="input-w">
                 <input type="hidden" name="h" id="input-h">
-                <input type="hidden" name="page_0" id="page-index-hidden" value="0">
+                    <input type="hidden" name="page_0" id="page-index-hidden" value="0">
             </form>
 
         <script>
