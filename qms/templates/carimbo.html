@@ -417,6 +417,28 @@
             if(resultBadge) resultBadge.addEventListener('DOMSubtreeModified', drawStampPreview);
             if(dateInput) dateInput.addEventListener('input', drawStampPreview);
             if(respInput) respInput.addEventListener('input', drawStampPreview);
+
+            // Atualiza campos ocultos ao posicionar/redimensionar o carimbo
+            function updateHiddenFieldsFromSelection() {
+                if (!selectionBox || selectionBox.style.display !== 'block') return;
+                const rect = selectionBox.getBoundingClientRect();
+                const r = canvas.getBoundingClientRect();
+                const x = rect.left - r.left;
+                const y = rect.top - r.top;
+                const w = rect.width;
+                const h = rect.height;
+                document.getElementById('input-x').value = x;
+                document.getElementById('input-y').value = y;
+                document.getElementById('input-w').value = w;
+                document.getElementById('input-h').value = h;
+                // Atualiza página
+                document.getElementById('page-index-hidden').value = (pageNum-1);
+            }
+            // Chama updateHiddenFieldsFromSelection ao finalizar drag
+            if (window.container) {
+                container.addEventListener('mouseup', updateHiddenFieldsFromSelection);
+                container.addEventListener('mouseleave', updateHiddenFieldsFromSelection);
+            }
         });
 
         // Botão para limpar carimbo
