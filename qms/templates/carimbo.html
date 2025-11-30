@@ -133,6 +133,8 @@
                         <input type="text" name="responsavel_tecnico" class="form-control" value="{{ user_full_name }}" readonly style="background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; font-weight: bold;">
                     {% endif %}
                 </div>
+                <button type="submit" class="btn-primary" style="width: 60%; margin: 18px auto 0 auto; display: block; font-size: 1rem; padding: 10px 0;">PROCESSAR</button>
+                </div>
                 <!-- Campos ocultos para posição do carimbo -->
                 <input type="hidden" name="x" id="input-x">
                 <input type="hidden" name="y" id="input-y">
@@ -385,7 +387,8 @@
         });
 
         function drawStampPreview(){
-            // Draw a lightweight text preview inside selection box
+            // Limpa o preview do carimbo
+            renderPage(pageNum);
             if(selectionBox.style.display !== 'block') return;
             const rect = selectionBox.getBoundingClientRect();
             const r = canvas.getBoundingClientRect();
@@ -394,13 +397,14 @@
             // Overlay text
             ctx.save();
             ctx.globalAlpha = 0.85;
+            // Usa o texto do campo Resultado
+            const badge = document.getElementById('live-result-text');
+            const statusText = badge ? badge.textContent : '';
             ctx.fillStyle = '#2e7d32';
             ctx.font = 'bold 14px Segoe UI';
-            const statusSelect = document.querySelector('select[name="status_validacao"]');
-            const statusText = statusSelect ? statusSelect.options[statusSelect.selectedIndex].text : 'APROVADO';
             ctx.fillText(statusText, lx + 6, ly + 18);
             ctx.fillStyle = '#000';
-            const dateInput = document.querySelector('input[name="data_validacao"]');
+            const dateInput = document.getElementById('data-validacao-input');
             const dv = dateInput ? dateInput.value : '';
             ctx.font = '12px Segoe UI';
             ctx.fillText(dv || '', lx + 6, ly + 34);
