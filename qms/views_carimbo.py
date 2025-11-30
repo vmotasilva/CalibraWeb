@@ -187,4 +187,4 @@ def carimbar_view(request):
     )
 
 # Função utilitária (pode ser importada do views.py original ou movida para cá)
-from .views import get_colab, apply_stamp_logic
+from .views import get_colab
