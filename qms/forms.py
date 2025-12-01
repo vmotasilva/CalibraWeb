@@ -188,17 +188,22 @@ class HistoricoCalibracaoForm(forms.ModelForm):
     class Meta:
         model = HistoricoCalibracao
         fields = [
-            'data_calibracao', 'data_proxima_calibracao', 'certificado', 
-            'resultado', 'observacoes', 'fornecedor', 'tem_selo_rbc'
+            'data_calibracao', 'proxima_calibracao', 'numero_certificado',
+            'tipo_calibracao', 'responsavel', 'fornecedor', 'tem_selo_rbc',
+            'erro_encontrado', 'incerteza', 'tolerancia_usada', 'certificado'
         ]
         widgets = {
             'data_calibracao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
-            'data_proxima_calibracao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
-            'certificado': forms.TextInput(attrs={'class':'form-control','placeholder':'Número do certificado'}),
-            'resultado': forms.Select(attrs={'class':'form-select'}),
-            'observacoes': forms.Textarea(attrs={'class':'form-control','rows':3}),
-            'fornecedor': forms.Select(attrs={'class':'form-select'}),
+            'proxima_calibracao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'numero_certificado': forms.TextInput(attrs={'class':'form-control','placeholder':'Ex: CERT-2024-001'}),
+            'tipo_calibracao': forms.Select(attrs={'class':'form-select'}),
+            'responsavel': forms.TextInput(attrs={'class':'form-control','placeholder':'Nome do responsável'}),
+            'fornecedor': forms.TextInput(attrs={'class':'form-control','placeholder':'Nome do laboratório/fornecedor'}),
             'tem_selo_rbc': forms.CheckboxInput(attrs={'class':'form-check-input'}),
+            'erro_encontrado': forms.NumberInput(attrs={'class':'form-control','step':'0.0001'}),
+            'incerteza': forms.NumberInput(attrs={'class':'form-control','step':'0.0001'}),
+            'tolerancia_usada': forms.NumberInput(attrs={'class':'form-control','step':'0.0001'}),
+            'certificado': forms.FileInput(attrs={'class':'form-control'}),
         }
 
 
