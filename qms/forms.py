@@ -2,7 +2,8 @@ from django import forms
 
 from .models import (Colaborador, Instrumento, Ocorrencia,
                      OcorrenciaInstrumento, OrdemCalibracao, Padrao,
-                     SolicitacaoInstrumento, Procedimento, Area, RegistroTreinamento)
+                     SolicitacaoInstrumento, Procedimento, Area, RegistroTreinamento,
+                     HistoricoCalibracao, Fornecedor)
 
 
 
@@ -180,6 +181,24 @@ class ProcedimentoForm(forms.ModelForm):
             'documentos_controlados': forms.TextInput(attrs={'class':'form-control'}),
             'matriz': forms.TextInput(attrs={'class':'form-control'}),
             'sub_area': forms.TextInput(attrs={'class':'form-control'}),
+        }
+
+
+class HistoricoCalibracaoForm(forms.ModelForm):
+    class Meta:
+        model = HistoricoCalibracao
+        fields = [
+            'data_calibracao', 'data_proxima_calibracao', 'certificado', 
+            'resultado', 'observacoes', 'fornecedor', 'tem_selo_rbc'
+        ]
+        widgets = {
+            'data_calibracao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'data_proxima_calibracao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
+            'certificado': forms.TextInput(attrs={'class':'form-control','placeholder':'Número do certificado'}),
+            'resultado': forms.Select(attrs={'class':'form-select'}),
+            'observacoes': forms.Textarea(attrs={'class':'form-control','rows':3}),
+            'fornecedor': forms.Select(attrs={'class':'form-select'}),
+            'tem_selo_rbc': forms.CheckboxInput(attrs={'class':'form-check-input'}),
         }
 
 

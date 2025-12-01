@@ -25,7 +25,7 @@ from .forms import (
     ProcedimentoForm, SolicitacaoForm, OcorrenciaForm,
     RegistroTreinamentoForm, ImportacaoColaboradoresForm,
     ImportacaoProcedimentosForm, ImportacaoHierarquiaForm,
-    ImportacaoHistoricoForm, ImportacaoPadroesForm
+    ImportacaoHistoricoForm, ImportacaoPadroesForm, HistoricoCalibracaoForm
 )
 
 @login_required
