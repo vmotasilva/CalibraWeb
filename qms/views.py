@@ -21,9 +21,11 @@ from .models import (
     HierarquiaSetor, Fornecedor
 )
 from .forms import (
-    InstrumentoForm, FaixaMedicaoForm, HistoricoCalibraForm,
-    ImportacaoInstrumentosForm, ColaboradorForm, ProcedimentoForm,
-    SolicitacaoInstrumentoForm, ProcessoCotacaoForm
+    InstrumentoForm, ImportacaoInstrumentosForm, ColaboradorForm, 
+    ProcedimentoForm, SolicitacaoForm, OcorrenciaForm,
+    RegistroTreinamentoForm, ImportacaoColaboradoresForm,
+    ImportacaoProcedimentosForm, ImportacaoHierarquiaForm,
+    ImportacaoHistoricoForm, ImportacaoPadroesForm
 )
 
 @login_required
