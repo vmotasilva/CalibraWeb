@@ -1,3 +1,4 @@
+from qms.views import registrar_historico_calibracao_view
 from django.conf import settings
 from django.conf import settings
 from django.conf.urls.static import static
@@ -45,6 +46,11 @@ urlpatterns = [
         "metrologia/instrumento/<int:instrumento_id>/",
         views.detalhe_instrumento_view,
         name="detalhe_instrumento",
+    ),
+    path(
+        "metrologia/instrumento/<int:instrumento_id>/registrar-historico/",
+        registrar_historico_calibracao_view,
+        name="registrar_historico_calibracao",
     ),
     # --- NOVA ROTA PARA SOLICITAÇÕES ---
     path("solicitacao/nova/", views.nova_solicitacao, name="nova_solicitacao"),
