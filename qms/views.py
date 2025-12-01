@@ -1,3 +1,4 @@
+
 import io
 import os
 import re
@@ -6,6 +7,7 @@ from datetime import date, datetime, timedelta
 import tempfile
 from decimal import Decimal
 import unicodedata
+from django.contrib.auth.decorators import login_required
 
 @login_required
 def imp_instr_view(request):
