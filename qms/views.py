@@ -66,7 +66,7 @@ def imp_instr_view(request):
     return render(
         request,
         "importar_instrumentos.html",
-        {"form": form, "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
+        {"form": form, "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
     try:
         col = Colaborador.objects.get(user_django=u)
@@ -168,8 +168,7 @@ def get_all_subordinates(colaborador):
 
 @login_required
 def dashboard_view(request):
-    colab = get_colab(request)
-    nome_display = colab.nome_completo if colab else request.user.username
+    nome_display = request.user.username
     hoje = date.today()
     trinta_dias = hoje + timedelta(days=30)
 
@@ -187,7 +186,6 @@ def dashboard_view(request):
     qtd_pendentes = SolicitacaoInstrumento.objects.filter(status="PENDENTE").count()
 
     ctx = {
-        "colaborador": colab,
         "nome_display": nome_display,
         "qtd_vencidos": qtd_vencidos,
         "qtd_avencer": qtd_avencer,
@@ -201,8 +199,6 @@ def dashboard_view(request):
 
 @login_required
 def modulo_metrologia_view(request):
-    colab = get_colab(request)
-
     # Busca instrumentos (inclui ativos e inativos para permitir filtro na interface)
     instrumentos = Instrumento.objects.all().select_related('categoria','setor').order_by("tag")
 
@@ -239,7 +235,6 @@ def modulo_metrologia_view(request):
     alerta_30d = hoje + timedelta(days=30)
 
     ctx = {
-        "colaborador": colab,
         "instrumentos": instrumentos,
         "setores_filtro": setores_filtro,
         "categorias_filtro": categorias_filtro,
@@ -569,7 +564,11 @@ def export_etiquetas_view(request):
 
 @login_required
 def modulo_rh_view(request):
-    colab = get_colab(request)
+    colab = None
+    try:
+        colab = Colaborador.objects.filter(user_django=request.user).first()
+    except Exception:
+        pass
 
     # 1. VISIBILIDADE (quem pode ver TODOS e quem vê sua árvore)
     ids_permitidos = set()
@@ -662,7 +661,6 @@ def modulo_rh_view(request):
         f.trein_ultima_data = last
 
     ctx = {
-        "colaborador": colab,
         "funcionarios": funcionarios_visiveis,
         "lideres_filtro": lideres_filtro,
         "setores_filtro": setores_filtro,
@@ -849,8 +847,7 @@ def novo_procedimento_view(request):
         form = ProcedimentoForm()
     return render(request, 'form_generico.html', {
         'form': form,
-        'titulo': 'Novo Procedimento',
-        'colaborador': get_colab(request)
+        'titulo': 'Novo Procedimento'
     })
 
 
@@ -870,8 +867,7 @@ def editar_procedimento_view(request, procedimento_id):
         form = ProcedimentoForm(instance=proc)
     return render(request, 'form_generico.html', {
         'form': form,
-        'titulo': f'Editar {proc.codigo}',
-        'colaborador': get_colab(request)
+        'titulo': f'Editar {proc.codigo}'
     })
 
 
@@ -879,8 +875,7 @@ def editar_procedimento_view(request, procedimento_id):
 def detalhe_procedimento_view(request, procedimento_id):
     proc = get_object_or_404(Procedimento, id=procedimento_id)
     return render(request, 'procedimento_detalhe.html', {
-        'proc': proc,
-        'colaborador': get_colab(request)
+        'proc': proc
     })
 
 
@@ -902,7 +897,11 @@ def can_manage_procedimentos(user):
 
 @login_required
 def detalhe_colaborador_view(request, colab_id):
-    usuario_logado = get_colab(request)
+    usuario_logado = None
+    try:
+        usuario_logado = Colaborador.objects.filter(user_django=request.user).first()
+    except Exception:
+        pass
     alvo = get_object_or_404(Colaborador, id=colab_id)
 
     # --- NOVO: BUSCA DE HIERARQUA POR SETOR/TURNO (para visualização) ---
@@ -1032,7 +1031,11 @@ def detalhe_colaborador_view(request, colab_id):
 
 @login_required
 def editar_colaborador_view(request, colab_id):
-    usuario_logado = get_colab(request)
+    usuario_logado = None
+    try:
+        usuario_logado = Colaborador.objects.filter(user_django=request.user).first()
+    except Exception:
+        pass
     alvo = get_object_or_404(Colaborador, id=colab_id)
 
     if not (request.user.is_superuser or request.user.is_staff):
@@ -1069,7 +1072,11 @@ def editar_colaborador_view(request, colab_id):
 @login_required
 def registrar_ocorrencia_view(request):
     # Permissão: apenas RH, liderança (supervisor/gerente) e staff/superuser podem registrar
-    usuario_logado = get_colab(request)
+    usuario_logado = None
+    try:
+        usuario_logado = Colaborador.objects.filter(user_django=request.user).first()
+    except Exception:
+        pass
     permitido = False
     if request.user.is_superuser or request.user.is_staff:
         permitido = True
@@ -1102,7 +1109,7 @@ def registrar_ocorrencia_view(request):
     return render(
         request,
         "registro_ocorrencia.html",
-        {"form": form, "colaborador": get_colab(request)},
+        {"form": form, },
     )
 
 
@@ -1123,7 +1130,7 @@ def nova_solicitacao(request):
     return render(
         request,
         "form_generico.html",
-        {"form": form, "titulo": "Nova Solicitação", "colaborador": get_colab(request)},
+        {"form": form, "titulo": "Nova Solicitação"},
     )
 
 
@@ -1143,8 +1150,7 @@ def novo_instrumento_view(request):
     return render(request, 'form_generico.html', {
         'form': form,
         'titulo': 'Novo Instrumento',
-        'colaborador': get_colab(request)
-    })
+        })
 
 
 # --- VIEW ATUALIZADA: DETALHE DO INSTRUMENTO (COM OCORRÊNCIAS E ORDENS) ---
@@ -1509,7 +1515,7 @@ def imp_instr_view(request):
     return render(
         request,
         "importar_instrumentos.html",
-        {"form": form, "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
+        {"form": form, "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
 
 
@@ -1575,7 +1581,7 @@ def imp_historico_view(request):
     return render(
         request,
         "importar_historico.html",
-        {"form": form, "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
+        {"form": form, "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
 
 
@@ -1610,7 +1616,7 @@ def imp_padroes_view(request):
     return render(
         request,
         "importar_historico.html",
-        {"form": form, "titulo": "Importar Padrões", "colaborador": get_colab(request)},
+        {"form": form, "titulo": "Importar Padrões"},
     )
 
 
@@ -1716,7 +1722,7 @@ def imp_procedimentos_view(request):
             return redirect('procedimentos_lista')
     else:
         form = ImportacaoProcedimentosForm()
-    return render(request, 'importar_procedimentos.html', {'form': form, 'colaborador': get_colab(request)})
+    return render(request, 'importar_procedimentos.html', {'form': form})
 
 
 @login_required
@@ -1778,7 +1784,7 @@ def imp_categorias_view(request):
                 updated += 1
         messages.success(request, f"Categorias criadas: {created}, atualizadas: {updated}. Unidades não encontradas: {not_found_units}")
         return redirect('modulo_metrologia')
-    return render(request, 'importar_categorias.html', { 'colaborador': get_colab(request) })
+    return render(request, 'importar_categorias.html', {})
 
 
 @login_required
@@ -1824,7 +1830,7 @@ def imp_colab_view(request):
     return render(
         request,
         "importar_colaboradores.html",
-        {"form": form, "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
+        {"form": form, "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
 
 
@@ -1869,7 +1875,7 @@ def imp_hierarquia_view(request):
     return render(
         request,
         "importar_hierarquia.html",
-        {"form": ImportacaoHierarquiaForm(), "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
+        {"form": ImportacaoHierarquiaForm(), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
 
 
@@ -1916,7 +1922,7 @@ def imp_ferias_view(request):
     return render(
         request,
         "importar_ferias.html",
-        {"form": form, "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
+        {"form": form, "jobs": ImportJob.objects.order_by('-created_at')[:5]},
     )
 
 
@@ -1928,7 +1934,11 @@ def dl_template_colab_dados(request):
     """Gera um arquivo Excel com dados completos dos Colaboradores ativos."""
 
     # Define permissão para visualizar salário conforme mesmas regras da tela RH
-    colab = get_colab(request)
+    colab = None
+    try:
+        colab = Colaborador.objects.filter(user_django=request.user).first()
+    except Exception:
+        pass
     can_see_salary = False
     if request.user.is_superuser or request.user.is_staff:
         can_see_salary = True
@@ -2043,8 +2053,7 @@ def import_jobs_view(request):
             'jobs': prepared,
             'status': status,
             'job_type': job_type,
-            'colaborador': get_colab(request),
-        })
+            })
     except Exception as e:
         # Fallback: return minimal HTML to avoid 500 and expose error
         return HttpResponse(f"<pre>Falha ao carregar import-jobs: {str(e)}</pre>", content_type="text/html", status=200)
