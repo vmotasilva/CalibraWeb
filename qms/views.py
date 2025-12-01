@@ -7,51 +7,64 @@ import tempfile
 from decimal import Decimal
 import unicodedata
 
-import pandas as pd
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.core.files.base import ContentFile
-from django.db import IntegrityError, models, transaction
-from django.db.models import OuterRef, Q, Subquery
-from django.http import Http404, HttpResponse
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
-from PyPDF2 import PdfReader, PdfWriter
-from reportlab.lib.colors import Color as RColor
-from reportlab.lib.pagesizes import A4, landscape, portrait
-from reportlab.pdfgen import canvas
-
-# IMPORTA OS FORMS
-from .forms import (ColaboradorForm, ImportacaoColaboradoresForm,
-                    ImportacaoFeriasForm, ImportacaoHierarquiaForm,
-                    ImportacaoHistoricoForm, ImportacaoInstrumentosForm,
-                    ImportacaoPadroesForm, ImportacaoProcedimentosForm,
-                    OcorrenciaForm, SolicitacaoForm, InstrumentoForm, ProcedimentoForm)
-from .forms_historico import HistoricoCalibracaoForm
-# IMPORTA TODOS OS MODELOS
-from .models import (CategoriaInstrumento, CentroCusto, Colaborador,
-                     FaixaMedicao, Ferias, Fornecedor, HierarquiaSetor,
-                     HistoricoCalibracao, Instrumento, Ocorrencia,
-                     OrdemCalibracao, Padrao, Procedimento, ProcessoCotacao,
-                     RegistroTreinamento, Setor, SolicitacaoInstrumento, Area,
-                     UnidadeMedida, ImportJob)
-from django.views.decorators.http import require_POST
-
-
-# --- FUNÇÕES AUXILIARES ---
-def get_colab(request):
+@login_required
+def imp_instr_view(request):
     """
-    Mapeia o usuário Django logado para um Colaborador.
-    Ordem:
-      1) vínculo direto em `user_django`
-      2) FIRST+LAST iexact com `nome_completo`
-      3) FIRST como prefixo e LAST como sufixo (ignorando acentos/caixa)
-      4) fallback por `username` == `matricula`
-    Se encontrar um único Colaborador e o vínculo estiver vazio, salva `user_django`.
+    Importa instrumentos de calibração a partir de arquivo Excel/CSV.
+    Para garantir que as faixas de medição (com tolerância) sejam importadas junto com os instrumentos,
+    é necessário ajustar a task 'import_instruments_task' (em qms/tasks.py) para processar as colunas de faixas
+    e criar/atualizar objetos FaixaMedicao associados ao Instrumento.
+
+    Se o arquivo de importação já possui colunas como 'FAIXA', 'UNIDADE', 'TOLERANCIA_MAIS_MENOS', etc.,
+    adapte a task para ler essas colunas e criar as faixas.
     """
-    u = request.user
-    # 1) vínculo direto
+    if request.method == "POST":
+        form = ImportacaoInstrumentosForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                uploaded = request.FILES["arquivo_excel"]
+                suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                for chunk in uploaded.chunks():
+                    tmp.write(chunk)
+                tmp.flush()
+               
+                # create import job record
+                job = ImportJob.objects.create(
+                    user=request.user if request.user.is_authenticated else None,
+                    filename=uploaded.name,
+                    filepath=tmp.name,
+                    job_type="INSTRUMENTOS",
+                    status="PENDING",
+                )
+
+                # ATENÇÃO: Para importar faixas de medição, ajuste a task import_instruments_task
+                # para processar as colunas de faixas e criar FaixaMedicao para cada instrumento.
+
+                # Execução síncrona forçada se SYNC_IMPORTS=1 (default) ou se Celery falhar
+                from .tasks import import_instruments_task
+                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
+                if not force_sync:
+                    try:
+                        # ...existing code...
+                        return redirect("modulo_metrologia")
+                    except Exception:
+                        force_sync = True
+                if force_sync:
+                    import_instruments_task(job.id, tmp.name)
+                    job.refresh_from_db()
+                    messages.success(request, f"Importação concluída imediatamente (job {job.id}). {job.result or ''}")
+                    return redirect("modulo_metrologia")
+            except Exception as e:
+                messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
+                return redirect("importar_instrumentos")
+    else:
+        form = ImportacaoInstrumentosForm()
+    return render(
+        request,
+        "importar_instrumentos.html",
+        {"form": form, "colaborador": get_colab(request), "jobs": ImportJob.objects.order_by('-created_at')[:5]},
+    )
     try:
         col = Colaborador.objects.get(user_django=u)
         return col

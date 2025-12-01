@@ -483,6 +483,13 @@ class OrdemCalibracao(models.Model):
 
 
 class Instrumento(models.Model):
+    tolerancia_processo = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Tolerância do processo (+/-), associada ao instrumento"
+    )
     tag = models.CharField(
         max_length=50, unique=True, verbose_name="TAG / Identificação"
     )
