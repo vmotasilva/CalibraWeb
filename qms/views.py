@@ -1157,8 +1157,10 @@ def detalhe_instrumento_view(
     # Buscando dados para as novas abas
     try:
         historico = inst.historico_calibracoes.all().order_by("-data_calibracao")
-    except AttributeError:
-        # Fallback caso tenha mudado
+    except Exception as e:
+        import traceback
+        print("[ERRO DETALHE INSTRUMENTO]", e)
+        traceback.print_exc()
         historico = []
 
     # Usando related_names definidos no models.py (calibracoes e ocorrencias)
