@@ -937,10 +937,12 @@ def detalhe_colaborador_view(request, colab_id):
     if request.user.is_superuser:
         can_see_salary = True
     elif usuario_logado:
-        if ("GERENTE" in str(usuario_logado.cargo).upper() or
-            HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or
-            ("DIRETOR" in str(usuario_logado.cargo).upper()) or
-            HierarquiaSetor.objects.filter(diretor=usuario_logado).exists():
+        if (
+            "GERENTE" in str(usuario_logado.cargo).upper()
+            or HierarquiaSetor.objects.filter(gerente=usuario_logado).exists()
+            or "DIRETOR" in str(usuario_logado.cargo).upper()
+            or HierarquiaSetor.objects.filter(diretor=usuario_logado).exists()
+        ):
             can_see_salary = True
 
     # Permissões específicas para Ocorrências de RH
