@@ -1,5 +1,6 @@
 
 import io
+from django.shortcuts import get_object_or_404
 import os
 import re
 import zipfile
@@ -1213,7 +1214,6 @@ def detalhe_instrumento_view(
         request,
         "detalhe_instrumento.html",
         {
-            "colaborador": get_colab(request),
             "instrumento": inst,
             "historico": historico,
             "calibracoes": calibracoes,
