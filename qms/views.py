@@ -28,6 +28,7 @@ from .forms import (ColaboradorForm, ImportacaoColaboradoresForm,
                     ImportacaoHistoricoForm, ImportacaoInstrumentosForm,
                     ImportacaoPadroesForm, ImportacaoProcedimentosForm,
                     OcorrenciaForm, SolicitacaoForm, InstrumentoForm, ProcedimentoForm)
+from .forms_historico import HistoricoCalibracaoForm
 # IMPORTA TODOS OS MODELOS
 from .models import (CategoriaInstrumento, CentroCusto, Colaborador,
                      FaixaMedicao, Ferias, Fornecedor, HierarquiaSetor,
@@ -939,7 +940,7 @@ def detalhe_colaborador_view(request, colab_id):
         if ("GERENTE" in str(usuario_logado.cargo).upper() or
             HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or
             ("DIRETOR" in str(usuario_logado.cargo).upper()) or
-            HierarquiaSetor.objects.filter(diretor=usuario_logado).exists()):
+            HierarquiaSetor.objects.filter(diretor=usuario_logado).exists():
             can_see_salary = True
 
     # Permissões específicas para Ocorrências de RH
@@ -2167,4 +2168,24 @@ def treinamentos_list_view(request):
         "colaborador_id": colaborador_id,
         "procedimento_id": procedimento_id,
         "busca": busca,
+    })
+
+
+@login_required
+def registrar_historico_calibracao_view(request, instrumento_id):
+    instrumento = get_object_or_404(Instrumento, id=instrumento_id)
+    if request.method == 'POST':
+        form = HistoricoCalibracaoForm(request.POST, request.FILES)
+        if form.is_valid():
+            historico = form.save(commit=False)
+            historico.instrumento = instrumento
+            historico.save()
+            form.save_m2m()
+            messages.success(request, 'Histórico de calibração registrado com sucesso!')
+            return redirect('detalhe_instrumento', instrumento_id=instrumento.id)
+    else:
+        form = HistoricoCalibracaoForm()
+    return render(request, 'registrar_historico_calibracao.html', {
+        'form': form,
+        'instrumento': instrumento
     })

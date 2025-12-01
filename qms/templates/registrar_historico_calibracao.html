@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Registrar Histórico de Calibração</h2>
+    <div class="mb-3">
+        <strong>Instrumento:</strong> {{ instrumento.tag }} - {{ instrumento.descricao }}
+    </div>
+    <form method="post" enctype="multipart/form-data" class="card p-4 shadow-sm">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary">Salvar Histórico</button>
+            <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-secondary ms-2">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
