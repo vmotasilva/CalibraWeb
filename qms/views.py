@@ -18,7 +18,7 @@ from .models import (
     Instrumento, FaixaMedicao, HistoricoCalibracao, CategoriaInstrumento,
     Setor, Colaborador, Procedimento, RegistroTreinamento, ImportJob,
     SolicitacaoInstrumento, ProcessoCotacao, Padrao, UnidadeMedida,
-    HierarquiaSetor, Fornecedor
+    HierarquiaSetor, Fornecedor, CentroCusto
 )
 from .forms import (
     InstrumentoForm, ImportacaoInstrumentosForm, ColaboradorForm, 
