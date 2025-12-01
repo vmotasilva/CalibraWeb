@@ -1,12 +1,11 @@
 from django.shortcuts import get_object_or_404, render
 from .models import RegistroTreinamento
-from .views import get_colab
+
 
 def treinamentos_detalhe_view(request, treinamento_id):
     treinamento = get_object_or_404(RegistroTreinamento, id=treinamento_id)
     return render(request, 'treinamentos_detalhe.html', {
-        'treinamento': treinamento,
-        'colaborador': get_colab(request)
+        'treinamento': treinamento
     })
 
 def novo_treinamento_view(request):
@@ -19,8 +18,7 @@ def novo_treinamento_view(request):
     else:
         form = RegistroTreinamentoForm()
     return render(request, 'treinamentos_form.html', {
-        'form': form,
-        'colaborador': get_colab(request)
+        'form': form
     })
 
 def editar_treinamento_view(request, treinamento_id):
@@ -34,6 +32,5 @@ def editar_treinamento_view(request, treinamento_id):
     else:
         form = RegistroTreinamentoForm(instance=treinamento)
     return render(request, 'treinamentos_form.html', {
-        'form': form,
-        'colaborador': get_colab(request)
+        'form': form
     })
