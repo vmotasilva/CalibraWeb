@@ -1,6 +1,5 @@
 
 import io
-from django.shortcuts import get_object_or_404
 import os
 import re
 import zipfile
@@ -8,7 +7,24 @@ from datetime import date, datetime, timedelta
 import tempfile
 from decimal import Decimal
 import unicodedata
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.http import HttpResponse, JsonResponse, Http404
+from django.db.models import Q, Count, Max, Prefetch
+from django.core.paginator import Paginator
+from django.utils import timezone
+from .models import (
+    Instrumento, FaixaMedicao, HistoricoCalibracao, CategoriaInstrumento,
+    Setor, Colaborador, Procedimento, RegistroTreinamento, ImportJob,
+    SolicitacaoInstrumento, ProcessoCotacao, Padrao, UnidadeMedida,
+    HierarquiaSetor, Fornecedor
+)
+from .forms import (
+    InstrumentoForm, FaixaMedicaoForm, HistoricoCalibraForm,
+    ImportacaoInstrumentosForm, ColaboradorForm, ProcedimentoForm,
+    SolicitacaoInstrumentoForm, ProcessoCotacaoForm
+)
 
 @login_required
 def imp_instr_view(request):
