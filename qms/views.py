@@ -2234,41 +2234,34 @@ def registrar_historico_calibracao_view(request, instrumento_id):
 
             if form.is_valid():
                 try:
-                    historico = form.save(commit=False)
-                    historico.instrumento = instrumento
-
-                    # Salva o histórico primeiro (resultado geral é calculado no save do modelo, se aplicável)
-                    historico.save()
-                    form.save_m2m()
-
-                    # Processa resultados por faixa enviados no POST
+                    # Validação server-side das faixas antes de salvar o histórico
                     faixas_qs = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
-                    criadas = 0
-                    ignoradas = 0
+                    entradas_validas = []
                     problemas = []
+                    ativos_marcados = 0
 
                     for faixa in faixas_qs:
                         prefix = f"faixa_{faixa.id}_"
-                        ativa = prefix + "ativa"
-                        # Somente processa se marcada como ativa (checkbox presente)
-                        if ativa not in request.POST:
-                            ignoradas += 1
+                        ativa_key = prefix + "ativa"
+                        if ativa_key not in request.POST:
                             continue
+                        ativos_marcados += 1
 
-                        erro_str = request.POST.get(prefix + "erro", "").strip()
-                        inc_str = request.POST.get(prefix + "incerteza", "").strip()
-                        tol_str = request.POST.get(prefix + "tolerancia", "").strip()
+                        erro_str = (request.POST.get(prefix + "erro", "") or "").strip()
+                        inc_str = (request.POST.get(prefix + "incerteza", "") or "").strip()
+                        tol_str = (request.POST.get(prefix + "tolerancia", "") or "").strip()
 
-                        # Usa tolerância da faixa como fallback se não vier no POST
-                        if not tol_str:
-                            tol_val = faixa.tolerancia_mais_menos
-                        else:
+                        # Resolve tolerância
+                        tol_val = None
+                        if tol_str:
                             try:
                                 tol_val = Decimal(str(tol_str))
                             except Exception:
                                 tol_val = None
+                        else:
+                            tol_val = faixa.tolerancia_mais_menos
 
-                        # Validar erro/incerteza
+                        # Converte erro/incerteza
                         try:
                             erro_val = Decimal(str(erro_str)) if erro_str != "" else None
                         except Exception:
@@ -2279,26 +2272,53 @@ def registrar_historico_calibracao_view(request, instrumento_id):
                             inc_val = None
 
                         if erro_val is None or inc_val is None or tol_val is None:
-                            problemas.append(f"Faixa {faixa.valor_minimo} a {faixa.valor_maximo}: dados incompletos")
-                            ignoradas += 1
+                            problemas.append(f"Faixa {faixa.valor_minimo} a {faixa.valor_maximo}: preencha Erro, Incerteza e Tolerância válidos.")
                             continue
 
+                        entradas_validas.append({
+                            'faixa': faixa,
+                            'erro': erro_val,
+                            'inc': inc_val,
+                            'tol': tol_val,
+                        })
+
+                    if ativos_marcados > 0 and len(entradas_validas) == 0:
+                        messages.error(request, "Selecione ao menos uma faixa com dados completos (Erro, Incerteza e Tolerância).")
+                        for p in problemas:
+                            messages.warning(request, p)
+                        # Re-renderiza sem salvar
+                        form.add_error(None, "Dados de faixas incompletos.")
+                        faixas_medicao = faixas_qs
+                        return render(request, 'registrar_historico_calibracao.html', {
+                            'form': form,
+                            'instrumento': instrumento,
+                            'faixas_medicao': faixas_medicao
+                        })
+
+                    # Tudo OK: salva histórico e cria entradas por faixa
+                    historico = form.save(commit=False)
+                    historico.instrumento = instrumento
+                    historico.save()
+                    form.save_m2m()
+
+                    criadas = 0
+                    ignoradas = 0
+                    for ent in entradas_validas:
                         try:
                             ResultadoFaixaCalibracao.objects.create(
                                 historico=historico,
-                                faixa_medicao=faixa,
-                                erro_encontrado=erro_val,
-                                incerteza=inc_val,
-                                tolerancia_usada=tol_val,
+                                faixa_medicao=ent['faixa'],
+                                erro_encontrado=ent['erro'],
+                                incerteza=ent['inc'],
+                                tolerancia_usada=ent['tol'],
                                 desconsiderada=False,
                             )
                             criadas += 1
                         except Exception as e_create:
                             logger.error(
-                                f"Erro criando ResultadoFaixaCalibracao para historico={historico.id}, faixa={faixa.id}: {e_create}",
+                                f"Erro criando ResultadoFaixaCalibracao para historico={historico.id}, faixa={ent['faixa'].id}: {e_create}",
                                 exc_info=True,
                             )
-                            problemas.append(f"Faixa {faixa.valor_minimo} a {faixa.valor_maximo}: erro ao salvar")
                             ignoradas += 1
 
                     # Atualiza o resultado geral do histórico a partir dos resultados por faixa (pior caso)
@@ -2318,8 +2338,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
                     except Exception:
                         pass
 
-                    msg = f"Histórico registrado com sucesso! Resultado geral: {historico.resultado}. "
-                    msg += f"Faixas salvas: {criadas}."
+                    msg = f"Histórico registrado com sucesso! Resultado geral: {historico.resultado}. Faixas salvas: {criadas}."
                     if ignoradas:
                         msg += f" Ignoradas: {ignoradas}."
                     messages.success(request, msg)
