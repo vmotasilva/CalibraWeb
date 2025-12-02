@@ -216,11 +216,17 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         
         # Pré-preencher automaticamente o responsável com FIRST_NAME + LAST_NAME do usuário logado (somente GET)
         if not self.is_bound and user is not None:
-            first = (user.first_name or '').strip()
-            last = (user.last_name or '').strip()
+            first = (getattr(user, 'first_name', '') or '').strip()
+            last = (getattr(user, 'last_name', '') or '').strip()
             nome_resp = (first + ' ' + last).strip()
+            # fallback para full_name ou username
+            if not nome_resp:
+                full_name = (getattr(user, 'get_full_name', lambda: '')() or '').strip()
+                nome_resp = full_name or (getattr(user, 'username', '') or '').strip()
             if nome_resp:
                 self.fields['responsavel'].initial = nome_resp
+        # Campo deve ser obrigatório para garantir que o carimbo tenha um nome
+        self.fields['responsavel'].required = True
 
 
 class RegistroTreinamentoForm(forms.ModelForm):

@@ -21,7 +21,7 @@ from .models import (
     Instrumento, FaixaMedicao, HistoricoCalibracao, CategoriaInstrumento,
     Setor, Colaborador, Procedimento, RegistroTreinamento, ImportJob,
     SolicitacaoInstrumento, ProcessoCotacao, Padrao, UnidadeMedida,
-    HierarquiaSetor, Fornecedor, CentroCusto
+    HierarquiaSetor, Fornecedor, CentroCusto, ResultadoFaixaCalibracao
 )
 from .forms import (
     InstrumentoForm, ImportacaoInstrumentosForm, ColaboradorForm, 
@@ -2231,36 +2231,105 @@ def registrar_historico_calibracao_view(request, instrumento_id):
             form = HistoricoCalibracaoForm(request.POST, request.FILES, instrumento=instrumento, user=request.user)
             logger.debug(f"POST data: {request.POST}")
             logger.debug(f"FILES: {list(request.FILES.keys())}")
-            
+
             if form.is_valid():
                 try:
                     historico = form.save(commit=False)
                     historico.instrumento = instrumento
-                    
-                    # Calcula resultado automaticamente
-                    erro = historico.erro_encontrado or 0
-                    incerteza = historico.incerteza or 0
-                    tolerancia = historico.tolerancia_usada or 0
-                    
-                    erro_abs = abs(erro)
-                    inc_abs = abs(incerteza)
-                    tol_abs = abs(tolerancia)
-                    
-                    EMA = tol_abs / 2
-                    EME = erro_abs + inc_abs
-                    
-                    if EME <= EMA:
-                        historico.resultado = 'APROVADO'
-                    elif EME > (EMA * 3):
-                        historico.resultado = 'REPROVADO'
-                    else:
-                        historico.resultado = 'CONDICIONAL'
-                    
+
+                    # Salva o histórico primeiro (resultado geral é calculado no save do modelo, se aplicável)
                     historico.save()
                     form.save_m2m()
-                    logger.info(f"Histórico {historico.id} criado com sucesso para instrumento {instrumento_id}, resultado: {historico.resultado}")
-                    messages.success(request, f'Histórico registrado com sucesso! Resultado: {historico.resultado}')
-                    
+
+                    # Processa resultados por faixa enviados no POST
+                    faixas_qs = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+                    criadas = 0
+                    ignoradas = 0
+                    problemas = []
+
+                    for faixa in faixas_qs:
+                        prefix = f"faixa_{faixa.id}_"
+                        ativa = prefix + "ativa"
+                        # Somente processa se marcada como ativa (checkbox presente)
+                        if ativa not in request.POST:
+                            ignoradas += 1
+                            continue
+
+                        erro_str = request.POST.get(prefix + "erro", "").strip()
+                        inc_str = request.POST.get(prefix + "incerteza", "").strip()
+                        tol_str = request.POST.get(prefix + "tolerancia", "").strip()
+
+                        # Usa tolerância da faixa como fallback se não vier no POST
+                        if not tol_str:
+                            tol_val = faixa.tolerancia_mais_menos
+                        else:
+                            try:
+                                tol_val = Decimal(str(tol_str))
+                            except Exception:
+                                tol_val = None
+
+                        # Validar erro/incerteza
+                        try:
+                            erro_val = Decimal(str(erro_str)) if erro_str != "" else None
+                        except Exception:
+                            erro_val = None
+                        try:
+                            inc_val = Decimal(str(inc_str)) if inc_str != "" else None
+                        except Exception:
+                            inc_val = None
+
+                        if erro_val is None or inc_val is None or tol_val is None:
+                            problemas.append(f"Faixa {faixa.valor_minimo} a {faixa.valor_maximo}: dados incompletos")
+                            ignoradas += 1
+                            continue
+
+                        try:
+                            ResultadoFaixaCalibracao.objects.create(
+                                historico=historico,
+                                faixa_medicao=faixa,
+                                erro_encontrado=erro_val,
+                                incerteza=inc_val,
+                                tolerancia_usada=tol_val,
+                                desconsiderada=False,
+                            )
+                            criadas += 1
+                        except Exception as e_create:
+                            logger.error(
+                                f"Erro criando ResultadoFaixaCalibracao para historico={historico.id}, faixa={faixa.id}: {e_create}",
+                                exc_info=True,
+                            )
+                            problemas.append(f"Faixa {faixa.valor_minimo} a {faixa.valor_maximo}: erro ao salvar")
+                            ignoradas += 1
+
+                    # Atualiza o resultado geral do histórico a partir dos resultados por faixa (pior caso)
+                    try:
+                        resultados = list(historico.resultados_faixas.values_list('resultado', flat=True))
+                        overall = None
+                        if resultados:
+                            if 'REPROVADO' in resultados:
+                                overall = 'REPROVADO'
+                            elif 'APROVADO_COM_CORRECAO' in resultados:
+                                overall = 'APROVADO_COM_CORRECAO'
+                            else:
+                                overall = 'APROVADO_SEM_CORRECAO'
+                        if overall and historico.resultado != overall:
+                            historico.resultado = overall
+                            historico.save(update_fields=['resultado'])
+                    except Exception:
+                        pass
+
+                    msg = f"Histórico registrado com sucesso! Resultado geral: {historico.resultado}. "
+                    msg += f"Faixas salvas: {criadas}."
+                    if ignoradas:
+                        msg += f" Ignoradas: {ignoradas}."
+                    messages.success(request, msg)
+                    if problemas:
+                        for p in problemas:
+                            messages.warning(request, p)
+
+                    logger.info(
+                        f"Histórico {historico.id} criado para instrumento {instrumento_id}. Faixas criadas={criadas}, ignoradas={ignoradas}"
+                    )
                     return redirect('detalhe_instrumento', instrumento_id=instrumento.id)
                 except Exception as save_error:
                     logger.error(f"Erro ao salvar histórico: {save_error}", exc_info=True)
