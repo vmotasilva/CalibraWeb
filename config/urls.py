@@ -70,6 +70,11 @@ urlpatterns = [
         views.remover_certificado_historico_view,
         name="remover_certificado_historico",
     ),
+    path(
+        "metrologia/historico/<int:historico_id>/visualizar/",
+        views.visualizar_historico_calibracao_view,
+        name="visualizar_historico_calibracao",
+    ),
     # 7. Downloads de Templates (CORRIGIDO: Os nomes agora batem com o HTML)
     path("dl-template-inst/", views.dl_template_instr, name="template_instrumentos"),
     path(
