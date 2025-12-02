@@ -1,18 +1,166 @@
 {% extends 'base.html' %}
+{% load widget_tweaks %}
 
 {% block content %}
 <div class="container py-4">
     <h2 class="mb-4">Registrar Histórico de Calibração</h2>
-    <div class="mb-3">
-        <strong>Instrumento:</strong> {{ instrumento.tag }} - {{ instrumento.descricao }}
+    
+    <div class="alert alert-info mb-4">
+        <div class="row">
+            <div class="col-md-6">
+                <strong>Instrumento:</strong> {{ instrumento.tag }} - {{ instrumento.descricao }}
+            </div>
+            <div class="col-md-6">
+                <strong>Frequência de Calibração:</strong> 
+                <span class="badge bg-primary" id="freq-badge">{{ instrumento.frequencia_meses }} meses</span>
+            </div>
+        </div>
     </div>
-    <form method="post" enctype="multipart/form-data" class="card p-4 shadow-sm">
+
+    <!-- Prévia do Cálculo -->
+    <div id="preview-box" class="alert alert-success d-none mb-4">
+        <h5 class="mb-3"><i class="bi bi-calendar-check"></i> Prévia do Cálculo</h5>
+        <div class="row">
+            <div class="col-md-4">
+                <strong>Data Calibração:</strong><br>
+                <span id="preview-data-calib" class="fs-5">-</span>
+            </div>
+            <div class="col-md-4">
+                <strong>Frequência:</strong><br>
+                <span id="preview-freq" class="fs-5">{{ instrumento.frequencia_meses }} meses</span>
+            </div>
+            <div class="col-md-4">
+                <strong>Próxima Calibração:</strong><br>
+                <span id="preview-proxima" class="fs-5 text-success fw-bold">-</span>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="card p-4 shadow-sm" id="historico-form">
         {% csrf_token %}
-        {{ form.as_p }}
+        
+        {% for field in form %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label fw-bold">
+                    {{ field.label }}
+                    {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                </label>
+                {{ field|add_class:"form-control" }}
+                {% if field.help_text %}
+                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                    <div class="text-danger small">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+
         <div class="mt-3">
-            <button type="submit" class="btn btn-primary">Salvar Histórico</button>
-            <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-secondary ms-2">Cancelar</a>
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i> Salvar Histórico
+            </button>
+            <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-secondary ms-2">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </a>
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dataCalibInput = document.getElementById('id_data_calibracao');
+    const proximaCalibInput = document.getElementById('id_proxima_calibracao');
+    const previewBox = document.getElementById('preview-box');
+    const previewDataCalib = document.getElementById('preview-data-calib');
+    const previewProxima = document.getElementById('preview-proxima');
+    const frequenciaMeses = {{ instrumento.frequencia_meses }};
+
+    function formatarData(dataStr) {
+        if (!dataStr) return '-';
+        const [ano, mes, dia] = dataStr.split('-');
+        return `${dia}/${mes}/${ano}`;
+    }
+
+    function calcularProximaCalibracao(dataCalibStr) {
+        if (!dataCalibStr || !frequenciaMeses) return null;
+        
+        const dataCalib = new Date(dataCalibStr);
+        if (isNaN(dataCalib.getTime())) return null;
+        
+        // Adiciona os meses de frequência
+        const proximaData = new Date(dataCalib);
+        proximaData.setMonth(proximaData.getMonth() + frequenciaMeses);
+        
+        // Formata para YYYY-MM-DD (formato do input date)
+        const ano = proximaData.getFullYear();
+        const mes = String(proximaData.getMonth() + 1).padStart(2, '0');
+        const dia = String(proximaData.getDate()).padStart(2, '0');
+        
+        return `${ano}-${mes}-${dia}`;
+    }
+
+    function atualizarPrevia() {
+        const dataCalibValue = dataCalibInput.value;
+        
+        if (dataCalibValue) {
+            const proximaCalculada = calcularProximaCalibracao(dataCalibValue);
+            
+            if (proximaCalculada) {
+                // Atualiza campo de próxima calibração automaticamente
+                proximaCalibInput.value = proximaCalculada;
+                
+                // Mostra prévia
+                previewBox.classList.remove('d-none');
+                previewDataCalib.textContent = formatarData(dataCalibValue);
+                previewProxima.textContent = formatarData(proximaCalculada);
+                
+                // Adiciona efeito visual
+                previewProxima.classList.add('animate__animated', 'animate__pulse');
+                setTimeout(() => {
+                    previewProxima.classList.remove('animate__animated', 'animate__pulse');
+                }, 1000);
+            }
+        } else {
+            // Esconde prévia se não há data
+            previewBox.classList.add('d-none');
+            previewDataCalib.textContent = '-';
+            previewProxima.textContent = '-';
+        }
+    }
+
+    // Evento para calcular quando mudar a data de calibração
+    dataCalibInput.addEventListener('change', atualizarPrevia);
+    dataCalibInput.addEventListener('input', atualizarPrevia);
+    
+    // Calcula ao carregar se já houver valor preenchido
+    if (dataCalibInput.value) {
+        atualizarPrevia();
+    }
+
+    // Adiciona tooltip informativo
+    if (frequenciaMeses) {
+        dataCalibInput.setAttribute('title', `A próxima calibração será calculada automaticamente (+ ${frequenciaMeses} meses)`);
+    }
+});
+</script>
+
+<style>
+#preview-box {
+    border-left: 5px solid #28a745;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+}
+
+#preview-proxima {
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.form-label {
+    color: #495057;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+</style>
 {% endblock %}
