@@ -2228,7 +2228,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
         logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}, user={request.user.username}")
         
         if request.method == 'POST':
-            form = HistoricoCalibracaoForm(request.POST, request.FILES, instrumento=instrumento)
+            form = HistoricoCalibracaoForm(request.POST, request.FILES, instrumento=instrumento, user=request.user)
             logger.debug(f"POST data: {request.POST}")
             logger.debug(f"FILES: {list(request.FILES.keys())}")
             
@@ -2272,7 +2272,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
                     for error in errors:
                         messages.error(request, f"{field}: {error}")
         else:
-            form = HistoricoCalibracaoForm(instrumento=instrumento)
+            form = HistoricoCalibracaoForm(instrumento=instrumento, user=request.user)
         
         # Busca todas as faixas do instrumento para exibir na tabela
         faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
@@ -2338,6 +2338,10 @@ def aplicar_carimbo_certificado_view(request, historico_id):
         c.setFont("Helvetica-Bold", 18)
         carimbo_texto = f"VALIDADO - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         c.drawString(72, 72, carimbo_texto)
+        # Linha com o responsável técnico (usa o valor salvo no histórico)
+        responsavel_txt = (historico.responsavel or request.user.get_full_name() or request.user.username)
+        c.setFont("Helvetica", 12)
+        c.drawString(72, 52, f"Resp. Técnico: {responsavel_txt}")
         c.save()
         logger.debug(f"Carimbo gerado: {stamp_path}")
         

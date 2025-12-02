@@ -209,9 +209,18 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         }
     
     def __init__(self, *args, **kwargs):
-        # Aceita instrumento mas não faz nada com ele (mantém compatibilidade)
+        # Aceita instrumento e user (mantém compatibilidade)
         instrumento = kwargs.pop('instrumento', None)
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        
+        # Pré-preencher automaticamente o responsável com FIRST_NAME + LAST_NAME do usuário logado (somente GET)
+        if not self.is_bound and user is not None:
+            first = (user.first_name or '').strip()
+            last = (user.last_name or '').strip()
+            nome_resp = (first + ' ' + last).strip()
+            if nome_resp:
+                self.fields['responsavel'].initial = nome_resp
 
 
 class RegistroTreinamentoForm(forms.ModelForm):
