@@ -722,6 +722,94 @@ def atualizar_datas_instrumento(sender, instance, **kwargs):
     inst.save()
 
 
+class ResultadoFaixaCalibracao(models.Model):
+    """
+    Armazena resultados individuais para cada faixa de medição em uma calibração.
+    Permite calibrar múltiplas faixas de um instrumento em um único certificado.
+    """
+    
+    RESULTADO_CHOICES = [
+        ("APROVADO", "Aprovado"),
+        ("CONDICIONAL", "Condicional"),
+        ("REPROVADO", "Reprovado"),
+    ]
+    
+    historico = models.ForeignKey(
+        'HistoricoCalibracao',
+        on_delete=models.CASCADE,
+        related_name='resultados_faixas',
+        verbose_name='Histórico de Calibração'
+    )
+    
+    faixa_medicao = models.ForeignKey(
+        'FaixaMedicao',
+        on_delete=models.CASCADE,
+        related_name='resultados_calibracao',
+        verbose_name='Faixa de Medição'
+    )
+    
+    erro_encontrado = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        verbose_name='Erro Encontrado'
+    )
+    
+    incerteza = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        verbose_name='Incerteza Expandida'
+    )
+    
+    tolerancia_usada = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        verbose_name='Tolerância Usada'
+    )
+    
+    resultado = models.CharField(
+        max_length=15,
+        choices=RESULTADO_CHOICES,
+        verbose_name='Resultado da Calibração',
+        editable=False
+    )
+    
+    desconsiderada = models.BooleanField(
+        default=False,
+        verbose_name='Desconsiderar esta faixa',
+        help_text='Marque se esta faixa não foi calibrada neste certificado'
+    )
+    
+    def save(self, *args, **kwargs):
+        """Calcula automaticamente o resultado baseado em EME e EMA"""
+        if not self.desconsiderada:
+            # EMA = Erro Máximo Admissível = Tolerância / 2
+            EMA = self.tolerancia_usada / 2
+            
+            # EME = Erro Máximo Encontrado = |Erro| + Incerteza
+            EME = abs(self.erro_encontrado) + self.incerteza
+            
+            # Lógica de resultado
+            if EME <= EMA:
+                self.resultado = "APROVADO"
+            elif EME <= self.tolerancia_usada:
+                self.resultado = "CONDICIONAL"
+            else:
+                self.resultado = "REPROVADO"
+        else:
+            self.resultado = ""
+        
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.historico.instrumento.tag} - {self.faixa_medicao} - {self.resultado}"
+    
+    class Meta:
+        verbose_name = 'Resultado por Faixa'
+        verbose_name_plural = 'Resultados por Faixa'
+        unique_together = ('historico', 'faixa_medicao')
+        ordering = ['faixa_medicao__valor_minimo']
+
+
 # ==============================================================================
 # MÓDULO 5: SUPRIMENTOS (FORNECEDORES)
 # ==============================================================================
