@@ -2667,6 +2667,11 @@ def visualizar_historico_calibracao_view(request, historico_id):
         # Busca faixas e resultados
         faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
         resultados_faixas = historico.resultados_faixas.all()
+        # Cria um dicionário para mapear id da faixa ao resultado correspondente
+        resultados_map = {}
+        for rf in resultados_faixas:
+            if hasattr(rf, 'faixa_medicao_id'):
+                resultados_map[rf.faixa_medicao_id] = rf
         
         return render(request, 'visualizar_historico_calibracao.html', {
             'form': form,
@@ -2674,6 +2679,7 @@ def visualizar_historico_calibracao_view(request, historico_id):
             'instrumento': instrumento,
             'faixas_medicao': faixas_medicao,
             'resultados_faixas': resultados_faixas,
+            'resultados_map': resultados_map,
             'edit_mode': edit_mode,
         })
     except Exception as e:
