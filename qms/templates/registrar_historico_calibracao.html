@@ -113,6 +113,15 @@
                                 Possui Selo RBC?
                             </label>
                         </div>
+                        <div id="padroes-section" class="mb-3 d-none">
+                            <label for="id_padroes_utilizados" class="form-label fw-bold">
+                                Padrões Utilizados (não-RBC)
+                            </label>
+                            {{ form.padroes_utilizados|add_class:"form-control" }}
+                            <small class="text-muted d-block mt-1">
+                                Se o certificado não possui selo RBC, informe os padrões rastreáveis usados.
+                            </small>
+                        </div>
                     </div>
                 </div>
 
@@ -493,6 +502,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Toggle de Padrões (quando não RBC)
+    const rbcCheckbox = document.getElementById('id_tem_selo_rbc');
+    const padroesSection = document.getElementById('padroes-section');
+    function togglePadroes() {
+        if (!rbcCheckbox) return;
+        if (rbcCheckbox.checked) {
+            padroesSection?.classList.add('d-none');
+        } else {
+            padroesSection?.classList.remove('d-none');
+        }
+    }
+    if (rbcCheckbox) {
+        rbcCheckbox.addEventListener('change', togglePadroes);
+        togglePadroes();
+    }
+
     // ===== VISUALIZADOR DE PDF =====
     certificadoInput.addEventListener('change', function(e) {
         const file = e.target.files[0];

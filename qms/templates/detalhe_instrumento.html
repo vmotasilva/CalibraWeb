@@ -184,12 +184,14 @@
                                     <td class="fw-bold">{{ item.data_calibracao|date:"d/m/Y" }}</td>
                                     <td><small>{{ item.numero_certificado }}</small></td>
                                     <td>
-                                        {% if item.resultado == 'APROVADO' %}
+                                        {% if item.resultado == 'APROVADO_SEM_CORRECAO' %}
                                             <span class="badge bg-success">OK</span>
+                                        {% elif item.resultado == 'APROVADO_COM_CORRECAO' %}
+                                            <span class="badge bg-warning text-dark">OK c/ corr.</span>
                                         {% elif item.resultado == 'REPROVADO' %}
                                             <span class="badge bg-danger">NOK</span>
                                         {% else %}
-                                            <span class="badge bg-warning text-dark">COND.</span>
+                                            <span class="badge bg-secondary">-</span>
                                         {% endif %}
                                     </td>
                                     <td class="text-end">

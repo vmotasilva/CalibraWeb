@@ -2234,6 +2234,22 @@ def registrar_historico_calibracao_view(request, instrumento_id):
 
             if form.is_valid():
                 try:
+                    # Validação server-side: se não for RBC, exigir pelo menos 1 padrão selecionado
+                    try:
+                        tem_rbc = form.cleaned_data.get('tem_selo_rbc')
+                        padroes_sel = form.cleaned_data.get('padroes_utilizados')
+                        if not tem_rbc and (not padroes_sel or padroes_sel.count() == 0):
+                            messages.error(request, 'Selecione ao menos um padrão utilizado para certificados sem selo RBC.')
+                            form.add_error('padroes_utilizados', 'Obrigatório quando não há selo RBC')
+                            faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+                            return render(request, 'registrar_historico_calibracao.html', {
+                                'form': form,
+                                'instrumento': instrumento,
+                                'faixas_medicao': faixas_medicao
+                            })
+                    except Exception:
+                        pass
+
                     # Validação server-side das faixas antes de salvar o histórico
                     faixas_qs = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
                     entradas_validas = []
