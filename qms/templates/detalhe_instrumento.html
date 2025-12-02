@@ -195,6 +195,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
+                                        <a href="{% url 'visualizar_historico_calibracao' item.id %}" class="btn btn-sm btn-outline-info" title="Visualizar/Editar"><i class="bi bi-eye"></i></a>
                                         {% if item.certificado %}
                                             <a href="{{ item.certificado.url }}" download class="btn btn-sm btn-outline-primary" title="Baixar PDF"><i class="bi bi-download"></i></a>
                                             <form method="post" action="{% url 'remover_certificado_historico' item.id %}" class="d-inline" onsubmit="return confirm('Remover apenas o PDF deste registro?');">

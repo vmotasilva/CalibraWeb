@@ -1,0 +1,495 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            {% if modo_edicao %}
+                <i class="bi bi-pencil-square"></i> Editar Histórico de Calibração
+            {% else %}
+                <i class="bi bi-eye"></i> Visualizar Histórico de Calibração
+            {% endif %}
+        </h2>
+        <div>
+            <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            {% if not modo_edicao %}
+                <a href="?edit=1" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="alert alert-info mb-4">
+        <div class="row">
+            <div class="col-md-6">
+                <strong>Instrumento:</strong> {{ instrumento.tag }} - {{ instrumento.descricao }}
+            </div>
+            <div class="col-md-6">
+                <strong>Data de Calibração:</strong> {{ historico.data_calibracao|date:"d/m/Y" }}
+            </div>
+        </div>
+    </div>
+
+    {% if modo_edicao %}
+    <form method="post" enctype="multipart/form-data" id="historico-form">
+        {% csrf_token %}
+    {% endif %}
+
+    <div class="row">
+        <!-- COLUNA ESQUERDA: FORMULÁRIO -->
+        <div class="col-lg-6">
+            
+            <!-- UPLOAD DE CERTIFICADO -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-file-earmark-pdf"></i> Certificado
+                </div>
+                <div class="card-body">
+                    {% if modo_edicao %}
+                        <label for="id_certificado" class="form-label fw-bold">
+                            Certificado (PDF)
+                        </label>
+                        {{ form.certificado|add_class:"form-control" }}
+                        {% if historico.certificado %}
+                            <small class="text-success d-block mt-2">
+                                <i class="bi bi-check-circle"></i> Certificado atual: {{ historico.certificado.name|truncatechars:50 }}
+                            </small>
+                        {% endif %}
+                    {% else %}
+                        {% if historico.certificado %}
+                            <p class="mb-2">
+                                <strong>Certificado:</strong> <a href="{{ historico.certificado.url }}" download class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-download"></i> Baixar PDF
+                                </a>
+                            </p>
+                        {% else %}
+                            <p class="text-muted">Nenhum certificado anexado.</p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- DADOS DA CALIBRAÇÃO -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-calendar-event"></i> Datas da Calibração
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="id_data_calibracao" class="form-label fw-bold">
+                            Data da Calibração
+                        </label>
+                        {% if modo_edicao %}
+                            {{ form.data_calibracao|add_class:"form-control" }}
+                        {% else %}
+                            <p class="form-control-plaintext">{{ historico.data_calibracao|date:"d/m/Y" }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_proxima_calibracao" class="form-label fw-bold">
+                            Próxima Calibração
+                        </label>
+                        {% if modo_edicao %}
+                            {{ form.proxima_calibracao|add_class:"form-control" }}
+                        {% else %}
+                            <p class="form-control-plaintext">{{ historico.proxima_calibracao|date:"d/m/Y"|default:"-" }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- IDENTIFICAÇÃO -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-card-text"></i> Identificação
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="id_numero_certificado" class="form-label fw-bold">
+                            Número do Certificado
+                        </label>
+                        {% if modo_edicao %}
+                            {{ form.numero_certificado|add_class:"form-control" }}
+                        {% else %}
+                            <p class="form-control-plaintext">{{ historico.numero_certificado }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_tipo_calibracao" class="form-label fw-bold">
+                            Tipo de Calibração
+                        </label>
+                        {% if modo_edicao %}
+                            {{ form.tipo_calibracao|add_class:"form-select" }}
+                        {% else %}
+                            <p class="form-control-plaintext">{{ historico.get_tipo_calibracao_display }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_responsavel" class="form-label fw-bold">
+                            Responsável Técnico
+                        </label>
+                        {% if modo_edicao %}
+                            {{ form.responsavel|add_class:"form-control" }}
+                            <small class="text-muted d-block mt-1">
+                                Este nome será impresso no carimbo do certificado.
+                            </small>
+                        {% else %}
+                            <p class="form-control-plaintext">{{ historico.responsavel|default:"-" }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_fornecedor" class="form-label fw-bold">
+                            Laboratório/Fornecedor
+                        </label>
+                        {% if modo_edicao %}
+                            {{ form.fornecedor|add_class:"form-control" }}
+                        {% else %}
+                            <p class="form-control-plaintext">{{ historico.fornecedor|default:"-" }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {% if modo_edicao %}
+                            <div class="form-check">
+                                {{ form.tem_selo_rbc|add_class:"form-check-input" }}
+                                <label for="id_tem_selo_rbc" class="form-check-label">
+                                    Possui Selo RBC?
+                                </label>
+                            </div>
+                        {% else %}
+                            <p class="form-control-plaintext">
+                                <strong>Possui Selo RBC:</strong>
+                                {% if historico.tem_selo_rbc %}
+                                    <span class="badge bg-success">Sim</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Não</span>
+                                {% endif %}
+                            </p>
+                        {% endif %}
+                    </div>
+                    {% if modo_edicao %}
+                        <div id="padroes-section" class="mb-3 d-none">
+                            <label for="id_padroes_utilizados" class="form-label fw-bold">
+                                Padrões Utilizados (não-RBC)
+                            </label>
+                            {{ form.padroes_utilizados|add_class:"form-control" }}
+                            <small class="text-muted d-block mt-1">
+                                Se o certificado não possui selo RBC, informe os padrões rastreáveis usados.
+                            </small>
+                        </div>
+                    {% else %}
+                        {% if not historico.tem_selo_rbc %}
+                            <div class="alert alert-warning mt-3">
+                                <strong>Padrões Utilizados:</strong>
+                                {% if historico.padroes_utilizados.exists %}
+                                    <ul class="mb-0">
+                                        {% for padrao in historico.padroes_utilizados.all %}
+                                            <li>{{ padrao }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <span class="text-muted">Nenhum padrão registrado</span>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- TABELA DE FAIXAS -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-calculator"></i> Resultados por Faixa de Medição
+                </div>
+                <div class="card-body">
+                    {% if faixas_medicao %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover" id="faixas-table">
+                            <thead class="table-light">
+                                <tr>
+                                    {% if modo_edicao %}
+                                        <th style="width: 5%;">
+                                            <input type="checkbox" id="toggle-all-faixas" checked title="Marcar/Desmarcar todas">
+                                        </th>
+                                    {% else %}
+                                        <th style="width: 5%;">Ativa</th>
+                                    {% endif %}
+                                    <th style="width: 20%;">Faixa</th>
+                                    <th style="width: 10%;">Unidade</th>
+                                    <th style="width: 13%;">Erro (E)</th>
+                                    <th style="width: 13%;">Incerteza (U)</th>
+                                    <th style="width: 13%;">Tolerância</th>
+                                    <th style="width: 26%;">Resultado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for faixa in faixas_medicao %}
+                                {% with resultado=resultados_map|get_dict_key:faixa.id %}
+                                <tr class="faixa-row" data-faixa-id="{{ faixa.id }}">
+                                    <td class="text-center">
+                                        {% if modo_edicao %}
+                                            <input type="checkbox" 
+                                                   name="faixa_{{ faixa.id }}_ativa" 
+                                                   class="form-check-input faixa-checkbox" 
+                                                   {% if resultado.ativa %}checked{% endif %}
+                                                   data-faixa-id="{{ faixa.id }}">
+                                        {% else %}
+                                            {% if resultado.ativa %}<span class="badge bg-success">✓</span>{% else %}-{% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small><strong>{{ faixa.valor_minimo }} a {{ faixa.valor_maximo }}</strong></small>
+                                    </td>
+                                    <td>
+                                        <small>{{ faixa.unidade.sigla }}</small>
+                                    </td>
+                                    <td>
+                                        {% if modo_edicao %}
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_erro" 
+                                                   class="form-control form-control-sm faixa-erro" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   value="{{ resultado.erro|default:'' }}"
+                                                   placeholder="0.0000">
+                                        {% else %}
+                                            <p class="form-control-plaintext">{{ resultado.erro|default:"-" }}</p>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if modo_edicao %}
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_incerteza" 
+                                                   class="form-control form-control-sm faixa-incerteza" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   value="{{ resultado.incerteza|default:'' }}"
+                                                   placeholder="0.0000">
+                                        {% else %}
+                                            <p class="form-control-plaintext">{{ resultado.incerteza|default:"-" }}</p>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if modo_edicao %}
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_tolerancia" 
+                                                   class="form-control form-control-sm faixa-tolerancia" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   value="{{ resultado.tolerancia|default:faixa.tolerancia_mais_menos|default:'' }}"
+                                                   readonly
+                                                   placeholder="0.0000">
+                                        {% else %}
+                                            <p class="form-control-plaintext">{{ resultado.tolerancia|default:"-" }}</p>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if modo_edicao %}
+                                            <div class="resultado-preview-faixa" data-faixa-id="{{ faixa.id }}">
+                                                <span class="badge bg-secondary">{{ resultado.resultado|default:"Preencha os dados" }}</span>
+                                            </div>
+                                        {% else %}
+                                            {% if resultado.resultado %}
+                                                {% if resultado.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                    <span class="badge bg-success">OK</span>
+                                                {% elif resultado.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                    <span class="badge bg-warning text-dark">OK c/ corr.</span>
+                                                {% elif resultado.resultado == 'REPROVADO' %}
+                                                    <span class="badge bg-danger">NOK</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">-</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary">-</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endwith %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        Este instrumento não possui faixas de medição cadastradas.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- BOTÕES -->
+            {% if modo_edicao %}
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-save"></i> Salvar Alterações
+                </button>
+                <a href="{% url 'visualizar_historico_calibracao' historico.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- COLUNA DIREITA: VISUALIZADOR DE PDF (se houver certificado) -->
+        {% if historico.certificado %}
+        <div class="col-lg-6">
+            <div class="card shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-file-pdf"></i> Visualização do Certificado
+                </div>
+                <div class="card-body p-0" style="height: calc(100vh - 180px); min-height: 600px;">
+                    <iframe src="{{ historico.certificado.url }}" class="w-100 h-100" frameborder="0"></iframe>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if modo_edicao %}
+    </form>
+    {% endif %}
+</div>
+
+{% if modo_edicao %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rbcCheckbox = document.getElementById('id_tem_selo_rbc');
+    const padroesSection = document.getElementById('padroes-section');
+    const toggleAllCheckbox = document.getElementById('toggle-all-faixas');
+    const faixasTable = document.getElementById('faixas-table');
+
+    function togglePadroes() {
+        if (!rbcCheckbox) return;
+        if (rbcCheckbox.checked) {
+            padroesSection?.classList.add('d-none');
+        } else {
+            padroesSection?.classList.remove('d-none');
+        }
+    }
+
+    function calcularResultadoFaixa(faixaId) {
+        const row = document.querySelector(`tr[data-faixa-id="${faixaId}"]`);
+        if (!row) return;
+        
+        const checkbox = row.querySelector('.faixa-checkbox');
+        const erroInput = row.querySelector('.faixa-erro');
+        const incertezaInput = row.querySelector('.faixa-incerteza');
+        const toleranciaInput = row.querySelector('.faixa-tolerancia');
+        const resultadoDiv = row.querySelector('.resultado-preview-faixa');
+        
+        if (!checkbox.checked) {
+            resultadoDiv.innerHTML = '<span class="badge bg-secondary">Desconsiderada</span>';
+            row.classList.add('table-secondary');
+            erroInput.disabled = true;
+            incertezaInput.disabled = true;
+            return;
+        } else {
+            row.classList.remove('table-secondary');
+            erroInput.disabled = false;
+            incertezaInput.disabled = false;
+        }
+        
+        const erro = parseFloat(erroInput.value);
+        const incerteza = parseFloat(incertezaInput.value);
+        const tolerancia = parseFloat(toleranciaInput.value);
+        
+        if (isNaN(erro) || isNaN(incerteza) || isNaN(tolerancia)) {
+            resultadoDiv.innerHTML = '<span class="badge bg-secondary">Preencha os dados</span>';
+            return;
+        }
+        
+        const erroAbs = Math.abs(erro);
+        const incAbs = Math.abs(incerteza);
+        const tolAbs = Math.abs(tolerancia);
+        
+        const EMA = tolAbs / 2;
+        const EME = erroAbs + incAbs;
+        
+        let resultado = '';
+        let classe = '';
+        let icone = '';
+        
+        if (EME <= EMA) {
+            resultado = 'Aprovado sem correção';
+            classe = 'success';
+            icone = '✓';
+        } else if (EME <= tolAbs) {
+            resultado = 'Aprovado com Correção';
+            classe = 'warning';
+            icone = '⚠';
+        } else {
+            resultado = 'Reprovado';
+            classe = 'danger';
+            icone = '✗';
+        }
+        
+        resultadoDiv.innerHTML = `
+            <span class="badge bg-${classe}">${icone} ${resultado}</span>
+            <small class="d-block mt-1 text-muted">
+                EME=${EME.toFixed(4)} ${EME <= EMA ? '≤' : '>'} EMA=${EMA.toFixed(4)}
+            </small>
+        `;
+    }
+
+    if (rbcCheckbox) {
+        rbcCheckbox.addEventListener('change', togglePadroes);
+        togglePadroes();
+    }
+
+    if (faixasTable) {
+        if (toggleAllCheckbox) {
+            toggleAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.faixa-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                    const faixaId = cb.dataset.faixaId;
+                    calcularResultadoFaixa(faixaId);
+                });
+            });
+        }
+        
+        const faixaRows = document.querySelectorAll('.faixa-row');
+        faixaRows.forEach(row => {
+            const faixaId = row.dataset.faixaId;
+            
+            const checkbox = row.querySelector('.faixa-checkbox');
+            checkbox.addEventListener('change', function() {
+                calcularResultadoFaixa(faixaId);
+            });
+            
+            const erroInput = row.querySelector('.faixa-erro');
+            const incertezaInput = row.querySelector('.faixa-incerteza');
+            const toleranciaInput = row.querySelector('.faixa-tolerancia');
+            
+            [erroInput, incertezaInput, toleranciaInput].forEach(input => {
+                input?.addEventListener('input', () => calcularResultadoFaixa(faixaId));
+                input?.addEventListener('change', () => calcularResultadoFaixa(faixaId));
+            });
+        });
+    }
+});
+</script>
+
+<style>
+.card-header { font-weight: 600; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 0.5px; }
+.form-control-plaintext { font-size: 1rem; }
+.table-secondary { opacity: 0.6; }
+.resultado-preview-faixa { min-height: 40px; }
+.badge { font-size: 0.75rem; }
+@media (max-width: 991px) {
+    .sticky-top {
+        position: relative !important;
+        top: 0 !important;
+    }
+}
+</style>
+{% endif %}
+
+{% endblock %}
+
+{% load custom_filters %}

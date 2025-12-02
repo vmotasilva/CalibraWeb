@@ -20,6 +20,11 @@ urlpatterns = [
 		name="registrar_historico_calibracao",
 	),
 	path(
+		"historico/<int:historico_id>/visualizar/",
+		views.visualizar_historico_calibracao_view,
+		name="visualizar_historico_calibracao",
+	),
+	path(
 		"metrologia/historico/<int:historico_id>/preview/",
 		views.preview_certificado_view,
 		name="preview_certificado",
