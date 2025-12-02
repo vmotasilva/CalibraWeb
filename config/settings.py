@@ -206,6 +206,13 @@ STATIC_URL = "static/"
 # Onde o Django vai reunir os arquivos estáticos no deploy
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Media (user-uploaded files)
+# Em desenvolvimento, os arquivos serão servidos via `django.views.static.serve`.
+# Em produção (Railway/Gunicorn), recomenda-se usar um storage externo (ex.: S3)
+# ou montar um volume persistente e servir via NGINX. WhiteNoise não serve MEDIA.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 # Algoritmo de compressão e cache do WhiteNoise
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
