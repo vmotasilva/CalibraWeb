@@ -635,14 +635,15 @@ class ArquivoPadrao(models.Model):
     )
 
     def __str__(self):
+        # Show name and, if possible, the first related historico's calibration date
+        historico = self.historicos.first()
+        if historico:
+            return f"{self.nome or self.arquivo.name} ({historico.data_calibracao})"
         return self.nome or self.arquivo.name
 
     class Meta:
         verbose_name = "Arquivo de Padrão"
         verbose_name_plural = "Arquivos de Padrão"
-
-    def __str__(self):
-        return f"{self.instrumento.tag} - {self.data_calibracao}"
 
     # Propriedade para alertas visuais
     @property
