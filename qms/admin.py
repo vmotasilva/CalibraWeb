@@ -486,7 +486,7 @@ class ResultadoFaixaCalibracaoAdmin(admin.ModelAdmin):
         "faixa_medicao__valor_maximo",
     )
     list_filter = ("resultado", "desconsiderada")
-    autocomplete_fields = ["historico", "faixa_medicao"]
+    autocomplete_fields = ["historico"]
     readonly_fields = ("resultado",)
 
 
