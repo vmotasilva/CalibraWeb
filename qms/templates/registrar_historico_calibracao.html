@@ -74,10 +74,28 @@
                     </div>
                 </div>
 
+                <!-- FAIXA DE MEDIÇÃO -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <i class="bi bi-rulers"></i> 3. Faixa e Unidade de Medição
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="id_faixa_medicao" class="form-label fw-bold">
+                                Faixa/Unidade Calibrada
+                            </label>
+                            {{ form.faixa_medicao|add_class:"form-select" }}
+                            <small class="form-text text-muted">
+                                <i class="bi bi-info-circle"></i> Selecione qual faixa/unidade está sendo calibrada. A tolerância será preenchida automaticamente.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- IDENTIFICAÇÃO -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-info text-white">
-                        <i class="bi bi-card-text"></i> 3. Identificação
+                        <i class="bi bi-card-text"></i> 4. Identificação
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
@@ -116,7 +134,7 @@
                 <!-- RESULTADOS TÉCNICOS -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-warning text-dark">
-                        <i class="bi bi-calculator"></i> 4. Resultados da Calibração
+                        <i class="bi bi-calculator"></i> 5. Resultados da Calibração
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -139,7 +157,9 @@
                                     Tolerância (+/-)
                                 </label>
                                 {{ form.tolerancia_usada|add_class:"form-control" }}
-                                <small class="text-muted">Processo</small>
+                                <small class="text-muted">
+                                    <i class="bi bi-lightning-fill text-warning"></i> Auto-preenchida da faixa selecionada
+                                </small>
                             </div>
                         </div>
                         
@@ -153,24 +173,6 @@
                                     <small class="text-muted">Preencha os valores para ver o cálculo</small>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- VALIDAÇÃO -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-secondary text-white">
-                        <i class="bi bi-check-circle"></i> 5. Validação
-                    </div>
-                    <div class="card-body">
-                        <div class="form-check">
-                            {{ form.certificado_validado|add_class:"form-check-input" }}
-                            <label for="id_certificado_validado" class="form-check-label">
-                                Certificado validado
-                            </label>
-                            <small class="form-text text-muted d-block">
-                                Se não validar agora, será redirecionado para validação após salvar
-                            </small>
                         </div>
                     </div>
                 </div>
@@ -229,6 +231,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const certificadoInput = document.getElementById('id_certificado');
     const pdfViewer = document.getElementById('pdf-viewer');
     const pdfPlaceholder = document.getElementById('pdf-placeholder');
+    
+    // Elemento de seleção de faixa
+    const faixaSelect = document.getElementById('id_faixa_medicao');
 
     function formatarData(dataStr) {
         if (!dataStr) return '-';
@@ -428,6 +433,51 @@ document.addEventListener('DOMContentLoaded', function() {
             URL.revokeObjectURL(pdfViewer.src);
         }
     });
+    
+    // ===== CARREGA TOLERÂNCIA DA FAIXA SELECIONADA =====
+    if (faixaSelect) {
+        faixaSelect.addEventListener('change', function() {
+            const faixaId = this.value;
+            
+            if (!faixaId) {
+                toleranciaInput.value = '';
+                toleranciaInput.removeAttribute('readonly');
+                return;
+            }
+            
+            // Busca dados da faixa via AJAX
+            fetch(`/api/faixa/${faixaId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.tolerancia_mais_menos) {
+                        toleranciaInput.value = data.tolerancia_mais_menos;
+                        toleranciaInput.setAttribute('readonly', 'readonly');
+                        
+                        // Feedback visual
+                        toleranciaInput.style.background = '#d4edda';
+                        setTimeout(() => {
+                            toleranciaInput.style.background = '';
+                        }, 1500);
+                        
+                        // Recalcula resultado
+                        calcularResultado();
+                    } else {
+                        toleranciaInput.value = '';
+                        toleranciaInput.removeAttribute('readonly');
+                        messages.info('Esta faixa não possui tolerância cadastrada. Preencha manualmente.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar faixa:', error);
+                    toleranciaInput.removeAttribute('readonly');
+                });
+        });
+        
+        // Trigger inicial se já houver faixa selecionada
+        if (faixaSelect.value) {
+            faixaSelect.dispatchEvent(new Event('change'));
+        }
+    }
 });
 </script>
 

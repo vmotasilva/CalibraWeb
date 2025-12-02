@@ -3,7 +3,7 @@ from django import forms
 from .models import (Colaborador, Instrumento, Ocorrencia,
                      OcorrenciaInstrumento, OrdemCalibracao, Padrao,
                      SolicitacaoInstrumento, Procedimento, Area, RegistroTreinamento,
-                     HistoricoCalibracao, Fornecedor)
+                     HistoricoCalibracao, Fornecedor, FaixaMedicao)
 
 
 
@@ -185,12 +185,20 @@ class ProcedimentoForm(forms.ModelForm):
 
 
 class HistoricoCalibracaoForm(forms.ModelForm):
+    faixa_medicao = forms.ModelChoiceField(
+        queryset=FaixaMedicao.objects.none(),
+        required=False,
+        label="Faixa de Medição",
+        help_text="Selecione a faixa/unidade que está sendo calibrada",
+        widget=forms.Select(attrs={'class':'form-select'})
+    )
+    
     class Meta:
         model = HistoricoCalibracao
         fields = [
             'data_calibracao', 'proxima_calibracao', 'numero_certificado',
             'tipo_calibracao', 'responsavel', 'fornecedor', 'tem_selo_rbc',
-            'erro_encontrado', 'incerteza', 'tolerancia_usada', 'resultado', 'certificado'
+            'erro_encontrado', 'incerteza', 'tolerancia_usada', 'certificado'
         ]
         widgets = {
             'data_calibracao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
@@ -202,16 +210,25 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             'tem_selo_rbc': forms.CheckboxInput(attrs={'class':'form-check-input'}),
             'erro_encontrado': forms.NumberInput(attrs={'class':'form-control','step':'0.0001','placeholder':'Ex: 0.0050'}),
             'incerteza': forms.NumberInput(attrs={'class':'form-control','step':'0.0001','placeholder':'Ex: 0.0020'}),
-            'tolerancia_usada': forms.NumberInput(attrs={'class':'form-control','step':'0.0001','placeholder':'Ex: 0.0100'}),
-            'resultado': forms.Select(attrs={'class':'form-select','readonly':'readonly','disabled':'disabled'}),
+            'tolerancia_usada': forms.NumberInput(attrs={'class':'form-control','step':'0.0001','placeholder':'Ex: 0.0100','readonly':'readonly'}),
             'certificado': forms.FileInput(attrs={'class':'form-control'}),
         }
-
-    certificado_validado = forms.BooleanField(
-        required=False,
-        label="Certificado validado",
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
-    )
+    
+    def __init__(self, *args, **kwargs):
+        instrumento = kwargs.pop('instrumento', None)
+        super().__init__(*args, **kwargs)
+        
+        if instrumento:
+            # Popula as faixas de medição do instrumento
+            self.fields['faixa_medicao'].queryset = FaixaMedicao.objects.filter(instrumento=instrumento)
+            
+            # Se houver apenas uma faixa, pré-seleciona
+            faixas = list(self.fields['faixa_medicao'].queryset)
+            if len(faixas) == 1:
+                self.fields['faixa_medicao'].initial = faixas[0].id
+                # Pré-preenche tolerância se disponível
+                if faixas[0].tolerancia_mais_menos:
+                    self.fields['tolerancia_usada'].initial = faixas[0].tolerancia_mais_menos
 
 
 class RegistroTreinamentoForm(forms.ModelForm):

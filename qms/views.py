@@ -2228,7 +2228,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
         logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}, user={request.user.username}")
         
         if request.method == 'POST':
-            form = HistoricoCalibracaoForm(request.POST, request.FILES)
+            form = HistoricoCalibracaoForm(request.POST, request.FILES, instrumento=instrumento)
             logger.debug(f"POST data: {request.POST}")
             logger.debug(f"FILES: {list(request.FILES.keys())}")
             
@@ -2236,16 +2236,30 @@ def registrar_historico_calibracao_view(request, instrumento_id):
                 try:
                     historico = form.save(commit=False)
                     historico.instrumento = instrumento
+                    
+                    # Calcula resultado automaticamente
+                    erro = historico.erro_encontrado or 0
+                    incerteza = historico.incerteza or 0
+                    tolerancia = historico.tolerancia_usada or 0
+                    
+                    erro_abs = abs(erro)
+                    inc_abs = abs(incerteza)
+                    tol_abs = abs(tolerancia)
+                    
+                    EMA = tol_abs / 2
+                    EME = erro_abs + inc_abs
+                    
+                    if EME <= EMA:
+                        historico.resultado = 'APROVADO'
+                    elif EME > (EMA * 3):
+                        historico.resultado = 'REPROVADO'
+                    else:
+                        historico.resultado = 'CONDICIONAL'
+                    
                     historico.save()
                     form.save_m2m()
-                    logger.info(f"Histórico {historico.id} criado com sucesso para instrumento {instrumento_id}")
-                    messages.success(request, 'Histórico de calibração registrado com sucesso!')
-                    
-                    # Se certificado não está validado, ir para a pré-visualização e opção de carimbo
-                    certificado_validado = form.cleaned_data.get('certificado_validado', False)
-                    if not certificado_validado and historico.certificado:
-                        logger.info(f"Redirecionando para preview - certificado não validado")
-                        return redirect('preview_certificado', historico_id=historico.id)
+                    logger.info(f"Histórico {historico.id} criado com sucesso para instrumento {instrumento_id}, resultado: {historico.resultado}")
+                    messages.success(request, f'Histórico registrado com sucesso! Resultado: {historico.resultado}')
                     
                     return redirect('detalhe_instrumento', instrumento_id=instrumento.id)
                 except Exception as save_error:
@@ -2258,7 +2272,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
                     for error in errors:
                         messages.error(request, f"{field}: {error}")
         else:
-            form = HistoricoCalibracaoForm()
+            form = HistoricoCalibracaoForm(instrumento=instrumento)
         
         return render(request, 'registrar_historico_calibracao.html', {
             'form': form,
@@ -2366,3 +2380,23 @@ def aplicar_carimbo_certificado_view(request, historico_id):
                 os.unlink(out_path)
         except Exception as cleanup_error:
             logger.warning(f"Erro ao limpar arquivos temporários: {cleanup_error}")
+
+
+@login_required
+def api_faixa_medicao_view(request, faixa_id):
+    """API para retornar dados de uma faixa de medição (tolerância, unidade, etc)."""
+    try:
+        faixa = get_object_or_404(FaixaMedicao, id=faixa_id)
+        data = {
+            'id': faixa.id,
+            'unidade': faixa.unidade.sigla if faixa.unidade else None,
+            'valor_minimo': float(faixa.valor_minimo) if faixa.valor_minimo else None,
+            'valor_maximo': float(faixa.valor_maximo) if faixa.valor_maximo else None,
+            'tolerancia_mais_menos': float(faixa.tolerancia_mais_menos) if faixa.tolerancia_mais_menos else None,
+            'nominal': float(faixa.nominal) if faixa.nominal else None,
+            'resolucao': float(faixa.resolucao) if faixa.resolucao else None,
+        }
+        return JsonResponse(data)
+    except Exception as e:
+        logger.error(f"Erro ao buscar faixa {faixa_id}: {e}", exc_info=True)
+        return JsonResponse({'error': str(e)}, status=404)

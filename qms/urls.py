@@ -7,6 +7,7 @@ urlpatterns = [
 	path("healthz/", views.health_check, name="healthz"),
 	path("import-jobs/", views.import_jobs_view, name="import_jobs"),
 	path("import-jobs/<uuid:job_id>/retry/", views.retry_import_job_view, name="retry_import_job"),
+	path("api/faixa/<int:faixa_id>/", views.api_faixa_medicao_view, name="api_faixa_medicao"),
 	path("imp-inst/", views.imp_instr_view, name="importar_instrumentos"),
 	path("imp-historico/", views.imp_historico_view, name="importar_historico"),
 	path("imp-colab/", views.imp_colab_view, name="importar_colaboradores"),
