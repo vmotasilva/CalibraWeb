@@ -185,20 +185,17 @@ class ProcedimentoForm(forms.ModelForm):
 
 
 class HistoricoCalibracaoForm(forms.ModelForm):
-    faixa_medicao = forms.ModelChoiceField(
-        queryset=FaixaMedicao.objects.none(),
-        required=False,
-        label="Faixa de Medição",
-        help_text="Selecione a faixa/unidade que está sendo calibrada",
-        widget=forms.Select(attrs={'class':'form-select'})
-    )
+    """
+    Formulário para registrar histórico de calibração.
+    Agora suporta múltiplas faixas (dados de faixas são processados separadamente na view).
+    """
     
     class Meta:
         model = HistoricoCalibracao
         fields = [
             'data_calibracao', 'proxima_calibracao', 'numero_certificado',
             'tipo_calibracao', 'responsavel', 'fornecedor', 'tem_selo_rbc',
-            'erro_encontrado', 'incerteza', 'tolerancia_usada', 'certificado'
+            'certificado'
         ]
         widgets = {
             'data_calibracao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
@@ -208,27 +205,13 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             'responsavel': forms.TextInput(attrs={'class':'form-control','placeholder':'Nome do responsável'}),
             'fornecedor': forms.TextInput(attrs={'class':'form-control','placeholder':'Nome do laboratório/fornecedor'}),
             'tem_selo_rbc': forms.CheckboxInput(attrs={'class':'form-check-input'}),
-            'erro_encontrado': forms.NumberInput(attrs={'class':'form-control','step':'0.0001','placeholder':'Ex: 0.0050'}),
-            'incerteza': forms.NumberInput(attrs={'class':'form-control','step':'0.0001','placeholder':'Ex: 0.0020'}),
-            'tolerancia_usada': forms.NumberInput(attrs={'class':'form-control','step':'0.0001','placeholder':'Ex: 0.0100','readonly':'readonly'}),
             'certificado': forms.FileInput(attrs={'class':'form-control'}),
         }
     
     def __init__(self, *args, **kwargs):
+        # Aceita instrumento mas não faz nada com ele (mantém compatibilidade)
         instrumento = kwargs.pop('instrumento', None)
         super().__init__(*args, **kwargs)
-        
-        if instrumento:
-            # Popula as faixas de medição do instrumento
-            self.fields['faixa_medicao'].queryset = FaixaMedicao.objects.filter(instrumento=instrumento)
-            
-            # Se houver apenas uma faixa, pré-seleciona
-            faixas = list(self.fields['faixa_medicao'].queryset)
-            if len(faixas) == 1:
-                self.fields['faixa_medicao'].initial = faixas[0].id
-                # Pré-preenche tolerância se disponível
-                if faixas[0].tolerancia_mais_menos:
-                    self.fields['tolerancia_usada'].initial = faixas[0].tolerancia_mais_menos
 
 
 class RegistroTreinamentoForm(forms.ModelForm):

@@ -14,7 +14,7 @@ from .models import (
     AvaliacaoFornecedor, Ocorrencia, OcorrenciaInstrumento,
     CategoriaInstrumento, CentroCusto, Colaborador, DocumentoPessoal, FaixaMedicao, Ferias, Fornecedor,
     HierarquiaSetor, HistoricoCalibracao, Instrumento, Orcamento, OrdemCalibracao, PacoteTreinamento, Padrao,
-    Procedimento, ProcessoCotacao, RegistroTreinamento, Setor, SolicitacaoInstrumento, UnidadeMedida, Area, ProcedimentoRevisao
+    Procedimento, ProcessoCotacao, RegistroTreinamento, ResultadoFaixaCalibracao, Setor, SolicitacaoInstrumento, UnidadeMedida, Area, ProcedimentoRevisao
 )
 
 
@@ -466,6 +466,28 @@ class HistoricoCalibracaoAdmin(admin.ModelAdmin):
     list_filter = ("resultado", "data_calibracao", "tem_selo_rbc", "tipo_calibracao")
     autocomplete_fields = ["instrumento"]
     filter_horizontal = ("padroes_utilizados",)
+
+
+@admin.register(ResultadoFaixaCalibracao, site=admin_site)
+class ResultadoFaixaCalibracaoAdmin(admin.ModelAdmin):
+    list_display = (
+        "historico",
+        "faixa_medicao",
+        "erro_encontrado",
+        "incerteza",
+        "tolerancia_usada",
+        "resultado",
+        "desconsiderada",
+    )
+    search_fields = (
+        "historico__numero_certificado",
+        "historico__instrumento__tag",
+        "faixa_medicao__valor_minimo",
+        "faixa_medicao__valor_maximo",
+    )
+    list_filter = ("resultado", "desconsiderada")
+    autocomplete_fields = ["historico", "faixa_medicao"]
+    readonly_fields = ("resultado",)
 
 
 # --- NOVOS PAINEIS (SOLICITAÇÕES E OCORRÊNCIAS AVULSAS) ---

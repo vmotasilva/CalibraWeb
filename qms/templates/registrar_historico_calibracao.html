@@ -295,16 +295,11 @@ document.addEventListener('DOMContentLoaded', function() {
             icone = '⚠';
         }
         
-        // Atualiza o select (habilita temporariamente para mudar valor)
-        resultadoSelect.disabled = false;
-        resultadoSelect.value = resultado;
-        resultadoSelect.disabled = true;
-        
         // Mostra prévia
         resultadoPreviewBox.classList.remove('d-none');
-        resultadoPreviewBox.className = `alert alert-${classe} mb-4`;
+        resultadoPreviewBox.className = `alert alert-${classe} mt-3`;
         resultadoPreviewText.textContent = resultado;
-        resultadoPreviewText.className = `fs-3 fw-bold text-${classe}`;
+        resultadoPreviewText.className = `fs-4 fw-bold text-${classe}`;
         
         // Mostra cálculo detalhado
         resultadoPreviewCalculo.innerHTML = `
