@@ -2274,9 +2274,13 @@ def registrar_historico_calibracao_view(request, instrumento_id):
         else:
             form = HistoricoCalibracaoForm(instrumento=instrumento)
         
+        # Busca todas as faixas do instrumento para exibir na tabela
+        faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+        
         return render(request, 'registrar_historico_calibracao.html', {
             'form': form,
-            'instrumento': instrumento
+            'instrumento': instrumento,
+            'faixas_medicao': faixas_medicao
         })
     except Exception as e:
         logger.error(f"Erro crítico em registrar_historico_calibracao_view: {e}", exc_info=True)

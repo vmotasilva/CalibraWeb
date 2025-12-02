@@ -74,28 +74,10 @@
                     </div>
                 </div>
 
-                <!-- FAIXA DE MEDIÇÃO -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <i class="bi bi-rulers"></i> 3. Faixa e Unidade de Medição
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="id_faixa_medicao" class="form-label fw-bold">
-                                Faixa/Unidade Calibrada
-                            </label>
-                            {{ form.faixa_medicao|add_class:"form-select" }}
-                            <small class="form-text text-muted">
-                                <i class="bi bi-info-circle"></i> Selecione qual faixa/unidade está sendo calibrada. A tolerância será preenchida automaticamente.
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- IDENTIFICAÇÃO -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-info text-white">
-                        <i class="bi bi-card-text"></i> 4. Identificação
+                        <i class="bi bi-card-text"></i> 3. Identificação
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
@@ -131,49 +113,100 @@
                     </div>
                 </div>
 
-                <!-- RESULTADOS TÉCNICOS -->
+                <!-- TABELA DE FAIXAS -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-warning text-dark">
-                        <i class="bi bi-calculator"></i> 5. Resultados da Calibração
+                        <i class="bi bi-calculator"></i> 4. Resultados por Faixa de Medição
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="id_erro_encontrado" class="form-label fw-bold">
-                                    Erro (E)
-                                </label>
-                                {{ form.erro_encontrado|add_class:"form-control" }}
-                                <small class="text-muted">Valor absoluto</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="id_incerteza" class="form-label fw-bold">
-                                    Incerteza (U)
-                                </label>
-                                {{ form.incerteza|add_class:"form-control" }}
-                                <small class="text-muted">Expandida</small>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="id_tolerancia_usada" class="form-label fw-bold">
-                                    Tolerância (+/-)
-                                </label>
-                                {{ form.tolerancia_usada|add_class:"form-control" }}
-                                <small class="text-muted">
-                                    <i class="bi bi-lightning-fill text-warning"></i> Auto-preenchida da faixa selecionada
-                                </small>
-                            </div>
+                        <p class="text-muted mb-3">
+                            <i class="bi bi-info-circle"></i> Preencha os resultados para cada faixa. Desmarque as que não foram calibradas neste certificado.
+                        </p>
+                        
+                        {% if faixas_medicao %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="faixas-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 5%;">
+                                            <input type="checkbox" id="toggle-all-faixas" checked title="Marcar/Desmarcar todas">
+                                        </th>
+                                        <th style="width: 20%;">Faixa</th>
+                                        <th style="width: 10%;">Unidade</th>
+                                        <th style="width: 13%;">Erro (E)</th>
+                                        <th style="width: 13%;">Incerteza (U)</th>
+                                        <th style="width: 13%;">Tolerância</th>
+                                        <th style="width: 26%;">Resultado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for faixa in faixas_medicao %}
+                                    <tr class="faixa-row" data-faixa-id="{{ faixa.id }}" data-frequencia="{{ faixa.instrumento.frequencia_meses }}">
+                                        <td class="text-center">
+                                            <input type="checkbox" 
+                                                   name="faixa_{{ faixa.id }}_ativa" 
+                                                   class="form-check-input faixa-checkbox" 
+                                                   checked
+                                                   data-faixa-id="{{ faixa.id }}">
+                                        </td>
+                                        <td>
+                                            <small><strong>{{ faixa.valor_minimo }} a {{ faixa.valor_maximo }}</strong></small>
+                                        </td>
+                                        <td>
+                                            <small>{{ faixa.unidade.simbolo }}</small>
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_erro" 
+                                                   class="form-control form-control-sm faixa-erro" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   placeholder="0.0000">
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_incerteza" 
+                                                   class="form-control form-control-sm faixa-incerteza" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   placeholder="0.0000">
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_tolerancia" 
+                                                   class="form-control form-control-sm faixa-tolerancia" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   value="{{ faixa.tolerancia_mais_menos|default:'' }}"
+                                                   readonly
+                                                   placeholder="0.0000">
+                                        </td>
+                                        <td>
+                                            <div class="resultado-preview-faixa" data-faixa-id="{{ faixa.id }}">
+                                                <span class="badge bg-secondary">Preencha os dados</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
                         
-                        <!-- Prévia do Resultado -->
-                        <div id="resultado-preview-box" class="alert d-none mt-3">
-                            <div class="row align-items-center">
-                                <div class="col-md-5 text-center">
-                                    <div class="fs-4 fw-bold" id="resultado-preview-text">-</div>
-                                </div>
-                                <div class="col-md-7" id="resultado-preview-calculo">
-                                    <small class="text-muted">Preencha os valores para ver o cálculo</small>
-                                </div>
-                            </div>
+                        <!-- Resumo de Faixas Ativas -->
+                        <div class="alert alert-info mt-3" id="faixas-resumo">
+                            <strong><i class="bi bi-check2-square"></i> Faixas selecionadas:</strong>
+                            <span id="faixas-count">{{ faixas_medicao|length }}</span> de {{ faixas_medicao|length }}
                         </div>
+                        
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            Este instrumento não possui faixas de medição cadastradas.
+                            <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="alert-link">
+                                Cadastre faixas antes de registrar calibração.
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -219,21 +252,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewProxima = document.getElementById('preview-proxima');
     const frequenciaMeses = {{ instrumento.frequencia_meses }};
     
-    // Campos para cálculo do resultado
-    const erroInput = document.getElementById('id_erro_encontrado');
-    const incertezaInput = document.getElementById('id_incerteza');
-    const toleranciaInput = document.getElementById('id_tolerancia_usada');
-    const resultadoPreviewBox = document.getElementById('resultado-preview-box');
-    const resultadoPreviewText = document.getElementById('resultado-preview-text');
-    const resultadoPreviewCalculo = document.getElementById('resultado-preview-calculo');
-    
     // Elementos do visualizador de PDF
     const certificadoInput = document.getElementById('id_certificado');
     const pdfViewer = document.getElementById('pdf-viewer');
     const pdfPlaceholder = document.getElementById('pdf-placeholder');
     
-    // Elemento de seleção de faixa
-    const faixaSelect = document.getElementById('id_faixa_medicao');
+    // Elementos da tabela de faixas
+    const faixasTable = document.getElementById('faixas-table');
+    const toggleAllCheckbox = document.getElementById('toggle-all-faixas');
+    const faixasCount = document.getElementById('faixas-count');
 
     function formatarData(dataStr) {
         if (!dataStr) return '-';
@@ -259,23 +286,45 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${ano}-${mes}-${dia}`;
     }
 
-    function calcularResultado() {
+    function calcularResultadoFaixa(faixaId) {
+        const row = document.querySelector(`tr[data-faixa-id="${faixaId}"]`);
+        if (!row) return;
+        
+        const checkbox = row.querySelector('.faixa-checkbox');
+        const erroInput = row.querySelector('.faixa-erro');
+        const incertezaInput = row.querySelector('.faixa-incerteza');
+        const toleranciaInput = row.querySelector('.faixa-tolerancia');
+        const resultadoDiv = row.querySelector('.resultado-preview-faixa');
+        
+        // Se desconsiderada, limpa resultado
+        if (!checkbox.checked) {
+            resultadoDiv.innerHTML = '<span class="badge bg-secondary">Desconsiderada</span>';
+            row.classList.add('table-secondary');
+            erroInput.disabled = true;
+            incertezaInput.disabled = true;
+            return;
+        } else {
+            row.classList.remove('table-secondary');
+            erroInput.disabled = false;
+            incertezaInput.disabled = false;
+        }
+        
         const erro = parseFloat(erroInput.value);
         const incerteza = parseFloat(incertezaInput.value);
         const tolerancia = parseFloat(toleranciaInput.value);
         
         if (isNaN(erro) || isNaN(incerteza) || isNaN(tolerancia)) {
-            resultadoPreviewBox.classList.add('d-none');
+            resultadoDiv.innerHTML = '<span class="badge bg-secondary">Preencha os dados</span>';
             return;
         }
         
-        // Lógica do modelo Django
+        // Lógica de cálculo
         const erroAbs = Math.abs(erro);
         const incAbs = Math.abs(incerteza);
         const tolAbs = Math.abs(tolerancia);
         
-        const EMA = tolAbs / 2;  // Erro Máximo Admissível
-        const EME = erroAbs + incAbs;  // Erro + Incerteza
+        const EMA = tolAbs / 2;
+        const EME = erroAbs + incAbs;
         
         let resultado = '';
         let classe = '';
@@ -295,26 +344,66 @@ document.addEventListener('DOMContentLoaded', function() {
             icone = '⚠';
         }
         
-        // Mostra prévia
-        resultadoPreviewBox.classList.remove('d-none');
-        resultadoPreviewBox.className = `alert alert-${classe} mt-3`;
-        resultadoPreviewText.textContent = resultado;
-        resultadoPreviewText.className = `fs-4 fw-bold text-${classe}`;
-        
-        // Mostra cálculo detalhado
-        resultadoPreviewCalculo.innerHTML = `
-            <small>
-                <strong>Cálculo:</strong><br>
-                Erro (E) = ${erroAbs.toFixed(4)}<br>
-                Incerteza (U) = ${incAbs.toFixed(4)}<br>
-                Tolerância = ${tolAbs.toFixed(4)}<br>
-                <hr class="my-2">
-                EMA (Erro Máx. Admissível) = Tol/2 = <strong>${EMA.toFixed(4)}</strong><br>
-                EME (E + U) = <strong>${EME.toFixed(4)}</strong><br>
-                <hr class="my-2">
-                ${icone} <strong>${resultado}</strong>: EME ${EME <= EMA ? '≤' : '>'} EMA
+        resultadoDiv.innerHTML = `
+            <span class="badge bg-${classe}">${icone} ${resultado}</span>
+            <small class="d-block mt-1 text-muted">
+                EME=${EME.toFixed(4)} ${EME <= EMA ? '≤' : '>'} EMA=${EMA.toFixed(4)}
             </small>
         `;
+        
+        // Recalcula próxima calibração baseada nas faixas ativas
+        calcularProximaCalibracaoInteligente();
+    }
+    
+    function calcularProximaCalibracaoInteligente() {
+        const dataCalibValue = dataCalibInput.value;
+        if (!dataCalibValue) return;
+        
+        // Coleta frequências das faixas ativas
+        const faixasAtivas = document.querySelectorAll('.faixa-checkbox:checked');
+        let menorFrequencia = frequenciaMeses; // Usa a frequência do instrumento como padrão
+        
+        faixasAtivas.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            const freq = parseInt(row.dataset.frequencia);
+            if (!isNaN(freq) && freq < menorFrequencia) {
+                menorFrequencia = freq;
+            }
+        });
+        
+        // Calcula próxima calibração com a menor frequência
+        const dataCalib = new Date(dataCalibValue);
+        const proximaData = new Date(dataCalib);
+        proximaData.setMonth(proximaData.getMonth() + menorFrequencia);
+        
+        const ano = proximaData.getFullYear();
+        const mes = String(proximaData.getMonth() + 1).padStart(2, '0');
+        const dia = String(proximaData.getDate()).padStart(2, '0');
+        
+        proximaCalibInput.value = `${ano}-${mes}-${dia}`;
+        
+        // Atualiza prévia
+        previewBox.classList.remove('d-none');
+        previewDataCalib.textContent = formatarData(dataCalibValue);
+        previewProxima.textContent = formatarData(`${ano}-${mes}-${dia}`);
+        
+        // Atualiza badge de frequência se mudou
+        const freqBadge = document.getElementById('freq-badge');
+        if (menorFrequencia !== frequenciaMeses) {
+            freqBadge.textContent = `${menorFrequencia} meses (menor período entre faixas)`;
+            freqBadge.classList.remove('bg-primary');
+            freqBadge.classList.add('bg-warning');
+        } else {
+            freqBadge.textContent = `${frequenciaMeses} meses`;
+            freqBadge.classList.remove('bg-warning');
+            freqBadge.classList.add('bg-primary');
+        }
+    }
+    
+    function atualizarContagemFaixas() {
+        const ativas = document.querySelectorAll('.faixa-checkbox:checked').length;
+        const total = document.querySelectorAll('.faixa-checkbox').length;
+        faixasCount.textContent = `${ativas} de ${total}`;
     }
     
     function atualizarPrevia() {
@@ -360,22 +449,45 @@ document.addEventListener('DOMContentLoaded', function() {
         dataCalibInput.setAttribute('title', `A próxima calibração será calculada automaticamente (+ ${frequenciaMeses} meses)`);
     }
     
-    // Eventos para cálculo do resultado
-    erroInput.addEventListener('input', calcularResultado);
-    erroInput.addEventListener('change', calcularResultado);
-    incertezaInput.addEventListener('input', calcularResultado);
-    incertezaInput.addEventListener('change', calcularResultado);
-    toleranciaInput.addEventListener('input', calcularResultado);
-    toleranciaInput.addEventListener('change', calcularResultado);
-    
-    // Tooltips informativos
-    erroInput.setAttribute('title', 'Erro encontrado na calibração (valor absoluto)');
-    incertezaInput.setAttribute('title', 'Incerteza expandida da medição');
-    toleranciaInput.setAttribute('title', 'Tolerância do processo (+/-)');
-    
-    // Calcula se já houver valores preenchidos
-    if (erroInput.value && incertezaInput.value && toleranciaInput.value) {
-        calcularResultado();
+    // ===== EVENTOS DA TABELA DE FAIXAS =====
+    if (faixasTable) {
+        // Marcar/Desmarcar todas as faixas
+        if (toggleAllCheckbox) {
+            toggleAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.faixa-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                    const faixaId = cb.dataset.faixaId;
+                    calcularResultadoFaixa(faixaId);
+                });
+                atualizarContagemFaixas();
+                calcularProximaCalibracaoInteligente();
+            });
+        }
+        
+        // Eventos para cada linha da tabela
+        const faixaRows = document.querySelectorAll('.faixa-row');
+        faixaRows.forEach(row => {
+            const faixaId = row.dataset.faixaId;
+            
+            // Checkbox individual
+            const checkbox = row.querySelector('.faixa-checkbox');
+            checkbox.addEventListener('change', function() {
+                calcularResultadoFaixa(faixaId);
+                atualizarContagemFaixas();
+                calcularProximaCalibracaoInteligente();
+            });
+            
+            // Inputs de erro, incerteza, tolerância
+            const erroInput = row.querySelector('.faixa-erro');
+            const incertezaInput = row.querySelector('.faixa-incerteza');
+            const toleranciaInput = row.querySelector('.faixa-tolerancia');
+            
+            [erroInput, incertezaInput, toleranciaInput].forEach(input => {
+                input.addEventListener('input', () => calcularResultadoFaixa(faixaId));
+                input.addEventListener('change', () => calcularResultadoFaixa(faixaId));
+            });
+        });
     }
     
     // ===== VISUALIZADOR DE PDF =====
@@ -429,50 +541,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // ===== CARREGA TOLERÂNCIA DA FAIXA SELECIONADA =====
-    if (faixaSelect) {
-        faixaSelect.addEventListener('change', function() {
-            const faixaId = this.value;
-            
-            if (!faixaId) {
-                toleranciaInput.value = '';
-                toleranciaInput.removeAttribute('readonly');
-                return;
-            }
-            
-            // Busca dados da faixa via AJAX
-            fetch(`/api/faixa/${faixaId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.tolerancia_mais_menos) {
-                        toleranciaInput.value = data.tolerancia_mais_menos;
-                        toleranciaInput.setAttribute('readonly', 'readonly');
-                        
-                        // Feedback visual
-                        toleranciaInput.style.background = '#d4edda';
-                        setTimeout(() => {
-                            toleranciaInput.style.background = '';
-                        }, 1500);
-                        
-                        // Recalcula resultado
-                        calcularResultado();
-                    } else {
-                        toleranciaInput.value = '';
-                        toleranciaInput.removeAttribute('readonly');
-                        messages.info('Esta faixa não possui tolerância cadastrada. Preencha manualmente.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro ao carregar faixa:', error);
-                    toleranciaInput.removeAttribute('readonly');
-                });
-        });
-        
-        // Trigger inicial se já houver faixa selecionada
-        if (faixaSelect.value) {
-            faixaSelect.dispatchEvent(new Event('change'));
-        }
-    }
 });
 </script>
 
@@ -516,6 +584,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .sticky-top {
     z-index: 100;
+}
+
+/* Tabela de faixas */
+#faixas-table {
+    font-size: 0.9rem;
+}
+
+#faixas-table thead th {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+#faixas-table input.form-control-sm {
+    font-size: 0.85rem;
+}
+
+#faixas-table .table-secondary {
+    opacity: 0.6;
+}
+
+#faixas-table .resultado-preview-faixa {
+    min-height: 40px;
+}
+
+#faixas-table .badge {
+    font-size: 0.75rem;
 }
 
 /* Animações */
