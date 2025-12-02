@@ -17,9 +17,9 @@
         </div>
     </div>
 
-    <!-- Prévia do Cálculo -->
+    <!-- Prévia do Cálculo da Data -->
     <div id="preview-box" class="alert alert-success d-none mb-4">
-        <h5 class="mb-3"><i class="bi bi-calendar-check"></i> Prévia do Cálculo</h5>
+        <h5 class="mb-3"><i class="bi bi-calendar-check"></i> Prévia do Cálculo - Próxima Calibração</h5>
         <div class="row">
             <div class="col-md-4">
                 <strong>Data Calibração:</strong><br>
@@ -32,6 +32,19 @@
             <div class="col-md-4">
                 <strong>Próxima Calibração:</strong><br>
                 <span id="preview-proxima" class="fs-5 text-success fw-bold">-</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prévia do Resultado (Aprovado/Reprovado) -->
+    <div id="resultado-preview-box" class="alert d-none mb-4">
+        <h5 class="mb-3"><i class="bi bi-calculator"></i> Prévia do Resultado - Cálculo Automático</h5>
+        <div class="row">
+            <div class="col-md-4 text-center">
+                <div class="display-6 mb-2" id="resultado-preview-text">-</div>
+            </div>
+            <div class="col-md-8" id="resultado-preview-calculo">
+                <small class="text-muted">Preencha Erro, Incerteza e Tolerância para ver o cálculo</small>
             </div>
         </div>
     </div>
@@ -74,6 +87,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewDataCalib = document.getElementById('preview-data-calib');
     const previewProxima = document.getElementById('preview-proxima');
     const frequenciaMeses = {{ instrumento.frequencia_meses }};
+    
+    // Campos para cálculo do resultado
+    const erroInput = document.getElementById('id_erro_encontrado');
+    const incertezaInput = document.getElementById('id_incerteza');
+    const toleranciaInput = document.getElementById('id_tolerancia_usada');
+    const resultadoSelect = document.getElementById('id_resultado');
+    const resultadoPreviewBox = document.getElementById('resultado-preview-box');
+    const resultadoPreviewText = document.getElementById('resultado-preview-text');
+    const resultadoPreviewCalculo = document.getElementById('resultado-preview-calculo');
 
     function formatarData(dataStr) {
         if (!dataStr) return '-';
@@ -99,6 +121,69 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${ano}-${mes}-${dia}`;
     }
 
+    function calcularResultado() {
+        const erro = parseFloat(erroInput.value);
+        const incerteza = parseFloat(incertezaInput.value);
+        const tolerancia = parseFloat(toleranciaInput.value);
+        
+        if (isNaN(erro) || isNaN(incerteza) || isNaN(tolerancia)) {
+            resultadoPreviewBox.classList.add('d-none');
+            return;
+        }
+        
+        // Lógica do modelo Django
+        const erroAbs = Math.abs(erro);
+        const incAbs = Math.abs(incerteza);
+        const tolAbs = Math.abs(tolerancia);
+        
+        const EMA = tolAbs / 2;  // Erro Máximo Admissível
+        const EME = erroAbs + incAbs;  // Erro + Incerteza
+        
+        let resultado = '';
+        let classe = '';
+        let icone = '';
+        
+        if (EME <= EMA) {
+            resultado = 'APROVADO';
+            classe = 'success';
+            icone = '✓';
+        } else if (EME > (EMA * 3)) {
+            resultado = 'REPROVADO';
+            classe = 'danger';
+            icone = '✗';
+        } else {
+            resultado = 'CONDICIONAL';
+            classe = 'warning';
+            icone = '⚠';
+        }
+        
+        // Atualiza o select (habilita temporariamente para mudar valor)
+        resultadoSelect.disabled = false;
+        resultadoSelect.value = resultado;
+        resultadoSelect.disabled = true;
+        
+        // Mostra prévia
+        resultadoPreviewBox.classList.remove('d-none');
+        resultadoPreviewBox.className = `alert alert-${classe} mb-4`;
+        resultadoPreviewText.textContent = resultado;
+        resultadoPreviewText.className = `fs-3 fw-bold text-${classe}`;
+        
+        // Mostra cálculo detalhado
+        resultadoPreviewCalculo.innerHTML = `
+            <small>
+                <strong>Cálculo:</strong><br>
+                Erro (E) = ${erroAbs.toFixed(4)}<br>
+                Incerteza (U) = ${incAbs.toFixed(4)}<br>
+                Tolerância = ${tolAbs.toFixed(4)}<br>
+                <hr class="my-2">
+                EMA (Erro Máx. Admissível) = Tol/2 = <strong>${EMA.toFixed(4)}</strong><br>
+                EME (E + U) = <strong>${EME.toFixed(4)}</strong><br>
+                <hr class="my-2">
+                ${icone} <strong>${resultado}</strong>: EME ${EME <= EMA ? '≤' : '>'} EMA
+            </small>
+        `;
+    }
+    
     function atualizarPrevia() {
         const dataCalibValue = dataCalibInput.value;
         
@@ -140,6 +225,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Adiciona tooltip informativo
     if (frequenciaMeses) {
         dataCalibInput.setAttribute('title', `A próxima calibração será calculada automaticamente (+ ${frequenciaMeses} meses)`);
+    }
+    
+    // Eventos para cálculo do resultado
+    erroInput.addEventListener('input', calcularResultado);
+    erroInput.addEventListener('change', calcularResultado);
+    incertezaInput.addEventListener('input', calcularResultado);
+    incertezaInput.addEventListener('change', calcularResultado);
+    toleranciaInput.addEventListener('input', calcularResultado);
+    toleranciaInput.addEventListener('change', calcularResultado);
+    
+    // Tooltips informativos
+    erroInput.setAttribute('title', 'Erro encontrado na calibração (valor absoluto)');
+    incertezaInput.setAttribute('title', 'Incerteza expandida da medição');
+    toleranciaInput.setAttribute('title', 'Tolerância do processo (+/-)');
+    
+    // Calcula se já houver valores preenchidos
+    if (erroInput.value && incertezaInput.value && toleranciaInput.value) {
+        calcularResultado();
     }
 });
 </script>

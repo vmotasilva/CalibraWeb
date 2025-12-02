@@ -190,7 +190,7 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         fields = [
             'data_calibracao', 'proxima_calibracao', 'numero_certificado',
             'tipo_calibracao', 'responsavel', 'fornecedor', 'tem_selo_rbc',
-            'erro_encontrado', 'incerteza', 'tolerancia_usada', 'certificado'
+            'erro_encontrado', 'incerteza', 'tolerancia_usada', 'resultado', 'certificado'
         ]
         widgets = {
             'data_calibracao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
@@ -200,9 +200,10 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             'responsavel': forms.TextInput(attrs={'class':'form-control','placeholder':'Nome do responsável'}),
             'fornecedor': forms.TextInput(attrs={'class':'form-control','placeholder':'Nome do laboratório/fornecedor'}),
             'tem_selo_rbc': forms.CheckboxInput(attrs={'class':'form-check-input'}),
-            'erro_encontrado': forms.NumberInput(attrs={'class':'form-control','step':'0.0001'}),
-            'incerteza': forms.NumberInput(attrs={'class':'form-control','step':'0.0001'}),
-            'tolerancia_usada': forms.NumberInput(attrs={'class':'form-control','step':'0.0001'}),
+            'erro_encontrado': forms.NumberInput(attrs={'class':'form-control','step':'0.0001','placeholder':'Ex: 0.0050'}),
+            'incerteza': forms.NumberInput(attrs={'class':'form-control','step':'0.0001','placeholder':'Ex: 0.0020'}),
+            'tolerancia_usada': forms.NumberInput(attrs={'class':'form-control','step':'0.0001','placeholder':'Ex: 0.0100'}),
+            'resultado': forms.Select(attrs={'class':'form-select','readonly':'readonly','disabled':'disabled'}),
             'certificado': forms.FileInput(attrs={'class':'form-control'}),
         }
 
