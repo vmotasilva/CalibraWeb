@@ -206,6 +206,12 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             'certificado': forms.FileInput(attrs={'class':'form-control'}),
         }
 
+    certificado_validado = forms.BooleanField(
+        required=False,
+        label="Certificado validado",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+
 
 class RegistroTreinamentoForm(forms.ModelForm):
     class Meta:

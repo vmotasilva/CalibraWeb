@@ -2228,6 +2228,9 @@ def registrar_historico_calibracao_view(request, instrumento_id):
             historico.save()
             form.save_m2m()
             messages.success(request, 'Histórico de calibração registrado com sucesso!')
+            # Se certificado não está validado, ir para a pré-visualização e opção de carimbo
+            if not getattr(historico, 'certificado_validado', False) and historico.certificado:
+                return redirect('preview_certificado', historico_id=historico.id)
             return redirect('detalhe_instrumento', instrumento_id=instrumento.id)
     else:
         form = HistoricoCalibracaoForm()
@@ -2235,3 +2238,66 @@ def registrar_historico_calibracao_view(request, instrumento_id):
         'form': form,
         'instrumento': instrumento
     })
+
+@login_required
+def preview_certificado_view(request, historico_id):
+    historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    if not historico.certificado:
+        messages.error(request, 'Este histórico não possui arquivo de certificado.')
+        return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
+
+    return render(request, 'preview_certificado.html', {
+        'historico': historico,
+    })
+
+@login_required
+def aplicar_carimbo_certificado_view(request, historico_id):
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.colors import red
+    from PyPDF2 import PdfReader, PdfWriter
+    import os
+    import tempfile
+
+    historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    if not historico.certificado:
+        messages.error(request, 'Este histórico não possui arquivo de certificado.')
+        return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
+
+    # Gera um PDF de carimbo com ReportLab
+    stamp_fd, stamp_path = tempfile.mkstemp(suffix='.pdf')
+    os.close(stamp_fd)
+    c = canvas.Canvas(stamp_path, pagesize=letter)
+    c.setFillColor(red)
+    c.setFont("Helvetica-Bold", 18)
+    carimbo_texto = f"VALIDADO - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    c.drawString(72, 72, carimbo_texto)
+    c.save()
+
+    # Mescla o carimbo na primeira página do certificado
+    reader = PdfReader(historico.certificado.path)
+    writer = PdfWriter()
+    stamp_reader = PdfReader(stamp_path)
+    first_page = reader.pages[0]
+    first_page.merge_page(stamp_reader.pages[0])
+    writer.add_page(first_page)
+    for i in range(1, len(reader.pages)):
+        writer.add_page(reader.pages[i])
+
+    out_fd, out_path = tempfile.mkstemp(suffix='.pdf')
+    os.close(out_fd)
+    with open(out_path, 'wb') as f_out:
+        writer.write(f_out)
+
+    # Salva o PDF carimbado no FileField
+    from django.core.files import File
+    with open(out_path, 'rb') as f_final:
+        historico.certificado_carimbado.save(
+            os.path.basename(historico.certificado.name).replace('.pdf', '_carimbado.pdf'),
+            File(f_final),
+            save=False
+        )
+    historico.certificado_validado = True
+    historico.save(update_fields=['certificado_carimbado', 'certificado_validado'])
+    messages.success(request, 'Certificado validado e carimbado com sucesso!')
+    return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)

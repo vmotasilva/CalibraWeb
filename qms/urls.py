@@ -18,6 +18,16 @@ urlpatterns = [
 		views.registrar_historico_calibracao_view,
 		name="registrar_historico_calibracao",
 	),
+	path(
+		"metrologia/historico/<int:historico_id>/preview/",
+		views.preview_certificado_view,
+		name="preview_certificado",
+	),
+	path(
+		"metrologia/historico/<int:historico_id>/aplicar-carimbo/",
+		views.aplicar_carimbo_certificado_view,
+		name="aplicar_carimbo_certificado",
+	),
 	path("", views.dashboard_view, name="dashboard"),
 	path("metrologia/", views.modulo_metrologia_view, name="modulo_metrologia"),
 	path("instrumento/<int:instrumento_id>/", views.detalhe_instrumento_view, name="detalhe_instrumento"),

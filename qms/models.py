@@ -648,6 +648,8 @@ class HistoricoCalibracao(models.Model):
 
     proxima_calibracao = models.DateField(null=True, blank=True)
     certificado = models.FileField(upload_to="certificados/", null=True, blank=True)
+    certificado_validado = models.BooleanField(default=False)
+    certificado_carimbado = models.FileField(upload_to="certificados/carimbados/", null=True, blank=True)
 
     RESULTADO_CHOICES = [
         ("APROVADO", "Aprovado sem correções"),
