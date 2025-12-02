@@ -2500,14 +2500,17 @@ def visualizar_historico_calibracao_view(request, historico_id):
     try:
         historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
         instrumento = historico.instrumento
-        
+
         # Verifica permissão básica (pode ser metrologia, RH, etc.)
         if not request.user.is_superuser and not request.user.is_staff:
             messages.warning(request, "Acesso restrito; verifique permissões.")
-        
+
         # Determina se está em modo edição
         edit_mode = request.GET.get('edit') == '1'
-        
+
+        # Log de acesso para debug
+        logger.info(f"Usuário {request.user} acessou histórico {historico_id} (edit_mode={edit_mode})")
+
         if request.method == 'POST' and edit_mode:
             # Processa edição
             form = HistoricoCalibracaoForm(
@@ -2674,8 +2677,12 @@ def visualizar_historico_calibracao_view(request, historico_id):
             'edit_mode': edit_mode,
         })
     except Exception as e:
-        logger.error(f"Erro em visualizar_historico_calibracao_view: {e}", exc_info=True)
-        messages.error(request, f'Erro ao carregar histórico: {str(e)}')
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(f"Erro em visualizar_historico_calibracao_view: {e}\nTraceback:\n{tb}")
+        messages.error(request, f'Erro ao carregar histórico: {str(e)}. Veja detalhes no log do servidor.')
+        # Mensagem extra para debug visual
+        messages.error(request, f'ID do histórico: {historico_id}. Usuário: {request.user}.')
         return redirect('modulo_metrologia')
 
 
