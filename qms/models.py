@@ -652,12 +652,12 @@ class HistoricoCalibracao(models.Model):
     certificado_carimbado = models.FileField(upload_to="certificados/carimbados/", null=True, blank=True)
 
     RESULTADO_CHOICES = [
-        ("APROVADO", "Aprovado sem correções"),
-        ("CONDICIONAL", "Aprovado com correções"),
+        ("APROVADO_SEM_CORRECAO", "Aprovado sem correção"),
+        ("APROVADO_COM_CORRECAO", "Aprovado com Correção"),
         ("REPROVADO", "Reprovado"),
     ]
     resultado = models.CharField(
-        max_length=50, choices=RESULTADO_CHOICES, default="APROVADO"
+        max_length=50, choices=RESULTADO_CHOICES, default="APROVADO_SEM_CORRECAO"
     )
 
     observacoes = models.TextField(null=True, blank=True)
@@ -699,11 +699,11 @@ class HistoricoCalibracao(models.Model):
                 ema = tol / Decimal(2)
                 eme = erro + inc
                 if eme <= ema:
-                    self.resultado = "APROVADO"
-                elif eme > (ema * Decimal(3)):
-                    self.resultado = "REPROVADO"
+                    self.resultado = "APROVADO_SEM_CORRECAO"
+                elif eme <= tol:
+                    self.resultado = "APROVADO_COM_CORRECAO"
                 else:
-                    self.resultado = "CONDICIONAL"
+                    self.resultado = "REPROVADO"
             except:
                 pass
         super().save(*args, **kwargs)
@@ -729,8 +729,8 @@ class ResultadoFaixaCalibracao(models.Model):
     """
     
     RESULTADO_CHOICES = [
-        ("APROVADO", "Aprovado"),
-        ("CONDICIONAL", "Condicional"),
+        ("APROVADO_SEM_CORRECAO", "Aprovado sem correção"),
+        ("APROVADO_COM_CORRECAO", "Aprovado com Correção"),
         ("REPROVADO", "Reprovado"),
     ]
     
@@ -767,7 +767,7 @@ class ResultadoFaixaCalibracao(models.Model):
     )
     
     resultado = models.CharField(
-        max_length=15,
+        max_length=30,
         choices=RESULTADO_CHOICES,
         verbose_name='Resultado da Calibração',
         editable=False
@@ -788,11 +788,14 @@ class ResultadoFaixaCalibracao(models.Model):
             # EME = Erro Máximo Encontrado = |Erro| + Incerteza
             EME = abs(self.erro_encontrado) + self.incerteza
             
-            # Lógica de resultado
+            # Lógica de resultado:
+            # - Aprovado sem correção: EME <= EMA (EME <= Tolerância/2)
+            # - Aprovado com Correção: EMA < EME <= Tolerância
+            # - Reprovado: EME > Tolerância
             if EME <= EMA:
-                self.resultado = "APROVADO"
+                self.resultado = "APROVADO_SEM_CORRECAO"
             elif EME <= self.tolerancia_usada:
-                self.resultado = "CONDICIONAL"
+                self.resultado = "APROVADO_COM_CORRECAO"
             else:
                 self.resultado = "REPROVADO"
         else:

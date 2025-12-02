@@ -331,17 +331,17 @@ document.addEventListener('DOMContentLoaded', function() {
         let icone = '';
         
         if (EME <= EMA) {
-            resultado = 'APROVADO';
+            resultado = 'Aprovado sem correção';
             classe = 'success';
             icone = '✓';
-        } else if (EME > (EMA * 3)) {
-            resultado = 'REPROVADO';
-            classe = 'danger';
-            icone = '✗';
-        } else {
-            resultado = 'CONDICIONAL';
+        } else if (EME <= tolAbs) {
+            resultado = 'Aprovado com Correção';
             classe = 'warning';
             icone = '⚠';
+        } else {
+            resultado = 'Reprovado';
+            classe = 'danger';
+            icone = '✗';
         }
         
         resultadoDiv.innerHTML = `
