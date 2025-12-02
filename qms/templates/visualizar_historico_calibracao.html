@@ -172,32 +172,7 @@
                             </p>
                         {% endif %}
                     </div>
-                    {% if modo_edicao %}
-                        <div id="padroes-section" class="mb-3 d-none">
-                            <label for="id_padroes_utilizados" class="form-label fw-bold">
-                                Padrões Utilizados (não-RBC)
-                            </label>
-                            {{ form.padroes_utilizados|add_class:"form-control" }}
-                            <small class="text-muted d-block mt-1">
-                                Se o certificado não possui selo RBC, informe os padrões rastreáveis usados.
-                            </small>
-                        </div>
-                    {% else %}
-                        {% if not historico.tem_selo_rbc %}
-                            <div class="alert alert-warning mt-3">
-                                <strong>Padrões Utilizados:</strong>
-                                {% if historico.padroes_utilizados.exists %}
-                                    <ul class="mb-0">
-                                        {% for padrao in historico.padroes_utilizados.all %}
-                                            <li>{{ padrao }}</li>
-                                        {% endfor %}
-                                    </ul>
-                                {% else %}
-                                    <span class="text-muted">Nenhum padrão registrado</span>
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                    {% endif %}
+
                 </div>
             </div>
 

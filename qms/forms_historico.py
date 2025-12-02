@@ -1,5 +1,5 @@
 from django import forms
-from .models import HistoricoCalibracao, Padrao
+from .models import HistoricoCalibracao
 
 class HistoricoCalibracaoForm(forms.ModelForm):
     class Meta:

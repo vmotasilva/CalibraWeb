@@ -4,6 +4,8 @@ from . import views
 
 
 urlpatterns = [
+			path("renomear-arquivo-padrao/<int:arquivo_id>/", views.renomear_arquivo_padrao_view, name="renomear_arquivo_padrao"),
+		path("remover-arquivo-padrao/<int:arquivo_id>/", views.remover_arquivo_padrao_view, name="remover_arquivo_padrao"),
 	path("healthz/", views.health_check, name="healthz"),
 	path("import-jobs/", views.import_jobs_view, name="import_jobs"),
 	path("import-jobs/<uuid:job_id>/retry/", views.retry_import_job_view, name="retry_import_job"),

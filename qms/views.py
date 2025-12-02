@@ -1,3 +1,65 @@
+# Renomear arquivo PDF de padrão associado ao histórico
+@login_required
+@require_POST
+def renomear_arquivo_padrao_view(request, arquivo_id):
+    from .models import ArquivoPadrao
+    arquivo = get_object_or_404(ArquivoPadrao, id=arquivo_id)
+    novo_nome = request.POST.get('novo_nome', '').strip()
+    historicos = arquivo.historicos.all()
+    # Permissão: só responsável técnico do histórico ou staff pode renomear
+    pode_renomear = False
+    for historico in historicos:
+        if historico.responsavel and historico.responsavel.strip().lower() == (request.user.get_full_name() or request.user.username).strip().lower():
+            pode_renomear = True
+    if request.user.is_staff:
+        pode_renomear = True
+    if not pode_renomear:
+        messages.error(request, "Você não tem permissão para renomear este arquivo.")
+        if historicos:
+            return redirect('registrar_historico_calibracao', instrumento_id=historicos[0].instrumento_id)
+        return redirect('modulo_metrologia')
+    if novo_nome:
+        logger.info(f"Usuário {request.user.username} renomeou arquivo PDF de padrão id={arquivo.id} para '{novo_nome}' (antes: '{arquivo.nome or arquivo.arquivo.name}')")
+        arquivo.nome = novo_nome
+        arquivo.save(update_fields=['nome'])
+        messages.success(request, "Nome do arquivo atualizado com sucesso.")
+    else:
+        messages.error(request, "Nome inválido.")
+    if historicos:
+        return redirect('registrar_historico_calibracao', instrumento_id=historicos[0].instrumento_id)
+    return redirect('modulo_metrologia')
+# Remover arquivo PDF de padrão associado ao histórico
+from django.views.decorators.http import require_POST
+
+@login_required
+@require_POST
+def remover_arquivo_padrao_view(request, arquivo_id):
+    from .models import ArquivoPadrao
+    arquivo = get_object_or_404(ArquivoPadrao, id=arquivo_id)
+    historicos = arquivo.historicos.all()
+    # Permissão: só responsável técnico do histórico ou staff pode remover
+    pode_remover = False
+    for historico in historicos:
+        if historico.responsavel and historico.responsavel.strip().lower() == (request.user.get_full_name() or request.user.username).strip().lower():
+            pode_remover = True
+    if request.user.is_staff:
+        pode_remover = True
+    if not pode_remover:
+        messages.error(request, "Você não tem permissão para remover este arquivo.")
+        if historicos:
+            return redirect('registrar_historico_calibracao', instrumento_id=historicos[0].instrumento_id)
+        return redirect('modulo_metrologia')
+    # Remove associação do arquivo com todos históricos
+    for historico in historicos:
+        historico.arquivos_padroes.remove(arquivo)
+    logger.info(f"Usuário {request.user.username} removeu arquivo PDF de padrão '{arquivo.nome or arquivo.arquivo.name}' (id={arquivo.id})")
+    # Remove o arquivo físico
+    arquivo.arquivo.delete(save=False)
+    arquivo.delete()
+    messages.success(request, "Arquivo removido com sucesso.")
+    if historicos:
+        return redirect('registrar_historico_calibracao', instrumento_id=historicos[0].instrumento_id)
+    return redirect('modulo_metrologia')
 
 import io
 import os
@@ -20,7 +82,7 @@ logger = logging.getLogger(__name__)
 from .models import (
     Instrumento, FaixaMedicao, HistoricoCalibracao, CategoriaInstrumento,
     Setor, Colaborador, Procedimento, RegistroTreinamento, ImportJob,
-    SolicitacaoInstrumento, ProcessoCotacao, Padrao, UnidadeMedida,
+    SolicitacaoInstrumento, ProcessoCotacao, UnidadeMedida,
     HierarquiaSetor, Fornecedor, CentroCusto, ResultadoFaixaCalibracao
 )
 from .forms import (
@@ -70,7 +132,8 @@ def imp_instr_view(request):
                 force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
                 if not force_sync:
                     try:
-                        # ...existing code...
+                        import_instruments_task.delay(str(job.id), tmp.name)
+                        messages.success(request, f"Importação enfileirada (job {job.id}).")
                         return redirect("modulo_metrologia")
                     except Exception:
                         force_sync = True
@@ -1606,39 +1669,7 @@ def imp_historico_view(request):
     )
 
 
-@login_required
-def imp_padroes_view(request):
-    if request.method == "POST":
-        form = ImportacaoPadroesForm(request.POST, request.FILES)
-        if form.is_valid():
-            try:
-                f = request.FILES["arquivo_excel"]
-                try:
-                    df = pd.read_excel(f)
-                except:
-                    df = pd.read_csv(f, sep=None, engine="python")
-                df.columns = df.columns.str.strip().str.upper()
-                count = 0
-                with transaction.atomic():
-                    for _, row in df.iterrows():
-                        codigo = str(row.get("CODIGO", "")).strip()
-                        if codigo:
-                            Padrao.objects.update_or_create(
-                                codigo=codigo,
-                                defaults={"descricao": "Importado", "ativo": True},
-                            )
-                            count += 1
-                messages.success(request, f"{count} Padrões importados!")
-                return redirect("modulo_metrologia")
-            except Exception as e:
-                messages.error(request, f"Erro: {e}")
-    else:
-        form = ImportacaoPadroesForm()
-    return render(
-        request,
-        "importar_historico.html",
-        {"form": form, "titulo": "Importar Padrões"},
-    )
+
 
 
 @login_required
@@ -2232,23 +2263,9 @@ def registrar_historico_calibracao_view(request, instrumento_id):
             logger.debug(f"POST data: {request.POST}")
             logger.debug(f"FILES: {list(request.FILES.keys())}")
 
+
             if form.is_valid():
                 try:
-                    # Validação server-side: se não for RBC, exigir pelo menos 1 padrão selecionado
-                    try:
-                        tem_rbc = form.cleaned_data.get('tem_selo_rbc')
-                        padroes_sel = form.cleaned_data.get('padroes_utilizados')
-                        if not tem_rbc and (not padroes_sel or padroes_sel.count() == 0):
-                            messages.error(request, 'Selecione ao menos um padrão utilizado para certificados sem selo RBC.')
-                            form.add_error('padroes_utilizados', 'Obrigatório quando não há selo RBC')
-                            faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
-                            return render(request, 'registrar_historico_calibracao.html', {
-                                'form': form,
-                                'instrumento': instrumento,
-                                'faixas_medicao': faixas_medicao
-                            })
-                    except Exception:
-                        pass
 
                     # Validação server-side das faixas antes de salvar o histórico
                     faixas_qs = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
@@ -2312,10 +2329,19 @@ def registrar_historico_calibracao_view(request, instrumento_id):
                         })
 
                     # Tudo OK: salva histórico e cria entradas por faixa
+
                     historico = form.save(commit=False)
                     historico.instrumento = instrumento
                     historico.save()
                     form.save_m2m()
+
+                    # Salvar arquivos PDF de padrões enviados
+                    arquivos_padroes = request.FILES.getlist('arquivos_padroes')
+                    from .models import ArquivoPadrao
+                    for arquivo in arquivos_padroes:
+                        nome = arquivo.name
+                        obj = ArquivoPadrao.objects.create(arquivo=arquivo, nome=nome)
+                        historico.arquivos_padroes.add(obj)
 
                     criadas = 0
                     ignoradas = 0
@@ -2521,24 +2547,9 @@ def visualizar_historico_calibracao_view(request, historico_id):
                 user=request.user
             )
             
+
             if form.is_valid():
                 try:
-                    # Validação server-side: se não for RBC, exigir pelo menos 1 padrão selecionado
-                    tem_rbc = form.cleaned_data.get('tem_selo_rbc')
-                    padroes_sel = form.cleaned_data.get('padroes_utilizados')
-                    if not tem_rbc and (not padroes_sel or padroes_sel.count() == 0):
-                        messages.error(request, 'Selecione ao menos um padrão utilizado para certificados sem selo RBC.')
-                        form.add_error('padroes_utilizados', 'Obrigatório quando não há selo RBC')
-                        faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
-                        resultados_faixas = historico.resultados_faixas.all()
-                        return render(request, 'visualizar_historico_calibracao.html', {
-                            'form': form,
-                            'historico': historico,
-                            'instrumento': instrumento,
-                            'faixas_medicao': faixas_medicao,
-                            'resultados_faixas': resultados_faixas,
-                            'edit_mode': True,
-                        })
                     
                     # Validação server-side das faixas
                     faixas_qs = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')

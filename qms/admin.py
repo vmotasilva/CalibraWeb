@@ -13,7 +13,7 @@ from django.utils.http import urlencode
 from .models import (
     AvaliacaoFornecedor, Ocorrencia, OcorrenciaInstrumento,
     CategoriaInstrumento, CentroCusto, Colaborador, DocumentoPessoal, FaixaMedicao, Ferias, Fornecedor,
-    HierarquiaSetor, HistoricoCalibracao, Instrumento, Orcamento, OrdemCalibracao, PacoteTreinamento, Padrao,
+    HierarquiaSetor, HistoricoCalibracao, Instrumento, Orcamento, OrdemCalibracao, PacoteTreinamento,
     Procedimento, ProcessoCotacao, RegistroTreinamento, ResultadoFaixaCalibracao, Setor, SolicitacaoInstrumento, UnidadeMedida, Area, ProcedimentoRevisao
 )
 
@@ -36,7 +36,7 @@ class CalibraAdminSite(admin.AdminSite):
                 'Colaborador', 'Ferias', 'DocumentoPessoal', 'Ocorrencia', 'Vacation periods', 'Employee documents', 'Employee occurrences', 'Employees',
             ]),
             ('METROLOGY', _('Metrology'), [
-                'Instrumento', 'FaixaMedicao', 'CategoriaInstrumento', 'Padrao', 'HistoricoCalibracao', 'OrdemCalibracao',
+                'Instrumento', 'FaixaMedicao', 'CategoriaInstrumento', 'HistoricoCalibracao', 'OrdemCalibracao',
             ]),
             ('GED', _('Procedures & Training'), [
                 'Procedimento', 'ProcedimentoRevisao', 'Area', 'RegistroTreinamento', 'PacoteTreinamento',
@@ -95,48 +95,46 @@ class CustomUserChangeForm(DjangoUserChangeForm):
             'Ocorrencia': 'Ocorrência',
             'Procedimento': 'Procedimento',
             'Procedimentorevisao': 'Revisão de Procedimento',
-            'Area': 'Área',
-            'Registro treinamento': 'Registro de Treinamento',
-            'Pacote treinamento': 'Pacote de Treinamento',
-            'Fornecedor': 'Fornecedor',
-            'Processo cotacao': 'Processo de Cotação',
-            'Orcamento': 'Orçamento',
-            'Solicitacao instrumento': 'Solicitação de Instrumento',
-        }
-        area_map = {
-            'Faixamedicao': 'Metrologia',
-            'Categoria instrumento': 'Metrologia',
-            'Padrao': 'Metrologia',
-            'Historico calibracao': 'Metrologia',
-            'Ordem calibracao': 'Metrologia',
-            'Instrumento': 'Metrologia',
-            'Colaborador': 'RH',
-            'Ferias': 'RH',
-            'Documento pessoal': 'RH',
-            'Ocorrencia': 'RH',
-            'Procedimento': 'Procedimentos',
-            'Procedimentorevisao': 'Procedimentos',
-            'Area': 'Procedimentos',
-            'Registro treinamento': 'Treinamentos',
-            'Pacote treinamento': 'Treinamentos',
-            'Fornecedor': 'Metrologia',
-            'Processo cotacao': 'Metrologia',
-            'Orcamento': 'Metrologia',
-            'Solicitacao instrumento': 'Metrologia',
-        }
-        def custom_label(perm):
-            ct = perm.content_type
-            model_verbose = ct.model.replace('_', ' ').title()
-            area = area_map.get(model_verbose, ct.app_label.title())
-            model_label = label_map.get(model_verbose, model_verbose)
-            return f"{area} | {model_label} | {perm.name.capitalize()}"
-        self.fields['user_permissions'].label_from_instance = custom_label
-        # Ordenar permissões pelo rótulo customizado
-        perms = list(self.fields['user_permissions'].queryset)
-        def sort_key(perm):
-            ct = perm.content_type
-            model_verbose = ct.model.replace('_', ' ').title()
-            area = area_map.get(model_verbose, ct.app_label.title())
+            label_map = {
+                'Faixamedicao': 'Faixa de Medição',
+                'Categoria instrumento': 'Categoria do Instrumento',
+                'Historico calibracao': 'Histórico de Calibração',
+                'Ordem calibracao': 'Ordem de Calibração',
+                'Instrumento': 'Instrumento',
+                'Colaborador': 'Colaborador (RH)',
+                'Ferias': 'Férias',
+                'Documento pessoal': 'Documento Pessoal',
+                'Ocorrencia': 'Ocorrência',
+                'Procedimento': 'Procedimento',
+                'Procedimentorevisao': 'Revisão de Procedimento',
+                'Area': 'Área',
+                'Registro treinamento': 'Registro de Treinamento',
+                'Pacote treinamento': 'Pacote de Treinamento',
+                'Fornecedor': 'Fornecedor',
+                'Processo cotacao': 'Processo de Cotação',
+                'Orcamento': 'Orçamento',
+                'Solicitacao instrumento': 'Solicitação de Instrumento',
+            }
+            area_map = {
+                'Faixamedicao': 'Metrologia',
+                'Categoria instrumento': 'Metrologia',
+                'Historico calibracao': 'Metrologia',
+                'Ordem calibracao': 'Metrologia',
+                'Instrumento': 'Metrologia',
+                'Colaborador': 'RH',
+                'Ferias': 'RH',
+                'Documento pessoal': 'RH',
+                'Ocorrencia': 'RH',
+                'Procedimento': 'Procedimentos',
+                'Procedimentorevisao': 'Procedimentos',
+                'Area': 'Procedimentos',
+                'Registro treinamento': 'Treinamentos',
+                'Pacote treinamento': 'Treinamentos',
+                'Fornecedor': 'Fornecedores',
+                'Processo cotacao': 'Fornecedores',
+                'Orcamento': 'Fornecedores',
+                'Solicitacao instrumento': 'Solicitações',
+            }
             model_label = label_map.get(model_verbose, model_verbose)
             return (area, model_label, perm.name)
         perms.sort(key=sort_key)
@@ -381,20 +379,6 @@ class CategoriaInstrumentoAdmin(admin.ModelAdmin):
     autocomplete_fields = ["unidade_padrao"]
 
 
-@admin.register(Padrao, site=admin_site)
-class PadraoAdmin(admin.ModelAdmin):
-    list_display = ("codigo", "descricao", "data_validade", "status_validade", "ativo")
-    search_fields = ("codigo", "descricao", "numero_certificado")
-    list_filter = ("ativo",)
-
-    def status_validade(self, obj):
-        if obj.esta_vencido:
-            return format_html(
-                '<span style="color:red; font-weight:bold;">VENCIDO</span>'
-            )
-        return format_html('<span style="color:green;">VIGENTE</span>')
-
-    status_validade.short_description = "Validade"
 
 
 @admin.register(Instrumento, site=admin_site)
@@ -465,7 +449,7 @@ class HistoricoCalibracaoAdmin(admin.ModelAdmin):
     )
     list_filter = ("resultado", "data_calibracao", "tem_selo_rbc", "tipo_calibracao")
     autocomplete_fields = ["instrumento"]
-    filter_horizontal = ("padroes_utilizados",)
+    # filter_horizontal removido
 
 
 @admin.register(ResultadoFaixaCalibracao, site=admin_site)

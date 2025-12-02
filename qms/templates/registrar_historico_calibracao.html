@@ -21,8 +21,9 @@
         <!-- COLUNA ESQUERDA: FORMULÁRIO -->
         <div class="col-lg-6">
             <form method="post" enctype="multipart/form-data" id="historico-form">
+
                 {% csrf_token %}
-                
+
                 <!-- UPLOAD DE CERTIFICADO (PRIMEIRO CAMPO) -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-primary text-white">
@@ -39,6 +40,77 @@
                         </small>
                         {% if form.certificado.errors %}
                             <div class="text-danger small mt-1">{{ form.certificado.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- UPLOAD DE PADRÕES PDF -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <i class="bi bi-file-earmark-pdf"></i> 1b. Arquivos de Padrões (PDF)
+                    </div>
+                    <div class="card-body">
+                        <label for="id_arquivos_padroes" class="form-label fw-bold">
+                            Arquivos de Padrões (PDF)
+                        </label>
+                        {{ form.arquivos_padroes }}
+                        <small class="form-text text-muted d-block mt-2">
+                            <i class="bi bi-info-circle"></i> Anexe um ou mais arquivos PDF de padrões utilizados.
+                        </small>
+                        {% if form.arquivos_padroes.errors %}
+                            <div class="text-danger small mt-1">{{ form.arquivos_padroes.errors }}</div>
+                        {% endif %}
+
+                        {% if form.instance.pk and form.instance.arquivos_padroes.exists %}
+                            <div class="mt-3">
+                                <strong>Arquivos já anexados:</strong>
+                                <ul id="arquivos-padroes-list">
+                                    {% for arquivo in form.instance.arquivos_padroes.all|dictsortreversed:'criado_em' %}
+                                        <li style="display:flex; align-items:center; gap:10px; position:relative;">
+                                            <span class="bi bi-file-earmark-pdf text-danger" style="font-size:1.2em;" title="PDF"></span>
+                                            <a href="{{ arquivo.arquivo.url }}" target="_blank" title="Abrir PDF">{{ arquivo.nome|default:arquivo.arquivo.name }}</a>
+                                            <span class="text-muted small" title="Data do upload">({{ arquivo.criado_em|date:'d/m/Y H:i' }})</span>
+                                            <form method="post" action="{% url 'remover_arquivo_padrao' arquivo.id %}" style="display:inline; margin-left:10px;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-danger" title="Remover" onclick="return confirm('Remover este arquivo?');">Remover</button>
+                                            </form>
+                                            <form method="post" action="{% url 'renomear_arquivo_padrao' arquivo.id %}" style="display:inline; margin-left:10px;">
+                                                {% csrf_token %}
+                                                <input type="text" name="novo_nome" value="{{ arquivo.nome|default:arquivo.arquivo.name }}" class="form-control form-control-sm d-inline-block" style="width:150px;" required title="Renomear arquivo">
+                                                <button type="submit" class="btn btn-sm btn-secondary" title="Renomear">Renomear</button>
+                                            </form>
+                                            <button class="btn btn-sm btn-outline-primary ms-2" type="button" onclick="togglePdfPreview('pdf-preview-{{ arquivo.id }}')" title="Visualizar PDF"><i class="bi bi-eye"></i></button>
+                                            <div id="pdf-preview-{{ arquivo.id }}" class="pdf-preview mt-2" style="display:none; position:absolute; left:0; top:2.2em; z-index:10; background:#fff; border:1px solid #ccc; box-shadow:0 2px 8px #0002; padding:8px;">
+                                                <iframe src="{{ arquivo.arquivo.url }}#toolbar=0" width="400" height="300" style="border:none;"></iframe>
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                                <div id="arquivos-loading" style="display:none;"><span class="spinner-border spinner-border-sm"></span> Carregando...</div>
+                                {% if messages %}
+                                    {% for message in messages %}
+                                        {% if message.tags == 'success' %}
+                                            <div class="alert alert-success mt-2">{{ message }}</div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            <script>
+                                function togglePdfPreview(id) {
+                                    var el = document.getElementById(id);
+                                    if (el.style.display === 'none') {
+                                        el.style.display = 'block';
+                                    } else {
+                                        el.style.display = 'none';
+                                    }
+                                }
+                                // Loading animation for file actions
+                                document.querySelectorAll('#arquivos-padroes-list form').forEach(function(form) {
+                                    form.addEventListener('submit', function() {
+                                        document.getElementById('arquivos-loading').style.display = 'block';
+                                    });
+                                });
+                            </script>
                         {% endif %}
                     </div>
                 </div>
@@ -113,15 +185,7 @@
                                 Possui Selo RBC?
                             </label>
                         </div>
-                        <div id="padroes-section" class="mb-3 d-none">
-                            <label for="id_padroes_utilizados" class="form-label fw-bold">
-                                Padrões Utilizados (não-RBC)
-                            </label>
-                            {{ form.padroes_utilizados|add_class:"form-control" }}
-                            <small class="text-muted d-block mt-1">
-                                Se o certificado não possui selo RBC, informe os padrões rastreáveis usados.
-                            </small>
-                        </div>
+
                     </div>
                 </div>
 

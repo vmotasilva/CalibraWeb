@@ -295,32 +295,6 @@ class DocumentoPessoal(models.Model):
 # ==============================================================================
 # MÓDULO 3: RASTREABILIDADE (PADRÕES DE REFERÊNCIA) - NOVO!
 # ==============================================================================
-class Padrao(models.Model):
-    codigo = models.CharField(
-        max_length=50, unique=True, verbose_name="Código do Padrão"
-    )
-    descricao = models.CharField(max_length=200, verbose_name="Descrição")
-    fabricante = models.CharField(max_length=100, null=True, blank=True)
-    numero_certificado = models.CharField(max_length=100, verbose_name="Nº Certificado")
-
-    data_calibracao = models.DateField(verbose_name="Data Calib.")
-    data_validade = models.DateField(verbose_name="Validade do Padrão")
-
-    certificado = models.FileField(
-        upload_to="padroes/", null=True, blank=True, verbose_name="PDF do Certificado"
-    )
-    ativo = models.BooleanField(default=True)
-
-    def __str__(self):
-        return f"{self.codigo} - {self.descricao} (Val: {self.data_validade})"
-
-    @property
-    def esta_vencido(self):
-        return self.data_validade < date.today()
-
-    class Meta:
-        verbose_name = "Padrão / Kit"
-        verbose_name_plural = "Padrões de Rastreabilidade"
 
 
 # ==============================================================================
@@ -591,6 +565,18 @@ class FaixaMedicao(models.Model):
 
 
 class HistoricoCalibracao(models.Model):
+        # Novos arquivos PDF de padrões associados diretamente ao histórico
+        arquivos_padroes = models.ManyToManyField(
+            'ArquivoPadrao', blank=True, related_name='historicos', verbose_name='Arquivos de Padrões (PDF)'
+        )
+    # Novo modelo para armazenar arquivos PDF de padrões
+    class ArquivoPadrao(models.Model):
+        arquivo = models.FileField(upload_to='padroes_historico/', verbose_name='PDF do Padrão')
+        nome = models.CharField(max_length=200, blank=True, null=True)
+        criado_em = models.DateTimeField(auto_now_add=True)
+
+        def __str__(self):
+            return self.nome or self.arquivo.name
     instrumento = models.ForeignKey(
         Instrumento,
         on_delete=models.CASCADE,
@@ -605,9 +591,6 @@ class HistoricoCalibracao(models.Model):
 
     # --- RASTREABILIDADE ---
     tem_selo_rbc = models.BooleanField(default=False, verbose_name="Possui Selo RBC?")
-    padroes_utilizados = models.ManyToManyField(
-        Padrao, blank=True, verbose_name="Padrões Utilizados (Kits)"
-    )
 
     TIPO_CALIBRACAO_CHOICES = [
         ("EXTERNA", "Externa (Fornecedor)"),

@@ -1,7 +1,7 @@
 from django import forms
 
 from .models import (Colaborador, Instrumento, Ocorrencia,
-                     OcorrenciaInstrumento, OrdemCalibracao, Padrao,
+                     OcorrenciaInstrumento, OrdemCalibracao,
                      SolicitacaoInstrumento, Procedimento, Area, RegistroTreinamento,
                      HistoricoCalibracao, Fornecedor, FaixaMedicao)
 
@@ -190,12 +190,19 @@ class HistoricoCalibracaoForm(forms.ModelForm):
     Agora suporta múltiplas faixas (dados de faixas são processados separadamente na view).
     """
     
+    arquivos_padroes = forms.FileField(
+        label="Arquivos de Padrões (PDF)",
+        widget=forms.ClearableFileInput(attrs={"class": "form-control", "multiple": True, "accept": ".pdf"}),
+        required=False,
+        help_text="Anexe um ou mais arquivos PDF de padrões utilizados."
+    )
+
     class Meta:
         model = HistoricoCalibracao
         fields = [
             'data_calibracao', 'proxima_calibracao', 'numero_certificado',
             'tipo_calibracao', 'responsavel', 'fornecedor', 'tem_selo_rbc',
-            'padroes_utilizados', 'certificado'
+            'certificado'
         ]
         widgets = {
             'data_calibracao': forms.DateInput(attrs={'class':'form-control','type':'date'}),
@@ -205,7 +212,6 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             'responsavel': forms.TextInput(attrs={'class':'form-control','placeholder':'Nome do responsável'}),
             'fornecedor': forms.TextInput(attrs={'class':'form-control','placeholder':'Nome do laboratório/fornecedor'}),
             'tem_selo_rbc': forms.CheckboxInput(attrs={'class':'form-check-input'}),
-            'padroes_utilizados': forms.SelectMultiple(attrs={'class':'form-control','size':'6'}),
             'certificado': forms.FileInput(attrs={'class':'form-control'}),
         }
     
