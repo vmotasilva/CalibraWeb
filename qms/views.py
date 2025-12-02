@@ -2392,176 +2392,6 @@ def registrar_historico_calibracao_view(request, instrumento_id):
         return redirect('modulo_metrologia')
 
 @login_required
-def visualizar_historico_calibracao_view(request, historico_id):
-    """Visualiza (e opcionalmente edita) um histórico de calibração usando o mesmo layout de registro."""
-    try:
-        historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
-        instrumento = historico.instrumento
-        
-        logger.info(f"Visualizar histórico: historico_id={historico_id}, user={request.user.username}")
-        
-        # Modo edição?
-        modo_edicao = request.GET.get('edit') == '1'
-        
-        if request.method == 'POST' and modo_edicao:
-            # POST: atualizar histórico (recria resultados por faixa)
-            form = HistoricoCalibracaoForm(request.POST, request.FILES, instance=historico, instrumento=instrumento, user=request.user)
-            
-            if form.is_valid():
-                try:
-                    # Validação de padrões (não-RBC)
-                    tem_rbc = form.cleaned_data.get('tem_selo_rbc')
-                    padroes_sel = form.cleaned_data.get('padroes_utilizados')
-                    if not tem_rbc and (not padroes_sel or padroes_sel.count() == 0):
-                        messages.error(request, 'Selecione ao menos um padrão utilizado para certificados sem selo RBC.')
-                        form.add_error('padroes_utilizados', 'Obrigatório quando não há selo RBC')
-                        faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
-                        return render(request, 'visualizar_historico_calibracao.html', {
-                            'form': form,
-                            'historico': historico,
-                            'instrumento': instrumento,
-                            'faixas_medicao': faixas_medicao,
-                            'modo_edicao': True,
-                        })
-                    
-                    # Validação server-side das faixas
-                    faixas_qs = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
-                    entradas_validas = []
-                    problemas = []
-                    ativos_marcados = 0
-
-                    for faixa in faixas_qs:
-                        prefix = f"faixa_{faixa.id}_"
-                        ativa_key = prefix + "ativa"
-                        if ativa_key not in request.POST:
-                            continue
-                        ativos_marcados += 1
-
-                        erro_str = (request.POST.get(prefix + "erro", "") or "").strip()
-                        inc_str = (request.POST.get(prefix + "incerteza", "") or "").strip()
-                        tol_str = (request.POST.get(prefix + "tolerancia", "") or "").strip()
-
-                        tol_val = None
-                        if tol_str:
-                            try:
-                                tol_val = Decimal(str(tol_str))
-                            except Exception:
-                                tol_val = None
-                        else:
-                            tol_val = faixa.tolerancia_mais_menos
-
-                        try:
-                            erro_val = Decimal(str(erro_str)) if erro_str != "" else None
-                        except Exception:
-                            erro_val = None
-                        try:
-                            inc_val = Decimal(str(inc_str)) if inc_str != "" else None
-                        except Exception:
-                            inc_val = None
-
-                        if erro_val is None or inc_val is None or tol_val is None:
-                            problemas.append(f"Faixa {faixa.valor_minimo} a {faixa.valor_maximo}: preencha Erro, Incerteza e Tolerância válidos.")
-                            continue
-
-                        entradas_validas.append({
-                            'faixa': faixa,
-                            'erro': erro_val,
-                            'inc': inc_val,
-                            'tol': tol_val,
-                        })
-
-                    if ativos_marcados > 0 and len(entradas_validas) == 0:
-                        messages.error(request, "Selecione ao menos uma faixa com dados completos (Erro, Incerteza e Tolerância).")
-                        for p in problemas:
-                            messages.warning(request, p)
-                        form.add_error(None, "Dados de faixas incompletos.")
-                        faixas_medicao = faixas_qs
-                        return render(request, 'visualizar_historico_calibracao.html', {
-                            'form': form,
-                            'historico': historico,
-                            'instrumento': instrumento,
-                            'faixas_medicao': faixas_medicao,
-                            'modo_edicao': True,
-                        })
-
-                    # Salva histórico
-                    historico = form.save()
-                    
-                    # Deleta resultados por faixa antigos e cria novos
-                    historico.resultados_faixas.all().delete()
-                    criadas = 0
-                    for ent in entradas_validas:
-                        try:
-                            ResultadoFaixaCalibracao.objects.create(
-                                historico=historico,
-                                faixa_medicao=ent['faixa'],
-                                erro_encontrado=ent['erro'],
-                                incerteza=ent['inc'],
-                                tolerancia_usada=ent['tol'],
-                                desconsiderada=False,
-                            )
-                            criadas += 1
-                        except Exception as e_create:
-                            logger.error(
-                                f"Erro criando ResultadoFaixaCalibracao na edição para historico={historico.id}, faixa={ent['faixa'].id}: {e_create}",
-                                exc_info=True,
-                            )
-
-                    # Atualiza resultado geral
-                    try:
-                        resultados = list(historico.resultados_faixas.values_list('resultado', flat=True))
-                        overall = None
-                        if resultados:
-                            if 'REPROVADO' in resultados:
-                                overall = 'REPROVADO'
-                            elif 'APROVADO_COM_CORRECAO' in resultados:
-                                overall = 'APROVADO_COM_CORRECAO'
-                            else:
-                                overall = 'APROVADO_SEM_CORRECAO'
-                        if overall and historico.resultado != overall:
-                            historico.resultado = overall
-                            historico.save(update_fields=['resultado'])
-                    except Exception:
-                        pass
-
-                    messages.success(request, f"Histórico atualizado com sucesso! Faixas salvas: {criadas}.")
-                    logger.info(f"Histórico {historico.id} atualizado por {request.user.username}")
-                    return redirect('visualizar_historico_calibracao', historico_id=historico.id)
-                except Exception as save_error:
-                    logger.error(f"Erro ao atualizar histórico: {save_error}", exc_info=True)
-                    messages.error(request, f'Erro ao salvar histórico: {str(save_error)}')
-        else:
-            # GET ou visualização: preenche com dados do histórico
-            form = HistoricoCalibracaoForm(instance=historico, instrumento=instrumento, user=request.user)
-        
-        # Carrega faixas e resultados
-        faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
-        
-        # Prepara dados de resultados por faixa para renderizar
-        resultados_map = {}
-        for resultado_faixa in historico.resultados_faixas.all():
-            resultados_map[resultado_faixa.faixa_medicao_id] = {
-                'erro': resultado_faixa.erro_encontrado,
-                'incerteza': resultado_faixa.incerteza,
-                'tolerancia': resultado_faixa.tolerancia_usada,
-                'resultado': resultado_faixa.resultado,
-                'ativa': True,
-            }
-        
-        return render(request, 'visualizar_historico_calibracao.html', {
-            'form': form,
-            'historico': historico,
-            'instrumento': instrumento,
-            'faixas_medicao': faixas_medicao,
-            'resultados_map': resultados_map,
-            'modo_edicao': modo_edicao,
-        })
-    except Exception as e:
-        logger.error(f"Erro em visualizar_historico_calibracao_view: {e}", exc_info=True)
-        messages.error(request, f'Erro ao processar requisição: {str(e)}')
-        return redirect('modulo_metrologia')
-
-@login_required
 def preview_certificado_view(request, historico_id):
     """Pré-visualização do certificado antes de aplicar carimbo."""
     try:
@@ -2662,6 +2492,191 @@ def aplicar_carimbo_certificado_view(request, historico_id):
                 os.unlink(out_path)
         except Exception as cleanup_error:
             logger.warning(f"Erro ao limpar arquivos temporários: {cleanup_error}")
+
+
+@login_required
+def visualizar_historico_calibracao_view(request, historico_id):
+    """Visualiza ou edita um registro histórico de calibração."""
+    try:
+        historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+        instrumento = historico.instrumento
+        
+        # Verifica permissão básica (pode ser metrologia, RH, etc.)
+        if not request.user.is_superuser and not request.user.is_staff:
+            messages.warning(request, "Acesso restrito; verifique permissões.")
+        
+        # Determina se está em modo edição
+        edit_mode = request.GET.get('edit') == '1'
+        
+        if request.method == 'POST' and edit_mode:
+            # Processa edição
+            form = HistoricoCalibracaoForm(
+                request.POST, 
+                request.FILES, 
+                instance=historico, 
+                instrumento=instrumento, 
+                user=request.user
+            )
+            
+            if form.is_valid():
+                try:
+                    # Validação server-side: se não for RBC, exigir pelo menos 1 padrão selecionado
+                    tem_rbc = form.cleaned_data.get('tem_selo_rbc')
+                    padroes_sel = form.cleaned_data.get('padroes_utilizados')
+                    if not tem_rbc and (not padroes_sel or padroes_sel.count() == 0):
+                        messages.error(request, 'Selecione ao menos um padrão utilizado para certificados sem selo RBC.')
+                        form.add_error('padroes_utilizados', 'Obrigatório quando não há selo RBC')
+                        faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+                        resultados_faixas = historico.resultados_faixas.all()
+                        return render(request, 'visualizar_historico_calibracao.html', {
+                            'form': form,
+                            'historico': historico,
+                            'instrumento': instrumento,
+                            'faixas_medicao': faixas_medicao,
+                            'resultados_faixas': resultados_faixas,
+                            'edit_mode': True,
+                        })
+                    
+                    # Validação server-side das faixas
+                    faixas_qs = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+                    entradas_validas = []
+                    problemas = []
+                    ativos_marcados = 0
+
+                    for faixa in faixas_qs:
+                        prefix = f"faixa_{faixa.id}_"
+                        ativa_key = prefix + "ativa"
+                        if ativa_key not in request.POST:
+                            continue
+                        ativos_marcados += 1
+
+                        erro_str = (request.POST.get(prefix + "erro", "") or "").strip()
+                        inc_str = (request.POST.get(prefix + "incerteza", "") or "").strip()
+                        tol_str = (request.POST.get(prefix + "tolerancia", "") or "").strip()
+
+                        tol_val = None
+                        if tol_str:
+                            try:
+                                tol_val = Decimal(str(tol_str))
+                            except Exception:
+                                tol_val = None
+                        else:
+                            tol_val = faixa.tolerancia_mais_menos
+
+                        try:
+                            erro_val = Decimal(str(erro_str)) if erro_str != "" else None
+                        except Exception:
+                            erro_val = None
+                        try:
+                            inc_val = Decimal(str(inc_str)) if inc_str != "" else None
+                        except Exception:
+                            inc_val = None
+
+                        if erro_val is None or inc_val is None or tol_val is None:
+                            problemas.append(f"Faixa {faixa.valor_minimo} a {faixa.valor_maximo}: preencha Erro, Incerteza e Tolerância válidos.")
+                            continue
+
+                        entradas_validas.append({
+                            'faixa': faixa,
+                            'erro': erro_val,
+                            'inc': inc_val,
+                            'tol': tol_val,
+                        })
+
+                    if ativos_marcados > 0 and len(entradas_validas) == 0:
+                        messages.error(request, "Selecione ao menos uma faixa com dados completos.")
+                        for p in problemas:
+                            messages.warning(request, p)
+                        form.add_error(None, "Dados de faixas incompletos.")
+                        faixas_medicao = faixas_qs
+                        resultados_faixas = historico.resultados_faixas.all()
+                        return render(request, 'visualizar_historico_calibracao.html', {
+                            'form': form,
+                            'historico': historico,
+                            'instrumento': instrumento,
+                            'faixas_medicao': faixas_medicao,
+                            'resultados_faixas': resultados_faixas,
+                            'edit_mode': True,
+                        })
+
+                    # Salva o histórico atualizado
+                    historico_salvo = form.save(commit=False)
+                    historico_salvo.save()
+                    form.save_m2m()
+
+                    # Limpa resultados antigos e cria novos
+                    historico.resultados_faixas.all().delete()
+                    criadas = 0
+                    ignoradas = 0
+                    for ent in entradas_validas:
+                        try:
+                            ResultadoFaixaCalibracao.objects.create(
+                                historico=historico,
+                                faixa_medicao=ent['faixa'],
+                                erro_encontrado=ent['erro'],
+                                incerteza=ent['inc'],
+                                tolerancia_usada=ent['tol'],
+                                desconsiderada=False,
+                            )
+                            criadas += 1
+                        except Exception as e_create:
+                            logger.error(f"Erro criando ResultadoFaixaCalibracao: {e_create}", exc_info=True)
+                            ignoradas += 1
+
+                    # Atualiza resultado geral
+                    try:
+                        resultados = list(historico.resultados_faixas.values_list('resultado', flat=True))
+                        overall = None
+                        if resultados:
+                            if 'REPROVADO' in resultados:
+                                overall = 'REPROVADO'
+                            elif 'APROVADO_COM_CORRECAO' in resultados:
+                                overall = 'APROVADO_COM_CORRECAO'
+                            else:
+                                overall = 'APROVADO_SEM_CORRECAO'
+                        if overall and historico.resultado != overall:
+                            historico.resultado = overall
+                            historico.save(update_fields=['resultado'])
+                    except Exception:
+                        pass
+
+                    messages.success(request, f"Histórico atualizado! Faixas salvas: {criadas}.")
+                    logger.info(f"Histórico {historico_id} atualizado. Faixas={criadas}")
+                    return redirect('detalhe_instrumento', instrumento_id=instrumento.id)
+                    
+                except Exception as save_error:
+                    logger.error(f"Erro ao salvar histórico editado: {save_error}", exc_info=True)
+                    messages.error(request, f'Erro ao salvar: {str(save_error)}')
+            else:
+                logger.warning(f"Form inválido na edição. Erros: {form.errors.as_json()}")
+                messages.error(request, 'Corrija os erros no formulário.')
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+        else:
+            # Modo visualização ou GET para modo edição
+            form = HistoricoCalibracaoForm(
+                instance=historico, 
+                instrumento=instrumento, 
+                user=request.user
+            ) if edit_mode else None
+        
+        # Busca faixas e resultados
+        faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+        resultados_faixas = historico.resultados_faixas.all()
+        
+        return render(request, 'visualizar_historico_calibracao.html', {
+            'form': form,
+            'historico': historico,
+            'instrumento': instrumento,
+            'faixas_medicao': faixas_medicao,
+            'resultados_faixas': resultados_faixas,
+            'edit_mode': edit_mode,
+        })
+    except Exception as e:
+        logger.error(f"Erro em visualizar_historico_calibracao_view: {e}", exc_info=True)
+        messages.error(request, f'Erro ao carregar histórico: {str(e)}')
+        return redirect('modulo_metrologia')
 
 
 @login_required
