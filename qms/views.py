@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 import tempfile
 from decimal import Decimal
 import unicodedata
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -14,6 +15,8 @@ from django.http import HttpResponse, JsonResponse, Http404
 from django.db.models import Q, Count, Max, Prefetch
 from django.core.paginator import Paginator
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 from .models import (
     Instrumento, FaixaMedicao, HistoricoCalibracao, CategoriaInstrumento,
     Setor, Colaborador, Procedimento, RegistroTreinamento, ImportJob,
@@ -2219,85 +2222,147 @@ def treinamentos_list_view(request):
 
 @login_required
 def registrar_historico_calibracao_view(request, instrumento_id):
-    instrumento = get_object_or_404(Instrumento, id=instrumento_id)
-    if request.method == 'POST':
-        form = HistoricoCalibracaoForm(request.POST, request.FILES)
-        if form.is_valid():
-            historico = form.save(commit=False)
-            historico.instrumento = instrumento
-            historico.save()
-            form.save_m2m()
-            messages.success(request, 'Histórico de calibração registrado com sucesso!')
-            # Se certificado não está validado, ir para a pré-visualização e opção de carimbo
-            if not getattr(historico, 'certificado_validado', False) and historico.certificado:
-                return redirect('preview_certificado', historico_id=historico.id)
-            return redirect('detalhe_instrumento', instrumento_id=instrumento.id)
-    else:
-        form = HistoricoCalibracaoForm()
-    return render(request, 'registrar_historico_calibracao.html', {
-        'form': form,
-        'instrumento': instrumento
-    })
+    """Registra histórico de calibração com validação e preview de certificado."""
+    try:
+        instrumento = get_object_or_404(Instrumento, id=instrumento_id)
+        logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}, user={request.user.username}")
+        
+        if request.method == 'POST':
+            form = HistoricoCalibracaoForm(request.POST, request.FILES)
+            logger.debug(f"POST data: {request.POST}")
+            logger.debug(f"FILES: {list(request.FILES.keys())}")
+            
+            if form.is_valid():
+                try:
+                    historico = form.save(commit=False)
+                    historico.instrumento = instrumento
+                    historico.save()
+                    form.save_m2m()
+                    logger.info(f"Histórico {historico.id} criado com sucesso para instrumento {instrumento_id}")
+                    messages.success(request, 'Histórico de calibração registrado com sucesso!')
+                    
+                    # Se certificado não está validado, ir para a pré-visualização e opção de carimbo
+                    certificado_validado = form.cleaned_data.get('certificado_validado', False)
+                    if not certificado_validado and historico.certificado:
+                        logger.info(f"Redirecionando para preview - certificado não validado")
+                        return redirect('preview_certificado', historico_id=historico.id)
+                    
+                    return redirect('detalhe_instrumento', instrumento_id=instrumento.id)
+                except Exception as save_error:
+                    logger.error(f"Erro ao salvar histórico: {save_error}", exc_info=True)
+                    messages.error(request, f'Erro ao salvar histórico: {str(save_error)}')
+            else:
+                logger.warning(f"Form inválido. Erros: {form.errors.as_json()}")
+                messages.error(request, 'Por favor, corrija os erros no formulário.')
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"{field}: {error}")
+        else:
+            form = HistoricoCalibracaoForm()
+        
+        return render(request, 'registrar_historico_calibracao.html', {
+            'form': form,
+            'instrumento': instrumento
+        })
+    except Exception as e:
+        logger.error(f"Erro crítico em registrar_historico_calibracao_view: {e}", exc_info=True)
+        messages.error(request, f'Erro ao processar requisição: {str(e)}')
+        return redirect('modulo_metrologia')
 
 @login_required
 def preview_certificado_view(request, historico_id):
-    historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
-    if not historico.certificado:
-        messages.error(request, 'Este histórico não possui arquivo de certificado.')
-        return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
-
-    return render(request, 'preview_certificado.html', {
-        'historico': historico,
-    })
+    """Pré-visualização do certificado antes de aplicar carimbo."""
+    try:
+        logger.info(f"Preview certificado: historico_id={historico_id}, user={request.user.username}")
+        historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+        
+        if not historico.certificado:
+            logger.warning(f"Histórico {historico_id} sem certificado")
+            messages.error(request, 'Este histórico não possui arquivo de certificado.')
+            return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
+        
+        logger.debug(f"Certificado path: {historico.certificado.path if historico.certificado else 'None'}")
+        return render(request, 'preview_certificado.html', {
+            'historico': historico,
+        })
+    except Exception as e:
+        logger.error(f"Erro em preview_certificado_view: {e}", exc_info=True)
+        messages.error(request, f'Erro ao visualizar certificado: {str(e)}')
+        return redirect('modulo_metrologia')
 
 @login_required
 def aplicar_carimbo_certificado_view(request, historico_id):
+    """Aplica carimbo de validação no certificado PDF."""
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.colors import red
     from PyPDF2 import PdfReader, PdfWriter
-    import os
-    import tempfile
-
-    historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
-    if not historico.certificado:
-        messages.error(request, 'Este histórico não possui arquivo de certificado.')
-        return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
-
-    # Gera um PDF de carimbo com ReportLab
-    stamp_fd, stamp_path = tempfile.mkstemp(suffix='.pdf')
-    os.close(stamp_fd)
-    c = canvas.Canvas(stamp_path, pagesize=letter)
-    c.setFillColor(red)
-    c.setFont("Helvetica-Bold", 18)
-    carimbo_texto = f"VALIDADO - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
-    c.drawString(72, 72, carimbo_texto)
-    c.save()
-
-    # Mescla o carimbo na primeira página do certificado
-    reader = PdfReader(historico.certificado.path)
-    writer = PdfWriter()
-    stamp_reader = PdfReader(stamp_path)
-    first_page = reader.pages[0]
-    first_page.merge_page(stamp_reader.pages[0])
-    writer.add_page(first_page)
-    for i in range(1, len(reader.pages)):
-        writer.add_page(reader.pages[i])
-
-    out_fd, out_path = tempfile.mkstemp(suffix='.pdf')
-    os.close(out_fd)
-    with open(out_path, 'wb') as f_out:
-        writer.write(f_out)
-
-    # Salva o PDF carimbado no FileField
     from django.core.files import File
-    with open(out_path, 'rb') as f_final:
-        historico.certificado_carimbado.save(
-            os.path.basename(historico.certificado.name).replace('.pdf', '_carimbado.pdf'),
-            File(f_final),
-            save=False
-        )
-    historico.certificado_validado = True
-    historico.save(update_fields=['certificado_carimbado', 'certificado_validado'])
-    messages.success(request, 'Certificado validado e carimbado com sucesso!')
-    return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
+    
+    stamp_path = None
+    out_path = None
+    
+    try:
+        logger.info(f"Aplicar carimbo: historico_id={historico_id}, user={request.user.username}")
+        historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+        
+        if not historico.certificado:
+            logger.warning(f"Histórico {historico_id} sem certificado para carimbar")
+            messages.error(request, 'Este histórico não possui arquivo de certificado.')
+            return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
+        
+        # Gera um PDF de carimbo com ReportLab
+        logger.debug("Gerando PDF de carimbo")
+        stamp_fd, stamp_path = tempfile.mkstemp(suffix='.pdf')
+        os.close(stamp_fd)
+        c = canvas.Canvas(stamp_path, pagesize=letter)
+        c.setFillColor(red)
+        c.setFont("Helvetica-Bold", 18)
+        carimbo_texto = f"VALIDADO - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        c.drawString(72, 72, carimbo_texto)
+        c.save()
+        logger.debug(f"Carimbo gerado: {stamp_path}")
+        
+        # Mescla o carimbo na primeira página do certificado
+        logger.debug(f"Lendo certificado original: {historico.certificado.path}")
+        reader = PdfReader(historico.certificado.path)
+        writer = PdfWriter()
+        stamp_reader = PdfReader(stamp_path)
+        first_page = reader.pages[0]
+        first_page.merge_page(stamp_reader.pages[0])
+        writer.add_page(first_page)
+        
+        for i in range(1, len(reader.pages)):
+            writer.add_page(reader.pages[i])
+        
+        logger.debug("Salvando PDF carimbado")
+        out_fd, out_path = tempfile.mkstemp(suffix='.pdf')
+        os.close(out_fd)
+        with open(out_path, 'wb') as f_out:
+            writer.write(f_out)
+        
+        # Salva o PDF carimbado no FileField
+        logger.debug("Anexando PDF carimbado ao histórico")
+        with open(out_path, 'rb') as f_final:
+            filename = os.path.basename(historico.certificado.name).replace('.pdf', '_carimbado.pdf')
+            historico.certificado_carimbado.save(filename, File(f_final), save=False)
+        
+        historico.certificado_validado = True
+        historico.save(update_fields=['certificado_carimbado', 'certificado_validado'])
+        logger.info(f"Certificado {historico_id} validado e carimbado com sucesso")
+        messages.success(request, 'Certificado validado e carimbado com sucesso!')
+        return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
+        
+    except Exception as e:
+        logger.error(f"Erro ao aplicar carimbo no histórico {historico_id}: {e}", exc_info=True)
+        messages.error(request, f'Erro ao aplicar carimbo: {str(e)}')
+        return redirect('modulo_metrologia')
+    finally:
+        # Limpa arquivos temporários
+        try:
+            if stamp_path and os.path.exists(stamp_path):
+                os.unlink(stamp_path)
+            if out_path and os.path.exists(out_path):
+                os.unlink(out_path)
+        except Exception as cleanup_error:
+            logger.warning(f"Erro ao limpar arquivos temporários: {cleanup_error}")
