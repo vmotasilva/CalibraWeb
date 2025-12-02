@@ -192,7 +192,7 @@ class HistoricoCalibracaoForm(forms.ModelForm):
     
     arquivos_padroes = forms.FileField(
         label="Arquivos de Padrões (PDF)",
-        widget=forms.ClearableFileInput(attrs={"class": "form-control", "multiple": True, "accept": ".pdf"}),
+        widget=forms.FileInput(attrs={"class": "form-control", "accept": ".pdf"}),
         required=False,
         help_text="Anexe um ou mais arquivos PDF de padrões utilizados."
     )

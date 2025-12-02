@@ -565,33 +565,15 @@ class FaixaMedicao(models.Model):
 
 
 class HistoricoCalibracao(models.Model):
-        # Novos arquivos PDF de padrões associados diretamente ao histórico
-        arquivos_padroes = models.ManyToManyField(
-            'ArquivoPadrao', blank=True, related_name='historicos', verbose_name='Arquivos de Padrões (PDF)'
-        )
-    # Novo modelo para armazenar arquivos PDF de padrões
-    class ArquivoPadrao(models.Model):
-        arquivo = models.FileField(upload_to='padroes_historico/', verbose_name='PDF do Padrão')
-        nome = models.CharField(max_length=200, blank=True, null=True)
-        criado_em = models.DateTimeField(auto_now_add=True)
-
-        def __str__(self):
-            return self.nome or self.arquivo.name
-    instrumento = models.ForeignKey(
-        Instrumento,
-        on_delete=models.CASCADE,
-        related_name="historico_calibracoes",
-        null=True,
-        blank=True,
+    # Novos arquivos PDF de padrões associados diretamente ao histórico
+    arquivos_padroes = models.ManyToManyField(
+        'ArquivoPadrao', blank=True, related_name='historicos', verbose_name='Arquivos de Padrões (PDF)'
     )
 
     data_calibracao = models.DateField()
     data_aprovacao = models.DateField(default=date.today)
     numero_certificado = models.CharField(max_length=100, default="S/N")
-
-    # --- RASTREABILIDADE ---
     tem_selo_rbc = models.BooleanField(default=False, verbose_name="Possui Selo RBC?")
-
     TIPO_CALIBRACAO_CHOICES = [
         ("EXTERNA", "Externa (Fornecedor)"),
         ("INTERNA", "Interna (Equipe Própria)"),
@@ -602,15 +584,12 @@ class HistoricoCalibracao(models.Model):
         default="EXTERNA",
         verbose_name="Tipo",
     )
-
     responsavel = models.CharField(
         max_length=150, null=True, blank=True, verbose_name="Responsável Técnica"
     )
     fornecedor = models.CharField(
         max_length=150, null=True, blank=True, verbose_name="Laboratório/Fornecedor"
     )
-
-    # DADOS MATEMÁTICOS
     erro_encontrado = models.DecimalField(
         max_digits=10, decimal_places=4, null=True, blank=True, verbose_name="Erro (E)"
     )
@@ -628,12 +607,10 @@ class HistoricoCalibracao(models.Model):
         blank=True,
         verbose_name="Tol. Processo (+/-)",
     )
-
     proxima_calibracao = models.DateField(null=True, blank=True)
     certificado = models.FileField(upload_to="certificados/", null=True, blank=True)
     certificado_validado = models.BooleanField(default=False)
     certificado_carimbado = models.FileField(upload_to="certificados/carimbados/", null=True, blank=True)
-
     RESULTADO_CHOICES = [
         ("APROVADO_SEM_CORRECAO", "Aprovado sem correção"),
         ("APROVADO_COM_CORRECAO", "Aprovado com Correção"),
@@ -642,20 +619,27 @@ class HistoricoCalibracao(models.Model):
     resultado = models.CharField(
         max_length=50, choices=RESULTADO_CHOICES, default="APROVADO_SEM_CORRECAO"
     )
-
     observacoes = models.TextField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
+class ArquivoPadrao(models.Model):
+    arquivo = models.FileField(upload_to='padroes_historico/', verbose_name='PDF do Padrão')
+    nome = models.CharField(max_length=200, blank=True, null=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    instrumento = models.ForeignKey(
+        Instrumento,
+        on_delete=models.CASCADE,
+        related_name="historico_calibracoes",
+        null=True,
+        blank=True,
+    )
+
+    def __str__(self):
+        return self.nome or self.arquivo.name
+
     class Meta:
-        verbose_name = "Histórico de Calibração"
-        verbose_name_plural = "Histórico de Calibrações"
-        ordering = ["-data_calibracao"]
-        unique_together = (
-            "instrumento",
-            "data_calibracao",
-            "data_aprovacao",
-            "numero_certificado",
-        )
+        verbose_name = "Arquivo de Padrão"
+        verbose_name_plural = "Arquivos de Padrão"
 
     def __str__(self):
         return f"{self.instrumento.tag} - {self.data_calibracao}"

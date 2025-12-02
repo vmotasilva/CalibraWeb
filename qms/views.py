@@ -1,3 +1,39 @@
+
+import io
+import os
+import re
+import zipfile
+from datetime import date, datetime, timedelta
+import tempfile
+from decimal import Decimal
+import unicodedata
+import logging
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.contrib import messages
+from django.http import HttpResponse, JsonResponse, Http404
+from django.db.models import Q, Count, Max, Prefetch
+from django.core.paginator import Paginator
+from django.utils import timezone
+
+logger = logging.getLogger(__name__)
+from .models import (
+    Instrumento, FaixaMedicao, HistoricoCalibracao, CategoriaInstrumento,
+    Setor, Colaborador, Procedimento, RegistroTreinamento, ImportJob,
+    SolicitacaoInstrumento, ProcessoCotacao, UnidadeMedida,
+    HierarquiaSetor, Fornecedor, CentroCusto, ResultadoFaixaCalibracao
+)
+from .forms import (
+    InstrumentoForm, ImportacaoInstrumentosForm, ColaboradorForm, 
+    ProcedimentoForm, SolicitacaoForm, OcorrenciaForm,
+    RegistroTreinamentoForm, ImportacaoColaboradoresForm,
+    ImportacaoProcedimentosForm, ImportacaoHierarquiaForm,
+    ImportacaoHistoricoForm, ImportacaoPadroesForm, HistoricoCalibracaoForm
+)
+
+# ...existing code...
+
 # Renomear arquivo PDF de padrão associado ao histórico
 @login_required
 @require_POST
@@ -28,9 +64,8 @@ def renomear_arquivo_padrao_view(request, arquivo_id):
     if historicos:
         return redirect('registrar_historico_calibracao', instrumento_id=historicos[0].instrumento_id)
     return redirect('modulo_metrologia')
-# Remover arquivo PDF de padrão associado ao histórico
-from django.views.decorators.http import require_POST
 
+# Remover arquivo PDF de padrão associado ao histórico
 @login_required
 @require_POST
 def remover_arquivo_padrao_view(request, arquivo_id):
