@@ -1487,6 +1487,8 @@ def dl_template_historico(request):
     return dl_generic(
         [
             "TAG",
+            "FAIXA",
+            "UNIDADE DE MEDIDA",
             "DATA CALIBRAÇÃO",
             "DATA APROVAÇÃO",
             "N CERTIFICADO",
