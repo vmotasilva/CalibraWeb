@@ -1274,10 +1274,15 @@ def novo_instrumento_view(request):
 
 # --- VIEW ATUALIZADA: DETALHE DO INSTRUMENTO (COM OCORRÊNCIAS E ORDENS) ---
 @login_required
+@login_required
 def detalhe_instrumento_view(
     request, instrumento_id
 ):  # Note que o URLs.py usa 'pk' ou 'instrumento_id', verifique se o urls.py espera <int:pk> ou <int:instrumento_id>. Vou manter instrumento_id conforme seu código antigo.
-    inst = get_object_or_404(Instrumento, id=instrumento_id)
+    try:
+        inst = get_object_or_404(Instrumento, id=instrumento_id)
+    except Exception as e:
+        logger.error(f"Erro ao buscar instrumento {instrumento_id}: {e}")
+        raise
 
     # Processamento do Form de Ocorrência Rápida
     if request.method == "POST":
@@ -1297,10 +1302,12 @@ def detalhe_instrumento_view(
 
     # Buscando dados para as novas abas
     try:
-        historico = HistoricoCalibracao.objects.filter(instrumento=inst).order_by("-data_calibracao")
+        historico = HistoricoCalibracao.objects.filter(instrumento=inst).prefetch_related(
+            'resultados_faixas__faixa_medicao__unidade'
+        ).order_by("-data_calibracao")
     except Exception as e:
         import traceback
-        print("[ERRO DETALHE INSTRUMENTO]", e)
+        logger.error(f"[ERRO DETALHE INSTRUMENTO] Erro ao buscar histórico: {e}")
         traceback.print_exc()
         historico = []
 
@@ -1407,10 +1414,8 @@ def download_certificado_view(request, historico_id):
         return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
     
     try:
-        # Open the file from storage
-        file_path = hist.certificado.path
-        with open(file_path, 'rb') as f:
-            file_content = f.read()
+        # Use Django's file storage API instead of trying to access .path
+        file_content = hist.certificado.read()
         
         # Generate filename
         filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}.pdf"
@@ -2496,7 +2501,7 @@ def preview_certificado_view(request, historico_id):
             messages.error(request, 'Este histórico não possui arquivo de certificado.')
             return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
         
-        logger.debug(f"Certificado path: {historico.certificado.path if historico.certificado else 'None'}")
+        logger.debug(f"Certificado name: {historico.certificado.name if historico.certificado else 'None'}")
         return render(request, 'preview_certificado.html', {
             'historico': historico,
         })
@@ -2543,8 +2548,11 @@ def aplicar_carimbo_certificado_view(request, historico_id):
         logger.debug(f"Carimbo gerado: {stamp_path}")
         
         # Mescla o carimbo na primeira página do certificado
-        logger.debug(f"Lendo certificado original: {historico.certificado.path}")
-        reader = PdfReader(historico.certificado.path)
+        logger.debug(f"Lendo certificado original: {historico.certificado.name}")
+        
+        # Lê o certificado usando storage API
+        cert_content = io.BytesIO(historico.certificado.read())
+        reader = PdfReader(cert_content)
         writer = PdfWriter()
         stamp_reader = PdfReader(stamp_path)
         first_page = reader.pages[0]
