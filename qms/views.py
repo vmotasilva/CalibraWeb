@@ -1521,6 +1521,7 @@ def dl_template_historico(request):
             "DATA CALIBRAÇÃO",
             "DATA APROVAÇÃO",
             "N CERTIFICADO",
+            "CAMINHO DO CERTIFICADO",
             "ERRO ENCONTRADO",
             "INCERTEZA",
             "TOLERANCIA PROCESSO (+/-)",

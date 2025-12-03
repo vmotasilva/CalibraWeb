@@ -339,6 +339,7 @@ def import_historico_task(job_id, filepath):
                 dt_cal = excel_date_to_date(row.get('DATA CALIBRAÇÃO') or row.get('DATA CALIBRACAO'))
                 dt_apr = excel_date_to_date(row.get('DATA APROVAÇÃO') or row.get('DATA APROVACAO')) or dt_cal
                 n_cert = get_val(row, ['N CERTIFICADO', 'Nº CERTIFICADO', 'NUMERO CERTIFICADO']) or 'S/N'
+                cert_path = get_val(row, ['CAMINHO DO CERTIFICADO', 'CAMINHO CERTIFICADO', 'CERTIFICADO'])
                 erro_faixa = get_val(row, ['ERRO ENCONTRADO', 'ERRO'])
                 inc_faixa = get_val(row, ['INCERTEZA', 'U'])
                 tol_faixa = get_val(row, ['TOLERANCIA PROCESSO (+/-)', 'TOLERANCIA PROCESSO', 'TOLERANCIA', 'TOLERANCIA (+/-)'])
@@ -394,6 +395,36 @@ def import_historico_task(job_id, filepath):
                     numero_certificado=n_cert,
                     defaults=defaults,
                 )
+
+                # Process certificate file if provided
+                if cert_path:
+                    import os
+                    from django.core.files import File
+                    try:
+                        # Check if cert_path is an absolute path or relative path
+                        cert_file_path = cert_path
+                        if not os.path.isabs(cert_file_path):
+                            # Try common relative paths
+                            possible_paths = [
+                                os.path.join(os.getcwd(), cert_file_path),
+                                os.path.join(os.path.dirname(filepath), cert_file_path),
+                            ]
+                            for possible in possible_paths:
+                                if os.path.isfile(possible):
+                                    cert_file_path = possible
+                                    break
+                        
+                        if os.path.isfile(cert_file_path):
+                            with open(cert_file_path, 'rb') as f:
+                                # Get the original filename
+                                cert_filename = os.path.basename(cert_file_path)
+                                # Save to certificado field
+                                obj.certificado.save(cert_filename, File(f), save=True)
+                                logger.info(f"Certificado associado ao histórico {obj.id}: {cert_filename}")
+                        else:
+                            logger.warning(f"Arquivo de certificado não encontrado: {cert_path}")
+                    except Exception as cert_error:
+                        logger.error(f"Erro ao processar certificado para TAG {tag}: {str(cert_error)}")
 
                 # NOVO: Associar faixa e unidade ao histórico
                 faixa_txt = get_val(row, ['FAIXA'])
