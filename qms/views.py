@@ -1370,8 +1370,6 @@ def remover_historico_view(request, historico_id):
 
 
 @login_required
-
-@login_required
 def anexar_certificado_historico_view(request, historico_id):
     """Anexa um arquivo PDF ao registro de histórico que ainda não tenha certificado."""
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
@@ -2597,6 +2595,8 @@ def aplicar_carimbo_certificado_view(request, historico_id):
         except Exception as cleanup_error:
             logger.warning(f"Erro ao limpar arquivos temporários: {cleanup_error}")
 
+
+@login_required
 
 @login_required
 def visualizar_historico_calibracao_view(request, historico_id):

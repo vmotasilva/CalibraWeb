@@ -32,6 +32,16 @@ urlpatterns = [
 		name="download_certificado",
 	),
 	path(
+		"metrologia/historico/<int:historico_id>/visualizar/",
+		views.visualizar_historico_calibracao_view,
+		name="visualizar_historico_calibracao",
+	),
+	path(
+		"metrologia/historico/<int:historico_id>/remover/",
+		views.remover_historico_view,
+		name="remover_historico",
+	),
+	path(
 		"metrologia/historico/<int:historico_id>/anexar-certificado/",
 		views.anexar_certificado_historico_view,
 		name="anexar_certificado_historico",
