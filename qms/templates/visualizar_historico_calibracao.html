@@ -45,6 +45,39 @@
         <!-- COLUNA ESQUERDA: FORMULÁRIO -->
         <div class="col-lg-6">
             
+            <!-- RESULTADO GERAL -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-check-circle"></i> Resultado Geral da Calibração
+                </div>
+                <div class="card-body">
+                    {% if modo_edicao %}
+                        <label for="id_resultado" class="form-label fw-bold">
+                            Resultado
+                        </label>
+                        {{ form.resultado|add_class:"form-select" }}
+                        <small class="text-muted d-block mt-2">
+                            Selecione o resultado geral desta calibração, independentemente das faixas.
+                        </small>
+                    {% else %}
+                        <div class="text-center py-3">
+                            {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                <h4><span class="badge bg-success">✓ APROVADO SEM CORREÇÃO</span></h4>
+                                <p class="text-muted">Instrumento operacional sem necessidade de ajustes.</p>
+                            {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
+                                <h4><span class="badge bg-warning text-dark">⚠ APROVADO COM CORREÇÃO</span></h4>
+                                <p class="text-muted">Instrumento operacional, porém com ajustes necessários.</p>
+                            {% elif historico.resultado == 'REPROVADO' %}
+                                <h4><span class="badge bg-danger">✗ REPROVADO</span></h4>
+                                <p class="text-muted">Instrumento não passou na calibração. Verificar condições.</p>
+                            {% else %}
+                                <h4><span class="badge bg-secondary">SEM RESULTADO</span></h4>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
             <!-- UPLOAD DE CERTIFICADO -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-primary text-white">
@@ -316,14 +349,46 @@
         {% if historico.certificado %}
         <div class="col-lg-6">
             <div class="card shadow-sm sticky-top" style="top: 20px;">
-                <div class="card-header bg-dark text-white">
-                    <i class="bi bi-file-pdf"></i> Visualização do Certificado
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-file-pdf"></i> Visualização do Certificado</span>
+                    <a href="{{ historico.certificado.url }}" download class="btn btn-sm btn-light" title="Baixar PDF">
+                        <i class="bi bi-download"></i>
+                    </a>
                 </div>
                 <div class="card-body p-0" style="height: calc(100vh - 180px); min-height: 600px;">
-                    <iframe src="{{ historico.certificado.url }}" class="w-100 h-100" frameborder="0"></iframe>
+                    <div class="w-100 h-100" id="pdf-container">
+                        <div class="d-flex align-items-center justify-content-center h-100">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Carregando...</span>
+                                </div>
+                                <p class="text-muted">Carregando documento PDF...</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const pdfUrl = "{{ historico.certificado.url }}";
+                const container = document.getElementById('pdf-container');
+                
+                // Tentar carregar usando iframe
+                const iframe = document.createElement('iframe');
+                iframe.src = pdfUrl;
+                iframe.className = 'w-100 h-100';
+                iframe.frameborder = '0';
+                
+                container.innerHTML = '';
+                container.appendChild(iframe);
+                
+                // Se o navegador não suportar PDF inline, mostrar um fallback
+                iframe.addEventListener('error', function() {
+                    container.innerHTML = '<div class="alert alert-warning m-3"><i class="bi bi-exclamation-triangle"></i> Não foi possível carregar o PDF no navegador. <a href="' + pdfUrl + '" download>Clique aqui para baixar o arquivo</a>.</div>';
+                });
+            });
+        </script>
         {% endif %}
     </div>
 
