@@ -629,7 +629,7 @@ class ArquivoPadrao(models.Model):
     instrumento = models.ForeignKey(
         Instrumento,
         on_delete=models.CASCADE,
-        related_name="historico_calibracoes",
+        related_name="arquivos_padroes_instrumento",
         null=True,
         blank=True,
     )

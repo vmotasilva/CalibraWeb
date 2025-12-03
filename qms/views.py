@@ -1297,7 +1297,7 @@ def detalhe_instrumento_view(
 
     # Buscando dados para as novas abas
     try:
-        historico = inst.historico_calibracoes.all().order_by("-data_calibracao")
+        historico = HistoricoCalibracao.objects.filter(instrumento=inst).order_by("-data_calibracao")
     except Exception as e:
         import traceback
         print("[ERRO DETALHE INSTRUMENTO]", e)
