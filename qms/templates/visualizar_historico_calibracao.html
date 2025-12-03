@@ -45,36 +45,31 @@
         <!-- COLUNA ESQUERDA: FORMULÁRIO -->
         <div class="col-lg-6">
             
-            <!-- RESULTADO GERAL -->
+            <!-- RESULTADO GERAL (APENAS LEITURA - CALCULADO) -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-primary text-white">
                     <i class="bi bi-check-circle"></i> Resultado Geral da Calibração
                 </div>
                 <div class="card-body">
-                    {% if modo_edicao %}
-                        <label for="id_resultado" class="form-label fw-bold">
-                            Resultado
-                        </label>
-                        {{ form.resultado|add_class:"form-select" }}
-                        <small class="text-muted d-block mt-2">
-                            Selecione o resultado geral desta calibração, independentemente das faixas.
-                        </small>
-                    {% else %}
-                        <div class="text-center py-3">
-                            {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
-                                <h4><span class="badge bg-success">✓ APROVADO SEM CORREÇÃO</span></h4>
-                                <p class="text-muted">Instrumento operacional sem necessidade de ajustes.</p>
-                            {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
-                                <h4><span class="badge bg-warning text-dark">⚠ APROVADO COM CORREÇÃO</span></h4>
-                                <p class="text-muted">Instrumento operacional, porém com ajustes necessários.</p>
-                            {% elif historico.resultado == 'REPROVADO' %}
-                                <h4><span class="badge bg-danger">✗ REPROVADO</span></h4>
-                                <p class="text-muted">Instrumento não passou na calibração. Verificar condições.</p>
-                            {% else %}
-                                <h4><span class="badge bg-secondary">SEM RESULTADO</span></h4>
-                            {% endif %}
-                        </div>
-                    {% endif %}
+                    <div class="text-center py-3">
+                        {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                            <h4><span class="badge bg-success" style="font-size: 1.1rem; padding: 0.7rem 1.5rem;">✓ APROVADO SEM CORREÇÃO</span></h4>
+                            <p class="text-muted mt-2">Instrumento operacional sem necessidade de ajustes.</p>
+                        {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
+                            <h4><span class="badge bg-warning text-dark" style="font-size: 1.1rem; padding: 0.7rem 1.5rem;">⚠ APROVADO COM CORREÇÃO</span></h4>
+                            <p class="text-muted mt-2">Instrumento operacional, porém com ajustes necessários.</p>
+                        {% elif historico.resultado == 'REPROVADO' %}
+                            <h4><span class="badge bg-danger" style="font-size: 1.1rem; padding: 0.7rem 1.5rem;">✗ REPROVADO</span></h4>
+                            <p class="text-muted mt-2">Instrumento não passou na calibração. Verificar condições.</p>
+                        {% else %}
+                            <h4><span class="badge bg-secondary" style="font-size: 1.1rem; padding: 0.7rem 1.5rem;">SEM RESULTADO</span></h4>
+                            <p class="text-muted mt-2">Preencha os dados das faixas para calcular o resultado.</p>
+                        {% endif %}
+                    </div>
+                    <div class="alert alert-info mt-3 mb-0" style="font-size: 0.9rem;">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Nota:</strong> Este resultado é <strong>calculado automaticamente</strong> com base nos resultados das faixas de medição.
+                    </div>
                 </div>
             </div>
             

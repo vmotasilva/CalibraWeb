@@ -2763,6 +2763,24 @@ def visualizar_historico_calibracao_view(request, historico_id):
             if hasattr(rf, 'faixa_medicao_id'):
                 resultados_map[rf.faixa_medicao_id] = rf
         
+        # Calcula o resultado geral baseado nas faixas, mesmo em modo visualização
+        try:
+            resultados = list(historico.resultados_faixas.values_list('resultado', flat=True))
+            overall = None
+            if resultados:
+                if 'REPROVADO' in resultados:
+                    overall = 'REPROVADO'
+                elif 'APROVADO_COM_CORRECAO' in resultados:
+                    overall = 'APROVADO_COM_CORRECAO'
+                else:
+                    overall = 'APROVADO_SEM_CORRECAO'
+            # Atualiza silenciosamente se for diferente
+            if overall and historico.resultado != overall:
+                historico.resultado = overall
+                historico.save(update_fields=['resultado'])
+        except Exception:
+            pass
+        
         return render(request, 'visualizar_historico_calibracao.html', {
             'form': form,
             'historico': historico,
