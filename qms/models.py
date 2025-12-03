@@ -680,7 +680,7 @@ class ArquivoPadrao(models.Model):
 @receiver([post_save, post_delete], sender=HistoricoCalibracao)
 def atualizar_datas_instrumento(sender, instance, **kwargs):
     inst = instance.instrumento
-    ultima_calib = inst.historico_calibracoes.order_by("-data_calibracao").first()
+    ultima_calib = HistoricoCalibracao.objects.filter(instrumento=inst).order_by("-data_calibracao").first()
     if ultima_calib:
         inst.data_ultima_calibracao = ultima_calib.data_calibracao
         inst.data_proxima_calibracao = ultima_calib.proxima_calibracao
