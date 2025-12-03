@@ -539,6 +539,7 @@ def export_etiquetas_view(request):
         template_cfg = None
 
     def draw_label(x, y, inst, situacao):
+        import pandas as pd
         # Label frame
         c.setLineWidth(1)
         c.rect(x, y, cell_w, cell_h)
