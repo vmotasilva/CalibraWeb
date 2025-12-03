@@ -337,9 +337,13 @@ def import_historico_task(job_id, filepath):
                 dt_cal = excel_date_to_date(row.get('DATA CALIBRAÇÃO') or row.get('DATA CALIBRACAO'))
                 dt_apr = excel_date_to_date(row.get('DATA APROVAÇÃO') or row.get('DATA APROVACAO')) or dt_cal
                 n_cert = get_val(row, ['N CERTIFICADO', 'Nº CERTIFICADO', 'NUMERO CERTIFICADO']) or 'S/N'
-                erro = get_val(row, ['ERRO ENCONTRADO', 'ERRO'])
-                inc = get_val(row, ['INCERTEZA', 'U'])
-                tol = get_val(row, ['TOLERANCIA PROCESSO (+/-)', 'TOLERANCIA PROCESSO', 'TOLERANCIA', 'TOLERANCIA (+/-)'])
+                erro_faixa = get_val(row, ['ERRO ENCONTRADO', 'ERRO'])
+                inc_faixa = get_val(row, ['INCERTEZA', 'U'])
+                tol_faixa = get_val(row, ['TOLERANCIA PROCESSO (+/-)', 'TOLERANCIA PROCESSO', 'TOLERANCIA', 'TOLERANCIA (+/-)'])
+                # Para o histórico principal, use os mesmos valores (ou None)
+                erro = erro_faixa
+                inc = inc_faixa
+                tol = tol_faixa
                 rbc = (get_val(row, ['RBC (SIM/NAO)', 'RBC', 'SELO RBC']) or '').upper()
                 tem_rbc = True if 'SIM' in rbc or 'YES' in rbc else False
                 resultado = (get_val(row, ['RESULTADO']) or 'APROVADO').upper()
@@ -424,9 +428,9 @@ def import_historico_task(job_id, filepath):
                         historico=obj,
                         faixa_medicao=faixa_obj,
                         defaults={
-                            "erro_encontrado": safe_float(erro),
-                            "incerteza": safe_float(inc),
-                            "tolerancia_usada": safe_float(tol),
+                            "erro_encontrado": safe_float(erro_faixa),
+                            "incerteza": safe_float(inc_faixa),
+                            "tolerancia_usada": safe_float(tol_faixa),
                         },
                     )
 
