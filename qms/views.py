@@ -1370,6 +1370,8 @@ def remover_historico_view(request, historico_id):
 
 
 @login_required
+
+@login_required
 def anexar_certificado_historico_view(request, historico_id):
     """Anexa um arquivo PDF ao registro de histórico que ainda não tenha certificado."""
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
@@ -1404,7 +1406,6 @@ def anexar_certificado_historico_view(request, historico_id):
 
 
 @login_required
-@login_required
 def download_certificado_view(request, historico_id):
     """Download certificate PDF with proper headers to force download."""
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
@@ -1429,6 +1430,8 @@ def download_certificado_view(request, historico_id):
         messages.error(request, f"Erro ao baixar certificado: {e}")
         return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
 
+
+@login_required
 
 @login_required
 def remover_certificado_historico_view(request, historico_id):

@@ -32,6 +32,16 @@ urlpatterns = [
 		name="download_certificado",
 	),
 	path(
+		"metrologia/historico/<int:historico_id>/anexar-certificado/",
+		views.anexar_certificado_historico_view,
+		name="anexar_certificado_historico",
+	),
+	path(
+		"metrologia/historico/<int:historico_id>/remover-certificado/",
+		views.remover_certificado_historico_view,
+		name="remover_certificado_historico",
+	),
+	path(
 		"metrologia/historico/<int:historico_id>/aplicar-carimbo/",
 		views.aplicar_carimbo_certificado_view,
 		name="aplicar_carimbo_certificado",
