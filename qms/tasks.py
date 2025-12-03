@@ -250,6 +250,8 @@ def import_instruments_task(job_id, filepath):
 
 @shared_task
 def import_historico_task(job_id, filepath):
+        import logging
+        logger = logging.getLogger("qms.import_historico")
     """Importa histórico de calibração a partir de planilha.
 
     Campos esperados (ver `dl_template_historico`):
@@ -431,15 +433,20 @@ def import_historico_task(job_id, filepath):
                             return float(str(val).replace(",", "."))
                         except Exception:
                             return 0.0
+                    erro_val = safe_float(erro_faixa)
+                    inc_val = safe_float(inc_faixa)
+                    tol_val = safe_float(tol_faixa)
+                    logger.info(f"Importando faixa: {faixa_obj} | Erro: {erro_val} | Incerteza: {inc_val} | Tolerância: {tol_val}")
                     resultado_obj, _ = ResultadoFaixaCalibracao.objects.update_or_create(
                         historico=obj,
                         faixa_medicao=faixa_obj,
                         defaults={
-                            "erro_encontrado": safe_float(erro_faixa),
-                            "incerteza": safe_float(inc_faixa),
-                            "tolerancia_usada": safe_float(tol_faixa),
+                            "erro_encontrado": erro_val,
+                            "incerteza": inc_val,
+                            "tolerancia_usada": tol_val,
                         },
                     )
+                    logger.info(f"Resultado salvo: {resultado_obj.resultado}")
                     # Força recálculo do resultado
                     resultado_obj.save()
 
