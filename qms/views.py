@@ -96,6 +96,7 @@ def remover_arquivo_padrao_view(request, arquivo_id):
     return redirect('modulo_metrologia')
 
 import io
+import pandas as pd
 import os
 import re
 import zipfile
