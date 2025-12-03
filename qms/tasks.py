@@ -381,12 +381,50 @@ def import_historico_task(job_id, filepath):
                         sample_errors.append(f'Data calibração ausente para TAG {tag}')
                     continue
 
+
                 obj, was_created = HistoricoCalibracao.objects.update_or_create(
                     instrumento=inst,
                     data_calibracao=dt_cal,
                     numero_certificado=n_cert,
                     defaults=defaults,
                 )
+
+                # NOVO: Associar faixa e unidade ao histórico
+                faixa_txt = get_val(row, ['FAIXA'])
+                unidade_txt = get_val(row, ['UNIDADE DE MEDIDA', 'UNIDADE', 'UNID.', 'UNID'])
+                faixa_obj = None
+                unidade_obj = None
+                if unidade_txt:
+                    from .models import UnidadeMedida
+                    sigla = str(unidade_txt).upper()
+                    unidade_obj, _ = UnidadeMedida.objects.get_or_create(sigla=sigla, defaults={"nome": sigla})
+                if faixa_txt and unidade_obj:
+                    from .models import FaixaMedicao
+                    # Tenta extrair valores mínimo/máximo da faixa
+                    import re
+                    rng = re.findall(r"[-+]?[0-9]*\.?[0-9]+", faixa_txt)
+                    if len(rng) >= 2:
+                        valor_minimo = float(rng[0])
+                        valor_maximo = float(rng[1])
+                        faixa_obj, _ = FaixaMedicao.objects.get_or_create(
+                            instrumento=inst,
+                            unidade=unidade_obj,
+                            valor_minimo=valor_minimo,
+                            valor_maximo=valor_maximo,
+                        )
+                # Cria resultado por faixa se faixa encontrada
+                if faixa_obj:
+                    from .models import ResultadoFaixaCalibracao
+                    ResultadoFaixaCalibracao.objects.update_or_create(
+                        historico=obj,
+                        faixa_medicao=faixa_obj,
+                        defaults={
+                            "erro_encontrado": float(erro.replace(",", ".")) if erro else None,
+                            "incerteza": float(inc.replace(",", ".")) if inc else None,
+                            "tolerancia_usada": float(tol.replace(",", ".")) if tol else None,
+                        },
+                    )
+
                 # Ensure Instrumento fields reflect latest calibration
                 try:
                     if dt_cal:
