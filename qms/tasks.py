@@ -415,13 +415,18 @@ def import_historico_task(job_id, filepath):
                 # Cria resultado por faixa se faixa encontrada
                 if faixa_obj:
                     from .models import ResultadoFaixaCalibracao
+                    def safe_float(val):
+                        try:
+                            return float(str(val).replace(",", "."))
+                        except Exception:
+                            return 0.0
                     ResultadoFaixaCalibracao.objects.update_or_create(
                         historico=obj,
                         faixa_medicao=faixa_obj,
                         defaults={
-                            "erro_encontrado": float(erro.replace(",", ".")) if erro else None,
-                            "incerteza": float(inc.replace(",", ".")) if inc else None,
-                            "tolerancia_usada": float(tol.replace(",", ".")) if tol else None,
+                            "erro_encontrado": safe_float(erro),
+                            "incerteza": safe_float(inc),
+                            "tolerancia_usada": safe_float(tol),
                         },
                     )
 
