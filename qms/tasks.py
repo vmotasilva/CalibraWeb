@@ -404,18 +404,25 @@ def import_historico_task(job_id, filepath):
                     unidade_obj, _ = UnidadeMedida.objects.get_or_create(sigla=sigla, defaults={"nome": sigla})
                 if faixa_txt and unidade_obj:
                     from .models import FaixaMedicao
-                    # Tenta extrair valores mínimo/máximo da faixa
                     import re
                     rng = re.findall(r"[-+]?[0-9]*\.?[0-9]+", faixa_txt)
+                    faixa_obj = None
                     if len(rng) >= 2:
                         valor_minimo = float(rng[0])
                         valor_maximo = float(rng[1])
-                        faixa_obj, _ = FaixaMedicao.objects.get_or_create(
+                        faixa_obj = FaixaMedicao.objects.filter(
                             instrumento=inst,
                             unidade=unidade_obj,
                             valor_minimo=valor_minimo,
                             valor_maximo=valor_maximo,
-                        )
+                        ).first()
+                        if not faixa_obj:
+                            faixa_obj = FaixaMedicao.objects.create(
+                                instrumento=inst,
+                                unidade=unidade_obj,
+                                valor_minimo=valor_minimo,
+                                valor_maximo=valor_maximo,
+                            )
                 # Cria resultado por faixa se faixa encontrada
                 if faixa_obj:
                     from .models import ResultadoFaixaCalibracao
@@ -424,7 +431,7 @@ def import_historico_task(job_id, filepath):
                             return float(str(val).replace(",", "."))
                         except Exception:
                             return 0.0
-                    ResultadoFaixaCalibracao.objects.update_or_create(
+                    resultado_obj, _ = ResultadoFaixaCalibracao.objects.update_or_create(
                         historico=obj,
                         faixa_medicao=faixa_obj,
                         defaults={
@@ -433,6 +440,8 @@ def import_historico_task(job_id, filepath):
                             "tolerancia_usada": safe_float(tol_faixa),
                         },
                     )
+                    # Força recálculo do resultado
+                    resultado_obj.save()
 
                 # Ensure Instrumento fields reflect latest calibration
                 try:
