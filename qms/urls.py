@@ -41,4 +41,5 @@ urlpatterns = [
 	path("procedimento/novo/", views.novo_procedimento_view, name="novo_procedimento"),
 	path("procedimento/<int:procedimento_id>/", views.detalhe_procedimento_view, name="detalhe_procedimento"),
 	path("procedimento/<int:procedimento_id>/editar/", views.editar_procedimento_view, name="editar_procedimento"),
+	path("dl-template-hist/", views.dl_template_historico, name="dl_template_historico"),
 ]
