@@ -1404,8 +1404,9 @@ def anexar_certificado_historico_view(request, historico_id):
 
 
 @login_required
+@login_required
 def download_certificado_view(request, historico_id):
-    """Download certificate PDF with proper headers to force download."""
+    """Download certificate file with proper headers to force download."""
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
     
     if not hist.certificado:
@@ -1413,19 +1414,35 @@ def download_certificado_view(request, historico_id):
         return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
     
     try:
-        # Use Django's file storage API instead of trying to access .path
+        # Get the file content using Django's file storage API
         file_content = hist.certificado.read()
         
-        # Generate filename
-        filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}.pdf"
+        # Get original filename
+        original_name = hist.certificado.name
+        ext = os.path.splitext(original_name)[1].lower() if original_name else '.pdf'
         
-        # Create response with proper PDF headers
-        response = HttpResponse(file_content, content_type='application/pdf')
+        # Generate new filename
+        filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}{ext}"
+        
+        # Determine content type based on file extension
+        content_type_map = {
+            '.pdf': 'application/pdf',
+            '.htm': 'text/html',
+            '.html': 'text/html',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.xls': 'application/vnd.ms-excel',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }
+        content_type = content_type_map.get(ext, 'application/octet-stream')
+        
+        # Create response with proper headers
+        response = HttpResponse(file_content, content_type=content_type)
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     except Exception as e:
-        logger.error(f"Erro ao baixar certificado {historico_id}: {e}")
-        messages.error(request, f"Erro ao baixar certificado: {e}")
+        logger.error(f"Erro ao baixar certificado {historico_id}: {e}", exc_info=True)
+        messages.error(request, f"Erro ao baixar certificado: {str(e)}")
         return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
 
 
