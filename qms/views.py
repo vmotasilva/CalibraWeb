@@ -1,4 +1,3 @@
-
 import io
 import os
 import re
@@ -550,13 +549,12 @@ def export_etiquetas_view(request):
         if not last_calib_date or not isinstance(last_calib_date, (date, datetime)):
             last_calib_date = None
         try:
-            hist_qs = getattr(inst, 'historico_calibracoes', None)
-            if hist_qs is not None:
-                last_hist = hist_qs.order_by('-data_calibracao').first()
-                if last_hist:
-                    if not last_calib_date:
-                        last_calib_date = last_hist.data_calibracao
-                    last_cert_num = last_hist.numero_certificado or ''
+            hist_qs = HistoricoCalibracao.objects.filter(instrumento=inst)
+            last_hist = hist_qs.order_by('-data_calibracao').first()
+            if last_hist:
+                if not last_calib_date:
+                    last_calib_date = last_hist.data_calibracao
+                last_cert_num = last_hist.numero_certificado or ''
         except Exception:
             pass
         calib_str = last_calib_date.strftime('%d/%m/%Y') if last_calib_date else ''
@@ -1680,7 +1678,7 @@ def imp_historico_view(request):
                         for iid in afetados:
                             inst = Instrumento.objects.filter(id=iid).first()
                             if inst:
-                                ultima = inst.historico_calibracoes.order_by("-data_calibracao").first()
+                                ultima = HistoricoCalibracao.objects.filter(instrumento=inst).order_by("-data_calibracao").first()
                                 if ultima:
                                     inst.data_ultima_calibracao = ultima.data_calibracao
                                     inst.data_proxima_calibracao = ultima.proxima_calibracao
