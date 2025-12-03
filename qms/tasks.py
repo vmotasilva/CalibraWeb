@@ -250,8 +250,8 @@ def import_instruments_task(job_id, filepath):
 
 @shared_task
 def import_historico_task(job_id, filepath):
-        import logging
-        logger = logging.getLogger("qms.import_historico")
+    import logging
+    logger = logging.getLogger("qms.import_historico")
     """Importa histórico de calibração a partir de planilha.
 
     Campos esperados (ver `dl_template_historico`):
