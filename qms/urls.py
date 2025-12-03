@@ -27,6 +27,11 @@ urlpatterns = [
 		name="preview_certificado",
 	),
 	path(
+		"metrologia/historico/<int:historico_id>/download/",
+		views.download_certificado_view,
+		name="download_certificado",
+	),
+	path(
 		"metrologia/historico/<int:historico_id>/aplicar-carimbo/",
 		views.aplicar_carimbo_certificado_view,
 		name="aplicar_carimbo_certificado",

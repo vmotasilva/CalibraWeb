@@ -1397,6 +1397,35 @@ def anexar_certificado_historico_view(request, historico_id):
 
 
 @login_required
+@login_required
+def download_certificado_view(request, historico_id):
+    """Download certificate PDF with proper headers to force download."""
+    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    
+    if not hist.certificado:
+        messages.error(request, "Este histórico não possui certificado anexado.")
+        return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
+    
+    try:
+        # Open the file from storage
+        file_path = hist.certificado.path
+        with open(file_path, 'rb') as f:
+            file_content = f.read()
+        
+        # Generate filename
+        filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}.pdf"
+        
+        # Create response with proper PDF headers
+        response = HttpResponse(file_content, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except Exception as e:
+        logger.error(f"Erro ao baixar certificado {historico_id}: {e}")
+        messages.error(request, f"Erro ao baixar certificado: {e}")
+        return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
+
+
+@login_required
 def remover_certificado_historico_view(request, historico_id):
     """Remove apenas o arquivo de certificado do histórico, mantendo o registro."""
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
