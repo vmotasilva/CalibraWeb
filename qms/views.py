@@ -1406,7 +1406,7 @@ def anexar_certificado_historico_view(request, historico_id):
 @login_required
 @login_required
 def download_certificado_view(request, historico_id):
-    """Download certificate file with proper headers to force download."""
+    """Download certificate file as PDF."""
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
     
     if not hist.certificado:
@@ -1417,27 +1417,11 @@ def download_certificado_view(request, historico_id):
         # Get the file content using Django's file storage API
         file_content = hist.certificado.read()
         
-        # Get original filename
-        original_name = hist.certificado.name
-        ext = os.path.splitext(original_name)[1].lower() if original_name else '.pdf'
+        # Generate filename with .pdf extension
+        filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}.pdf"
         
-        # Generate new filename
-        filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}{ext}"
-        
-        # Determine content type based on file extension
-        content_type_map = {
-            '.pdf': 'application/pdf',
-            '.htm': 'text/html',
-            '.html': 'text/html',
-            '.doc': 'application/msword',
-            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            '.xls': 'application/vnd.ms-excel',
-            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        }
-        content_type = content_type_map.get(ext, 'application/octet-stream')
-        
-        # Create response with proper headers
-        response = HttpResponse(file_content, content_type=content_type)
+        # Always serve as PDF
+        response = HttpResponse(file_content, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     except Exception as e:
