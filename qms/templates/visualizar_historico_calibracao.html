@@ -346,7 +346,7 @@
             <div class="card shadow-sm sticky-top" style="top: 20px;">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-file-pdf"></i> Visualização do Certificado</span>
-                    <a href="{{ historico.certificado.url }}" download class="btn btn-sm btn-light" title="Baixar PDF">
+                    <a href="/metrologia/historico/{{ historico.id }}/download/" download class="btn btn-sm btn-light" title="Baixar PDF">
                         <i class="bi bi-download"></i>
                     </a>
                 </div>
@@ -366,14 +366,15 @@
         </div>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
-                const pdfUrl = "{{ historico.certificado.url }}";
+                const pdfUrl = "/metrologia/historico/{{ historico.id }}/download/";
                 const container = document.getElementById('pdf-container');
                 
-                // Tentar carregar usando iframe
+                // Tentar carregar usando iframe com type=application/pdf
                 const iframe = document.createElement('iframe');
                 iframe.src = pdfUrl;
                 iframe.className = 'w-100 h-100';
                 iframe.frameborder = '0';
+                iframe.type = 'application/pdf';
                 
                 container.innerHTML = '';
                 container.appendChild(iframe);
