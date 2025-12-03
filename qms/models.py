@@ -566,6 +566,15 @@ class FaixaMedicao(models.Model):
 
 class HistoricoCalibracao(models.Model):
     # Novos arquivos PDF de padrões associados diretamente ao histórico
+
+    instrumento = models.ForeignKey(
+        Instrumento,
+        on_delete=models.CASCADE,
+        related_name="historicos",
+        verbose_name="Instrumento",
+        null=True,
+        blank=True,
+    )
     arquivos_padroes = models.ManyToManyField(
         'ArquivoPadrao', blank=True, related_name='historicos', verbose_name='Arquivos de Padrões (PDF)'
     )
