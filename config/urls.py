@@ -56,12 +56,27 @@ urlpatterns = [
     path("solicitacao/nova/", views.nova_solicitacao, name="nova_solicitacao"),
     # 6. Funcionalidades Específicas
     path(
-        "metrologia/historico/remover/<int:historico_id>/",
+        "metrologia/historico/<int:historico_id>/preview/",
+        views.preview_certificado_view,
+        name="preview_certificado",
+    ),
+    path(
+        "metrologia/historico/<int:historico_id>/download/",
+        views.download_certificado_view,
+        name="download_certificado",
+    ),
+    path(
+        "metrologia/historico/<int:historico_id>/visualizar/",
+        views.visualizar_historico_calibracao_view,
+        name="visualizar_historico_calibracao",
+    ),
+    path(
+        "metrologia/historico/<int:historico_id>/remover/",
         views.remover_historico_view,
         name="remover_historico",
     ),
     path(
-        "metrologia/historico/<int:historico_id>/anexar/",
+        "metrologia/historico/<int:historico_id>/anexar-certificado/",
         views.anexar_certificado_historico_view,
         name="anexar_certificado_historico",
     ),
@@ -71,9 +86,9 @@ urlpatterns = [
         name="remover_certificado_historico",
     ),
     path(
-        "metrologia/historico/<int:historico_id>/visualizar/",
-        views.visualizar_historico_calibracao_view,
-        name="visualizar_historico_calibracao",
+        "metrologia/historico/<int:historico_id>/aplicar-carimbo/",
+        views.aplicar_carimbo_certificado_view,
+        name="aplicar_carimbo_certificado",
     ),
     # 7. Downloads de Templates (CORRIGIDO: Os nomes agora batem com o HTML)
     path("dl-template-inst/", views.dl_template_instr, name="template_instrumentos"),
