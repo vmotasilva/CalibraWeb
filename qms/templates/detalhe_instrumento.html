@@ -184,12 +184,41 @@
                                     <td class="fw-bold">{{ item.data_calibracao|date:"d/m/Y" }}</td>
                                     <td><small>{{ item.numero_certificado }}</small></td>
                                     <td>
-                                        {% if item.resultado == 'APROVADO_SEM_CORRECAO' %}
-                                            <span class="badge bg-success">OK</span>
-                                        {% elif item.resultado == 'APROVADO_COM_CORRECAO' %}
-                                            <span class="badge bg-warning text-dark">OK c/ corr.</span>
-                                        {% elif item.resultado == 'REPROVADO' %}
-                                            <span class="badge bg-danger">NOK</span>
+                                        {% if item.resultados_faixas.all %}
+                                            <table class="table table-sm table-bordered mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Faixa</th>
+                                                        <th>Unid.</th>
+                                                        <th>Erro</th>
+                                                        <th>Inc.</th>
+                                                        <th>Tol.</th>
+                                                        <th>Resultado</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for rf in item.resultados_faixas.all %}
+                                                    <tr>
+                                                        <td>{{ rf.faixa_medicao.valor_minimo }} a {{ rf.faixa_medicao.valor_maximo }}</td>
+                                                        <td>{{ rf.faixa_medicao.unidade.sigla }}</td>
+                                                        <td>{{ rf.erro_encontrado }}</td>
+                                                        <td>{{ rf.incerteza }}</td>
+                                                        <td>{{ rf.tolerancia_usada }}</td>
+                                                        <td>
+                                                            {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                                <span class="badge bg-success">OK</span>
+                                                            {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                                <span class="badge bg-warning text-dark">OK c/ corr.</span>
+                                                            {% elif rf.resultado == 'REPROVADO' %}
+                                                                <span class="badge bg-danger">NOK</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">-</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
                                         {% else %}
                                             <span class="badge bg-secondary">-</span>
                                         {% endif %}
