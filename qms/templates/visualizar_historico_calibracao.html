@@ -369,32 +369,46 @@
                 const pdfUrl = "/metrologia/historico/{{ historico.id }}/download/";
                 const container = document.getElementById('pdf-container');
                 
-                // Usar object/embed para melhor compatibilidade com PDF
-                const pdfEmbed = document.createElement('embed');
-                pdfEmbed.src = pdfUrl;
-                pdfEmbed.type = 'application/pdf';
-                pdfEmbed.className = 'w-100 h-100';
-                pdfEmbed.style.minHeight = '600px';
+                // Usar object tag que é mais direto para PDFs
+                const pdfObject = document.createElement('object');
+                pdfObject.data = pdfUrl;
+                pdfObject.type = 'application/pdf';
+                pdfObject.className = 'w-100 h-100';
+                pdfObject.style.minHeight = '600px';
                 
                 container.innerHTML = '';
-                container.appendChild(pdfEmbed);
+                container.appendChild(pdfObject);
                 
-                // Fallback: se embed não funcionar, tentar com iframe
-                pdfEmbed.addEventListener('error', function() {
-                    console.log('Embed falhou, tentando iframe...');
+                // Fallback para embed
+                pdfObject.addEventListener('error', function() {
+                    console.log('Object falhou, tentando embed...');
                     container.innerHTML = '';
                     
-                    const iframe = document.createElement('iframe');
-                    iframe.src = pdfUrl;
-                    iframe.className = 'w-100 h-100';
-                    iframe.frameborder = '0';
-                    iframe.style.minHeight = '600px';
+                    const pdfEmbed = document.createElement('embed');
+                    pdfEmbed.src = pdfUrl;
+                    pdfEmbed.type = 'application/pdf';
+                    pdfEmbed.className = 'w-100 h-100';
+                    pdfEmbed.style.minHeight = '600px';
                     
-                    container.appendChild(iframe);
+                    container.appendChild(pdfEmbed);
                     
-                    iframe.addEventListener('error', function() {
-                        console.log('Iframe também falhou');
-                        container.innerHTML = '<div class="alert alert-warning m-3"><i class="bi bi-exclamation-triangle"></i> Não foi possível carregar o PDF no navegador. <a href="' + pdfUrl + '" target="_blank" class="btn btn-sm btn-primary mt-2">Clique aqui para abrir ou baixar o arquivo</a>.</div>';
+                    // Fallback para iframe
+                    pdfEmbed.addEventListener('error', function() {
+                        console.log('Embed falhou, tentando iframe...');
+                        container.innerHTML = '';
+                        
+                        const iframe = document.createElement('iframe');
+                        iframe.src = pdfUrl;
+                        iframe.className = 'w-100 h-100';
+                        iframe.frameborder = '0';
+                        iframe.style.minHeight = '600px';
+                        
+                        container.appendChild(iframe);
+                        
+                        iframe.addEventListener('error', function() {
+                            console.log('Iframe também falhou');
+                            container.innerHTML = '<div class="alert alert-warning m-3"><i class="bi bi-exclamation-triangle"></i> Não foi possível carregar o PDF no navegador. <a href="' + pdfUrl + '" target="_blank" class="btn btn-sm btn-primary mt-2">Clique aqui para abrir ou baixar o arquivo</a>.</div>';
+                        });
                     });
                 });
                 

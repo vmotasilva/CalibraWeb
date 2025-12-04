@@ -1406,7 +1406,7 @@ def anexar_certificado_historico_view(request, historico_id):
 @login_required
 @login_required
 def download_certificado_view(request, historico_id):
-    """Serve certificate file as PDF for viewing or downloading."""
+    """Download certificate file as PDF with proper content type forcing."""
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
     
     if not hist.certificado:
@@ -1417,17 +1417,23 @@ def download_certificado_view(request, historico_id):
         # Get the file content using Django's file storage API
         file_content = hist.certificado.read()
         
-        # Generate filename with .pdf extension
+        # Generate filename ALWAYS with .pdf extension
         filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}.pdf"
         
-        # Always serve as PDF with inline disposition to allow iframe viewing
+        # ALWAYS serve as PDF, regardless of source file type
+        # This forces the browser to treat it as PDF, not HTML
         response = HttpResponse(file_content, content_type='application/pdf')
-        # Use 'inline' to display in iframe/browser, not force download
+        
+        # Use 'inline' to allow viewing in browser/iframe
         response['Content-Disposition'] = f'inline; filename="{filename}"'
+        
+        # Add headers to force PDF interpretation and prevent caching issues
         response['Content-Type'] = 'application/pdf; charset=utf-8'
+        response['X-Content-Type-Options'] = 'nosniff'  # Prevent browser from guessing content type
         response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response['Pragma'] = 'no-cache'
         response['Expires'] = '0'
+        
         return response
     except Exception as e:
         logger.error(f"Erro ao baixar certificado {historico_id}: {e}", exc_info=True)
