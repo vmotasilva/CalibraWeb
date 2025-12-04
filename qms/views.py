@@ -1406,7 +1406,7 @@ def anexar_certificado_historico_view(request, historico_id):
 @login_required
 @login_required
 def download_certificado_view(request, historico_id):
-    """Download certificate file as PDF."""
+    """Serve certificate file as PDF for viewing or downloading."""
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
     
     if not hist.certificado:
@@ -1420,9 +1420,14 @@ def download_certificado_view(request, historico_id):
         # Generate filename with .pdf extension
         filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}.pdf"
         
-        # Always serve as PDF
+        # Always serve as PDF with inline disposition to allow iframe viewing
         response = HttpResponse(file_content, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        # Use 'inline' to display in iframe/browser, not force download
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        response['Content-Type'] = 'application/pdf; charset=utf-8'
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
         return response
     except Exception as e:
         logger.error(f"Erro ao baixar certificado {historico_id}: {e}", exc_info=True)

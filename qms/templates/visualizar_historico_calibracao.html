@@ -346,7 +346,7 @@
             <div class="card shadow-sm sticky-top" style="top: 20px;">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-file-pdf"></i> Visualização do Certificado</span>
-                    <a href="/metrologia/historico/{{ historico.id }}/download/" download class="btn btn-sm btn-light" title="Baixar PDF">
+                    <a href="/metrologia/historico/{{ historico.id }}/download/" target="_blank" class="btn btn-sm btn-light" title="Abrir em nova aba ou baixar">
                         <i class="bi bi-download"></i>
                     </a>
                 </div>
@@ -369,20 +369,42 @@
                 const pdfUrl = "/metrologia/historico/{{ historico.id }}/download/";
                 const container = document.getElementById('pdf-container');
                 
-                // Tentar carregar usando iframe com type=application/pdf
-                const iframe = document.createElement('iframe');
-                iframe.src = pdfUrl;
-                iframe.className = 'w-100 h-100';
-                iframe.frameborder = '0';
-                iframe.type = 'application/pdf';
+                // Usar object/embed para melhor compatibilidade com PDF
+                const pdfEmbed = document.createElement('embed');
+                pdfEmbed.src = pdfUrl;
+                pdfEmbed.type = 'application/pdf';
+                pdfEmbed.className = 'w-100 h-100';
+                pdfEmbed.style.minHeight = '600px';
                 
                 container.innerHTML = '';
-                container.appendChild(iframe);
+                container.appendChild(pdfEmbed);
                 
-                // Se o navegador não suportar PDF inline, mostrar um fallback
-                iframe.addEventListener('error', function() {
-                    container.innerHTML = '<div class="alert alert-warning m-3"><i class="bi bi-exclamation-triangle"></i> Não foi possível carregar o PDF no navegador. <a href="' + pdfUrl + '" download>Clique aqui para baixar o arquivo</a>.</div>';
+                // Fallback: se embed não funcionar, tentar com iframe
+                pdfEmbed.addEventListener('error', function() {
+                    console.log('Embed falhou, tentando iframe...');
+                    container.innerHTML = '';
+                    
+                    const iframe = document.createElement('iframe');
+                    iframe.src = pdfUrl;
+                    iframe.className = 'w-100 h-100';
+                    iframe.frameborder = '0';
+                    iframe.style.minHeight = '600px';
+                    
+                    container.appendChild(iframe);
+                    
+                    iframe.addEventListener('error', function() {
+                        console.log('Iframe também falhou');
+                        container.innerHTML = '<div class="alert alert-warning m-3"><i class="bi bi-exclamation-triangle"></i> Não foi possível carregar o PDF no navegador. <a href="' + pdfUrl + '" target="_blank" class="btn btn-sm btn-primary mt-2">Clique aqui para abrir ou baixar o arquivo</a>.</div>';
+                    });
                 });
+                
+                // Timeout fallback (5 segundos)
+                setTimeout(function() {
+                    if (container.children.length === 0 || container.innerHTML.includes('spinner-border')) {
+                        console.log('Timeout ao carregar PDF');
+                        container.innerHTML = '<div class="alert alert-info m-3"><i class="bi bi-info-circle"></i> O PDF pode estar demorando a carregar. <a href="' + pdfUrl + '" target="_blank" class="btn btn-sm btn-primary mt-2">Clique aqui para abrir em nova aba</a>.</div>';
+                    }
+                }, 5000);
             });
         </script>
         {% endif %}
