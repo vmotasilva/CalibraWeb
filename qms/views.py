@@ -15,6 +15,7 @@ from django.http import HttpResponse, JsonResponse, Http404
 from django.db.models import Q, Count, Max, Prefetch
 from django.core.paginator import Paginator
 from django.utils import timezone
+from django.core.files.storage import default_storage
 
 logger = logging.getLogger(__name__)
 from .models import (
@@ -1414,14 +1415,23 @@ def download_certificado_view(request, historico_id):
         return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
     
     try:
-        # Get the file content using Django's file storage API
-        file_content = hist.certificado.read()
+        # Try to get file content using Django's storage API (works with cloud storage)
+        file_path = hist.certificado.name
+        
+        # Check if file exists in storage
+        if not default_storage.exists(file_path):
+            logger.error(f"Arquivo {file_path} não encontrado no storage")
+            messages.error(request, "Arquivo de certificado não encontrado no servidor.")
+            return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
+        
+        # Read file content using storage API
+        with default_storage.open(file_path, 'rb') as f:
+            file_content = f.read()
         
         # Generate filename ALWAYS with .pdf extension
         filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}.pdf"
         
         # ALWAYS serve as PDF, regardless of source file type
-        # This forces the browser to treat it as PDF, not HTML
         response = HttpResponse(file_content, content_type='application/pdf')
         
         # Use 'inline' to allow viewing in browser/iframe
@@ -1434,10 +1444,12 @@ def download_certificado_view(request, historico_id):
         response['Pragma'] = 'no-cache'
         response['Expires'] = '0'
         
+        logger.info(f"Certificado {historico_id} servido com sucesso")
         return response
+        
     except Exception as e:
-        logger.error(f"Erro ao baixar certificado {historico_id}: {e}", exc_info=True)
-        messages.error(request, f"Erro ao baixar certificado: {str(e)}")
+        logger.error(f"Erro ao servir certificado {historico_id}: {e}", exc_info=True)
+        messages.error(request, f"Erro ao acessar certificado: {str(e)}")
         return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
 
 
