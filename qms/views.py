@@ -1414,37 +1414,21 @@ def download_certificado_view(request, historico_id):
         return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
     
     try:
-        # Try to get file content using Django's storage API (works with cloud storage)
-        file_path = hist.certificado.name
-        logger.info(f"Tentando acessar certificado: {file_path}")
+        # Access file directly from the FileField object
+        # This works with any storage backend (local, S3, cloud, etc)
+        certificado_file = hist.certificado
         
-        # Check if file exists in storage
-        if not default_storage.exists(file_path):
-            logger.warning(f"Arquivo {file_path} não encontrado. Tentando alternativas...")
-            
-            # Tenta algumas variações de caminho
-            alternative_paths = [
-                file_path,
-                file_path.replace('/app/media/', ''),
-                file_path.split('/')[-1],  # apenas o nome do arquivo
-            ]
-            
-            file_found = False
-            for alt_path in alternative_paths:
-                if alt_path and default_storage.exists(alt_path):
-                    logger.info(f"Arquivo encontrado em: {alt_path}")
-                    file_path = alt_path
-                    file_found = True
-                    break
-            
-            if not file_found:
-                logger.error(f"Arquivo não encontrado em nenhuma variação: {file_path}")
-                messages.error(request, "Arquivo de certificado não encontrado no servidor.")
-                return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
+        # Get the file size
+        file_size = certificado_file.size
+        logger.info(f"Acessando certificado {historico_id}: {certificado_file.name} (size: {file_size})")
         
-        # Read file content using storage API
-        with default_storage.open(file_path, 'rb') as f:
-            file_content = f.read()
+        # Read file content directly from FileField
+        file_content = certificado_file.read()
+        
+        if not file_content:
+            logger.error(f"Certificado {historico_id} vazio ou não conseguiu ler")
+            messages.error(request, "Arquivo de certificado está vazio.")
+            return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
         
         # Generate filename ALWAYS with .pdf extension
         filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}.pdf"
@@ -1461,12 +1445,13 @@ def download_certificado_view(request, historico_id):
         response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response['Pragma'] = 'no-cache'
         response['Expires'] = '0'
+        response['Content-Length'] = str(len(file_content))
         
-        logger.info(f"Certificado {historico_id} ({filename}) servido com sucesso")
+        logger.info(f"Certificado {historico_id} ({filename}) servido com sucesso ({len(file_content)} bytes)")
         return response
         
     except Exception as e:
-        logger.error(f"Erro ao servir certificado {historico_id}: {e}", exc_info=True)
+        logger.error(f"Erro ao servir certificado {historico_id}: {type(e).__name__}: {e}", exc_info=True)
         messages.error(request, f"Erro ao acessar certificado: {str(e)}")
         return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
 
