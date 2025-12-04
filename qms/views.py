@@ -1405,7 +1405,6 @@ def anexar_certificado_historico_view(request, historico_id):
 
 
 @login_required
-@login_required
 def download_certificado_view(request, historico_id):
     """Download certificate file as PDF with proper content type forcing."""
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
@@ -1417,12 +1416,31 @@ def download_certificado_view(request, historico_id):
     try:
         # Try to get file content using Django's storage API (works with cloud storage)
         file_path = hist.certificado.name
+        logger.info(f"Tentando acessar certificado: {file_path}")
         
         # Check if file exists in storage
         if not default_storage.exists(file_path):
-            logger.error(f"Arquivo {file_path} não encontrado no storage")
-            messages.error(request, "Arquivo de certificado não encontrado no servidor.")
-            return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
+            logger.warning(f"Arquivo {file_path} não encontrado. Tentando alternativas...")
+            
+            # Tenta algumas variações de caminho
+            alternative_paths = [
+                file_path,
+                file_path.replace('/app/media/', ''),
+                file_path.split('/')[-1],  # apenas o nome do arquivo
+            ]
+            
+            file_found = False
+            for alt_path in alternative_paths:
+                if alt_path and default_storage.exists(alt_path):
+                    logger.info(f"Arquivo encontrado em: {alt_path}")
+                    file_path = alt_path
+                    file_found = True
+                    break
+            
+            if not file_found:
+                logger.error(f"Arquivo não encontrado em nenhuma variação: {file_path}")
+                messages.error(request, "Arquivo de certificado não encontrado no servidor.")
+                return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
         
         # Read file content using storage API
         with default_storage.open(file_path, 'rb') as f:
@@ -1444,7 +1462,7 @@ def download_certificado_view(request, historico_id):
         response['Pragma'] = 'no-cache'
         response['Expires'] = '0'
         
-        logger.info(f"Certificado {historico_id} servido com sucesso")
+        logger.info(f"Certificado {historico_id} ({filename}) servido com sucesso")
         return response
         
     except Exception as e:
