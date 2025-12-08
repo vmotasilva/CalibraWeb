@@ -111,8 +111,6 @@ class RegistroTreinamento(models.Model):
 @receiver(m2m_changed, sender=PacoteTreinamento.procedimentos.through)
 def aplicar_pacotes_treinamento(sender, instance, action, pk_set, **kwargs):
     if action == "post_add":
-        PacoteTreinamento = models.get_model('training', 'PacoteTreinamento')
-        Procedimento = models.get_model('training', 'Procedimento')
         pacotes = PacoteTreinamento.objects.filter(pk__in=pk_set)
         for pacote in pacotes:
             for proc in pacote.procedimentos.all():

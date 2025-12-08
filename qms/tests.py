@@ -3,7 +3,7 @@ from datetime import date
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import HistoricoCalibracao, Instrumento
+from metrologia.models import HistoricoCalibracao, Instrumento
 
 
 class HistoricoCalibracaoLogicTests(TestCase):
@@ -72,7 +72,7 @@ class ImportInstrumentsTaskTests(TestCase):
 
     def test_import_instruments_task_creates_instrumentos(self):
         import tempfile
-        from .models import ImportJob, Instrumento
+        from .models import ImportJob; from metrologia.models import Instrumento
         from .tasks import import_instruments_task
 
         # Create a small CSV file with one instrument
@@ -98,7 +98,7 @@ class ImportInstrumentsTaskTests(TestCase):
     def test_import_instruments_task_maps_all_fields(self):
         import tempfile
         import pandas as pd
-        from .models import ImportJob, Instrumento, Setor, UnidadeMedida, FaixaMedicao
+        from .models import ImportJob; from metrologia.models import Instrumento, Setor, UnidadeMedida, FaixaMedicao
         from .tasks import import_instruments_task
 
         df = pd.DataFrame({
@@ -150,7 +150,7 @@ class ImportHistoricoTaskTests(TestCase):
     def test_import_historico_task_creates_entries(self):
         import tempfile
         import pandas as pd
-        from .models import ImportJob, Instrumento, HistoricoCalibracao
+        from .models import ImportJob; from metrologia.models import Instrumento, HistoricoCalibracao
         from .tasks import import_historico_task
 
         inst = Instrumento.objects.create(tag='HX-01', descricao='Hist Test')
@@ -183,7 +183,7 @@ class ImportHistoricoTaskTests(TestCase):
     def test_imp_instr_view_enqueues_and_processes(self):
         from django.contrib.auth.models import User
         from django.core.files.uploadedfile import SimpleUploadedFile
-        from .models import ImportJob, Instrumento
+        from .models import ImportJob; from metrologia.models import Instrumento
 
         # NOTE: View test commented out - /imp-inst/ URL disabled during architecture migration
         # u = User.objects.create_user(username='tester', password='pass')
@@ -231,7 +231,7 @@ class OcorrenciaTests(TestCase):
     
     def setUp(self):
         """Create test data"""
-        from .models import Setor, Colaborador
+        from organization.models import Setor; from rh.models import Colaborador
         self.setor = Setor.objects.create(nome="TEST_SEL")
         self.colaborador = Colaborador.objects.create(
             matricula="500",
@@ -241,7 +241,7 @@ class OcorrenciaTests(TestCase):
     
     def test_ocorrencia_creation(self):
         """Test Ocorrencia can be created"""
-        from .models import Ocorrencia
+        from rh.models import Ocorrencia
         ocor = Ocorrencia.objects.create(
             colaborador=self.colaborador,
             data_ocorrencia=date.today(),
@@ -253,7 +253,7 @@ class OcorrenciaTests(TestCase):
     
     def test_ocorrencia_natureza_default(self):
         """Test Ocorrencia natureza default"""
-        from .models import Ocorrencia
+        from rh.models import Ocorrencia
         ocor = Ocorrencia.objects.create(
             colaborador=self.colaborador,
             data_ocorrencia=date.today(),
@@ -268,7 +268,7 @@ class SolicitacaoInstrumentoTests(TestCase):
     
     def setUp(self):
         """Create test data"""
-        from .models import Setor
+        from organization.models import Setor
         from django.contrib.auth.models import User
         self.setor = Setor.objects.create(nome="MAINT")
         self.user = User.objects.create_user(username="test_user", password="pw")
@@ -307,7 +307,7 @@ class OcorrenciaInstrumentoTests(TestCase):
     
     def test_ocorrencia_instrumento_creation(self):
         """Test OcorrenciaInstrumento can be created"""
-        from .models import OcorrenciaInstrumento
+        from qms.models import OcorrenciaInstrumento
         oci = OcorrenciaInstrumento.objects.create(
             instrumento=self.instrumento,
             tipo="CALIBRACAO",
@@ -319,7 +319,7 @@ class OcorrenciaInstrumentoTests(TestCase):
     
     def test_ocorrencia_instrumento_types(self):
         """Test OcorrenciaInstrumento type choices"""
-        from .models import OcorrenciaInstrumento
+        from qms.models import OcorrenciaInstrumento
         tipos = ["CALIBRACAO", "VERIFICACAO", "MANUTENCAO", "AVARIA"]
         for tipo in tipos:
             oci = OcorrenciaInstrumento.objects.create(
@@ -378,7 +378,7 @@ class FornecedorTests(TestCase):
     
     def test_fornecedor_creation(self):
         """Test Fornecedor can be created"""
-        from .models import Fornecedor
+        from procurements.models import Fornecedor
         fornecedor = Fornecedor.objects.create(
             nome_fantasia="Test Labs",
             cnpj="12345678000100",
@@ -392,7 +392,7 @@ class FornecedorTests(TestCase):
     
     def test_fornecedor_status_default(self):
         """Test Fornecedor status default"""
-        from .models import Fornecedor
+        from procurements.models import Fornecedor
         fornecedor = Fornecedor.objects.create(
             nome_fantasia="Lab2",
             cnpj="98765432000100",
@@ -405,7 +405,7 @@ class FornecedorTests(TestCase):
     
     def test_fornecedor_nota_media_default(self):
         """Test Fornecedor nota_media default"""
-        from .models import Fornecedor
+        from procurements.models import Fornecedor
         fornecedor = Fornecedor.objects.create(
             nome_fantasia="Lab3",
             cnpj="11111111000100",
@@ -422,7 +422,7 @@ class AvaliacaoFornecedorTests(TestCase):
     
     def setUp(self):
         """Create test data"""
-        from .models import Fornecedor, Setor, Colaborador
+        from procurements.models import Fornecedor; from organization.models import Setor; from rh.models import Colaborador
         self.fornecedor = Fornecedor.objects.create(
             nome_fantasia="Eval Labs",
             cnpj="22222222000100",
@@ -440,7 +440,7 @@ class AvaliacaoFornecedorTests(TestCase):
     
     def test_avaliacao_fornecedor_creation(self):
         """Test AvaliacaoFornecedor can be created"""
-        from .models import AvaliacaoFornecedor
+        from procurements.models import AvaliacaoFornecedor
         avaliacao = AvaliacaoFornecedor.objects.create(
             fornecedor=self.fornecedor,
             avaliador=self.avaliador,
@@ -453,7 +453,7 @@ class AvaliacaoFornecedorTests(TestCase):
     
     def test_avaliacao_fornecedor_relationship(self):
         """Test AvaliacaoFornecedor relationships"""
-        from .models import AvaliacaoFornecedor
+        from procurements.models import AvaliacaoFornecedor
         avaliacao = AvaliacaoFornecedor.objects.create(
             fornecedor=self.fornecedor,
             avaliador=self.avaliador,
@@ -512,3 +512,7 @@ class QmsImportsTests(TestCase):
         """Test AvaliacaoFornecedor model can be imported"""
         from procurements.models import AvaliacaoFornecedor
         self.assertIsNotNone(AvaliacaoFornecedor)
+
+
+
+
