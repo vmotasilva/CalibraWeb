@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Colaborador, HierarquiaSetor, Ferias, Ocorrencia, DocumentoPessoal
+from .models import Colaborador, Ferias, Ocorrencia, DocumentoPessoal
+from organization.models import HierarquiaSetor
 
 # Register your models here.
 admin.site.register(Colaborador)

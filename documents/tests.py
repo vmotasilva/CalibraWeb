@@ -151,7 +151,7 @@ class DocumentsRegistroTreinamentoTests(TestCase):
     
     def test_registro_treinamento_creation(self):
         """Test RegistroTreinamento can be created"""
-        from qms.models import RegistroTreinamento
+        from training.models import RegistroTreinamento
         from datetime import date
         
         registro = RegistroTreinamento.objects.create(
@@ -163,7 +163,7 @@ class DocumentsRegistroTreinamentoTests(TestCase):
     
     def test_registro_treinamento_relationships(self):
         """Test RegistroTreinamento relationships"""
-        from qms.models import RegistroTreinamento
+        from training.models import RegistroTreinamento
         from datetime import date
         
         registro = RegistroTreinamento.objects.create(
@@ -180,7 +180,7 @@ class DocumentsPacoteTreinamentoTests(TestCase):
     
     def test_pacote_treinamento_creation(self):
         """Test PacoteTreinamento can be created"""
-        from qms.models import PacoteTreinamento
+        from training.models import PacoteTreinamento
         pacote = PacoteTreinamento.objects.create(
             nome="Pacote Inicial",
             descricao="Treinamentos obrigatórios para todos"
@@ -190,7 +190,7 @@ class DocumentsPacoteTreinamentoTests(TestCase):
     
     def test_pacote_treinamento_string_representation(self):
         """Test PacoteTreinamento __str__ method"""
-        from qms.models import PacoteTreinamento
+        from training.models import PacoteTreinamento
         pacote = PacoteTreinamento.objects.create(
             nome="Pacote Avançado"
         )
@@ -198,7 +198,7 @@ class DocumentsPacoteTreinamentoTests(TestCase):
     
     def test_pacote_treinamento_procedures_relationship(self):
         """Test PacoteTreinamento procedures relationship"""
-        from qms.models import PacoteTreinamento, Procedimento
+        from training.models import PacoteTreinamento, Procedimento
         
         pacote = PacoteTreinamento.objects.create(nome="Test Package")
         proc1 = Procedimento.objects.create(codigo="P1", nome="Proc 1")

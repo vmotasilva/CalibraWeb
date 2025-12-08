@@ -1,9 +1,9 @@
 from django.contrib import admin
 from .models import (
     CategoriaInstrumento, Instrumento, FaixaMedicao, HistoricoCalibracao,
-    ArquivoPadrao, ResultadoFaixaCalibracao, SolicitacaoInstrumento,
-    OcorrenciaInstrumento, OrdemCalibracao, ImportJob
+    ArquivoPadrao, ResultadoFaixaCalibracao, OrdemCalibracao
 )
+from qms.models import SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob
 
 # Register your models here.
 admin.site.register(CategoriaInstrumento)

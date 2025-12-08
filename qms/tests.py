@@ -490,7 +490,7 @@ class QmsImportsTests(TestCase):
     
     def test_ocorrencia_model_import(self):
         """Test Ocorrencia model can be imported"""
-        from qms.models import Ocorrencia
+        from rh.models import Ocorrencia
         self.assertIsNotNone(Ocorrencia)
     
     def test_solicitacao_instrumento_model_import(self):
@@ -505,10 +505,10 @@ class QmsImportsTests(TestCase):
     
     def test_fornecedor_model_import(self):
         """Test Fornecedor model can be imported"""
-        from qms.models import Fornecedor
+        from procurements.models import Fornecedor
         self.assertIsNotNone(Fornecedor)
     
     def test_avaliacao_fornecedor_model_import(self):
         """Test AvaliacaoFornecedor model can be imported"""
-        from qms.models import AvaliacaoFornecedor
+        from procurements.models import AvaliacaoFornecedor
         self.assertIsNotNone(AvaliacaoFornecedor)

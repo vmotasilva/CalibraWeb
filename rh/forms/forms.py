@@ -4,8 +4,7 @@ Forms para RH Module
 """
 
 from django import forms
-from rh.models import Colaborador
-from qms.models import Ocorrencia
+from rh.models import Colaborador, Ocorrencia
 
 
 class ColaboradorForm(forms.ModelForm):

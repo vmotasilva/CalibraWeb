@@ -15,7 +15,7 @@ class UnidadeMedidaTests(TestCase):
     
     def _create_unidade(self, nome="Milímetro", sigla="mm"):
         """Helper to create UnidadeMedida"""
-        from qms.models import UnidadeMedida
+        from core.models import UnidadeMedida
         return UnidadeMedida.objects.create(nome=nome, sigla=sigla)
     
     def test_unidade_medida_creation(self):
@@ -30,12 +30,12 @@ class UnidadeMedidaTests(TestCase):
     
     def test_unidade_medida_verbose_name(self):
         """Test UnidadeMedida verbose name"""
-        from qms.models import UnidadeMedida
+        from core.models import UnidadeMedida
         self.assertEqual(UnidadeMedida._meta.verbose_name_plural, "Unidades de Medida")
     
     def test_multiple_unidades_creation(self):
         """Test creating multiple units"""
-        from qms.models import UnidadeMedida
+        from core.models import UnidadeMedida
         units = [
             {"nome": "Volt", "sigla": "V"},
             {"nome": "Ampère", "sigla": "A"},
@@ -53,7 +53,7 @@ class CoreConstantsTests(TestCase):
     
     def test_status_choices_defined(self):
         """Test STATUS_CHOICES is properly defined"""
-        from qms.models import STATUS_CHOICES
+        from core.models import STATUS_CHOICES
         self.assertEqual(len(STATUS_CHOICES), 3)
         self.assertIn(("ATIVO", "Ativo"), STATUS_CHOICES)
         self.assertIn(("INATIVO", "Inativo"), STATUS_CHOICES)
