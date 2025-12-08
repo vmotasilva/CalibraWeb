@@ -14,7 +14,7 @@ class OrganizationSetorTests(TestCase):
     
     def _create_setor(self, nome="PROCESSO", turno="TURNO_1"):
         """Helper to create Setor"""
-        from qms.models import Setor
+        from organization.models import Setor
         return Setor.objects.create(nome=nome)
     
     def test_setor_creation(self):
@@ -32,7 +32,7 @@ class OrganizationSetorTests(TestCase):
     
     def test_multiple_setores_creation(self):
         """Test creating multiple sectors"""
-        from qms.models import Setor
+        from organization.models import Setor
         setores_data = [
             {"nome": "QUALIDADE", "turno": "ADM"},
             {"nome": "MANUTENCAO", "turno": "TURNO_2"},
@@ -49,7 +49,7 @@ class OrganizationCentroCustoTests(TestCase):
     
     def test_centro_custo_creation(self):
         """Test CentroCusto can be created"""
-        from qms.models import CentroCusto
+        from organization.models import CentroCusto
         centro = CentroCusto.objects.create(
             codigo="CC-001",
             nome="Centro de Custo Principal"
@@ -59,7 +59,7 @@ class OrganizationCentroCustoTests(TestCase):
     
     def test_centro_custo_string_representation(self):
         """Test CentroCusto __str__ method"""
-        from qms.models import CentroCusto
+        from organization.models import CentroCusto
         centro = CentroCusto.objects.create(
             codigo="CC-002",
             nome="Test Centro"
@@ -77,12 +77,12 @@ class OrganizationColaboradorTests(TestCase):
     
     def _create_setor(self):
         """Helper to create Setor"""
-        from qms.models import Setor
+        from organization.models import Setor
         return Setor.objects.create(nome="TEST_SETOR")
     
     def _create_colaborador(self, matricula="001", nome="João Silva"):
         """Helper to create Colaborador"""
-        from qms.models import Colaborador
+        from rh.models import Colaborador
         return Colaborador.objects.create(
             matricula=matricula,
             nome_completo=nome,
@@ -120,12 +120,12 @@ class OrganizationHierarquiaSetorTests(TestCase):
     
     def _create_setor(self):
         """Helper to create Setor"""
-        from qms.models import Setor
+        from organization.models import Setor
         return Setor.objects.create(nome="HIERARCHY_TEST")
     
     def _create_colaborador(self, matricula, nome):
         """Helper to create Colaborador"""
-        from qms.models import Colaborador
+        from rh.models import Colaborador
         return Colaborador.objects.create(
             matricula=matricula,
             nome_completo=nome,
@@ -134,7 +134,7 @@ class OrganizationHierarquiaSetorTests(TestCase):
     
     def test_hierarquia_setor_creation(self):
         """Test HierarquiaSetor can be created"""
-        from qms.models import HierarquiaSetor
+        from organization.models import HierarquiaSetor
         hierarquia = HierarquiaSetor.objects.create(
             setor=self.setor,
             turno="TURNO_1",
@@ -147,7 +147,7 @@ class OrganizationHierarquiaSetorTests(TestCase):
     
     def test_hierarquia_setor_relationships(self):
         """Test HierarquiaSetor maintains correct relationships"""
-        from qms.models import HierarquiaSetor
+        from organization.models import HierarquiaSetor
         hierarquia = HierarquiaSetor.objects.create(
             setor=self.setor,
             turno="TURNO_2",

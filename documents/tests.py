@@ -19,7 +19,7 @@ class DocumentsProcedimentoTests(TestCase):
         classificacao="POP"
     ):
         """Helper to create Procedimento"""
-        from qms.models import Procedimento
+        from training.models import Procedimento
         return Procedimento.objects.create(
             codigo=codigo,
             nome=nome,
@@ -42,7 +42,7 @@ class DocumentsProcedimentoTests(TestCase):
     
     def test_multiple_procedimentos_creation(self):
         """Test creating multiple procedures"""
-        from qms.models import Procedimento
+        from training.models import Procedimento
         procs = [
             {"codigo": "DOC.001", "nome": "Documento 1", "classificacao": "DOC"},
             {"codigo": "FOR.001", "nome": "Formulário 1", "classificacao": "FOR"},
@@ -63,7 +63,7 @@ class DocumentsProcedimentoRevisaoTests(TestCase):
     
     def _create_procedimento(self):
         """Helper to create Procedimento"""
-        from qms.models import Procedimento
+        from training.models import Procedimento
         return Procedimento.objects.create(
             codigo="REV.001",
             nome="Revisable Procedure"
@@ -71,7 +71,7 @@ class DocumentsProcedimentoRevisaoTests(TestCase):
     
     def test_procedimento_revisao_creation(self):
         """Test ProcedimentoRevisao can be created"""
-        from qms.models import ProcedimentoRevisao
+        from training.models import ProcedimentoRevisao
         revisao = ProcedimentoRevisao.objects.create(
             procedimento=self.procedimento,
             numero_revisao="01"
@@ -81,7 +81,7 @@ class DocumentsProcedimentoRevisaoTests(TestCase):
     
     def test_procedimento_revisao_relationship(self):
         """Test ProcedimentoRevisao relationships"""
-        from qms.models import ProcedimentoRevisao
+        from training.models import ProcedimentoRevisao
         revisao = ProcedimentoRevisao.objects.create(
             procedimento=self.procedimento,
             numero_revisao="02"
@@ -94,7 +94,7 @@ class DocumentsAreaTests(TestCase):
     
     def test_area_creation(self):
         """Test Area can be created"""
-        from qms.models import Area
+        from training.models import Area
         area = Area.objects.create(
             nome="Qualidade",
             descricao="Área de Qualidade e Processos"
@@ -104,13 +104,13 @@ class DocumentsAreaTests(TestCase):
     
     def test_area_string_representation(self):
         """Test Area __str__ method"""
-        from qms.models import Area
+        from training.models import Area
         area = Area.objects.create(nome="RH", descricao="Recursos Humanos")
         self.assertEqual(str(area), "RH")
     
     def test_multiple_areas_creation(self):
         """Test creating multiple areas"""
-        from qms.models import Area
+        from training.models import Area
         areas = [
             {"nome": "Operações", "descricao": "Área de Operações"},
             {"nome": "Logística", "descricao": "Área de Logística"},
@@ -132,8 +132,9 @@ class DocumentsRegistroTreinamentoTests(TestCase):
     
     def _create_colaborador(self):
         """Helper to create Colaborador"""
-        from qms.models import Colaborador, Setor
-        setor = Setor.objects.create(nome="TEST", turno="ADM")
+        from rh.models import Colaborador
+        from organization.models import Setor
+        setor = Setor.objects.create(nome="TEST")
         return Colaborador.objects.create(
             matricula="999",
             nome_completo="Test User",
@@ -142,7 +143,7 @@ class DocumentsRegistroTreinamentoTests(TestCase):
     
     def _create_procedimento(self):
         """Helper to create Procedimento"""
-        from qms.models import Procedimento
+        from training.models import Procedimento
         return Procedimento.objects.create(
             codigo="TRAIN.001",
             nome="Treinamento"

@@ -332,7 +332,7 @@ def export_categorias_view(request):
 @login_required
 def export_colab_view(request):
     """Exporta todos os colaboradores."""
-    from organization.models import Colaborador
+    from rh.models import Colaborador
     
     try:
         colabs = Colaborador.objects.filter(is_active=True).select_related(
