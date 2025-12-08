@@ -3,7 +3,7 @@ from .models import (
     CategoriaInstrumento, Instrumento, FaixaMedicao, HistoricoCalibracao,
     ArquivoPadrao, ResultadoFaixaCalibracao, OrdemCalibracao
 )
-from qms.models import SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob
+from qms.models import SolicitacaoInstrumento, OcorrenciaInstrumento
 
 # Register your models here.
 admin.site.register(CategoriaInstrumento)
@@ -15,4 +15,3 @@ admin.site.register(ResultadoFaixaCalibracao)
 admin.site.register(SolicitacaoInstrumento)
 admin.site.register(OcorrenciaInstrumento)
 admin.site.register(OrdemCalibracao)
-admin.site.register(ImportJob)

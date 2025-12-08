@@ -1,9 +1,7 @@
 from django.db.models.signals import post_save, post_delete, m2m_changed
 from django.dispatch import receiver
-from .models import (
-    HistoricoCalibracao, SolicitacaoInstrumento, 
-    OcorrenciaInstrumento, OrdemCalibracao
-)
+from .models import HistoricoCalibracao, OrdemCalibracao
+from qms.models import SolicitacaoInstrumento, OcorrenciaInstrumento
 
 
 @receiver(post_save, sender=HistoricoCalibracao)

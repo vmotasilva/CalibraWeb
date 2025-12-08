@@ -51,17 +51,17 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     
-    # Novos módulos modulares (DESATIVADOS - duplicam modelos com qms)
-    # "core.apps.CoreConfig",
-    # "organization.apps.OrganizationConfig",
-    # "rh.apps.RhConfig",
-    # "metrologia.apps.MetrologiaConfig",
-    # "training.apps.TrainingConfig",
-    # "procurements.apps.ProcurementsConfig",
-    # "documents.apps.DocumentsConfig",
-    # "shared.apps.SharedConfig",
+    # Novos módulos modulares (ATIVADOS - Phase 9 modularization)
+    "core.apps.CoreConfig",
+    "organization.apps.OrganizationConfig",
+    "rh.apps.RhConfig",
+    "metrologia.apps.MetrologiaConfig",
+    "training.apps.TrainingConfig",
+    "procurements.apps.ProcurementsConfig",
+    "documents.apps.DocumentsConfig",
+    "shared.apps.SharedConfig",
     
-    # Módulo legado (compatibilidade)
+    # Módulo legado (compatibilidade - mantém 3 cross-app models: SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob)
     "qms",
     
     # Aplicações de terceiros

@@ -108,7 +108,7 @@ class RegistroTreinamento(models.Model):
         unique_together = ("colaborador", "procedimento")
 
 
-@receiver(m2m_changed, sender='rh.Colaborador.pacotes_treinamento')
+@receiver(m2m_changed, sender=PacoteTreinamento.procedimentos.through)
 def aplicar_pacotes_treinamento(sender, instance, action, pk_set, **kwargs):
     if action == "post_add":
         PacoteTreinamento = models.get_model('training', 'PacoteTreinamento')
