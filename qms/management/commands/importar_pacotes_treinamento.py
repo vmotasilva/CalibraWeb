@@ -10,7 +10,8 @@ import json
 from pathlib import Path
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from qms.models import PacoteTreinamento, Procedimento
+from rh.models import PacoteTreinamento
+from training.models import Procedimento
 
 
 class Command(BaseCommand):

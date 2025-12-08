@@ -2,7 +2,8 @@ from datetime import date
 
 from django.core.management.base import BaseCommand
 
-from qms.models import Colaborador, RegistroTreinamento
+from rh.models import Colaborador
+from training.models import RegistroTreinamento
 
 
 class Command(BaseCommand):

@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 # Importa modelos
-from qms.models import Procedimento
+from training.models import Procedimento
 
 # Define caminho do JSON
 BASE_DIR = Path('C:/Users/Vinícius Mota/Documents/PYTHON/CalibraWeb')

@@ -50,7 +50,21 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    
+    # Novos módulos modulares (DESATIVADOS - duplicam modelos com qms)
+    # "core.apps.CoreConfig",
+    # "organization.apps.OrganizationConfig",
+    # "rh.apps.RhConfig",
+    # "metrologia.apps.MetrologiaConfig",
+    # "training.apps.TrainingConfig",
+    # "procurements.apps.ProcurementsConfig",
+    # "documents.apps.DocumentsConfig",
+    # "shared.apps.SharedConfig",
+    
+    # Módulo legado (compatibilidade)
     "qms",
+    
+    # Aplicações de terceiros
     "widget_tweaks",
 ]
 

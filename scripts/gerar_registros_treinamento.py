@@ -13,7 +13,8 @@ FILTRAR_SETOR_NOMES = []  # Ex: ["SURFACING", "COATING"]
 INCLUIR_COLABORADORES_SEM_PACOTE = False
 
 from datetime import date
-from qms.models import Colaborador, RegistroTreinamento, PacoteTreinamento
+from rh.models import Colaborador, PacoteTreinamento
+from training.models import RegistroTreinamento
 
 def main():
     pacotes = PacoteTreinamento.objects.all()

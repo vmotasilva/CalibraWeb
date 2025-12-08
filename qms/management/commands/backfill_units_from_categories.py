@@ -2,7 +2,7 @@ from typing import Any
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from qms.models import Instrumento, FaixaMedicao
+from metrologia.models import Instrumento, FaixaMedicao
 
 
 class Command(BaseCommand):

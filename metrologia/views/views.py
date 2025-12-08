@@ -1,0 +1,1200 @@
+# -*- coding: utf-8 -*-
+"""
+Views para o módulo Metrologia (Calibração de Instrumentos)
+"""
+
+import io
+import os
+import re
+import tempfile
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.contrib import messages
+from django.http import HttpResponse, JsonResponse
+from django.db.models import Q
+import pandas as pd
+import logging
+
+try:
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4, portrait, landscape
+    from reportlab.lib.colors import HexColor as RColor
+    from PyPDF2 import PdfReader, PdfWriter
+except ImportError:
+    pass
+
+logger = logging.getLogger(__name__)
+
+# Imports dos models
+from metrologia.models import (
+    Instrumento, FaixaMedicao, HistoricoCalibracao, CategoriaInstrumento,
+    ResultadoFaixaCalibracao, ArquivoPadrao
+)
+from organization.models import Setor
+from rh.models import Colaborador
+from core.models import UnidadeMedida
+from qms.models import ImportJob, SolicitacaoInstrumento
+
+# Imports dos forms
+from metrologia.forms import (
+    InstrumentoForm, ImportacaoInstrumentosForm,
+    ImportacaoHistoricoForm, HistoricoCalibracaoForm,
+)
+
+# Imports dos helpers
+from qms.views_helpers import (
+    export_to_excel_response, parse_date, excel_date_to_datetime
+)
+
+
+# ==============================================================================
+# VIEWS DE ARQUIVO PADRÃO
+# ==============================================================================
+
+@login_required
+@require_POST
+def renomear_arquivo_padrao_view(request, arquivo_id):
+    """Renomeia um arquivo PDF de padrão associado ao histórico."""
+    arquivo = get_object_or_404(ArquivoPadrao, id=arquivo_id)
+    novo_nome = request.POST.get('novo_nome', '').strip()
+    historicos = arquivo.historicos.all()
+    
+    # Permissão: só responsável técnico do histórico ou staff pode renomear
+    pode_renomear = False
+    for historico in historicos:
+        if historico.responsavel and historico.responsavel.strip().lower() == \
+           (request.user.get_full_name() or request.user.username).strip().lower():
+            pode_renomear = True
+    if request.user.is_staff:
+        pode_renomear = True
+    
+    if not pode_renomear:
+        messages.error(request, "Você não tem permissão para renomear este arquivo.")
+        if historicos:
+            return redirect('registrar_historico_calibracao', instrumento_id=historicos[0].instrumento_id)
+        return redirect('modulo_metrologia')
+    
+    if novo_nome:
+        logger.info(f"Usuário {request.user.username} renomeou arquivo PDF id={arquivo.id} para '{novo_nome}'")
+        arquivo.nome = novo_nome
+        arquivo.save(update_fields=['nome'])
+        messages.success(request, "Nome do arquivo atualizado com sucesso.")
+    else:
+        messages.error(request, "Nome inválido.")
+    
+    if historicos:
+        return redirect('registrar_historico_calibracao', instrumento_id=historicos[0].instrumento_id)
+    return redirect('modulo_metrologia')
+
+
+@login_required
+@require_POST
+def remover_arquivo_padrao_view(request, arquivo_id):
+    """Remove um arquivo PDF de padrão associado ao histórico."""
+    arquivo = get_object_or_404(ArquivoPadrao, id=arquivo_id)
+    historicos = arquivo.historicos.all()
+    
+    # Permissão: só responsável técnico ou staff pode remover
+    pode_remover = False
+    for historico in historicos:
+        if historico.responsavel and historico.responsavel.strip().lower() == \
+           (request.user.get_full_name() or request.user.username).strip().lower():
+            pode_remover = True
+    if request.user.is_staff:
+        pode_remover = True
+    
+    if not pode_remover:
+        messages.error(request, "Você não tem permissão para remover este arquivo.")
+        if historicos:
+            return redirect('registrar_historico_calibracao', instrumento_id=historicos[0].instrumento_id)
+        return redirect('modulo_metrologia')
+    
+    # Remove associação do arquivo com todos históricos
+    for historico in historicos:
+        historico.arquivos_padroes.remove(arquivo)
+    
+    logger.info(f"Usuário {request.user.username} removeu arquivo PDF id={arquivo.id}")
+    arquivo.arquivo.delete(save=False)
+    arquivo.delete()
+    messages.success(request, "Arquivo removido com sucesso.")
+    
+    if historicos:
+        return redirect('registrar_historico_calibracao', instrumento_id=historicos[0].instrumento_id)
+    return redirect('modulo_metrologia')
+
+
+# ==============================================================================
+# VIEWS DE IMPORTAÇÃO
+# ==============================================================================
+
+@login_required
+def imp_instr_view(request):
+    """Importa instrumentos de calibração a partir de arquivo Excel/CSV."""
+    if request.method == "POST":
+        form = ImportacaoInstrumentosForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                uploaded = request.FILES["arquivo_excel"]
+                suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                for chunk in uploaded.chunks():
+                    tmp.write(chunk)
+                tmp.flush()
+               
+                job = ImportJob.objects.create(
+                    user=request.user if request.user.is_authenticated else None,
+                    filename=uploaded.name,
+                    filepath=tmp.name,
+                    job_type="INSTRUMENTOS",
+                    status="PENDING",
+                )
+
+                from qms.tasks import import_instruments_task
+                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
+                if not force_sync:
+                    try:
+                        import_instruments_task.delay(str(job.id), tmp.name)
+                        messages.success(request, f"Importação enfileirada (job {job.id}).")
+                        return redirect("modulo_metrologia")
+                    except Exception:
+                        force_sync = True
+                
+                if force_sync:
+                    import_instruments_task(job.id, tmp.name)
+                    job.refresh_from_db()
+                    messages.success(request, f"Importação concluída (job {job.id}). {job.result or ''}")
+                    return redirect("modulo_metrologia")
+            except Exception as e:
+                messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
+                return redirect("importar_instrumentos")
+    else:
+        form = ImportacaoInstrumentosForm()
+    
+    return render(
+        request,
+        "importar_instrumentos.html",
+        {"form": form, "jobs": ImportJob.objects.filter(job_type='INSTRUMENTOS').order_by('-created_at')[:5]},
+    )
+
+
+@login_required
+def imp_historico_view(request):
+    """Importa históricos de calibração a partir de arquivo Excel/CSV."""
+    if request.method == "POST":
+        form = ImportacaoHistoricoForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                uploaded = request.FILES["arquivo_excel"]
+                suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                for chunk in uploaded.chunks():
+                    tmp.write(chunk)
+                tmp.flush()
+                tmp.close()
+
+                job = ImportJob.objects.create(
+                    user=request.user if request.user.is_authenticated else None,
+                    filename=uploaded.name,
+                    filepath=tmp.name,
+                    job_type="HISTORICO",
+                    status="PENDING",
+                )
+
+                from qms.tasks import import_historico_task
+                force_sync = os.environ.get("SYNC_IMPORTS", "1") == "1"
+                if not force_sync:
+                    try:
+                        import_historico_task.delay(str(job.id), tmp.name)
+                        messages.success(request, f"Importação histórico enfileirada (job {job.id}).")
+                        return redirect("modulo_metrologia")
+                    except Exception:
+                        force_sync = True
+                
+                if force_sync:
+                    import_historico_task(job.id, tmp.name)
+                    job.refresh_from_db()
+                    try:
+                        # Recalcula datas nos instrumentos afetados
+                        afetados = HistoricoCalibracao.objects.filter(
+                            criado_em__gte=job.created_at
+                        ).values_list("instrumento_id", flat=True).distinct()
+                        for iid in afetados:
+                            inst = Instrumento.objects.filter(id=iid).first()
+                            if inst:
+                                ultima = HistoricoCalibracao.objects.filter(instrumento=inst).order_by("-data_calibracao").first()
+                                if ultima:
+                                    inst.data_ultima_calibracao = ultima.data_calibracao
+                                    inst.data_proxima_calibracao = ultima.proxima_calibracao
+                                else:
+                                    inst.data_ultima_calibracao = None
+                                    inst.data_proxima_calibracao = None
+                                inst.save(update_fields=["data_ultima_calibracao", "data_proxima_calibracao"])
+                    except Exception:
+                        pass
+                    messages.success(request, f"Histórico importado (job {job.id}). {job.result or ''}")
+                    return redirect("modulo_metrologia")
+            except Exception as e:
+                messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
+                return redirect("importar_historico")
+    else:
+        form = ImportacaoHistoricoForm()
+    
+    return render(
+        request,
+        "importar_historico.html",
+        {"form": form, "jobs": ImportJob.objects.filter(job_type='HISTORICO').order_by('-created_at')[:5]},
+    )
+
+
+# ==============================================================================
+# VIEWS DE DASHBOARD E LISTAGEM
+# ==============================================================================
+
+@login_required
+def modulo_metrologia_view(request):
+    """Dashboard principal do módulo de Metrologia."""
+    instrumentos = Instrumento.objects.all().select_related('categoria','setor').order_by("tag")
+
+    # Filtro de status
+    st_param = (request.GET.get('st') or '').upper()
+    if st_param:
+        parts = {p.strip() for p in st_param.split(',') if p.strip()}
+        if 'ATIVO' in parts and 'INATIVO' not in parts:
+            instrumentos = instrumentos.filter(ativo=True)
+        elif 'INATIVO' in parts and 'ATIVO' not in parts:
+            instrumentos = instrumentos.filter(ativo=False)
+
+    status_filter = request.GET.get("status")
+    hoje = date.today()
+    alerta_30d = hoje + timedelta(days=30)
+    
+    if status_filter == "vencidos":
+        messages.info(request, "Filtro sugerido: VENCIDOS (aplicado na interface).")
+    elif status_filter == "avencer":
+        messages.info(request, "Filtro sugerido: A Vencer (30d) (aplicado na interface).")
+
+    # Filtros
+    setores_ids = Instrumento.objects.all().values_list("setor", flat=True).distinct()
+    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by("nome")
+
+    categorias_ids = Instrumento.objects.all().values_list("categoria", flat=True).distinct()
+    categorias_filtro = CategoriaInstrumento.objects.filter(
+        id__in=categorias_ids
+    ).order_by("nome")
+
+    ctx = {
+        "instrumentos": instrumentos,
+        "setores_filtro": setores_filtro,
+        "categorias_filtro": categorias_filtro,
+        "hoje": hoje,
+        "alerta_30d": alerta_30d,
+        "can_edit": True,
+    }
+    return render(request, "modulo_metrologia.html", ctx)
+
+
+# ==============================================================================
+# VIEWS DE EXPORTAÇÃO
+# ==============================================================================
+
+@login_required
+def export_metrologia_view(request):
+    """Exporta instrumentos respeitando filtros para Excel."""
+    q = (request.GET.get('q') or '').strip().lower()
+    st = set((request.GET.get('st') or '').split(',')) if request.GET.get('st') else set()
+    sit = set((request.GET.get('sit') or '').split(',')) if request.GET.get('sit') else set()
+    cat = set((request.GET.get('cat') or '').split(',')) if request.GET.get('cat') else set()
+    st_setor = set((request.GET.get('set') or '').split(',')) if request.GET.get('set') else set()
+
+    qs = Instrumento.objects.all().select_related('categoria','setor').prefetch_related('faixas','faixas__unidade')
+    
+    # Aplica filtros
+    if st:
+        if 'ATIVO' in st and 'INATIVO' not in st:
+            qs = qs.filter(ativo=True)
+        elif 'INATIVO' in st and 'ATIVO' not in st:
+            qs = qs.filter(ativo=False)
+    if cat:
+        try:
+            cat_ids = [int(x) for x in cat if x.isdigit()]
+            qs = qs.filter(categoria_id__in=cat_ids)
+        except Exception:
+            pass
+    if st_setor:
+        try:
+            setor_ids = [int(x) for x in st_setor if x.isdigit()]
+            qs = qs.filter(setor_id__in=setor_ids)
+        except Exception:
+            pass
+    if q:
+        qs = qs.filter(Q(tag__icontains=q) | Q(descricao__icontains=q) | 
+                      Q(fabricante__icontains=q) | Q(modelo__icontains=q))
+
+    # Monta dados para exportação
+    hoje = date.today()
+    alerta_30d = hoje + timedelta(days=30)
+    rows = []
+    
+    for inst in qs:
+        situacao = 'EM_DIA'
+        if inst.data_proxima_calibracao:
+            if inst.data_proxima_calibracao < hoje:
+                situacao = 'VENCIDO'
+            elif inst.data_proxima_calibracao <= alerta_30d:
+                situacao = 'AVENCER'
+        
+        if sit and situacao not in sit:
+            continue
+        
+        unidade = ''
+        try:
+            fx = inst.faixas.all().first()
+            if fx and fx.unidade:
+                unidade = fx.unidade.sigla
+        except Exception:
+            pass
+        
+        rows.append({
+            'TAG': inst.tag,
+            'DESCRICAO': inst.descricao,
+            'CATEGORIA': inst.categoria.nome if inst.categoria else '',
+            'SETOR': inst.setor.nome if inst.setor else '',
+            'FABRICANTE': inst.fabricante or '',
+            'MODELO': inst.modelo or '',
+            'SERIE': inst.serie or '',
+            'SITUACAO': situacao,
+            'ULTIMA_CALIB': inst.data_ultima_calibracao.strftime('%Y-%m-%d') if inst.data_ultima_calibracao else '',
+            'PROXIMA_CALIB': inst.data_proxima_calibracao.strftime('%Y-%m-%d') if inst.data_proxima_calibracao else '',
+            'UNIDADE': unidade,
+        })
+
+    return export_to_excel_response(rows, "instrumentos_export.xlsx")
+
+
+@login_required
+def export_etiquetas_view(request):
+    """Gera PDF A4 com etiquetas de instrumentos filtrados."""
+    from reportlab.lib.pagesizes import A4, portrait, landscape
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.colors import HexColor as RColor
+    
+    q = (request.GET.get('q') or '').strip().lower()
+    st = set((request.GET.get('st') or '').split(',')) if request.GET.get('st') else set()
+    sit = set((request.GET.get('sit') or '').split(',')) if request.GET.get('sit') else set()
+    cat = set((request.GET.get('cat') or '').split(',')) if request.GET.get('cat') else set()
+    st_setor = set((request.GET.get('set') or '').split(',')) if request.GET.get('set') else set()
+
+    orient = (request.GET.get('orient') or 'portrait').lower()
+    try:
+        cols = max(1, int(request.GET.get('cols') or 2))
+        rows = max(1, int(request.GET.get('rows') or 5))
+    except Exception:
+        cols, rows = 2, 5
+    margin_mm = float(request.GET.get('margin_mm') or 10)
+    pad_mm = float(request.GET.get('pad_mm') or 5)
+
+    # Filtro base
+    qs = Instrumento.objects.all().select_related('categoria','setor')
+    if st:
+        if 'ATIVO' in st and 'INATIVO' not in st:
+            qs = qs.filter(ativo=True)
+        elif 'INATIVO' in st and 'ATIVO' not in st:
+            qs = qs.filter(ativo=False)
+    if cat:
+        try:
+            cat_ids = [int(x) for x in cat if x.isdigit()]
+            qs = qs.filter(categoria_id__in=cat_ids)
+        except Exception:
+            pass
+    if st_setor:
+        try:
+            setor_ids = [int(x) for x in st_setor if x.isdigit()]
+            qs = qs.filter(setor_id__in=setor_ids)
+        except Exception:
+            pass
+    if q:
+        qs = qs.filter(Q(tag__icontains=q) | Q(descricao__icontains=q) | 
+                      Q(fabricante__icontains=q) | Q(modelo__icontains=q))
+
+    # IDs selecionados
+    selected_ids = []
+    try:
+        raw_ids = (request.GET.get('ids') or '').strip()
+        if raw_ids:
+            selected_ids = [int(x) for x in raw_ids.split(',') if x.strip().isdigit()]
+    except Exception:
+        pass
+
+    # Filtra por situação
+    hoje = date.today()
+    alerta_30d = hoje + timedelta(days=30)
+    instrumentos = []
+    base_iter = qs.order_by('tag')
+    if selected_ids:
+        base_iter = base_iter.filter(id__in=selected_ids)
+    
+    for inst in base_iter:
+        situacao = 'EM_DIA'
+        if inst.data_proxima_calibracao:
+            if inst.data_proxima_calibracao < hoje:
+                situacao = 'VENCIDO'
+            elif inst.data_proxima_calibracao <= alerta_30d:
+                situacao = 'AVENCER'
+        if sit and situacao not in sit:
+            continue
+        instrumentos.append((inst, situacao))
+
+    # Gera PDF com etiquetas
+    buf = io.BytesIO()
+    page_size = portrait(A4) if orient != 'landscape' else landscape(A4)
+    c = canvas.Canvas(buf, pagesize=page_size)
+    pw, ph = page_size
+
+    mm = 2.834645669291339
+    margin = margin_mm * mm
+    pad = pad_mm * mm
+    grid_w = pw - 2*margin
+    grid_h = ph - 2*margin
+    cell_w = (grid_w - (cols-1)*pad) / cols
+    cell_h = (grid_h - (rows-1)*pad) / rows
+
+    def draw_label(x, y, inst, situacao):
+        c.setLineWidth(1)
+        c.rect(x, y, cell_w, cell_h)
+        
+        last_calib_date = getattr(inst, 'data_ultima_calibracao', None)
+        if not last_calib_date or not isinstance(last_calib_date, (date, datetime)):
+            last_calib_date = None
+        
+        last_cert_num = ''
+        try:
+            hist_qs = HistoricoCalibracao.objects.filter(instrumento=inst)
+            last_hist = hist_qs.order_by('-data_calibracao').first()
+            if last_hist:
+                if not last_calib_date:
+                    last_calib_date = last_hist.data_calibracao
+                last_cert_num = last_hist.numero_certificado or ''
+        except Exception:
+            pass
+        
+        calib_str = last_calib_date.strftime('%d/%m/%Y') if last_calib_date else ''
+        prox_str = inst.data_proxima_calibracao.strftime('%m/%Y') if getattr(inst, 'data_proxima_calibracao', None) else ''
+
+        # Fallback layout genérico
+        bar_h = 18
+        c.setFillColor(RColor(0,0,0))
+        c.rect(x, y+cell_h-bar_h, cell_w, bar_h, fill=1, stroke=0)
+        c.setFillColor(RColor(1,1,1))
+        c.setFont('Helvetica-Bold', 12)
+        c.drawString(x+6, y+cell_h-bar_h+4, (inst.setor.nome if inst.setor else 'Metrologia'))
+        c.drawRightString(x+cell_w-6, y+cell_h-bar_h+4, (inst.categoria.nome if inst.categoria else 'FOR.152.R1'))
+        
+        c.setFillColor(RColor(0,0,0))
+        c.setFont('Helvetica-Bold', 11)
+        cx = x+12
+        cy = y+cell_h- bar_h - 12
+        c.circle(cx, cy, 5, stroke=1, fill=1)
+        c.drawString(cx+12, cy-3, 'Calibração')
+        c.circle(cx+140, cy, 5, stroke=1, fill=0)
+        c.drawString(cx+152, cy-3, 'Verificação')
+        
+        c.setFont('Helvetica', 9)
+        line_y = cy - 14
+        def field(label, value=''):
+            nonlocal line_y
+            c.drawString(x+10, line_y, f"{label}")
+            c.line(x+120, line_y-2, x+cell_w-10, line_y-2)
+            if value:
+                c.drawString(x+125, line_y, value)
+            line_y -= 16
+        field('Cód do instrumento:', inst.tag or '')
+        field('N° Certificado:', last_cert_num)
+        field('Realizado em:', calib_str)
+        field('Vencimento (mês/ano):', prox_str)
+
+    i = 0
+    for inst, situ in instrumentos:
+        if i and (i // (cols*rows)) != ((i-1) // (cols*rows)):
+            c.showPage()
+        
+        page_index = i // (cols*rows)
+        r = (i - page_index*cols*rows) // cols
+        cidx = (i - page_index*cols*rows) % cols
+        ox = margin + cidx * (cell_w + pad)
+        oy = margin + (rows-1-r) * (cell_h + pad)
+        draw_label(ox, oy, inst, situ)
+        i += 1
+
+    c.showPage()
+    c.save()
+    buf.seek(0)
+    resp = HttpResponse(buf, content_type='application/pdf')
+    resp['Content-Disposition'] = 'attachment; filename="etiquetas_instrumentos.pdf"'
+    return resp
+
+
+# ==============================================================================
+# VIEWS DE INSTRUMENTO
+# ==============================================================================
+
+@login_required
+def novo_instrumento_view(request):
+    """Cadastro de novo instrumento."""
+    if request.method == 'POST':
+        form = InstrumentoForm(request.POST)
+        if form.is_valid():
+            inst = form.save()
+            messages.success(request, f"Instrumento '{inst.tag}' cadastrado!")
+            return redirect('modulo_metrologia')
+        else:
+            messages.error(request, "Verifique os dados do instrumento.")
+    else:
+        form = InstrumentoForm()
+    
+    return render(request, 'form_generico.html', {
+        'form': form,
+        'titulo': 'Novo Instrumento',
+    })
+
+
+@login_required
+def detalhe_instrumento_view(request, instrumento_id):
+    """Visualiza detalhe de instrumento com históricos e ocorrências."""
+    try:
+        inst = get_object_or_404(Instrumento, id=instrumento_id)
+    except Exception as e:
+        logger.error(f"Erro ao buscar instrumento {instrumento_id}: {e}")
+        raise
+
+    # Processamento de formulário de ocorrência rápida
+    if request.method == "POST":
+        from rh.forms import OcorrenciaForm
+        form_ocorrencia = OcorrenciaForm(request.POST)
+        if form_ocorrencia.is_valid():
+            ocorrencia = form_ocorrencia.save(commit=False)
+            ocorrencia.instrumento = inst
+            ocorrencia.usuario_responsavel = request.user
+            ocorrencia.save()
+            messages.success(request, "Ocorrência registrada com sucesso!")
+            return redirect("detalhe_instrumento", instrumento_id=inst.id)
+        else:
+            messages.error(request, "Erro ao registrar ocorrência.")
+    else:
+        from rh.forms import OcorrenciaForm
+        form_ocorrencia = OcorrenciaForm()
+
+    # Busca dados relacionados
+    try:
+        historico = HistoricoCalibracao.objects.filter(instrumento=inst).prefetch_related(
+            'resultados_faixas__faixa_medicao__unidade'
+        ).order_by("-data_calibracao")
+    except Exception as e:
+        logger.error(f"Erro ao buscar histórico: {e}")
+        historico = []
+
+    try:
+        calibracoes = inst.calibracoes.all().order_by("-data_prevista")
+    except AttributeError:
+        calibracoes = []
+
+    try:
+        ocorrencias = inst.ocorrencias.all().order_by("-data_ocorrencia")
+    except AttributeError:
+        ocorrencias = []
+
+    try:
+        for oc in ocorrencias:
+            u = getattr(oc, "usuario_responsavel", None)
+            if u:
+                col = Colaborador.objects.filter(user_django=u).only("id").first()
+                if col:
+                    setattr(oc, "responsavel_colab_id", col.id)
+    except Exception:
+        pass
+
+    try:
+        faixas = inst.faixamedicao_set.all()
+    except AttributeError:
+        faixas = []
+
+    if hasattr(inst, "faixas"):
+        faixas = inst.faixas.all()
+
+    return render(
+        request,
+        "detalhe_instrumento.html",
+        {
+            "instrumento": inst,
+            "historico": historico,
+            "calibracoes": calibracoes,
+            "ocorrencias": ocorrencias,
+            "faixas": faixas,
+            "form_ocorrencia": form_ocorrencia,
+            "today": date.today(),
+        },
+    )
+
+
+# ==============================================================================
+# VIEWS DE HISTÓRICO DE CALIBRAÇÃO
+# ==============================================================================
+
+@login_required
+def remover_historico_view(request, historico_id):
+    """Remove um registro de histórico de calibração."""
+    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    i_id = hist.instrumento.id
+    if hist.certificado:
+        hist.certificado.delete(save=False)
+    hist.delete()
+    messages.success(request, "Removido.")
+    return redirect("detalhe_instrumento", instrumento_id=i_id)
+
+
+@login_required
+def anexar_certificado_historico_view(request, historico_id):
+    """Anexa arquivo PDF ao histórico."""
+    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    inst_id = hist.instrumento.id if hist.instrumento else None
+    
+    if request.method != "POST":
+        messages.error(request, "Método inválido.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    if hist.certificado:
+        messages.warning(request, "Este histórico já possui certificado anexado.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    up = request.FILES.get("certificado_pdf")
+    if not up:
+        messages.error(request, "Selecione um arquivo PDF para anexar.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    ctype = getattr(up, "content_type", "") or ""
+    if "pdf" not in ctype.lower():
+        messages.error(request, "Arquivo inválido. Envie um PDF.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    try:
+        filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag}.pdf" if hist.instrumento else up.name
+        hist.certificado.save(filename, up, save=True)
+        messages.success(request, "Certificado anexado com sucesso!")
+    except Exception as e:
+        messages.error(request, f"Falha ao anexar certificado: {e}")
+    
+    return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+
+@login_required
+def download_certificado_view(request, historico_id):
+    """Faz download do certificado PDF."""
+    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    
+    if not hist.certificado:
+        messages.error(request, "Este histórico não possui certificado anexado.")
+        return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
+    
+    try:
+        certificado_file = hist.certificado
+        file_size = certificado_file.size
+        logger.info(f"Acessando certificado {historico_id}: {certificado_file.name} (size: {file_size})")
+        
+        file_content = certificado_file.read()
+        
+        if not file_content:
+            logger.error(f"Certificado {historico_id} vazio")
+            messages.error(request, "Arquivo de certificado está vazio.")
+            return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
+        
+        filename = f"Cert_{hist.numero_certificado}_{hist.instrumento.tag if hist.instrumento else 'documento'}.pdf"
+        
+        response = HttpResponse(file_content, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        response['Content-Type'] = 'application/pdf; charset=utf-8'
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        response['Content-Length'] = str(len(file_content))
+        
+        logger.info(f"Certificado {historico_id} servido com sucesso ({len(file_content)} bytes)")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Erro ao servir certificado {historico_id}: {e}", exc_info=True)
+        messages.error(request, f"Erro ao acessar certificado: {str(e)}")
+        return redirect("detalhe_instrumento", instrumento_id=hist.instrumento.id if hist.instrumento else 1)
+
+
+@login_required
+def remover_certificado_historico_view(request, historico_id):
+    """Remove certificado do histórico mantendo o registro."""
+    hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    inst_id = hist.instrumento.id if hist.instrumento else None
+    
+    if request.method != "POST":
+        messages.error(request, "Método inválido.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    if not hist.certificado:
+        messages.warning(request, "Este histórico não possui certificado anexado.")
+        return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+    try:
+        hist.certificado.delete(save=False)
+        hist.certificado = None
+        hist.save(update_fields=["certificado"])
+        messages.success(request, "Certificado removido. Você pode anexar um novo.")
+    except Exception as e:
+        messages.error(request, f"Falha ao remover certificado: {e}")
+    
+    return redirect("detalhe_instrumento", instrumento_id=inst_id)
+
+
+@login_required
+def registrar_historico_calibracao_view(request, instrumento_id):
+    """Registra novo histórico de calibração com validação de faixas."""
+    try:
+        instrumento = get_object_or_404(Instrumento, id=instrumento_id)
+        logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}")
+        
+        if request.method == 'POST':
+            form = HistoricoCalibracaoForm(request.POST, request.FILES, instrumento=instrumento, user=request.user)
+            
+            if form.is_valid():
+                try:
+                    # Validação de faixas
+                    faixas_qs = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+                    entradas_validas = []
+                    problemas = []
+                    ativos_marcados = 0
+
+                    for faixa in faixas_qs:
+                        prefix = f"faixa_{faixa.id}_"
+                        ativa_key = prefix + "ativa"
+                        if ativa_key not in request.POST:
+                            continue
+                        ativos_marcados += 1
+
+                        erro_str = (request.POST.get(prefix + "erro", "") or "").strip()
+                        inc_str = (request.POST.get(prefix + "incerteza", "") or "").strip()
+                        tol_str = (request.POST.get(prefix + "tolerancia", "") or "").strip()
+
+                        tol_val = None
+                        if tol_str:
+                            try:
+                                tol_val = Decimal(str(tol_str))
+                            except Exception:
+                                tol_val = None
+                        else:
+                            tol_val = faixa.tolerancia_mais_menos
+
+                        try:
+                            erro_val = Decimal(str(erro_str)) if erro_str != "" else None
+                        except Exception:
+                            erro_val = None
+                        try:
+                            inc_val = Decimal(str(inc_str)) if inc_str != "" else None
+                        except Exception:
+                            inc_val = None
+
+                        if erro_val is None or inc_val is None or tol_val is None:
+                            problemas.append(f"Faixa {faixa.valor_minimo}-{faixa.valor_maximo}: dados incompletos.")
+                            continue
+
+                        entradas_validas.append({
+                            'faixa': faixa,
+                            'erro': erro_val,
+                            'inc': inc_val,
+                            'tol': tol_val,
+                        })
+
+                    if ativos_marcados > 0 and len(entradas_validas) == 0:
+                        messages.error(request, "Selecione ao menos uma faixa com dados completos.")
+                        for p in problemas:
+                            messages.warning(request, p)
+                        form.add_error(None, "Dados de faixas incompletos.")
+                        faixas_medicao = faixas_qs
+                        return render(request, 'registrar_historico_calibracao.html', {
+                            'form': form,
+                            'instrumento': instrumento,
+                            'faixas_medicao': faixas_medicao
+                        })
+
+                    # Salva histórico
+                    historico = form.save(commit=False)
+                    historico.instrumento = instrumento
+                    historico.save()
+                    form.save_m2m()
+
+                    # Salva arquivos PDF de padrões
+                    arquivos_padroes = request.FILES.getlist('arquivos_padroes')
+                    for arquivo in arquivos_padroes:
+                        nome = arquivo.name
+                        obj = ArquivoPadrao.objects.create(arquivo=arquivo, nome=nome)
+                        historico.arquivos_padroes.add(obj)
+
+                    criadas = 0
+                    ignoradas = 0
+                    for ent in entradas_validas:
+                        try:
+                            ResultadoFaixaCalibracao.objects.create(
+                                historico=historico,
+                                faixa_medicao=ent['faixa'],
+                                erro_encontrado=ent['erro'],
+                                incerteza=ent['inc'],
+                                tolerancia_usada=ent['tol'],
+                                desconsiderada=False,
+                            )
+                            criadas += 1
+                        except Exception as e_create:
+                            logger.error(f"Erro criando ResultadoFaixaCalibracao: {e_create}")
+                            ignoradas += 1
+
+                    # Atualiza resultado geral
+                    try:
+                        resultados = list(historico.resultados_faixas.values_list('resultado', flat=True))
+                        overall = None
+                        if resultados:
+                            if 'REPROVADO' in resultados:
+                                overall = 'REPROVADO'
+                            elif 'APROVADO_COM_CORRECAO' in resultados:
+                                overall = 'APROVADO_COM_CORRECAO'
+                            else:
+                                overall = 'APROVADO_SEM_CORRECAO'
+                        if overall and historico.resultado != overall:
+                            historico.resultado = overall
+                            historico.save(update_fields=['resultado'])
+                    except Exception:
+                        pass
+
+                    msg = f"Histórico registrado! Faixas: {criadas}."
+                    if ignoradas:
+                        msg += f" Ignoradas: {ignoradas}."
+                    messages.success(request, msg)
+                    
+                    logger.info(f"Histórico {historico.id} criado para instrumento {instrumento_id}")
+                    return redirect('detalhe_instrumento', instrumento_id=instrumento.id)
+                except Exception as save_error:
+                    logger.error(f"Erro ao salvar histórico: {save_error}", exc_info=True)
+                    messages.error(request, f'Erro ao salvar histórico: {str(save_error)}')
+            else:
+                logger.warning(f"Form inválido. Erros: {form.errors}")
+                messages.error(request, 'Corrija os erros no formulário.')
+        else:
+            form = HistoricoCalibracaoForm(instrumento=instrumento, user=request.user)
+        
+        faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+        
+        return render(request, 'registrar_historico_calibracao.html', {
+            'form': form,
+            'instrumento': instrumento,
+            'faixas_medicao': faixas_medicao
+        })
+    except Exception as e:
+        logger.error(f"Erro crítico em registrar_historico_calibracao_view: {e}", exc_info=True)
+        messages.error(request, f'Erro ao processar requisição: {str(e)}')
+        return redirect('modulo_metrologia')
+
+
+@login_required
+def preview_certificado_view(request, historico_id):
+    """Pré-visualização do certificado."""
+    try:
+        logger.info(f"Preview certificado: {historico_id}")
+        historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+        
+        if not historico.certificado:
+            messages.error(request, 'Histórico sem arquivo de certificado.')
+            return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
+        
+        return render(request, 'preview_certificado.html', {
+            'historico': historico,
+        })
+    except Exception as e:
+        logger.error(f"Erro em preview_certificado_view: {e}")
+        messages.error(request, f'Erro ao visualizar certificado: {str(e)}')
+        return redirect('modulo_metrologia')
+
+
+@login_required
+def aplicar_carimbo_certificado_view(request, historico_id):
+    """Aplica carimbo de validação no certificado PDF."""
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.colors import red
+    from PyPDF2 import PdfReader, PdfWriter
+    from django.core.files import File
+    
+    stamp_path = None
+    out_path = None
+    
+    try:
+        logger.info(f"Aplicar carimbo: {historico_id}")
+        historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+        
+        if not historico.certificado:
+            messages.error(request, 'Histórico sem certificado.')
+            return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
+        
+        # Gera carimbo com ReportLab
+        stamp_fd, stamp_path = tempfile.mkstemp(suffix='.pdf')
+        os.close(stamp_fd)
+        c = canvas.Canvas(stamp_path, pagesize=letter)
+        c.setFillColor(red)
+        c.setFont("Helvetica-Bold", 18)
+        carimbo_texto = f"VALIDADO - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        c.drawString(72, 72, carimbo_texto)
+        responsavel_txt = (historico.responsavel or request.user.get_full_name() or request.user.username)
+        c.setFont("Helvetica", 12)
+        c.drawString(72, 52, f"Resp. Técnico: {responsavel_txt}")
+        c.save()
+        logger.debug(f"Carimbo gerado: {stamp_path}")
+        
+        # Mescla com PDF original
+        cert_content = io.BytesIO(historico.certificado.read())
+        reader = PdfReader(cert_content)
+        writer = PdfWriter()
+        stamp_reader = PdfReader(stamp_path)
+        first_page = reader.pages[0]
+        first_page.merge_page(stamp_reader.pages[0])
+        writer.add_page(first_page)
+        
+        for i in range(1, len(reader.pages)):
+            writer.add_page(reader.pages[i])
+        
+        out_fd, out_path = tempfile.mkstemp(suffix='.pdf')
+        os.close(out_fd)
+        with open(out_path, 'wb') as f_out:
+            writer.write(f_out)
+        
+        # Salva PDF carimbado
+        with open(out_path, 'rb') as f_final:
+            filename = os.path.basename(historico.certificado.name).replace('.pdf', '_carimbado.pdf')
+            historico.certificado_carimbado.save(filename, File(f_final), save=False)
+        
+        historico.certificado_validado = True
+        historico.save(update_fields=['certificado_carimbado', 'certificado_validado'])
+        messages.success(request, 'Certificado validado e carimbado com sucesso!')
+        logger.info(f"Certificado {historico_id} validado")
+        return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
+        
+    except Exception as e:
+        logger.error(f"Erro ao aplicar carimbo: {e}", exc_info=True)
+        messages.error(request, f'Erro ao aplicar carimbo: {str(e)}')
+        return redirect('modulo_metrologia')
+    finally:
+        try:
+            if stamp_path and os.path.exists(stamp_path):
+                os.unlink(stamp_path)
+            if out_path and os.path.exists(out_path):
+                os.unlink(out_path)
+        except Exception:
+            pass
+
+
+@login_required
+def visualizar_historico_calibracao_view(request, historico_id):
+    """Visualiza ou edita registro histórico de calibração."""
+    try:
+        historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+        instrumento = historico.instrumento
+
+        if not request.user.is_superuser and not request.user.is_staff:
+            messages.warning(request, "Acesso restrito; verifique permissões.")
+
+        edit_mode = request.GET.get('edit') == '1'
+        logger.info(f"Usuário {request.user} acessou histórico {historico_id} (edit={edit_mode})")
+
+        if request.method == 'POST' and edit_mode:
+            form = HistoricoCalibracaoForm(
+                request.POST, 
+                request.FILES, 
+                instance=historico, 
+                instrumento=instrumento, 
+                user=request.user
+            )
+            
+            if form.is_valid():
+                try:
+                    # Validação de faixas (idêntico a registrar_historico_calibracao_view)
+                    faixas_qs = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+                    entradas_validas = []
+                    problemas = []
+                    ativos_marcados = 0
+
+                    for faixa in faixas_qs:
+                        prefix = f"faixa_{faixa.id}_"
+                        ativa_key = prefix + "ativa"
+                        if ativa_key not in request.POST:
+                            continue
+                        ativos_marcados += 1
+
+                        erro_str = (request.POST.get(prefix + "erro", "") or "").strip()
+                        inc_str = (request.POST.get(prefix + "incerteza", "") or "").strip()
+                        tol_str = (request.POST.get(prefix + "tolerancia", "") or "").strip()
+
+                        tol_val = None
+                        if tol_str:
+                            try:
+                                tol_val = Decimal(str(tol_str))
+                            except Exception:
+                                tol_val = None
+                        else:
+                            tol_val = faixa.tolerancia_mais_menos
+
+                        try:
+                            erro_val = Decimal(str(erro_str)) if erro_str != "" else None
+                        except Exception:
+                            erro_val = None
+                        try:
+                            inc_val = Decimal(str(inc_str)) if inc_str != "" else None
+                        except Exception:
+                            inc_val = None
+
+                        if erro_val is None or inc_val is None or tol_val is None:
+                            problemas.append(f"Faixa {faixa.valor_minimo}-{faixa.valor_maximo}: incompleta.")
+                            continue
+
+                        entradas_validas.append({
+                            'faixa': faixa,
+                            'erro': erro_val,
+                            'inc': inc_val,
+                            'tol': tol_val,
+                        })
+
+                    if ativos_marcados > 0 and len(entradas_validas) == 0:
+                        messages.error(request, "Selecione ao menos uma faixa completa.")
+                        for p in problemas:
+                            messages.warning(request, p)
+                        form.add_error(None, "Faixas incompletas.")
+                        faixas_medicao = faixas_qs
+                        resultados_faixas = historico.resultados_faixas.all()
+                        return render(request, 'visualizar_historico_calibracao.html', {
+                            'form': form,
+                            'historico': historico,
+                            'instrumento': instrumento,
+                            'faixas_medicao': faixas_medicao,
+                            'resultados_faixas': resultados_faixas,
+                            'edit_mode': True,
+                        })
+
+                    # Salva histórico
+                    historico_salvo = form.save(commit=False)
+                    historico_salvo.save()
+                    form.save_m2m()
+
+                    # Limpa e recria resultados
+                    historico.resultados_faixas.all().delete()
+                    criadas = 0
+                    ignoradas = 0
+                    for ent in entradas_validas:
+                        try:
+                            ResultadoFaixaCalibracao.objects.create(
+                                historico=historico,
+                                faixa_medicao=ent['faixa'],
+                                erro_encontrado=ent['erro'],
+                                incerteza=ent['inc'],
+                                tolerancia_usada=ent['tol'],
+                                desconsiderada=False,
+                            )
+                            criadas += 1
+                        except Exception as e_create:
+                            logger.error(f"Erro: {e_create}")
+                            ignoradas += 1
+
+                    # Atualiza resultado geral
+                    try:
+                        resultados = list(historico.resultados_faixas.values_list('resultado', flat=True))
+                        overall = None
+                        if resultados:
+                            if 'REPROVADO' in resultados:
+                                overall = 'REPROVADO'
+                            elif 'APROVADO_COM_CORRECAO' in resultados:
+                                overall = 'APROVADO_COM_CORRECAO'
+                            else:
+                                overall = 'APROVADO_SEM_CORRECAO'
+                        if overall and historico.resultado != overall:
+                            historico.resultado = overall
+                            historico.save(update_fields=['resultado'])
+                    except Exception:
+                        pass
+
+                    messages.success(request, f"Histórico atualizado! Faixas: {criadas}.")
+                    logger.info(f"Histórico {historico_id} atualizado")
+                    return redirect('detalhe_instrumento', instrumento_id=instrumento.id)
+                    
+                except Exception as save_error:
+                    logger.error(f"Erro ao salvar: {save_error}")
+                    messages.error(request, f'Erro ao salvar: {str(save_error)}')
+            else:
+                messages.error(request, 'Corrija os erros.')
+        else:
+            form = HistoricoCalibracaoForm(
+                instance=historico, 
+                instrumento=instrumento, 
+                user=request.user
+            ) if edit_mode else None
+        
+        # Busca dados para renderização
+        faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+        resultados_faixas = historico.resultados_faixas.all()
+        resultados_map = {}
+        for rf in resultados_faixas:
+            if hasattr(rf, 'faixa_medicao_id'):
+                resultados_map[rf.faixa_medicao_id] = rf
+        
+        # Atualiza resultado geral
+        try:
+            resultados = list(historico.resultados_faixas.values_list('resultado', flat=True))
+            overall = None
+            if resultados:
+                if 'REPROVADO' in resultados:
+                    overall = 'REPROVADO'
+                elif 'APROVADO_COM_CORRECAO' in resultados:
+                    overall = 'APROVADO_COM_CORRECAO'
+                else:
+                    overall = 'APROVADO_SEM_CORRECAO'
+            if overall and historico.resultado != overall:
+                historico.resultado = overall
+                historico.save(update_fields=['resultado'])
+        except Exception:
+            pass
+        
+        return render(request, 'visualizar_historico_calibracao.html', {
+            'form': form,
+            'historico': historico,
+            'instrumento': instrumento,
+            'faixas_medicao': faixas_medicao,
+            'resultados_faixas': resultados_faixas,
+            'resultados_map': resultados_map,
+            'edit_mode': edit_mode,
+        })
+    except Exception as e:
+        logger.error(f"Erro em visualizar_historico: {e}")
+        messages.error(request, f'Erro: {str(e)}')
+        return redirect('modulo_metrologia')
+
+
+@login_required
+def api_faixa_medicao_view(request, faixa_id):
+    """API para retornar dados de uma faixa de medição."""
+    try:
+        faixa = get_object_or_404(FaixaMedicao, id=faixa_id)
+        data = {
+            'id': faixa.id,
+            'unidade': faixa.unidade.sigla if faixa.unidade else None,
+            'valor_minimo': float(faixa.valor_minimo) if faixa.valor_minimo else None,
+            'valor_maximo': float(faixa.valor_maximo) if faixa.valor_maximo else None,
+            'tolerancia_mais_menos': float(faixa.tolerancia_mais_menos) if faixa.tolerancia_mais_menos else None,
+            'nominal': float(faixa.nominal) if faixa.nominal else None,
+            'resolucao': float(faixa.resolucao) if faixa.resolucao else None,
+        }
+        return JsonResponse(data)
+    except Exception as e:
+        logger.error(f"Erro ao buscar faixa {faixa_id}: {e}")
+        return JsonResponse({'error': str(e)}, status=404)

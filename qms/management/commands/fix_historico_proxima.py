@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from dateutil.relativedelta import relativedelta
 
-from qms.models import HistoricoCalibracao, Instrumento
+from metrologia.models import HistoricoCalibracao, Instrumento
 
 
 class Command(BaseCommand):

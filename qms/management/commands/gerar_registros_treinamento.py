@@ -12,7 +12,8 @@ Por padrao processa somente colaboradores ativos que possuem ao menos um pacote.
 from datetime import date
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from qms.models import Colaborador, RegistroTreinamento, PacoteTreinamento
+from rh.models import Colaborador, PacoteTreinamento
+from training.models import RegistroTreinamento
 
 
 class Command(BaseCommand):

@@ -2,17 +2,15 @@ from datetime import date, timedelta
 
 from django.core.management.base import BaseCommand
 
-from qms.models import (
+from metrologia.models import (
     CategoriaInstrumento,
-    CentroCusto,
-    Colaborador,
     HistoricoCalibracao,
     Instrumento,
-    PacoteTreinamento,
-    Procedimento,
-    Setor,
     UnidadeMedida,
 )
+from organization.models import Setor, CentroCusto
+from rh.models import Colaborador, PacoteTreinamento
+from training.models import Procedimento
 
 
 class Command(BaseCommand):

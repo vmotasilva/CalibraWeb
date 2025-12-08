@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from qms.models import CategoriaInstrumento, Instrumento
+from metrologia.models import CategoriaInstrumento, Instrumento
 
 
 def _norm(s: str) -> str:

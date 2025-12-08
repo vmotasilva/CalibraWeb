@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from qms.models import RegistroTreinamento
+from training.models import RegistroTreinamento
 
 
 class Command(BaseCommand):

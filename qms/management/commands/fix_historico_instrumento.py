@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from qms.models import HistoricoCalibracao, Instrumento
+from metrologia.models import HistoricoCalibracao, Instrumento
 
 class Command(BaseCommand):
     help = 'Associa históricos antigos ao instrumento correto via número de certificado ou tag.'

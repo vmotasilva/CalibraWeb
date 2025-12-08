@@ -19,7 +19,7 @@ except NameError:
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-from qms.models import Procedimento
+from training.models import Procedimento
 
 TRAINING_TYPES = {"POP", "IT", "INS"}  # Tipos que exigem treinamento automaticamente
 

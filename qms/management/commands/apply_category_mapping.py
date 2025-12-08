@@ -4,7 +4,7 @@ from typing import Any, List, Tuple, cast
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.conf import settings
-from qms.models import Instrumento, CategoriaInstrumento
+from metrologia.models import Instrumento, CategoriaInstrumento
 
 """
 Usage:
