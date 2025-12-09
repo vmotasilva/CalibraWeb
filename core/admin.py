@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import UnidadeMedida
+from qms.admin import admin_site
 
 
 class UnidadeMedidaAdmin(admin.ModelAdmin):
@@ -8,4 +9,4 @@ class UnidadeMedidaAdmin(admin.ModelAdmin):
     ordering = ['nome']
 
 
-admin.site.register(UnidadeMedida, UnidadeMedidaAdmin)
+admin_site.register(UnidadeMedida, UnidadeMedidaAdmin)

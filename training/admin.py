@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Area, Procedimento, ProcedimentoRevisao, PacoteTreinamento, RegistroTreinamento
+from qms.admin import admin_site
 
 
 class AreaAdmin(admin.ModelAdmin):
@@ -39,8 +40,8 @@ class RegistroTreinamentoAdmin(admin.ModelAdmin):
     ordering = ['-data_treinamento']
 
 
-admin.site.register(Area, AreaAdmin)
-admin.site.register(Procedimento, ProcedimentoAdmin)
-admin.site.register(ProcedimentoRevisao, ProcedimentoRevisaoAdmin)
-admin.site.register(PacoteTreinamento, PacoteTreinamentoAdmin)
-admin.site.register(RegistroTreinamento, RegistroTreinamentoAdmin)
+admin_site.register(Area, AreaAdmin)
+admin_site.register(Procedimento, ProcedimentoAdmin)
+admin_site.register(ProcedimentoRevisao, ProcedimentoRevisaoAdmin)
+admin_site.register(PacoteTreinamento, PacoteTreinamentoAdmin)
+admin_site.register(RegistroTreinamento, RegistroTreinamentoAdmin)

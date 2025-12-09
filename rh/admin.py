@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Colaborador, Ferias, Ocorrencia, DocumentoPessoal
+from qms.admin import admin_site
 
 
 class ColaboradorAdmin(admin.ModelAdmin):
@@ -31,7 +32,7 @@ class DocumentoPessoalAdmin(admin.ModelAdmin):
     ordering = ['colaborador']
 
 
-admin.site.register(Colaborador, ColaboradorAdmin)
-admin.site.register(Ferias, FeriasAdmin)
-admin.site.register(Ocorrencia, OcorrenciaAdmin)
-admin.site.register(DocumentoPessoal, DocumentoPessoalAdmin)
+admin_site.register(Colaborador, ColaboradorAdmin)
+admin_site.register(Ferias, FeriasAdmin)
+admin_site.register(Ocorrencia, OcorrenciaAdmin)
+admin_site.register(DocumentoPessoal, DocumentoPessoalAdmin)

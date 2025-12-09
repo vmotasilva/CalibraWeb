@@ -4,6 +4,7 @@ from .models import (
     ArquivoPadrao, ResultadoFaixaCalibracao, OrdemCalibracao
 )
 from qms.models import SolicitacaoInstrumento, OcorrenciaInstrumento
+from qms.admin import admin_site
 
 
 class CategoriaInstrumentoAdmin(admin.ModelAdmin):
@@ -75,12 +76,12 @@ class OrdemCalibracaoAdmin(admin.ModelAdmin):
     ordering = ['-data_prevista']
 
 
-admin.site.register(CategoriaInstrumento, CategoriaInstrumentoAdmin)
-admin.site.register(Instrumento, InstrumentoAdmin)
-admin.site.register(FaixaMedicao, FaixaMedicaoAdmin)
-admin.site.register(HistoricoCalibracao, HistoricoCalibracaoAdmin)
-admin.site.register(ArquivoPadrao, ArquivoPadraoAdmin)
-admin.site.register(ResultadoFaixaCalibracao, ResultadoFaixaCalibraoAdmin)
-admin.site.register(SolicitacaoInstrumento, SolicitacaoInstrumentoAdmin)
-admin.site.register(OcorrenciaInstrumento, OcorrenciaInstrumentoAdmin)
-admin.site.register(OrdemCalibracao, OrdemCalibracaoAdmin)
+admin_site.register(CategoriaInstrumento, CategoriaInstrumentoAdmin)
+admin_site.register(Instrumento, InstrumentoAdmin)
+admin_site.register(FaixaMedicao, FaixaMedicaoAdmin)
+admin_site.register(HistoricoCalibracao, HistoricoCalibracaoAdmin)
+admin_site.register(ArquivoPadrao, ArquivoPadraoAdmin)
+admin_site.register(ResultadoFaixaCalibracao, ResultadoFaixaCalibraoAdmin)
+admin_site.register(SolicitacaoInstrumento, SolicitacaoInstrumentoAdmin)
+admin_site.register(OcorrenciaInstrumento, OcorrenciaInstrumentoAdmin)
+admin_site.register(OrdemCalibracao, OrdemCalibracaoAdmin)

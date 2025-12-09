@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
+from qms.admin import admin_site
 
 
 class FornecedorAdmin(admin.ModelAdmin):
@@ -34,7 +35,7 @@ class OrcamentoAdmin(admin.ModelAdmin):
     ordering = ['-processo']
 
 
-admin.site.register(Fornecedor, FornecedorAdmin)
-admin.site.register(AvaliacaoFornecedor, AvaliacaoFornecedorAdmin)
-admin.site.register(ProcessoCotacao, ProcessoCotacaoAdmin)
-admin.site.register(Orcamento, OrcamentoAdmin)
+admin_site.register(Fornecedor, FornecedorAdmin)
+admin_site.register(AvaliacaoFornecedor, AvaliacaoFornecedorAdmin)
+admin_site.register(ProcessoCotacao, ProcessoCotacaoAdmin)
+admin_site.register(Orcamento, OrcamentoAdmin)

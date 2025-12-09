@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Setor, CentroCusto, HierarquiaSetor
+from qms.admin import admin_site
 
 
 class SetorAdmin(admin.ModelAdmin):
@@ -24,6 +25,6 @@ class HierarquiaSetorAdmin(admin.ModelAdmin):
     ordering = ['setor', 'turno']
 
 
-admin.site.register(Setor, SetorAdmin)
-admin.site.register(CentroCusto, CentroCustoAdmin)
-admin.site.register(HierarquiaSetor, HierarquiaSetorAdmin)
+admin_site.register(Setor, SetorAdmin)
+admin_site.register(CentroCusto, CentroCustoAdmin)
+admin_site.register(HierarquiaSetor, HierarquiaSetorAdmin)
