@@ -76,6 +76,7 @@ def health_check(request):
 # DOWNLOAD DE TEMPLATES
 # ==============================================================================
 
+@login_required
 def dl_template_instr(request):
     """Template para importação de instrumentos."""
     return dl_generic(
@@ -97,6 +98,7 @@ def dl_template_instr(request):
     )
 
 
+@login_required
 def dl_template_colab(request):
     """Template para importação de colaboradores."""
     return dl_df(
@@ -120,6 +122,7 @@ def dl_template_colab(request):
     )
 
 
+@login_required
 def dl_template_hierarquia(request):
     """Template para importação de hierarquia."""
     return dl_df(
@@ -137,6 +140,7 @@ def dl_template_hierarquia(request):
     )
 
 
+@login_required
 def dl_template_historico(request):
     """Template para importação de históricos de calibração."""
     return dl_generic(
@@ -161,6 +165,7 @@ def dl_template_historico(request):
     )
 
 
+@login_required
 def dl_template_ferias(request):
     """Template para importação de férias."""
     df = pd.DataFrame(
@@ -176,6 +181,7 @@ def dl_template_ferias(request):
     return dl_df(df, "template_ferias.xlsx")
 
 
+@login_required
 def dl_template_categorias(request):
     """Template para importação de categorias."""
     df = pd.DataFrame(

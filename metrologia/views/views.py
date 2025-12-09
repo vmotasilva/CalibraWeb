@@ -176,7 +176,7 @@ def imp_instr_view(request):
     
     return render(
         request,
-        "importar_instrumentos.html",
+        "metrologia/imports/instrumentos.html",
         {"form": form, "jobs": ImportJob.objects.filter(job_type='INSTRUMENTOS').order_by('-created_at')[:5]},
     )
 
@@ -245,7 +245,7 @@ def imp_historico_view(request):
     
     return render(
         request,
-        "importar_historico.html",
+        "metrologia/imports/historico.html",
         {"form": form, "jobs": ImportJob.objects.filter(job_type='HISTORICO').order_by('-created_at')[:5]},
     )
 
