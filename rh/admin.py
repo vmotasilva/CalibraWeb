@@ -6,6 +6,7 @@ class ColaboradorAdmin(admin.ModelAdmin):
     list_display = ['matricula', 'nome_completo', 'cargo', 'setor', 'turno', 'is_active']
     search_fields = ['matricula', 'nome_completo', 'cpf']
     list_filter = ['setor', 'turno', 'is_active']
+    list_select_related = ['setor']  # FK optimization
     ordering = ['matricula']
 
 
