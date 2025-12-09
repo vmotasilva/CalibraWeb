@@ -98,7 +98,9 @@ class ImportInstrumentsTaskTests(TestCase):
     def test_import_instruments_task_maps_all_fields(self):
         import tempfile
         import pandas as pd
-        from .models import ImportJob; from metrologia.models import Instrumento, Setor, UnidadeMedida, FaixaMedicao
+        from .models import ImportJob
+        from metrologia.models import Instrumento, UnidadeMedida, FaixaMedicao
+        from organization.models import Setor
         from .tasks import import_instruments_task
 
         df = pd.DataFrame({
