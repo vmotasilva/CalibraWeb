@@ -221,13 +221,22 @@ def registrar_historico_calibracao_view(request, instrumento_id):
 
 
 @login_required
+@login_required
 def visualizar_historico_calibracao_view(request, historico_id):
     """View calibration history details."""
-    historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    from django.db.models import Prefetch
+    
+    historico = get_object_or_404(
+        HistoricoCalibracao.objects.prefetch_related(
+            Prefetch('resultados_faixa__faixa')
+        ), 
+        id=historico_id
+    )
     
     context = {
         'historico': historico,
         'instrumento': historico.instrumento,
+        'resultados_faixa': historico.resultados_faixa.all(),
     }
     return render(request, 'metrologia/historico_calibracao_detail.html', context)
 

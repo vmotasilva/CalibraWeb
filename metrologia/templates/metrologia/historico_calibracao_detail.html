@@ -210,110 +210,53 @@
                     <i class="bi bi-calculator"></i> Resultados por Faixa de Medição
                 </div>
                 <div class="card-body">
-                    {% if faixas_medicao %}
+                    {% if resultados_faixa %}
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover" id="faixas-table">
                             <thead class="table-light">
                                 <tr>
-                                    {% if modo_edicao %}
-                                        <th style="width: 5%;">
-                                            <input type="checkbox" id="toggle-all-faixas" checked title="Marcar/Desmarcar todas">
-                                        </th>
-                                    {% else %}
-                                        <th style="width: 5%;">Ativa</th>
-                                    {% endif %}
                                     <th style="width: 20%;">Faixa</th>
                                     <th style="width: 10%;">Unidade</th>
-                                    <th style="width: 13%;">Erro (E)</th>
+                                    <th style="width: 13%;">Erro Máx. (E)</th>
+                                    <th style="width: 13%;">Erro Mín. (E)</th>
                                     <th style="width: 13%;">Incerteza (U)</th>
-                                    <th style="width: 13%;">Tolerância</th>
-                                    <th style="width: 26%;">Resultado</th>
+                                    <th style="width: 18%;">Resultado</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for faixa in faixas_medicao %}
-                                {% with resultado=resultados_map|get_dict_key:faixa.id %}
-                                <tr class="faixa-row" data-faixa-id="{{ faixa.id }}">
-                                    <td class="text-center">
-                                        {% if modo_edicao %}
-                                            <input type="checkbox" 
-                                                   name="faixa_{{ faixa.id }}_ativa" 
-                                                   class="form-check-input faixa-checkbox" 
-                                                   {% if resultado.ativa %}checked{% endif %}
-                                                   data-faixa-id="{{ faixa.id }}">
-                                        {% else %}
-                                            {% if resultado.ativa %}<span class="badge bg-success">✓</span>{% else %}-{% endif %}
-                                        {% endif %}
+                                {% for rf in resultados_faixa %}
+                                <tr class="faixa-row" data-faixa-id="{{ rf.faixa.id }}">
+                                    <td>
+                                        <small><strong>{{ rf.faixa.valor_minimo }} a {{ rf.faixa.valor_maximo }}</strong></small>
                                     </td>
                                     <td>
-                                        <small><strong>{{ faixa.valor_minimo }} a {{ faixa.valor_maximo }}</strong></small>
+                                        <small>{{ rf.faixa.unidade.nome }}</small>
                                     </td>
                                     <td>
-                                        <small>{{ faixa.unidade.nome }}</small>
+                                        <p class="form-control-plaintext">{{ rf.erro_max|default:"-" }}</p>
                                     </td>
                                     <td>
-                                        {% if modo_edicao %}
-                                            <input type="number" 
-                                                   step="0.0001" 
-                                                   name="faixa_{{ faixa.id }}_erro" 
-                                                   class="form-control form-control-sm faixa-erro" 
-                                                   data-faixa-id="{{ faixa.id }}"
-                                                   value="{{ resultado.erro|default:'' }}"
-                                                   placeholder="0.0000">
-                                        {% else %}
-                                            <p class="form-control-plaintext">{{ resultado.erro|default:"-" }}</p>
-                                        {% endif %}
+                                        <p class="form-control-plaintext">{{ rf.erro_min|default:"-" }}</p>
                                     </td>
                                     <td>
-                                        {% if modo_edicao %}
-                                            <input type="number" 
-                                                   step="0.0001" 
-                                                   name="faixa_{{ faixa.id }}_incerteza" 
-                                                   class="form-control form-control-sm faixa-incerteza" 
-                                                   data-faixa-id="{{ faixa.id }}"
-                                                   value="{{ resultado.incerteza|default:'' }}"
-                                                   placeholder="0.0000">
-                                        {% else %}
-                                            <p class="form-control-plaintext">{{ resultado.incerteza|default:"-" }}</p>
-                                        {% endif %}
+                                        <p class="form-control-plaintext">{{ rf.incerteza|default:"-" }}</p>
                                     </td>
                                     <td>
-                                        {% if modo_edicao %}
-                                            <input type="number" 
-                                                   step="0.0001" 
-                                                   name="faixa_{{ faixa.id }}_tolerancia" 
-                                                   class="form-control form-control-sm faixa-tolerancia" 
-                                                   data-faixa-id="{{ faixa.id }}"
-                                                   value="{{ resultado.tolerancia|default:faixa.tolerancia_mais_menos|default:'' }}"
-                                                   readonly
-                                                   placeholder="0.0000">
-                                        {% else %}
-                                            <p class="form-control-plaintext">{{ resultado.tolerancia|default:"-" }}</p>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if modo_edicao %}
-                                            <div class="resultado-preview-faixa" data-faixa-id="{{ faixa.id }}">
-                                                <span class="badge bg-secondary">{{ resultado.resultado|default:"Preencha os dados" }}</span>
-                                            </div>
-                                        {% else %}
-                                            {% if resultado.resultado %}
-                                                {% if resultado.resultado == 'APROVADO_SEM_CORRECAO' %}
-                                                    <span class="badge bg-success">OK</span>
-                                                {% elif resultado.resultado == 'APROVADO_COM_CORRECAO' %}
-                                                    <span class="badge bg-warning text-dark">OK c/ corr.</span>
-                                                {% elif resultado.resultado == 'REPROVADO' %}
-                                                    <span class="badge bg-danger">NOK</span>
-                                                {% else %}
-                                                    <span class="badge bg-secondary">-</span>
-                                                {% endif %}
+                                        {% if rf.resultado %}
+                                            {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                <span class="badge bg-success">✓ OK</span>
+                                            {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                <span class="badge bg-warning text-dark">⚠ OK c/ corr.</span>
+                                            {% elif rf.resultado == 'REPROVADO' %}
+                                                <span class="badge bg-danger">✗ NOK</span>
                                             {% else %}
                                                 <span class="badge bg-secondary">-</span>
                                             {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">-</span>
                                         {% endif %}
                                     </td>
                                 </tr>
-                                {% endwith %}
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -321,7 +264,7 @@
                     {% else %}
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i> 
-                        Este instrumento não possui faixas de medição cadastradas.
+                        Este histórico não possui resultados de faixas de medição cadastrados.
                     </div>
                     {% endif %}
                 </div>
