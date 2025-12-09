@@ -161,10 +161,9 @@ def import_instruments_task(job_id, filepath):
                 unidade_txt = get_val(['UNIDADE', 'UNID.', 'UNID'])
                 unidade_obj = None
                 if unidade_txt:
-                    sigla = str(unidade_txt).upper()
+                    unidade_nome = str(unidade_txt).upper()
                     unidade_obj, created_um = UnidadeMedida.objects.get_or_create(
-                        sigla=sigla,
-                        defaults={'nome': sigla}
+                        nome=unidade_nome
                     )
 
                 # Categoria: infer from descricao maybe
@@ -437,8 +436,8 @@ def import_historico_task(job_id, filepath):
                 unidade_obj = None
                 if unidade_txt:
                     from core.models import UnidadeMedida
-                    sigla = str(unidade_txt).upper()
-                    unidade_obj, _ = UnidadeMedida.objects.get_or_create(sigla=sigla, defaults={"nome": sigla})
+                    unidade_nome = str(unidade_txt).upper()
+                    unidade_obj, _ = UnidadeMedida.objects.get_or_create(nome=unidade_nome)
                 if faixa_txt and unidade_obj:
                     from metrologia.models import FaixaMedicao
                     import re
