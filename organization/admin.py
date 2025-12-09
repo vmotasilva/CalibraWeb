@@ -12,6 +12,7 @@ class CentroCustoAdmin(admin.ModelAdmin):
     list_display = ['codigo', 'descricao', 'setor']
     search_fields = ['codigo', 'descricao']
     list_filter = ['setor']
+    list_select_related = ['setor']  # FK optimization
     ordering = ['setor', 'codigo']
 
 
@@ -19,6 +20,7 @@ class HierarquiaSetorAdmin(admin.ModelAdmin):
     list_display = ['setor', 'turno', 'lider', 'supervisor', 'gerente', 'diretor']
     search_fields = ['setor__nome']
     list_filter = ['turno', 'setor']
+    list_select_related = ['setor', 'lider', 'supervisor', 'gerente', 'diretor']  # FK optimization
     ordering = ['setor', 'turno']
 
 

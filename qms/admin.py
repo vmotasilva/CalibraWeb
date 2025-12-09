@@ -74,4 +74,5 @@ class ImportJobAdmin(admin.ModelAdmin):
     list_display = ('id', 'filename', 'job_type', 'status', 'created_at')
     list_filter = ('status', 'job_type', 'created_at')
     search_fields = ('filename', 'filepath')
+    list_select_related = ['user']  # FK optimization
     readonly_fields = ('id', 'created_at', 'updated_at')
