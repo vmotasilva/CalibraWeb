@@ -37,6 +37,7 @@ from metrologia.models import (
 )
 from rh.models import Colaborador
 from training.models import Procedimento
+from organization.models import Setor
 from .models import (
     ImportJob,
     SolicitacaoInstrumento,
@@ -72,9 +73,57 @@ def dashboard_view(request):
 @login_required
 def modulo_metrologia_view(request):
     """Metrologia module main view."""
+    # Retrieve all instruments and related data
+    instrumentos = Instrumento.objects.all().select_related('setor', 'categoria').prefetch_related('faixamedicao_set')
+    
+    # Get filter parameters from request
+    status_filter = request.GET.get('status', '')
+    categoria_filter = request.GET.get('categoria', '')
+    setor_filter = request.GET.get('setor', '')
+    search_query = request.GET.get('search', '')
+    
+    # Apply filters
+    if status_filter == 'vencidos':
+        from datetime import date
+        instrumentos = instrumentos.filter(data_proxima_calibracao__lt=date.today(), ativo=True)
+    elif status_filter == 'avencer':
+        from datetime import date, timedelta
+        today = date.today()
+        thirty_days = today + timedelta(days=30)
+        instrumentos = instrumentos.filter(
+            data_proxima_calibracao__gte=today,
+            data_proxima_calibracao__lte=thirty_days,
+            ativo=True
+        )
+    
+    if categoria_filter:
+        instrumentos = instrumentos.filter(categoria__id=categoria_filter)
+    
+    if setor_filter:
+        instrumentos = instrumentos.filter(setor__id=setor_filter)
+    
+    if search_query:
+        from django.db.models import Q
+        instrumentos = instrumentos.filter(
+            Q(tag__icontains=search_query) |
+            Q(descricao__icontains=search_query) |
+            Q(fabricante__icontains=search_query)
+        )
+    
+    # Get available categories and sectors for filter options
+    categorias_filtro = CategoriaInstrumento.objects.all()
+    setores_filtro = Setor.objects.all()
+    
     context = {
+        'instrumentos': instrumentos,
         'total_instrumentos': Instrumento.objects.count(),
         'total_calibracoes': HistoricoCalibracao.objects.count(),
+        'categorias_filtro': categorias_filtro,
+        'setores_filtro': setores_filtro,
+        'status_filter': status_filter,
+        'categoria_filter': categoria_filter,
+        'setor_filter': setor_filter,
+        'search_query': search_query,
     }
     return render(request, 'metrologia/dashboard.html', context)
 
