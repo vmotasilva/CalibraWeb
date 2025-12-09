@@ -66,7 +66,7 @@ def dashboard_view(request):
         'total_colaboradores': Colaborador.objects.count(),
         'total_procedimentos': Procedimento.objects.count(),
     }
-    return render(request, 'qms/dashboard.html', context)
+    return render(request, 'shared/dashboard.html', context)
 
 
 @login_required
@@ -76,7 +76,7 @@ def modulo_metrologia_view(request):
         'total_instrumentos': Instrumento.objects.count(),
         'total_calibracoes': HistoricoCalibracao.objects.count(),
     }
-    return render(request, 'qms/modulo_metrologia.html', context)
+    return render(request, 'metrologia/dashboard.html', context)
 
 
 # ==============================================================================
@@ -103,7 +103,7 @@ def novo_instrumento_view(request, instrumento_id=None):
         'instrumento': instrumento,
         'is_edit': is_edit,
     }
-    return render(request, 'qms/novo_instrumento.html', context)
+    return render(request, 'metrologia/historico_calibracao_form.html', context)
 
 
 @login_required
@@ -116,7 +116,7 @@ def detalhe_instrumento_view(request, instrumento_id):
         'instrumento': instrumento,
         'historicos': historicos,
     }
-    return render(request, 'qms/detalhe_instrumento.html', context)
+    return render(request, 'metrologia/instrumento_detalhe.html', context)
 
 
 # ==============================================================================
@@ -137,7 +137,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
     context = {
         'instrumento': instrumento,
     }
-    return render(request, 'qms/registrar_historico_calibracao.html', context)
+    return render(request, 'metrologia/historico_calibracao_form.html', context)
 
 
 @login_required
@@ -149,7 +149,7 @@ def visualizar_historico_calibracao_view(request, historico_id):
         'historico': historico,
         'instrumento': historico.instrumento,
     }
-    return render(request, 'qms/visualizar_historico.html', context)
+    return render(request, 'metrologia/historico_calibracao_detail.html', context)
 
 
 @login_required
@@ -166,7 +166,7 @@ def remover_historico_view(request, historico_id):
     context = {
         'historico': historico,
     }
-    return render(request, 'qms/confirmar_remocao_historico.html', context)
+    return render(request, 'shared/dashboard.html', context)
 
 
 # ==============================================================================
@@ -181,7 +181,7 @@ def preview_certificado_view(request, historico_id):
     context = {
         'historico': historico,
     }
-    return render(request, 'qms/preview_certificado.html', context)
+    return render(request, 'metrologia/certificado_preview.html', context)
 
 
 @login_required
@@ -213,7 +213,7 @@ def anexar_certificado_historico_view(request, historico_id):
     context = {
         'historico': historico,
     }
-    return render(request, 'qms/anexar_certificado.html', context)
+    return render(request, 'metrologia/historico_calibracao_form.html', context)
 
 
 @login_required
@@ -230,7 +230,7 @@ def remover_certificado_historico_view(request, historico_id):
     context = {
         'historico': historico,
     }
-    return render(request, 'qms/confirmar_remocao_certificado.html', context)
+    return render(request, 'shared/dashboard.html', context)
 
 
 @login_required
@@ -246,7 +246,7 @@ def aplicar_carimbo_certificado_view(request, historico_id):
     context = {
         'historico': historico,
     }
-    return render(request, 'qms/aplicar_carimbo.html', context)
+    return render(request, 'metrologia/certificado_preview.html', context)
 
 
 # ==============================================================================
@@ -296,7 +296,7 @@ def import_jobs_view(request):
         'page_obj': page_obj,
         'jobs': page_obj.object_list,
     }
-    return render(request, 'qms/import_jobs.html', context)
+    return render(request, 'shared/dashboard.html', context)
 
 
 @login_required
@@ -312,7 +312,7 @@ def retry_import_job_view(request, job_id):
     context = {
         'job': job,
     }
-    return render(request, 'qms/confirmar_retry_import.html', context)
+    return render(request, 'shared/dashboard.html', context)
 
 
 @login_required
@@ -325,7 +325,7 @@ def imp_instr_view(request):
             return redirect('modulo_metrologia')
     
     context = {}
-    return render(request, 'qms/imp_instrumentos.html', context)
+    return render(request, 'metrologia/imports/instrumentos.html', context)
 
 
 @login_required
@@ -338,7 +338,7 @@ def imp_historico_view(request):
             return redirect('modulo_metrologia')
     
     context = {}
-    return render(request, 'qms/imp_historico.html', context)
+    return render(request, 'metrologia/imports/historico.html', context)
 
 
 @login_required
@@ -351,7 +351,7 @@ def imp_colab_view(request):
             return redirect('modulo_metrologia')
     
     context = {}
-    return render(request, 'qms/imp_colaboradores.html', context)
+    return render(request, 'rh/imports/colaboradores.html', context)
 
 
 @login_required
@@ -364,7 +364,7 @@ def imp_hierarquia_view(request):
             return redirect('modulo_metrologia')
     
     context = {}
-    return render(request, 'qms/imp_hierarquia.html', context)
+    return render(request, 'shared/dashboard.html', context)
 
 
 @login_required
@@ -377,7 +377,7 @@ def imp_ferias_view(request):
             return redirect('modulo_metrologia')
     
     context = {}
-    return render(request, 'qms/imp_ferias.html', context)
+    return render(request, 'rh/imports/ferias.html', context)
 
 
 # ==============================================================================
@@ -424,7 +424,7 @@ def procedimentos_list_view(request):
         'procedimentos': page_obj.object_list,
         'search': search,
     }
-    return render(request, 'qms/procedimentos_list.html', context)
+    return render(request, 'training/procedimento_lista.html', context)
 
 
 @login_required
@@ -436,7 +436,7 @@ def novo_procedimento_view(request):
         return redirect('procedimentos_list')
     
     context = {}
-    return render(request, 'qms/novo_procedimento.html', context)
+    return render(request, 'training/procedimento_form.html', context)
 
 
 @login_required
@@ -447,7 +447,7 @@ def detalhe_procedimento_view(request, procedimento_id):
     context = {
         'procedimento': procedimento,
     }
-    return render(request, 'qms/detalhe_procedimento.html', context)
+    return render(request, 'training/procedimento_detalhe.html', context)
 
 
 @login_required
@@ -463,7 +463,7 @@ def editar_procedimento_view(request, procedimento_id):
     context = {
         'procedimento': procedimento,
     }
-    return render(request, 'qms/editar_procedimento.html', context)
+    return render(request, 'training/procedimento_form.html', context)
 
 
 # ==============================================================================
@@ -490,7 +490,7 @@ def detalhe_colaborador_view(request, colab_id):
     context = {
         'colaborador': colaborador,
     }
-    return render(request, 'qms/detalhe_colaborador.html', context)
+    return render(request, 'rh/colaborador_detalhe.html', context)
 
 
 @login_required
@@ -506,4 +506,4 @@ def editar_colaborador_view(request, colab_id):
     context = {
         'colaborador': colaborador,
     }
-    return render(request, 'qms/editar_colaborador.html', context)
+    return render(request, 'rh/colaborador_form.html', context)
