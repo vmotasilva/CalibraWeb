@@ -469,18 +469,47 @@ def import_historico_task(job_id, filepath):
                                 valor_minimo=valor_minimo,
                                 valor_maximo=valor_maximo,
                             )
-                # Cria resultado por faixa se faixa encontrada
-                if faixa_obj:
-                    from metrologia.models import ResultadoFaixaCalibracao
+                
+                # Se nenhuma faixa foi criada pela planilha, usar as faixas existentes do instrumento
+                from metrologia.models import FaixaMedicao, ResultadoFaixaCalibracao
+                faixas_instrumento = FaixaMedicao.objects.filter(instrumento=inst)
+                
+                if faixas_instrumento.exists():
+                    # Criar resultado para cada faixa existente
                     def safe_float(val):
                         try:
                             return float(str(val).replace(",", "."))
                         except Exception:
-                            return 0.0
-                    erro_val = safe_float(erro_faixa)
-                    inc_val = safe_float(inc_faixa)
-                    tol_val = safe_float(tol_faixa)
-                    logger.info(f"Importando faixa: {faixa_obj} | Erro: {erro_val} | Incerteza: {inc_val} | Tolerância: {tol_val}")
+                            return None
+                    
+                    erro_val = safe_float(erro_faixa) if erro_faixa else None
+                    inc_val = safe_float(inc_faixa) if inc_faixa else None
+                    tol_val = safe_float(tol_faixa) if tol_faixa else None
+                    
+                    for faixa in faixas_instrumento:
+                        resultado_obj, _ = ResultadoFaixaCalibracao.objects.update_or_create(
+                            historico=obj,
+                            faixa_medicao=faixa,
+                            defaults={
+                                "erro_encontrado": erro_val,
+                                "incerteza": inc_val,
+                                "tolerancia_usada": tol_val,
+                            },
+                        )
+                        # Força recálculo do resultado
+                        resultado_obj.save()
+                elif faixa_obj:
+                    # Criar resultado para a faixa da planilha
+                    def safe_float(val):
+                        try:
+                            return float(str(val).replace(",", "."))
+                        except Exception:
+                            return None
+                    
+                    erro_val = safe_float(erro_faixa) if erro_faixa else None
+                    inc_val = safe_float(inc_faixa) if inc_faixa else None
+                    tol_val = safe_float(tol_faixa) if tol_faixa else None
+                    
                     resultado_obj, _ = ResultadoFaixaCalibracao.objects.update_or_create(
                         historico=obj,
                         faixa_medicao=faixa_obj,
@@ -490,8 +519,6 @@ def import_historico_task(job_id, filepath):
                             "tolerancia_usada": tol_val,
                         },
                     )
-                    logger.info(f"Resultado salvo: {resultado_obj.resultado}")
-                    # Força recálculo do resultado
                     resultado_obj.save()
 
                 # Ensure Instrumento fields reflect latest calibration
