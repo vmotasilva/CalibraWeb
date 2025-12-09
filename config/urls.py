@@ -44,6 +44,14 @@ def root_view(request):
     else:
         return redirect('login')
 
+
+# Alias for training/procedures
+def treinamentos_lista_redirect(request):
+    """Redirect to procedures list with 'treinamentos_lista' URL name"""
+    from django.views.decorators.http import require_http_methods
+    from qms.views import procedimentos_list_view
+    return procedimentos_list_view(request)
+
 # Minimal URL configuration
 urlpatterns = [
     # 1. Health check for Railway
@@ -73,6 +81,7 @@ urlpatterns = [
     
     # 7. Training app URLs
     path("training/", include("training.urls")),
+    path("api/treinamentos/", treinamentos_lista_redirect, name="treinamentos_lista"),
     
     # 8. Procurements app URLs
     path("procurements/novo/", nova_solicitacao, name="nova_solicitacao"),
