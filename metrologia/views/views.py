@@ -1,6 +1,23 @@
 # -*- coding: utf-8 -*-
 """
 Views para o módulo Metrologia (Calibração de Instrumentos)
+
+AVISO: Este arquivo contém views DEPRECATED que foram consolidadas em qms/views.py.
+Todas as views de metrologia agora estão centralizadas em qms/views.py para melhor
+manutenção e evitar duplicação de código.
+
+Views ativas:
+- Redirecionadas para qms/views.py
+
+Views legadas (não use):
+- imp_instr_view() - USE: qms.views.imp_instr_view()
+- imp_historico_view() - USE: qms.views.imp_historico_view()
+- modulo_metrologia_view() - USE: qms.views.modulo_metrologia_view()
+- novo_instrumento_view() - USE: qms.views.novo_instrumento_view()
+- detalhe_instrumento_view() - USE: qms.views.detalhe_instrumento_view()
+- ... e outras
+
+Para adicionar novas views de metrologia, edit qms/views.py ao invés deste arquivo.
 """
 
 import io

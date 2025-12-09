@@ -159,29 +159,12 @@ def novo_instrumento_view(request, instrumento_id=None):
 def detalhe_instrumento_view(request, instrumento_id):
     """View instrument details with calibration history."""
     from datetime import date
-    from rh.forms import OcorrenciaForm
-    from rh.models import Colaborador, Ocorrencia
     
     try:
         instrumento = get_object_or_404(Instrumento, id=instrumento_id)
     except Exception as e:
         messages.error(request, f"Erro ao buscar instrumento: {str(e)}")
         return redirect('modulo_metrologia')
-
-    # Handle occurrence form submission
-    if request.method == "POST":
-        form_ocorrencia = OcorrenciaForm(request.POST)
-        if form_ocorrencia.is_valid():
-            ocorrencia = form_ocorrencia.save(commit=False)
-            ocorrencia.instrumento = instrumento
-            ocorrencia.usuario_responsavel = request.user
-            ocorrencia.save()
-            messages.success(request, "Ocorrência registrada com sucesso!")
-            return redirect("detalhe_instrumento", instrumento_id=instrumento.id)
-        else:
-            messages.error(request, "Erro ao registrar ocorrência.")
-    else:
-        form_ocorrencia = OcorrenciaForm()
 
     # Get related data
     try:
@@ -190,7 +173,7 @@ def detalhe_instrumento_view(request, instrumento_id):
         historicos = []
 
     try:
-        ocorrencias = Ocorrencia.objects.filter(instrumento=instrumento).order_by("-data_ocorrencia")
+        ocorrencias = instrumento.ocorrencias.all().order_by("-data_ocorrencia")
     except Exception:
         ocorrencias = []
 
@@ -204,7 +187,6 @@ def detalhe_instrumento_view(request, instrumento_id):
         'historicos': historicos,
         'ocorrencias': ocorrencias,
         'faixas': faixas,
-        'form_ocorrencia': form_ocorrencia,
         'today': date.today(),
     }
     return render(request, 'metrologia/instrumento_detalhe.html', context)
