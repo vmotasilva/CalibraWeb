@@ -13,6 +13,7 @@ from django.db.models import Q, Count, Max, Prefetch
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.urls import reverse
+from datetime import date, timedelta
 
 # Import helper functions from views_helpers
 from .views_helpers import (
