@@ -22,7 +22,8 @@ def import_instruments_task(job_id, filepath):
     from django.db import transaction
     from .models import ImportJob
     from metrologia.models import Instrumento, CategoriaInstrumento, FaixaMedicao
-    from rh.models import Setor, UnidadeMedida
+    from organization.models import Setor
+    from core.models import UnidadeMedida
 
     try:
         job = ImportJob.objects.get(id=job_id)
@@ -435,7 +436,7 @@ def import_historico_task(job_id, filepath):
                 faixa_obj = None
                 unidade_obj = None
                 if unidade_txt:
-                    from rh.models import UnidadeMedida
+                    from core.models import UnidadeMedida
                     sigla = str(unidade_txt).upper()
                     unidade_obj, _ = UnidadeMedida.objects.get_or_create(sigla=sigla, defaults={"nome": sigla})
                 if faixa_txt and unidade_obj:
@@ -528,7 +529,8 @@ def import_colab_task(job_id, filepath):
     import pandas as pd
     from django.db import transaction
     from .models import ImportJob
-    from rh.models import Colaborador, Setor, CentroCusto
+    from rh.models import Colaborador
+    from organization.models import Setor, CentroCusto
 
     try:
         job = ImportJob.objects.get(id=job_id)
@@ -682,7 +684,8 @@ def import_hierarquia_task(job_id, filepath):
     import pandas as pd
     from django.db import transaction
     from .models import ImportJob
-    from rh.models import Setor, HierarquiaSetor, Colaborador
+    from rh.models import Colaborador
+    from organization.models import Setor, HierarquiaSetor
 
     try:
         job = ImportJob.objects.get(id=job_id)
