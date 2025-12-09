@@ -450,14 +450,28 @@ def imp_historico_view(request):
     """Importa históricos de calibração a partir de arquivo Excel/CSV."""
     import os
     import tempfile
-    from metrologia.forms import ImportacaoHistoricoForm
-    from metrologia.models import Instrumento, HistoricoCalibracao
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        from metrologia.forms import ImportacaoHistoricoForm
+        from metrologia.models import Instrumento, HistoricoCalibracao
+    except ImportError as ie:
+        logger.error(f"Erro ao importar formulário ou models: {str(ie)}")
+        messages.error(request, f"Erro ao importar dependências: {str(ie)}")
+        return render(request, 'metrologia/imports/historico.html', {'form': None, 'jobs': []})
     
     if request.method == "POST":
         form = ImportacaoHistoricoForm(request.POST, request.FILES)
         if form.is_valid():
             try:
-                uploaded = request.FILES["arquivo_excel"]
+                uploaded = request.FILES.get("arquivo_excel")
+                if not uploaded:
+                    messages.error(request, "Nenhum arquivo foi enviado.")
+                    jobs = ImportJob.objects.filter(job_type='HISTORICO').order_by('-created_at')[:5]
+                    return render(request, 'metrologia/imports/historico.html', {'form': form, 'jobs': jobs})
+                
                 suffix = os.path.splitext(uploaded.name)[1] or ".xlsx"
                 tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
                 for chunk in uploaded.chunks():
@@ -480,11 +494,12 @@ def imp_historico_view(request):
                         import_historico_task.delay(str(job.id), tmp.name)
                         messages.success(request, f"Importação histórico enfileirada (job {job.id}).")
                         return redirect("modulo_metrologia")
-                    except Exception:
+                    except Exception as ce:
+                        logger.warning(f"Celery não disponível, usando sync: {str(ce)}")
                         force_sync = True
                 
                 if force_sync:
-                    import_historico_task(job.id, tmp.name)
+                    import_historico_task(str(job.id), tmp.name)
                     job.refresh_from_db()
                     try:
                         # Recalcula datas nos instrumentos afetados
@@ -502,17 +517,27 @@ def imp_historico_view(request):
                                     inst.data_ultima_calibracao = None
                                     inst.data_proxima_calibracao = None
                                 inst.save(update_fields=["data_ultima_calibracao", "data_proxima_calibracao"])
-                    except Exception:
-                        pass
+                    except Exception as ex:
+                        logger.error(f"Erro ao recalcular datas: {str(ex)}")
                     messages.success(request, f"Histórico importado (job {job.id}). {job.result or ''}")
                     return redirect("modulo_metrologia")
             except Exception as e:
+                logger.error(f"Erro na importação de histórico: {str(e)}", exc_info=True)
                 messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
-                return redirect("importar_historico")
+                jobs = ImportJob.objects.filter(job_type='HISTORICO').order_by('-created_at')[:5]
+                return render(request, 'metrologia/imports/historico.html', {'form': form, 'jobs': jobs})
+        else:
+            logger.warning(f"Formulário inválido: {form.errors}")
+            messages.error(request, f"Formulário inválido: {form.errors}")
     else:
         form = ImportacaoHistoricoForm()
     
-    jobs = ImportJob.objects.filter(job_type='HISTORICO').order_by('-created_at')[:5]
+    try:
+        jobs = ImportJob.objects.filter(job_type='HISTORICO').order_by('-created_at')[:5]
+    except Exception as e:
+        logger.error(f"Erro ao buscar jobs: {str(e)}")
+        jobs = []
+    
     context = {'form': form, 'jobs': jobs}
     return render(request, 'metrologia/imports/historico.html', context)
 

@@ -274,13 +274,23 @@ def import_historico_task(job_id, filepath):
     from django.db import transaction
     from .models import ImportJob
     from metrologia.models import Instrumento, HistoricoCalibracao
+    
+    # Converter job_id para string se necessário (pode vir como UUID)
+    try:
+        job_id = str(job_id)
+    except Exception:
+        pass
 
     try:
         job = ImportJob.objects.get(id=job_id)
         job.status = 'STARTED'
         job.save()
     except ImportJob.DoesNotExist:
+        logger.error(f"Job não encontrado com ID: {job_id}")
         return {'error': 'job not found', 'job_id': job_id}
+    except Exception as e:
+        logger.error(f"Erro ao buscar job: {str(e)}")
+        return {'error': f'Error fetching job: {str(e)}', 'job_id': job_id}
 
     def excel_date_to_date(val):
         try:
