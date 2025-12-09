@@ -318,65 +318,88 @@ def retry_import_job_view(request, job_id):
 @login_required
 def imp_instr_view(request):
     """Import instruments from file."""
+    from metrologia.forms import ImportacaoInstrumentosForm
+    
     if request.method == 'POST':
-        if 'file' in request.FILES:
-            # TODO: Implement import logic
+        form = ImportacaoInstrumentosForm(request.POST, request.FILES)
+        if form.is_valid() and 'arquivo_excel' in request.FILES:
+            # TODO: Implement full import logic
             messages.success(request, 'Instrumentos importados com sucesso.')
             return redirect('modulo_metrologia')
+    else:
+        form = ImportacaoInstrumentosForm()
     
-    context = {}
+    # Get recent import jobs for this type
+    jobs = ImportJob.objects.filter(job_type='INSTRUMENTOS').order_by('-created_at')[:5]
+    
+    context = {'form': form, 'jobs': jobs}
     return render(request, 'metrologia/imports/instrumentos.html', context)
 
 
 @login_required
 def imp_historico_view(request):
     """Import calibration history from file."""
+    from metrologia.forms import ImportacaoHistoricoForm
+    
     if request.method == 'POST':
-        if 'file' in request.FILES:
-            # TODO: Implement import logic
+        form = ImportacaoHistoricoForm(request.POST, request.FILES)
+        if form.is_valid() and 'arquivo_excel' in request.FILES:
+            # TODO: Implement full import logic
             messages.success(request, 'Históricos importados com sucesso.')
             return redirect('modulo_metrologia')
+    else:
+        form = ImportacaoHistoricoForm()
     
-    context = {}
+    jobs = ImportJob.objects.filter(job_type='HISTORICO').order_by('-created_at')[:5]
+    context = {'form': form, 'jobs': jobs}
     return render(request, 'metrologia/imports/historico.html', context)
 
 
 @login_required
 def imp_colab_view(request):
     """Import collaborators/employees from file."""
+    # TODO: Create ImportacaoColaboradoresForm if it doesn't exist
+    
     if request.method == 'POST':
-        if 'file' in request.FILES:
-            # TODO: Implement import logic
+        if 'arquivo_excel' in request.FILES:
+            # TODO: Implement full import logic
             messages.success(request, 'Colaboradores importados com sucesso.')
             return redirect('modulo_metrologia')
     
-    context = {}
+    jobs = ImportJob.objects.filter(job_type='COLABORADORES').order_by('-created_at')[:5]
+    context = {'jobs': jobs}
     return render(request, 'rh/imports/colaboradores.html', context)
 
 
 @login_required
 def imp_hierarquia_view(request):
     """Import organizational hierarchy from file."""
+    # TODO: Create ImportacaoHierarquiaForm if it doesn't exist
+    
     if request.method == 'POST':
-        if 'file' in request.FILES:
-            # TODO: Implement import logic
+        if 'arquivo_excel' in request.FILES:
+            # TODO: Implement full import logic
             messages.success(request, 'Hierarquia importada com sucesso.')
             return redirect('modulo_metrologia')
     
-    context = {}
+    jobs = ImportJob.objects.filter(job_type='HIERARQUIA').order_by('-created_at')[:5]
+    context = {'jobs': jobs}
     return render(request, 'shared/dashboard.html', context)
 
 
 @login_required
 def imp_ferias_view(request):
     """Import vacation/holidays from file."""
+    # TODO: Create ImportacaoFeriasForm if it doesn't exist
+    
     if request.method == 'POST':
-        if 'file' in request.FILES:
-            # TODO: Implement import logic
+        if 'arquivo_excel' in request.FILES:
+            # TODO: Implement full import logic
             messages.success(request, 'Férias importadas com sucesso.')
             return redirect('modulo_metrologia')
     
-    context = {}
+    jobs = ImportJob.objects.filter(job_type='FERIAS').order_by('-created_at')[:5]
+    context = {'jobs': jobs}
     return render(request, 'rh/imports/ferias.html', context)
 
 
