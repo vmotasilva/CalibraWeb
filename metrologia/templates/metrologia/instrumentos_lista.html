@@ -3,6 +3,10 @@
 
 {% block title %}Lista de Instrumentos{% endblock %}
 
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'metrologia/export-buttons.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
     <!-- Header -->
@@ -12,30 +16,70 @@
             <p class="text-muted">Total: <strong>{{ total_instrumentos }}</strong> instrumentos</p>
         </div>
         <div class="col-md-6 text-end">
-            <div class="btn-group" role="group">
-                <a href="{% url 'novo_instrumento' %}" class="btn btn-primary">
+            <div class="btn-group-export" role="group">
+                <a href="{% url 'novo_instrumento' %}" class="btn btn-primary" title="Criar novo instrumento">
                     <i class="bi bi-plus-circle"></i> Novo
                 </a>
-                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                    <i class="bi bi-download"></i> Exportar
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li>
-                        <a class="dropdown-item" href="{% url 'exportar_instrumentos' %}?formato=excel{% for k, v in request.GET.items %}{% if k != 'formato' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">
-                            <i class="bi bi-file-earmark-excel"></i> Excel
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item" href="{% url 'exportar_instrumentos' %}?formato=csv{% for k, v in request.GET.items %}{% if k != 'formato' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">
-                            <i class="bi bi-file-earmark-csv"></i> CSV
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item" href="{% url 'exportar_instrumentos' %}?formato=pdf{% for k, v in request.GET.items %}{% if k != 'formato' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">
-                            <i class="bi bi-file-earmark-pdf"></i> PDF
-                        </a>
-                    </li>
-                </ul>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary dropdown-toggle export-dropdown-btn" 
+                            data-bs-toggle="dropdown" 
+                            title="Escolha o formato de exportação"
+                            aria-label="Menu de exportação">
+                        <i class="bi bi-download"></i> Exportar
+                        <span class="badge bg-info badge-pulse ms-2">{{ total_instrumentos }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end export-dropdown-menu">
+                        <li class="dropdown-header">
+                            <i class="bi bi-file-earmark-arrow-down"></i> Formatos Disponíveis
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item export-menu-item" 
+                               href="{% url 'exportar_instrumentos' %}?formato=excel{% for k, v in request.GET.items %}{% if k != 'formato' %}&{{ k }}={{ v }}{% endif %}{% endfor %}"
+                               data-export-format="excel"
+                               data-export-page="instrumentos_lista"
+                               data-format="excel"
+                               title="Exportar em formato Excel (.xlsx)">
+                                <i class="bi bi-file-earmark-excel export-format-excel"></i>
+                                <div class="flex-grow-1">
+                                    <strong>Excel</strong>
+                                    <p class="export-format-desc">Ideal para análises em planilhas</p>
+                                </div>
+                                <span class="export-badge export-badge-excel">Melhor</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item export-menu-item" 
+                               href="{% url 'exportar_instrumentos' %}?formato=csv{% for k, v in request.GET.items %}{% if k != 'formato' %}&{{ k }}={{ v }}{% endif %}{% endfor %}"
+                               data-export-format="csv"
+                               data-export-page="instrumentos_lista"
+                               data-format="csv"
+                               title="Exportar em formato CSV">
+                                <i class="bi bi-file-earmark-csv export-format-csv"></i>
+                                <div class="flex-grow-1">
+                                    <strong>CSV</strong>
+                                    <p class="export-format-desc">Compatível com todos os sistemas</p>
+                                </div>
+                                <span class="export-badge export-badge-csv">Universal</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item export-menu-item" 
+                               href="{% url 'exportar_instrumentos' %}?formato=pdf{% for k, v in request.GET.items %}{% if k != 'formato' %}&{{ k }}={{ v }}{% endif %}{% endfor %}"
+                               data-export-format="pdf"
+                               data-export-page="instrumentos_lista"
+                               data-format="pdf"
+                               title="Exportar em formato PDF">
+                                <i class="bi bi-file-earmark-pdf export-format-pdf"></i>
+                                <div class="flex-grow-1">
+                                    <strong>PDF</strong>
+                                    <p class="export-format-desc">Pronto para impressão</p>
+                                </div>
+                                <span class="export-badge export-badge-pdf">Imprimir</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -287,3 +331,8 @@
 
 <!-- Template Tag for Date Arithmetic -->
 {% load custom_tags %}
+
+<!-- Export Buttons Enhancement Script -->
+{% block extra_js %}
+    <script src="{% static 'metrologia/export-buttons.js' %}"></script>
+{% endblock %}

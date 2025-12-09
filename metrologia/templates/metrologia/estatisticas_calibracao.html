@@ -3,6 +3,10 @@
 
 {% block title %}Estatísticas de Calibração{% endblock %}
 
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'metrologia/export-buttons.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
     <!-- Header -->
@@ -11,32 +15,82 @@
             <h2><i class="bi bi-bar-chart"></i> Estatísticas de Calibração</h2>
         </div>
         <div class="col-md-3 text-end">
-            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                <i class="bi bi-download"></i> Exportar
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-                <li>
-                    <a class="dropdown-item" href="{% url 'exportar_estatisticas' %}?formato=excel">
-                        <i class="bi bi-file-earmark-excel"></i> Excel
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item" href="{% url 'exportar_estatisticas' %}?formato=pdf">
-                        <i class="bi bi-file-earmark-pdf"></i> PDF
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                    <a class="dropdown-item" href="{% url 'relatorio_vencidos' %}?formato=excel">
-                        <i class="bi bi-exclamation-circle"></i> Vencidos (Excel)
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item" href="{% url 'relatorio_vencidos' %}?formato=pdf">
-                        <i class="bi bi-exclamation-circle"></i> Vencidos (PDF)
-                    </a>
-                </li>
-            </ul>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle export-dropdown-btn" 
+                        data-bs-toggle="dropdown"
+                        title="Escolha o formato de exportação"
+                        aria-label="Menu de exportação de estatísticas">
+                    <i class="bi bi-download"></i> Exportar
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end export-dropdown-menu">
+                    <li class="dropdown-header">
+                        <i class="bi bi-file-earmark-arrow-down"></i> Estatísticas Gerais
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item export-menu-item" 
+                           href="{% url 'exportar_estatisticas' %}?formato=excel"
+                           data-export-format="excel"
+                           data-export-page="estatisticas"
+                           data-format="excel"
+                           title="Exportar estatísticas em Excel">
+                            <i class="bi bi-file-earmark-excel export-format-excel"></i>
+                            <div class="flex-grow-1">
+                                <strong>Excel</strong>
+                                <p class="export-format-desc">Completo com gráficos</p>
+                            </div>
+                            <span class="export-badge export-badge-excel">Melhor</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item export-menu-item" 
+                           href="{% url 'exportar_estatisticas' %}?formato=pdf"
+                           data-export-format="pdf"
+                           data-export-page="estatisticas"
+                           data-format="pdf"
+                           title="Exportar estatísticas em PDF">
+                            <i class="bi bi-file-earmark-pdf export-format-pdf"></i>
+                            <div class="flex-grow-1">
+                                <strong>PDF</strong>
+                                <p class="export-format-desc">Pronto para impressão</p>
+                            </div>
+                            <span class="export-badge export-badge-pdf">Imprimir</span>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li class="dropdown-header">
+                        <i class="bi bi-exclamation-circle"></i> Relatórios Específicos
+                    </li>
+                    <li>
+                        <a class="dropdown-item export-menu-item" 
+                           href="{% url 'relatorio_vencidos' %}?formato=excel"
+                           data-export-format="excel"
+                           data-export-page="relatorio_vencidos"
+                           data-format="excel"
+                           title="Relatório de instrumentos vencidos em Excel">
+                            <i class="bi bi-exclamation-circle text-danger"></i>
+                            <div class="flex-grow-1">
+                                <strong>Vencidos (Excel)</strong>
+                                <p class="export-format-desc">Ação imediata necessária</p>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item export-menu-item" 
+                           href="{% url 'relatorio_vencidos' %}?formato=pdf"
+                           data-export-format="pdf"
+                           data-export-page="relatorio_vencidos"
+                           data-format="pdf"
+                           title="Relatório de instrumentos vencidos em PDF">
+                            <i class="bi bi-exclamation-circle text-danger"></i>
+                            <div class="flex-grow-1">
+                                <strong>Vencidos (PDF)</strong>
+                                <p class="export-format-desc">Para gerenciamento</p>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -277,3 +331,7 @@
     }
 </style>
 
+<!-- Export Buttons Enhancement Script -->
+{% block extra_js %}
+    <script src="{% static 'metrologia/export-buttons.js' %}"></script>
+{% endblock %}
