@@ -294,7 +294,7 @@ def modulo_metrologia_view(request):
         "alerta_30d": alerta_30d,
         "can_edit": True,
     }
-    return render(request, "modulo_metrologia.html", ctx)
+    return render(request, "metrologia/dashboard.html", ctx)
 
 
 # ==============================================================================
@@ -819,7 +819,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
                             messages.warning(request, p)
                         form.add_error(None, "Dados de faixas incompletos.")
                         faixas_medicao = faixas_qs
-                        return render(request, 'registrar_historico_calibracao.html', {
+                        return render(request, 'metrologia/historico_calibracao_form.html', {
                             'form': form,
                             'instrumento': instrumento,
                             'faixas_medicao': faixas_medicao
@@ -890,7 +890,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
         
         faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
         
-        return render(request, 'registrar_historico_calibracao.html', {
+        return render(request, 'metrologia/historico_calibracao_form.html', {
             'form': form,
             'instrumento': instrumento,
             'faixas_medicao': faixas_medicao
@@ -912,7 +912,7 @@ def preview_certificado_view(request, historico_id):
             messages.error(request, 'Histórico sem arquivo de certificado.')
             return redirect('detalhe_instrumento', instrumento_id=historico.instrumento_id)
         
-        return render(request, 'preview_certificado.html', {
+        return render(request, 'metrologia/certificado_preview.html', {
             'historico': historico,
         })
     except Exception as e:
@@ -1074,7 +1074,7 @@ def visualizar_historico_calibracao_view(request, historico_id):
                         form.add_error(None, "Faixas incompletas.")
                         faixas_medicao = faixas_qs
                         resultados_faixas = historico.resultados_faixas.all()
-                        return render(request, 'visualizar_historico_calibracao.html', {
+                        return render(request, 'metrologia/historico_calibracao_detail.html', {
                             'form': form,
                             'historico': historico,
                             'instrumento': instrumento,
@@ -1165,7 +1165,7 @@ def visualizar_historico_calibracao_view(request, historico_id):
         except Exception:
             pass
         
-        return render(request, 'visualizar_historico_calibracao.html', {
+        return render(request, 'metrologia/historico_calibracao_detail.html', {
             'form': form,
             'historico': historico,
             'instrumento': instrumento,

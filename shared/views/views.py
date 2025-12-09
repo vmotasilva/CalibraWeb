@@ -64,7 +64,7 @@ def dashboard_view(request):
         "qtd_pendentes": qtd_pendentes,
         "today": hoje,
     }
-    return render(request, "dashboard.html", ctx)
+    return render(request, "shared/dashboard.html", ctx)
 
 
 def health_check(request):

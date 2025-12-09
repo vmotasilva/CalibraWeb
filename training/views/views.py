@@ -225,7 +225,7 @@ def editar_procedimento_view(request, procedimento_id):
 def detalhe_procedimento_view(request, procedimento_id):
     """Visualiza detalhes de um procedimento."""
     proc = get_object_or_404(Procedimento, id=procedimento_id)
-    return render(request, 'procedimento_detalhe.html', {
+    return render(request, 'training/procedimento_detalhe.html', {
         'proc': proc
     })
 
