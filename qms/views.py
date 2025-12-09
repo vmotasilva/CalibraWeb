@@ -74,7 +74,7 @@ def dashboard_view(request):
 def modulo_metrologia_view(request):
     """Metrologia module main view."""
     # Retrieve all instruments and related data
-    instrumentos = Instrumento.objects.all().select_related('setor', 'categoria').prefetch_related('faixamedicao_set')
+    instrumentos = Instrumento.objects.all().select_related('setor', 'categoria').prefetch_related('faixas')
     
     # Get filter parameters from request
     status_filter = request.GET.get('status', '')
