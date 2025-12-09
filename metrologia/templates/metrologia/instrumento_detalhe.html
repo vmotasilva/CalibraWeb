@@ -78,56 +78,8 @@
                 </div>
             </div>
 
-            <div class="card shadow-sm border-danger">
-                <div class="card-header bg-danger text-white">
-                    <i class="bi bi-exclamation-triangle"></i> Registrar Ocorrência
-                </div>
-                <div class="card-body">
-                    <form method="post" action="{% url 'registrar_ocorrencia' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="instrumento_id" value="{{ instrumento.id }}">
-                        <div class="mb-3">
-                            <label for="id_tipo" class="form-label small fw-bold text-muted">
-                                Tipo de Ocorrência
-                            </label>
-                            {% render_field form_ocorrencia.tipo class="form-select form-select-sm" %}
-                            {% if form_ocorrencia.tipo.errors %}
-                                <div class="invalid-feedback d-block">{{ form_ocorrencia.tipo.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="mb-3">
-                            <label for="id_data_ocorrencia" class="form-label small fw-bold text-muted">
-                                Data da Ocorrência
-                            </label>
-                            {% render_field form_ocorrencia.data_ocorrencia class="form-control form-control-sm" type="date" %}
-                            {% if form_ocorrencia.data_ocorrencia.errors %}
-                                <div class="invalid-feedback d-block">{{ form_ocorrencia.data_ocorrencia.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="mb-3">
-                            <label for="id_descricao" class="form-label small fw-bold text-muted">
-                                Descrição
-                            </label>
-                            {% render_field form_ocorrencia.descricao class="form-control form-control-sm" rows="3" placeholder="Descreva o que aconteceu..." %}
-                            {% if form_ocorrencia.descricao.errors %}
-                                <div class="invalid-feedback d-block">{{ form_ocorrencia.descricao.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="mb-3">
-                            <label for="id_custo_reparo" class="form-label small fw-bold text-muted">
-                                Custo de Reparo (R$) <span class="text-muted">(opcional)</span>
-                            </label>
-                            {% render_field form_ocorrencia.custo_reparo class="form-control form-control-sm" placeholder="0.00" step="0.01" %}
-                            {% if form_ocorrencia.custo_reparo.errors %}
-                                <div class="invalid-feedback d-block">{{ form_ocorrencia.custo_reparo.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                        <button type="submit" name="registrar_ocorrencia" class="btn btn-sm btn-danger w-100">
-                            <i class="bi bi-plus-circle"></i> Registrar Ocorrência
-                        </button>
-                    </form>
-                </div>
-            </div>
+            <!-- Formulário de ocorrência será implementado em versão futura -->
+
         </div>
 
         <div class="col-md-8">
