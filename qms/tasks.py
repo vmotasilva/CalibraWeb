@@ -388,7 +388,7 @@ def import_historico_task(job_id, filepath):
                     'incerteza': float(inc.replace(',', '.')) if inc else None,
                     'tolerancia_usada': float(tol.replace(',', '.')) if tol else None,
                     'tem_selo_rbc': tem_rbc,
-                    'resultado': resultado if resultado in {'APROVADO','CONDICIONAL','REPROVADO'} else ('CONDICIONAL' if 'COND' in resultado else ('REPROVADO' if 'REPRO' in resultado else 'APROVADO')),
+                    'resultado': ('REPROVADO' if 'REPRO' in resultado else ('APROVADO_COM_CORRECAO' if 'COND' in resultado else 'APROVADO_SEM_CORRECAO')),
                     'fornecedor': fornecedor,
                     'responsavel': responsavel,
                     'observacoes': obs,

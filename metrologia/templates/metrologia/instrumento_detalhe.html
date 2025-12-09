@@ -159,46 +159,12 @@
                                     <td class="fw-bold">{{ item.data_calibracao|date:"d/m/Y" }}</td>
                                     <td><small>{{ item.numero_certificado }}</small></td>
                                     <td>
-                                        {% if item.resultados_faixas.all %}
-                                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#faixas_{{ item.id }}" aria-expanded="false" aria-controls="faixas_{{ item.id }}">
-                                                <i class="bi bi-chevron-down"></i> {{ item.resultados_faixas.count }} Faixa(s)
-                                            </button>
-                                            <div class="collapse mt-2" id="faixas_{{ item.id }}">
-                                                <table class="table table-sm table-bordered mb-0 bg-light">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Faixa</th>
-                                                            <th>Unid.</th>
-                                                            <th>Erro</th>
-                                                            <th>Inc.</th>
-                                                            <th>Tol.</th>
-                                                            <th>Resultado</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {% for rf in item.resultados_faixas.all %}
-                                                        <tr>
-                                                            <td><small>{{ rf.faixa_medicao.valor_minimo }} a {{ rf.faixa_medicao.valor_maximo }}</small></td>
-                                                            <td><small>{% if rf.faixa_medicao.unidade %}{{ rf.faixa_medicao.unidade.nome }}{% else %}-{% endif %}</small></td>
-                                                            <td><small>{{ rf.erro_encontrado|default:"-" }}</small></td>
-                                                            <td><small>{{ rf.incerteza|default:"-" }}</small></td>
-                                                            <td><small>{{ rf.tolerancia_usada|default:"-" }}</small></td>
-                                                            <td>
-                                                                {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
-                                                                    <span class="badge bg-success">OK</span>
-                                                                {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
-                                                                    <span class="badge bg-warning text-dark">OK c/ corr.</span>
-                                                                {% elif rf.resultado == 'REPROVADO' %}
-                                                                    <span class="badge bg-danger">NOK</span>
-                                                                {% else %}
-                                                                    <span class="badge bg-secondary">-</span>
-                                                                {% endif %}
-                                                            </td>
-                                                        </tr>
-                                                        {% endfor %}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                        {% if item.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                            <span class="badge bg-success">✓ APROVADO</span>
+                                        {% elif item.resultado == 'APROVADO_COM_CORRECAO' %}
+                                            <span class="badge bg-warning text-dark">⚠ COND.</span>
+                                        {% elif item.resultado == 'REPROVADO' %}
+                                            <span class="badge bg-danger">✗ REPROVADO</span>
                                         {% else %}
                                             <span class="badge bg-secondary">-</span>
                                         {% endif %}
