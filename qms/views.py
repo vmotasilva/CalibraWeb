@@ -135,6 +135,8 @@ def modulo_metrologia_view(request):
 @login_required
 def novo_instrumento_view(request, instrumento_id=None):
     """Create or edit an instrument."""
+    from .forms import InstrumentoForm
+    
     if instrumento_id:
         instrumento = get_object_or_404(Instrumento, id=instrumento_id)
         is_edit = True
@@ -143,14 +145,24 @@ def novo_instrumento_view(request, instrumento_id=None):
         is_edit = False
     
     if request.method == 'POST':
-        # Handle form submission
-        # TODO: Implement form processing
-        messages.success(request, 'Instrumento salvo com sucesso.')
-        return redirect('modulo_metrologia')
+        form = InstrumentoForm(request.POST, instance=instrumento)
+        if form.is_valid():
+            instrumento_obj = form.save()
+            if is_edit:
+                messages.success(request, 'Instrumento atualizado com sucesso.')
+            else:
+                messages.success(request, 'Instrumento criado com sucesso.')
+            return redirect('detalhe_instrumento', instrumento_id=instrumento_obj.id)
+        else:
+            messages.error(request, 'Erro ao salvar o instrumento. Verifique os dados.')
+    else:
+        form = InstrumentoForm(instance=instrumento)
     
     context = {
+        'form': form,
         'instrumento': instrumento,
         'is_edit': is_edit,
+        'title': 'Editar Instrumento' if is_edit else 'Novo Instrumento',
     }
     return render(request, 'metrologia/instrumento_form.html', context)
 
@@ -871,3 +883,142 @@ def editar_colaborador_view(request, colab_id):
         'colaborador': colaborador,
     }
     return render(request, 'rh/colaborador_form.html', context)
+
+
+# ==============================================================================
+# MEASUREMENT RANGE (FAIXA) MANAGEMENT VIEWS
+# ==============================================================================
+
+@login_required
+def gerenciar_faixas_instrumento_view(request, instrumento_id):
+    """Manage measurement ranges for an instrument."""
+    from .forms import FaixaMedicaoForm
+    from metrologia.models import FaixaMedicao
+    
+    instrumento = get_object_or_404(Instrumento, id=instrumento_id)
+    faixas = instrumento.faixas.all().order_by('valor_minimo')
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add':
+            form = FaixaMedicaoForm(request.POST)
+            if form.is_valid():
+                faixa = form.save(commit=False)
+                faixa.instrumento = instrumento
+                faixa.save()
+                messages.success(request, f'Faixa {faixa.valor_minimo}-{faixa.valor_maximo} adicionada com sucesso.')
+                return redirect('gerenciar_faixas_instrumento', instrumento_id=instrumento_id)
+            else:
+                messages.error(request, 'Erro ao adicionar faixa. Verifique os dados.')
+        
+        elif action == 'delete':
+            faixa_id = request.POST.get('faixa_id')
+            try:
+                faixa = FaixaMedicao.objects.get(id=faixa_id, instrumento=instrumento)
+                faixa_str = f"{faixa.valor_minimo}-{faixa.valor_maximo}"
+                faixa.delete()
+                messages.success(request, f'Faixa {faixa_str} removida com sucesso.')
+            except FaixaMedicao.DoesNotExist:
+                messages.error(request, 'Faixa não encontrada.')
+            return redirect('gerenciar_faixas_instrumento', instrumento_id=instrumento_id)
+    else:
+        form = FaixaMedicaoForm()
+    
+    context = {
+        'instrumento': instrumento,
+        'faixas': faixas,
+        'form': form,
+    }
+    return render(request, 'metrologia/gerenciar_faixas.html', context)
+
+
+@login_required
+def editar_faixa_view(request, faixa_id):
+    """Edit a measurement range."""
+    from .forms import FaixaMedicaoForm
+    from metrologia.models import FaixaMedicao
+    
+    faixa = get_object_or_404(FaixaMedicao, id=faixa_id)
+    
+    if request.method == 'POST':
+        form = FaixaMedicaoForm(request.POST, instance=faixa)
+        if form.is_valid():
+            faixa_obj = form.save()
+            messages.success(request, 'Faixa atualizada com sucesso.')
+            return redirect('gerenciar_faixas_instrumento', instrumento_id=faixa_obj.instrumento.id)
+        else:
+            messages.error(request, 'Erro ao atualizar faixa.')
+    else:
+        form = FaixaMedicaoForm(instance=faixa)
+    
+    context = {
+        'form': form,
+        'faixa': faixa,
+        'instrumento': faixa.instrumento,
+    }
+    return render(request, 'metrologia/editar_faixa.html', context)
+
+
+# ==============================================================================
+# CALIBRATION HISTORY RESULTS MANAGEMENT VIEWS
+# ==============================================================================
+
+@login_required
+def editar_historico_calibracao_view(request, historico_id):
+    """Edit calibration history and its range results."""
+    from .forms_historico import HistoricoCalibracaoForm
+    from .forms import ResultadoFaixaCalibracaoForm
+    from metrologia.models import ResultadoFaixaCalibracao
+    
+    historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    resultados_faixa = historico.resultados_faixa.all().select_related('faixa')
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'update_history':
+            form = HistoricoCalibracaoForm(request.POST, request.FILES, instance=historico)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Histórico atualizado com sucesso.')
+                return redirect('editar_historico_calibracao', historico_id=historico_id)
+            else:
+                messages.error(request, 'Erro ao atualizar histórico.')
+        
+        elif action == 'update_resultado':
+            resultado_id = request.POST.get('resultado_id')
+            try:
+                resultado = ResultadoFaixaCalibracao.objects.get(id=resultado_id, historico=historico)
+                form = ResultadoFaixaCalibracaoForm(request.POST, instance=resultado)
+                if form.is_valid():
+                    form.save()
+                    messages.success(request, 'Resultado da faixa atualizado com sucesso.')
+                else:
+                    messages.error(request, 'Erro ao atualizar resultado.')
+            except ResultadoFaixaCalibracao.DoesNotExist:
+                messages.error(request, 'Resultado não encontrado.')
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
+        
+        elif action == 'delete_resultado':
+            resultado_id = request.POST.get('resultado_id')
+            try:
+                resultado = ResultadoFaixaCalibracao.objects.get(id=resultado_id, historico=historico)
+                resultado.delete()
+                messages.success(request, 'Resultado removido com sucesso.')
+            except ResultadoFaixaCalibracao.DoesNotExist:
+                messages.error(request, 'Resultado não encontrado.')
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
+    
+    historico_form = HistoricoCalibracaoForm(instance=historico)
+    resultado_form = ResultadoFaixaCalibracaoForm()
+    
+    context = {
+        'historico': historico,
+        'instrumento': historico.instrumento,
+        'historico_form': historico_form,
+        'resultados_faixa': resultados_faixa,
+        'resultado_form': resultado_form,
+    }
+    return render(request, 'metrologia/editar_historico.html', context)
+

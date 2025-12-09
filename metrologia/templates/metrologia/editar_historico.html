@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">Editar Histórico de Calibração</h2>
+            <p class="text-muted mb-0">{{ instrumento.tag }} - {{ instrumento.descricao }}</p>
+        </div>
+        <a href="{% url 'visualizar_historico_calibracao' historico.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <!-- SEÇÃO 1: DADOS PRINCIPAIS DO HISTÓRICO -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-calendar-check"></i> Dados do Histórico
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" class="needs-validation">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_history">
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_data_calibracao" class="form-label fw-bold">Data da Calibração <span class="text-danger">*</span></label>
+                                    {{ historico_form.data_calibracao|add_class:"form-control" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_proxima_calibracao" class="form-label fw-bold">Próxima Calibração</label>
+                                    {{ historico_form.proxima_calibracao|add_class:"form-control" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_numero_certificado" class="form-label fw-bold">Número do Certificado</label>
+                                    {{ historico_form.numero_certificado|add_class:"form-control" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_tipo_calibracao" class="form-label fw-bold">Tipo de Calibração</label>
+                                    {{ historico_form.tipo_calibracao|add_class:"form-select" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_responsavel" class="form-label fw-bold">Responsável Técnico</label>
+                                    {{ historico_form.responsavel|add_class:"form-control" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_fornecedor" class="form-label fw-bold">Laboratório/Fornecedor</label>
+                                    {{ historico_form.fornecedor|add_class:"form-control" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ historico_form.tem_selo_rbc|add_class:"form-check-input" }}
+                                <label for="id_tem_selo_rbc" class="form-check-label">
+                                    Possui Selo RBC?
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_erro_encontrado" class="form-label fw-bold">Erro Geral</label>
+                                    {{ historico_form.erro_encontrado|add_class:"form-control" }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_incerteza" class="form-label fw-bold">Incerteza</label>
+                                    {{ historico_form.incerteza|add_class:"form-control" }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_resultado" class="form-label fw-bold">Resultado Geral</label>
+                                    {{ historico_form.resultado|add_class:"form-select" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_observacoes" class="form-label fw-bold">Observações</label>
+                            {{ historico_form.observacoes|add_class:"form-control" }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_certificado" class="form-label fw-bold">Certificado (PDF)</label>
+                            {{ historico_form.certificado|add_class:"form-control" }}
+                        </div>
+
+                        <hr>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-save"></i> Salvar Histórico
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-check-circle"></i> Resultado Geral
+                </div>
+                <div class="card-body text-center">
+                    {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                        <h4><span class="badge bg-success" style="font-size: 1rem;">✓ APROVADO</span></h4>
+                    {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
+                        <h4><span class="badge bg-warning text-dark" style="font-size: 1rem;">⚠ COM CORREÇÃO</span></h4>
+                    {% elif historico.resultado == 'REPROVADO' %}
+                        <h4><span class="badge bg-danger" style="font-size: 1rem;">✗ REPROVADO</span></h4>
+                    {% else %}
+                        <h4><span class="badge bg-secondary" style="font-size: 1rem;">SEM RESULTADO</span></h4>
+                    {% endif %}
+                    <p class="text-muted mt-3 mb-0">
+                        <strong>Data:</strong> {{ historico.data_calibracao|date:"d/m/Y" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEÇÃO 2: RESULTADOS POR FAIXA -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <i class="bi bi-calculator"></i> Resultados por Faixa de Medição
+        </div>
+        <div class="card-body p-0">
+            {% if resultados_faixa %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 20%;">Faixa</th>
+                            <th style="width: 12%;">Unidade</th>
+                            <th style="width: 12%;">Erro Máx</th>
+                            <th style="width: 12%;">Erro Mín</th>
+                            <th style="width: 12%;">Incerteza</th>
+                            <th style="width: 15%;">Resultado</th>
+                            <th style="width: 17%;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rf in resultados_faixa %}
+                        <tr>
+                            <td>
+                                <strong>{{ rf.faixa.valor_minimo }}</strong> a <strong>{{ rf.faixa.valor_maximo }}</strong>
+                            </td>
+                            <td>{{ rf.faixa.unidade.nome }}</td>
+                            <td>{{ rf.erro_max|default:"-" }}</td>
+                            <td>{{ rf.erro_min|default:"-" }}</td>
+                            <td>{{ rf.incerteza|default:"-" }}</td>
+                            <td>
+                                {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                    <span class="badge bg-success">✓ OK</span>
+                                {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                    <span class="badge bg-warning text-dark">⚠ OK</span>
+                                {% elif rf.resultado == 'REPROVADO' %}
+                                    <span class="badge bg-danger">✗ NOK</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editResultModal{{ rf.id }}">
+                                    <i class="bi bi-pencil"></i> Editar
+                                </button>
+                                <form method="post" style="display: inline;" onsubmit="return confirm('Remover resultado desta faixa?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_resultado">
+                                    <input type="hidden" name="resultado_id" value="{{ rf.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+
+                                <!-- Modal de Edição -->
+                                <div class="modal fade" id="editResultModal{{ rf.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Editar Resultado - Faixa {{ rf.faixa.valor_minimo }}-{{ rf.faixa.valor_maximo }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="post">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="update_resultado">
+                                                <input type="hidden" name="resultado_id" value="{{ rf.id }}">
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">Erro Máximo</label>
+                                                        <input type="number" name="erro_max" step="0.0001" class="form-control" value="{{ rf.erro_max|default:'' }}" placeholder="0.0000">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">Erro Mínimo</label>
+                                                        <input type="number" name="erro_min" step="0.0001" class="form-control" value="{{ rf.erro_min|default:'' }}" placeholder="0.0000">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">Incerteza</label>
+                                                        <input type="number" name="incerteza" step="0.0001" class="form-control" value="{{ rf.incerteza|default:'' }}" placeholder="0.0000">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">Resultado</label>
+                                                        <select name="resultado" class="form-select">
+                                                            <option value="">---------</option>
+                                                            <option value="APROVADO_SEM_CORRECAO" {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}selected{% endif %}>Aprovado sem Correção</option>
+                                                            <option value="APROVADO_COM_CORRECAO" {% if rf.resultado == 'APROVADO_COM_CORRECAO' %}selected{% endif %}>Aprovado com Correção</option>
+                                                            <option value="REPROVADO" {% if rf.resultado == 'REPROVADO' %}selected{% endif %}>Reprovado</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-primary">Salvar</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info m-3">
+                <i class="bi bi-info-circle"></i> Nenhum resultado de faixa cadastrado ainda.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

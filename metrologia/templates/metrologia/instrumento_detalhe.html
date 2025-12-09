@@ -31,7 +31,10 @@
             {% endif %}
             
             <a href="/admin/qms/instrumento/{{ instrumento.id }}/change/" class="btn btn-outline-secondary ms-2">
-                <i class="bi bi-pencil"></i> Editar
+                <i class="bi bi-pencil"></i> Editar Instrumento
+            </a>
+            <a href="{% url 'gerenciar_faixas_instrumento' instrumento.id %}" class="btn btn-outline-info ms-2">
+                <i class="bi bi-plus-circle"></i> Gerenciar Faixas
             </a>
         </div>
     </div>

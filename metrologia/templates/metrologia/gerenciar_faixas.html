@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">Gerenciar Faixas de Medição</h2>
+            <p class="text-muted mb-0">{{ instrumento.tag }} - {{ instrumento.descricao }}</p>
+        </div>
+        <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Coluna Esquerda: Formulário de Adição -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-plus-circle"></i> Nova Faixa
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add">
+
+                        <div class="mb-3">
+                            <label for="id_unidade" class="form-label fw-bold">Unidade <span class="text-danger">*</span></label>
+                            {{ form.unidade|add_class:"form-select" }}
+                            {% if form.unidade.errors %}<small class="text-danger">{{ form.unidade.errors.0 }}</small>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_valor_minimo" class="form-label fw-bold">Valor Mínimo <span class="text-danger">*</span></label>
+                            {{ form.valor_minimo|add_class:"form-control" }}
+                            {% if form.valor_minimo.errors %}<small class="text-danger">{{ form.valor_minimo.errors.0 }}</small>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_valor_maximo" class="form-label fw-bold">Valor Máximo <span class="text-danger">*</span></label>
+                            {{ form.valor_maximo|add_class:"form-control" }}
+                            {% if form.valor_maximo.errors %}<small class="text-danger">{{ form.valor_maximo.errors.0 }}</small>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_resolucao" class="form-label fw-bold">Resolução</label>
+                            {{ form.resolucao|add_class:"form-control" }}
+                            {% if form.resolucao.errors %}<small class="text-danger">{{ form.resolucao.errors.0 }}</small>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_nominal" class="form-label fw-bold">Valor Nominal</label>
+                            {{ form.nominal|add_class:"form-control" }}
+                            {% if form.nominal.errors %}<small class="text-danger">{{ form.nominal.errors.0 }}</small>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_tolerancia_mais_menos" class="form-label fw-bold">Tolerância ±</label>
+                            {{ form.tolerancia_mais_menos|add_class:"form-control" }}
+                            {% if form.tolerancia_mais_menos.errors %}<small class="text-danger">{{ form.tolerancia_mais_menos.errors.0 }}</small>{% endif %}
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-plus-circle"></i> Adicionar Faixa
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coluna Direita: Lista de Faixas -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-rulers"></i> Faixas Cadastradas</span>
+                    <span class="badge bg-light text-dark">{{ faixas.count }}</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if faixas %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 20%;">Unidade</th>
+                                    <th style="width: 25%;">Faixa</th>
+                                    <th style="width: 15%;">Resolução</th>
+                                    <th style="width: 15%;">Nominal</th>
+                                    <th style="width: 15%;">Tolerância</th>
+                                    <th style="width: 10%;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for faixa in faixas %}
+                                <tr>
+                                    <td><strong>{{ faixa.unidade.nome }}</strong></td>
+                                    <td>
+                                        <strong>{{ faixa.valor_minimo }}</strong> a <strong>{{ faixa.valor_maximo }}</strong>
+                                    </td>
+                                    <td class="text-muted">{{ faixa.resolucao|default:"-" }}</td>
+                                    <td class="text-muted">{{ faixa.nominal|default:"-" }}</td>
+                                    <td class="text-muted">{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
+                                    <td>
+                                        <a href="{% url 'editar_faixa' faixa.id %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="post" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja remover esta faixa?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="faixa_id" value="{{ faixa.id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info m-3">
+                        <i class="bi bi-info-circle"></i> Nenhuma faixa cadastrada ainda. Adicione uma novo formulário ao lado.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
