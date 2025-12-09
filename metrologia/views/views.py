@@ -555,7 +555,7 @@ def novo_instrumento_view(request):
     else:
         form = InstrumentoForm()
     
-    return render(request, 'form_generico.html', {
+    return render(request, 'shared/form_generico.html', {
         'form': form,
         'titulo': 'Novo Instrumento',
     })

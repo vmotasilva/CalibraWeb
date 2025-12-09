@@ -191,7 +191,7 @@ def novo_procedimento_view(request):
     else:
         form = ProcedimentoForm()
     
-    return render(request, 'form_generico.html', {
+    return render(request, 'shared/form_generico.html', {
         'form': form,
         'titulo': 'Novo Procedimento'
     })
@@ -215,7 +215,7 @@ def editar_procedimento_view(request, procedimento_id):
     else:
         form = ProcedimentoForm(instance=proc)
     
-    return render(request, 'form_generico.html', {
+    return render(request, 'shared/form_generico.html', {
         'form': form,
         'titulo': f'Editar {proc.codigo}'
     })
