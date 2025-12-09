@@ -484,16 +484,17 @@ def import_historico_task(job_id, filepath):
                     
                     erro_val = safe_float(erro_faixa) if erro_faixa else None
                     inc_val = safe_float(inc_faixa) if inc_faixa else None
-                    tol_val = safe_float(tol_faixa) if tol_faixa else None
                     
                     for faixa in faixas_instrumento:
                         resultado_obj, _ = ResultadoFaixaCalibracao.objects.update_or_create(
                             historico=obj,
-                            faixa_medicao=faixa,
+                            faixa=faixa,
                             defaults={
-                                "erro_encontrado": erro_val,
+                                "valor_minimo": faixa.valor_minimo,
+                                "valor_maximo": faixa.valor_maximo,
+                                "erro_max": erro_val,
+                                "erro_min": erro_val if erro_val else None,
                                 "incerteza": inc_val,
-                                "tolerancia_usada": tol_val,
                             },
                         )
                         # Força recálculo do resultado
@@ -508,15 +509,16 @@ def import_historico_task(job_id, filepath):
                     
                     erro_val = safe_float(erro_faixa) if erro_faixa else None
                     inc_val = safe_float(inc_faixa) if inc_faixa else None
-                    tol_val = safe_float(tol_faixa) if tol_faixa else None
                     
                     resultado_obj, _ = ResultadoFaixaCalibracao.objects.update_or_create(
                         historico=obj,
-                        faixa_medicao=faixa_obj,
+                        faixa=faixa_obj,
                         defaults={
-                            "erro_encontrado": erro_val,
+                            "valor_minimo": faixa_obj.valor_minimo,
+                            "valor_maximo": faixa_obj.valor_maximo,
+                            "erro_max": erro_val,
+                            "erro_min": erro_val if erro_val else None,
                             "incerteza": inc_val,
-                            "tolerancia_usada": tol_val,
                         },
                     )
                     resultado_obj.save()
