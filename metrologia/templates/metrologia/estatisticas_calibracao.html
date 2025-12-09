@@ -168,6 +168,7 @@
                             </thead>
                             <tbody>
                                 {% for cat in por_categoria %}
+                                    {% widthratio cat.vencidos cat.total 100 as percent_vencidos %}
                                     <tr>
                                         <td>{{ cat.nome }}</td>
                                         <td class="text-end">
@@ -181,11 +182,7 @@
                                             {% endif %}
                                         </td>
                                         <td class="text-end">
-                                            {% if cat.total > 0 %}
-                                                {{ percent|add:cat.vencidos|add:cat.total }}%
-                                            {% else %}
-                                                —
-                                            {% endif %}
+                                            {{ percent_vencidos }}%
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -215,6 +212,7 @@
                             </thead>
                             <tbody>
                                 {% for setor in por_setor %}
+                                    {% widthratio setor.vencidos setor.total 100 as percent_vencidos %}
                                     <tr>
                                         <td>{{ setor.nome }}</td>
                                         <td class="text-end">
@@ -228,11 +226,7 @@
                                             {% endif %}
                                         </td>
                                         <td class="text-end">
-                                            {% if setor.total > 0 %}
-                                                {{ percent|add:setor.vencidos|add:setor.total }}%
-                                            {% else %}
-                                                —
-                                            {% endif %}
+                                            {{ percent_vencidos }}%
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -254,3 +248,4 @@
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
     }
 </style>
+
