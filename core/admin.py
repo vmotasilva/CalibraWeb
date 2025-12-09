@@ -1,3 +1,11 @@
 from django.contrib import admin
+from .models import UnidadeMedida
 
-# Core admin configurations will be added here
+
+class UnidadeMedidaAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'descricao']
+    search_fields = ['nome']
+    ordering = ['nome']
+
+
+admin.site.register(UnidadeMedida, UnidadeMedidaAdmin)
