@@ -152,7 +152,7 @@ def novo_instrumento_view(request, instrumento_id=None):
                 messages.success(request, 'Instrumento atualizado com sucesso.')
             else:
                 messages.success(request, 'Instrumento criado com sucesso.')
-            return redirect('detalhe_instrumento', instrumento_id=instrumento_obj.id)
+            return redirect('visualizar_instrumento', instrumento_id=instrumento_obj.id)
         else:
             messages.error(request, 'Erro ao salvar o instrumento. Verifique os dados.')
     else:
@@ -224,7 +224,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
         # Handle form submission
         # TODO: Implement form processing
         messages.success(request, 'Histórico de calibração registrado com sucesso.')
-        return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
+        return redirect('visualizar_instrumento', instrumento_id=instrumento_id)
     
     context = {
         'instrumento': instrumento,
@@ -232,7 +232,6 @@ def registrar_historico_calibracao_view(request, instrumento_id):
     return render(request, 'metrologia/historico_calibracao_form.html', context)
 
 
-@login_required
 @login_required
 def visualizar_historico_calibracao_view(request, historico_id):
     """View calibration history details."""
@@ -262,7 +261,7 @@ def remover_historico_view(request, historico_id):
     if request.method == 'POST':
         historico.delete()
         messages.success(request, 'Histórico removido com sucesso.')
-        return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
+        return redirect('visualizar_instrumento', instrumento_id=instrumento_id)
     
     context = {
         'historico': historico,
@@ -893,6 +892,7 @@ def editar_colaborador_view(request, colab_id):
 def gerenciar_faixas_instrumento_view(request, instrumento_id):
     """Manage measurement ranges for an instrument."""
     from .forms import FaixaMedicaoForm
+    from metrologia.forms import FaixaMedicaoFormWithValidation
     from metrologia.models import FaixaMedicao
     
     instrumento = get_object_or_404(Instrumento, id=instrumento_id)
@@ -902,7 +902,7 @@ def gerenciar_faixas_instrumento_view(request, instrumento_id):
         action = request.POST.get('action')
         
         if action == 'add':
-            form = FaixaMedicaoForm(request.POST)
+            form = FaixaMedicaoFormWithValidation(request.POST)
             if form.is_valid():
                 faixa = form.save(commit=False)
                 faixa.instrumento = instrumento
@@ -910,7 +910,9 @@ def gerenciar_faixas_instrumento_view(request, instrumento_id):
                 messages.success(request, f'Faixa {faixa.valor_minimo}-{faixa.valor_maximo} adicionada com sucesso.')
                 return redirect('gerenciar_faixas_instrumento', instrumento_id=instrumento_id)
             else:
-                messages.error(request, 'Erro ao adicionar faixa. Verifique os dados.')
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f'{field}: {error}')
         
         elif action == 'delete':
             faixa_id = request.POST.get('faixa_id')
@@ -923,7 +925,7 @@ def gerenciar_faixas_instrumento_view(request, instrumento_id):
                 messages.error(request, 'Faixa não encontrada.')
             return redirect('gerenciar_faixas_instrumento', instrumento_id=instrumento_id)
     else:
-        form = FaixaMedicaoForm()
+        form = FaixaMedicaoFormWithValidation()
     
     context = {
         'instrumento': instrumento,
@@ -936,21 +938,23 @@ def gerenciar_faixas_instrumento_view(request, instrumento_id):
 @login_required
 def editar_faixa_view(request, faixa_id):
     """Edit a measurement range."""
-    from .forms import FaixaMedicaoForm
+    from metrologia.forms import FaixaMedicaoFormWithValidation
     from metrologia.models import FaixaMedicao
     
     faixa = get_object_or_404(FaixaMedicao, id=faixa_id)
     
     if request.method == 'POST':
-        form = FaixaMedicaoForm(request.POST, instance=faixa)
+        form = FaixaMedicaoFormWithValidation(request.POST, instance=faixa)
         if form.is_valid():
             faixa_obj = form.save()
             messages.success(request, 'Faixa atualizada com sucesso.')
             return redirect('gerenciar_faixas_instrumento', instrumento_id=faixa_obj.instrumento.id)
         else:
-            messages.error(request, 'Erro ao atualizar faixa.')
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'{field}: {error}')
     else:
-        form = FaixaMedicaoForm(instance=faixa)
+        form = FaixaMedicaoFormWithValidation(instance=faixa)
     
     context = {
         'form': form,
@@ -1021,4 +1025,160 @@ def editar_historico_calibracao_view(request, historico_id):
         'resultado_form': resultado_form,
     }
     return render(request, 'metrologia/editar_historico.html', context)
+
+
+# ==============================================================================
+# INSTRUMENT LISTING AND FILTERING VIEWS
+# ==============================================================================
+
+@login_required
+def listar_instrumentos_view(request):
+    """List all instruments with filtering and pagination."""
+    from datetime import date, timedelta
+    
+    # Base query
+    instrumentos = Instrumento.objects.all().select_related('setor', 'categoria').prefetch_related('faixas', 'historicos')
+    
+    # Get filters from request
+    search_query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', '')
+    categoria_filter = request.GET.get('categoria', '')
+    setor_filter = request.GET.get('setor', '')
+    ativo_filter = request.GET.get('ativo', '')
+    
+    # Apply search filter
+    if search_query:
+        instrumentos = instrumentos.filter(
+            Q(tag__icontains=search_query) |
+            Q(descricao__icontains=search_query) |
+            Q(codigo__icontains=search_query)
+        )
+    
+    # Apply status filter
+    today = date.today()
+    if status_filter == 'vencidos':
+        instrumentos = instrumentos.filter(
+            data_proxima_calibracao__lt=today,
+            ativo=True
+        )
+    elif status_filter == 'avencer':
+        thirty_days = today + timedelta(days=30)
+        instrumentos = instrumentos.filter(
+            data_proxima_calibracao__gte=today,
+            data_proxima_calibracao__lte=thirty_days,
+            ativo=True
+        )
+    elif status_filter == 'vigentes':
+        instrumentos = instrumentos.filter(
+            data_proxima_calibracao__gte=today,
+            ativo=True
+        )
+    
+    # Apply categoria filter
+    if categoria_filter:
+        instrumentos = instrumentos.filter(categoria__id=categoria_filter)
+    
+    # Apply setor filter
+    if setor_filter:
+        instrumentos = instrumentos.filter(setor__id=setor_filter)
+    
+    # Apply ativo filter
+    if ativo_filter == 'ativos':
+        instrumentos = instrumentos.filter(ativo=True)
+    elif ativo_filter == 'inativos':
+        instrumentos = instrumentos.filter(ativo=False)
+    
+    # Order by tag
+    instrumentos = instrumentos.order_by('tag')
+    
+    # Pagination
+    paginator = Paginator(instrumentos, 20)  # 20 per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Get filter options for dropdowns
+    categorias = CategoriaInstrumento.objects.all().order_by('nome')
+    setores = Setor.objects.all().order_by('nome')
+    
+    context = {
+        'page_obj': page_obj,
+        'instrumentos': page_obj.object_list,
+        'categorias': categorias,
+        'setores': setores,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'categoria_filter': categoria_filter,
+        'setor_filter': setor_filter,
+        'ativo_filter': ativo_filter,
+        'total_instrumentos': paginator.count,
+    }
+    return render(request, 'metrologia/instrumentos_lista.html', context)
+
+
+@login_required
+def estatisticas_calibracao_view(request):
+    """View calibration statistics and analytics."""
+    from django.db.models import Count, Avg, Max, Min
+    from datetime import date, timedelta
+    
+    today = date.today()
+    
+    # Overall statistics
+    total_instrumentos = Instrumento.objects.count()
+    total_vencidos = Instrumento.objects.filter(
+        data_proxima_calibracao__lt=today,
+        ativo=True
+    ).count()
+    
+    vencer_30_dias = Instrumento.objects.filter(
+        data_proxima_calibracao__gte=today,
+        data_proxima_calibracao__lte=today + timedelta(days=30),
+        ativo=True
+    ).count()
+    
+    total_vigentes = Instrumento.objects.filter(
+        data_proxima_calibracao__gte=today,
+        ativo=True
+    ).count()
+    
+    # Calibration history statistics
+    total_historicos = HistoricoCalibracao.objects.count()
+    aprovados = HistoricoCalibracao.objects.filter(
+        resultado='APROVADO_SEM_CORRECAO'
+    ).count()
+    com_correcao = HistoricoCalibracao.objects.filter(
+        resultado='APROVADO_COM_CORRECAO'
+    ).count()
+    reprovados = HistoricoCalibracao.objects.filter(
+        resultado='REPROVADO'
+    ).count()
+    
+    # Per category statistics
+    por_categoria = CategoriaInstrumento.objects.annotate(
+        total=Count('instrumento__id'),
+        vencidos=Count('instrumento', filter=Q(instrumento__data_proxima_calibracao__lt=today, instrumento__ativo=True))
+    ).filter(total__gt=0)
+    
+    # Per sector statistics
+    por_setor = Setor.objects.annotate(
+        total=Count('instrumento__id'),
+        vencidos=Count('instrumento', filter=Q(instrumento__data_proxima_calibracao__lt=today, instrumento__ativo=True))
+    ).filter(total__gt=0)
+    
+    context = {
+        'total_instrumentos': total_instrumentos,
+        'total_vencidos': total_vencidos,
+        'vencer_30_dias': vencer_30_dias,
+        'total_vigentes': total_vigentes,
+        'total_historicos': total_historicos,
+        'aprovados': aprovados,
+        'com_correcao': com_correcao,
+        'reprovados': reprovados,
+        'por_categoria': por_categoria,
+        'por_setor': por_setor,
+        'percentage_vencidos': round((total_vencidos / total_instrumentos * 100) if total_instrumentos > 0 else 0, 1),
+        'percentage_aprovados': round((aprovados / total_historicos * 100) if total_historicos > 0 else 0, 1),
+    }
+    return render(request, 'metrologia/estatisticas_calibracao.html', context)
+
 

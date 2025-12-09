@@ -1,6 +1,5 @@
 from django import forms
-from metrologia.models import Instrumento, FaixaMedicao, ResultadoFaixaCalibracao
-from qms.models import HistoricoCalibracao
+from metrologia.models import Instrumento, FaixaMedicao, ResultadoFaixaCalibracao, HistoricoCalibracao
 
 
 class InstrumentoForm(forms.ModelForm):

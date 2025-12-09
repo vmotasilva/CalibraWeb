@@ -5,7 +5,7 @@
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>{{ title }}</h2>
-        <a href="{% if instrumento %}{% url 'detalhe_instrumento' instrumento.id %}{% else %}{% url 'modulo_metrologia' %}{% endif %}" class="btn btn-outline-secondary">
+        <a href="{% if instrumento %}{% url 'visualizar_instrumento' instrumento.id %}{% else %}{% url 'modulo_metrologia' %}{% endif %}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Voltar
         </a>
     </div>
@@ -148,7 +148,7 @@
                     <a href="{% url 'registrar_historico_calibracao' instrumento.id %}" class="btn btn-outline-success w-100 mb-2">
                         <i class="bi bi-calendar-check"></i> Novo Histórico
                     </a>
-                    <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-outline-secondary w-100">
+                    <a href="{% url 'visualizar_instrumento' instrumento.id %}" class="btn btn-outline-secondary w-100">
                         <i class="bi bi-eye"></i> Ver Detalhes
                     </a>
                 </div>

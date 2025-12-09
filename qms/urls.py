@@ -4,7 +4,9 @@ from . import views
 urlpatterns = [
     # Application module routes
     path("metrologia/", views.modulo_metrologia_view, name="modulo_metrologia"),
-    path("instrumento/<int:instrumento_id>/", views.detalhe_instrumento_view, name="detalhe_instrumento"),
+    path("metrologia/instrumentos/", views.listar_instrumentos_view, name="listar_instrumentos"),
+    path("metrologia/estatisticas/", views.estatisticas_calibracao_view, name="estatisticas_calibracao"),
+    path("instrumento/<int:instrumento_id>/", views.detalhe_instrumento_view, name="visualizar_instrumento"),
     path("instrumento/<int:instrumento_id>/editar/", views.novo_instrumento_view, name="editar_instrumento"),
     path("instrumento/<int:instrumento_id>/faixas/", views.gerenciar_faixas_instrumento_view, name="gerenciar_faixas_instrumento"),
     path("faixa/<int:faixa_id>/editar/", views.editar_faixa_view, name="editar_faixa"),
