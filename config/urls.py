@@ -7,6 +7,7 @@ from django.shortcuts import render, redirect
 from django.urls import path, include
 from django.http import JsonResponse
 from procurements.views import nova_solicitacao
+from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view
 
 # Health check view for Railway
 def health_check(request):
@@ -77,7 +78,10 @@ urlpatterns = [
     path("api/", include("qms.urls")),
     
     # 6. RH app URLs
-    path("rh/", include("rh.urls")),
+    path("rh/", modulo_rh_view, name="modulo_rh"),
+    path("rh/colaborador/<int:colab_id>/", detalhe_colaborador_view, name="detalhe_colaborador"),
+    path("rh/colaborador/<int:colab_id>/editar/", editar_colaborador_view, name="editar_colaborador"),
+    path("rh/ocorrencia/", registrar_ocorrencia_view, name="registrar_ocorrencia"),
     
     # 7. Training app URLs
     path("training/", include("training.urls")),
