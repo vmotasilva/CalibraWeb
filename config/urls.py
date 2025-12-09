@@ -31,6 +31,9 @@ urlpatterns = [
         name="login",
     ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    
+    # 5. Application modules URLs
+    path("", include("qms.urls")),
 ]
 
 # Configuração para servir arquivos de mídia/estáticos em modo Debug
