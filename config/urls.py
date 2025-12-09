@@ -5,12 +5,23 @@ from qms.admin import admin_site
 from django.contrib.auth import views as auth_views
 from django.urls import path, include
 from django.http import JsonResponse
+from django.views.generic import TemplateView
 from qms import views as qms_views
 
 # Health check view for Railway
 def health_check(request):
     """Simple health check endpoint for Railway infrastructure"""
     return JsonResponse({"status": "ok"}, status=200)
+
+
+# Root view - redirect to dashboard if authenticated, otherwise to login
+def root_view(request):
+    """Root view that redirects to dashboard if authenticated, else to login"""
+    if request.user.is_authenticated:
+        return qms_views.dashboard_view(request)
+    else:
+        from django.shortcuts import redirect
+        return redirect('login')
 
 # Minimal URL configuration
 urlpatterns = [
@@ -19,7 +30,7 @@ urlpatterns = [
     path("health", health_check, name="health"),
     
     # 2. Dashboard principal
-    path("", qms_views.dashboard_view, name="dashboard"),
+    path("", root_view, name="dashboard"),
     
     # 3. Admin
     path("admin/", admin_site.urls),
