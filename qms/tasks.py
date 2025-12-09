@@ -912,3 +912,236 @@ def import_ferias_task(job_id, filepath):
         job.result = f'Error importing ferias: {str(exc)}'
         job.save()
         return {'job_id': str(job_id), 'status': 'FAILURE', 'error': str(exc)}
+
+
+# ==============================================================================
+# SCHEDULED REPORTS TASKS - FASE 5
+# ==============================================================================
+
+@shared_task
+def gerar_relatorio_diario_vencidos():
+    """
+    Gera relatório diário de instrumentos vencidos.
+    Pode ser agendado via Celery Beat.
+    """
+    from datetime import date
+    from django.core.mail import EmailMessage
+    from metrologia.models import Instrumento
+    from metrologia.exportadores import ExportadorInstrumentos
+    from io import BytesIO
+    
+    try:
+        # Obter instrumentos vencidos
+        today = date.today()
+        vencidos = Instrumento.objects.filter(
+            data_proxima_calibracao__lt=today,
+            ativo=True
+        ).select_related('setor', 'categoria').order_by('data_proxima_calibracao')
+        
+        if vencidos.count() == 0:
+            return {
+                'status': 'SUCCESS',
+                'message': 'Nenhum instrumento vencido encontrado'
+            }
+        
+        # Gerar Excel
+        exportador = ExportadorInstrumentos(vencidos)
+        response = exportador.exportar_excel()
+        
+        # Preparar email
+        email = EmailMessage(
+            subject=f'[CalibraWeb] Relatório de Instrumentos Vencidos - {today.strftime("%d/%m/%Y")}',
+            body=f'Relatório diário com {vencidos.count()} instrumentos com calibração vencida.\n\nAnexo: vencidos.xlsx',
+            from_email='calibra@empresa.com',
+            to=['gestor@empresa.com'],  # Configurar emails reais
+        )
+        
+        # Adicionar attachment
+        email.attach('vencidos.xlsx', response.content, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        
+        # Enviar
+        email.send()
+        
+        return {
+            'status': 'SUCCESS',
+            'message': f'Relatório enviado com {vencidos.count()} instrumentos vencidos',
+            'count': vencidos.count()
+        }
+    
+    except Exception as e:
+        return {
+            'status': 'FAILURE',
+            'message': str(e),
+            'error': type(e).__name__
+        }
+
+
+@shared_task
+def gerar_relatorio_semanal_estatisticas():
+    """
+    Gera relatório semanal com estatísticas completas.
+    Pode ser agendado via Celery Beat (toda segunda-feira).
+    """
+    from datetime import date, timedelta
+    from django.core.mail import EmailMessage
+    from django.db.models import Q, Count
+    from metrologia.models import Instrumento, CategoriaInstrumento, HistoricoCalibracao
+    from organization.models import Setor
+    from metrologia.exportadores import ExportadorEstatisticas
+    
+    try:
+        today = date.today()
+        
+        # Calcular estatísticas
+        total_instrumentos = Instrumento.objects.count()
+        total_vencidos = Instrumento.objects.filter(
+            data_proxima_calibracao__lt=today,
+            ativo=True
+        ).count()
+        
+        vencer_30_dias = Instrumento.objects.filter(
+            data_proxima_calibracao__gte=today,
+            data_proxima_calibracao__lte=today + timedelta(days=30),
+            ativo=True
+        ).count()
+        
+        total_vigentes = Instrumento.objects.filter(
+            data_proxima_calibracao__gte=today,
+            ativo=True
+        ).count()
+        
+        total_historicos = HistoricoCalibracao.objects.count()
+        aprovados = HistoricoCalibracao.objects.filter(
+            resultado='APROVADO_SEM_CORRECAO'
+        ).count()
+        
+        # Preparar dados
+        data = {
+            'total_instrumentos': total_instrumentos,
+            'total_vencidos': total_vencidos,
+            'vencer_30_dias': vencer_30_dias,
+            'total_vigentes': total_vigentes,
+            'total_historicos': total_historicos,
+            'aprovados': aprovados,
+            'com_correcao': HistoricoCalibracao.objects.filter(resultado='APROVADO_COM_CORRECAO').count(),
+            'reprovados': HistoricoCalibracao.objects.filter(resultado='REPROVADO').count(),
+            'por_categoria': CategoriaInstrumento.objects.annotate(
+                total=Count('instrumento__id'),
+                vencidos=Count('instrumento', filter=Q(instrumento__data_proxima_calibracao__lt=today, instrumento__ativo=True))
+            ).filter(total__gt=0),
+            'por_setor': Setor.objects.annotate(
+                total=Count('instrumento__id'),
+                vencidos=Count('instrumento', filter=Q(instrumento__data_proxima_calibracao__lt=today, instrumento__ativo=True))
+            ).filter(total__gt=0),
+            'percentage_vencidos': round((total_vencidos / total_instrumentos * 100) if total_instrumentos > 0 else 0, 1),
+            'percentage_aprovados': round((aprovados / total_historicos * 100) if total_historicos > 0 else 0, 1),
+        }
+        
+        # Gerar Excel
+        exportador = ExportadorEstatisticas(data)
+        response = exportador.exportar_excel()
+        
+        # Preparar email
+        email = EmailMessage(
+            subject=f'[CalibraWeb] Relatório Semanal de Estatísticas - Semana de {today.strftime("%d/%m/%Y")}',
+            body=f'''
+Relatório Semanal de Calibração
+
+Resumo:
+- Total de Instrumentos: {total_instrumentos}
+- Vencidos: {total_vencidos} ({data['percentage_vencidos']}%)
+- A Vencer (30 dias): {vencer_30_dias}
+- Vigentes: {total_vigentes}
+
+- Total de Calibrações: {total_historicos}
+- Aprovadas: {aprovados} ({data['percentage_aprovados']}%)
+
+Arquivo em anexo: estatisticas.xlsx
+            ''',
+            from_email='calibra@empresa.com',
+            to=['gestor@empresa.com'],  # Configurar emails reais
+        )
+        
+        # Adicionar attachment
+        email.attach('estatisticas.xlsx', response.content, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        
+        # Enviar
+        email.send()
+        
+        return {
+            'status': 'SUCCESS',
+            'message': 'Relatório semanal enviado',
+            'total_instrumentos': total_instrumentos,
+            'total_vencidos': total_vencidos,
+        }
+    
+    except Exception as e:
+        return {
+            'status': 'FAILURE',
+            'message': str(e),
+            'error': type(e).__name__
+        }
+
+
+@shared_task
+def gerar_relatorio_alerta_critico():
+    """
+    Gera alerta imediato se houver instrumentos com data vencida.
+    Pode ser executado a cada 4 horas via Celery Beat.
+    """
+    from datetime import date
+    from django.core.mail import EmailMessage
+    from metrologia.models import Instrumento
+    
+    try:
+        today = date.today()
+        
+        # Verificar instrumentos vencidos HOJE (criação de alerta crítico)
+        vencidos_hoje = Instrumento.objects.filter(
+            data_proxima_calibracao=today,
+            ativo=True
+        ).count()
+        
+        vencidos_total = Instrumento.objects.filter(
+            data_proxima_calibracao__lt=today,
+            ativo=True
+        ).count()
+        
+        if vencidos_total == 0:
+            return {'status': 'NO_ALERTS', 'message': 'Nenhum instrumento vencido'}
+        
+        # Enviar alerta se houver vencidos
+        email = EmailMessage(
+            subject='[ALERTA CRÍTICO] Instrumentos com Calibração Vencida - Ação Imediata Necessária!',
+            body=f'''
+ATENÇÃO: EXISTEM INSTRUMENTOS COM CALIBRAÇÃO VENCIDA
+
+⚠️ Total de Instrumentos Vencidos: {vencidos_total}
+
+Este é um alerta automático do sistema CalibraWeb.
+Acesse o sistema imediatamente para consultar detalhes e tomar ações corretivas.
+
+URL: https://seu-dominio.com/api/metrologia/vencidos/
+
+---
+Alerta gerado automaticamente pelo CalibraWeb em {today.strftime("%d/%m/%Y %H:%M")}
+            ''',
+            from_email='calibra@empresa.com',
+            to=['gestor@empresa.com', 'supervisor@empresa.com'],  # Configurar emails reais
+        )
+        
+        email.send()
+        
+        return {
+            'status': 'ALERT_SENT',
+            'message': f'Alerta enviado: {vencidos_total} instrumentos vencidos',
+            'vencidos_count': vencidos_total
+        }
+    
+    except Exception as e:
+        return {
+            'status': 'FAILURE',
+            'message': str(e),
+            'error': type(e).__name__
+        }
+
