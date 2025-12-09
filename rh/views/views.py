@@ -13,8 +13,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Imports dos models
-from rh.models import Colaborador, HierarquiaSetor
-from organization.models import Setor, CentroCusto
+from rh.models import Colaborador
+from organization.models import Setor, CentroCusto, HierarquiaSetor
 
 # Imports dos forms
 from rh.forms import ColaboradorForm, OcorrenciaForm

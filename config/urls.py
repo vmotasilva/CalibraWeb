@@ -50,7 +50,8 @@ urlpatterns = [
     path("health", health_check, name="health"),
     
     # 2. Dashboard principal
-    path("", root_view, name="dashboard"),
+    path("", root_view, name="home"),  # 'home' is used in templates
+    path("dashboard/", root_view, name="dashboard"),  # alternative name
     
     # 3. Admin
     path("admin/", admin_site.urls),
@@ -65,6 +66,18 @@ urlpatterns = [
     
     # 5. Application modules URLs - include all qms URLs with prefix to avoid conflicts
     path("api/", include("qms.urls")),
+    
+    # 6. RH app URLs
+    path("rh/", include("rh.urls")),
+    
+    # 7. Training app URLs
+    path("training/", include("training.urls")),
+    
+    # 8. Procurements app URLs
+    path("procurements/", include("procurements.urls")),
+    
+    # 9. Documents app URLs
+    path("documents/", include("documents.urls")),
 ]
 
 # Configuração para servir arquivos de mídia/estáticos em modo Debug

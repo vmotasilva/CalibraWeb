@@ -1,9 +1,9 @@
 from django.urls import path
-from . import views
+from .views import nova_solicitacao
 
 app_name = 'procurements'
 
 urlpatterns = [
     # Procurements URLs
-    # Mais URLs serão adicionadas na Fase 3
+    path("", nova_solicitacao, name="nova_solicitacao"),
 ]

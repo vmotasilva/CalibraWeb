@@ -47,15 +47,15 @@ class OcorrenciaForm(forms.ModelForm):
     
     class Meta:
         model = Ocorrencia
-        fields = ['colaborador', 'data_ocorrencia', 'tipo', 'titulo', 'descricao', 'arquivo_evidencia']
+        fields = ['colaborador', 'tipo', 'descricao', 'motivo']
         widgets = {
             'descricao': forms.Textarea(attrs={
                 'rows': 4,
                 'class': 'form-control'
             }),
-            'titulo': forms.TextInput(attrs={
+            'motivo': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Título da ocorrência'
+                'placeholder': 'Motivo da ocorrência'
             }),
             'tipo': forms.Select(attrs={'class': 'form-select'}),
             'colaborador': forms.Select(attrs={'class': 'form-select'}),
