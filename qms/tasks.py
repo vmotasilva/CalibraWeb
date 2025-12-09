@@ -474,54 +474,63 @@ def import_historico_task(job_id, filepath):
                 from metrologia.models import FaixaMedicao, ResultadoFaixaCalibracao
                 faixas_instrumento = FaixaMedicao.objects.filter(instrumento=inst)
                 
-                if faixas_instrumento.exists():
-                    # Criar resultado para cada faixa existente
-                    def safe_float(val):
-                        try:
-                            return float(str(val).replace(",", "."))
-                        except Exception:
-                            return None
-                    
-                    erro_val = safe_float(erro_faixa) if erro_faixa else None
-                    inc_val = safe_float(inc_faixa) if inc_faixa else None
-                    
-                    for faixa in faixas_instrumento:
-                        resultado_obj, _ = ResultadoFaixaCalibracao.objects.update_or_create(
+                try:
+                    if faixas_instrumento.exists():
+                        # Criar resultado para cada faixa existente
+                        def safe_float(val):
+                            try:
+                                return float(str(val).replace(",", "."))
+                            except Exception:
+                                return None
+                        
+                        erro_val = safe_float(erro_faixa) if erro_faixa else None
+                        inc_val = safe_float(inc_faixa) if inc_faixa else None
+                        
+                        logger.info(f"TAG {tag}: Criando resultados para {faixas_instrumento.count()} faixas. Erro: {erro_val}, Incerteza: {inc_val}")
+                        
+                        for faixa in faixas_instrumento:
+                            resultado_obj, created = ResultadoFaixaCalibracao.objects.update_or_create(
+                                historico=obj,
+                                faixa=faixa,
+                                defaults={
+                                    "valor_minimo": faixa.valor_minimo,
+                                    "valor_maximo": faixa.valor_maximo,
+                                    "erro_max": erro_val,
+                                    "erro_min": erro_val if erro_val else None,
+                                    "incerteza": inc_val,
+                                },
+                            )
+                            logger.info(f"  Faixa {faixa.valor_minimo}-{faixa.valor_maximo}: {'CREATED' if created else 'UPDATED'} resultado {resultado_obj.id}")
+                            # Força recálculo do resultado
+                            resultado_obj.save()
+                    elif faixa_obj:
+                        # Criar resultado para a faixa da planilha
+                        def safe_float(val):
+                            try:
+                                return float(str(val).replace(",", "."))
+                            except Exception:
+                                return None
+                        
+                        erro_val = safe_float(erro_faixa) if erro_faixa else None
+                        inc_val = safe_float(inc_faixa) if inc_faixa else None
+                        
+                        logger.info(f"TAG {tag}: Criando resultado para faixa da planilha {faixa_obj.valor_minimo}-{faixa_obj.valor_maximo}")
+                        
+                        resultado_obj, created = ResultadoFaixaCalibracao.objects.update_or_create(
                             historico=obj,
-                            faixa=faixa,
+                            faixa=faixa_obj,
                             defaults={
-                                "valor_minimo": faixa.valor_minimo,
-                                "valor_maximo": faixa.valor_maximo,
+                                "valor_minimo": faixa_obj.valor_minimo,
+                                "valor_maximo": faixa_obj.valor_maximo,
                                 "erro_max": erro_val,
                                 "erro_min": erro_val if erro_val else None,
                                 "incerteza": inc_val,
                             },
                         )
-                        # Força recálculo do resultado
+                        logger.info(f"  Resultado criado: {resultado_obj.id}")
                         resultado_obj.save()
-                elif faixa_obj:
-                    # Criar resultado para a faixa da planilha
-                    def safe_float(val):
-                        try:
-                            return float(str(val).replace(",", "."))
-                        except Exception:
-                            return None
-                    
-                    erro_val = safe_float(erro_faixa) if erro_faixa else None
-                    inc_val = safe_float(inc_faixa) if inc_faixa else None
-                    
-                    resultado_obj, _ = ResultadoFaixaCalibracao.objects.update_or_create(
-                        historico=obj,
-                        faixa=faixa_obj,
-                        defaults={
-                            "valor_minimo": faixa_obj.valor_minimo,
-                            "valor_maximo": faixa_obj.valor_maximo,
-                            "erro_max": erro_val,
-                            "erro_min": erro_val if erro_val else None,
-                            "incerteza": inc_val,
-                        },
-                    )
-                    resultado_obj.save()
+                except Exception as faixa_error:
+                    logger.error(f"Erro ao criar resultados de faixa para TAG {tag}: {str(faixa_error)}", exc_info=True)
 
                 # Ensure Instrumento fields reflect latest calibration
                 try:
