@@ -1182,3 +1182,193 @@ def estatisticas_calibracao_view(request):
     return render(request, 'metrologia/estatisticas_calibracao.html', context)
 
 
+# ==============================================================================
+# EXPORT VIEWS - FASE 5
+# ==============================================================================
+
+@login_required
+def exportar_instrumentos_view(request):
+    """Export instruments list based on applied filters."""
+    from metrologia.exportadores import ExportadorInstrumentos
+    
+    # Get filters from request
+    search_query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', '')
+    categoria_filter = request.GET.get('categoria', '')
+    setor_filter = request.GET.get('setor', '')
+    ativo_filter = request.GET.get('ativo', '')
+    formato = request.GET.get('formato', 'excel')  # excel, csv, pdf
+    
+    # Build queryset with filters (same as listar_instrumentos_view)
+    instrumentos = Instrumento.objects.all().select_related('setor', 'categoria')
+    
+    if search_query:
+        instrumentos = instrumentos.filter(
+            Q(tag__icontains=search_query) |
+            Q(descricao__icontains=search_query) |
+            Q(codigo__icontains=search_query)
+        )
+    
+    today = date.today()
+    if status_filter == 'vencidos':
+        instrumentos = instrumentos.filter(
+            data_proxima_calibracao__lt=today,
+            ativo=True
+        )
+    elif status_filter == 'avencer':
+        thirty_days = today + timedelta(days=30)
+        instrumentos = instrumentos.filter(
+            data_proxima_calibracao__gte=today,
+            data_proxima_calibracao__lte=thirty_days,
+            ativo=True
+        )
+    elif status_filter == 'vigentes':
+        instrumentos = instrumentos.filter(
+            data_proxima_calibracao__gte=today,
+            ativo=True
+        )
+    
+    if categoria_filter:
+        instrumentos = instrumentos.filter(categoria__id=categoria_filter)
+    
+    if setor_filter:
+        instrumentos = instrumentos.filter(setor__id=setor_filter)
+    
+    if ativo_filter == 'ativos':
+        instrumentos = instrumentos.filter(ativo=True)
+    elif ativo_filter == 'inativos':
+        instrumentos = instrumentos.filter(ativo=False)
+    
+    # Order by tag
+    instrumentos = instrumentos.order_by('tag')
+    
+    # Get exporter
+    filtros = {
+        'search': search_query,
+        'status': status_filter,
+        'categoria': categoria_filter,
+        'setor': setor_filter,
+        'ativo': ativo_filter,
+    }
+    exportador = ExportadorInstrumentos(instrumentos, filtros_aplicados=filtros)
+    
+    # Export in requested format
+    try:
+        if formato == 'excel':
+            return exportador.exportar_excel()
+        elif formato == 'csv':
+            return exportador.exportar_csv()
+        elif formato == 'pdf':
+            return exportador.exportar_pdf()
+        else:
+            return exportador.exportar_excel()  # Default
+    except ImportError as e:
+        messages.error(request, f'Erro: {str(e)}')
+        return redirect('listar_instrumentos')
+
+
+@login_required
+def exportar_estatisticas_view(request):
+    """Export statistics report."""
+    from metrologia.exportadores import ExportadorEstatisticas
+    
+    formato = request.GET.get('formato', 'excel')  # excel, pdf
+    
+    # Get statistics data (same as estatisticas_calibracao_view)
+    today = date.today()
+    
+    total_instrumentos = Instrumento.objects.count()
+    total_vencidos = Instrumento.objects.filter(
+        data_proxima_calibracao__lt=today,
+        ativo=True
+    ).count()
+    
+    vencer_30_dias = Instrumento.objects.filter(
+        data_proxima_calibracao__gte=today,
+        data_proxima_calibracao__lte=today + timedelta(days=30),
+        ativo=True
+    ).count()
+    
+    total_vigentes = Instrumento.objects.filter(
+        data_proxima_calibracao__gte=today,
+        ativo=True
+    ).count()
+    
+    total_historicos = HistoricoCalibracao.objects.count()
+    aprovados = HistoricoCalibracao.objects.filter(
+        resultado='APROVADO_SEM_CORRECAO'
+    ).count()
+    com_correcao = HistoricoCalibracao.objects.filter(
+        resultado='APROVADO_COM_CORRECAO'
+    ).count()
+    reprovados = HistoricoCalibracao.objects.filter(
+        resultado='REPROVADO'
+    ).count()
+    
+    por_categoria = CategoriaInstrumento.objects.annotate(
+        total=Count('instrumento__id'),
+        vencidos=Count('instrumento', filter=Q(instrumento__data_proxima_calibracao__lt=today, instrumento__ativo=True))
+    ).filter(total__gt=0)
+    
+    por_setor = Setor.objects.annotate(
+        total=Count('instrumento__id'),
+        vencidos=Count('instrumento', filter=Q(instrumento__data_proxima_calibracao__lt=today, instrumento__ativo=True))
+    ).filter(total__gt=0)
+    
+    data = {
+        'total_instrumentos': total_instrumentos,
+        'total_vencidos': total_vencidos,
+        'vencer_30_dias': vencer_30_dias,
+        'total_vigentes': total_vigentes,
+        'total_historicos': total_historicos,
+        'aprovados': aprovados,
+        'com_correcao': com_correcao,
+        'reprovados': reprovados,
+        'por_categoria': por_categoria,
+        'por_setor': por_setor,
+        'percentage_vencidos': round((total_vencidos / total_instrumentos * 100) if total_instrumentos > 0 else 0, 1),
+        'percentage_aprovados': round((aprovados / total_historicos * 100) if total_historicos > 0 else 0, 1),
+    }
+    
+    exportador = ExportadorEstatisticas(data)
+    
+    try:
+        if formato == 'excel':
+            return exportador.exportar_excel()
+        elif formato == 'pdf':
+            return exportador.exportar_pdf()
+        else:
+            return exportador.exportar_excel()  # Default
+    except ImportError as e:
+        messages.error(request, f'Erro: {str(e)}')
+        return redirect('estatisticas_calibracao')
+
+
+@login_required
+def relatorio_vencidos_view(request):
+    """Gera relatório de instrumentos vencidos."""
+    formato = request.GET.get('formato', 'excel')  # excel, pdf
+    
+    today = date.today()
+    
+    # Pegar apenas instrumentos vencidos
+    instrumentos_vencidos = Instrumento.objects.filter(
+        data_proxima_calibracao__lt=today,
+        ativo=True
+    ).select_related('setor', 'categoria').order_by('data_proxima_calibracao')
+    
+    if formato == 'excel':
+        from metrologia.exportadores import ExportadorInstrumentos
+        exportador = ExportadorInstrumentos(instrumentos_vencidos)
+        return exportador.exportar_excel()
+    elif formato == 'pdf':
+        from metrologia.exportadores import ExportadorInstrumentos
+        exportador = ExportadorInstrumentos(instrumentos_vencidos)
+        return exportador.exportar_pdf()
+    else:
+        from metrologia.exportadores import ExportadorInstrumentos
+        exportador = ExportadorInstrumentos(instrumentos_vencidos)
+        return exportador.exportar_excel()
+
+
+

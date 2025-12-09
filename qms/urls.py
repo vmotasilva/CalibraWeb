@@ -5,7 +5,10 @@ urlpatterns = [
     # Application module routes
     path("metrologia/", views.modulo_metrologia_view, name="modulo_metrologia"),
     path("metrologia/instrumentos/", views.listar_instrumentos_view, name="listar_instrumentos"),
+    path("metrologia/instrumentos/exportar/", views.exportar_instrumentos_view, name="exportar_instrumentos"),
     path("metrologia/estatisticas/", views.estatisticas_calibracao_view, name="estatisticas_calibracao"),
+    path("metrologia/estatisticas/exportar/", views.exportar_estatisticas_view, name="exportar_estatisticas"),
+    path("metrologia/vencidos/", views.relatorio_vencidos_view, name="relatorio_vencidos"),
     path("instrumento/<int:instrumento_id>/", views.detalhe_instrumento_view, name="visualizar_instrumento"),
     path("instrumento/<int:instrumento_id>/editar/", views.novo_instrumento_view, name="editar_instrumento"),
     path("instrumento/<int:instrumento_id>/faixas/", views.gerenciar_faixas_instrumento_view, name="gerenciar_faixas_instrumento"),

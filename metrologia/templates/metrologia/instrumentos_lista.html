@@ -7,14 +7,36 @@
 <div class="container-fluid mt-4">
     <!-- Header -->
     <div class="row mb-4">
-        <div class="col-md-8">
+        <div class="col-md-6">
             <h2><i class="bi bi-tools"></i> Instrumentos de Medição</h2>
             <p class="text-muted">Total: <strong>{{ total_instrumentos }}</strong> instrumentos</p>
         </div>
-        <div class="col-md-4 text-end">
-            <a href="{% url 'novo_instrumento' %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Novo Instrumento
-            </a>
+        <div class="col-md-6 text-end">
+            <div class="btn-group" role="group">
+                <a href="{% url 'novo_instrumento' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Novo
+                </a>
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-download"></i> Exportar
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="{% url 'exportar_instrumentos' %}?formato=excel{% for k, v in request.GET.items %}{% if k != 'formato' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">
+                            <i class="bi bi-file-earmark-excel"></i> Excel
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'exportar_instrumentos' %}?formato=csv{% for k, v in request.GET.items %}{% if k != 'formato' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">
+                            <i class="bi bi-file-earmark-csv"></i> CSV
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{% url 'exportar_instrumentos' %}?formato=pdf{% for k, v in request.GET.items %}{% if k != 'formato' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">
+                            <i class="bi bi-file-earmark-pdf"></i> PDF
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 
