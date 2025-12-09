@@ -166,9 +166,13 @@ def detalhe_instrumento_view(request, instrumento_id):
         messages.error(request, f"Erro ao buscar instrumento: {str(e)}")
         return redirect('modulo_metrologia')
 
-    # Get related data with error handling
+    # Get related data with prefetch_related for optimization
     try:
-        historicos = list(instrumento.historicos.all().order_by("-data_calibracao"))
+        from django.db.models import Prefetch
+        historicos = instrumento.historicos.all().prefetch_related(
+            Prefetch('resultados_faixa__faixa')
+        ).order_by("-data_calibracao")
+        historicos = list(historicos)
     except Exception as e:
         historicos = []
         print(f"Erro ao buscar históricos: {e}")
