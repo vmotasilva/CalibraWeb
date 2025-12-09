@@ -237,7 +237,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Configurações de Login e Redirecionamento
 LOGIN_URL = "login"  # Avisa que sua URL se chama apenas 'login' e não 'accounts/login'
-LOGIN_REDIRECT_URL = "/admin/"  # Redireciona para admin após login bem-sucedido
+LOGIN_REDIRECT_URL = "/"  # Redireciona para dashboard após login bem-sucedido
 LOGOUT_REDIRECT_URL = "login"  # Para onde vai depois de sair
 
 # --- Production security settings ---

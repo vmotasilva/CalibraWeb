@@ -56,7 +56,6 @@ urlpatterns = [
 		views.aplicar_carimbo_certificado_view,
 		name="aplicar_carimbo_certificado",
 	),
-	path("", views.dashboard_view, name="dashboard"),
 	path("metrologia/", views.modulo_metrologia_view, name="modulo_metrologia"),
 	path("instrumento/<int:instrumento_id>/", views.detalhe_instrumento_view, name="detalhe_instrumento"),
 	path("instrumento/<int:instrumento_id>/editar/", views.novo_instrumento_view, name="editar_instrumento"),

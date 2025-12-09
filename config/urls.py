@@ -4,8 +4,8 @@ from django.contrib import admin
 from qms.admin import admin_site
 from django.contrib.auth import views as auth_views
 from django.urls import path, include
-from django.views.generic.base import RedirectView
 from django.http import JsonResponse
+from qms.views import dashboard_view
 
 # Health check view for Railway
 def health_check(request):
@@ -18,8 +18,8 @@ urlpatterns = [
     path("healthz", health_check, name="health_check"),
     path("health", health_check, name="health"),
     
-    # 2. Redireciona a raiz do site direto para o login
-    path("", RedirectView.as_view(url="/login/")),
+    # 2. Dashboard principal
+    path("", dashboard_view, name="dashboard"),
     
     # 3. Admin
     path("admin/", admin_site.urls),
