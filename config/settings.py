@@ -255,6 +255,51 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = False
     X_FRAME_OPTIONS = "DENY"
 
+# ==============================================================================
+# EMAIL CONFIGURATION - Fase 5: Export and Scheduled Reports
+# ==============================================================================
+# Configure email backend for sending reports and alerts
+# Default: console backend for development (logs emails instead of sending)
+# Options: smtp.EmailBackend (Gmail), sendgrid, AWS SES, etc
+
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND", 
+    "django.core.mail.backends.console.EmailBackend"  # Development default
+)
+
+# Gmail SMTP Configuration (if using EMAIL_BACKEND with smtp)
+# Requires: Gmail account with App Password (not regular password)
+# How to get App Password: https://myaccount.google.com/apppasswords
+if "smtp" in EMAIL_BACKEND:
+    EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+    
+    if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+        import warnings
+        warnings.warn(
+            "Email credentials not configured. "
+            "Set EMAIL_HOST_USER and EMAIL_HOST_PASSWORD in environment variables. "
+            "Emails will not be sent."
+        )
+
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@calibraweb.com")
+
+# Email recipients for Phase 5 tasks (comma-separated)
+REPORT_EMAIL_TO = [
+    email.strip() 
+    for email in os.getenv("REPORT_EMAIL_TO", "admin@calibraweb.com").split(",")
+    if email.strip()
+]
+
+ALERT_EMAIL_TO = [
+    email.strip() 
+    for email in os.getenv("ALERT_EMAIL_TO", "admin@calibraweb.com").split(",")
+    if email.strip()
+]
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
