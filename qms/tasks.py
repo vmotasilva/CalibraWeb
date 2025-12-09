@@ -20,7 +20,9 @@ def import_instruments_task(job_id, filepath):
     import os
     import pandas as pd
     from django.db import transaction
-    from .models import ImportJob, Instrumento, CategoriaInstrumento, Setor, UnidadeMedida, FaixaMedicao
+    from .models import ImportJob
+    from metrologia.models import Instrumento, CategoriaInstrumento, FaixaMedicao
+    from rh.models import Setor, UnidadeMedida
 
     try:
         job = ImportJob.objects.get(id=job_id)
@@ -270,7 +272,8 @@ def import_historico_task(job_id, filepath):
     """
     import pandas as pd
     from django.db import transaction
-    from .models import ImportJob, Instrumento, HistoricoCalibracao
+    from .models import ImportJob
+    from metrologia.models import Instrumento, HistoricoCalibracao
 
     try:
         job = ImportJob.objects.get(id=job_id)
@@ -432,11 +435,11 @@ def import_historico_task(job_id, filepath):
                 faixa_obj = None
                 unidade_obj = None
                 if unidade_txt:
-                    from .models import UnidadeMedida
+                    from rh.models import UnidadeMedida
                     sigla = str(unidade_txt).upper()
                     unidade_obj, _ = UnidadeMedida.objects.get_or_create(sigla=sigla, defaults={"nome": sigla})
                 if faixa_txt and unidade_obj:
-                    from .models import FaixaMedicao
+                    from metrologia.models import FaixaMedicao
                     import re
                     rng = re.findall(r"[-+]?[0-9]*\.?[0-9]+", faixa_txt)
                     faixa_obj = None
@@ -458,7 +461,7 @@ def import_historico_task(job_id, filepath):
                             )
                 # Cria resultado por faixa se faixa encontrada
                 if faixa_obj:
-                    from .models import ResultadoFaixaCalibracao
+                    from metrologia.models import ResultadoFaixaCalibracao
                     def safe_float(val):
                         try:
                             return float(str(val).replace(",", "."))
@@ -524,7 +527,8 @@ def import_colab_task(job_id, filepath):
     import re
     import pandas as pd
     from django.db import transaction
-    from .models import ImportJob, Colaborador, Setor, CentroCusto
+    from .models import ImportJob
+    from rh.models import Colaborador, Setor, CentroCusto
 
     try:
         job = ImportJob.objects.get(id=job_id)
@@ -623,7 +627,7 @@ def import_colab_task(job_id, filepath):
                     count_upd += 1
 
             # vínculo liderança
-            from .models import Colaborador as C
+            from rh.models import Colaborador as C
             for _, row in df.iterrows():
                 def get_val_h(keys):
                     for k in keys:
@@ -677,7 +681,8 @@ def import_hierarquia_task(job_id, filepath):
     """Importa hierarquia Setor/Turno (RH) a partir de planilha."""
     import pandas as pd
     from django.db import transaction
-    from .models import ImportJob, Setor, HierarquiaSetor, Colaborador
+    from .models import ImportJob
+    from rh.models import Setor, HierarquiaSetor, Colaborador
 
     try:
         job = ImportJob.objects.get(id=job_id)
@@ -764,7 +769,8 @@ def import_ferias_task(job_id, filepath):
     """Importa férias (RH) a partir de planilha."""
     import pandas as pd
     from django.db import transaction
-    from .models import ImportJob, Colaborador, Ferias
+    from .models import ImportJob
+    from rh.models import Colaborador, Ferias
 
     try:
         job = ImportJob.objects.get(id=job_id)
