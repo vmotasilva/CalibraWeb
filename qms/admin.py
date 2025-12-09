@@ -9,6 +9,8 @@
 # ==============================================================================
 
 from django.contrib import admin
+from django.contrib.auth.models import User, Group
+from django.contrib.auth.admin import UserAdmin, GroupAdmin
 from django.utils.translation import gettext_lazy as _
 from .models import ImportJob
 
@@ -69,10 +71,15 @@ class CalibraAdminSite(admin.AdminSite):
 admin_site = CalibraAdminSite(name='calibra_admin')
 
 
-@admin.register(ImportJob)
 class ImportJobAdmin(admin.ModelAdmin):
     list_display = ('id', 'filename', 'job_type', 'status', 'created_at')
     list_filter = ('status', 'job_type', 'created_at')
     search_fields = ('filename', 'filepath')
     list_select_related = ['user']  # FK optimization
     readonly_fields = ('id', 'created_at', 'updated_at')
+
+
+# Register all models with custom admin_site
+admin_site.register(ImportJob, ImportJobAdmin)
+admin_site.register(User, UserAdmin)
+admin_site.register(Group, GroupAdmin)
