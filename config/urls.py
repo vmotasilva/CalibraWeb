@@ -6,6 +6,7 @@ from django.contrib.auth import views as auth_views
 from django.shortcuts import render, redirect
 from django.urls import path, include
 from django.http import JsonResponse
+from procurements.views import nova_solicitacao
 
 # Health check view for Railway
 def health_check(request):
@@ -74,6 +75,7 @@ urlpatterns = [
     path("training/", include("training.urls")),
     
     # 8. Procurements app URLs
+    path("procurements/novo/", nova_solicitacao, name="nova_solicitacao"),
     path("procurements/", include("procurements.urls")),
     
     # 9. Documents app URLs
