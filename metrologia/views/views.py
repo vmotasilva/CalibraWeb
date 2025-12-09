@@ -371,7 +371,7 @@ def export_metrologia_view(request):
         try:
             fx = inst.faixas.all().first()
             if fx and fx.unidade:
-                unidade = fx.unidade.sigla
+                unidade = fx.unidade.nome
         except Exception:
             pass
         
@@ -1204,7 +1204,7 @@ def api_faixa_medicao_view(request, faixa_id):
         faixa = get_object_or_404(FaixaMedicao, id=faixa_id)
         data = {
             'id': faixa.id,
-            'unidade': faixa.unidade.sigla if faixa.unidade else None,
+            'unidade': faixa.unidade.nome if faixa.unidade else None,
             'valor_minimo': float(faixa.valor_minimo) if faixa.valor_minimo else None,
             'valor_maximo': float(faixa.valor_maximo) if faixa.valor_maximo else None,
             'tolerancia_mais_menos': float(faixa.tolerancia_mais_menos) if faixa.tolerancia_mais_menos else None,
