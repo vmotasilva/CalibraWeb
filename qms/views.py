@@ -792,11 +792,29 @@ def editar_procedimento_view(request, procedimento_id):
 # ==============================================================================
 
 @login_required
+@login_required
 def dl_template_historico(request):
-    """Download template for importing calibration history."""
-    # Create a template file with required columns
-    # TODO: Implement template generation
-    return HttpResponse('Not implemented yet', status=501)
+    """Template para importação de históricos de calibração."""
+    return dl_generic(
+        [
+            "TAG",
+            "FAIXA",
+            "UNIDADE DE MEDIDA",
+            "DATA CALIBRAÇÃO",
+            "DATA APROVAÇÃO",
+            "N CERTIFICADO",
+            "CAMINHO DO CERTIFICADO",
+            "ERRO ENCONTRADO",
+            "INCERTEZA",
+            "TOLERANCIA PROCESSO (+/-)",
+            "RBC (SIM/NAO)",
+            "RESULTADO",
+            "FORNECEDOR",
+            "RESPONSÁVEL",
+            "OBSERVAÇÕES",
+        ],
+        "template_historico.xlsx",
+    )
 
 
 # ==============================================================================
