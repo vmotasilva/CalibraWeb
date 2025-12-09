@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Render entrypoint script - runs migrations and collectstatic before starting server
+# Railway entrypoint script - runs migrations and collectstatic before starting server
 
-set -ex  # Exit on error, print commands
+set -e  # Exit on error
 
 echo "==> Checking database connection..."
 python manage.py check --database default
 
 echo "==> Running database migrations..."
-python manage.py migrate --noinput
+python manage.py migrate --noinput --fake-initial 2>/dev/null || python manage.py migrate --noinput
 
 echo "==> Collecting static files..."
 python manage.py collectstatic --noinput --clear
 
 echo "==> Creating superuser (if not exists)..."
-python manage.py ensure_superuser || echo "Warning: ensure_superuser failed, but continuing..."
+python manage.py ensure_superuser 2>/dev/null || true
 
 echo "==> Starting Gunicorn server on port $PORT..."
 exec gunicorn config.wsgi:application \
