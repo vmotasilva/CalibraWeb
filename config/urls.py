@@ -8,6 +8,7 @@ from django.urls import path, include
 from django.http import JsonResponse
 from procurements.views import nova_solicitacao
 from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view
+from metrologia.views import export_metrologia_view, export_etiquetas_view
 
 # Health check view for Railway
 def health_check(request):
@@ -74,10 +75,14 @@ urlpatterns = [
     ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     
-    # 5. Application modules URLs - include all qms URLs with prefix to avoid conflicts
+    # 5. Metrologia export routes
+    path("api/export-metrologia/", export_metrologia_view, name="export_metrologia"),
+    path("api/export-etiquetas/", export_etiquetas_view, name="export_etiquetas"),
+    
+    # 6. Application modules URLs - include all qms URLs with prefix to avoid conflicts
     path("api/", include("qms.urls")),
     
-    # 6. RH app URLs
+    # 7. RH app URLs
     path("rh/", modulo_rh_view, name="modulo_rh"),
     path("rh/colaborador/<int:colab_id>/", detalhe_colaborador_view, name="detalhe_colaborador"),
     path("rh/colaborador/<int:colab_id>/editar/", editar_colaborador_view, name="editar_colaborador"),

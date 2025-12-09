@@ -127,7 +127,7 @@ def modulo_rh_view(request):
         "can_see_salary": can_see_salary,
         "can_edit": True,
     }
-    return render(request, "modulo_rh.html", ctx)
+    return render(request, "rh/dashboard.html", ctx)
 
 
 @login_required
