@@ -9,6 +9,11 @@ from django.http import JsonResponse
 from procurements.views import nova_solicitacao
 from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view
 from metrologia.views import export_metrologia_view, export_etiquetas_view
+from shared.views import (
+    dl_template_instr, dl_template_colab, dl_template_hierarquia,
+    dl_template_historico, dl_template_ferias, dl_template_categorias,
+    dl_template_procedimentos, dl_template_colab_dados
+)
 
 # Health check view for Railway
 def health_check(request):
@@ -78,6 +83,16 @@ urlpatterns = [
     # 5. Metrologia export routes
     path("api/export-metrologia/", export_metrologia_view, name="export_metrologia"),
     path("api/export-etiquetas/", export_etiquetas_view, name="export_etiquetas"),
+    
+    # 5a. Template download routes
+    path("api/dl-template-instr/", dl_template_instr, name="dl_template_instr"),
+    path("api/dl-template-colab/", dl_template_colab, name="dl_template_colab"),
+    path("api/dl-template-hierarquia/", dl_template_hierarquia, name="dl_template_hierarquia"),
+    path("api/dl-template-historico/", dl_template_historico, name="dl_template_historico"),
+    path("api/dl-template-ferias/", dl_template_ferias, name="dl_template_ferias"),
+    path("api/dl-template-categorias/", dl_template_categorias, name="dl_template_categorias"),
+    path("api/dl-template-procedimentos/", dl_template_procedimentos, name="dl_template_procedimentos"),
+    path("api/dl-template-colab-dados/", dl_template_colab_dados, name="dl_template_colab_dados"),
     
     # 6. Application modules URLs - include all qms URLs with prefix to avoid conflicts
     path("api/", include("qms.urls")),
