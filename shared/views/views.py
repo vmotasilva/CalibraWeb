@@ -78,44 +78,50 @@ def health_check(request):
 
 @login_required
 def dl_template_instr(request):
-    """Template para importação de instrumentos."""
-    return dl_generic(
-        [
-            "TAG",
-            "EQUIPAMENTO",
-            "STATUS",
-            "FABRICANTE",
-            "MODELO",
-            "N SERIE",
-            "SETOR",
-            "LOCALIZACAO",
-            "FREQUENCIA_MESES",
-            "DATA_ULTIMA_CALIBRACAO",
-            "FAIXA",
-            "UNIDADE",
+    """Template para importação de instrumentos com exemplos."""
+    from datetime import date, timedelta
+    
+    exemplo_data = {
+        "TAG": ["INS-001", "INS-002", "INS-003"],
+        "EQUIPAMENTO": ["Paquímetro Digital", "Micrômetro", "Termômetro Digital"],
+        "STATUS": ["ATIVO", "ATIVO", "INATIVO"],
+        "FABRICANTE": ["Mitutoyo", "Starrett", "Fluke"],
+        "MODELO": ["CD-6", "436B", "51-2"],
+        "N SERIE": ["123456", "789012", "345678"],
+        "SETOR": ["PRODUÇÃO", "QUALIDADE", "LABORATÓRIO"],
+        "LOCALIZACAO": ["Sala 01", "Sala 02", "Sala 03"],
+        "FREQUENCIA_MESES": ["12", "12", "6"],
+        "DATA_ULTIMA_CALIBRACAO": [
+            (date.today() - timedelta(days=30)).strftime("%d/%m/%Y"),
+            (date.today() - timedelta(days=60)).strftime("%d/%m/%Y"),
+            (date.today() - timedelta(days=180)).strftime("%d/%m/%Y"),
         ],
-        "template_instrumentos_v2.xlsx",
-    )
+        "FAIXA": ["0-150", "0-25", "-50 a 50"],
+        "UNIDADE": ["mm", "mm", "°C"],
+    }
+    
+    df = pd.DataFrame(exemplo_data)
+    return dl_df(df, "template_instrumentos_v2.xlsx")
 
 
 @login_required
 def dl_template_colab(request):
-    """Template para importação de colaboradores."""
+    """Template para importação de colaboradores com exemplos."""
     return dl_df(
         pd.DataFrame(
             {
-                "MATRICULA": ["100"],
-                "NOME": ["TESTE"],
-                "CPF": ["000"],
-                "CARGO": ["Y"],
-                "GRUPO": ["ADM"],
-                "SETOR": ["ADM"],
-                "CC": ["100"],
-                "TURNO": ["ADM"],
-                "STATUS": ["ATIVO"],
-                "MAT_LIDER": ["999"],
-                "MAT_SUPERVISOR": ["888"],
-                "MAT_GERENTE": ["777"],
+                "MATRICULA": ["100", "101", "102"],
+                "NOME": ["João Silva", "Maria Santos", "Pedro Costa"],
+                "CPF": ["123.456.789-00", "987.654.321-11", "555.666.777-88"],
+                "CARGO": ["Operador", "Supervisor", "Gerente"],
+                "GRUPO": ["OPERAÇÃO", "SUPERVISÃO", "GESTÃO"],
+                "SETOR": ["PRODUÇÃO", "QUALIDADE", "PRODUÇÃO"],
+                "CC": ["100", "200", "300"],
+                "TURNO": ["INTEGRAL", "INTEGRAL", "INTEGRAL"],
+                "STATUS": ["ATIVO", "ATIVO", "AFASTADO"],
+                "MAT_LIDER": ["999", "999", "999"],
+                "MAT_SUPERVISOR": ["888", "888", "888"],
+                "MAT_GERENTE": ["777", "777", "777"],
             }
         ),
         "template_colaboradores.xlsx",
@@ -124,16 +130,16 @@ def dl_template_colab(request):
 
 @login_required
 def dl_template_hierarquia(request):
-    """Template para importação de hierarquia."""
+    """Template para importação de hierarquia com exemplos."""
     return dl_df(
         pd.DataFrame(
             {
-                "SETOR": ["MAN"],
-                "TURNO": ["T1"],
-                "MAT_LIDER": ["1"],
-                "MAT_SUPERVISOR": [""],
-                "MAT_GERENTE": [""],
-                "MAT_DIRETOR": [""],
+                "SETOR": ["PRODUÇÃO", "QUALIDADE", "LABORATÓRIO"],
+                "TURNO": ["TURNO 1", "TURNO 1", "INTEGRAL"],
+                "MAT_LIDER": ["100", "101", "102"],
+                "MAT_SUPERVISOR": ["103", "104", "105"],
+                "MAT_GERENTE": ["106", "106", "106"],
+                "MAT_DIRETOR": ["999", "999", "999"],
             }
         ),
         "template_hierarquia.xlsx",
@@ -167,15 +173,34 @@ def dl_template_historico(request):
 
 @login_required
 def dl_template_ferias(request):
-    """Template para importação de férias."""
+    """Template para importação de férias com exemplos."""
+    from datetime import date, timedelta
+    
+    hoje = date.today()
     df = pd.DataFrame(
         {
-            "MATRICULA": ["100"],
-            "AQUISITIVO_INICIO": ["01/01/2023"],
-            "AQUISITIVO_FIM": ["31/12/2023"],
-            "DATA_INICIO": ["10/02/2024"],
-            "DATA_FIM": ["20/02/2024"],
-            "STATUS": ["PROGRAMADAS"],
+            "MATRICULA": ["100", "101", "102"],
+            "AQUISITIVO_INICIO": [
+                "01/01/2024",
+                "01/01/2024",
+                "01/06/2024",
+            ],
+            "AQUISITIVO_FIM": [
+                "31/12/2024",
+                "31/12/2024",
+                "31/05/2025",
+            ],
+            "DATA_INICIO": [
+                (hoje + timedelta(days=30)).strftime("%d/%m/%Y"),
+                (hoje + timedelta(days=60)).strftime("%d/%m/%Y"),
+                (hoje + timedelta(days=90)).strftime("%d/%m/%Y"),
+            ],
+            "DATA_FIM": [
+                (hoje + timedelta(days=45)).strftime("%d/%m/%Y"),
+                (hoje + timedelta(days=75)).strftime("%d/%m/%Y"),
+                (hoje + timedelta(days=105)).strftime("%d/%m/%Y"),
+            ],
+            "STATUS": ["PROGRAMADAS", "GOZADAS", "PROGRAMADAS"],
         }
     )
     return dl_df(df, "template_ferias.xlsx")

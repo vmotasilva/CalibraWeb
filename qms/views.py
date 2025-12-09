@@ -794,27 +794,39 @@ def editar_procedimento_view(request, procedimento_id):
 @login_required
 @login_required
 def dl_template_historico(request):
-    """Template para importação de históricos de calibração."""
-    return dl_generic(
-        [
-            "TAG",
-            "FAIXA",
-            "UNIDADE DE MEDIDA",
-            "DATA CALIBRAÇÃO",
-            "DATA APROVAÇÃO",
-            "N CERTIFICADO",
-            "CAMINHO DO CERTIFICADO",
-            "ERRO ENCONTRADO",
-            "INCERTEZA",
-            "TOLERANCIA PROCESSO (+/-)",
-            "RBC (SIM/NAO)",
-            "RESULTADO",
-            "FORNECEDOR",
-            "RESPONSÁVEL",
-            "OBSERVAÇÕES",
+    """Template para importação de históricos de calibração com exemplos."""
+    import pandas as pd
+    from datetime import date, timedelta
+    
+    # Criar DataFrame com exemplos
+    exemplo_data = {
+        "TAG": ["INS-001", "INS-002", "INS-003"],
+        "FAIXA": ["0-100", "0-50", "-10 a 50"],
+        "UNIDADE DE MEDIDA": ["mm", "°C", "mV"],
+        "DATA CALIBRAÇÃO": [
+            (date.today() - timedelta(days=30)).strftime("%d/%m/%Y"),
+            (date.today() - timedelta(days=60)).strftime("%d/%m/%Y"),
+            (date.today() - timedelta(days=90)).strftime("%d/%m/%Y"),
         ],
-        "template_historico.xlsx",
-    )
+        "DATA APROVAÇÃO": [
+            (date.today() - timedelta(days=29)).strftime("%d/%m/%Y"),
+            (date.today() - timedelta(days=59)).strftime("%d/%m/%Y"),
+            (date.today() - timedelta(days=89)).strftime("%d/%m/%Y"),
+        ],
+        "N CERTIFICADO": ["CERT-2025-001", "CERT-2025-002", "CERT-2025-003"],
+        "CAMINHO DO CERTIFICADO": ["", "", ""],
+        "ERRO ENCONTRADO": ["0.5", "0.3", "0.8"],
+        "INCERTEZA": ["0.2", "0.15", "0.4"],
+        "TOLERANCIA PROCESSO (+/-)": ["1.0", "0.5", "2.0"],
+        "RBC (SIM/NAO)": ["SIM", "NAO", "SIM"],
+        "RESULTADO": ["APROVADO", "CONDICIONAL", "APROVADO"],
+        "FORNECEDOR": ["Laboratorio XYZ", "Laboratorio ABC", "Laboratorio XYZ"],
+        "RESPONSÁVEL": ["João Silva", "Maria Santos", "Pedro Costa"],
+        "OBSERVAÇÕES": ["Calibração OK", "Atenção a próxima data", "Dentro das especificações"],
+    }
+    
+    df = pd.DataFrame(exemplo_data)
+    return dl_df(df, "template_historico.xlsx")
 
 
 # ==============================================================================
