@@ -227,7 +227,7 @@
                                                         {% for rf in item.resultados_faixas.all %}
                                                         <tr>
                                                             <td><small>{{ rf.faixa_medicao.valor_minimo }} a {{ rf.faixa_medicao.valor_maximo }}</small></td>
-                                                            <td><small>{% if rf.faixa_medicao.unidade %}{{ rf.faixa_medicao.unidade.sigla }}{% else %}-{% endif %}</small></td>
+                                                            <td><small>{% if rf.faixa_medicao.unidade %}{{ rf.faixa_medicao.unidade.nome }}{% else %}-{% endif %}</small></td>
                                                             <td><small>{{ rf.erro_encontrado|default:"-" }}</small></td>
                                                             <td><small>{{ rf.incerteza|default:"-" }}</small></td>
                                                             <td><small>{{ rf.tolerancia_usada|default:"-" }}</small></td>

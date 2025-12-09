@@ -166,21 +166,24 @@ def detalhe_instrumento_view(request, instrumento_id):
         messages.error(request, f"Erro ao buscar instrumento: {str(e)}")
         return redirect('modulo_metrologia')
 
-    # Get related data
+    # Get related data with error handling
     try:
-        historicos = instrumento.historicos.all().order_by("-data_calibracao")
-    except Exception:
+        historicos = list(instrumento.historicos.all().order_by("-data_calibracao"))
+    except Exception as e:
         historicos = []
+        print(f"Erro ao buscar históricos: {e}")
 
     try:
-        ocorrencias = instrumento.ocorrencias.all().order_by("-data_ocorrencia")
-    except Exception:
+        ocorrencias = list(OcorrenciaInstrumento.objects.filter(instrumento=instrumento).order_by("-data_ocorrencia"))
+    except Exception as e:
         ocorrencias = []
+        print(f"Erro ao buscar ocorrências: {e}")
 
     try:
-        faixas = instrumento.faixas.all()
-    except Exception:
+        faixas = list(instrumento.faixas.all())
+    except Exception as e:
         faixas = []
+        print(f"Erro ao buscar faixas: {e}")
 
     context = {
         'instrumento': instrumento,
