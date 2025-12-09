@@ -103,7 +103,7 @@ def novo_instrumento_view(request, instrumento_id=None):
         'instrumento': instrumento,
         'is_edit': is_edit,
     }
-    return render(request, 'metrologia/historico_calibracao_form.html', context)
+    return render(request, 'metrologia/instrumento_form.html', context)
 
 
 @login_required

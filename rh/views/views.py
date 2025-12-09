@@ -260,7 +260,7 @@ def detalhe_colaborador_view(request, colab_id):
         "supervisor_rh": supervisor_rh,
         "gerente_rh": gerente_rh,
     }
-    return render(request, "detalhe_colaborador.html", ctx)
+    return render(request, "rh/colaborador_detalhe.html", ctx)
 
 
 @login_required

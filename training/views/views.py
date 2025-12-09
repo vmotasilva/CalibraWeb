@@ -73,7 +73,7 @@ def procedimentos_list_view(request):
             f"rev={rev}" if rev else '',
         ] if p])
     }
-    return render(request, 'procedimentos_lista.html', ctx)
+    return render(request, 'training/procedimento_lista.html', ctx)
 
 
 @login_required
@@ -259,7 +259,7 @@ def treinamentos_list_view(request):
     
     treinamentos = qs.order_by('-data_treinamento')[:100]
     
-    return render(request, "treinamentos_lista.html", {
+    return render(request, "training/treinamento_lista.html", {
         "treinamentos": treinamentos,
         "colaboradores": colaboradores,
         "procedimentos": procedimentos,
@@ -280,7 +280,7 @@ def treinamentos_detalhe_view(request, treinamento_id):
     from training.models import RegistroTreinamento
     
     treinamento = get_object_or_404(RegistroTreinamento, id=treinamento_id)
-    return render(request, "treinamentos_detalhe.html", {
+    return render(request, "training/treinamento_detalhe.html", {
         "treinamento": treinamento
     })
 
@@ -300,7 +300,7 @@ def novo_treinamento_view(request):
     else:
         form = RegistroTreinamentoForm()
     
-    return render(request, "treinamentos_form.html", {
+    return render(request, "training/treinamento_form.html", {
         "form": form
     })
 
@@ -321,6 +321,6 @@ def editar_treinamento_view(request, treinamento_id):
     else:
         form = RegistroTreinamentoForm(instance=treinamento)
     
-    return render(request, "treinamentos_form.html", {
+    return render(request, "training/treinamento_form.html", {
         "form": form
     })

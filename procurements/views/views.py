@@ -56,7 +56,7 @@ def nova_solicitacao(request):
 def imp_categorias_view(request):
     """Importação de categorias de instrumentos."""
     if request.method == "GET":
-        return render(request, "imp_categorias.html")
+        return render(request, "metrologia/imports/categorias.html")
     
     # POST - Processamento
     if "file" not in request.FILES:
@@ -105,7 +105,7 @@ def imp_categorias_view(request):
 def imp_colab_view(request):
     """Importação de colaboradores."""
     if request.method == "GET":
-        return render(request, "imp_colab.html")
+        return render(request, "rh/imports/colaboradores.html")
     
     # POST - Processamento
     if "file" not in request.FILES:
@@ -157,7 +157,7 @@ def imp_colab_view(request):
 def imp_hierarquia_view(request):
     """Importação de estrutura hierárquica."""
     if request.method == "GET":
-        return render(request, "imp_hierarquia.html")
+        return render(request, "rh/imports/hierarquia.html")
     
     # POST - Processamento
     if "file" not in request.FILES:
@@ -206,7 +206,7 @@ def imp_hierarquia_view(request):
 def imp_ferias_view(request):
     """Importação de períodos de férias."""
     if request.method == "GET":
-        return render(request, "imp_ferias.html")
+        return render(request, "rh/imports/ferias.html")
     
     # POST - Processamento
     if "file" not in request.FILES:
@@ -258,7 +258,7 @@ def imp_ferias_view(request):
 def imp_procedimentos_view(request):
     """Importação de procedimentos operacionais."""
     if request.method == "GET":
-        return render(request, "imp_procedimentos.html")
+        return render(request, "training/imports/procedimentos.html")
     
     # POST - Processamento
     if "file" not in request.FILES:

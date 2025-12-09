@@ -341,7 +341,7 @@ def import_jobs_view(request):
                 'filepath': j.filepath,
             })
         
-        return render(request, 'import_jobs.html', {
+        return render(request, 'shared/imports/import_jobs.html', {
             'jobs': prepared,
             'status': status,
             'job_type': job_type,

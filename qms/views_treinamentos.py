@@ -4,7 +4,7 @@ from .models import RegistroTreinamento
 
 def treinamentos_detalhe_view(request, treinamento_id):
     treinamento = get_object_or_404(RegistroTreinamento, id=treinamento_id)
-    return render(request, 'treinamentos_detalhe.html', {
+    return render(request, 'training/treinamento_detalhe.html', {
         'treinamento': treinamento
     })
 
@@ -17,7 +17,7 @@ def novo_treinamento_view(request):
             return redirect('treinamentos_lista')
     else:
         form = RegistroTreinamentoForm()
-    return render(request, 'treinamentos_form.html', {
+    return render(request, 'training/treinamento_form.html', {
         'form': form
     })
 
@@ -31,6 +31,6 @@ def editar_treinamento_view(request, treinamento_id):
             return redirect('treinamentos_lista')
     else:
         form = RegistroTreinamentoForm(instance=treinamento)
-    return render(request, 'treinamentos_form.html', {
+    return render(request, 'training/treinamento_form.html', {
         'form': form
     })
