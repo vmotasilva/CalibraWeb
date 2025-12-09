@@ -102,6 +102,9 @@ class FaixaMedicao(models.Model):
 
     class Meta:
         verbose_name_plural = "Faixas de Medição"
+        unique_together = [
+            ('instrumento', 'unidade', 'valor_minimo', 'valor_maximo'),
+        ]
 
 
 class ArquivoPadrao(models.Model):
