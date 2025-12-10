@@ -229,7 +229,7 @@
                                                     <span class="badge bg-danger">
                                                         <i class="bi bi-exclamation-circle"></i> Vencido
                                                     </span>
-                                                {% elif inst.data_proxima_calibracao|add_days:30 >= today %}
+                                                {% elif inst.data_proxima_calibracao <= today_30days %}
                                                     <span class="badge bg-warning">
                                                         <i class="bi bi-clock"></i> A Vencer
                                                     </span>

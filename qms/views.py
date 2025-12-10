@@ -1112,6 +1112,8 @@ def listar_instrumentos_view(request):
         'setor_filter': setor_filter,
         'ativo_filter': ativo_filter,
         'total_instrumentos': paginator.count,
+        'today': today,
+        'today_30days': today + timedelta(days=30),
     }
     return render(request, 'metrologia/instrumentos_lista.html', context)
 
