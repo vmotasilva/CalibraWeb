@@ -1,0 +1,103 @@
+{# Performance monitoring script for Core Web Vitals #}
+
+<script>
+/**
+ * Performance Monitoring for Core Web Vitals (LCP, FID, CLS)
+ * Sends data to server for analysis
+ */
+
+// Track Core Web Vitals
+const vitals = {
+    lcp: null,      // Largest Contentful Paint
+    fid: null,      // First Input Delay
+    cls: null,      // Cumulative Layout Shift
+    ttfb: null,     // Time to First Byte
+};
+
+// Measure Largest Contentful Paint (LCP)
+if ('PerformanceObserver' in window) {
+    try {
+        const observer = new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            const lastEntry = entries[entries.length - 1];
+            vitals.lcp = lastEntry.renderTime || lastEntry.loadTime;
+            console.log('LCP:', vitals.lcp);
+        });
+        observer.observe({entryTypes: ['largest-contentful-paint']});
+    } catch (e) {
+        console.warn('LCP observer not supported');
+    }
+}
+
+// Measure First Input Delay (FID)
+if ('PerformanceObserver' in window) {
+    try {
+        const observer = new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            entries.forEach(entry => {
+                if (!vitals.fid) {
+                    vitals.fid = entry.processingDuration;
+                    console.log('FID:', vitals.fid);
+                }
+            });
+        });
+        observer.observe({entryTypes: ['first-input']});
+    } catch (e) {
+        console.warn('FID observer not supported');
+    }
+}
+
+// Measure Cumulative Layout Shift (CLS)
+if ('PerformanceObserver' in window) {
+    try {
+        let clsValue = 0;
+        const observer = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) {
+                if (!entry.hadRecentInput) {
+                    clsValue += entry.value;
+                    vitals.cls = clsValue;
+                    console.log('CLS:', vitals.cls);
+                }
+            }
+        });
+        observer.observe({entryTypes: ['layout-shift']});
+    } catch (e) {
+        console.warn('CLS observer not supported');
+    }
+}
+
+// Measure Time to First Byte (TTFB)
+if ('PerformanceObserver' in window) {
+    try {
+        const observer = new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            entries.forEach(entry => {
+                vitals.ttfb = entry.responseStart - entry.requestStart;
+                console.log('TTFB:', vitals.ttfb);
+            });
+        });
+        observer.observe({entryTypes: ['navigation']});
+    } catch (e) {
+        console.warn('Navigation timing not supported');
+    }
+}
+
+// Send vitals to server when page unloads
+window.addEventListener('beforeunload', () => {
+    if (navigator.sendBeacon) {
+        const data = JSON.stringify({
+            ...vitals,
+            url: window.location.pathname,
+            timestamp: new Date().toISOString(),
+        });
+        navigator.sendBeacon('/api/metrics/', data);
+    }
+});
+
+// Periodic reporting (optional)
+setInterval(() => {
+    if (vitals.lcp || vitals.fid || vitals.cls) {
+        console.log('Core Web Vitals Summary:', vitals);
+    }
+}, 5000);
+</script>
