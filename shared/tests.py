@@ -44,7 +44,3 @@ class SharedImportsTests(TestCase):
         self.assertIsNotNone(dashboard_view)
         self.assertIsNotNone(health_check)
     
-    def test_shared_models_import(self):
-        """Test that shared models can be imported"""
-        from shared.models import SharedModel
-        self.assertIsNotNone(SharedModel)

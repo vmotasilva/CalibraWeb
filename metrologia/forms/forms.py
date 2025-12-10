@@ -4,7 +4,7 @@ Forms para Metrologia Module
 """
 
 from django import forms
-from metrologia.models import Instrumento, HistoricoCalibracao
+from metrologia.models import Instrumento, HistoricoCalibracao, FaixaMedicao
 
 
 class InstrumentoForm(forms.ModelForm):
@@ -128,3 +128,33 @@ class ImportacaoHistoricoForm(forms.Form):
         }),
         help_text="Colunas obrigatórias: CÓDIGO (ou TAG), DATA CALIBRAÇÃO, DATA APROVAÇÃO, N CERTIFICADO, RESULTADO",
     )
+
+
+class FaixaMedicaoFormWithValidation(forms.ModelForm):
+    """Formulário para criar/editar faixas de medição com validação."""
+    
+    class Meta:
+        model = FaixaMedicao
+        fields = ['unidade', 'valor_minimo', 'valor_maximo', 'resolucao', 'nominal', 'tolerancia_mais_menos']
+        widgets = {
+            'unidade': forms.Select(attrs={'class': 'form-select'}),
+            'valor_minimo': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any'}),
+            'valor_maximo': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any'}),
+            'resolucao': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any'}),
+            'nominal': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any'}),
+            'tolerancia_mais_menos': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any'}),
+        }
+    
+    def clean(self):
+        """Validate faixa data."""
+        cleaned_data = super().clean()
+        valor_minimo = cleaned_data.get('valor_minimo')
+        valor_maximo = cleaned_data.get('valor_maximo')
+        
+        if valor_minimo is not None and valor_maximo is not None:
+            if valor_minimo >= valor_maximo:
+                raise forms.ValidationError(
+                    "Valor mínimo deve ser menor que valor máximo."
+                )
+        
+        return cleaned_data

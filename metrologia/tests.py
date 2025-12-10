@@ -18,24 +18,26 @@ class UnidadeMedidaTests(TestCase):
     def setUp(self):
         self.unidade = UnidadeMedida.objects.create(
             nome="Milímetros",
-            sigla="mm"
+            descricao="Unidade de comprimento"
         )
     
     def test_unidade_medida_creation(self):
         """Test creation of UnidadeMedida"""
         self.assertEqual(self.unidade.nome, "Milímetros")
-        self.assertEqual(self.unidade.sigla, "mm")
     
     def test_unidade_medida_str(self):
         """Test string representation of UnidadeMedida"""
-        self.assertIn("mm", str(self.unidade))
+        self.assertIn("Milímetros", str(self.unidade))
 
 
 class CategoriaInstrumentoTests(TestCase):
     """Tests for CategoriaInstrumento model"""
     
     def setUp(self):
-        self.unidade = UnidadeMedida.objects.create(nome="Metro", sigla="m")
+        self.unidade = UnidadeMedida.objects.create(
+            nome="Metro",
+            descricao="Unidade de comprimento"
+        )
         self.categoria = CategoriaInstrumento.objects.create(
             nome="Trena",
             descricao="Instrumento de medição de comprimento",
@@ -45,7 +47,7 @@ class CategoriaInstrumentoTests(TestCase):
     def test_categoria_instrument_creation(self):
         """Test creation of CategoriaInstrumento"""
         self.assertEqual(self.categoria.nome, "Trena")
-        self.assertEqual(self.categoria.unidade_padrao.sigla, "m")
+        self.assertEqual(self.categoria.unidade_padrao.nome, "Metro")
     
     def test_categoria_str(self):
         """Test string representation of CategoriaInstrumento"""
@@ -56,7 +58,7 @@ class InstrumentoTests(TestCase):
     """Tests for Instrumento model"""
     
     def setUp(self):
-        self.unidade = UnidadeMedida.objects.create(nome="Metro", sigla="m")
+        self.unidade = UnidadeMedida.objects.create(nome="Metro", descricao="Unidade de comprimento")
         self.setor = Setor.objects.create(
             nome="Setor de Metrologia",
             responsavel="Responsavel"
@@ -92,7 +94,7 @@ class FaixaMedicaoTests(TestCase):
     """Tests for FaixaMedicao model"""
     
     def setUp(self):
-        self.unidade = UnidadeMedida.objects.create(nome="Milímetros", sigla="mm")
+        self.unidade = UnidadeMedida.objects.create(nome="Milímetros", descricao="Unidade de comprimento")
         self.setor = Setor.objects.create(nome="Metrologia", responsavel="Admin")
         self.categoria = CategoriaInstrumento.objects.create(
             nome="Micrômetro",
@@ -125,7 +127,7 @@ class HistoricoCalibracaoTests(TestCase):
     """Tests for HistoricoCalibracao model"""
     
     def setUp(self):
-        self.unidade = UnidadeMedida.objects.create(nome="Milímetros", sigla="mm")
+        self.unidade = UnidadeMedida.objects.create(nome="Milímetros", descricao="Unidade de comprimento")
         self.setor = Setor.objects.create(nome="Metrologia", responsavel="Admin")
         self.categoria = CategoriaInstrumento.objects.create(
             nome="Calibrador",
@@ -162,7 +164,7 @@ class MetrologiaViewsTests(TestCase):
             password='testpass123',
             email='test@example.com'
         )
-        self.unidade = UnidadeMedida.objects.create(nome="Metros", sigla="m")
+        self.unidade = UnidadeMedida.objects.create(nome="Metros", descricao="Unidade de comprimento")
         self.setor = Setor.objects.create(nome="Metrologia", responsavel="Admin")
         self.categoria = CategoriaInstrumento.objects.create(
             nome="Régua",

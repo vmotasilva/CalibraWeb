@@ -24,7 +24,7 @@ if not SECRET_KEY:
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 # Configure ALLOWED_HOSTS via environment variable (comma-separated), default to localhost for development.
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",") if h.strip()]
 
 # In development you may explicitly set DEBUG=True and still require SECRET_KEY above.
 # No implicit insecure fallbacks are provided anymore.
@@ -32,7 +32,7 @@ if not ALLOWED_HOSTS and not DEBUG:
     raise ImproperlyConfigured("ALLOWED_HOSTS must be set (comma-separated) in production.")
 if DEBUG and not ALLOWED_HOSTS:
     # Development convenience: allow localhost
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
 
 
 # Configuração necessária para o formulário de login funcionar no Railway (HTTPS)

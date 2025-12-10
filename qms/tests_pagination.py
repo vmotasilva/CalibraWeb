@@ -19,6 +19,7 @@ from qms.pagination import (
     CursorPaginator,
     OffsetPaginator,
     PageNumberPaginator,
+    PaginationHelper,
     paginate_queryset,
 )
 
@@ -26,10 +27,10 @@ from qms.pagination import (
 class PaginationBaseTest(TransactionTestCase):
     """Base test class with test data setup."""
     
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.setup_test_data()
+    def setUp(self):
+        """Set up test data for each test."""
+        super().setUp()
+        self.setup_test_data()
     
     @staticmethod
     def setup_test_data(num_items=500):
@@ -43,7 +44,7 @@ class PaginationBaseTest(TransactionTestCase):
         # Create test setor
         setor = Setor.objects.create(
             nome='Test Setor',
-            sigla='TS'
+            responsavel='Test Responsavel'
         )
         
         # Create test instruments
@@ -61,6 +62,7 @@ class CursorPaginatorTest(PaginationBaseTest):
     """Test cursor-based pagination."""
     
     def setUp(self):
+        super().setUp()
         self.paginator = CursorPaginator(page_size=50)
         self.queryset = Instrumento.objects.all().order_by('id')
     
@@ -128,6 +130,7 @@ class OffsetPaginatorTest(PaginationBaseTest):
     """Test offset-based pagination."""
     
     def setUp(self):
+        super().setUp()
         self.paginator = OffsetPaginator(page_size=50, cache_count=False)
         self.queryset = Instrumento.objects.all().order_by('id')
     
@@ -209,6 +212,7 @@ class PageNumberPaginatorTest(PaginationBaseTest):
     """Test Django's traditional page number paginator."""
     
     def setUp(self):
+        super().setUp()
         self.paginator = PageNumberPaginator(page_size=50)
         self.queryset = Instrumento.objects.all().order_by('id')
     

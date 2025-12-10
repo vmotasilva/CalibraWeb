@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     CategoriaInstrumento, Instrumento, FaixaMedicao, HistoricoCalibracao,
-    ArquivoPadrao, ResultadoFaixaCalibracao, OrdemCalibracao
+    ArquivoPadrao, ResultadoFaixaCalibracao, OrdemCalibracao,
+    InstrumentoReferencia, FaixaMedicaoPadrao
 )
 from qms.models import SolicitacaoInstrumento, OcorrenciaInstrumento
 from qms.admin import admin_site
@@ -76,6 +77,38 @@ class OrdemCalibracaoAdmin(admin.ModelAdmin):
     ordering = ['-data_prevista']
 
 
+class InstrumentoReferenciaAdmin(admin.ModelAdmin):
+    list_display = ['codigo_referencia', 'categoria', 'data_criacao', 'data_atualizacao']
+    search_fields = ['codigo_referencia', 'descricao']
+    list_filter = ['categoria', 'data_criacao']
+    list_select_related = ['categoria']  # FK optimization
+    readonly_fields = ['data_criacao', 'data_atualizacao']
+    ordering = ['codigo_referencia']
+
+
+class FaixaMedicaoPadraoAdmin(admin.ModelAdmin):
+    list_display = ['referencia_instrumento', 'unidade', 'valor_minimo', 'valor_maximo', 'ativa']
+    search_fields = ['referencia_instrumento__codigo_referencia']
+    list_filter = ['ativa', 'referencia_instrumento__categoria', 'data_criacao']
+    list_select_related = ['referencia_instrumento', 'unidade']  # FK optimization
+    readonly_fields = ['data_criacao', 'data_atualizacao']
+    fieldsets = (
+        ('Referência e Unidade', {
+            'fields': ('referencia_instrumento', 'unidade')
+        }),
+        ('Limites de Medição', {
+            'fields': ('valor_minimo', 'valor_maximo')
+        }),
+        ('Parâmetros de Medição', {
+            'fields': ('resolucao', 'nominal', 'tolerancia_mais_menos')
+        }),
+        ('Status e Auditoria', {
+            'fields': ('ativa', 'data_criacao', 'data_atualizacao')
+        }),
+    )
+    ordering = ['referencia_instrumento', 'unidade']
+
+
 admin_site.register(CategoriaInstrumento, CategoriaInstrumentoAdmin)
 admin_site.register(Instrumento, InstrumentoAdmin)
 admin_site.register(FaixaMedicao, FaixaMedicaoAdmin)
@@ -85,3 +118,5 @@ admin_site.register(ResultadoFaixaCalibracao, ResultadoFaixaCalibraoAdmin)
 admin_site.register(SolicitacaoInstrumento, SolicitacaoInstrumentoAdmin)
 admin_site.register(OcorrenciaInstrumento, OcorrenciaInstrumentoAdmin)
 admin_site.register(OrdemCalibracao, OrdemCalibracaoAdmin)
+admin_site.register(InstrumentoReferencia, InstrumentoReferenciaAdmin)
+admin_site.register(FaixaMedicaoPadrao, FaixaMedicaoPadraoAdmin)

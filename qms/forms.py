@@ -66,22 +66,40 @@ class ResultadoFaixaCalibracaoForm(forms.ModelForm):
     """Form for calibration results per measurement range."""
     class Meta:
         model = ResultadoFaixaCalibracao
-        fields = ['erro_max', 'erro_min', 'incerteza', 'resultado']
+        fields = ['tolerancia', 'erro', 'incerteza', 'ema', 'eme', 'resultado']
         widgets = {
-            'erro_max': forms.NumberInput(attrs={
+            'tolerancia': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'step': '0.0001',
-                'placeholder': 'Erro máximo encontrado'
+                'placeholder': 'Tolerância',
+                'readonly': 'readonly'
             }),
-            'erro_min': forms.NumberInput(attrs={
+            'erro': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'step': '0.0001',
-                'placeholder': 'Erro mínimo encontrado'
+                'placeholder': 'Erro encontrado na medição'
             }),
             'incerteza': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'step': '0.0001',
                 'placeholder': 'Incerteza da medição'
             }),
-            'resultado': forms.Select(attrs={'class': 'form-select'}),
+            'ema': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.0001',
+                'placeholder': 'Erro Máximo Admissível',
+                'readonly': 'readonly',
+                'disabled': 'disabled'
+            }),
+            'eme': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.0001',
+                'placeholder': 'Erro Máximo do Equipamento',
+                'readonly': 'readonly',
+                'disabled': 'disabled'
+            }),
+            'resultado': forms.Select(attrs={
+                'class': 'form-select',
+                'disabled': 'disabled'
+            })
         }

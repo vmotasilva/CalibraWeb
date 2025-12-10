@@ -13,7 +13,9 @@ from django.db.models import Q, Count, Max, Prefetch
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.urls import reverse
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+import logging
 
 # Import helper functions from views_helpers
 from .views_helpers import (
@@ -48,6 +50,7 @@ from .models import (
     OcorrenciaInstrumento,
 )
 
+logger = logging.getLogger(__name__)
 
 # ==============================================================================
 # HEALTH CHECK
@@ -128,6 +131,7 @@ def modulo_metrologia_view(request):
         'categoria_filter': categoria_filter,
         'setor_filter': setor_filter,
         'search_query': search_query,
+        'colaborador': request.user,
     }
     return render(request, 'metrologia/dashboard.html', context)
 
@@ -176,34 +180,39 @@ def detalhe_instrumento_view(request, instrumento_id):
     """View instrument details with calibration history."""
     from datetime import date
     
-    try:
-        instrumento = get_object_or_404(Instrumento, id=instrumento_id)
-    except Exception as e:
-        messages.error(request, f"Erro ao buscar instrumento: {str(e)}")
-        return redirect('modulo_metrologia')
+    # Get instrument or return 404
+    instrumento = get_object_or_404(Instrumento, id=instrumento_id)
 
-    # Get related data with prefetch_related for optimization
+    # Get related data with optimization and error handling
     try:
-        from django.db.models import Prefetch
-        historicos = instrumento.historicos.all().prefetch_related(
-            Prefetch('resultados_faixa__faixa')
-        ).order_by("-data_calibracao")
-        historicos = list(historicos)
+        historicos = list(
+            HistoricoCalibracao.objects.filter(instrumento=instrumento)
+            .prefetch_related('resultados_faixa__faixa__unidade')
+            .order_by("-data_calibracao")
+        )
     except Exception as e:
         historicos = []
-        print(f"Erro ao buscar históricos: {e}")
+        logger.error(f"Erro ao buscar históricos para instrumento {instrumento_id}: {str(e)}")
 
     try:
-        ocorrencias = list(OcorrenciaInstrumento.objects.filter(instrumento=instrumento).order_by("-data_ocorrencia"))
+        ocorrencias = list(
+            OcorrenciaInstrumento.objects.filter(instrumento=instrumento)
+            .select_related('usuario_responsavel')
+            .order_by("-data_ocorrencia")
+        )
     except Exception as e:
         ocorrencias = []
-        print(f"Erro ao buscar ocorrências: {e}")
+        logger.error(f"Erro ao buscar ocorrências para instrumento {instrumento_id}: {str(e)}")
 
     try:
-        faixas = list(instrumento.faixas.all())
+        faixas = list(
+            FaixaMedicao.objects.filter(instrumento=instrumento)
+            .select_related('unidade')
+            .all()
+        )
     except Exception as e:
         faixas = []
-        print(f"Erro ao buscar faixas: {e}")
+        logger.error(f"Erro ao buscar faixas para instrumento {instrumento_id}: {str(e)}")
 
     context = {
         'instrumento': instrumento,
@@ -211,6 +220,7 @@ def detalhe_instrumento_view(request, instrumento_id):
         'ocorrencias': ocorrencias,
         'faixas': faixas,
         'today': date.today(),
+        'edit_url': f"/instrumento/{instrumento.id}/editar/",
     }
     return render(request, 'metrologia/instrumento_detalhe.html', context)
 
@@ -222,6 +232,8 @@ def detalhe_instrumento_view(request, instrumento_id):
 @login_required
 def registrar_historico_calibracao_view(request, instrumento_id):
     """Register a new calibration history record."""
+    from metrologia.models import FaixaMedicao
+    
     instrumento = get_object_or_404(Instrumento, id=instrumento_id)
     
     if request.method == 'POST':
@@ -230,8 +242,12 @@ def registrar_historico_calibracao_view(request, instrumento_id):
         messages.success(request, 'Histórico de calibração registrado com sucesso.')
         return redirect('visualizar_instrumento', instrumento_id=instrumento_id)
     
+    # Get measurement ranges for this instrument
+    faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+    
     context = {
         'instrumento': instrumento,
+        'faixas_medicao': faixas_medicao,
     }
     return render(request, 'metrologia/historico_calibracao_form.html', context)
 
@@ -305,6 +321,8 @@ def download_certificado_view(request, historico_id):
 @login_required
 def anexar_certificado_historico_view(request, historico_id):
     """Attach a certificate to a calibration history record."""
+    from metrologia.models import FaixaMedicao
+    
     historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
     
     if request.method == 'POST':
@@ -314,8 +332,14 @@ def anexar_certificado_historico_view(request, historico_id):
             messages.success(request, 'Certificado anexado com sucesso.')
         return redirect('visualizar_historico_calibracao', historico_id=historico_id)
     
+    # Get measurement ranges for this instrument
+    faixas_medicao = FaixaMedicao.objects.filter(
+        instrumento=historico.instrumento
+    ).order_by('valor_minimo') if historico.instrumento else []
+    
     context = {
         'historico': historico,
+        'faixas_medicao': faixas_medicao,
     }
     return render(request, 'metrologia/historico_calibracao_form.html', context)
 
@@ -977,7 +1001,7 @@ def editar_historico_calibracao_view(request, historico_id):
     """Edit calibration history and its range results."""
     from .forms_historico import HistoricoCalibracaoForm
     from .forms import ResultadoFaixaCalibracaoForm
-    from metrologia.models import ResultadoFaixaCalibracao
+    from metrologia.models import ResultadoFaixaCalibracao, FaixaMedicao
     
     historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
     resultados_faixa = historico.resultados_faixa.all().select_related('faixa')
@@ -1017,9 +1041,50 @@ def editar_historico_calibracao_view(request, historico_id):
             except ResultadoFaixaCalibracao.DoesNotExist:
                 messages.error(request, 'Resultado não encontrado.')
             return redirect('editar_historico_calibracao', historico_id=historico_id)
+        
+        elif action == 'add_faixa':
+            faixa_id = request.POST.get('faixa_id')
+            is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            
+            try:
+                faixa = FaixaMedicao.objects.get(id=faixa_id, instrumento=historico.instrumento)
+                # Check if result already exists
+                resultado, created = ResultadoFaixaCalibracao.objects.get_or_create(
+                    historico=historico,
+                    faixa=faixa,
+                    defaults={
+                        'valor_minimo': faixa.valor_minimo,
+                        'valor_maximo': faixa.valor_maximo,
+                        'tolerancia': faixa.tolerancia_mais_menos,  # Auto-fill from faixa
+                    }
+                )
+                if created:
+                    messages.success(request, f'Faixa {faixa.valor_minimo} a {faixa.valor_maximo} adicionada com sucesso.')
+                else:
+                    messages.info(request, f'Faixa {faixa.valor_minimo} a {faixa.valor_maximo} já estava cadastrada.')
+            except FaixaMedicao.DoesNotExist:
+                messages.error(request, 'Faixa não encontrada.')
+            
+            # Return JSON for AJAX requests
+            if is_ajax:
+                from django.http import JsonResponse
+                return JsonResponse({'status': 'success', 'message': 'Faixa adicionada com sucesso.'})
+            
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
     
     historico_form = HistoricoCalibracaoForm(instance=historico)
     resultado_form = ResultadoFaixaCalibracaoForm()
+    
+    # Get measurement ranges for this instrument
+    faixas_disponiveis = FaixaMedicao.objects.filter(
+        instrumento=historico.instrumento
+    ).order_by('valor_minimo')
+    
+    # Get faixas that already have results
+    faixas_com_resultados = set(resultados_faixa.values_list('faixa_id', flat=True))
+    
+    # Get faixas that don't have results yet
+    faixas_sem_resultados = [f for f in faixas_disponiveis if f.id not in faixas_com_resultados]
     
     context = {
         'historico': historico,
@@ -1027,6 +1092,8 @@ def editar_historico_calibracao_view(request, historico_id):
         'historico_form': historico_form,
         'resultados_faixa': resultados_faixa,
         'resultado_form': resultado_form,
+        'faixas_disponiveis': faixas_disponiveis,
+        'faixas_sem_resultados': faixas_sem_resultados,
     }
     return render(request, 'metrologia/editar_historico.html', context)
 
@@ -1402,6 +1469,310 @@ def relatorio_vencidos_view(request):
         from metrologia.exportadores import ExportadorInstrumentos
         exportador = ExportadorInstrumentos(instrumentos_vencidos)
         return exportador.exportar_excel()
+
+
+# ==============================================================================
+# INSTRUMENT SUBSTITUTION AND REFERENCE MANAGEMENT
+# ==============================================================================
+
+@login_required
+def substituir_instrumento_view(request, instrumento_id):
+    """
+    View para substituição de instrumento com reutilização de código.
+    Permite vincular um instrumento a uma InstrumentoReferencia existente
+    ou criar uma nova referência.
+    """
+    from metrologia.models import Instrumento, InstrumentoReferencia, FaixaMedicaoPadrao
+    from django.db import transaction
+    
+    instrumento = get_object_or_404(Instrumento, id=instrumento_id)
+    
+    if request.method == 'POST':
+        referencia_id = request.POST.get('referencia_id')
+        copiar_faixas = request.POST.get('copiar_faixas', 'off') == 'on'
+        
+        # Atualizar dados do instrumento se fornecidos
+        novo_fabricante = request.POST.get('fabricante', '').strip()
+        novo_modelo = request.POST.get('modelo', '').strip()
+        nova_serie = request.POST.get('serie', '').strip()
+        
+        try:
+            with transaction.atomic():
+                # Atualizar dados do instrumento
+                if novo_fabricante:
+                    instrumento.fabricante = novo_fabricante
+                if novo_modelo:
+                    instrumento.modelo = novo_modelo
+                if nova_serie:
+                    instrumento.serie = nova_serie
+                
+                if referencia_id:
+                    # Vincular a referência existente
+                    referencia = get_object_or_404(InstrumentoReferencia, id=referencia_id)
+                    instrumento.referencia = referencia
+                    instrumento.save()
+                    
+                    # Copiar faixas da template se solicitado
+                    if copiar_faixas:
+                        faixas_padrao = FaixaMedicaoPadrao.objects.filter(
+                            referencia_instrumento=referencia,
+                            ativa=True
+                        )
+                        
+                        for faixa_padrao in faixas_padrao:
+                            FaixaMedicao.objects.create(
+                                instrumento=instrumento,
+                                unidade=faixa_padrao.unidade,
+                                valor_minimo=faixa_padrao.valor_minimo,
+                                valor_maximo=faixa_padrao.valor_maximo,
+                                resolucao=faixa_padrao.resolucao,
+                                nominal=faixa_padrao.nominal,
+                                tolerancia_mais_menos=faixa_padrao.tolerancia_mais_menos,
+                                faixa_padrao=faixa_padrao
+                            )
+                    
+                    messages.success(request, f'Instrumento vinculado a referência "{referencia.codigo_referencia}"')
+                else:
+                    messages.error(request, 'Selecione uma referência válida.')
+                    
+        except Exception as e:
+            logger.error(f"Erro ao substituir instrumento {instrumento_id}: {str(e)}")
+            messages.error(request, f'Erro ao vincular instrumento: {str(e)}')
+        
+        return redirect('visualizar_instrumento', instrumento_id=instrumento_id)
+    
+    # GET request - mostrar formulário
+    referencias = InstrumentoReferencia.objects.filter(
+        categoria=instrumento.categoria
+    ).order_by('codigo_referencia')
+    
+    referencia_atual = instrumento.referencia
+    
+    # Se tem referência atual, mostrar as faixas padrão disponíveis
+    faixas_disponiveis = []
+    if referencia_atual:
+        faixas_disponiveis = list(
+            FaixaMedicaoPadrao.objects.filter(
+                referencia_instrumento=referencia_atual,
+                ativa=True
+            ).select_related('unidade')
+        )
+    
+    context = {
+        'instrumento': instrumento,
+        'referencias': referencias,
+        'referencia_atual': referencia_atual,
+        'faixas_disponiveis': faixas_disponiveis,
+    }
+    return render(request, 'metrologia/substituir_instrumento.html', context)
+
+
+@login_required
+def copiar_faixas_padrao_view(request, instrumento_id):
+    """
+    View para copiar faixas de uma template FaixaMedicaoPadrao
+    para um instrumento existente.
+    """
+    from metrologia.models import Instrumento, FaixaMedicaoPadrao, FaixaMedicao
+    from django.db import transaction
+    
+    instrumento = get_object_or_404(Instrumento, id=instrumento_id)
+    
+    if not instrumento.referencia:
+        messages.error(request, 'Instrumento não está vinculado a uma referência.')
+        return redirect('visualizar_instrumento', instrumento_id=instrumento_id)
+    
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Remover faixas existentes (opcional)
+                remover_existentes = request.POST.get('remover_existentes', 'off') == 'on'
+                
+                if remover_existentes:
+                    FaixaMedicao.objects.filter(instrumento=instrumento).delete()
+                
+                # Copiar faixas padrão
+                faixas_padrao = FaixaMedicaoPadrao.objects.filter(
+                    referencia_instrumento=instrumento.referencia,
+                    ativa=True
+                )
+                
+                criadas = 0
+                for faixa_padrao in faixas_padrao:
+                    faixa, created = FaixaMedicao.objects.get_or_create(
+                        instrumento=instrumento,
+                        unidade=faixa_padrao.unidade,
+                        valor_minimo=faixa_padrao.valor_minimo,
+                        valor_maximo=faixa_padrao.valor_maximo,
+                        defaults={
+                            'resolucao': faixa_padrao.resolucao,
+                            'nominal': faixa_padrao.nominal,
+                            'tolerancia_mais_menos': faixa_padrao.tolerancia_mais_menos,
+                            'faixa_padrao': faixa_padrao
+                        }
+                    )
+                    if created:
+                        criadas += 1
+                
+                messages.success(request, f'{criadas} faixa(s) copiada(s) da template.')
+                
+        except Exception as e:
+            logger.error(f"Erro ao copiar faixas padrão para instrumento {instrumento_id}: {str(e)}")
+            messages.error(request, f'Erro ao copiar faixas: {str(e)}')
+        
+        return redirect('visualizar_instrumento', instrumento_id=instrumento_id)
+    
+    # GET request - mostrar confirmação
+    faixas_padrao = list(
+        FaixaMedicaoPadrao.objects.filter(
+            referencia_instrumento=instrumento.referencia,
+            ativa=True
+        ).select_related('unidade')
+    )
+    
+    context = {
+        'instrumento': instrumento,
+        'faixas_padrao': faixas_padrao,
+    }
+    return render(request, 'metrologia/copiar_faixas_padrao.html', context)
+
+
+@login_required
+def listar_substitucoes_view(request, codigo_referencia):
+    """
+    View para listar todos os instrumentos relacionados a uma referência,
+    mostrando histórico de substituições.
+    """
+    from metrologia.models import InstrumentoReferencia, Instrumento
+    
+    referencia = get_object_or_404(InstrumentoReferencia, codigo_referencia=codigo_referencia)
+    
+    # Listar todos os instrumentos vinculados
+    instrumentos = Instrumento.objects.filter(
+        referencia=referencia
+    ).select_related('categoria').order_by('-id')
+    
+    # Agrupar por instrumento ativo e substituídos
+    ativo = instrumentos.filter(ativo=True).first()
+    substituidos = instrumentos.filter(ativo=False).order_by('-id')
+    
+    context = {
+        'referencia': referencia,
+        'instrumento_ativo': ativo,
+        'instrumentos_substituidos': substituidos,
+        'total_substituicoes': instrumentos.count() - 1,
+    }
+    return render(request, 'metrologia/historico_substitucoes.html', context)
+
+
+# ==============================================================================
+# EDIÇÃO DE INSTRUMENTO
+# ==============================================================================
+
+@login_required
+def editar_instrumento_view(request, instrumento_id):
+    """View para editar instrumento com formulário customizado."""
+    from django.db import transaction
+    
+    instrumento = get_object_or_404(Instrumento, id=instrumento_id)
+    
+    if request.method == 'POST':
+        try:
+            with transaction.atomic():
+                # Atualizar campos básicos
+                instrumento.tag = request.POST.get('tag', instrumento.tag)
+                instrumento.codigo = request.POST.get('codigo', instrumento.codigo)
+                instrumento.descricao = request.POST.get('descricao', instrumento.descricao)
+                instrumento.fabricante = request.POST.get('fabricante', instrumento.fabricante)
+                instrumento.modelo = request.POST.get('modelo', instrumento.modelo)
+                instrumento.serie = request.POST.get('serie', instrumento.serie)
+                
+                # Atualizar categoria
+                categoria_id = request.POST.get('categoria')
+                if categoria_id:
+                    try:
+                        instrumento.categoria = CategoriaInstrumento.objects.get(id=categoria_id)
+                    except CategoriaInstrumento.DoesNotExist:
+                        pass
+                
+                # Atualizar setor
+                setor_id = request.POST.get('setor')
+                if setor_id:
+                    try:
+                        from organization.models import Setor
+                        instrumento.setor = Setor.objects.get(id=setor_id)
+                    except:
+                        pass
+                
+                # Atualizar responsável
+                responsavel_id = request.POST.get('responsavel')
+                if responsavel_id:
+                    try:
+                        from rh.models import Colaborador
+                        instrumento.responsavel = Colaborador.objects.get(id=responsavel_id)
+                    except:
+                        pass
+                
+                instrumento.localizacao = request.POST.get('localizacao', instrumento.localizacao)
+                
+                # Atualizar datas e frequência
+                data_ultima = request.POST.get('data_ultima_calibracao')
+                if data_ultima:
+                    try:
+                        instrumento.data_ultima_calibracao = datetime.strptime(data_ultima, '%Y-%m-%d').date()
+                    except:
+                        pass
+                
+                data_proxima = request.POST.get('data_proxima_calibracao')
+                if data_proxima:
+                    try:
+                        instrumento.data_proxima_calibracao = datetime.strptime(data_proxima, '%Y-%m-%d').date()
+                    except:
+                        pass
+                
+                frequencia = request.POST.get('frequencia_meses')
+                if frequencia:
+                    try:
+                        instrumento.frequencia_meses = int(frequencia)
+                    except:
+                        pass
+                
+                # Atualizar tolerância
+                tolerancia = request.POST.get('tolerancia_processo')
+                if tolerancia:
+                    try:
+                        instrumento.tolerancia_processo = Decimal(tolerancia)
+                    except:
+                        pass
+                
+                # Atualizar status
+                instrumento.ativo = request.POST.get('ativo') == 'on'
+                
+                instrumento.save()
+                messages.success(request, 'Instrumento atualizado com sucesso!')
+                return redirect('visualizar_instrumento', instrumento_id=instrumento.id)
+                
+        except Exception as e:
+            logger.error(f"Erro ao editar instrumento {instrumento_id}: {str(e)}")
+            messages.error(request, f'Erro ao atualizar instrumento: {str(e)}')
+    
+    # Preparar contexto com dados para o formulário
+    from organization.models import Setor
+    from rh.models import Colaborador
+    
+    categorias = CategoriaInstrumento.objects.all()
+    setores = Setor.objects.all()
+    responsaveis = Colaborador.objects.all()
+    
+    context = {
+        'instrumento': instrumento,
+        'categorias': categorias,
+        'setores': setores,
+        'responsaveis': responsaveis,
+    }
+    
+    return render(request, 'metrologia/editar_instrumento.html', context)
+
 
 
 

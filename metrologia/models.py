@@ -22,7 +22,40 @@ class CategoriaInstrumento(models.Model):
         verbose_name_plural = "Categorias de Instrumentos"
 
 
+class InstrumentoReferencia(models.Model):
+    """
+    Modelo para rastrear substituição de instrumentos
+    Permite manter histórico quando um instrumento é substituído mas o código é reutilizado
+    """
+    codigo_referencia = models.CharField(
+        max_length=50, unique=True, verbose_name="Código de Referência",
+        help_text="Código único que permanece mesmo com substituições"
+    )
+    descricao = models.TextField(verbose_name="Descrição Geral", blank=True, null=True)
+    categoria = models.ForeignKey(
+        CategoriaInstrumento, on_delete=models.SET_NULL, null=True, blank=True,
+        verbose_name="Categoria Padrão"
+    )
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Ref: {self.codigo_referencia}"
+
+    class Meta:
+        verbose_name = "Instrumento Referência"
+        verbose_name_plural = "Instrumentos Referências"
+
+
 class Instrumento(models.Model):
+    # Relação com referência de instrumento
+    referencia = models.ForeignKey(
+        'InstrumentoReferencia', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="instrumentos_substituidos",
+        verbose_name="Referência de Instrumento",
+        help_text="Instrumento anterior (em caso de substituição)"
+    )
+    
     tolerancia_processo = models.DecimalField(
         max_digits=10,
         decimal_places=4,
@@ -74,6 +107,14 @@ class FaixaMedicao(models.Model):
         null=True,
         blank=True,
     )
+    # Referência para faixa padrão (reutilização)
+    faixa_padrao = models.ForeignKey(
+        'FaixaMedicaoPadrao', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="faixas_instancia",
+        verbose_name="Faixa Padrão",
+        help_text="Referência à faixa padrão para reutilização"
+    )
+    
     unidade = models.ForeignKey('core.UnidadeMedida', on_delete=models.PROTECT)
 
     valor_minimo = models.DecimalField(max_digits=10, decimal_places=4)
@@ -107,6 +148,50 @@ class FaixaMedicao(models.Model):
         ]
 
 
+class FaixaMedicaoPadrao(models.Model):
+    """
+    Modelo para armazenar faixas padrão de referência
+    Permite reutilização de faixas em múltiplos instrumentos e importação em massa
+    """
+    referencia_instrumento = models.ForeignKey(
+        'InstrumentoReferencia', on_delete=models.CASCADE,
+        related_name="faixas_padrao",
+        verbose_name="Referência de Instrumento",
+        help_text="Instrumento de referência para esta faixa padrão"
+    )
+    
+    unidade = models.ForeignKey('core.UnidadeMedida', on_delete=models.PROTECT)
+    
+    valor_minimo = models.DecimalField(max_digits=10, decimal_places=4)
+    valor_maximo = models.DecimalField(max_digits=10, decimal_places=4)
+    resolucao = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True
+    )
+    nominal = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True,
+        help_text="Valor central/nominal do processo"
+    )
+    tolerancia_mais_menos = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True,
+        help_text="Variação aceitável (+/-)"
+    )
+    
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+    ativa = models.BooleanField(default=True, verbose_name="Faixa Ativa")
+
+    def __str__(self):
+        return f"{self.referencia_instrumento.codigo_referencia} - {self.valor_minimo} a {self.valor_maximo} {self.unidade.nome}"
+
+    class Meta:
+        verbose_name = "Faixa de Medição Padrão"
+        verbose_name_plural = "Faixas de Medição Padrão"
+        unique_together = [
+            ('referencia_instrumento', 'unidade', 'valor_minimo', 'valor_maximo'),
+        ]
+        ordering = ['referencia_instrumento', 'valor_minimo']
+
+
 class ArquivoPadrao(models.Model):
     nome = models.CharField(max_length=255)
     descricao = models.TextField(blank=True, null=True)
@@ -122,6 +207,12 @@ class ArquivoPadrao(models.Model):
 
 
 class ResultadoFaixaCalibracao(models.Model):
+    RESULTADO_CHOICES = [
+        ('APROVADO_SEM_CORRECAO', 'Aprovado sem Correção'),
+        ('APROVADO_COM_CORRECAO', 'Aprovado com Correção'),
+        ('REPROVADO', 'Reprovado / Restrição'),
+    ]
+    
     historico = models.ForeignKey(
         'HistoricoCalibracao',
         on_delete=models.CASCADE,
@@ -134,16 +225,53 @@ class ResultadoFaixaCalibracao(models.Model):
     valor_maximo = models.DecimalField(max_digits=10, decimal_places=4)
     valor_minimo = models.DecimalField(max_digits=10, decimal_places=4)
     nominal = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    tolerancia = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
 
     # Dados de Calibração
-    erro_max = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
-    erro_min = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    erro = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
     incerteza = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
-    resultado = models.CharField(
-        max_length=20,
-        choices=[('OK', 'OK'), ('FORA', 'Fora da Faixa')],
-        default='OK',
+    
+    # Campos calculados automaticamente
+    ema = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True,
+        verbose_name="EMA (Erro Máximo Admissível)",
+        help_text="Calculado como 2*Tolerância/4"
     )
+    eme = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True,
+        verbose_name="EME (Erro Máximo do Equipamento)",
+        help_text="Calculado como Erro + Incerteza"
+    )
+    
+    resultado = models.CharField(
+        max_length=50,
+        choices=RESULTADO_CHOICES,
+        default='APROVADO_SEM_CORRECAO',
+    )
+
+    def save(self, *args, **kwargs):
+        """Auto-calculate EMA, EME and resultado."""
+        # Calcular EMA = 2*Tolerância/4 = Tolerância/2
+        if self.tolerancia is not None:
+            self.ema = self.tolerancia / 2
+        
+        # Calcular EME = Erro + Incerteza
+        if self.erro is not None and self.incerteza is not None:
+            self.eme = self.erro + self.incerteza
+        
+        # Calcular resultado baseado em EME e EMA
+        if self.eme is not None and self.ema is not None:
+            eme_abs = abs(self.eme)
+            ema_3x = self.ema * 3
+            
+            if eme_abs > ema_3x:
+                self.resultado = 'REPROVADO'
+            elif eme_abs <= self.ema:
+                self.resultado = 'APROVADO_SEM_CORRECAO'
+            else:
+                self.resultado = 'APROVADO_COM_CORRECAO'
+        
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Faixa {self.valor_minimo} a {self.valor_maximo} - {self.resultado}"

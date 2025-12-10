@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from datetime import date
 
-from rh.models import Colaborador, Ferias, HierarquiaSetor
+from rh.models import Colaborador, Ferias
 from organization.models import Setor
 
 

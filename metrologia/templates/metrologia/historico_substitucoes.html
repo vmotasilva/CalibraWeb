@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Histórico de Substituições - {{ referencia.codigo_referencia }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            
+            <!-- Header com Informações da Referência -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-0">{{ referencia.codigo_referencia }}</h4>
+                            <small>Código de Instrumento - Histórico de Substituições</small>
+                        </div>
+                        <div class="text-end">
+                            <a href="{% url 'visualizar_instrumento' instrumento_ativo.id %}" class="btn btn-light btn-sm mb-2" title="Voltar para instrumento ativo">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <br>
+                            <h5 class="mb-0">{{ total_substituicoes }} Substituição(ões)</h5>
+                            <small>Total de instrumentos: {{ instrumentos_substituidos|length|add:1 }}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p><strong>Descrição:</strong> {{ referencia.descricao|default:"Sem descrição" }}</p>
+                    <p><strong>Categoria:</strong> {{ referencia.categoria.nome }}</p>
+                    <p class="mb-0">
+                        <strong>Criada em:</strong> {{ referencia.data_criacao|date:"d/m/Y à\s H:i" }} | 
+                        <strong>Atualizada em:</strong> {{ referencia.data_atualizacao|date:"d/m/Y à\s H:i" }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Instrumento Ativo (Atual) -->
+            {% if instrumento_ativo %}
+                <div class="card mb-4 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-check-circle"></i> Instrumento Ativo (Atual)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <dl class="row">
+                                    <dt class="col-sm-5">Tag:</dt>
+                                    <dd class="col-sm-7"><strong>{{ instrumento_ativo.tag }}</strong></dd>
+                                    
+                                    <dt class="col-sm-5">Descrição:</dt>
+                                    <dd class="col-sm-7">{{ instrumento_ativo.descricao }}</dd>
+                                    
+                                    <dt class="col-sm-5">Série:</dt>
+                                    <dd class="col-sm-7">{{ instrumento_ativo.serie }}</dd>
+                                    
+                                    <dt class="col-sm-5">Fabricante:</dt>
+                                    <dd class="col-sm-7">{{ instrumento_ativo.fabricante }}</dd>
+                                </dl>
+                            </div>
+                            <div class="col-md-6">
+                                <dl class="row">
+                                    <dt class="col-sm-5">Modelo:</dt>
+                                    <dd class="col-sm-7">{{ instrumento_ativo.modelo }}</dd>
+                                    
+                                    <dt class="col-sm-5">Aquisição:</dt>
+                                    <dd class="col-sm-7">{{ instrumento_ativo.data_aquisicao|date:"d/m/Y" }}</dd>
+                                    
+                                    <dt class="col-sm-5">Próxima Calibração:</dt>
+                                    <dd class="col-sm-7">{{ instrumento_ativo.data_proxima_calibracao|date:"d/m/Y" }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <a href="{% url 'visualizar_instrumento' instrumento_ativo.id %}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-eye"></i> Ver Detalhes
+                            </a>
+                            <a href="{% url 'editar_instrumento' instrumento_ativo.id %}" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-warning mb-4">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Nenhum instrumento ativo para este código. Todos foram desativados.
+                </div>
+            {% endif %}
+
+            <!-- Instrumentos Substituídos (Histórico) -->
+            {% if instrumentos_substituidos %}
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-history"></i> Histórico de Substituições ({{ instrumentos_substituidos|length }})
+                        </h5>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tag</th>
+                                    <th>Série</th>
+                                    <th>Fabricante / Modelo</th>
+                                    <th>Aquisição</th>
+                                    <th>Desativado em</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for instr in instrumentos_substituidos %}
+                                    <tr class="text-muted">
+                                        <td>
+                                            <strong>{{ instr.tag }}</strong>
+                                            <br>
+                                            <small>{{ instr.descricao|truncatewords:3 }}</small>
+                                        </td>
+                                        <td>{{ instr.serie }}</td>
+                                        <td>
+                                            {{ instr.fabricante|default:"-" }}
+                                            {% if instr.modelo %}<br>{{ instr.modelo }}{% endif %}
+                                        </td>
+                                        <td>{{ instr.data_aquisicao|date:"d/m/Y" }}</td>
+                                        <td>
+                                            {% if instr.data_desativacao %}
+                                                {{ instr.data_desativacao|date:"d/m/Y" }}
+                                            {% else %}
+                                                <span class="badge bg-warning">Data não registrada</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'visualizar_instrumento' instr.id %}" class="btn btn-outline-primary" title="Ver Detalhes">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{% url 'editar_instrumento' instr.id %}" class="btn btn-outline-secondary" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    Este código foi recentemente criado e não tem histórico de substituições ainda.
+                </div>
+            {% endif %}
+
+            <!-- Timeline Visual (Opcional) -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Timeline de Substituições</h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% if instrumento_ativo %}
+                            <div class="timeline-item timeline-active">
+                                <div class="timeline-marker bg-success">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-1">{{ instrumento_ativo.tag }} (Ativo)</h6>
+                                    <p class="mb-1 text-muted">Adquirido em: {{ instrumento_ativo.data_aquisicao|date:"d/m/Y" }}</p>
+                                    <small class="text-muted">{{ instrumento_ativo.descricao }}</small>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% for instr in instrumentos_substituidos %}
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-secondary">
+                                    <i class="fas fa-times"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-1">{{ instr.tag }}</h6>
+                                    <p class="mb-1 text-muted">
+                                        Adquirido em: {{ instr.data_aquisicao|date:"d/m/Y" }}
+                                        {% if instr.data_desativacao %}
+                                            | Desativado em: {{ instr.data_desativacao|date:"d/m/Y" }}
+                                        {% endif %}
+                                    </p>
+                                    <small class="text-muted">{{ instr.descricao }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline {
+        position: relative;
+        padding: 20px 0;
+    }
+    
+    .timeline-item {
+        display: flex;
+        margin-bottom: 30px;
+        position: relative;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 40px;
+        width: 2px;
+        height: 30px;
+        background-color: #dee2e6;
+    }
+    
+    .timeline-item:last-child::before {
+        display: none;
+    }
+    
+    .timeline-marker {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        flex-shrink: 0;
+        z-index: 1;
+    }
+    
+    .timeline-content {
+        margin-left: 20px;
+        flex: 1;
+    }
+    
+    .timeline-active .timeline-marker {
+        box-shadow: 0 0 0 4px #fff, 0 0 0 8px #28a745;
+    }
+</style>
+{% endblock %}

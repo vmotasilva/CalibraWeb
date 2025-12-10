@@ -607,7 +607,7 @@ def detalhe_instrumento_view(request, instrumento_id):
     # Busca dados relacionados
     try:
         historico = HistoricoCalibracao.objects.filter(instrumento=inst).prefetch_related(
-            'resultados_faixas__faixa_medicao__unidade'
+            'resultados_faixa__faixa__unidade'
         ).order_by("-data_calibracao")
     except Exception as e:
         logger.error(f"Erro ao buscar histórico: {e}")
@@ -643,15 +643,16 @@ def detalhe_instrumento_view(request, instrumento_id):
 
     return render(
         request,
-        "detalhe_instrumento.html",
+        "metrologia/instrumento_detalhe.html",
         {
             "instrumento": inst,
-            "historico": historico,
+            "historicos": historico,
             "calibracoes": calibracoes,
             "ocorrencias": ocorrencias,
             "faixas": faixas,
             "form_ocorrencia": form_ocorrencia,
             "today": date.today(),
+            "edit_url": f"/instrumento/{inst.id}/editar/",
         },
     )
 

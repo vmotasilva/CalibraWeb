@@ -30,11 +30,14 @@
                 <span class="badge bg-secondary fs-6 px-3 py-2">INATIVO</span>
             {% endif %}
             
-            <a href="/admin/qms/instrumento/{{ instrumento.id }}/change/" class="btn btn-outline-secondary ms-2">
+            <a href="{{ edit_url }}" class="btn btn-outline-secondary ms-2">
                 <i class="bi bi-pencil"></i> Editar Instrumento
             </a>
             <a href="{% url 'gerenciar_faixas_instrumento' instrumento.id %}" class="btn btn-outline-info ms-2">
                 <i class="bi bi-plus-circle"></i> Gerenciar Faixas
+            </a>
+            <a href="{% url 'substituir_instrumento' instrumento.id %}" class="btn btn-outline-warning ms-2">
+                <i class="bi bi-arrow-repeat"></i> Substituição
             </a>
         </div>
     </div>
@@ -86,6 +89,28 @@
         </div>
 
         <div class="col-md-8">
+            
+            {% if instrumento.referencia %}
+            <div class="card shadow-sm mb-4 border-success">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-link-45deg"></i> Referência de Código</span>
+                    <span class="badge bg-light text-dark">{{ instrumento.referencia.codigo_referencia }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Código:</strong> {{ instrumento.referencia.codigo_referencia }}</p>
+                            <p class="text-muted mb-0">{{ instrumento.referencia.descricao|default:"Sem descrição" }}</p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <a href="{% url 'listar_substitucoes' instrumento.referencia.codigo_referencia %}" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-history"></i> Ver Histórico de Substituições
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">

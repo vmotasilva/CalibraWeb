@@ -3,6 +3,7 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-0">Editar Histórico de Calibração</h2>
@@ -13,9 +14,10 @@
         </a>
     </div>
 
-    <!-- SEÇÃO 1: DADOS PRINCIPAIS DO HISTÓRICO -->
+    <!-- LAYOUT: Esquerda (Formulário) + Direita (Preview) -->
     <div class="row mb-4">
-        <div class="col-lg-8">
+        <!-- COLUNA 1: DADOS PRINCIPAIS DO HISTÓRICO (Esquerda) -->
+        <div class="col-lg-7">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <i class="bi bi-calendar-check"></i> Dados do Histórico
@@ -43,7 +45,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="id_numero_certificado" class="form-label fw-bold">Número do Certificado</label>
+                                    <label for="id_numero_certificado" class="form-label fw-bold">Nº Certificado</label>
                                     {{ historico_form.numero_certificado|add_class:"form-control" }}
                                 </div>
                             </div>
@@ -58,13 +60,13 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="id_responsavel" class="form-label fw-bold">Responsável Técnico</label>
+                                    <label for="id_responsavel" class="form-label fw-bold">Responsável</label>
                                     {{ historico_form.responsavel|add_class:"form-control" }}
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="id_fornecedor" class="form-label fw-bold">Laboratório/Fornecedor</label>
+                                    <label for="id_fornecedor" class="form-label fw-bold">Laboratório</label>
                                     {{ historico_form.fornecedor|add_class:"form-control" }}
                                 </div>
                             </div>
@@ -73,29 +75,63 @@
                         <div class="mb-3">
                             <div class="form-check">
                                 {{ historico_form.tem_selo_rbc|add_class:"form-check-input" }}
-                                <label for="id_tem_selo_rbc" class="form-check-label">
+                                <label for="id_tem_selo_rbc" class="form-check-label fw-bold">
                                     Possui Selo RBC?
                                 </label>
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="id_erro_encontrado" class="form-label fw-bold">Erro Geral</label>
-                                    {{ historico_form.erro_encontrado|add_class:"form-control" }}
+                        <!-- Campo Arquivos de Padrões (visível apenas quando NÃO for RBC) -->
+                        <div class="mb-3 hidden" id="arquivos-padroes-section">
+                            <div class="card bg-light border-info">
+                                <div class="card-header bg-info text-white">
+                                    <i class="bi bi-file-pdf text-danger"></i> Padrões de Calibração
                                 </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="id_incerteza" class="form-label fw-bold">Incerteza</label>
-                                    {{ historico_form.incerteza|add_class:"form-control" }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="id_resultado" class="form-label fw-bold">Resultado Geral</label>
-                                    {{ historico_form.resultado|add_class:"form-select" }}
+                                <div class="card-body">
+                                    <!-- Upload de Novos Arquivos -->
+                                    <div class="mb-4">
+                                        <label for="id_novos_arquivos_padroes" class="form-label fw-bold">
+                                            <i class="bi bi-cloud-upload"></i> Fazer Upload de Novos Padrões
+                                        </label>
+                                        <small class="text-muted d-block mb-2">Selecione um ou mais arquivos PDF dos padrões utilizados</small>
+                                        {{ historico_form.novos_arquivos_padroes }}
+                                    </div>
+
+                                    <!-- Padrões Já Associados -->
+                                    {% if historico.arquivos_padroes.all %}
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">
+                                            <i class="bi bi-check-circle text-success"></i> Padrões Associados
+                                        </label>
+                                        <div class="list-group">
+                                            {% for padrao in historico.arquivos_padroes.all %}
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <input type="checkbox" id="padrao_{{ padrao.id }}" name="arquivos_padroes" value="{{ padrao.id }}" 
+                                                        {% if padrao in historico.arquivos_padroes.all %}checked{% endif %} class="form-check-input">
+                                                    <label for="padrao_{{ padrao.id }}" class="ms-2 mb-0">
+                                                        <i class="bi bi-file-pdf text-danger"></i> {{ padrao.nome }}
+                                                    </label>
+                                                </div>
+                                                <a href="{{ padrao.arquivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Visualizar PDF">
+                                                    <i class="bi bi-eye"></i> Visualizar
+                                                </a>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    <!-- Padrões Disponíveis (Não Associados) -->
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">
+                                            <i class="bi bi-list-check"></i> Padrões Disponíveis
+                                        </label>
+                                        <small class="text-muted d-block mb-2">Selecione os padrões a associar a esta calibração</small>
+                                        <div class="padroes-checkboxes">
+                                            {{ historico_form.arquivos_padroes }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -122,24 +158,103 @@
             </div>
         </div>
 
-        <div class="col-lg-4">
+        <!-- COLUNA 2: PRÉ-VISUALIZAÇÃO DO CERTIFICADO (Direita) -->
+        <div class="col-lg-5">
             <div class="card shadow-sm">
                 <div class="card-header bg-success text-white">
-                    <i class="bi bi-check-circle"></i> Resultado Geral
+                    <i class="bi bi-file-pdf"></i> Pré-visualização do Certificado
                 </div>
-                <div class="card-body text-center">
-                    {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
-                        <h4><span class="badge bg-success" style="font-size: 1rem;">✓ APROVADO</span></h4>
-                    {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
-                        <h4><span class="badge bg-warning text-dark" style="font-size: 1rem;">⚠ COM CORREÇÃO</span></h4>
-                    {% elif historico.resultado == 'REPROVADO' %}
-                        <h4><span class="badge bg-danger" style="font-size: 1rem;">✗ REPROVADO</span></h4>
-                    {% else %}
-                        <h4><span class="badge bg-secondary" style="font-size: 1rem;">SEM RESULTADO</span></h4>
-                    {% endif %}
-                    <p class="text-muted mt-3 mb-0">
-                        <strong>Data:</strong> {{ historico.data_calibracao|date:"d/m/Y" }}
-                    </p>
+                <div class="card-body p-3">
+                    <!-- Simulação de Certificado -->
+                    <div class="cert-preview">
+                        <!-- Cabeçalho -->
+                        <div class="cert-header">
+                            <h3>CERTIFICADO DE CALIBRAÇÃO</h3>
+                            <p>Nº {{ historico.numero_certificado|default:"000000" }}</p>
+                        </div>
+
+                        <!-- Informações do Instrumento -->
+                        <div class="cert-section">
+                            <h4>INSTRUMENTO</h4>
+                            <table class="cert-table">
+                                <tr>
+                                    <td><strong>Descrição:</strong></td>
+                                    <td>{{ instrumento.descricao }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Tag:</strong></td>
+                                    <td>{{ instrumento.tag }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Marca:</strong></td>
+                                    <td>{{ instrumento.fabricante|default:"---" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Modelo:</strong></td>
+                                    <td>{{ instrumento.modelo|default:"---" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Série:</strong></td>
+                                    <td>{{ instrumento.numero_serie|default:"---" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Informações da Calibração -->
+                        <div class="cert-section">
+                            <h4>CALIBRAÇÃO</h4>
+                            <table class="cert-table">
+                                <tr>
+                                    <td style="width: 50%;"><strong>Data:</strong> {{ historico.data_calibracao|date:"d/m/Y"|default:"---" }}</td>
+                                    <td style="width: 50%;"><strong>Próxima:</strong> {{ historico.proxima_calibracao|date:"d/m/Y"|default:"---" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Responsável:</strong> {{ historico.responsavel|default:"---" }}</td>
+                                    <td><strong>Laboratório:</strong> {{ historico.fornecedor|default:"---" }}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2"><strong>Tipo:</strong> {{ historico.tipo_calibracao|default:"---" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="cert-section">
+                            <h4>RESULTADO</h4>
+                            <div class="cert-result">
+                                {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                    <p style="color: green;">✓ APROVADO</p>
+                                {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
+                                    <p style="color: orange;">⚠ APROVADO COM CORREÇÃO</p>
+                                {% elif historico.resultado == 'REPROVADO' %}
+                                    <p style="color: red;">✗ REPROVADO</p>
+                                {% else %}
+                                    <p style="color: #999;">SEM RESULTADO</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Observações -->
+                        {% if historico.observacoes %}
+                        <div class="cert-section">
+                            <h4>OBSERVAÇÕES</h4>
+                            <p style="margin: 0; font-size: 9px; line-height: 1.4;">{{ historico.observacoes }}</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Selo/Carimbo (Placeholder) -->
+                        <div class="cert-stamp">
+                            <div class="cert-stamp-text">
+                                <i>CARIMBO</i>
+                                <span>(Futuro)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nota -->
+                    <div class="alert alert-info mt-3 mb-0">
+                        <small><i class="bi bi-info-circle"></i> Esta é uma pré-visualização. O certificado final será gerado com a funcionalidade de carimbo.</small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -148,7 +263,7 @@
     <!-- SEÇÃO 2: RESULTADOS POR FAIXA -->
     <div class="card shadow-sm">
         <div class="card-header bg-warning text-dark">
-            <i class="bi bi-calculator"></i> Resultados por Faixa de Medição
+            <i class="bi bi-calculator"></i> Resultados de Medição por Faixa
         </div>
         <div class="card-body p-0">
             {% if resultados_faixa %}
@@ -156,13 +271,15 @@
                 <table class="table table-hover mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 20%;">Faixa</th>
-                            <th style="width: 12%;">Unidade</th>
-                            <th style="width: 12%;">Erro Máx</th>
-                            <th style="width: 12%;">Erro Mín</th>
-                            <th style="width: 12%;">Incerteza</th>
-                            <th style="width: 15%;">Resultado</th>
-                            <th style="width: 17%;">Ações</th>
+                            <th>Faixa (Min-Max)</th>
+                            <th>Unidade</th>
+                            <th>Tolerância</th>
+                            <th>Erro</th>
+                            <th>Incerteza</th>
+                            <th>EMA</th>
+                            <th>EME</th>
+                            <th>Resultado</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -172,9 +289,37 @@
                                 <strong>{{ rf.faixa.valor_minimo }}</strong> a <strong>{{ rf.faixa.valor_maximo }}</strong>
                             </td>
                             <td>{{ rf.faixa.unidade.nome }}</td>
-                            <td>{{ rf.erro_max|default:"-" }}</td>
-                            <td>{{ rf.erro_min|default:"-" }}</td>
+                            <td>
+                                {% if rf.tolerancia %}
+                                    ± {{ rf.tolerancia }}
+                                {% elif rf.faixa.tolerancia_mais_menos %}
+                                    ± {{ rf.faixa.tolerancia_mais_menos }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ rf.erro|default:"-" }}</td>
                             <td>{{ rf.incerteza|default:"-" }}</td>
+                            <td>
+                                {% if rf.ema %}
+                                    {{ rf.ema }}
+                                {% elif rf.tolerancia %}
+                                    {{ rf.tolerancia|floatformat:-4 }}
+                                {% elif rf.faixa.tolerancia_mais_menos %}
+                                    {{ rf.faixa.tolerancia_mais_menos|floatformat:-4 }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rf.eme %}
+                                    {{ rf.eme }}
+                                {% elif rf.erro and rf.incerteza %}
+                                    {{ rf.erro|add:rf.incerteza|floatformat:-4 }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
                                     <span class="badge bg-success">✓ OK</span>
@@ -204,7 +349,7 @@
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <div class="modal-header">
-                                                <h5 class="modal-title">Editar Resultado - Faixa {{ rf.faixa.valor_minimo }}-{{ rf.faixa.valor_maximo }}</h5>
+                                                <h5 class="modal-title">Editar Resultado - Faixa {{ rf.faixa.valor_minimo }}-{{ rf.faixa.valor_maximo }} {{ rf.faixa.unidade.nome }}</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                             </div>
                                             <form method="post">
@@ -212,31 +357,48 @@
                                                 <input type="hidden" name="action" value="update_resultado">
                                                 <input type="hidden" name="resultado_id" value="{{ rf.id }}">
                                                 <div class="modal-body">
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-bold">Erro Máximo</label>
-                                                        <input type="number" name="erro_max" step="0.0001" class="form-control" value="{{ rf.erro_max|default:'' }}" placeholder="0.0000">
+                                                    <div class="alert alert-info">
+                                                        <small><strong>Tolerância da Faixa:</strong> ± {{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:"N/A" }}</small>
                                                     </div>
                                                     <div class="mb-3">
-                                                        <label class="form-label fw-bold">Erro Mínimo</label>
-                                                        <input type="number" name="erro_min" step="0.0001" class="form-control" value="{{ rf.erro_min|default:'' }}" placeholder="0.0000">
+                                                        <label class="form-label fw-bold">Erro</label>
+                                                        <input type="number" name="erro" step="0.0001" class="form-control" value="{{ rf.erro|default:'' }}" placeholder="0.0000">
+                                                        <small class="text-muted">Erro encontrado na medição (pode ser positivo ou negativo)</small>
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label fw-bold">Incerteza</label>
                                                         <input type="number" name="incerteza" step="0.0001" class="form-control" value="{{ rf.incerteza|default:'' }}" placeholder="0.0000">
+                                                        <small class="text-muted">Incerteza da medição</small>
                                                     </div>
                                                     <div class="mb-3">
-                                                        <label class="form-label fw-bold">Resultado</label>
-                                                        <select name="resultado" class="form-select">
-                                                            <option value="">---------</option>
-                                                            <option value="APROVADO_SEM_CORRECAO" {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}selected{% endif %}>Aprovado sem Correção</option>
-                                                            <option value="APROVADO_COM_CORRECAO" {% if rf.resultado == 'APROVADO_COM_CORRECAO' %}selected{% endif %}>Aprovado com Correção</option>
-                                                            <option value="REPROVADO" {% if rf.resultado == 'REPROVADO' %}selected{% endif %}>Reprovado</option>
-                                                        </select>
+                                                        <label class="form-label fw-bold">Erro Máximo Admissível (EMA)</label>
+                                                        <input type="number" name="ema" step="0.0001" class="form-control" value="{{ rf.ema|default:'' }}" placeholder="0.0000" readonly disabled>
+                                                        <small class="text-muted">Calculado automaticamente como Tolerância ÷ 2</small>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">Erro Máximo do Equipamento (EME)</label>
+                                                        <input type="number" name="eme" step="0.0001" class="form-control" value="{{ rf.eme|default:'' }}" placeholder="0.0000" readonly disabled>
+                                                        <small class="text-muted">Calculado automaticamente como |Erro| + Incerteza</small>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">Resultado (Calculado automaticamente)</label>
+                                                        <div class="alert alert-light border">
+                                                            {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                                <span class="badge bg-success">✓ Aprovado sem Correção</span>
+                                                            {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                                <span class="badge bg-warning text-dark">⚠ Aprovado com Correção</span>
+                                                            {% elif rf.resultado == 'REPROVADO' %}
+                                                                <span class="badge bg-danger">✗ Reprovado</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">Preencha Erro e Incerteza</span>
+                                                            {% endif %}
+                                                        </div>
+                                                        <small class="text-muted">O resultado é calculado automaticamente com base no erro, incerteza e tolerância</small>
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                    <button type="submit" class="btn btn-primary">Salvar</button>
+                                                    <button type="submit" class="btn btn-primary">Salvar Resultado</button>
                                                 </div>
                                             </form>
                                         </div>
@@ -250,10 +412,414 @@
             </div>
             {% else %}
             <div class="alert alert-info m-3">
-                <i class="bi bi-info-circle"></i> Nenhum resultado de faixa cadastrado ainda.
+                <i class="bi bi-info-circle"></i> Nenhum resultado de faixa cadastrado ainda. 
+                {% if faixas_sem_resultados %}
+                Selecione as faixas abaixo para adicionar resultados.
+                {% else %}
+                Todas as faixas do instrumento já estão cadastradas ou o instrumento não possui faixas.
+                {% endif %}
             </div>
+            
+            {% if faixas_sem_resultados %}
+            <div class="alert alert-success m-3">
+                <h6 class="mb-3"><i class="bi bi-plus-circle"></i> Adicionar Faixas de Medição</h6>
+                <p class="text-muted mb-3">Selecione uma faixa disponível do instrumento para adicionar resultados:</p>
+                
+                <div class="row g-2">
+                    {% for faixa in faixas_sem_resultados %}
+                    <div class="col-md-6 col-lg-4">
+                        <form method="post" action="{% url 'editar_historico_calibracao' historico.id %}" class="d-flex gap-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_faixa">
+                            <input type="hidden" name="faixa_id" value="{{ faixa.id }}">
+                            <div class="flex-grow-1 p-2 bg-light rounded border">
+                                <small class="d-block text-muted">Faixa de Medição</small>
+                                <strong>{{ faixa.valor_minimo }} a {{ faixa.valor_maximo }} {{ faixa.unidade.nome }}</strong>
+                                {% if faixa.tolerancia %}
+                                <small class="d-block text-muted">Tol: ± {{ faixa.tolerancia }}</small>
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-success align-self-center btn-add-faixa" data-faixa-id="{{ faixa.id }}" data-faixa-label="{{ faixa.valor_minimo }}-{{ faixa.valor_maximo }}">
+                                <i class="bi bi-plus"></i> Adicionar
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
             {% endif %}
         </div>
     </div>
 </div>
+
+<style>
+    /* Melhoramentos visuais */
+    .card {
+        border: none;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .modal-body .alert {
+        border-left: 4px solid #0d6efd;
+    }
+    
+    /* Estilos para Pré-visualização do Certificado */
+    .cert-preview {
+        background: white;
+        border: 1px solid #ddd;
+        padding: 20px;
+        min-height: 600px;
+        position: relative;
+        font-family: 'Times New Roman', serif;
+        font-size: 11px;
+    }
+    
+    .cert-header {
+        text-align: center;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #333;
+    }
+    
+    .cert-header h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    
+    .cert-header p {
+        margin: 5px 0;
+        font-weight: bold;
+    }
+    
+    .cert-section {
+        margin-bottom: 15px;
+    }
+    
+    .cert-section h4 {
+        font-size: 12px;
+        font-weight: bold;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #999;
+    }
+    
+    .cert-table {
+        width: 100%;
+        font-size: 10px;
+    }
+    
+    .cert-table td {
+        padding: 4px;
+    }
+    
+    .cert-result {
+        text-align: center;
+        padding: 15px;
+        background: #f5f5f5;
+        border-radius: 4px;
+    }
+    
+    .cert-result p {
+        margin: 0;
+        font-size: 14px;
+        font-weight: bold;
+    }
+    
+    .cert-stamp {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 80px;
+        height: 80px;
+        border: 2px dashed #ccc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: #f9f9f9;
+    }
+    
+    .cert-stamp-text {
+        text-align: center;
+        color: #999;
+        font-size: 9px;
+    }
+    
+    .cert-stamp-text i {
+        display: block;
+        margin-bottom: 4px;
+    }
+    
+    .cert-stamp-text span {
+        font-size: 8px;
+    }
+    
+    /* Seção de Padrões - visível/oculta condicionalmente */
+    #arquivos-padroes-section.hidden {
+        display: none;
+    }
+    
+    #arquivos-padroes-section .card {
+        background-color: #f0f7ff !important;
+        border-left: 4px solid #0d6efd;
+    }
+    
+    /* Estilos para checkboxes de padrões */
+    .padroes-checkbox {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .padroes-checkbox label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 0;
+        padding: 8px 12px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .padroes-checkbox label:hover {
+        background: #f8f9fa;
+        border-color: #0d6efd;
+    }
+    
+    .padroes-checkbox input[type="checkbox"] {
+        margin-right: 4px;
+        cursor: pointer;
+    }
+    
+    .padroes-checkbox input[type="checkbox"]:checked + label,
+    .padroes-checkbox label:has(input[type="checkbox"]:checked) {
+        background: #e7f1ff;
+        border-color: #0d6efd;
+    }
+    
+    /* Estilos para a seção de padrões associados */
+    .list-group-item {
+        padding: 12px;
+        gap: 10px;
+    }
+    
+    .list-group-item input[type="checkbox"] {
+        cursor: pointer;
+        margin-top: 2px;
+    }
+    
+    .list-group-item label {
+        cursor: pointer;
+        margin-bottom: 0;
+    }
+    
+    .list-group-item .btn {
+        white-space: nowrap;
+    }
+
+</style>
+
+<script>
+    // Controla a visibilidade do campo de padrões baseado no checkbox RBC
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxRBC = document.getElementById('id_tem_selo_rbc');
+        const secaoPadroes = document.getElementById('arquivos-padroes-section');
+        
+        function atualizarVisibilidade() {
+            if (checkboxRBC.checked) {
+                // Tem selo RBC - ocultar padrões
+                secaoPadroes.classList.add('hidden');
+            } else {
+                // Não tem selo RBC - mostrar padrões
+                secaoPadroes.classList.remove('hidden');
+            }
+        }
+        
+        // Inicializar visibilidade na carga
+        atualizarVisibilidade();
+        
+        // Atualizar quando mudar o checkbox
+        checkboxRBC.addEventListener('change', atualizarVisibilidade);
+        
+        // Adicionar handler para adicionar faixas via AJAX
+        const adicionarFaixaButtons = document.querySelectorAll('.btn-add-faixa');
+        const currentUrl = window.location.href.split('?')[0]; // Get current page URL without query params
+        
+        adicionarFaixaButtons.forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                
+                const form = this.closest('form');
+                const formData = new FormData(form);
+                
+                try {
+                    console.log('Enviando requisição AJAX para:', currentUrl);
+                    console.log('FormData:', Object.fromEntries(formData));
+                    
+                    const response = await fetch(currentUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: formData
+                    });
+                    
+                    console.log('Response status:', response.status);
+                    
+                    if (response.ok) {
+                        // Mostrar mensagem de sucesso
+                        showNotification('Faixa adicionada com sucesso!', 'success');
+                        
+                        // Remover o botão da lista de faixas disponíveis
+                        const faixaCard = this.closest('.col-md-6');
+                        faixaCard.style.opacity = '0.5';
+                        this.disabled = true;
+                        this.textContent = '✓ Adicionada';
+                        this.classList.remove('btn-success');
+                        this.classList.add('btn-secondary');
+                        
+                        // Recarregar a página após um delay para mostrar a tabela atualizada
+                        setTimeout(() => {
+                            console.log('Recarregando a página...');
+                            window.location.reload(true); // Force hard reload
+                        }, 1500);
+                    } else {
+                        console.error('Response not ok:', response.status);
+                        showNotification('Erro ao adicionar faixa', 'danger');
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    showNotification('Erro ao processar requisição', 'danger');
+                }
+            });
+        });
+    });
+    
+    // Função auxiliar para mostrar notificações
+    function showNotification(message, type = 'info') {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        const container = document.querySelector('.container-fluid');
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Auto-dismiss após 3 segundos
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 3000);
+    }
+    
+    // Atualizar EMA e EME em tempo real quando Erro e Incerteza são modificados
+    document.addEventListener('DOMContentLoaded', function() {
+        // Usar delegação de eventos para capturar modais abertos dinamicamente
+        document.addEventListener('shown.bs.modal', function(e) {
+            const modal = e.target;
+            
+            if (!modal.id.startsWith('editResultModal')) return;
+            
+            const erroInput = modal.querySelector('input[name="erro"]');
+            const incertezaInput = modal.querySelector('input[name="incerteza"]');
+            const emaInput = modal.querySelector('input[name="ema"]');
+            const emeInput = modal.querySelector('input[name="eme"]');
+            const resultadoDiv = modal.querySelector('.alert-light.border');
+            
+            // Get tolerance value from the alert info
+            const toleranciaText = modal.querySelector('.alert-info small')?.textContent || '';
+            const toleranciaMatch = toleranciaText.match(/[±]?\s*([\d.]+)/);
+            const tolerancia = toleranciaMatch ? parseFloat(toleranciaMatch[1]) : 0;
+            
+            console.log('Modal aberto:', modal.id, 'Tolerância:', tolerancia);
+            
+            function atualizarCalculos() {
+                console.log('Atualizando cálculos...');
+                
+                // EMA = Tolerância / 2
+                let emaNum = 0;
+                if (tolerancia > 0) {
+                    emaNum = tolerancia / 2;
+                    const ema = emaNum.toFixed(4);
+                    if (emaInput) {
+                        emaInput.value = ema;
+                        console.log('EMA atualizado:', ema);
+                    }
+                }
+                
+                // EME = |Erro| + Incerteza
+                const erro = parseFloat(erroInput?.value || 0);
+                const incerteza = parseFloat(incertezaInput?.value || 0);
+                
+                console.log('Erro:', erro, 'Incerteza:', incerteza);
+                
+                if (!isNaN(erro) && !isNaN(incerteza) && erroInput?.value !== '' && incertezaInput?.value !== '') {
+                    const emeNum = Math.abs(erro) + incerteza;
+                    const eme = emeNum.toFixed(4);
+                    if (emeInput) {
+                        emeInput.value = eme;
+                        console.log('EME atualizado:', eme);
+                    }
+                    
+                    // Calcular resultado baseado em EME vs EMA
+                    console.log('Comparando: EME=' + emeNum + ' vs EMA×3=' + (emaNum * 3));
+                    
+                    let resultado = '';
+                    let badgeClass = 'bg-secondary';
+                    let badgeText = 'Preencha Erro e Incerteza';
+                    
+                    if (emeNum > emaNum * 3) {
+                        resultado = 'REPROVADO';
+                        badgeClass = 'bg-danger';
+                        badgeText = '✗ Reprovado';
+                        console.log('Resultado: REPROVADO (EME > EMA×3)');
+                    } else if (emeNum <= emaNum) {
+                        resultado = 'APROVADO_SEM_CORRECAO';
+                        badgeClass = 'bg-success';
+                        badgeText = '✓ Aprovado sem Correção';
+                        console.log('Resultado: APROVADO_SEM_CORRECAO (EME ≤ EMA)');
+                    } else {
+                        resultado = 'APROVADO_COM_CORRECAO';
+                        badgeClass = 'bg-warning text-dark';
+                        badgeText = '⚠ Aprovado com Correção';
+                        console.log('Resultado: APROVADO_COM_CORRECAO (EMA < EME ≤ EMA×3)');
+                    }
+                    
+                    // Atualizar exibição do resultado
+                    if (resultadoDiv) {
+                        resultadoDiv.innerHTML = `<span class="badge ${badgeClass}">${badgeText}</span>`;
+                        console.log('Resultado atualizado:', resultado);
+                    }
+                } else {
+                    // Sem valores suficientes
+                    if (resultadoDiv) {
+                        resultadoDiv.innerHTML = '<span class="badge bg-secondary">Preencha Erro e Incerteza</span>';
+                    }
+                }
+            }
+            
+            if (erroInput) {
+                erroInput.addEventListener('input', atualizarCalculos);
+                erroInput.addEventListener('change', atualizarCalculos);
+            }
+            if (incertezaInput) {
+                incertezaInput.addEventListener('input', atualizarCalculos);
+                incertezaInput.addEventListener('change', atualizarCalculos);
+            }
+            
+            // Inicializar cálculos
+            atualizarCalculos();
+        });
+    });
+</script>
 {% endblock %}

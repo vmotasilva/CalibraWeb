@@ -60,13 +60,23 @@ class CalibraAdminSite(admin.AdminSite):
                         if m['object_name'] == model or m['name'] == model:
                             app_models.append(m)
             if app_models:
-                custom_apps.append({'name': title, 'app_label': code, 'models': app_models})
+                custom_apps.append({
+                    'name': title,
+                    'app_label': code,
+                    'app_url': '#',  # Required by Django admin template
+                    'models': app_models
+                })
         # Adiciona apps não agrupados
         grouped = set(m['object_name'] for app in custom_apps for m in app['models'])
         for app in app_dict.values():
             extra_models = [m for m in app['models'] if m['object_name'] not in grouped]
             if extra_models:
-                custom_apps.append({'name': app['name'], 'app_label': app['app_label'], 'models': extra_models})
+                custom_apps.append({
+                    'name': app['name'],
+                    'app_label': app['app_label'],
+                    'app_url': app.get('app_url', '#'),  # Preserve original or use #
+                    'models': extra_models
+                })
         return custom_apps
 
 

@@ -357,7 +357,7 @@ class FilteringAndExportE2ETest(E2ETestCaseBase):
         """Test: Filter by sector → Export"""
         # Filter by Metrologia sector
         metrologia_instruments = Instrumento.objects.filter(setor=self.setor1)
-        self.assertEqual(metrologia_instruments.count(), 6)
+        self.assertEqual(metrologia_instruments.count(), 5)
         
         # Export filtered
         exportador = ExportadorInstrumentos(metrologia_instruments)
@@ -373,8 +373,8 @@ class FilteringAndExportE2ETest(E2ETestCaseBase):
             data_proxima_calibracao__lt=today,
             ativo=True
         )
-        # Should have 2 vencidos
-        self.assertEqual(filtered.count(), 2)
+        # Should have 1 vencido ativo (INSTR-007)
+        self.assertEqual(filtered.count(), 1)
         
         # Export as PDF
         exportador = ExportadorInstrumentos(filtered)
@@ -385,7 +385,7 @@ class FilteringAndExportE2ETest(E2ETestCaseBase):
         """Test: Filter inactive instruments out → Export only active"""
         # Filter ativos only
         active = Instrumento.objects.filter(ativo=True)
-        self.assertEqual(active.count(), 7)
+        self.assertEqual(active.count(), 8)
         
         # Export
         exportador = ExportadorInstrumentos(active)

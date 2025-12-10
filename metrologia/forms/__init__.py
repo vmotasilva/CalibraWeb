@@ -8,6 +8,7 @@ from .forms import (
     HistoricoCalibracaoForm,
     ImportacaoInstrumentosForm,
     ImportacaoHistoricoForm,
+    FaixaMedicaoFormWithValidation,
 )
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     'HistoricoCalibracaoForm',
     'ImportacaoInstrumentosForm',
     'ImportacaoHistoricoForm',
+    'FaixaMedicaoFormWithValidation',
 ]

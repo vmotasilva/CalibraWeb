@@ -6,9 +6,9 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 
 from training.models import (
-    Area, Procedimento, RegistroTreinamento
+    Area, Procedimento, RegistroTreinamento, PacoteTreinamento
 )
-from rh.models import Colaborador, PacoteTreinamento
+from rh.models import Colaborador
 from organization.models import Setor
 
 

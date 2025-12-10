@@ -1,69 +1,96 @@
 # config/cache_settings.py
-# Redis Cache Configuration - Fase 6 Task #3
+# Cache Configuration - Development/Production agnostic
 
 import os
 from django.conf import settings
 
 # ============================================================================
-# REDIS CACHE BACKEND
+# CACHE BACKEND - Auto-detect based on Redis availability
 # ============================================================================
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
-            'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
-            'CONNECTION_POOL_CLASS_KWARGS': {
-                'max_connections': 50,
-                'retry_on_timeout': True,
-            }
+# Use Redis if REDIS_URL is provided, otherwise use in-memory cache
+USE_REDIS = bool(os.getenv('REDIS_URL')) or os.getenv('DEBUG') == 'False'
+
+if USE_REDIS:
+    # Production: Redis Cache
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+                'COMPRESSOR': 'django_redis.compressors.zlib.ZlibCompressor',
+                'CONNECTION_POOL_CLASS_KWARGS': {
+                    'max_connections': 50,
+                    'retry_on_timeout': True,
+                }
+            },
+            'KEY_PREFIX': 'calibra_',
+            'TIMEOUT': 300,  # 5 minutos padrão
         },
-        'KEY_PREFIX': 'calibra_',
-        'TIMEOUT': 300,  # 5 minutos padrão
-    },
-    
-    # Cache separado para sessões (mais persistente)
-    'sessions': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/2'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
+        
+        # Cache separado para sessões (mais persistente)
+        'sessions': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/2'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+            },
+            'TIMEOUT': 86400,  # 24 horas
         },
-        'TIMEOUT': 86400,  # 24 horas
-    },
-    
-    # Cache separado para dados de longa duração (estatísticas)
-    'statistics': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/3'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
+        
+        # Cache separado para dados de longa duração (estatísticas)
+        'statistics': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/3'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
         },
         'TIMEOUT': 3600,  # 1 hora
-    },
-    
-    # Cache separado para queries (validação mais frequente)
-    'queries': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/4'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'SOCKET_CONNECT_TIMEOUT': 5,
-            'SOCKET_TIMEOUT': 5,
         },
-        'TIMEOUT': 600,  # 10 minutos
-    },
-}
-
-# ============================================================================
+        
+        # Cache separado para queries (validação mais frequente)
+        'queries': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/4'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
+                'SOCKET_TIMEOUT': 5,
+            },
+            'TIMEOUT': 600,  # 10 minutos
+        },
+    }
+else:
+    # Development: In-memory cache (works without Redis)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'calibra-dev-cache',
+            'TIMEOUT': 300,  # 5 minutos
+        },
+        'sessions': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'calibra-sessions',
+            'TIMEOUT': 86400,  # 24 horas
+        },
+        'statistics': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'calibra-stats',
+            'TIMEOUT': 3600,  # 1 hora
+        },
+        'queries': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'calibra-queries',
+            'TIMEOUT': 600,  # 10 minutos
+        },
+    }# ============================================================================
 # CACHE TIMEOUTS (em segundos)
 # ============================================================================
 
@@ -89,6 +116,9 @@ CACHE_TIMEOUTS = {
     
     # Busca (mais curto pois pode variar)
     'busca_resultado': 5 * 60,               # 5 minutos
+    
+    # Paginação
+    'queryset_count': 5 * 60,                # 5 minutos
 }
 
 # ============================================================================
@@ -143,8 +173,13 @@ CACHE_INVALIDATION_MAP = {
 # SESSION & SECURITY
 # ============================================================================
 
-SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-SESSION_CACHE_ALIAS = 'sessions'
+# Use cache for sessions if Redis available, otherwise use database
+if USE_REDIS:
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'sessions'
+else:
+    # Fallback to database sessions for development
+    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # ============================================================================
 # CACHE WARMING (Background Tasks)
