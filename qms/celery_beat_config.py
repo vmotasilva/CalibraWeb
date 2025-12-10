@@ -49,6 +49,31 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute=0, hour='*/4'),  # A cada 4 horas
         'options': {'queue': 'alerts', 'expires': 1800}
     },
+    
+    # ====================================================================
+    # CACHE WARMING TASKS - Fase 6 Task #3
+    # ====================================================================
+    
+    # Cache warming de instrumentos - A cada 25 minutos
+    'warm-instrumentos-cache': {
+        'task': 'qms.tasks.warm_instrumentos_cache',
+        'schedule': crontab(minute='*/25'),
+        'options': {'queue': 'cache', 'expires': 1500}
+    },
+    
+    # Cache warming de estatísticas - A cada 55 minutos
+    'warm-statistics-cache': {
+        'task': 'qms.tasks.warm_statistics_cache',
+        'schedule': crontab(minute='*/55'),
+        'options': {'queue': 'cache', 'expires': 3300}
+    },
+    
+    # Cache warming de categorias - A cada 55 minutos
+    'warm-categories-cache': {
+        'task': 'qms.tasks.warm_categories_cache',
+        'schedule': crontab(minute='*/55'),
+        'options': {'queue': 'cache', 'expires': 3300}
+    },
 }
 
 # Queue configuration
@@ -56,6 +81,7 @@ CELERY_QUEUES = {
     'default': {'exchange': 'default', 'routing_key': 'default'},
     'reports': {'exchange': 'reports', 'routing_key': 'report'},
     'alerts': {'exchange': 'alerts', 'routing_key': 'alert'},
+    'cache': {'exchange': 'cache', 'routing_key': 'cache'},
 }
 
 # Task routing
@@ -63,4 +89,7 @@ CELERY_ROUTES = {
     'qms.tasks.gerar_relatorio_diario_vencidos': {'queue': 'reports'},
     'qms.tasks.gerar_relatorio_semanal_estatisticas': {'queue': 'reports'},
     'qms.tasks.gerar_relatorio_alerta_critico': {'queue': 'alerts'},
+    'qms.tasks.warm_instrumentos_cache': {'queue': 'cache'},
+    'qms.tasks.warm_statistics_cache': {'queue': 'cache'},
+    'qms.tasks.warm_categories_cache': {'queue': 'cache'},
 }

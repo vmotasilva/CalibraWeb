@@ -1145,3 +1145,133 @@ Alerta gerado automaticamente pelo CalibraWeb em {today.strftime("%d/%m/%Y %H:%M
             'error': type(e).__name__
         }
 
+
+# ============================================================================
+# CACHE WARMING TASKS - Fase 6 Task #3
+# ============================================================================
+
+@shared_task
+def warm_instrumentos_cache():
+    """
+    Pré-carrega cache com listagem de instrumentos ativos.
+    Executado a cada 25 minutos (expira em 30).
+    """
+    try:
+        from qms.cache_utils import CacheManager
+        from qms.utils.query_optimizer import InstrumentoQueryOptimizer
+        from config.cache_settings import CACHE_TIMEOUTS, CACHE_KEY_PATTERNS
+        
+        # Obter instrumentos ativos otimizados
+        instrumentos = InstrumentoQueryOptimizer.listar_completo().filter(ativo=True)
+        
+        # Cachear
+        cache_key = CACHE_KEY_PATTERNS['instrumentos_lista'].format(filtro_hash='ativos')
+        CacheManager.get_cache_instance('default').set(
+            cache_key,
+            list(instrumentos),
+            CACHE_TIMEOUTS['instrumentos_lista']
+        )
+        
+        return {
+            'status': 'success',
+            'task': 'warm_instrumentos_cache',
+            'message': f'Cache aquecido com {instrumentos.count()} instrumentos',
+        }
+    
+    except Exception as e:
+        return {
+            'status': 'error',
+            'task': 'warm_instrumentos_cache',
+            'error': str(e),
+        }
+
+
+@shared_task
+def warm_statistics_cache():
+    """
+    Pré-carrega cache com estatísticas gerais.
+    Executado a cada 55 minutos (expira em 60).
+    """
+    try:
+        from qms.cache_utils import CacheManager
+        from qms.utils.query_optimizer import EstatisticasQueryOptimizer
+        from config.cache_settings import CACHE_TIMEOUTS, CACHE_KEY_PATTERNS
+        from datetime import date
+        from django.db.models import Count, Q
+        
+        # Estatísticas gerais
+        total = Instrumento.objects.filter(ativo=True).count()
+        vencidos = Instrumento.objects.filter(
+            ativo=True,
+            data_proxima_calibracao__lte=date.today()
+        ).count()
+        
+        stats = {
+            'total_instrumentos': total,
+            'total_vencidos': vencidos,
+            'percentual_vencidos': (vencidos / total * 100) if total > 0 else 0,
+        }
+        
+        # Cachear
+        cache_key = CACHE_KEY_PATTERNS['estatisticas_gerais']
+        CacheManager.get_cache_instance('statistics').set(
+            cache_key,
+            stats,
+            CACHE_TIMEOUTS['estatisticas_gerais']
+        )
+        
+        return {
+            'status': 'success',
+            'task': 'warm_statistics_cache',
+            'stats': stats,
+        }
+    
+    except Exception as e:
+        return {
+            'status': 'error',
+            'task': 'warm_statistics_cache',
+            'error': str(e),
+        }
+
+
+@shared_task
+def warm_categories_cache():
+    """
+    Pré-carrega cache com categorias e setores.
+    Executado a cada 55 minutos (expira em 60).
+    """
+    try:
+        from qms.cache_utils import CacheManager
+        from config.cache_settings import CACHE_TIMEOUTS, CACHE_KEY_PATTERNS
+        
+        # Categorias
+        categorias = list(CategoriaInstrumento.objects.values('id', 'nome'))
+        cache_key = CACHE_KEY_PATTERNS['categorias_lista']
+        CacheManager.get_cache_instance('default').set(
+            cache_key,
+            categorias,
+            CACHE_TIMEOUTS['categorias_lista']
+        )
+        
+        # Setores
+        setores = list(Setor.objects.values('id', 'nome'))
+        cache_key = CACHE_KEY_PATTERNS['setores_lista']
+        CacheManager.get_cache_instance('default').set(
+            cache_key,
+            setores,
+            CACHE_TIMEOUTS['setores_lista']
+        )
+        
+        return {
+            'status': 'success',
+            'task': 'warm_categories_cache',
+            'categorias_count': len(categorias),
+            'setores_count': len(setores),
+        }
+    
+    except Exception as e:
+        return {
+            'status': 'error',
+            'task': 'warm_categories_cache',
+            'error': str(e),
+        }

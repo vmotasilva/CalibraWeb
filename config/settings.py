@@ -313,3 +313,15 @@ LOGGING = {
         'level': 'DEBUG',
     },
 }
+
+# ============================================================================
+# CACHE CONFIGURATION - Fase 6 Task #3
+# ============================================================================
+
+from config.cache_settings import CACHES, SESSION_ENGINE
+
+# Redis cache backends (multiple caches for different purposes)
+CACHES = CACHES
+
+# Use Redis for sessions (faster than database)
+SESSION_ENGINE = SESSION_ENGINE
