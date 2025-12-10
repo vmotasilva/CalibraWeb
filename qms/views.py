@@ -27,6 +27,9 @@ from .views_helpers import (
     parse_date,
 )
 
+# Import pagination utilities
+from .pagination import OffsetPaginator, PaginationHelper
+
 # Import models from correct apps
 from metrologia.models import (
     Instrumento,
@@ -1092,10 +1095,37 @@ def listar_instrumentos_view(request):
     # Order by tag
     instrumentos = instrumentos.order_by('tag')
     
-    # Pagination
-    paginator = Paginator(instrumentos, 20)  # 20 per page
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    # Pagination with caching for large datasets
+    page_number = PaginationHelper.get_page_from_request(request)
+    cache_key = f'instrumentos_count_filters_{search_query}_{status_filter}_{categoria_filter}_{setor_filter}_{ativo_filter}'
+    
+    paginator = OffsetPaginator(page_size=50, cache_count=True)
+    page_items, pagination_metadata = paginator.paginate_queryset(
+        instrumentos,
+        page=page_number,
+        cache_key=cache_key
+    )
+    
+    # Get filter options for dropdowns
+    categorias = CategoriaInstrumento.objects.all().order_by('nome')
+    setores = Setor.objects.all().order_by('nome')
+    
+    context = {
+        'page_items': page_items,
+        'pagination': pagination_metadata.to_dict(),
+        'instrumentos': page_items,
+        'categorias': categorias,
+        'setores': setores,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'categoria_filter': categoria_filter,
+        'setor_filter': setor_filter,
+        'ativo_filter': ativo_filter,
+        'total_instrumentos': pagination_metadata.total_items,
+        'today': today,
+        'today_30days': today + timedelta(days=30),
+    }
+    return render(request, 'metrologia/instrumentos_lista.html', context)
     
     # Get filter options for dropdowns
     categorias = CategoriaInstrumento.objects.all().order_by('nome')
