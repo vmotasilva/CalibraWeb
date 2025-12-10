@@ -1,263 +1,204 @@
-# LOCAL TESTING CREDENTIALS
+# Local Testing Credentials
 
-## Superuser Account (for Django Admin & Testing)
+## Django Admin Access
 
-```
-Username: admin
-Email: admin@calibraweb.local
-Password: TestPass123456!@#
-```
+**Superuser Account:**
 
-## How to Use These Credentials
+- **Username:** admin
+- **Password:** admin123
+- **Email:** admin@calibra.com.br
 
-### 1. **Django Admin Panel**
-   - Start Django server: `python manage.py runserver`
-   - Open: http://127.0.0.1:8000/admin/
-   - Login with credentials above
-   - Create/manage users, permissions, settings
+## How to Start Local Server
 
-### 2. **Cache Dashboard**
-   - Start: `python manage.py cache_dashboard --live --interval 2`
-   - Open: http://127.0.0.1:8000/dashboard/
-   - Monitor cache metrics in real-time
-   - View hit/miss ratios, memory usage
+### Option 1: Default Settings (SQLite + Mock Redis)
 
-### 3. **API Testing**
-   - Use credentials with your API client
-   - Example (curl):
-     ```bash
-     curl -X POST http://127.0.0.1:8000/api/login/ \
-       -H "Content-Type: application/json" \
-       -d '{
-         "username": "admin",
-         "password": "TestPass123456!@#"
-       }'
-     ```
-
-### 4. **Celery Task Testing**
-   - Credentials used for task authentication
-   - Cache warming tasks run under admin user
-   - Monitor in Celery dashboard
-
----
-
-## Create This Superuser Locally
-
-### Option A: Interactive (Recommended)
-```powershell
+```bash
 cd c:\CalibraWeb
-.venv\Scripts\Activate.ps1
-python manage.py createsuperuser
-```
-
-When prompted:
-```
-Username: admin
-Email: admin@calibraweb.local
-Password: TestPass123456!@#
-Password (again): TestPass123456!@#
-```
-
-### Option B: Using Environment Variables
-```powershell
-cd c:\CalibraWeb
-.venv\Scripts\Activate.ps1
-
-$env:ADMIN_USERNAME = "admin"
-$env:ADMIN_EMAIL = "admin@calibraweb.local"
-$env:ADMIN_PASSWORD = "TestPass123456!@#"
-
-python create_admin.py
-```
-
-### Option C: Using Django Shell
-```powershell
-cd c:\CalibraWeb
-.venv\Scripts\Activate.ps1
-python manage.py shell
-```
-
-Then in Python shell:
-```python
-from django.contrib.auth import get_user_model
-User = get_user_model()
-User.objects.create_superuser(
-    username='admin',
-    email='admin@calibraweb.local',
-    password='TestPass123456!@#'
-)
-```
-
----
-
-## Verify Superuser Was Created
-
-```powershell
-cd c:\CalibraWeb
-.venv\Scripts\Activate.ps1
-python manage.py shell
-```
-
-In Python shell:
-```python
-from django.contrib.auth import get_user_model
-User = get_user_model()
-admin = User.objects.get(username='admin')
-print(f"Username: {admin.username}")
-print(f"Email: {admin.email}")
-print(f"Is Staff: {admin.is_staff}")
-print(f"Is Superuser: {admin.is_superuser}")
+python manage.py runserver
 ```
 
 Expected output:
 ```
-Username: admin
-Email: admin@calibraweb.local
-Is Staff: True
-Is Superuser: True
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
 ```
 
----
+### Option 2: Local Development Settings (In-Memory Cache)
 
-## Local Testing URLs
-
-Once services are running:
-
-| Service | URL | Port |
-|---------|-----|------|
-| Django Admin | http://127.0.0.1:8000/admin/ | 8000 |
-| Cache Dashboard | http://127.0.0.1:8000/dashboard/ | 8000 |
-| API Base | http://127.0.0.1:8000/api/ | 8000 |
-| Redis Mock | localhost:6379 | 6379 |
-
----
-
-## Testing Cache Functionality
-
-### Check cache with Django shell:
-```powershell
-cd c:\CalibraWeb
-.venv\Scripts\Activate.ps1
-python manage.py shell
-```
-
-```python
-from django.core.cache import cache
-
-# Set a value
-cache.set('test_key', 'test_value', 60)
-
-# Get the value
-value = cache.get('test_key')
-print(f"Cache value: {value}")
-
-# Check cache stats (if supported)
-print(cache.cache)
-```
-
-### Monitor cache with Dashboard:
-```powershell
-python manage.py cache_dashboard --live --interval 2
-```
-
-Watch real-time metrics:
-- Cache hits
-- Cache misses
-- Memory usage
-- Key count
-
----
-
-## Troubleshooting Login Issues
-
-### If login fails:
-1. **Check superuser exists:**
-   ```powershell
-   python manage.py shell
-   from django.contrib.auth.models import User
-   User.objects.all()
-   ```
-
-2. **Reset password if needed:**
-   ```powershell
-   python manage.py changepassword admin
-   ```
-
-3. **Check database migration:**
-   ```powershell
-   python manage.py migrate
-   ```
-
-4. **Verify Django is running:**
-   ```powershell
-   python manage.py runserver
-   ```
-
----
-
-## Default Test Data
-
-### After Creating Superuser:
-
-- **Admin User**: Fully staffed with all permissions
-- **Database**: SQLite at `db.sqlite3`
-- **Cache Backend**: In-memory (LocMemCache) for local dev
-- **Celery**: Eager mode for testing (immediate task execution)
-
-### Access Points:
-- Admin interface: http://127.0.0.1:8000/admin/
-- API endpoints available with token authentication
-- WebSocket dashboard for live metrics
-
----
-
-## Next Steps After Login
-
-1. **Explore Admin Interface**
-   - View users, groups, permissions
-   - Create test data
-   - Configure cache settings
-
-2. **Test Cache Dashboard**
-   - Monitor cache performance
-   - View hit/miss ratios
-   - Check memory usage
-
-3. **Run Cache Tests**
-   ```powershell
-   python manage.py test qms.tests.test_caching --verbosity=2
-   ```
-
-4. **Monitor Celery Tasks**
-   - View Celery logs in Terminal 2/3
-   - Watch cache warming tasks execute
-   - Monitor beat schedule execution
-
----
-
-## Security Notes (FOR LOCAL TESTING ONLY)
-
-⚠️ **IMPORTANT:** These credentials are for **LOCAL DEVELOPMENT ONLY**
-
-- DO NOT use in production
-- DO NOT commit real passwords to git
-- DO NOT share with team members
-- Change password before staging deployment
-- Use environment variables in production
-
-### For Staging/Production:
 ```bash
-# Generate new strong password
-openssl rand -base64 32
+cd c:\CalibraWeb
+python manage.py runserver --settings=config.settings_local
+```
 
-# Set via environment variables
-export ADMIN_PASSWORD="your-generated-password-here"
+Benefits:
 
-# Never hardcode passwords!
+- No Redis dependency needed
+- Faster startup
+- Perfect for development and testing
+
+## Access Django Admin
+
+1. Start the server (Option 1 or 2 above)
+2. Open browser: http://127.0.0.1:8000/admin/
+3. Login with credentials above
+4. Test features:
+   - User management
+   - Calibration records
+   - Training modules
+   - Procedure import
+   - Multi-level cache dashboard
+
+---
+
+## Run Tests Locally
+
+### Option A: With In-Memory Cache (Recommended)
+
+```bash
+python manage.py test qms --settings=config.settings_test -v 2
+```
+
+**Expected Result:**
+```
+test_ping_task (qms.tests.CeleryTasksTest) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.XXs
+
+OK
+```
+
+### Option B: With Redis
+
+```bash
+# Start mock Redis first (in another terminal)
+python mock_redis_server.py
+
+# Then run tests
+python manage.py test qms --settings=config.settings.py -v 2
 ```
 
 ---
 
-**Credentials valid for:** Local Development Machine Only  
-**Expires:** When deployment to staging begins  
-**Status:** Ready to use now
+## Database Management
+
+### Check Database Status
+
+```bash
+python manage.py dbshell
+```
+
+### Run Migrations
+
+```bash
+python manage.py migrate
+```
+
+### Create Test Data
+
+```bash
+python manage.py shell
+>>> from django.contrib.auth.models import User
+>>> User.objects.create_superuser('testuser', 'test@test.com', 'testpass123')
+>>> exit()
+```
+
+---
+
+## Troubleshooting
+
+### Issue: "No database configuration found"
+**Solution:** This is normal for SQLite. Django auto-creates it. Just run migrations:
+```bash
+python manage.py migrate
+```
+
+### Issue: Redis connection error
+**Solution:** Use local development settings:
+```bash
+python manage.py runserver --settings=config.settings_local
+```
+
+### Issue: Port 8000 already in use
+**Solution:** Use different port:
+```bash
+python manage.py runserver 8001
+```
+
+---
+
+## Testing Checklist
+
+- [ ] Django admin login works
+- [ ] Create new calibration record
+- [ ] Create new training module
+- [ ] Import procedures
+- [ ] Check cache invalidation
+- [ ] Monitor cache dashboard
+- [ ] Run test suite (all tests pass)
+- [ ] Database migrations applied
+- [ ] Static files working
+- [ ] Media files accessible
+
+---
+
+## Performance Testing
+
+### Local Cache Performance
+
+```bash
+python manage.py runserver --settings=config.settings_local
+# Access http://127.0.0.1:8000/cache-dashboard/
+# Monitor cache hits/misses in real-time
+```
+
+### Celery Task Testing
+
+```bash
+# Terminal 1: Django server
+python manage.py runserver --settings=config.settings_local
+
+# Terminal 2: Celery worker (eager mode - synchronous)
+python manage.py celery worker --loglevel=info
+
+# Terminal 3: Test tasks
+python manage.py shell
+>>> from qms.tasks import warm_cache
+>>> result = warm_cache()
+>>> print(result)
+```
+
+---
+
+## Environment Variables
+
+Current settings in `.env.local`:
+
+```env
+DEBUG=True
+DATABASE_URL=sqlite:///db.sqlite3
+REDIS_URL=redis://localhost:6379/0
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+CACHE_BACKEND=locmem
+```
+
+To override, edit `.env.local` and reload Django.
+
+---
+
+## Next Steps
+
+1. ✓ Start Django server
+2. ✓ Login to admin (admin/admin123)
+3. ✓ Create test data
+4. ✓ Run test suite
+5. → Monitor cache dashboard
+6. → Validate all features working
+7. → Ready for staging deployment (Opção 2)
+
+---
+
+**Created:** December 10, 2025
+**Status:** Ready for local testing
+**Git:** Committed and ready
