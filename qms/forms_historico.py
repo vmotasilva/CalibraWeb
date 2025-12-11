@@ -33,6 +33,18 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         validators=[validate_pdf_file]
     )
     
+    # Campos com required=False para permitir atualização parcial
+    data_aprovacao = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label='Data da Aprovação'
+    )
+    resultado = forms.ChoiceField(
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        choices=[('', '---')] + list(HistoricoCalibracao.RESULTADO_CHOICES)
+    )
+    
     class Meta:
         model = HistoricoCalibracao
         fields = [
@@ -54,7 +66,6 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         ]
         widgets = {
             'data_calibracao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'data_aprovacao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'numero_certificado': forms.TextInput(attrs={'class': 'form-control'}),
             'tem_selo_rbc': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'tipo_calibracao': forms.Select(attrs={'class': 'form-select'}),
@@ -65,7 +76,6 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             'tolerancia_usada': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
             'proxima_calibracao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'certificado': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf'}),
-            'resultado': forms.Select(attrs={'class': 'form-select'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'arquivos_padroes': forms.CheckboxSelectMultiple(attrs={'class': 'padroes-checkbox'}),
         }
