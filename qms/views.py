@@ -1016,7 +1016,11 @@ def editar_historico_calibracao_view(request, historico_id):
                 messages.success(request, 'Histórico atualizado com sucesso.')
                 return redirect('editar_historico_calibracao', historico_id=historico_id)
             else:
-                messages.error(request, 'Erro ao atualizar histórico.')
+                # Mostrar erros específicos
+                error_msg = 'Erro ao atualizar histórico: '
+                for field, errors in form.errors.items():
+                    error_msg += f"{field}: {', '.join(errors)}. "
+                messages.error(request, error_msg)
         
         elif action == 'update_resultado':
             resultado_id = request.POST.get('resultado_id')

@@ -73,7 +73,8 @@ class HistoricoCalibracaoForm(forms.ModelForm):
     def clean_certificado(self):
         """Validate certificate file."""
         certificado = self.cleaned_data.get('certificado')
-        if certificado:
+        if certificado and hasattr(certificado, 'name'):
+            # Só valida se houver arquivo
             return validate_pdf_file(certificado)
         return certificado
     
