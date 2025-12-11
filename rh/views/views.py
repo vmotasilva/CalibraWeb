@@ -301,7 +301,7 @@ def editar_colaborador_view(request, colab_id):
     
     return render(
         request,
-        "editar_colaborador.html",
+        "rh/editar_colaborador_novo.html",
         {"form": form, "alvo": alvo, "colaborador": usuario_logado},
     )
 
