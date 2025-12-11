@@ -155,6 +155,198 @@
                         </div>
                     </form>
                 </div>
+
+                <!-- SEÇÃO 2: RESULTADOS POR FAIXA -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-info text-white py-2">
+                        <i class="bi bi-table"></i> Resultados de Medição por Faixa
+                    </div>
+                    <div class="card-body p-0">
+                        {% if resultados_faixa %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Faixa (Min-Max)</th>
+                                        <th>Unidade</th>
+                                        <th>Tolerância</th>
+                                        <th>Erro</th>
+                                        <th>Incerteza</th>
+                                        <th>EMA</th>
+                                        <th>EME</th>
+                                        <th>Resultado</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rf in resultados_faixa %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ rf.faixa.valor_minimo }}</strong> a <strong>{{ rf.faixa.valor_maximo }}</strong>
+                                        </td>
+                                        <td>{{ rf.faixa.unidade.nome }}</td>
+                                        <td>
+                                            {% if rf.tolerancia %}
+                                                ± {{ rf.tolerancia }}
+                                            {% elif rf.faixa.tolerancia_mais_menos %}
+                                                ± {{ rf.faixa.tolerancia_mais_menos }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ rf.erro|default:"-" }}</td>
+                                        <td>{{ rf.incerteza|default:"-" }}</td>
+                                        <td>
+                                            {% if rf.ema %}
+                                                {{ rf.ema }}
+                                            {% elif rf.tolerancia %}
+                                                {{ rf.tolerancia|floatformat:-4 }}
+                                            {% elif rf.faixa.tolerancia_mais_menos %}
+                                                {{ rf.faixa.tolerancia_mais_menos|floatformat:-4 }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if rf.eme %}
+                                                {{ rf.eme }}
+                                            {% elif rf.erro and rf.incerteza %}
+                                                {{ rf.erro|add:rf.incerteza|floatformat:-4 }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                <span class="badge bg-success">✓ OK</span>
+                                            {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                <span class="badge bg-warning text-dark">⚠ OK</span>
+                                            {% elif rf.resultado == 'REPROVADO' %}
+                                                <span class="badge bg-danger">✗ NOK</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editResultModal{{ rf.id }}">
+                                                <i class="bi bi-pencil"></i> Editar
+                                            </button>
+                                            <form method="post" style="display: inline;" onsubmit="return confirm('Remover resultado desta faixa?');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="delete_resultado">
+                                                <input type="hidden" name="resultado_id" value="{{ rf.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+
+                                            <!-- Modal de Edição -->
+                                            <div class="modal fade" id="editResultModal{{ rf.id }}" tabindex="-1">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Editar Resultado - Faixa {{ rf.faixa.valor_minimo }}-{{ rf.faixa.valor_maximo }} {{ rf.faixa.unidade.nome }}</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                        </div>
+                                                        <form method="post">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="action" value="update_resultado">
+                                                            <input type="hidden" name="resultado_id" value="{{ rf.id }}">
+                                                            <div class="modal-body">
+                                                                <div class="alert alert-info">
+                                                                    <small><strong>Tolerância da Faixa:</strong> ± {{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:"N/A" }}</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-bold">Erro</label>
+                                                                    <input type="number" name="erro" step="0.0001" class="form-control" value="{{ rf.erro|default:'' }}" placeholder="0.0000">
+                                                                    <small class="text-muted">Erro encontrado na medição (pode ser positivo ou negativo)</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-bold">Incerteza</label>
+                                                                    <input type="number" name="incerteza" step="0.0001" class="form-control" value="{{ rf.incerteza|default:'' }}" placeholder="0.0000">
+                                                                    <small class="text-muted">Incerteza da medição</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-bold">Erro Máximo Admissível (EMA)</label>
+                                                                    <input type="number" name="ema" step="0.0001" class="form-control" value="{{ rf.ema|default:'' }}" placeholder="0.0000" readonly disabled>
+                                                                    <small class="text-muted">Calculado automaticamente como Tolerância ÷ 2</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-bold">Erro Máximo do Equipamento (EME)</label>
+                                                                    <input type="number" name="eme" step="0.0001" class="form-control" value="{{ rf.eme|default:'' }}" placeholder="0.0000" readonly disabled>
+                                                                    <small class="text-muted">Calculado automaticamente como |Erro| + Incerteza</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-bold">Resultado (Calculado automaticamente)</label>
+                                                                    <div class="alert alert-light border">
+                                                                        {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                                            <span class="badge bg-success">✓ Aprovado sem Correção</span>
+                                                                        {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                                            <span class="badge bg-warning text-dark">⚠ Aprovado com Correção</span>
+                                                                        {% elif rf.resultado == 'REPROVADO' %}
+                                                                            <span class="badge bg-danger">✗ Reprovado</span>
+                                                                        {% else %}
+                                                                            <span class="badge bg-secondary">Preencha Erro e Incerteza</span>
+                                                                        {% endif %}
+                                                                    </div>
+                                                                    <small class="text-muted">O resultado é calculado automaticamente com base no erro, incerteza e tolerância</small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                                <button type="submit" class="btn btn-primary">Salvar Resultado</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info m-3">
+                            <i class="bi bi-info-circle"></i> Nenhum resultado de faixa cadastrado ainda. 
+                            {% if faixas_sem_resultados %}
+                            Selecione as faixas abaixo para adicionar resultados.
+                            {% else %}
+                            Todas as faixas do instrumento já estão cadastradas ou o instrumento não possui faixas.
+                            {% endif %}
+                        </div>
+                        
+                        {% if faixas_sem_resultados %}
+                        <div class="alert alert-success m-3">
+                            <h6 class="mb-3"><i class="bi bi-plus-circle"></i> Adicionar Faixas de Medição</h6>
+                            <p class="text-muted mb-3">Selecione uma faixa disponível do instrumento para adicionar resultados:</p>
+                            
+                            <div class="row g-2">
+                                {% for faixa in faixas_sem_resultados %}
+                                <div class="col-md-6 col-lg-4">
+                                    <form method="post" action="{% url 'editar_historico_calibracao' historico.id %}" class="d-flex gap-2">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="add_faixa">
+                                        <input type="hidden" name="faixa_id" value="{{ faixa.id }}">
+                                        <div class="flex-grow-1 p-2 bg-light rounded border">
+                                            <small class="d-block text-muted">Faixa de Medição</small>
+                                            <strong>{{ faixa.valor_minimo }} a {{ faixa.valor_maximo }} {{ faixa.unidade.nome }}</strong>
+                                            {% if faixa.tolerancia %}
+                                            <small class="d-block text-muted">Tol: ± {{ faixa.tolerancia }}</small>
+                                            {% endif %}
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-success align-self-center btn-add-faixa" data-faixa-id="{{ faixa.id }}" data-faixa-label="{{ faixa.valor_minimo }}-{{ faixa.valor_maximo }}">
+                                            <i class="bi bi-plus"></i> Adicionar
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>        <!-- COLUNA 2: PRÉ-VISUALIZAÇÃO DO CERTIFICADO (Direita) -->
         <div class="col-lg-6">
@@ -459,198 +651,6 @@
                     </div>
                     {% endif %}
             </div>
-        </div>
-    </div>
-
-    <!-- SEÇÃO 2: RESULTADOS POR FAIXA -->
-    <div class="card shadow-sm">
-        <div class="card-header bg-warning text-dark">
-            <i class="bi bi-calculator"></i> Resultados de Medição por Faixa
-        </div>
-        <div class="card-body p-0">
-            {% if resultados_faixa %}
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Faixa (Min-Max)</th>
-                            <th>Unidade</th>
-                            <th>Tolerância</th>
-                            <th>Erro</th>
-                            <th>Incerteza</th>
-                            <th>EMA</th>
-                            <th>EME</th>
-                            <th>Resultado</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for rf in resultados_faixa %}
-                        <tr>
-                            <td>
-                                <strong>{{ rf.faixa.valor_minimo }}</strong> a <strong>{{ rf.faixa.valor_maximo }}</strong>
-                            </td>
-                            <td>{{ rf.faixa.unidade.nome }}</td>
-                            <td>
-                                {% if rf.tolerancia %}
-                                    ± {{ rf.tolerancia }}
-                                {% elif rf.faixa.tolerancia_mais_menos %}
-                                    ± {{ rf.faixa.tolerancia_mais_menos }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td>{{ rf.erro|default:"-" }}</td>
-                            <td>{{ rf.incerteza|default:"-" }}</td>
-                            <td>
-                                {% if rf.ema %}
-                                    {{ rf.ema }}
-                                {% elif rf.tolerancia %}
-                                    {{ rf.tolerancia|floatformat:-4 }}
-                                {% elif rf.faixa.tolerancia_mais_menos %}
-                                    {{ rf.faixa.tolerancia_mais_menos|floatformat:-4 }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if rf.eme %}
-                                    {{ rf.eme }}
-                                {% elif rf.erro and rf.incerteza %}
-                                    {{ rf.erro|add:rf.incerteza|floatformat:-4 }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
-                                    <span class="badge bg-success">✓ OK</span>
-                                {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
-                                    <span class="badge bg-warning text-dark">⚠ OK</span>
-                                {% elif rf.resultado == 'REPROVADO' %}
-                                    <span class="badge bg-danger">✗ NOK</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editResultModal{{ rf.id }}">
-                                    <i class="bi bi-pencil"></i> Editar
-                                </button>
-                                <form method="post" style="display: inline;" onsubmit="return confirm('Remover resultado desta faixa?');">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="delete_resultado">
-                                    <input type="hidden" name="resultado_id" value="{{ rf.id }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-
-                                <!-- Modal de Edição -->
-                                <div class="modal fade" id="editResultModal{{ rf.id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">Editar Resultado - Faixa {{ rf.faixa.valor_minimo }}-{{ rf.faixa.valor_maximo }} {{ rf.faixa.unidade.nome }}</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <form method="post">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="update_resultado">
-                                                <input type="hidden" name="resultado_id" value="{{ rf.id }}">
-                                                <div class="modal-body">
-                                                    <div class="alert alert-info">
-                                                        <small><strong>Tolerância da Faixa:</strong> ± {{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:"N/A" }}</small>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-bold">Erro</label>
-                                                        <input type="number" name="erro" step="0.0001" class="form-control" value="{{ rf.erro|default:'' }}" placeholder="0.0000">
-                                                        <small class="text-muted">Erro encontrado na medição (pode ser positivo ou negativo)</small>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-bold">Incerteza</label>
-                                                        <input type="number" name="incerteza" step="0.0001" class="form-control" value="{{ rf.incerteza|default:'' }}" placeholder="0.0000">
-                                                        <small class="text-muted">Incerteza da medição</small>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-bold">Erro Máximo Admissível (EMA)</label>
-                                                        <input type="number" name="ema" step="0.0001" class="form-control" value="{{ rf.ema|default:'' }}" placeholder="0.0000" readonly disabled>
-                                                        <small class="text-muted">Calculado automaticamente como Tolerância ÷ 2</small>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-bold">Erro Máximo do Equipamento (EME)</label>
-                                                        <input type="number" name="eme" step="0.0001" class="form-control" value="{{ rf.eme|default:'' }}" placeholder="0.0000" readonly disabled>
-                                                        <small class="text-muted">Calculado automaticamente como |Erro| + Incerteza</small>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-bold">Resultado (Calculado automaticamente)</label>
-                                                        <div class="alert alert-light border">
-                                                            {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
-                                                                <span class="badge bg-success">✓ Aprovado sem Correção</span>
-                                                            {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
-                                                                <span class="badge bg-warning text-dark">⚠ Aprovado com Correção</span>
-                                                            {% elif rf.resultado == 'REPROVADO' %}
-                                                                <span class="badge bg-danger">✗ Reprovado</span>
-                                                            {% else %}
-                                                                <span class="badge bg-secondary">Preencha Erro e Incerteza</span>
-                                                            {% endif %}
-                                                        </div>
-                                                        <small class="text-muted">O resultado é calculado automaticamente com base no erro, incerteza e tolerância</small>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                    <button type="submit" class="btn btn-primary">Salvar Resultado</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="alert alert-info m-3">
-                <i class="bi bi-info-circle"></i> Nenhum resultado de faixa cadastrado ainda. 
-                {% if faixas_sem_resultados %}
-                Selecione as faixas abaixo para adicionar resultados.
-                {% else %}
-                Todas as faixas do instrumento já estão cadastradas ou o instrumento não possui faixas.
-                {% endif %}
-            </div>
-            
-            {% if faixas_sem_resultados %}
-            <div class="alert alert-success m-3">
-                <h6 class="mb-3"><i class="bi bi-plus-circle"></i> Adicionar Faixas de Medição</h6>
-                <p class="text-muted mb-3">Selecione uma faixa disponível do instrumento para adicionar resultados:</p>
-                
-                <div class="row g-2">
-                    {% for faixa in faixas_sem_resultados %}
-                    <div class="col-md-6 col-lg-4">
-                        <form method="post" action="{% url 'editar_historico_calibracao' historico.id %}" class="d-flex gap-2">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="add_faixa">
-                            <input type="hidden" name="faixa_id" value="{{ faixa.id }}">
-                            <div class="flex-grow-1 p-2 bg-light rounded border">
-                                <small class="d-block text-muted">Faixa de Medição</small>
-                                <strong>{{ faixa.valor_minimo }} a {{ faixa.valor_maximo }} {{ faixa.unidade.nome }}</strong>
-                                {% if faixa.tolerancia %}
-                                <small class="d-block text-muted">Tol: ± {{ faixa.tolerancia }}</small>
-                                {% endif %}
-                            </div>
-                            <button type="button" class="btn btn-sm btn-success align-self-center btn-add-faixa" data-faixa-id="{{ faixa.id }}" data-faixa-label="{{ faixa.valor_minimo }}-{{ faixa.valor_maximo }}">
-                                <i class="bi bi-plus"></i> Adicionar
-                            </button>
-                        </form>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-            {% endif %}
         </div>
     </div>
 </div>
