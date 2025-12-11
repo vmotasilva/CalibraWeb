@@ -166,7 +166,7 @@
                 </div>
                 <div class="card-body p-3">
                     <!-- Visualização do PDF Real ou Template -->
-                    {% if historico.certificado_carimbado or historico.certificado %}
+                    {% if historico.certificado_carimbado.url or historico.certificado.url %}
                         <!-- Visualizador PDF com PDF.js -->
                         <div id="pdf-viewer" class="pdf-viewer-container">
                             <div class="pdf-toolbar">
