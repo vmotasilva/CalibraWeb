@@ -208,6 +208,7 @@
                             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                             
                             const pdfUrl = "{% if historico.certificado_carimbado %}{{ historico.certificado_carimbado.url }}{% else %}{{ historico.certificado.url }}{% endif %}";
+                            console.log('PDF URL:', pdfUrl);
                             let pdfDoc = null;
                             let pageNum = 1;
                             let pageRendering = false;
@@ -266,7 +267,11 @@
                                 renderPage(pageNum);
                             }).catch(function(error) {
                                 console.error('Erro ao carregar PDF:', error);
-                                document.getElementById('pdf-render').innerHTML = '<div class="alert alert-danger">Erro ao carregar o PDF. Tente fazer download e abrir localmente.</div>';
+                                console.error('URL tentada:', pdfUrl);
+                                document.getElementById('pdf-render').innerHTML = '<div class="alert alert-danger"><strong>Erro ao carregar PDF:</strong><br>' + 
+                                    'URL: ' + pdfUrl + '<br>' +
+                                    'Erro: ' + error.message + '<br>' +
+                                    'Tente fazer download e abrir localmente.</div>';
                             });
                         </script>
                     {% else %}
