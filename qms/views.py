@@ -411,9 +411,13 @@ def aplicar_carimbo_certificado_view(request, historico_id):
                 messages.error(request, 'Nenhum certificado disponível para carimbar.')
                 return redirect('editar_historico_calibracao', historico_id=historico_id)
             
-            # Read original PDF
-            with historico.certificado.open('rb') as f:
-                original_pdf = PdfReader(f)
+            # Read original PDF - keep bytes in memory to avoid file closure issues
+            pdf_file = historico.certificado.open('rb')
+            pdf_bytes = pdf_file.read()
+            pdf_file.close()
+            
+            pdf_buffer = BytesIO(pdf_bytes)
+            original_pdf = PdfReader(pdf_buffer)
             
             # Create stamp overlay using ReportLab
             stamp_buffer = BytesIO()
