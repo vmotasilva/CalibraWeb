@@ -109,8 +109,8 @@ class FaixaMedicaoTests(TestCase):
             instrumento=self.instrumento,
             valor_minimo=0.0,
             valor_maximo=100.0,
-            unidade_medicao=self.unidade,
-            tolerancia_padrao=0.5
+            unidade=self.unidade,
+            tolerancia_mais_menos=0.5
         )
     
     def test_faixa_medicao_creation(self):
@@ -127,6 +127,7 @@ class HistoricoCalibracaoTests(TestCase):
     """Tests for HistoricoCalibracao model"""
     
     def setUp(self):
+        from datetime import date
         self.unidade = UnidadeMedida.objects.create(nome="Milímetros", descricao="Unidade de comprimento")
         self.setor = Setor.objects.create(nome="Metrologia", responsavel="Admin")
         self.categoria = CategoriaInstrumento.objects.create(
@@ -141,7 +142,8 @@ class HistoricoCalibracaoTests(TestCase):
         self.historico = HistoricoCalibracao.objects.create(
             instrumento=self.instrumento,
             numero_certificado="CERT-2025-001",
-            resultado="APROVADO"
+            resultado="APROVADO",
+            data_calibracao=date.today()
         )
     
     def test_historico_creation(self):
@@ -151,7 +153,7 @@ class HistoricoCalibracaoTests(TestCase):
     
     def test_historico_str(self):
         """Test string representation of HistoricoCalibracao"""
-        self.assertIn("CERT-2025-001", str(self.historico))
+        self.assertIn("INSTR-003", str(self.historico))
 
 
 class MetrologiaViewsTests(TestCase):
