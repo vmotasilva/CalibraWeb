@@ -347,6 +347,62 @@
                         {% endif %}
                     </div>
                 </div>
+
+                <!-- SEÇÃO 3: CARIMBO DO CERTIFICADO -->
+                {% if not historico.certificado_carimbado and historico.certificado %}
+                <div class="card shadow-sm mt-4 border-warning">
+                    <div class="card-header bg-warning text-dark py-2">
+                        <i class="bi bi-stamp"></i> Aplicar Carimbo de Validação
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="alert alert-info small mb-2">
+                            <i class="bi bi-info-circle"></i> Preencha os dados abaixo e clique no PDF (direita) para posicionar o carimbo.
+                        </div>
+
+                        <form method="post" action="{% url 'aplicar_carimbo_certificado' historico.id %}" id="carimboForm" class="mt-2">
+                            {% csrf_token %}
+                            
+                            <div class="row g-2">
+                                <!-- Resultado -->
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <label for="resultado_carimbo" class="form-label small fw-bold mb-1">Resultado</label>
+                                        <select id="resultado_carimbo" name="resultado" class="form-select form-select-sm" required>
+                                            <option value="">-- Selecione --</option>
+                                            <option value="APROVADO_SEM_CORRECAO">Aprovado s/ Correção</option>
+                                            <option value="APROVADO_COM_CORRECAO">Aprovado c/ Correção</option>
+                                            <option value="REPROVADO">Reprovado</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Data de Validação -->
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <label for="data_validacao_carimbo" class="form-label small fw-bold mb-1">Data</label>
+                                        <input type="date" id="data_validacao_carimbo" name="data_validacao" class="form-control form-control-sm" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Nome do Validador -->
+                            <div class="mb-2">
+                                <label for="nome_validador_carimbo" class="form-label small fw-bold mb-1">Validador</label>
+                                <input type="text" id="nome_validador_carimbo" name="nome_validador" class="form-control form-control-sm" value="{{ user.get_full_name|default:user.username }}" required>
+                            </div>
+
+                            <!-- Campos ocultos para posição -->
+                            <input type="hidden" name="carimbo_x" id="carimbo_x" value="0">
+                            <input type="hidden" name="carimbo_y" id="carimbo_y" value="0">
+                            <input type="hidden" name="carimbo_page" id="carimbo_page" value="1">
+
+                            <button type="submit" class="btn btn-warning btn-sm w-100 mt-2" id="btnAplicarCarimbo" disabled>
+                                <i class="bi bi-stamp"></i> Aplicar Carimbo (clique no PDF primeiro)
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>        <!-- COLUNA 2: PRÉ-VISUALIZAÇÃO DO CERTIFICADO (Direita) -->
         <div class="col-lg-6">
@@ -384,59 +440,11 @@
                             </div>
                         </div>
                         
-                        <div class="alert {% if historico.certificado_carimbado %}alert-success{% else %}alert-info{% endif %} pdf-alert mb-2 py-2">
+                        <!-- Status do Certificado -->
+                        {% if historico.certificado_carimbado %}
+                        <div class="alert alert-success mb-0 py-2">
                             <small class="mb-0">
-                                <i class="bi bi-{% if historico.certificado_carimbado %}check-circle{% else %}info-circle{% endif %}"></i>
-                                {% if historico.certificado_carimbado %}
-                                    Certificado com carimbo
-                                {% else %}
-                                    Certificado original (pendente de carimbo)
-                                {% endif %}
-                            </small>
-                        </div>
-
-                        <!-- Formulário de Carimbo -->
-                        {% if not historico.certificado_carimbado %}
-                        <form method="post" action="{% url 'aplicar_carimbo_certificado' historico.id %}" class="mt-2">
-                            {% csrf_token %}
-                            <div class="card border-warning">
-                                <div class="card-header bg-warning text-dark py-2">
-                                    <small class="fw-bold"><i class="bi bi-stamp"></i> Aplicar Carimbo</small>
-                                </div>
-                                <div class="card-body p-2">
-                                    <!-- Resultado -->
-                                    <div class="mb-2">
-                                        <label for="resultado" class="form-label small fw-bold mb-1">Resultado</label>
-                                        <select id="resultado" name="resultado" class="form-select form-select-sm" required>
-                                            <option value="">-- Selecione --</option>
-                                            <option value="APROVADO_SEM_CORRECAO">Aprovado s/ Correção</option>
-                                            <option value="APROVADO_COM_CORRECAO">Aprovado c/ Correção</option>
-                                            <option value="REPROVADO">Reprovado</option>
-                                        </select>
-                                    </div>
-
-                                    <!-- Data de Validação -->
-                                    <div class="mb-2">
-                                        <label for="data_validacao" class="form-label small fw-bold mb-1">Data</label>
-                                        <input type="date" id="data_validacao" name="data_validacao" class="form-control form-control-sm" required>
-                                    </div>
-
-                                    <!-- Nome do Validador -->
-                                    <div class="mb-2">
-                                        <label for="nome_validador" class="form-label small fw-bold mb-1">Validador</label>
-                                        <input type="text" id="nome_validador" name="nome_validador" class="form-control form-control-sm" value="{{ user.get_full_name|default:user.username }}" required>
-                                    </div>
-
-                                    <button type="submit" class="btn btn-warning btn-sm w-100 mt-2">
-                                        <i class="bi bi-stamp"></i> Aplicar Carimbo
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                        {% else %}
-                        <div class="alert alert-success mt-2 py-2 mb-0">
-                            <small class="mb-0">
-                                <i class="bi bi-check-circle"></i> Carimbo já aplicado
+                                <i class="bi bi-check-circle"></i> Certificado com carimbo
                             </small>
                         </div>
                         {% endif %}
@@ -445,7 +453,7 @@
                         <script>
                             // Pré-preencher data de validação com hoje
                             document.addEventListener('DOMContentLoaded', function() {
-                                const dataValidacaoInput = document.getElementById('data_validacao');
+                                const dataValidacaoInput = document.getElementById('data_validacao_carimbo');
                                 if (dataValidacaoInput) {
                                     const today = new Date().toISOString().split('T')[0];
                                     dataValidacaoInput.value = today;
@@ -556,6 +564,37 @@
                             function updateZoomLevel() {
                                 const percentage = Math.round(currentScale * 100 / 1.5); // Normalizar em relação ao 100%
                                 document.getElementById('zoom-level').textContent = percentage + '%';
+                            }
+
+                            // --- Funcionalidade de Clique para Carimbo ---
+                            const canvas = document.getElementById('pdf-canvas');
+                            const btnAplicarCarimbo = document.getElementById('btnAplicarCarimbo');
+                            
+                            if (canvas && btnAplicarCarimbo) {
+                                canvas.style.cursor = 'crosshair';
+                                
+                                canvas.addEventListener('click', function(e) {
+                                    const rect = canvas.getBoundingClientRect();
+                                    const canvasRect = canvas.getBoundingClientRect();
+                                    
+                                    // Posição relativa ao canvas
+                                    const x = e.clientX - canvasRect.left;
+                                    const y = e.clientY - canvasRect.top;
+                                    
+                                    // Armazenar valores nos campos ocultos
+                                    document.getElementById('carimbo_x').value = Math.round(x);
+                                    document.getElementById('carimbo_y').value = Math.round(y);
+                                    document.getElementById('carimbo_page').value = pageNum;
+                                    
+                                    // Habilitar botão e atualizar texto
+                                    btnAplicarCarimbo.disabled = false;
+                                    btnAplicarCarimbo.innerHTML = '<i class="bi bi-stamp"></i> Aplicar Carimbo (página ' + pageNum + ' - X:' + Math.round(x) + ' Y:' + Math.round(y) + ')';
+                                    btnAplicarCarimbo.classList.add('btn-success');
+                                    btnAplicarCarimbo.classList.remove('btn-warning');
+                                    
+                                    // Scroll para mostrar o botão
+                                    document.getElementById('carimboForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                });
                             }
                         </script>
                     {% else %}
