@@ -12,7 +12,7 @@ class OrganizationSetorTests(TestCase):
         """Create test data"""
         self.setor = self._create_setor()
     
-    def _create_setor(self, nome="PROCESSO", turno="TURNO_1"):
+    def _create_setor(self, nome="PROCESSO"):
         """Helper to create Setor"""
         from organization.models import Setor
         return Setor.objects.create(nome=nome)
@@ -26,16 +26,12 @@ class OrganizationSetorTests(TestCase):
         """Test Setor __str__ method"""
         self.assertEqual(str(self.setor), "PROCESSO")
     
-    def test_setor_turno_assignment(self):
-        """Test Setor turno assignment"""
-        self.assertEqual(self.setor.turno, "TURNO_1")
-    
     def test_multiple_setores_creation(self):
         """Test creating multiple sectors"""
         from organization.models import Setor
         setores_data = [
-            {"nome": "QUALIDADE", "turno": "ADM"},
-            {"nome": "MANUTENCAO", "turno": "TURNO_2"},
+            {"nome": "QUALIDADE"},
+            {"nome": "MANUTENCAO"},
         ]
         for setor_data in setores_data:
             s = Setor.objects.create(**setor_data)
@@ -47,22 +43,29 @@ class OrganizationSetorTests(TestCase):
 class OrganizationCentroCustoTests(TestCase):
     """Test CentroCusto model"""
     
+    def setUp(self):
+        """Create test data"""
+        from organization.models import Setor
+        self.setor = Setor.objects.create(nome="TESTE")
+    
     def test_centro_custo_creation(self):
         """Test CentroCusto can be created"""
         from organization.models import CentroCusto
         centro = CentroCusto.objects.create(
+            setor=self.setor,
             codigo="CC-001",
-            nome="Centro de Custo Principal"
+            descricao="Centro de Custo Principal"
         )
         self.assertEqual(centro.codigo, "CC-001")
-        self.assertEqual(centro.nome, "Centro de Custo Principal")
+        self.assertEqual(centro.descricao, "Centro de Custo Principal")
     
     def test_centro_custo_string_representation(self):
         """Test CentroCusto __str__ method"""
         from organization.models import CentroCusto
         centro = CentroCusto.objects.create(
+            setor=self.setor,
             codigo="CC-002",
-            nome="Test Centro"
+            descricao="Test Centro"
         )
         self.assertIn("CC-002", str(centro))
 
