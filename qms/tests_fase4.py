@@ -164,7 +164,7 @@ class ListarInstrumentosViewTest(TestCase):
         """Test pagination functionality"""
         response = self.client.get(reverse('listar_instrumentos'))
         self.assertIn('page_obj', response.context)
-        self.assertEqual(response.context['paginator'].per_page, 20)
+        self.assertEqual(response.context['paginator'].per_page, 50)
     
     def test_requires_login(self):
         """Test that view requires login"""

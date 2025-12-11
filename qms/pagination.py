@@ -208,6 +208,11 @@ class OffsetPaginator:
         self.use_cache = use_cache
         self.cache_count = cache_count
     
+    @property
+    def per_page(self) -> int:
+        """Alias for page_size - for Django Paginator compatibility."""
+        return self.page_size
+    
     def get_cached_count(
         self,
         queryset: QuerySet,

@@ -1178,6 +1178,8 @@ def listar_instrumentos_view(request):
     setores = Setor.objects.all().order_by('nome')
     
     context = {
+        'page_obj': page_items,  # For compatibility with tests
+        'paginator': paginator,  # Expose paginator for accessing per_page
         'page_items': page_items,
         'pagination': pagination_metadata.to_dict(),
         'instrumentos': page_items,
@@ -1189,26 +1191,6 @@ def listar_instrumentos_view(request):
         'setor_filter': setor_filter,
         'ativo_filter': ativo_filter,
         'total_instrumentos': pagination_metadata.total_items,
-        'today': today,
-        'today_30days': today + timedelta(days=30),
-    }
-    return render(request, 'metrologia/instrumentos_lista.html', context)
-    
-    # Get filter options for dropdowns
-    categorias = CategoriaInstrumento.objects.all().order_by('nome')
-    setores = Setor.objects.all().order_by('nome')
-    
-    context = {
-        'page_obj': page_obj,
-        'instrumentos': page_obj.object_list,
-        'categorias': categorias,
-        'setores': setores,
-        'search_query': search_query,
-        'status_filter': status_filter,
-        'categoria_filter': categoria_filter,
-        'setor_filter': setor_filter,
-        'ativo_filter': ativo_filter,
-        'total_instrumentos': paginator.count,
         'today': today,
         'today_30days': today + timedelta(days=30),
     }
