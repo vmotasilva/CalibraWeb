@@ -207,12 +207,37 @@
                             // Inicializar PDF.js
                             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                             
-                            const pdfUrl = "{% if historico.certificado_carimbado %}{{ historico.certificado_carimbado.url }}{% else %}{{ historico.certificado.url }}{% endif %}";
-                            console.log('PDF URL:', pdfUrl);
+                            const certificadoBytesUrl = "{% url 'get_certificado_bytes' historico.id %}";
+                            console.log('Carregando PDF de:', certificadoBytesUrl);
+                            
                             let pdfDoc = null;
                             let pageNum = 1;
                             let pageRendering = false;
                             let pageNumPending = null;
+                            
+                            // Carregar PDF via AJAX como ArrayBuffer (similar ao carimbo.html)
+                            fetch(certificadoBytesUrl)
+                                .then(response => {
+                                    if (!response.ok) throw new Error('Erro ao carregar PDF');
+                                    return response.arrayBuffer();
+                                })
+                                .then(arrayBuffer => {
+                                    const typedarray = new Uint8Array(arrayBuffer);
+                                    return pdfjsLib.getDocument(typedarray).promise;
+                                })
+                                .then(pdf => {
+                                    console.log('PDF carregado com sucesso. Páginas:', pdf.numPages);
+                                    pdfDoc = pdf;
+                                    document.getElementById('page-total').textContent = pdf.numPages;
+                                    renderPage(pageNum);
+                                })
+                                .catch(error => {
+                                    console.error('Erro ao carregar PDF:', error);
+                                    document.getElementById('pdf-render').innerHTML = 
+                                        '<div class="alert alert-danger"><strong>Erro ao carregar PDF:</strong><br>' +
+                                        'Erro: ' + error.message + '<br>' +
+                                        'URL: ' + certificadoBytesUrl + '</div>';
+                                });
 
                             function renderPage(num) {
                                 pageRendering = true;
@@ -257,21 +282,6 @@
 
                             document.getElementById('next-page').addEventListener('click', function() {
                                 queuePage(pageNum + 1);
-                            });
-
-                            // Carregar PDF
-                            pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
-                                pdfDoc = pdf;
-                                document.getElementById('page-total').textContent = pdf.numPages;
-                                document.getElementById('prev-page').disabled = true;
-                                renderPage(pageNum);
-                            }).catch(function(error) {
-                                console.error('Erro ao carregar PDF:', error);
-                                console.error('URL tentada:', pdfUrl);
-                                document.getElementById('pdf-render').innerHTML = '<div class="alert alert-danger"><strong>Erro ao carregar PDF:</strong><br>' + 
-                                    'URL: ' + pdfUrl + '<br>' +
-                                    'Erro: ' + error.message + '<br>' +
-                                    'Tente fazer download e abrir localmente.</div>';
                             });
                         </script>
                     {% else %}

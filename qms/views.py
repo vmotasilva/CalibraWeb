@@ -362,6 +362,31 @@ def remover_certificado_historico_view(request, historico_id):
 
 
 @login_required
+def get_certificado_bytes_view(request, historico_id):
+    """Return certificate PDF as bytes for PDF.js viewer."""
+    historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    
+    # Prefer carimbado (stamped) over original
+    certificado = historico.certificado_carimbado or historico.certificado
+    
+    if not certificado:
+        return JsonResponse({'error': 'Certificado não encontrado'}, status=404)
+    
+    try:
+        # Read PDF file and return as bytes
+        with certificado.open('rb') as f:
+            pdf_bytes = f.read()
+        
+        return HttpResponse(
+            pdf_bytes,
+            content_type='application/pdf',
+            headers={'Content-Disposition': f'inline; filename="{certificado.name}"'}
+        )
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
 def aplicar_carimbo_certificado_view(request, historico_id):
     """Apply a stamp/seal to a certificate."""
     historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
