@@ -822,4 +822,120 @@
         });
     });
 </script>
+
+{% block extra_style %}
+<style>
+    .cert-preview {
+        background: white;
+        border: 1px solid #ddd;
+        padding: 20px;
+        font-family: 'Times New Roman', serif;
+        font-size: 11px;
+        line-height: 1.6;
+        color: #333;
+    }
+
+    .cert-header {
+        text-align: center;
+        border-bottom: 2px solid #000;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+    }
+
+    .cert-header h3 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: bold;
+        letter-spacing: 1px;
+    }
+
+    .cert-header p {
+        margin: 5px 0 0 0;
+        font-size: 10px;
+    }
+
+    .cert-section {
+        margin-bottom: 12px;
+        page-break-inside: avoid;
+    }
+
+    .cert-section h4 {
+        margin: 0 0 8px 0;
+        font-size: 11px;
+        font-weight: bold;
+        text-transform: uppercase;
+        border-bottom: 1px solid #999;
+        padding-bottom: 3px;
+    }
+
+    .cert-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10px;
+    }
+
+    .cert-table tr {
+        border-bottom: 1px solid #eee;
+    }
+
+    .cert-table td {
+        padding: 4px 0;
+        vertical-align: top;
+    }
+
+    .cert-table tr:last-child {
+        border-bottom: none;
+    }
+
+    .cert-result {
+        text-align: center;
+        padding: 10px;
+        background: #f9f9f9;
+        border: 1px dashed #ddd;
+    }
+
+    .cert-result p {
+        margin: 0;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .cert-stamp {
+        text-align: right;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+    }
+
+    .cert-stamp-text {
+        display: inline-block;
+        border: 2px solid #999;
+        padding: 10px 20px;
+        text-align: center;
+        transform: rotate(-15deg);
+        opacity: 0.5;
+        font-style: italic;
+    }
+
+    .cert-stamp-text i {
+        display: block;
+        font-size: 12px;
+    }
+
+    .cert-stamp-text span {
+        display: block;
+        font-size: 8px;
+        margin-top: 2px;
+    }
+
+    /* Print styles */
+    @media print {
+        .cert-preview {
+            border: none;
+            box-shadow: none;
+        }
+    }
+</style>
+{% endblock %}
+
 {% endblock %}
