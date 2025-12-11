@@ -7,13 +7,14 @@ from datetime import date, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.views.decorators.http import require_http_methods
 from django.db.models import Q
 import logging
 
 logger = logging.getLogger(__name__)
 
 # Imports dos models
-from rh.models import Colaborador
+from rh.models import Colaborador, Ocorrencia
 from organization.models import Setor, CentroCusto, HierarquiaSetor
 
 # Imports dos forms
@@ -93,8 +94,8 @@ def modulo_rh_view(request):
     gerentes_ids = funcionarios_base.exclude(gerente__isnull=True).values_list("gerente", flat=True).distinct()
     gerentes_filtro = Colaborador.objects.filter(id__in=gerentes_ids).order_by("nome_completo")
 
-    # Turnos únicos
-    turnos_unicos = funcionarios_base.values_list("turno", flat=True).distinct()
+    # Turnos únicos - sem repetições
+    turnos_unicos = sorted(set(funcionarios_base.values_list("turno", flat=True).distinct()))
     turnos_map = dict(Colaborador._meta.get_field('turno').choices)
     turnos_filtro = [(turno, turnos_map.get(turno, turno)) for turno in turnos_unicos if turno]
 
@@ -214,11 +215,11 @@ def detalhe_colaborador_view(request, colab_id):
 
     ocorrencias = alvo.ocorrencias.all().order_by("-data_ocorrencia") if can_view_occ else []
     treinamentos = alvo.treinamentos.all().order_by("-data_treinamento")
-    documentos = alvo.documentos_pessoais.all().order_by("-data_upload")
+    documentos = alvo.documentos.all().order_by("-arquivo")
 
     # Férias
     try:
-        ferias_qs = alvo.ferias_set.all().order_by("-periodo_aquisitivo_fim")
+        ferias_qs = alvo.ferias_set.all().order_by("-data_fim")
     except AttributeError:
         ferias_qs = []
 
@@ -332,7 +333,10 @@ def registrar_ocorrencia_view(request):
     if request.method == "POST":
         form = OcorrenciaForm(request.POST, request.FILES)
         if form.is_valid():
-            oc = form.save()
+            oc = form.save(commit=False)
+            if not oc.condutor:
+                oc.condutor = request.user
+            oc.save()
             messages.success(request, "Ocorrência registrada com sucesso!")
             if oc.colaborador_id:
                 return redirect("detalhe_colaborador", colab_id=oc.colaborador_id)
@@ -343,10 +347,89 @@ def registrar_ocorrencia_view(request):
         initial = {}
         if preselect_id:
             initial["colaborador"] = preselect_id
+        initial["condutor"] = request.user.id
         form = OcorrenciaForm(initial=initial)
     
     return render(
         request,
-        "registro_ocorrencia.html",
+        "rh/ocorrencia_form.html",
         {"form": form},
     )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def editar_ocorrencia_view(request, occ_id):
+    """Edita uma ocorrência existente."""
+    from django.shortcuts import get_object_or_404
+    
+    ocorrencia = get_object_or_404(Ocorrencia, id=occ_id)
+    
+    # Verificar permissão (superuser, staff ou RH)
+    usuario_logado = None
+    try:
+        usuario_logado = Colaborador.objects.filter(user_django=request.user).first()
+    except Exception:
+        pass
+    
+    permitido = False
+    if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    elif usuario_logado:
+        if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
+            permitido = True
+    
+    if not permitido:
+        messages.error(request, "Você não tem permissão para editar ocorrências.")
+        return redirect("modulo_rh")
+    
+    if request.method == "POST":
+        form = OcorrenciaForm(request.POST, request.FILES, instance=ocorrencia)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Ocorrência atualizada com sucesso!")
+            return redirect("detalhe_colaborador", colab_id=ocorrencia.colaborador_id)
+        else:
+            messages.error(request, "Verifique os dados da ocorrência.")
+    else:
+        form = OcorrenciaForm(instance=ocorrencia)
+    
+    return render(
+        request,
+        "rh/ocorrencia_form.html",
+        {
+            "form": form,
+            "edicao": True,
+            "ocorrencia": ocorrencia,
+        },
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def deletar_ocorrencia_view(request, occ_id):
+    """Exclui uma ocorrência."""
+    ocorrencia = get_object_or_404(Ocorrencia, id=occ_id)
+    
+    # Verificar permissão (superuser, staff ou RH)
+    usuario_logado = None
+    try:
+        usuario_logado = Colaborador.objects.filter(user_django=request.user).first()
+    except Exception:
+        pass
+    
+    permitido = False
+    if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    elif usuario_logado:
+        if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
+            permitido = True
+    
+    if not permitido:
+        messages.error(request, "Você não tem permissão para excluir ocorrências.")
+        return redirect("modulo_rh")
+    
+    colaborador_id = ocorrencia.colaborador_id
+    ocorrencia.delete()
+    messages.success(request, "Ocorrência excluída com sucesso!")
+    return redirect("detalhe_colaborador", colab_id=colaborador_id)

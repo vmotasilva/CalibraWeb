@@ -84,53 +84,60 @@
                         <!-- Campo Arquivos de Padrões (visível apenas quando NÃO for RBC) -->
                         <div class="mb-2 hidden" id="arquivos-padroes-section">
                             <div class="card bg-light border-info" style="font-size: 0.9rem;">
-                                <div class="card-header bg-info text-white p-2">
-                                    <i class="bi bi-file-pdf text-danger"></i> <small>Padrões de Calibração</small>
+                                <!-- Header com collapse -->
+                                <div class="card-header bg-info text-white p-2" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#padroes-collapse">
+                                    <i class="bi bi-chevron-down" id="padroes-icon"></i>
+                                    <i class="bi bi-file-pdf text-danger"></i> <small>Padrões de Calibração ({{ historico.arquivos_padroes.count }})</small>
                                 </div>
-                                <div class="card-body p-2">
-                                    <!-- Upload de Novos Arquivos -->
-                                    <div class="mb-2">
-                                        <label for="id_novos_arquivos_padroes" class="form-label fw-bold small">
-                                            <i class="bi bi-cloud-upload"></i> Upload de Padrões
-                                        </label>
-                                        <small class="text-muted d-block mb-1">PDFs dos padrões utilizados</small>
-                                        {{ historico_form.novos_arquivos_padroes }}
-                                    </div>
-
-                                    <!-- Padrões Já Associados -->
-                                    {% if historico.arquivos_padroes.all %}
-                                    <div class="mb-2">
-                                        <label class="form-label fw-bold small">
-                                            <i class="bi bi-check-circle text-success"></i> Padrões Associados
-                                        </label>
-                                        <div class="list-group list-group-sm">
-                                            {% for padrao in historico.arquivos_padroes.all %}
-                                            <div class="list-group-item d-flex justify-content-between align-items-center py-1">
-                                                <div class="small">
-                                                    <input type="checkbox" id="padrao_{{ padrao.id }}" name="arquivos_padroes" value="{{ padrao.id }}" 
-                                                        {% if padrao in historico.arquivos_padroes.all %}checked{% endif %} class="form-check-input">
-                                                    <label for="padrao_{{ padrao.id }}" class="ms-1 mb-0 small">
-                                                        <i class="bi bi-file-pdf text-danger"></i> {{ padrao.nome }}
-                                                    </label>
+                                <!-- Conteúdo colapsável -->
+                                <div id="padroes-collapse" class="collapse">
+                                    <div class="card-body p-2">
+                                        <!-- Upload de Novos Arquivos -->
+                                        <div class="mb-2">
+                                            <label for="id_arquivos_padroes" class="form-label fw-bold small">
+                                                <i class="bi bi-cloud-upload"></i> Upload de Padrões
+                                            </label>
+                                            <small class="text-muted d-block mb-1">PDFs dos padrões utilizados</small>
+                                            <input type="file" id="id_arquivos_padroes" name="novos_arquivos_padroes" class="form-control form-control-sm" accept=".pdf" multiple>
+                                        </div>
+                                        <div class="mb-2 d-grid">
+                                            <button type="submit" class="btn btn-primary btn-sm" name="action" value="update_history">
+                                                <i class="bi bi-plus-circle"></i> Anexar Padrões
+                                            </button>
+                                        </div>
+                                        <!-- Padrões Anexados (lista simples com download) -->
+                                        {% if historico.arquivos_padroes.all %}
+                                        <div class="mb-2">
+                                            <label class="form-label fw-bold small">
+                                                <i class="bi bi-file-earmark-pdf text-danger"></i> Padrões Anexados
+                                            </label>
+                                            <div class="list-group list-group-sm">
+                                                {% for padrao in historico.arquivos_padroes.all %}
+                                                <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                                    <div class="small">
+                                                        <i class="bi bi-file-pdf text-danger"></i> {{ padrao.nome }}<br>
+                                                        <small class="text-muted">{{ padrao.arquivo.size|filesizeformat }}</small>
+                                                    </div>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <a href="{{ padrao.arquivo.url }}" download class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-download"></i> Download
+                                                        </a>
+                                                        <form method="post" style="display: inline;">
+                                                            {% csrf_token %}
+                                                            <button type="submit" name="acao" value="remover_padrao_{{ padrao.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover padrão {{ padrao.nome }}?')">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                    </div>
                                                 </div>
-                                                <a href="{{ padrao.arquivo.url }}" target="_blank" class="btn btn-xs btn-outline-primary" title="Visualizar PDF">
-                                                    <i class="bi bi-eye"></i>
-                                                </a>
+                                                {% endfor %}
                                             </div>
-                                            {% endfor %}
                                         </div>
-                                    </div>
-                                    {% endif %}
-
-                                    <!-- Padrões Disponíveis (Não Associados) -->
-                                    <div class="mb-2">
-                                        <label class="form-label fw-bold small">
-                                            <i class="bi bi-list-check"></i> Padrões Disponíveis
-                                        </label>
-                                        <small class="text-muted d-block mb-1">Selecione os padrões a associar</small>
-                                        <div class="padroes-checkboxes" style="font-size: 0.85rem;">
-                                            {{ historico_form.arquivos_padroes }}
+                                        {% else %}
+                                        <div class="alert alert-info alert-sm p-2 mb-0">
+                                            <small>Nenhum padrão anexado ainda.</small>
                                         </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -348,18 +355,90 @@
                     </div>
                 </div>
 
-                <!-- SEÇÃO 3: CARIMBO DO CERTIFICADO -->
-                {% if not historico.certificado_carimbado and historico.certificado %}
-                <div class="card shadow-sm mt-4 border-warning">
-                    <div class="card-header bg-warning text-dark py-2">
-                        <i class="bi bi-stamp"></i> Aplicar Carimbo de Validação
+                <!-- SEÇÃO 3: GESTÃO DE CERTIFICADOS -->
+                {% if historico.certificado or historico.certificado_carimbado %}
+                <div class="card shadow-sm mt-4 border-primary">
+                    <div class="card-header bg-primary text-white py-2">
+                        <i class="bi bi-files"></i> Certificados Disponíveis
                     </div>
                     <div class="card-body p-2">
+                        <div class="list-group list-group-sm">
+                            <!-- Certificado Original -->
+                            {% if historico.certificado %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold small">
+                                        <i class="bi bi-file-pdf text-danger"></i>
+                                        Certificado Original
+                                    </div>
+                                    <small class="text-muted">{{ historico.certificado.size|filesizeformat }}</small>
+                                </div>
+                                <div class="btn-group btn-group-sm ms-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('original', '{% url 'get_certificado_bytes' historico.id %}?tipo=original')">
+                                        <i class="bi bi-eye"></i> Visualizar
+                                    </button>
+                                    <a href="{% url 'download_certificado' historico.id %}?tipo=original" class="btn btn-outline-success btn-sm">
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                    <form method="post" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" name="acao" value="remover_certificado_original" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover o certificado original?')">
+                                            <i class="bi bi-trash"></i> Remover
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Certificado Carimbado -->
+                            {% if historico.certificado_carimbado %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold small">
+                                        <i class="bi bi-file-pdf text-danger"></i>
+                                        Certificado Carimbado
+                                        <span class="badge bg-success ms-1">✓ Validado</span>
+                                    </div>
+                                    <small class="text-muted">{{ historico.certificado_carimbado.size|filesizeformat }}</small>
+                                </div>
+                                <div class="btn-group btn-group-sm ms-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('carimbado', '{% url 'get_certificado_bytes' historico.id %}?tipo=carimbado')">
+                                        <i class="bi bi-eye"></i> Visualizar
+                                    </button>
+                                    <a href="{% url 'download_certificado' historico.id %}?tipo=carimbado" class="btn btn-outline-success btn-sm">
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                    <form method="post" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" name="acao" value="remover_certificado_carimbado" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover o certificado carimbado?')">
+                                            <i class="bi bi-trash"></i> Remover
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- SEÇÃO 4: CARIMBO DO CERTIFICADO -->
+                {% if historico.certificado or historico.certificado_carimbado %}
+                <div class="card shadow-sm mt-4 border-warning">
+                    <div class="card-header bg-warning text-dark py-2">
+                        <i class="bi bi-stamp"></i> {% if historico.certificado_carimbado %}Re-{% endif %}Aplicar Carimbo de Validação
+                    </div>
+                    <div class="card-body p-2">
+                        {% if not historico.certificado and historico.certificado_carimbado %}
+                        <div class="alert alert-warning small mb-2">
+                            <i class="bi bi-exclamation-triangle"></i> <strong>Reaplicando carimbo:</strong> Usando certificado carimbado anterior como base.
+                        </div>
+                        {% endif %}
                         <div class="alert alert-info small mb-2">
                             <i class="bi bi-info-circle"></i> Preencha os dados abaixo e clique no PDF (direita) para posicionar o carimbo.
                         </div>
 
-                        <form method="post" action="{% url 'aplicar_carimbo_certificado' historico.id %}" id="carimboForm" class="mt-2">
+                        <form method="post" action="{% url 'aplicar_carimbo_certificado' historico.id %}" id="carimboForm" class="mt-2" novalidate>
                             {% csrf_token %}
                             
                             <div class="row g-2">
@@ -386,18 +465,32 @@
                             <!-- Nome do Validador -->
                             <div class="mb-2">
                                 <label for="nome_validador_carimbo" class="form-label small fw-bold mb-1">Validador</label>
-                                <input type="text" id="nome_validador_carimbo" name="nome_validador" class="form-control form-control-sm" value="{{ user.get_full_name|default:user.username }}" required>
+                                <input type="text" id="nome_validador_carimbo" name="nome_validador" class="form-control form-control-sm" value="{{ historico.responsavel|default:user.get_full_name|default:user.username }}" required>
                             </div>
 
                             <!-- Campos ocultos para posição -->
                             <input type="hidden" name="carimbo_x" id="carimbo_x" value="0">
                             <input type="hidden" name="carimbo_y" id="carimbo_y" value="0">
                             <input type="hidden" name="carimbo_page" id="carimbo_page" value="1">
+                            <input type="hidden" name="carimbo_pdf_width" id="carimbo_pdf_width" value="595">
+                            <input type="hidden" name="carimbo_pdf_height" id="carimbo_pdf_height" value="842">
 
-                            <button type="submit" class="btn btn-warning btn-sm w-100 mt-2" id="btnAplicarCarimbo" disabled>
-                                <i class="bi bi-stamp"></i> Aplicar Carimbo (clique no PDF primeiro)
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-warning btn-sm flex-grow-1 mt-2" id="btnAplicarCarimbo" disabled>
+                                    <i class="bi bi-stamp"></i> Aplicar Carimbo (clique no PDF primeiro)
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Formulário para Remover Carimbo -->
+                        {% if historico.certificado_carimbado %}
+                        <form method="post" action="{% url 'remover_carimbo_certificado' historico.id %}" class="d-inline" onsubmit="return confirm('Tem certeza? Isso removerá o carimbo atual.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm mt-2 ms-2" title="Remover carimbo para poder aplicar novamente">
+                                <i class="bi bi-trash"></i> Remover Carimbo
                             </button>
                         </form>
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
@@ -492,6 +585,7 @@
 
                                 // Atualizar campo oculto
                                 document.getElementById('resultado_carimbo').value = resultadoFinal;
+                                console.log('Resultado calculado:', resultadoFinal);
 
                                 // Atualizar display
                                 const displayDiv = document.getElementById('resultado_display');
@@ -623,33 +717,224 @@
                             // --- Funcionalidade de Clique para Carimbo ---
                             const canvas = document.getElementById('pdf-canvas');
                             const btnAplicarCarimbo = document.getElementById('btnAplicarCarimbo');
+                            const carimboForm = document.getElementById('carimboForm');
+                            
+                            if (carimboForm) {
+                                carimboForm.addEventListener('submit', function(e) {
+                                    console.log('Form submitted!');
+                                    console.log('Resultado:', document.getElementById('resultado_carimbo').value);
+                                    console.log('Data:', document.getElementById('data_validacao_carimbo').value);
+                                    console.log('Validador:', document.getElementById('nome_validador_carimbo').value);
+                                    console.log('X:', document.getElementById('carimbo_x').value);
+                                    console.log('Y:', document.getElementById('carimbo_y').value);
+                                    console.log('Page:', document.getElementById('carimbo_page').value);
+                                });
+                            }
                             
                             if (canvas && btnAplicarCarimbo) {
                                 canvas.style.cursor = 'crosshair';
                                 
                                 canvas.addEventListener('click', function(e) {
-                                    const rect = canvas.getBoundingClientRect();
+                                    // Get canvas position and size on screen
                                     const canvasRect = canvas.getBoundingClientRect();
                                     
-                                    // Posição relativa ao canvas
-                                    const x = e.clientX - canvasRect.left;
-                                    const y = e.clientY - canvasRect.top;
+                                    // Get mouse position relative to canvas
+                                    const clickX = e.clientX - canvasRect.left;
+                                    const clickY = e.clientY - canvasRect.top;
                                     
-                                    // Armazenar valores nos campos ocultos
-                                    document.getElementById('carimbo_x').value = Math.round(x);
-                                    document.getElementById('carimbo_y').value = Math.round(y);
-                                    document.getElementById('carimbo_page').value = pageNum;
-                                    
-                                    // Habilitar botão e atualizar texto
-                                    btnAplicarCarimbo.disabled = false;
-                                    btnAplicarCarimbo.innerHTML = '<i class="bi bi-stamp"></i> Aplicar Carimbo (página ' + pageNum + ' - X:' + Math.round(x) + ' Y:' + Math.round(y) + ')';
-                                    btnAplicarCarimbo.classList.add('btn-success');
-                                    btnAplicarCarimbo.classList.remove('btn-warning');
-                                    
-                                    // Scroll para mostrar o botão
-                                    document.getElementById('carimboForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                    // Get PDF page dimensions (UNSCALED - scale 1)
+                                    if (pdfDoc) {
+                                        pdfDoc.getPage(pageNum).then(function(page) {
+                                            const viewportUnscaled = page.getViewport({ scale: 1 });
+                                            const pageWidth = viewportUnscaled.width;
+                                            const pageHeight = viewportUnscaled.height;
+                                            
+                                            // Canvas dimensions are in ACTUAL PIXELS (already scaled by renderPage)
+                                            // canvas.width and canvas.height contain the actual rendered pixel dimensions
+                                            const canvasPixelWidth = canvas.width;
+                                            const canvasPixelHeight = canvas.height;
+                                            
+                                            console.log('DEBUG: Click at screen=' + clickX + ',' + clickY);
+                                            console.log('DEBUG: Canvas rect width=' + canvasRect.width + ', height=' + canvasRect.height);
+                                            console.log('DEBUG: Canvas pixel width=' + canvasPixelWidth + ', height=' + canvasPixelHeight);
+                                            console.log('DEBUG: PDF page width=' + pageWidth + ', height=' + pageHeight);
+                                            
+                                            // The canvas is rendered at currentScale, so canvas.width = pageWidth * currentScale
+                                            // To convert screen click to PDF coordinates:
+                                            // clickX is in screen pixels (within the canvas display area)
+                                            // We need to scale it: screen pixels -> canvas pixels -> PDF coordinates
+                                            const scaleScreenToCanvas = canvasPixelWidth / canvasRect.width;
+                                            const canvasPixelX = clickX * scaleScreenToCanvas;
+                                            const canvasPixelY = clickY * scaleScreenToCanvas;
+                                            
+                                            // Canvas pixels to PDF coordinates (unscaled)
+                                            const pdfX = (canvasPixelX / canvasPixelWidth) * pageWidth;
+                                            const pdfY = (canvasPixelY / canvasPixelHeight) * pageHeight;
+                                            
+                                            // pdfY está com Y=0 no TOPO (como canvas)
+                                            // Enviar direto ao backend SEM inverter - deixar backend converter
+                                            const pdfXCorrect = pdfX;
+                                            const pdfYCorrect = pdfY;  // NÃO INVERT - backend faz isso
+                                            
+                                            console.log('DEBUG: Screen->Canvas scale=' + scaleScreenToCanvas);
+                                            console.log('DEBUG: Canvas pixel pos=' + canvasPixelX + ',' + canvasPixelY);
+                                            console.log('DEBUG: PDF coords (top-origin Y)=' + pdfX + ',' + pdfY);
+                                            console.log('DEBUG: Enviando sem inversão - backend converte');
+                                            console.log('DEBUG: Canvas display size: ' + canvasRect.width + 'x' + canvasRect.height);
+                                            console.log('DEBUG: Canvas pixel size: ' + canvas.width + 'x' + canvas.height);
+                                            console.log('DEBUG: PDF dimensions: ' + pageWidth + 'x' + pageHeight);
+                                            
+                                            // Ensure coordinates are within page bounds
+                                            const boundedX = Math.max(0, Math.min(pdfXCorrect, pageWidth - 120));
+                                            const boundedY = Math.max(0, Math.min(pdfYCorrect, pageHeight - 100));
+                                            
+                                            // Store ONLY the PDF coordinates that match the preview
+                                            // These are already calculated correctly for PDF space
+                                            document.getElementById('carimbo_x').value = Math.round(boundedX);
+                                            document.getElementById('carimbo_y').value = Math.round(boundedY);
+                                            document.getElementById('carimbo_page').value = pageNum;
+                                            // IMPORTANT: Also send the PDF dimensions used for calculation
+                                            document.getElementById('carimbo_pdf_width').value = Math.round(pageWidth);
+                                            document.getElementById('carimbo_pdf_height').value = Math.round(pageHeight);
+                                            
+                                            // Clear previous preview by re-rendering the page
+                                            renderPage(pageNum);
+                                            
+                                            // Re-get canvas context after rendering
+                                            setTimeout(function() {
+                                                const ctx = canvas.getContext('2d');
+                                                
+                                                // Get form values for preview
+                                                const resultado = document.getElementById('resultado_carimbo').value;
+                                                const data_validacao = document.getElementById('data_validacao_carimbo').value;
+                                                const nome_validador = document.getElementById('nome_validador_carimbo').value;
+                                                
+                                                // Color mapping for preview
+                                                const colorMap = {
+                                                    'APROVADO_SEM_CORRECAO': '#008000',  // Green
+                                                    'APROVADO_COM_CORRECAO': '#FFC800',  // Yellow/Orange
+                                                    'REPROVADO': '#FF0000'  // Red
+                                                };
+                                                const stampColor = colorMap[resultado] || '#808080';
+                                                
+                                                // boundedX and boundedY are in TOP-ORIGIN space (same as canvas)
+                                                // Use them directly for canvas drawing
+                                                const previewX = boundedX;
+                                                const previewY = boundedY;  // NO inversion - already in canvas space
+                                                
+                                                // Convert preview coordinates to canvas pixel coordinates
+                                                // The stamp in PDF is 120x90 points, so scale it properly
+                                                const displayX = (previewX / pageWidth) * canvasPixelWidth;
+                                                const displayY = (previewY / pageHeight) * canvasPixelHeight;
+                                                
+                                                console.log('=== PREVIEW DRAWING ===');
+                                                console.log('boundedX (PDF)=' + boundedX + ', boundedY (PDF)=' + boundedY);
+                                                console.log('previewX (PDF)=' + previewX + ', previewY (PDF)=' + previewY);
+                                                console.log('displayX (pixels)=' + displayX + ', displayY (pixels)=' + displayY);
+                                                console.log('PREVIEW WILL DRAW AT: x=' + displayX + ', y=' + displayY);
+                                                console.log('=======================');
+                                                
+                                                // Stamp dimensions: always 120x90 in PDF points
+                                                // Don't scale these - they should be rendered at actual size proportional to PDF
+                                                const stampPdfWidth = 120;
+                                                const stampPdfHeight = 90;
+                                                const stampPixelWidth = (stampPdfWidth / pageWidth) * canvasPixelWidth;
+                                                const stampPixelHeight = (stampPdfHeight / pageHeight) * canvasPixelHeight;
+                                                
+                                                console.log('DEBUG PREVIEW: boundedX=' + boundedX + ', boundedY=' + boundedY);
+                                                console.log('DEBUG PREVIEW: previewX=' + previewX + ', previewY=' + previewY);
+                                                console.log('DEBUG PREVIEW: Display position=' + displayX + ',' + displayY);
+                                                console.log('DEBUG PREVIEW: Stamp size=' + stampPixelWidth + 'x' + stampPixelHeight);
+                                                
+                                                // Draw preview rectangle to show stamp area
+                                                ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';  // Light gray semi-transparent
+                                                ctx.fillRect(displayX, displayY, stampPixelWidth, stampPixelHeight);
+                                                
+                                                // Draw preview stamp text - SAME ORDER as backend
+                                                ctx.fillStyle = stampColor;
+                                                ctx.font = 'bold 9px Helvetica';
+                                                
+                                                const resultMap = {
+                                                    'APROVADO_SEM_CORRECAO': 'Aprovado sem Correção',
+                                                    'APROVADO_COM_CORRECAO': 'Aprovado com Correção',
+                                                    'REPROVADO': 'Reprovado/Restrição'
+                                                };
+                                                const resultDisplay = resultMap[resultado] || resultado;
+                                                // Draw resultado FIRST at Y+65
+                                                ctx.fillText(resultDisplay, displayX + 3, displayY + 65);
+                                                
+                                                // Draw black text for date and validator
+                                                ctx.fillStyle = '#000000';
+                                                ctx.font = '8px Helvetica';
+                                                // Draw date at Y+45 (SECOND)
+                                                ctx.fillText(data_validacao, displayX + 3, displayY + 45);
+                                                // Draw validator at Y+25 (THIRD)
+                                                ctx.fillText(nome_validador.substring(0, 25), displayX + 3, displayY + 25);
+                                                
+                                                // Draw border around preview
+                                                ctx.strokeStyle = '#FF6B6B';
+                                                ctx.lineWidth = 2;
+                                                ctx.strokeRect(displayX, displayY, stampPixelWidth, stampPixelHeight);
+                                            }, 50);  // Wait for renderPage to complete
+                                            
+                                            console.log('=== STAMP COORDINATE CALCULATION ===');
+                                            console.log('Click position on screen: x=' + Math.round(clickX) + ', y=' + Math.round(clickY));
+                                            console.log('Canvas rect size: ' + Math.round(canvasRect.width) + 'x' + Math.round(canvasRect.height));
+                                            console.log('Canvas pixel size: ' + canvasPixelWidth + 'x' + canvasPixelHeight);
+                                            console.log('PDF page dimensions (unscaled): ' + Math.round(pageWidth) + 'x' + Math.round(pageHeight));
+                                            console.log('Current scale: ' + currentScale);
+                                            console.log('PDF coordinates (before Y flip): x=' + Math.round(pdfX) + ', y=' + Math.round(pdfY));
+                                            console.log('PDF coordinates (after Y flip): x=' + Math.round(pdfXCorrect) + ', y=' + Math.round(pdfYCorrect));
+                                            console.log('Final coordinates (bounded): x=' + Math.round(boundedX) + ', y=' + Math.round(boundedY));
+                                            console.log('SENDING TO BACKEND: x=' + document.getElementById('carimbo_x').value + ', y=' + document.getElementById('carimbo_y').value);
+                                            console.log('Page number: ' + pageNum);
+                                            console.log('=====================================');
+                                            
+                                            // Update button
+                                            btnAplicarCarimbo.disabled = false;
+                                            btnAplicarCarimbo.innerHTML = '<i class="bi bi-stamp"></i> Aplicar Carimbo (página ' + pageNum + ' - X:' + Math.round(boundedX) + ' Y:' + Math.round(boundedY) + ')';
+                                            btnAplicarCarimbo.classList.add('btn-success');
+                                            btnAplicarCarimbo.classList.remove('btn-warning');
+                                            
+                                            // Scroll to show button
+                                            document.getElementById('carimboForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                        });
+                                    }
                                 });
                             }
+
+                            // Função para visualizar diferentes certificados
+                            window.visualizarCertificado = function(tipo, url) {
+                                console.log('Carregando certificado:', tipo, 'URL:', url);
+                                
+                                // Limpar canvas
+                                const canvas = document.getElementById('pdf-canvas');
+                                if (canvas) {
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                }
+                                
+                                // Resetar variáveis
+                                pdfDoc = null;
+                                pageNum = 1;
+                                
+                                // Carregar novo PDF
+                                pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                                    pdfDoc = pdf;
+                                    console.log('PDF carregado:', pdf.numPages, 'páginas');
+                                    renderPage(pageNum);
+                                    
+                                    // Atualizar info (com verificação)
+                                    const pageNumElem = document.getElementById('page-num');
+                                    const pageCountElem = document.getElementById('page-count');
+                                    
+                                    if (pageNumElem) pageNumElem.textContent = pageNum;
+                                    if (pageCountElem) pageCountElem.textContent = pdfDoc.numPages;
+                                }).catch(function(error) {
+                                    console.error('Erro ao carregar PDF:', error);
+                                    alert('Erro ao carregar o certificado: ' + error.message);
+                                });
+                            };
                         </script>
                     {% else %}
                         <!-- Template Simulado (fallback) -->
@@ -1214,6 +1499,7 @@
         });
     });
 </script>
+{% endblock %}
 
 {% block extra_style %}
 <style>
@@ -1328,6 +1614,4 @@
         }
     }
 </style>
-{% endblock %}
-
 {% endblock %}

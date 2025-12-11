@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import Colaborador, Ferias, Ocorrencia, DocumentoPessoal
+from .models import (
+    Colaborador, Ferias, Ocorrencia, DocumentoPessoal,
+    HistoricoSetor, HistoricoPosto, HistoricoSalario, HistoricoColaborador
+)
 from qms.admin import admin_site
 
 
@@ -32,7 +35,43 @@ class DocumentoPessoalAdmin(admin.ModelAdmin):
     ordering = ['colaborador']
 
 
+class HistoricoSetorAdmin(admin.ModelAdmin):
+    list_display = ['colaborador', 'setor_anterior', 'setor_novo', 'data_mudanca', 'data_efetiva']
+    search_fields = ['colaborador__nome_completo']
+    list_filter = ['data_mudanca', 'setor_novo']
+    readonly_fields = ['data_mudanca']
+    ordering = ['-data_mudanca']
+
+
+class HistoricoPostoAdmin(admin.ModelAdmin):
+    list_display = ['colaborador', 'cargo_anterior', 'cargo_novo', 'data_mudanca', 'data_efetiva']
+    search_fields = ['colaborador__nome_completo']
+    list_filter = ['data_mudanca']
+    readonly_fields = ['data_mudanca']
+    ordering = ['-data_mudanca']
+
+
+class HistoricoSalarioAdmin(admin.ModelAdmin):
+    list_display = ['colaborador', 'salario_anterior', 'salario_novo', 'diferenca', 'data_mudanca', 'data_efetiva']
+    search_fields = ['colaborador__nome_completo']
+    list_filter = ['data_mudanca']
+    readonly_fields = ['data_mudanca', 'diferenca']
+    ordering = ['-data_mudanca']
+
+
+class HistoricoColaboradorAdmin(admin.ModelAdmin):
+    list_display = ['colaborador', 'tipo_mudanca', 'data_mudanca', 'data_efetiva', 'aprovado']
+    search_fields = ['colaborador__nome_completo']
+    list_filter = ['tipo_mudanca', 'data_mudanca', 'aprovado']
+    readonly_fields = ['data_mudanca', 'dados_anteriores', 'dados_novos']
+    ordering = ['-data_mudanca']
+
+
 admin_site.register(Colaborador, ColaboradorAdmin)
 admin_site.register(Ferias, FeriasAdmin)
 admin_site.register(Ocorrencia, OcorrenciaAdmin)
 admin_site.register(DocumentoPessoal, DocumentoPessoalAdmin)
+admin_site.register(HistoricoSetor, HistoricoSetorAdmin)
+admin_site.register(HistoricoPosto, HistoricoPostoAdmin)
+admin_site.register(HistoricoSalario, HistoricoSalarioAdmin)
+admin_site.register(HistoricoColaborador, HistoricoColaboradorAdmin)

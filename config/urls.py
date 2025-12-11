@@ -7,14 +7,15 @@ from django.shortcuts import render, redirect
 from django.urls import path, include
 from django.http import JsonResponse
 from procurements.views import nova_solicitacao
-from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view
+from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view, editar_ocorrencia_view, deletar_ocorrencia_view
 from metrologia.views import export_metrologia_view, export_etiquetas_view, detalhe_instrumento_view, modulo_metrologia_view
 from qms.views import (
     editar_instrumento_view, gerenciar_faixas_instrumento_view, editar_faixa_view,
     registrar_historico_calibracao_view, preview_certificado_view, download_certificado_view,
     get_certificado_bytes_view,
     visualizar_historico_calibracao_view, editar_historico_calibracao_view, remover_historico_view,
-    anexar_certificado_historico_view, remover_certificado_historico_view, aplicar_carimbo_certificado_view
+    anexar_certificado_historico_view, remover_certificado_historico_view, aplicar_carimbo_certificado_view,
+    remover_carimbo_certificado_view
 )
 from shared.views import (
     dl_template_instr, dl_template_colab, dl_template_hierarquia,
@@ -147,6 +148,7 @@ urlpatterns = [
     path("metrologia/historico/<int:historico_id>/anexar-certificado/", anexar_certificado_historico_view, name="anexar_certificado_historico"),
     path("metrologia/historico/<int:historico_id>/remover-certificado/", remover_certificado_historico_view, name="remover_certificado_historico"),
     path("metrologia/historico/<int:historico_id>/aplicar-carimbo/", aplicar_carimbo_certificado_view, name="aplicar_carimbo_certificado"),
+    path("metrologia/historico/<int:historico_id>/remover-carimbo/", remover_carimbo_certificado_view, name="remover_carimbo_certificado"),
     
     # 6. Application modules URLs - include all qms URLs with prefix to avoid conflicts
     path("api/", include("qms.urls")),
@@ -156,6 +158,8 @@ urlpatterns = [
     path("rh/colaborador/<int:colab_id>/", detalhe_colaborador_view, name="detalhe_colaborador"),
     path("rh/colaborador/<int:colab_id>/editar/", editar_colaborador_view, name="editar_colaborador"),
     path("rh/ocorrencia/", registrar_ocorrencia_view, name="registrar_ocorrencia"),
+    path("rh/ocorrencia/<int:occ_id>/editar/", editar_ocorrencia_view, name="editar_ocorrencia"),
+    path("rh/ocorrencia/<int:occ_id>/deletar/", deletar_ocorrencia_view, name="deletar_ocorrencia"),
     
     # 7. Training app URLs
     path("training/", include("training.urls")),

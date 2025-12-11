@@ -193,8 +193,7 @@
                     </thead>
                     <tbody>
                         {% for inst in instrumentos %}
-                            {% with today=now.date %}
-                                <tr>
+                            <tr>
                                     <td>
                                         <strong>{{ inst.tag }}</strong>
                                     </td>
@@ -265,7 +264,6 @@
                                         </div>
                                     </td>
                                 </tr>
-                            {% endwith %}
                         {% endfor %}
                     </tbody>
                 </table>

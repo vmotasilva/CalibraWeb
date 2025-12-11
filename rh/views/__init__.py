@@ -3,6 +3,8 @@ from .views import (
     detalhe_colaborador_view,
     editar_colaborador_view,
     registrar_ocorrencia_view,
+    editar_ocorrencia_view,
+    deletar_ocorrencia_view,
 )
 
 __all__ = [
@@ -10,4 +12,6 @@ __all__ = [
     'detalhe_colaborador_view',
     'editar_colaborador_view',
     'registrar_ocorrencia_view',
+    'editar_ocorrencia_view',
+    'deletar_ocorrencia_view',
 ]

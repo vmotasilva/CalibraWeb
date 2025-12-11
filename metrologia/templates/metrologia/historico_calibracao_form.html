@@ -53,13 +53,8 @@
                         <label for="id_arquivos_padroes" class="form-label fw-bold">
                             Arquivos de Padrões (PDF)
                         </label>
-                        {{ form.arquivos_padroes }}
-                        <small class="form-text text-muted d-block mt-2">
-                            <i class="bi bi-info-circle"></i> Anexe um ou mais arquivos PDF de padrões utilizados.
-                        </small>
-                        {% if form.arquivos_padroes.errors %}
-                            <div class="text-danger small mt-1">{{ form.arquivos_padroes.errors }}</div>
-                        {% endif %}
+                        <input type="file" id="id_arquivos_padroes" name="arquivos_padroes[]" class="form-control" accept=".pdf" multiple>
+                        <div class="form-text">Anexe um ou mais arquivos PDF de padrões utilizados.</div>
 
                         {% if form.instance.pk and form.instance.arquivos_padroes.exists %}
                             <div class="mt-3">

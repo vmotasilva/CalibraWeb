@@ -92,6 +92,22 @@ class Colaborador(models.Model):
         except Exception:
             return None
 
+    def get_ultimo_setor_historico(self):
+        """Retorna o último registro de mudança de setor"""
+        return self.historico_setor.first() if self.historico_setor.exists() else None
+
+    def get_ultimo_cargo_historico(self):
+        """Retorna o último registro de mudança de cargo"""
+        return self.historico_posto.first() if self.historico_posto.exists() else None
+
+    def get_ultimo_salario_historico(self):
+        """Retorna o último registro de mudança de salário"""
+        return self.historico_salario.first() if self.historico_salario.exists() else None
+
+    def get_historico_completo(self):
+        """Retorna o histórico completo de mudanças ordenado por data"""
+        return self.historico_geral.all().order_by('-data_mudanca')
+
     def __str__(self):
         return f"{self.nome_completo} ({self.matricula})"
 
@@ -141,6 +157,7 @@ class Ocorrencia(models.Model):
         ("DEMISSAO", "Demissão"),
         ("ELOGIO", "Elogio"),
         ("REABILITACAO", "Reabilitação"),
+        ("FEEDBACK", "Feedback"),
     ]
 
     colaborador = models.ForeignKey(
@@ -149,7 +166,15 @@ class Ocorrencia(models.Model):
         verbose_name="Colaborador",
         related_name="ocorrencias",
     )
-    data_ocorrencia = models.DateField(auto_now_add=True, verbose_name="Data da Ocorrência")
+    condutor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Responsável pela Ocorrência (Quem está conduzindo)",
+        related_name="ocorrencias_conduzidas",
+    )
+    data_ocorrencia = models.DateField(default=date.today, verbose_name="Data da Ocorrência")
     tipo = models.CharField(
         max_length=20, choices=TIPO_CHOICES, verbose_name="Tipo de Ocorrência"
     )
@@ -158,14 +183,14 @@ class Ocorrencia(models.Model):
     )
     descricao = models.TextField(verbose_name="Descrição")
     motivo = models.CharField(max_length=300, null=True, blank=True, verbose_name="Motivo")
+    arquivo_evidencia = models.FileField(
+        upload_to="ocorrencias_evidencias/",
+        null=True,
+        blank=True,
+        verbose_name="Arquivo de Evidência"
+    )
 
     def save(self, *args, **kwargs):
-        if self.tipo == "ELOGIO":
-            self.natureza = "POSITIVA"
-        elif self.tipo in ["AVISO", "ADVERTENCIA", "SUSPENSAO", "DEMISSAO"]:
-            self.natureza = "NEGATIVA"
-        else:
-            self.natureza = "NEUTRA"
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -204,3 +229,202 @@ class DocumentoPessoal(models.Model):
         verbose_name = "Documento Pessoal"
         verbose_name_plural = "Documentos Pessoais"
         ordering = ["colaborador", "tipo_documento"]
+
+
+# ==============================================================================
+# HISTÓRICO DE MUDANÇAS - RASTREABILIDADE
+# ==============================================================================
+
+class HistoricoSetor(models.Model):
+    """Histórico de mudanças de setor do colaborador"""
+    colaborador = models.ForeignKey(
+        Colaborador,
+        on_delete=models.CASCADE,
+        related_name="historico_setor",
+        verbose_name="Colaborador"
+    )
+    setor_anterior = models.ForeignKey(
+        'organization.Setor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="historico_saida",
+        verbose_name="Setor Anterior"
+    )
+    setor_novo = models.ForeignKey(
+        'organization.Setor',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="historico_entrada",
+        verbose_name="Setor Novo"
+    )
+    data_mudanca = models.DateField(auto_now_add=True, verbose_name="Data da Mudança")
+    data_efetiva = models.DateField(verbose_name="Data Efetiva", null=True, blank=True)
+    motivo = models.CharField(
+        max_length=200, null=True, blank=True, verbose_name="Motivo"
+    )
+    registrado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mudancas_setor_registradas",
+        verbose_name="Registrado por"
+    )
+
+    def __str__(self):
+        return f"{self.colaborador.nome_completo} - {self.setor_anterior} → {self.setor_novo} ({self.data_mudanca})"
+
+    class Meta:
+        verbose_name = "Histórico de Setor"
+        verbose_name_plural = "Histórico de Setores"
+        ordering = ["-data_mudanca"]
+
+
+class HistoricoPosto(models.Model):
+    """Histórico de mudanças de posto/cargo do colaborador"""
+    colaborador = models.ForeignKey(
+        Colaborador,
+        on_delete=models.CASCADE,
+        related_name="historico_posto",
+        verbose_name="Colaborador"
+    )
+    cargo_anterior = models.CharField(
+        max_length=100, null=True, blank=True, verbose_name="Cargo Anterior"
+    )
+    cargo_novo = models.CharField(
+        max_length=100, verbose_name="Novo Cargo"
+    )
+    data_mudanca = models.DateField(auto_now_add=True, verbose_name="Data da Mudança")
+    data_efetiva = models.DateField(verbose_name="Data Efetiva", null=True, blank=True)
+    motivo = models.CharField(
+        max_length=200, null=True, blank=True, verbose_name="Motivo"
+    )
+    registrado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mudancas_cargo_registradas",
+        verbose_name="Registrado por"
+    )
+
+    def __str__(self):
+        return f"{self.colaborador.nome_completo} - {self.cargo_anterior} → {self.cargo_novo} ({self.data_mudanca})"
+
+    class Meta:
+        verbose_name = "Histórico de Posto"
+        verbose_name_plural = "Histórico de Postos"
+        ordering = ["-data_mudanca"]
+
+
+class HistoricoSalario(models.Model):
+    """Histórico de mudanças de salário do colaborador"""
+    colaborador = models.ForeignKey(
+        Colaborador,
+        on_delete=models.CASCADE,
+        related_name="historico_salario",
+        verbose_name="Colaborador"
+    )
+    salario_anterior = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Salário Anterior"
+    )
+    salario_novo = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Novo Salário"
+    )
+    diferenca = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Diferença"
+    )
+    data_mudanca = models.DateField(auto_now_add=True, verbose_name="Data da Mudança")
+    data_efetiva = models.DateField(verbose_name="Data Efetiva", null=True, blank=True)
+    motivo = models.CharField(
+        max_length=200, null=True, blank=True, verbose_name="Motivo"
+    )
+    registrado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mudancas_salario_registradas",
+        verbose_name="Registrado por"
+    )
+
+    def save(self, *args, **kwargs):
+        if self.salario_anterior and self.salario_novo:
+            self.diferenca = self.salario_novo - self.salario_anterior
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.colaborador.nome_completo} - R$ {self.salario_anterior} → R$ {self.salario_novo} ({self.data_mudanca})"
+
+    class Meta:
+        verbose_name = "Histórico de Salário"
+        verbose_name_plural = "Histórico de Salários"
+        ordering = ["-data_mudanca"]
+
+
+class HistoricoColaborador(models.Model):
+    """Histórico geral de mudanças do colaborador (log consolidado)"""
+    TIPOS_MUDANCA = [
+        ("SETOR", "Mudança de Setor"),
+        ("CARGO", "Mudança de Cargo"),
+        ("SALARIO", "Mudança de Salário"),
+        ("TURNO", "Mudança de Turno"),
+        ("STATUS", "Mudança de Status"),
+        ("OUTRO", "Outro"),
+    ]
+    
+    colaborador = models.ForeignKey(
+        Colaborador,
+        on_delete=models.CASCADE,
+        related_name="historico_geral",
+        verbose_name="Colaborador"
+    )
+    tipo_mudanca = models.CharField(
+        max_length=20, choices=TIPOS_MUDANCA, verbose_name="Tipo de Mudança"
+    )
+    descricao = models.TextField(verbose_name="Descrição da Mudança")
+    dados_anteriores = models.JSONField(
+        null=True, blank=True, verbose_name="Dados Anteriores"
+    )
+    dados_novos = models.JSONField(
+        verbose_name="Dados Novos"
+    )
+    data_mudanca = models.DateField(auto_now_add=True, verbose_name="Data da Mudança")
+    data_efetiva = models.DateField(verbose_name="Data Efetiva", null=True, blank=True)
+    registrado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mudancas_colaborador_registradas",
+        verbose_name="Registrado por"
+    )
+    aprovado = models.BooleanField(default=False, verbose_name="Aprovado")
+    aprovado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mudancas_colaborador_aprovadas",
+        verbose_name="Aprovado por"
+    )
+    data_aprovacao = models.DateTimeField(null=True, blank=True, verbose_name="Data de Aprovação")
+
+    def __str__(self):
+        return f"{self.colaborador.nome_completo} - {self.get_tipo_mudanca_display()} ({self.data_mudanca})"
+
+    class Meta:
+        verbose_name = "Histórico de Colaborador"
+        verbose_name_plural = "Histórico Geral de Colaboradores"
+        ordering = ["-data_mudanca"]

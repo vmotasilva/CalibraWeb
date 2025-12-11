@@ -47,24 +47,28 @@ class OcorrenciaForm(forms.ModelForm):
     
     class Meta:
         model = Ocorrencia
-        fields = ['colaborador', 'tipo', 'descricao', 'motivo']
+        fields = ['colaborador', 'condutor', 'data_ocorrencia', 'tipo', 'natureza', 'descricao', 'motivo', 'arquivo_evidencia']
         widgets = {
+            'colaborador': forms.Select(attrs={'class': 'form-select'}),
+            'condutor': forms.Select(attrs={'class': 'form-select'}),
+            'data_ocorrencia': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'natureza': forms.Select(attrs={'class': 'form-select'}),
             'descricao': forms.Textarea(attrs={
                 'rows': 4,
-                'class': 'form-control'
+                'class': 'form-control',
+                'placeholder': 'Descreva a ocorrência em detalhes'
             }),
             'motivo': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Motivo da ocorrência'
             }),
-            'tipo': forms.Select(attrs={'class': 'form-select'}),
-            'colaborador': forms.Select(attrs={'class': 'form-select'}),
-            'data_ocorrencia': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date'
-            }),
             'arquivo_evidencia': forms.FileInput(attrs={
-                'class': 'form-control'
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png,.doc,.docx'
             }),
         }
 

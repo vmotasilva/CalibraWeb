@@ -80,6 +80,8 @@ def dashboard_view(request):
 @login_required
 def modulo_metrologia_view(request):
     """Metrologia module main view."""
+    from datetime import date, timedelta
+    
     # Retrieve all instruments and related data
     instrumentos = Instrumento.objects.all().select_related('setor', 'categoria').prefetch_related('faixas')
     
@@ -89,17 +91,21 @@ def modulo_metrologia_view(request):
     setor_filter = request.GET.get('setor', '')
     search_query = request.GET.get('search', '')
     
-    # Apply filters
+    # Apply status filters
+    today = date.today()
     if status_filter == 'vencidos':
-        from datetime import date
-        instrumentos = instrumentos.filter(data_proxima_calibracao__lt=date.today(), ativo=True)
+        instrumentos = instrumentos.filter(data_proxima_calibracao__lt=today, ativo=True)
     elif status_filter == 'avencer':
-        from datetime import date, timedelta
-        today = date.today()
         thirty_days = today + timedelta(days=30)
         instrumentos = instrumentos.filter(
             data_proxima_calibracao__gte=today,
             data_proxima_calibracao__lte=thirty_days,
+            ativo=True
+        )
+    elif status_filter == 'vigentes':
+        thirty_days = today + timedelta(days=30)
+        instrumentos = instrumentos.filter(
+            data_proxima_calibracao__gt=thirty_days,
             ativo=True
         )
     
@@ -132,6 +138,10 @@ def modulo_metrologia_view(request):
         'setor_filter': setor_filter,
         'search_query': search_query,
         'colaborador': request.user,
+        'today': today,
+        'today_30days': today + timedelta(days=30),
+        'hoje': today,
+        'alerta_30d': today + timedelta(days=30),
     }
     return render(request, 'metrologia/dashboard.html', context)
 
@@ -309,9 +319,20 @@ def download_certificado_view(request, historico_id):
     """Download a calibration certificate."""
     historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
     
-    if historico.certificado:
-        response = FileResponse(historico.certificado.open('rb'))
-        response['Content-Disposition'] = f'attachment; filename="{historico.certificado.name}"'
+    # Get the type of certificate to download (original or stamped)
+    tipo = request.GET.get('tipo', 'carimbado')  # Default to stamped if available
+    
+    if tipo == 'carimbado':
+        certificado = historico.certificado_carimbado or historico.certificado
+    elif tipo == 'original':
+        certificado = historico.certificado
+    else:
+        # Fallback: prefer stamped, then original
+        certificado = historico.certificado_carimbado or historico.certificado
+    
+    if certificado:
+        response = FileResponse(certificado.open('rb'))
+        response['Content-Disposition'] = f'attachment; filename="{certificado.name}"'
         return response
     
     messages.error(request, 'Certificado não disponível.')
@@ -366,8 +387,16 @@ def get_certificado_bytes_view(request, historico_id):
     """Return certificate PDF as bytes for PDF.js viewer."""
     historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
     
-    # Prefer carimbado (stamped) over original
-    certificado = historico.certificado_carimbado or historico.certificado
+    # Get the type of certificate to return (original or stamped)
+    tipo = request.GET.get('tipo', 'carimbado')  # Default to stamped if available
+    
+    if tipo == 'carimbado':
+        certificado = historico.certificado_carimbado or historico.certificado
+    elif tipo == 'original':
+        certificado = historico.certificado
+    else:
+        # Fallback: prefer stamped, then original
+        certificado = historico.certificado_carimbado or historico.certificado
     
     if not certificado:
         return JsonResponse({'error': 'Certificado não encontrado'}, status=404)
@@ -399,20 +428,35 @@ def aplicar_carimbo_certificado_view(request, historico_id):
     
     if request.method == 'POST':
         try:
+            # Log incoming POST data for debugging
+            logger.info(f"🔄 POST request received for historico {historico_id}")
+            logger.info(f"📋 POST data: {dict(request.POST)}")
+            
             # Get stamp data from POST
             resultado = request.POST.get('resultado', '')
             data_validacao = request.POST.get('data_validacao', '')
             nome_validador = request.POST.get('nome_validador', request.user.get_full_name() or request.user.username)
-            carimbo_x = float(request.POST.get('carimbo_x', 450))
-            carimbo_y = float(request.POST.get('carimbo_y', 100))
+            # Coordinates are in PDF space based on frontend's measurement
+            stamp_x = float(request.POST.get('carimbo_x', 450))
+            stamp_y = float(request.POST.get('carimbo_y', 100))
             carimbo_page = int(request.POST.get('carimbo_page', 1))
+            frontend_pdf_width = float(request.POST.get('carimbo_pdf_width', 595))
+            frontend_pdf_height = float(request.POST.get('carimbo_pdf_height', 842))
             
-            if not historico.certificado:
+            logger.info(f"✅ Stamp coordinates (from frontend): x={stamp_x}, y={stamp_y}")
+            logger.info(f"📐 Frontend measured PDF dimensions: {frontend_pdf_width}x{frontend_pdf_height}")
+            
+            if not historico.certificado and not historico.certificado_carimbado:
+                logger.warning(f"⚠️  No certificate available for historico {historico_id}")
                 messages.error(request, 'Nenhum certificado disponível para carimbar.')
                 return redirect('editar_historico_calibracao', historico_id=historico_id)
             
+            # Use the original certificate if available, otherwise use the stamped version
+            cert_file = historico.certificado if historico.certificado else historico.certificado_carimbado
+            logger.info(f"📄 Using certificate: {cert_file.name}")
+            
             # Read original PDF - keep bytes in memory to avoid file closure issues
-            pdf_file = historico.certificado.open('rb')
+            pdf_file = cert_file.open('rb')
             pdf_bytes = pdf_file.read()
             pdf_file.close()
             
@@ -421,40 +465,70 @@ def aplicar_carimbo_certificado_view(request, historico_id):
             
             # Create stamp overlay using ReportLab
             stamp_buffer = BytesIO()
-            stamp_canvas = canvas.Canvas(stamp_buffer, pagesize=letter)
             
-            # Use coordinates from form
-            x, y = carimbo_x, carimbo_y
-            stamp_width, stamp_height = 120, 100
+            # Get the original page to determine dimensions
+            original_page = original_pdf.pages[carimbo_page - 1]
+            page_width = float(original_page.mediabox.width)
+            page_height = float(original_page.mediabox.height)
             
-            # Draw rectangle border
-            stamp_canvas.setLineWidth(2)
-            stamp_canvas.rect(x, y, stamp_width, stamp_height)
+            logger.info(f"📐 Original page dimensions: {page_width}x{page_height} points")
             
-            # Draw stamp text
-            stamp_canvas.setFont("Helvetica-Bold", 8)
-            stamp_canvas.drawString(x + 5, y + 85, "VALIDADO")
+            # Create canvas with actual page dimensions
+            stamp_canvas = canvas.Canvas(stamp_buffer, pagesize=(page_width, page_height))
             
-            stamp_canvas.setFont("Helvetica", 7)
-            stamp_canvas.drawString(x + 5, y + 70, f"Resultado:")
+            # If frontend's PDF dimensions differ from actual PDF, need to rescale coordinates
+            if abs(frontend_pdf_width - page_width) > 1 or abs(frontend_pdf_height - page_height) > 1:
+                logger.warning(f"⚠️  Dimension mismatch! Frontend: {frontend_pdf_width}x{frontend_pdf_height}, Actual: {page_width}x{page_height}")
+                # Rescale coordinates proportionally
+                stamp_x = (stamp_x / frontend_pdf_width) * page_width
+                stamp_y = (stamp_y / frontend_pdf_height) * page_height
+                logger.info(f"✏️ Rescaled coordinates to: x={stamp_x}, y={stamp_y}")
+            else:
+                logger.info(f"✅ Dimensions match, using coordinates as-is: x={stamp_x}, y={stamp_y}")
             
-            # Map resultado display names
+            # CRITICAL: Frontend sends coordinates with TOP-origin (Y=0 at top, like canvas)
+            # PDF uses BOTTOM-origin (Y=0 at bottom)
+            # Convert Y from top-origin to bottom-origin
+            stamp_y_pdf = page_height - stamp_y
+            
+            # IMPORTANT: In canvas (preview), the stamp expands DOWN and RIGHT from the origin point
+            # In PDF, it expands UP and RIGHT from the origin point
+            # Stamp height is ~90 points, so we need to move the origin DOWN by that amount
+            # to compensate for the different expansion direction
+            stamp_y_pdf = stamp_y_pdf - 90  # Move down by stamp height to match preview origin
+            
+            logger.info(f"🔄 Y-coordinate conversion: frontend Y={stamp_y} (top-origin) → PDF Y={stamp_y_pdf} (bottom-origin, adjusted for expansion direction)")
+            
+            # Map resultado to display name and color
             resultado_map = {
-                'APROVADO_SEM_CORRECAO': 'Aprovado',
-                'APROVADO_COM_CORRECAO': 'Aprovado c/ Correção',
-                'REPROVADO': 'Reprovado'
+                'APROVADO_SEM_CORRECAO': ('Aprovado sem Correção', (0, 0.7, 0)),  # Green
+                'APROVADO_COM_CORRECAO': ('Aprovado com Correção', (1, 0.8, 0)),  # Yellow/Orange
+                'REPROVADO': ('Reprovado/Restrição', (1, 0, 0))  # Red
             }
-            resultado_display = resultado_map.get(resultado, resultado)
-            stamp_canvas.setFont("Helvetica-Bold", 7)
-            stamp_canvas.drawString(x + 5, y + 60, resultado_display)
+            resultado_display, (r, g, b) = resultado_map.get(resultado, (resultado, (0.5, 0.5, 0.5)))
             
-            stamp_canvas.setFont("Helvetica", 7)
-            stamp_canvas.drawString(x + 5, y + 45, f"Data: {data_validacao}")
-            stamp_canvas.drawString(x + 5, y + 30, f"Validador:")
-            stamp_canvas.drawString(x + 5, y + 20, nome_validador[:18])  # Limit to 18 chars
+            # Draw colored text for resultado only (no background)
+            stamp_canvas.setLineWidth(0)
+            stamp_canvas.setFillColorRGB(r, g, b)  # Use color for text only
+            stamp_canvas.setFont("Helvetica-Bold", 9)
+            
+            # NO line breaks - draw resultado in one line
+            stamp_canvas.drawString(stamp_x + 3, stamp_y_pdf + 65, resultado_display)
+            
+            # Draw black text for data and validador
+            stamp_canvas.setFillColorRGB(0, 0, 0)  # Black text
+            stamp_canvas.setFont("Helvetica", 8)
+            stamp_canvas.drawString(stamp_x + 3, stamp_y_pdf + 45, f"{data_validacao}")
+            
+            # Draw validador (validator) - no line breaks
+            stamp_canvas.setFont("Helvetica", 8)
+            validador_text = nome_validador[:25]  # Limit to 25 chars (was 18)
+            stamp_canvas.drawString(stamp_x + 3, stamp_y_pdf + 25, validador_text)
             
             stamp_canvas.save()
             stamp_buffer.seek(0)
+            
+            logger.info(f"🎨 Stamp created with color: RGB({r}, {g}, {b}) for {resultado}")
             
             # Read stamp from buffer - convert to bytes
             stamp_buffer_bytes = BytesIO(stamp_buffer.getvalue())
@@ -474,6 +548,7 @@ def aplicar_carimbo_certificado_view(request, historico_id):
             writer.write(stamped_buffer)
             stamped_buffer.seek(0)
             
+            logger.info(f"🔄 Saving stamped PDF to model...")
             # Save to model
             filename = f"certificado_carimbado_{historico_id}.pdf"
             historico.certificado_carimbado.save(
@@ -481,15 +556,22 @@ def aplicar_carimbo_certificado_view(request, historico_id):
                 ContentFile(stamped_buffer.read()),
                 save=True
             )
+            logger.info(f"✅ File saved to field: {historico.certificado_carimbado.name}")
+            
             historico.certificado_validado = True
             historico.save()
+            logger.info(f"✅ Model saved successfully! File size: {historico.certificado_carimbado.size} bytes")
             
-            messages.success(request, 'Carimbo aplicado com sucesso!')
+            try:
+                messages.success(request, 'Carimbo aplicado com sucesso!')
+            except Exception as msg_error:
+                logger.warning(f"⚠️  Could not send success message: {str(msg_error)}")
+            
             return redirect('editar_historico_calibracao', historico_id=historico_id)
             
         except Exception as e:
             import traceback
-            logger.error(f'Erro ao aplicar carimbo: {str(e)}', exc_info=True)
+            logger.error(f'❌ Erro ao aplicar carimbo: {str(e)}', exc_info=True)
             messages.error(request, f'Erro ao aplicar carimbo: {str(e)}')
             return redirect('editar_historico_calibracao', historico_id=historico_id)
     
@@ -502,6 +584,60 @@ def aplicar_carimbo_certificado_view(request, historico_id):
             ('REPROVADO', 'Reprovado'),
         ]
     }
+    return render(request, 'metrologia/certificado_preview.html', context)
+
+
+@login_required
+def remover_carimbo_certificado_view(request, historico_id):
+    """Remove the stamped certificate to allow re-stamping."""
+    import os
+    
+    historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    
+    if request.method == 'POST':
+        try:
+            logger.info(f"🔄 Removing stamped certificate for historico {historico_id}")
+            
+            # Check if there's a stamped certificate
+            if not historico.certificado_carimbado:
+                logger.warning(f"⚠️  No stamped certificate to remove for historico {historico_id}")
+                try:
+                    messages.warning(request, 'Nenhum carimbo para remover.')
+                except Exception as msg_error:
+                    logger.warning(f"⚠️  Could not send warning message: {str(msg_error)}")
+                return redirect('editar_historico_calibracao', historico_id=historico_id)
+            
+            # Delete the physical file
+            stamped_file_path = historico.certificado_carimbado.path
+            if os.path.exists(stamped_file_path):
+                try:
+                    os.remove(stamped_file_path)
+                    logger.info(f"✅ Deleted file: {stamped_file_path}")
+                except Exception as e:
+                    logger.warning(f"⚠️  Could not delete file {stamped_file_path}: {str(e)}")
+            
+            # Clear the database field
+            historico.certificado_carimbado.delete()
+            historico.certificado_validado = False
+            historico.save()
+            
+            logger.info(f"✅ Stamped certificate removed for historico {historico_id}")
+            try:
+                messages.success(request, 'Carimbo removido com sucesso! Você pode agora carimbar novamente.')
+            except Exception as msg_error:
+                logger.warning(f"⚠️  Could not send success message: {str(msg_error)}")
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
+            
+        except Exception as e:
+            logger.error(f'❌ Error removing stamped certificate: {str(e)}', exc_info=True)
+            try:
+                messages.error(request, f'Erro ao remover carimbo: {str(e)}')
+            except Exception as msg_error:
+                logger.warning(f"⚠️  Could not send error message: {str(msg_error)}")
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
+    
+    # GET request - show confirmation
+    context = {'historico': historico}
     return render(request, 'metrologia/certificado_preview.html', context)
 
 
@@ -1135,8 +1271,37 @@ def editar_historico_calibracao_view(request, historico_id):
     resultados_faixa = historico.resultados_faixa.all().select_related('faixa')
     
     if request.method == 'POST':
-        action = request.POST.get('action')
-        
+        action = request.POST.get('acao') or request.POST.get('action')
+
+        # Handle certificate removal
+        if action == 'remover_certificado_original':
+            if historico.certificado:
+                historico.certificado.delete()
+                historico.save()
+                messages.success(request, 'Certificado original removido com sucesso.')
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
+
+        elif action == 'remover_certificado_carimbado':
+            if historico.certificado_carimbado:
+                historico.certificado_carimbado.delete()
+                historico.certificado_validado = False
+                historico.save()
+                messages.success(request, 'Certificado carimbado removido com sucesso.')
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
+
+        # Handle standard PDF removal
+        elif action and action.startswith('remover_padrao_'):
+            from metrologia.models import ArquivoPadrao
+            padrao_id = action.replace('remover_padrao_', '')
+            try:
+                padrao = ArquivoPadrao.objects.get(id=padrao_id)
+                padrao_nome = padrao.nome
+                historico.arquivos_padroes.remove(padrao)
+                messages.success(request, f'Padrão "{padrao_nome}" removido com sucesso.')
+            except ArquivoPadrao.DoesNotExist:
+                messages.error(request, 'Padrão não encontrado.')
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
+
         if action == 'update_history':
             form = HistoricoCalibracaoForm(request.POST, request.FILES, instance=historico)
             if form.is_valid():
@@ -1272,8 +1437,9 @@ def listar_instrumentos_view(request):
             ativo=True
         )
     elif status_filter == 'vigentes':
+        thirty_days = today + timedelta(days=30)
         instrumentos = instrumentos.filter(
-            data_proxima_calibracao__gte=today,
+            data_proxima_calibracao__gt=thirty_days,
             ativo=True
         )
     

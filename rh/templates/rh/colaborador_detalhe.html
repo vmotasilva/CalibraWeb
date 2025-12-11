@@ -16,7 +16,7 @@
         
         <div>
             {% if can_edit %}
-            <a href="/admin/qms/colaborador/{{ alvo.id }}/change/" target="_blank" class="btn btn-outline-secondary">
+            <a href="/admin/rh/colaborador/{{ alvo.id }}/change/" target="_blank" class="btn btn-outline-secondary">
                 <i class="bi bi-pencil"></i> Editar Dados
             </a>
             {% endif %}
@@ -282,17 +282,17 @@
                                 <tr>
                                     <th class="ps-3">Data</th>
                                     <th>Tipo</th>
-                                    <th>Resumo do Evento</th>
+                                    <th>Descrição</th>
                                     <th>Natureza</th>
-                                    <th>Evidência</th>
+                                    <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for o in ocorrencias %}
                                 <tr>
-                                    <td class="ps-3">{{ o.data_ocorrencia|date:"d/m/Y" }}</td>
+                                    <td class="ps-3"><small>{{ o.data_ocorrencia|date:"d/m/Y" }}</small></td>
                                     <td><span class="fw-bold">{{ o.get_tipo_display }}</span></td>
-                                    <td>{{ o.titulo }}</td>
+                                    <td><small>{{ o.descricao|truncatewords:10 }}</small></td>
                                     <td>
                                         {% if o.natureza == 'NEGATIVA' %}
                                             <span class="badge bg-danger">NEGATIVA</span>
@@ -303,11 +303,88 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if o.arquivo_evidencia %}
-                                            <a href="{{ o.arquivo_evidencia.url }}" target="_blank" class="btn btn-sm btn-outline-dark"><i class="bi bi-paperclip"></i></a>
-                                        {% else %} - {% endif %}
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#ocorrenciaModal{{ o.id }}">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </button>
                                     </td>
                                 </tr>
+                                
+                                <!-- Modal de Detalhes da Ocorrência -->
+                                <div class="modal fade" id="ocorrenciaModal{{ o.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-warning bg-opacity-10">
+                                                <h5 class="modal-title">Detalhes da Ocorrência</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-4">
+                                                        <strong>Data:</strong>
+                                                        <p>{{ o.data_ocorrencia|date:"d/m/Y" }}</p>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <strong>Tipo:</strong>
+                                                        <p><span class="badge bg-primary">{{ o.get_tipo_display }}</span></p>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <strong>Natureza:</strong>
+                                                        <p>
+                                                            {% if o.natureza == 'NEGATIVA' %}
+                                                                <span class="badge bg-danger">NEGATIVA</span>
+                                                            {% elif o.natureza == 'POSITIVA' %}
+                                                                <span class="badge bg-success">POSITIVA</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">NEUTRA</span>
+                                                            {% endif %}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {% if o.condutor %}
+                                                <div class="row mb-3">
+                                                    <div class="col-md-12">
+                                                        <strong>Responsável pela Ocorrência:</strong>
+                                                        <p><span class="badge bg-info">{{ o.condutor.get_full_name|default:o.condutor.username }}</span></p>
+                                                    </div>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                <div class="mb-3">
+                                                    <strong>Descrição:</strong>
+                                                    <div class="alert alert-light border">
+                                                        <p>{{ o.descricao }}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                {% if o.motivo %}
+                                                <div class="mb-3">
+                                                    <strong>Motivo:</strong>
+                                                    <p>{{ o.motivo }}</p>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {% if o.arquivo_evidencia %}
+                                                <div class="mb-3">
+                                                    <strong>Arquivo de Evidência:</strong>
+                                                    <p>
+                                                        <a href="{{ o.arquivo_evidencia.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                            <i class="bi bi-download"></i> Baixar
+                                                        </a>
+                                                    </p>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="modal-footer">
+                                                <a href="/rh/ocorrencia/{{ o.id }}/editar/" class="btn btn-primary">
+                                                    <i class="bi bi-pencil"></i> Editar
+                                                </a>
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- FIM Modal -->
                                 {% empty %}
                                 <tr><td colspan="5" class="p-4 text-center text-muted">Nenhuma ocorrência registrada.</td></tr>
                                 {% endfor %}
@@ -321,6 +398,68 @@
                 Ocorrências deste colaborador são visíveis apenas para RH e liderança.
             </div>
             {% endif %}
+
+            <!-- HISTÓRICO DE MUDANÇAS -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white fw-bold">
+                    <i class="bi bi-clock-history"></i> Histórico de Mudanças
+                </div>
+                <div class="card-body">
+                    {% if alvo.get_historico_completo %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Tipo de Mudança</th>
+                                    <th>Descrição</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hist in alvo.get_historico_completo|slice:":10" %}
+                                <tr>
+                                    <td><small>{{ hist.data_mudanca|date:"d/m/Y" }}</small></td>
+                                    <td>
+                                        {% if hist.tipo_mudanca == "SETOR" %}
+                                            <span class="badge bg-info">Setor</span>
+                                        {% elif hist.tipo_mudanca == "CARGO" %}
+                                            <span class="badge bg-warning">Cargo</span>
+                                        {% elif hist.tipo_mudanca == "SALARIO" %}
+                                            <span class="badge bg-success">Salário</span>
+                                        {% elif hist.tipo_mudanca == "TURNO" %}
+                                            <span class="badge bg-primary">Turno</span>
+                                        {% elif hist.tipo_mudanca == "STATUS" %}
+                                            <span class="badge bg-danger">Status</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ hist.get_tipo_mudanca_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><small>{{ hist.descricao }}</small></td>
+                                    <td>
+                                        {% if hist.aprovado %}
+                                            <span class="badge bg-success">Aprovado</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Pendente</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="p-4 text-center text-muted">Sem mudanças registradas.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if alvo.get_historico_completo|length > 10 %}
+                    <div class="alert alert-info mt-3 mb-0">
+                        <small><i class="bi bi-info-circle"></i> Mostrando últimas 10 mudanças. Total: <strong>{{ alvo.get_historico_completo|length }}</strong> registros.</small>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted mb-0">Nenhuma mudança registrada ainda.</p>
+                    {% endif %}
+                </div>
+            </div>
 
         </div>
     </div>

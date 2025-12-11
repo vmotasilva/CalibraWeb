@@ -1,0 +1,592 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">Editar Histórico de Calibração <span class="badge bg-info">VERSÃO SIMPLIFICADA</span></h2>
+            <p class="text-muted mb-0">{{ instrumento.tag }} - {{ instrumento.descricao }}</p>
+        </div>
+        <a href="{% url 'visualizar_historico_calibracao' historico.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <!-- LAYOUT: Esquerda (Formulário) + Direita (Preview) -->
+    <div class="row mb-4 g-4">
+        <!-- COLUNA 1: DADOS PRINCIPAIS DO HISTÓRICO (Esquerda) -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-calendar-check"></i> Dados do Histórico
+                </div>
+                <div class="card-body pb-2">
+                    <form method="post" enctype="multipart/form-data" class="needs-validation">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_history">
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_data_calibracao" class="form-label fw-bold small">Data da Calibração <span class="text-danger">*</span></label>
+                                    {{ historico_form.data_calibracao|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_proxima_calibracao" class="form-label fw-bold small">Próxima Calibração</label>
+                                    {{ historico_form.proxima_calibracao|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_numero_certificado" class="form-label fw-bold small">Nº Certificado</label>
+                                    {{ historico_form.numero_certificado|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_tipo_calibracao" class="form-label fw-bold small">Tipo de Calibração</label>
+                                    {{ historico_form.tipo_calibracao|add_class:"form-select form-select-sm" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_responsavel" class="form-label fw-bold small">Responsável</label>
+                                    {{ historico_form.responsavel|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_fornecedor" class="form-label fw-bold small">Laboratório</label>
+                                    {{ historico_form.fornecedor|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="form-check form-check-inline">
+                                {{ historico_form.tem_selo_rbc|add_class:"form-check-input" }}
+                                <label for="id_tem_selo_rbc" class="form-check-label fw-bold small">
+                                    Possui Selo RBC?
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label for="id_observacoes" class="form-label fw-bold small">Observações</label>
+                            {{ historico_form.observacoes|add_class:"form-control form-control-sm" }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_certificado" class="form-label fw-bold small">Certificado (PDF)</label>
+                            {{ historico_form.certificado|add_class:"form-control form-control-sm" }}
+                        </div>
+
+                        <hr class="my-2">
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-save"></i> Salvar Histórico
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- SEÇÃO 4: CARIMBO DO CERTIFICADO -->
+                {% if historico.certificado or historico.certificado_carimbado %}
+                <div class="card shadow-sm mt-4 border-warning">
+                    <div class="card-header bg-warning text-dark py-2">
+                        <i class="bi bi-stamp"></i> {% if historico.certificado_carimbado %}Re-{% endif %}Aplicar Carimbo de Validação
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="alert alert-info small mb-2">
+                            <i class="bi bi-info-circle"></i> Preencha os dados abaixo e clique no PDF (direita) para posicionar o carimbo.
+                        </div>
+
+                        <form method="post" action="{% url 'aplicar_carimbo_certificado' historico.id %}" id="carimboForm" class="mt-2" novalidate>
+                            {% csrf_token %}
+                            
+                            <div class="row g-2">
+                                <!-- Resultado - Campo Calculado -->
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <label for="resultado_carimbo" class="form-label small fw-bold mb-1">Resultado (Calculado)</label>
+                                        <div class="alert alert-light border p-2 mb-0" id="resultado_display">
+                                            <small class="text-muted">Analisando resultados das faixas...</small>
+                                        </div>
+                                        <input type="hidden" id="resultado_carimbo" name="resultado" value="">
+                                    </div>
+                                </div>
+
+                                <!-- Data de Validação -->
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <label for="data_validacao_carimbo" class="form-label small fw-bold mb-1">Data</label>
+                                        <input type="date" id="data_validacao_carimbo" name="data_validacao" class="form-control form-control-sm" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Nome do Validador -->
+                            <div class="mb-2">
+                                <label for="nome_validador_carimbo" class="form-label small fw-bold mb-1">Validador</label>
+                                <input type="text" id="nome_validador_carimbo" name="nome_validador" class="form-control form-control-sm" value="{{ historico.responsavel|default:user.get_full_name|default:user.username }}" required>
+                            </div>
+
+                            <!-- Campos ocultos para posição -->
+                            <input type="hidden" name="carimbo_x" id="carimbo_x" value="0">
+                            <input type="hidden" name="carimbo_y" id="carimbo_y" value="0">
+                            <input type="hidden" name="carimbo_page" id="carimbo_page" value="1">
+                            <input type="hidden" name="carimbo_pdf_width" id="carimbo_pdf_width" value="595">
+                            <input type="hidden" name="carimbo_pdf_height" id="carimbo_pdf_height" value="842">
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-warning btn-sm flex-grow-1 mt-2" id="btnAplicarCarimbo" disabled>
+                                    <i class="bi bi-stamp"></i> Aplicar Carimbo (clique no PDF primeiro)
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Formulário para Remover Carimbo -->
+                        {% if historico.certificado_carimbado %}
+                        <form method="post" action="{% url 'remover_carimbo_certificado' historico.id %}" class="d-inline" onsubmit="return confirm('Tem certeza? Isso removerá o carimbo atual.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm mt-2 ms-2" title="Remover carimbo para poder aplicar novamente">
+                                <i class="bi bi-trash"></i> Remover Carimbo
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>        <!-- COLUNA 2: PRÉ-VISUALIZAÇÃO DO CERTIFICADO (Direita) -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100 d-flex flex-column">
+                <div class="card-header bg-success text-white py-2">
+                    <i class="bi bi-file-pdf"></i> Pré-visualização do Certificado
+                </div>
+                <div class="card-body p-2 flex-grow-1 d-flex flex-column">
+                    <!-- Visualização do PDF Real ou Template -->
+                    {% if historico.certificado_carimbado or historico.certificado %}
+                        <!-- Visualizador PDF com PDF.js -->
+                        <div id="pdf-viewer" class="pdf-viewer-container flex-grow-1 d-flex flex-column mb-2">
+                            <div class="pdf-toolbar">
+                                <button id="prev-page" class="btn btn-sm btn-outline-secondary" title="Página anterior">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <span id="page-info" class="pdf-page-info small">
+                                    Página <span id="page-num">1</span>/<span id="page-total">0</span>
+                                </span>
+                                <button id="next-page" class="btn btn-sm btn-outline-secondary" title="Próxima página">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                                <div class="pdf-zoom-controls ms-auto">
+                                    <button id="zoom-out" class="btn btn-sm btn-outline-secondary" title="Diminuir zoom">
+                                        <i class="bi bi-zoom-out"></i>
+                                    </button>
+                                    <span id="zoom-level" class="zoom-level small">100%</span>
+                                    <button id="zoom-in" class="btn btn-sm btn-outline-secondary" title="Aumentar zoom">
+                                        <i class="bi bi-zoom-in"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="pdf-render" class="pdf-render-area flex-grow-1 overflow-auto">
+                                <canvas id="pdf-canvas" class="pdf-canvas"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Status do Certificado -->
+                        {% if historico.certificado_carimbado %}
+                        <div class="alert alert-success mb-0 py-2">
+                            <small class="mb-0">
+                                <i class="bi bi-check-circle"></i> Certificado com carimbo
+                            </small>
+                        </div>
+                        {% endif %}
+
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+                        <script>
+                            // ========================================
+                            // VERSÃO SIMPLIFICADA - Coordenadas PDF Direto
+                            // ========================================
+
+                            // Função para calcular resultado baseado nas faixas
+                            function calcularResultadoDosCertificado() {
+                                const badges = document.querySelectorAll('table tbody tr .badge');
+                                const resultados = [];
+                                
+                                badges.forEach(badge => {
+                                    const text = badge.textContent.trim();
+                                    if (text.includes('OK') && badge.classList.contains('bg-success')) {
+                                        resultados.push('APROVADO_SEM_CORRECAO');
+                                    } else if (text.includes('OK') && badge.classList.contains('bg-warning')) {
+                                        resultados.push('APROVADO_COM_CORRECAO');
+                                    } else if (text.includes('NOK')) {
+                                        resultados.push('REPROVADO');
+                                    }
+                                });
+
+                                let resultadoFinal = 'APROVADO_SEM_CORRECAO';
+                                let displayText = '';
+                                let badgeClass = 'bg-success';
+
+                                if (resultados.includes('REPROVADO')) {
+                                    resultadoFinal = 'REPROVADO';
+                                    displayText = '✗ REPROVADO';
+                                    badgeClass = 'bg-danger';
+                                } else if (resultados.includes('APROVADO_COM_CORRECAO')) {
+                                    resultadoFinal = 'APROVADO_COM_CORRECAO';
+                                    displayText = '⚠ APROVADO COM CORREÇÃO';
+                                    badgeClass = 'bg-warning text-dark';
+                                } else if (resultados.length > 0) {
+                                    resultadoFinal = 'APROVADO_SEM_CORRECAO';
+                                    displayText = '✓ APROVADO SEM CORREÇÃO';
+                                    badgeClass = 'bg-success';
+                                } else {
+                                    displayText = 'Nenhum resultado de faixa encontrado';
+                                    badgeClass = 'bg-secondary';
+                                }
+
+                                document.getElementById('resultado_carimbo').value = resultadoFinal;
+                                const displayDiv = document.getElementById('resultado_display');
+                                if (displayText) {
+                                    displayDiv.innerHTML = '<span class="badge ' + badgeClass + '">' + displayText + '</span>';
+                                }
+                            }
+
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const dataValidacaoInput = document.getElementById('data_validacao_carimbo');
+                                if (dataValidacaoInput) {
+                                    const today = new Date().toISOString().split('T')[0];
+                                    dataValidacaoInput.value = today;
+                                }
+                                calcularResultadoDosCertificado();
+                            });
+
+                            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                            
+                            const certificadoBytesUrl = "{% url 'get_certificado_bytes' historico.id %}";
+                            
+                            let pdfDoc = null;
+                            let pageNum = 1;
+                            let pageRendering = false;
+                            let pageNumPending = null;
+                            let currentScale = 1.5;
+                            const MIN_SCALE = 0.5;
+                            const MAX_SCALE = 3.0;
+                            const SCALE_STEP = 0.25;
+                            let pageWidth = 595;  // Variável global para usar no click handler
+                            let pageHeight = 842;
+                            
+                            fetch(certificadoBytesUrl)
+                                .then(response => {
+                                    if (!response.ok) throw new Error('Erro ao carregar PDF');
+                                    return response.arrayBuffer();
+                                })
+                                .then(arrayBuffer => {
+                                    const typedarray = new Uint8Array(arrayBuffer);
+                                    return pdfjsLib.getDocument(typedarray).promise;
+                                })
+                                .then(pdf => {
+                                    console.log('PDF carregado com sucesso. Páginas:', pdf.numPages);
+                                    pdfDoc = pdf;
+                                    document.getElementById('page-total').textContent = pdf.numPages;
+                                    renderPage(pageNum);
+                                })
+                                .catch(error => {
+                                    console.error('Erro ao carregar PDF:', error);
+                                    document.getElementById('pdf-render').innerHTML = 
+                                        '<div class="alert alert-danger"><strong>Erro ao carregar PDF:</strong><br>' + error.message + '</div>';
+                                });
+
+                            function renderPage(num) {
+                                pageRendering = true;
+                                pdfDoc.getPage(num).then(function(page) {
+                                    const canvas = document.getElementById('pdf-canvas');
+                                    const ctx = canvas.getContext('2d');
+                                    const viewport = page.getViewport({ scale: currentScale });
+                                    
+                                    // Guardar dimensões da página em escala 1
+                                    const viewportUnscaled = page.getViewport({ scale: 1 });
+                                    pageWidth = viewportUnscaled.width;
+                                    pageHeight = viewportUnscaled.height;
+                                    
+                                    canvas.height = viewport.height;
+                                    canvas.width = viewport.width;
+
+                                    const renderContext = {
+                                        canvasContext: ctx,
+                                        viewport: viewport
+                                    };
+                                    
+                                    page.render(renderContext).promise.then(function() {
+                                        pageRendering = false;
+                                        document.getElementById('page-num').textContent = num;
+                                        
+                                        if (pageNumPending !== null) {
+                                            renderPage(pageNumPending);
+                                            pageNumPending = null;
+                                        }
+                                    });
+                                });
+                            }
+
+                            function queuePage(num) {
+                                if (num < 1 || num > pdfDoc.numPages) return;
+                                pageNum = num;
+                                if (pageRendering) {
+                                    pageNumPending = num;
+                                } else {
+                                    renderPage(num);
+                                }
+                            }
+
+                            document.getElementById('prev-page').addEventListener('click', function() {
+                                queuePage(pageNum - 1);
+                            });
+
+                            document.getElementById('next-page').addEventListener('click', function() {
+                                queuePage(pageNum + 1);
+                            });
+
+                            document.getElementById('zoom-out').addEventListener('click', function() {
+                                if (currentScale > MIN_SCALE) {
+                                    currentScale = Math.max(MIN_SCALE, currentScale - SCALE_STEP);
+                                    updateZoomLevel();
+                                    renderPage(pageNum);
+                                }
+                            });
+
+                            document.getElementById('zoom-in').addEventListener('click', function() {
+                                if (currentScale < MAX_SCALE) {
+                                    currentScale = Math.min(MAX_SCALE, currentScale + SCALE_STEP);
+                                    updateZoomLevel();
+                                    renderPage(pageNum);
+                                }
+                            });
+
+                            function updateZoomLevel() {
+                                const percentage = Math.round(currentScale * 100 / 1.5);
+                                document.getElementById('zoom-level').textContent = percentage + '%';
+                            }
+
+                            // ========================================
+                            // LÓGICA SIMPLIFICADA DE CLIQUE
+                            // ========================================
+                            const canvas = document.getElementById('pdf-canvas');
+                            const btnAplicarCarimbo = document.getElementById('btnAplicarCarimbo');
+                            
+                            if (canvas && btnAplicarCarimbo) {
+                                canvas.style.cursor = 'crosshair';
+                                
+                                canvas.addEventListener('click', function(e) {
+                                    if (!pdfDoc) return;
+
+                                    // Obter posição do clique em COORDENADAS DE TELA
+                                    const canvasRect = canvas.getBoundingClientRect();
+                                    const clickScreenX = e.clientX - canvasRect.left;
+                                    const clickScreenY = e.clientY - canvasRect.top;
+
+                                    console.log('=== VERSÃO SIMPLIFICADA ===');
+                                    console.log('1. Click em coordenadas de tela:', clickScreenX, clickScreenY);
+                                    console.log('2. Canvas rect size:', canvasRect.width, 'x', canvasRect.height);
+                                    console.log('3. Canvas pixel size:', canvas.width, 'x', canvas.height);
+                                    console.log('4. PDF page size:', pageWidth, 'x', pageHeight);
+                                    console.log('5. Current scale:', currentScale);
+
+                                    // Converter screen → canvas pixels
+                                    const scale = canvas.width / canvasRect.width;
+                                    const clickCanvasPixelX = clickScreenX * scale;
+                                    const clickCanvasPixelY = clickScreenY * scale;
+
+                                    console.log('6. Click em canvas pixels:', clickCanvasPixelX, clickCanvasPixelY);
+
+                                    // Converter canvas pixels → coordenadas PDF
+                                    const pdfClickX = (clickCanvasPixelX / canvas.width) * pageWidth;
+                                    const pdfClickY = (clickCanvasPixelY / canvas.height) * pageHeight;
+
+                                    console.log('7. Click em coordenadas PDF (Y=0 no topo):', pdfClickX, pdfClickY);
+
+                                    // Y em PDF começa na BASE, então inverter
+                                    const pdfY_pdf_space = pageHeight - pdfClickY;
+
+                                    console.log('8. Y invertido para PDF (Y=0 na base):', pdfY_pdf_space);
+
+                                    // Limitar dentro dos limites da página
+                                    const finalX = Math.max(0, Math.min(pdfClickX, pageWidth - 120));
+                                    const finalY = Math.max(0, Math.min(pdfY_pdf_space, pageHeight - 100));
+
+                                    console.log('9. Coordenadas finais (bounded):', finalX, finalY);
+                                    console.log('=============================');
+
+                                    // Guardar coordenadas
+                                    document.getElementById('carimbo_x').value = Math.round(finalX);
+                                    document.getElementById('carimbo_y').value = Math.round(finalY);
+                                    document.getElementById('carimbo_page').value = pageNum;
+                                    document.getElementById('carimbo_pdf_width').value = Math.round(pageWidth);
+                                    document.getElementById('carimbo_pdf_height').value = Math.round(pageHeight);
+
+                                    // Re-renderizar para mostrar preview
+                                    renderPage(pageNum);
+
+                                    // Desenhar preview após render
+                                    setTimeout(function() {
+                                        const ctx = canvas.getContext('2d');
+                                        
+                                        const resultado = document.getElementById('resultado_carimbo').value;
+                                        const data_validacao = document.getElementById('data_validacao_carimbo').value;
+                                        const nome_validador = document.getElementById('nome_validador_carimbo').value;
+                                        
+                                        const colorMap = {
+                                            'APROVADO_SEM_CORRECAO': '#008000',
+                                            'APROVADO_COM_CORRECAO': '#FFC800',
+                                            'REPROVADO': '#FF0000'
+                                        };
+                                        const stampColor = colorMap[resultado] || '#808080';
+
+                                        // Converter coordenadas PDF de volta para pixels do canvas para desenho
+                                        const previewPixelX = (finalX / pageWidth) * canvas.width;
+                                        const previewPixelY = ((pageHeight - finalY) / pageHeight) * canvas.height;
+
+                                        const stampPdfWidth = 120;
+                                        const stampPdfHeight = 90;
+                                        const stampPixelWidth = (stampPdfWidth / pageWidth) * canvas.width;
+                                        const stampPixelHeight = (stampPdfHeight / pageHeight) * canvas.height;
+
+                                        console.log('DESENHO DO PREVIEW:');
+                                        console.log('- Posição pixel:', previewPixelX, previewPixelY);
+                                        console.log('- Tamanho pixel:', stampPixelWidth, 'x', stampPixelHeight);
+
+                                        // Draw background
+                                        ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';
+                                        ctx.fillRect(previewPixelX, previewPixelY, stampPixelWidth, stampPixelHeight);
+
+                                        // Draw resultado text
+                                        ctx.fillStyle = stampColor;
+                                        ctx.font = 'bold 9px Helvetica';
+                                        const resultMap = {
+                                            'APROVADO_SEM_CORRECAO': 'Aprovado sem Correção',
+                                            'APROVADO_COM_CORRECAO': 'Aprovado com Correção',
+                                            'REPROVADO': 'Reprovado/Restrição'
+                                        };
+                                        ctx.fillText(resultMap[resultado] || resultado, previewPixelX + 3, previewPixelY + 68);
+
+                                        // Draw date and validator
+                                        ctx.fillStyle = '#000000';
+                                        ctx.font = '8px Helvetica';
+                                        ctx.fillText(data_validacao, previewPixelX + 3, previewPixelY + 45);
+                                        ctx.fillText(nome_validador.substring(0, 18), previewPixelX + 3, previewPixelY + 25);
+
+                                        // Draw border
+                                        ctx.strokeStyle = '#FF6B6B';
+                                        ctx.lineWidth = 2;
+                                        ctx.strokeRect(previewPixelX, previewPixelY, stampPixelWidth, stampPixelHeight);
+                                    }, 50);
+
+                                    // Update button
+                                    btnAplicarCarimbo.disabled = false;
+                                    btnAplicarCarimbo.innerHTML = '<i class="bi bi-stamp"></i> Aplicar Carimbo (X:' + Math.round(finalX) + ' Y:' + Math.round(finalY) + ')';
+                                    btnAplicarCarimbo.classList.add('btn-success');
+                                    btnAplicarCarimbo.classList.remove('btn-warning');
+                                });
+                            }
+
+                            window.visualizarCertificado = function(tipo, url) {
+                                const canvas = document.getElementById('pdf-canvas');
+                                if (canvas) {
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                }
+                                
+                                pdfDoc = null;
+                                pageNum = 1;
+                                
+                                pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                                    pdfDoc = pdf;
+                                    renderPage(pageNum);
+                                    const pageNumElem = document.getElementById('page-num');
+                                    if (pageNumElem) pageNumElem.textContent = pageNum;
+                                }).catch(function(error) {
+                                    console.error('Erro ao carregar PDF:', error);
+                                });
+                            };
+                        </script>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> Nenhum certificado disponível
+                        </div>
+                    {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pdf-viewer-container {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+        background: #f5f5f5;
+    }
+    
+    .pdf-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: #f9f9f9;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .pdf-page-info {
+        display: inline-block;
+        font-size: 14px;
+        color: #666;
+        min-width: 150px;
+    }
+    
+    .pdf-zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .zoom-level {
+        min-width: 45px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 500;
+        color: #555;
+    }
+    
+    .pdf-render-area {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 10px;
+        background: #f9f9f9;
+        border: 1px solid #e0e0e0;
+        min-height: 400px;
+        flex: 1;
+    }
+    
+    .pdf-canvas {
+        border: 1px solid #ddd;
+        background: white;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        max-width: 100%;
+        height: auto;
+    }
+</style>
+
+{% endblock %}

@@ -19,7 +19,7 @@
         </div>
     </div>
 
-    <!-- LAYOUT: Esquerda (Formulário) + Direita (Preview) -->
+    <!-- LAYOUT: Esquerda (Dados) + Direita (Preview) -->
     <div class="row mb-4 g-4">
         <!-- COLUNA 1: DADOS PRINCIPAIS DO HISTÓRICO (Esquerda) -->
         <div class="col-lg-6">
@@ -134,160 +134,149 @@
                     </div>
 
                     <hr class="my-2">
-                </div>
 
-                <!-- SEÇÃO 2: RESULTADOS POR FAIXA -->
-                <div class="card shadow-sm mt-4">
-                    <div class="card-header bg-info text-white py-2">
-                        <i class="bi bi-table"></i> Resultados de Medição por Faixa
-                    </div>
-                    <div class="card-body p-0">
-                        {% if resultados_faixa %}
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Faixa (Min-Max)</th>
-                                        <th>Unidade</th>
-                                        <th>Tolerância</th>
-                                        <th>Erro</th>
-                                        <th>Incerteza</th>
-                                        <th>EMA</th>
-                                        <th>EME</th>
-                                        <th>Resultado</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for rf in resultados_faixa %}
-                                    <tr>
-                                        <td>
-                                            <strong>{{ rf.faixa.valor_minimo }}</strong> a <strong>{{ rf.faixa.valor_maximo }}</strong>
-                                        </td>
-                                        <td>{{ rf.faixa.unidade.nome }}</td>
-                                        <td>
-                                            {% if rf.tolerancia %}
-                                                ± {{ rf.tolerancia }}
-                                            {% elif rf.faixa.tolerancia_mais_menos %}
-                                                ± {{ rf.faixa.tolerancia_mais_menos }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ rf.erro|default:"-" }}</td>
-                                        <td>{{ rf.incerteza|default:"-" }}</td>
-                                        <td>
-                                            {% if rf.ema %}
-                                                {{ rf.ema }}
-                                            {% elif rf.tolerancia %}
-                                                {{ rf.tolerancia|floatformat:-4 }}
-                                            {% elif rf.faixa.tolerancia_mais_menos %}
-                                                {{ rf.faixa.tolerancia_mais_menos|floatformat:-4 }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if rf.eme %}
-                                                {{ rf.eme }}
-                                            {% elif rf.erro and rf.incerteza %}
-                                                {{ rf.erro|add:rf.incerteza|floatformat:-4 }}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
-                                                <span class="badge bg-success">✓ OK</span>
-                                            {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
-                                                <span class="badge bg-warning text-dark">⚠ OK</span>
-                                            {% elif rf.resultado == 'REPROVADO' %}
-                                                <span class="badge bg-danger">✗ NOK</span>
-                                            {% else %}
-                                                <span class="badge bg-secondary">-</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                    <!-- SEÇÃO 2: RESULTADOS POR FAIXA -->
+                    <div class="card shadow-sm mt-0">
+                        <div class="card-header bg-info text-white py-2">
+                            <i class="bi bi-table"></i> Resultados de Medição por Faixa
                         </div>
-                        {% else %}
-                        <div class="alert alert-info m-3 mb-0">
-                            <i class="bi bi-info-circle"></i> Nenhum resultado de faixa cadastrado ainda. 
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- SEÇÃO 3: GESTÃO DE CERTIFICADOS -->
-                {% if historico.certificado or historico.certificado_carimbado %}
-                <div class="card shadow-sm mt-4 border-primary">
-                    <div class="card-header bg-primary text-white py-2">
-                        <i class="bi bi-files"></i> Certificados Disponíveis
-                    </div>
-                    <div class="card-body p-2">
-                        <div class="list-group list-group-sm">
-                            <!-- Certificado Original -->
-                            {% if historico.certificado %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div class="flex-grow-1">
-                                    <div class="fw-bold small">
-                                        <i class="bi bi-file-pdf text-danger"></i>
-                                        Certificado Original
-                                    </div>
-                                    <small class="text-muted">{{ historico.certificado.size|filesizeformat }}</small>
-                                </div>
-                                <div class="btn-group btn-group-sm ms-2">
-                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('original', '{% url 'get_certificado_bytes' historico.id %}?tipo=original')">
-                                        <i class="bi bi-eye"></i> Visualizar
-                                    </button>
-                                    <a href="{% url 'download_certificado' historico.id %}?tipo=original" class="btn btn-outline-success btn-sm">
-                                        <i class="bi bi-download"></i> Download
-                                    </a>
-                                    <form method="post" style="display: inline;">
-                                        {% csrf_token %}
-                                        <button type="submit" name="acao" value="remover_certificado_original" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover o certificado original?')">
-                                            <i class="bi bi-trash"></i> Remover
-                                        </button>
-                                    </form>
-                                </div>
+                        <div class="card-body p-0">
+                            {% if resultados_faixa %}
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Faixa (Min-Max)</th>
+                                            <th>Unidade</th>
+                                            <th>Tolerância</th>
+                                            <th>Erro</th>
+                                            <th>Incerteza</th>
+                                            <th>EMA</th>
+                                            <th>EME</th>
+                                            <th>Resultado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for rf in resultados_faixa %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ rf.faixa.valor_minimo }}</strong> a <strong>{{ rf.faixa.valor_maximo }}</strong>
+                                            </td>
+                                            <td>{{ rf.faixa.unidade.nome }}</td>
+                                            <td>
+                                                {% if rf.tolerancia %}
+                                                    ± {{ rf.tolerancia }}
+                                                {% elif rf.faixa.tolerancia_mais_menos %}
+                                                    ± {{ rf.faixa.tolerancia_mais_menos }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ rf.erro|default:"-" }}</td>
+                                            <td>{{ rf.incerteza|default:"-" }}</td>
+                                            <td>
+                                                {% if rf.ema %}
+                                                    {{ rf.ema }}
+                                                {% elif rf.tolerancia %}
+                                                    {{ rf.tolerancia|floatformat:-4 }}
+                                                {% elif rf.faixa.tolerancia_mais_menos %}
+                                                    {{ rf.faixa.tolerancia_mais_menos|floatformat:-4 }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if rf.eme %}
+                                                    {{ rf.eme }}
+                                                {% elif rf.erro and rf.incerteza %}
+                                                    {{ rf.erro|add:rf.incerteza|floatformat:-4 }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                    <span class="badge bg-success">✓ OK</span>
+                                                {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                    <span class="badge bg-warning text-dark">⚠ OK</span>
+                                                {% elif rf.resultado == 'REPROVADO' %}
+                                                    <span class="badge bg-danger">✗ NOK</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">-</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
                             </div>
-                            {% endif %}
-
-                            <!-- Certificado Carimbado -->
-                            {% if historico.certificado_carimbado %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div class="flex-grow-1">
-                                    <div class="fw-bold small">
-                                        <i class="bi bi-file-pdf text-danger"></i>
-                                        Certificado Carimbado
-                                        <span class="badge bg-success ms-1">✓ Validado</span>
-                                    </div>
-                                    <small class="text-muted">{{ historico.certificado_carimbado.size|filesizeformat }}</small>
-                                </div>
-                                <div class="btn-group btn-group-sm ms-2">
-                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('carimbado', '{% url 'get_certificado_bytes' historico.id %}?tipo=carimbado')">
-                                        <i class="bi bi-eye"></i> Visualizar
-                                    </button>
-                                    <a href="{% url 'download_certificado' historico.id %}?tipo=carimbado" class="btn btn-outline-success btn-sm">
-                                        <i class="bi bi-download"></i> Download
-                                    </a>
-                                    <form method="post" style="display: inline;">
-                                        {% csrf_token %}
-                                        <button type="submit" name="acao" value="remover_certificado_carimbado" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover o certificado carimbado?')">
-                                            <i class="bi bi-trash"></i> Remover
-                                        </button>
-                                    </form>
-                                </div>
+                            {% else %}
+                            <div class="alert alert-info m-3 mb-0">
+                                <i class="bi bi-info-circle"></i> Nenhum resultado de faixa cadastrado ainda. 
                             </div>
                             {% endif %}
                         </div>
                     </div>
+
+                    <!-- SEÇÃO 3: GESTÃO DE CERTIFICADOS -->
+                    {% if historico.certificado or historico.certificado_carimbado %}
+                    <div class="card shadow-sm mt-4 border-primary">
+                        <div class="card-header bg-primary text-white py-2">
+                            <i class="bi bi-files"></i> Certificados Disponíveis
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="list-group list-group-sm">
+                                <!-- Certificado Original -->
+                                {% if historico.certificado %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold small">
+                                            <i class="bi bi-file-pdf text-danger"></i>
+                                            Certificado Original
+                                        </div>
+                                        <small class="text-muted">{{ historico.certificado.size|filesizeformat }}</small>
+                                    </div>
+                                    <div class="btn-group btn-group-sm ms-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('original', '{% url 'get_certificado_bytes' historico.id %}?tipo=original')">
+                                            <i class="bi bi-eye"></i> Visualizar
+                                        </button>
+                                        <a href="{% url 'download_certificado' historico.id %}?tipo=original" class="btn btn-outline-success btn-sm">
+                                            <i class="bi bi-download"></i> Download
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <!-- Certificado Carimbado -->
+                                {% if historico.certificado_carimbado %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold small">
+                                            <i class="bi bi-file-pdf text-danger"></i>
+                                            Certificado Carimbado
+                                            <span class="badge bg-success ms-1">✓ Validado</span>
+                                        </div>
+                                        <small class="text-muted">{{ historico.certificado_carimbado.size|filesizeformat }}</small>
+                                    </div>
+                                    <div class="btn-group btn-group-sm ms-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('carimbado', '{% url 'get_certificado_bytes' historico.id %}?tipo=carimbado')">
+                                            <i class="bi bi-eye"></i> Visualizar
+                                        </button>
+                                        <a href="{% url 'download_certificado' historico.id %}?tipo=carimbado" class="btn btn-outline-success btn-sm">
+                                            <i class="bi bi-download"></i> Download
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
-        </div>        <!-- COLUNA 2: PRÉ-VISUALIZAÇÃO DO CERTIFICADO (Direita) -->
+        </div>
+
+        <!-- COLUNA 2: PRÉ-VISUALIZAÇÃO DO CERTIFICADO (Direita) -->
         <div class="col-lg-6">
             <div class="card shadow-sm h-100 d-flex flex-column">
                 <div class="card-header bg-success text-white py-2">
@@ -334,72 +323,6 @@
 
                         <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
                         <script>
-                            // Função para calcular resultado baseado nas faixas
-                            function calcularResultadoDosCertificado() {
-                                const badges = document.querySelectorAll('table tbody tr .badge');
-                                const resultados = [];
-                                
-                                badges.forEach(badge => {
-                                    const text = badge.textContent.trim();
-                                    if (text.includes('OK') && badge.classList.contains('bg-success')) {
-                                        resultados.push('APROVADO_SEM_CORRECAO');
-                                    } else if (text.includes('OK') && badge.classList.contains('bg-warning')) {
-                                        resultados.push('APROVADO_COM_CORRECAO');
-                                    } else if (text.includes('NOK')) {
-                                        resultados.push('REPROVADO');
-                                    }
-                                });
-
-                                // Lógica de cálculo:
-                                // Se tem algum REPROVADO, resultado é REPROVADO
-                                // Se tem algum COM_CORRECAO e nenhum REPROVADO, é APROVADO_COM_CORRECAO
-                                // Se todos SEM_CORRECAO, é APROVADO_SEM_CORRECAO
-                                let resultadoFinal = 'APROVADO_SEM_CORRECAO'; // padrão
-                                let displayText = '';
-                                let badgeClass = 'bg-success';
-
-                                if (resultados.includes('REPROVADO')) {
-                                    resultadoFinal = 'REPROVADO';
-                                    displayText = '✗ REPROVADO';
-                                    badgeClass = 'bg-danger';
-                                } else if (resultados.includes('APROVADO_COM_CORRECAO')) {
-                                    resultadoFinal = 'APROVADO_COM_CORRECAO';
-                                    displayText = '⚠ APROVADO COM CORREÇÃO';
-                                    badgeClass = 'bg-warning text-dark';
-                                } else if (resultados.length > 0) {
-                                    resultadoFinal = 'APROVADO_SEM_CORRECAO';
-                                    displayText = '✓ APROVADO SEM CORREÇÃO';
-                                    badgeClass = 'bg-success';
-                                } else {
-                                    displayText = 'Nenhum resultado de faixa encontrado';
-                                    badgeClass = 'bg-secondary';
-                                }
-
-                                // Atualizar campo oculto
-                                document.getElementById('resultado_carimbo').value = resultadoFinal;
-                                console.log('Resultado calculado:', resultadoFinal);
-
-                                // Atualizar display
-                                const displayDiv = document.getElementById('resultado_display');
-                                if (displayText) {
-                                    displayDiv.innerHTML = '<span class="badge ' + badgeClass + '">' + displayText + '</span>';
-                                } else {
-                                    displayDiv.innerHTML = '<small class="text-muted">Sem resultados de faixa</small>';
-                                }
-                            }
-
-                            // Pré-preencher data de validação com hoje
-                            document.addEventListener('DOMContentLoaded', function() {
-                                const dataValidacaoInput = document.getElementById('data_validacao_carimbo');
-                                if (dataValidacaoInput) {
-                                    const today = new Date().toISOString().split('T')[0];
-                                    dataValidacaoInput.value = today;
-                                }
-                                
-                                // Calcular resultado inicial
-                                calcularResultadoDosCertificado();
-                            });
-
                             // Inicializar PDF.js
                             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                             
@@ -415,7 +338,7 @@
                             const MAX_SCALE = 3.0;
                             const SCALE_STEP = 0.25;
                             
-                            // Carregar PDF via AJAX como ArrayBuffer (similar ao carimbo.html)
+                            // Carregar PDF via AJAX como ArrayBuffer
                             fetch(certificadoBytesUrl)
                                 .then(response => {
                                     if (!response.ok) throw new Error('Erro ao carregar PDF');
@@ -510,24 +433,20 @@
                             window.visualizarCertificado = function(tipo, url) {
                                 console.log('Carregando certificado:', tipo, 'URL:', url);
                                 
-                                // Limpar canvas
                                 const canvas = document.getElementById('pdf-canvas');
                                 if (canvas) {
                                     const ctx = canvas.getContext('2d');
                                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                                 }
                                 
-                                // Resetar variáveis
                                 pdfDoc = null;
                                 pageNum = 1;
                                 
-                                // Carregar novo PDF
                                 pdfjsLib.getDocument(url).promise.then(function(pdf) {
                                     pdfDoc = pdf;
                                     console.log('PDF carregado:', pdf.numPages, 'páginas');
                                     renderPage(pageNum);
                                     
-                                    // Atualizar info (com verificação)
                                     const pageNumElem = document.getElementById('page-num');
                                     const pageCountElem = document.getElementById('page-count');
                                     
@@ -628,7 +547,7 @@
 
                     <!-- Nota -->
                     <div class="alert alert-info mt-3 mb-0">
-                        <small><i class="bi bi-info-circle"></i> Use o certificado como referência para preencher os erros e incertezas do aparelho. Navegue pelas páginas usando os botões de página.</small>
+                        <small><i class="bi bi-info-circle"></i> Clique no botão "Editar" acima para modificar este histórico.</small>
                     </div>
                     {% endif %}
             </div>
@@ -644,10 +563,6 @@
     
     .table-hover tbody tr:hover {
         background-color: #f8f9fa;
-    }
-    
-    .modal-body .alert {
-        border-left: 4px solid #0d6efd;
     }
     
     /* Estilos para Pré-visualização do Certificado */
@@ -741,19 +656,6 @@
         font-size: 8px;
     }
     
-    /* Estilos para Visualização do PDF */
-    .pdf-iframe {
-        width: 100%;
-        height: 600px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-    }
-    
-    .pdf-alert {
-        margin-top: 12px;
-        margin-bottom: 0;
-    }
-    
     /* PDF Viewer com PDF.js */
     .pdf-viewer-container {
         border: 1px solid #ddd;
@@ -811,7 +713,7 @@
         height: auto;
     }
     
-    /* Classes de apoio para template simulado */
+    /* Classes de apoio */
     .cert-half-width {
         width: 50%;
     }
@@ -848,56 +750,10 @@
         border-left: 4px solid #0d6efd;
     }
     
-    /* Estilos para checkboxes de padrões */
-    .padroes-checkbox {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .padroes-checkbox label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 0;
-        padding: 8px 12px;
-        background: white;
-        border: 1px solid #e0e0e0;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    
-    .padroes-checkbox label:hover {
-        background: #f8f9fa;
-        border-color: #0d6efd;
-    }
-    
-    .padroes-checkbox input[type="checkbox"] {
-        margin-right: 4px;
-        cursor: pointer;
-    }
-    
-    .padroes-checkbox input[type="checkbox"]:checked + label,
-    .padroes-checkbox label:has(input[type="checkbox"]:checked) {
-        background: #e7f1ff;
-        border-color: #0d6efd;
-    }
-    
     /* Estilos para a seção de padrões associados */
     .list-group-item {
         padding: 12px;
         gap: 10px;
-    }
-    
-    .list-group-item input[type="checkbox"] {
-        cursor: pointer;
-        margin-top: 2px;
-    }
-    
-    .list-group-item label {
-        cursor: pointer;
-        margin-bottom: 0;
     }
     
     .list-group-item .btn {
@@ -909,312 +765,11 @@
 <script>
     // Controla a visibilidade do campo de padrões baseado no checkbox RBC
     document.addEventListener('DOMContentLoaded', function() {
-        const checkboxRBC = document.getElementById('id_tem_selo_rbc');
         const secaoPadroes = document.getElementById('arquivos-padroes-section');
         
-        function atualizarVisibilidade() {
-            if (checkboxRBC.checked) {
-                // Tem selo RBC - ocultar padrões
-                secaoPadroes.classList.add('hidden');
-            } else {
-                // Não tem selo RBC - mostrar padrões
-                secaoPadroes.classList.remove('hidden');
-            }
-        }
-        
-        // Inicializar visibilidade na carga
-        atualizarVisibilidade();
-        
-        // Atualizar quando mudar o checkbox
-        checkboxRBC.addEventListener('change', atualizarVisibilidade);
-        
-        // Adicionar handler para adicionar faixas via AJAX
-        const adicionarFaixaButtons = document.querySelectorAll('.btn-add-faixa');
-        const currentUrl = window.location.href.split('?')[0]; // Get current page URL without query params
-        
-        adicionarFaixaButtons.forEach(btn => {
-            btn.addEventListener('click', async function(e) {
-                e.preventDefault();
-                
-                const form = this.closest('form');
-                const formData = new FormData(form);
-                
-                try {
-                    console.log('Enviando requisição AJAX para:', currentUrl);
-                    console.log('FormData:', Object.fromEntries(formData));
-                    
-                    const response = await fetch(currentUrl, {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                        },
-                        body: formData
-                    });
-                    
-                    console.log('Response status:', response.status);
-                    
-                    if (response.ok) {
-                        // Mostrar mensagem de sucesso
-                        showNotification('Faixa adicionada com sucesso!', 'success');
-                        
-                        // Remover o botão da lista de faixas disponíveis
-                        const faixaCard = this.closest('.col-md-6');
-                        faixaCard.style.opacity = '0.5';
-                        this.disabled = true;
-                        this.textContent = '✓ Adicionada';
-                        this.classList.remove('btn-success');
-                        this.classList.add('btn-secondary');
-                        
-                        // Recarregar a página após um delay para mostrar a tabela atualizada
-                        setTimeout(() => {
-                            console.log('Recarregando a página...');
-                            window.location.reload(true); // Force hard reload
-                        }, 1500);
-                    } else {
-                        console.error('Response not ok:', response.status);
-                        showNotification('Erro ao adicionar faixa', 'danger');
-                    }
-                } catch (error) {
-                    console.error('Erro:', error);
-                    showNotification('Erro ao processar requisição', 'danger');
-                }
-            });
-        });
-    });
-    
-    // Função auxiliar para mostrar notificações
-    function showNotification(message, type = 'info') {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
-        alertDiv.role = 'alert';
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        
-        const container = document.querySelector('.container-fluid');
-        container.insertBefore(alertDiv, container.firstChild);
-        
-        // Auto-dismiss após 3 segundos
-        setTimeout(() => {
-            alertDiv.remove();
-        }, 3000);
-    }
-    
-    // Atualizar EMA e EME em tempo real quando Erro e Incerteza são modificados
-    document.addEventListener('DOMContentLoaded', function() {
-        // Usar delegação de eventos para capturar modais abertos dinamicamente
-        document.addEventListener('shown.bs.modal', function(e) {
-            const modal = e.target;
-            
-            if (!modal.id.startsWith('editResultModal')) return;
-            
-            const erroInput = modal.querySelector('input[name="erro"]');
-            const incertezaInput = modal.querySelector('input[name="incerteza"]');
-            const emaInput = modal.querySelector('input[name="ema"]');
-            const emeInput = modal.querySelector('input[name="eme"]');
-            const resultadoDiv = modal.querySelector('.alert-light.border');
-            
-            // Get tolerance value from the alert info
-            const toleranciaText = modal.querySelector('.alert-info small')?.textContent || '';
-            const toleranciaMatch = toleranciaText.match(/[±]?\s*([\d.]+)/);
-            const tolerancia = toleranciaMatch ? parseFloat(toleranciaMatch[1]) : 0;
-            
-            console.log('Modal aberto:', modal.id, 'Tolerância:', tolerancia);
-            
-            function atualizarCalculos() {
-                console.log('Atualizando cálculos...');
-                
-                // EMA = Tolerância / 2
-                let emaNum = 0;
-                if (tolerancia > 0) {
-                    emaNum = tolerancia / 2;
-                    const ema = emaNum.toFixed(4);
-                    if (emaInput) {
-                        emaInput.value = ema;
-                        console.log('EMA atualizado:', ema);
-                    }
-                }
-                
-                // EME = |Erro| + Incerteza
-                const erro = parseFloat(erroInput?.value || 0);
-                const incerteza = parseFloat(incertezaInput?.value || 0);
-                
-                console.log('Erro:', erro, 'Incerteza:', incerteza);
-                
-                if (!isNaN(erro) && !isNaN(incerteza) && erroInput?.value !== '' && incertezaInput?.value !== '') {
-                    const emeNum = Math.abs(erro) + incerteza;
-                    const eme = emeNum.toFixed(4);
-                    if (emeInput) {
-                        emeInput.value = eme;
-                        console.log('EME atualizado:', eme);
-                    }
-                    
-                    // Calcular resultado baseado em EME vs EMA
-                    console.log('Comparando: EME=' + emeNum + ' vs EMA×3=' + (emaNum * 3));
-                    
-                    let resultado = '';
-                    let badgeClass = 'bg-secondary';
-                    let badgeText = 'Preencha Erro e Incerteza';
-                    
-                    if (emeNum > emaNum * 3) {
-                        resultado = 'REPROVADO';
-                        badgeClass = 'bg-danger';
-                        badgeText = '✗ Reprovado';
-                        console.log('Resultado: REPROVADO (EME > EMA×3)');
-                    } else if (emeNum <= emaNum) {
-                        resultado = 'APROVADO_SEM_CORRECAO';
-                        badgeClass = 'bg-success';
-                        badgeText = '✓ Aprovado sem Correção';
-                        console.log('Resultado: APROVADO_SEM_CORRECAO (EME ≤ EMA)');
-                    } else {
-                        resultado = 'APROVADO_COM_CORRECAO';
-                        badgeClass = 'bg-warning text-dark';
-                        badgeText = '⚠ Aprovado com Correção';
-                        console.log('Resultado: APROVADO_COM_CORRECAO (EMA < EME ≤ EMA×3)');
-                    }
-                    
-                    // Atualizar exibição do resultado
-                    if (resultadoDiv) {
-                        resultadoDiv.innerHTML = `<span class="badge ${badgeClass}">${badgeText}</span>`;
-                        console.log('Resultado atualizado:', resultado);
-                    }
-                } else {
-                    // Sem valores suficientes
-                    if (resultadoDiv) {
-                        resultadoDiv.innerHTML = '<span class="badge bg-secondary">Preencha Erro e Incerteza</span>';
-                    }
-                }
-            }
-            
-            if (erroInput) {
-                erroInput.addEventListener('input', atualizarCalculos);
-                erroInput.addEventListener('change', atualizarCalculos);
-            }
-            if (incertezaInput) {
-                incertezaInput.addEventListener('input', atualizarCalculos);
-                incertezaInput.addEventListener('change', atualizarCalculos);
-            }
-            
-            // Inicializar cálculos
-            atualizarCalculos();
-        });
+        // A visibilidade já é definida no HTML via classe "hidden"
+        // Este script é apenas para referência futura se houver atualizações dinâmicas
     });
 </script>
-{% endblock %}
 
-{% block extra_style %}
-<style>
-    .cert-preview {
-        background: white;
-        border: 1px solid #ddd;
-        padding: 20px;
-        font-family: 'Times New Roman', serif;
-        font-size: 11px;
-        line-height: 1.6;
-        color: #333;
-    }
-
-    .cert-header {
-        text-align: center;
-        border-bottom: 2px solid #000;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-    }
-
-    .cert-header h3 {
-        margin: 0;
-        font-size: 14px;
-        font-weight: bold;
-        letter-spacing: 1px;
-    }
-
-    .cert-header p {
-        margin: 5px 0 0 0;
-        font-size: 10px;
-    }
-
-    .cert-section {
-        margin-bottom: 12px;
-        page-break-inside: avoid;
-    }
-
-    .cert-section h4 {
-        margin: 0 0 8px 0;
-        font-size: 11px;
-        font-weight: bold;
-        text-transform: uppercase;
-        border-bottom: 1px solid #999;
-        padding-bottom: 3px;
-    }
-
-    .cert-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 10px;
-    }
-
-    .cert-table tr {
-        border-bottom: 1px solid #eee;
-    }
-
-    .cert-table td {
-        padding: 4px 0;
-        vertical-align: top;
-    }
-
-    .cert-table tr:last-child {
-        border-bottom: none;
-    }
-
-    .cert-result {
-        text-align: center;
-        padding: 10px;
-        background: #f9f9f9;
-        border: 1px dashed #ddd;
-    }
-
-    .cert-result p {
-        margin: 0;
-        font-size: 12px;
-        font-weight: bold;
-    }
-
-    .cert-stamp {
-        text-align: right;
-        margin-top: 20px;
-        padding-top: 20px;
-        border-top: 1px solid #ddd;
-    }
-
-    .cert-stamp-text {
-        display: inline-block;
-        border: 2px solid #999;
-        padding: 10px 20px;
-        text-align: center;
-        transform: rotate(-15deg);
-        opacity: 0.5;
-        font-style: italic;
-    }
-
-    .cert-stamp-text i {
-        display: block;
-        font-size: 12px;
-    }
-
-    .cert-stamp-text span {
-        display: block;
-        font-size: 8px;
-        margin-top: 2px;
-    }
-
-    /* Print styles */
-    @media print {
-        .cert-preview {
-            border: none;
-            box-shadow: none;
-        }
-    }
-</style>
 {% endblock %}

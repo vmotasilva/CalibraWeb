@@ -42,12 +42,6 @@ class InstrumentoForm(forms.ModelForm):
 class HistoricoCalibracaoForm(forms.ModelForm):
     """Formulário para registrar histórico de calibração."""
     
-    arquivos_padroes = forms.FileField(
-        label="Arquivos de Padrões (PDF)",
-        widget=forms.FileInput(attrs={"class": "form-control", "accept": ".pdf"}),
-        required=False,
-        help_text="Anexe um ou mais arquivos PDF de padrões utilizados."
-    )
     
     class Meta:
         model = HistoricoCalibracao
@@ -56,6 +50,7 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             'tipo_calibracao', 'responsavel', 'fornecedor', 'tem_selo_rbc',
             'certificado'
         ]
+        # arquivos_padroes NÃO deve estar aqui!
         widgets = {
             'data_calibracao': forms.DateInput(attrs={
                 'class': 'form-control',
