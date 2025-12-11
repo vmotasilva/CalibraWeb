@@ -211,8 +211,63 @@
                             </small>
                         </div>
 
+                        <!-- Formulário de Carimbo -->
+                        {% if not historico.certificado_carimbado %}
+                        <form method="post" action="{% url 'aplicar_carimbo_certificado' historico.id %}" class="mt-3">
+                            {% csrf_token %}
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <i class="bi bi-stamp"></i> Aplicar Carimbo
+                                </div>
+                                <div class="card-body">
+                                    <!-- Resultado -->
+                                    <div class="mb-2">
+                                        <label for="resultado" class="form-label form-label-sm">Resultado</label>
+                                        <select id="resultado" name="resultado" class="form-select form-select-sm" required>
+                                            <option value="">-- Selecione --</option>
+                                            <option value="APROVADO_SEM_CORRECAO">Aprovado sem Correção</option>
+                                            <option value="APROVADO_COM_CORRECAO">Aprovado com Correção</option>
+                                            <option value="REPROVADO">Reprovado</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Data de Validação -->
+                                    <div class="mb-2">
+                                        <label for="data_validacao" class="form-label form-label-sm">Data da Validação</label>
+                                        <input type="date" id="data_validacao" name="data_validacao" class="form-control form-control-sm" required>
+                                    </div>
+
+                                    <!-- Nome do Validador -->
+                                    <div class="mb-2">
+                                        <label for="nome_validador" class="form-label form-label-sm">Nome do Validador</label>
+                                        <input type="text" id="nome_validador" name="nome_validador" class="form-control form-control-sm" value="{{ user.get_full_name|default:user.username }}" required>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-warning btn-sm w-100 mt-2">
+                                        <i class="bi bi-stamp"></i> Aplicar Carimbo
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        {% else %}
+                        <div class="alert alert-success mt-3">
+                            <small>
+                                <i class="bi bi-check-circle"></i> Certificado já possui carimbo aplicado
+                            </small>
+                        </div>
+                        {% endif %}
+
                         <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
                         <script>
+                            // Pré-preencher data de validação com hoje
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const dataValidacaoInput = document.getElementById('data_validacao');
+                                if (dataValidacaoInput) {
+                                    const today = new Date().toISOString().split('T')[0];
+                                    dataValidacaoInput.value = today;
+                                }
+                            });
+
                             // Inicializar PDF.js
                             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                             

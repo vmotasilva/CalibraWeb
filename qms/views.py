@@ -388,16 +388,107 @@ def get_certificado_bytes_view(request, historico_id):
 
 @login_required
 def aplicar_carimbo_certificado_view(request, historico_id):
-    """Apply a stamp/seal to a certificate."""
+    """Apply a stamp/seal to a certificate PDF."""
+    from pypdf import PdfReader, PdfWriter
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from io import BytesIO
+    from django.core.files.base import ContentFile
+    
     historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
     
     if request.method == 'POST':
-        # TODO: Implement stamp application logic
-        messages.success(request, 'Carimbo aplicado com sucesso.')
-        return redirect('visualizar_historico_calibracao', historico_id=historico_id)
+        try:
+            # Get stamp data from POST
+            resultado = request.POST.get('resultado', '')
+            data_validacao = request.POST.get('data_validacao', '')
+            nome_validador = request.POST.get('nome_validador', request.user.get_full_name() or request.user.username)
+            
+            if not historico.certificado:
+                messages.error(request, 'Nenhum certificado disponível para carimbar.')
+                return redirect('editar_historico_calibracao', historico_id=historico_id)
+            
+            # Read original PDF
+            with historico.certificado.open('rb') as f:
+                original_pdf = PdfReader(f)
+            
+            # Create stamp overlay using ReportLab
+            stamp_buffer = BytesIO()
+            stamp_canvas = canvas.Canvas(stamp_buffer, pagesize=letter)
+            
+            # Draw stamp box
+            x, y = 450, 100  # Position on bottom right
+            stamp_width, stamp_height = 120, 100
+            
+            # Draw rectangle border
+            stamp_canvas.setLineWidth(2)
+            stamp_canvas.rect(x, y, stamp_width, stamp_height)
+            
+            # Draw stamp text
+            stamp_canvas.setFont("Helvetica-Bold", 8)
+            stamp_canvas.drawString(x + 5, y + 85, "VALIDADO")
+            
+            stamp_canvas.setFont("Helvetica", 7)
+            stamp_canvas.drawString(x + 5, y + 70, f"Resultado:")
+            
+            # Map resultado display names
+            resultado_map = {
+                'APROVADO_SEM_CORRECAO': 'Aprovado',
+                'APROVADO_COM_CORRECAO': 'Aprovado c/ Correção',
+                'REPROVADO': 'Reprovado'
+            }
+            resultado_display = resultado_map.get(resultado, resultado)
+            stamp_canvas.setFont("Helvetica-Bold", 7)
+            stamp_canvas.drawString(x + 5, y + 60, resultado_display)
+            
+            stamp_canvas.setFont("Helvetica", 7)
+            stamp_canvas.drawString(x + 5, y + 45, f"Data: {data_validacao}")
+            stamp_canvas.drawString(x + 5, y + 30, f"Validador:")
+            stamp_canvas.drawString(x + 5, y + 20, nome_validador[:18])  # Limit to 18 chars
+            
+            stamp_canvas.save()
+            stamp_buffer.seek(0)
+            
+            # Read stamp from buffer
+            stamp_pdf = PdfReader(stamp_buffer)
+            stamp_page = stamp_pdf.pages[0]
+            
+            # Apply stamp to each page of original PDF
+            writer = PdfWriter()
+            for page in original_pdf.pages:
+                page.merge_page(stamp_page)
+                writer.add_page(page)
+            
+            # Save stamped PDF
+            stamped_buffer = BytesIO()
+            writer.write(stamped_buffer)
+            stamped_buffer.seek(0)
+            
+            # Save to model
+            filename = f"certificado_carimbado_{historico_id}.pdf"
+            historico.certificado_carimbado.save(
+                filename,
+                ContentFile(stamped_buffer.read()),
+                save=True
+            )
+            historico.certificado_validado = True
+            historico.save()
+            
+            messages.success(request, 'Carimbo aplicado com sucesso!')
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
+            
+        except Exception as e:
+            messages.error(request, f'Erro ao aplicar carimbo: {str(e)}')
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
     
+    # GET request - show form
     context = {
         'historico': historico,
+        'resultado_choices': HistoricoCalibracao.RESULTADO_CHOICES if hasattr(HistoricoCalibracao, 'RESULTADO_CHOICES') else [
+            ('APROVADO_SEM_CORRECAO', 'Aprovado sem Correção'),
+            ('APROVADO_COM_CORRECAO', 'Aprovado com Correção'),
+            ('REPROVADO', 'Reprovado'),
+        ]
     }
     return render(request, 'metrologia/certificado_preview.html', context)
 
