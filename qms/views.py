@@ -403,6 +403,9 @@ def aplicar_carimbo_certificado_view(request, historico_id):
             resultado = request.POST.get('resultado', '')
             data_validacao = request.POST.get('data_validacao', '')
             nome_validador = request.POST.get('nome_validador', request.user.get_full_name() or request.user.username)
+            carimbo_x = float(request.POST.get('carimbo_x', 450))
+            carimbo_y = float(request.POST.get('carimbo_y', 100))
+            carimbo_page = int(request.POST.get('carimbo_page', 1))
             
             if not historico.certificado:
                 messages.error(request, 'Nenhum certificado disponível para carimbar.')
@@ -416,8 +419,8 @@ def aplicar_carimbo_certificado_view(request, historico_id):
             stamp_buffer = BytesIO()
             stamp_canvas = canvas.Canvas(stamp_buffer, pagesize=letter)
             
-            # Draw stamp box
-            x, y = 450, 100  # Position on bottom right
+            # Use coordinates from form
+            x, y = carimbo_x, carimbo_y
             stamp_width, stamp_height = 120, 100
             
             # Draw rectangle border
@@ -449,14 +452,17 @@ def aplicar_carimbo_certificado_view(request, historico_id):
             stamp_canvas.save()
             stamp_buffer.seek(0)
             
-            # Read stamp from buffer
-            stamp_pdf = PdfReader(stamp_buffer)
+            # Read stamp from buffer - convert to bytes
+            stamp_buffer_bytes = BytesIO(stamp_buffer.getvalue())
+            stamp_pdf = PdfReader(stamp_buffer_bytes)
             stamp_page = stamp_pdf.pages[0]
             
-            # Apply stamp to each page of original PDF
+            # Apply stamp to specific page or all pages
             writer = PdfWriter()
-            for page in original_pdf.pages:
-                page.merge_page(stamp_page)
+            for idx, page in enumerate(original_pdf.pages):
+                # Only apply stamp to the specified page
+                if idx == (carimbo_page - 1):  # carimbo_page is 1-indexed
+                    page.merge_page(stamp_page)
                 writer.add_page(page)
             
             # Save stamped PDF
@@ -478,6 +484,8 @@ def aplicar_carimbo_certificado_view(request, historico_id):
             return redirect('editar_historico_calibracao', historico_id=historico_id)
             
         except Exception as e:
+            import traceback
+            logger.error(f'Erro ao aplicar carimbo: {str(e)}', exc_info=True)
             messages.error(request, f'Erro ao aplicar carimbo: {str(e)}')
             return redirect('editar_historico_calibracao', historico_id=historico_id)
     
