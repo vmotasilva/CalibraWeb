@@ -179,6 +179,15 @@
                                 <button id="next-page" class="btn btn-sm btn-outline-secondary" title="Próxima página">
                                     <i class="bi bi-chevron-right"></i>
                                 </button>
+                                <div class="pdf-zoom-controls ms-2">
+                                    <button id="zoom-out" class="btn btn-sm btn-outline-secondary" title="Diminuir zoom">
+                                        <i class="bi bi-zoom-out"></i>
+                                    </button>
+                                    <span id="zoom-level" class="zoom-level">100%</span>
+                                    <button id="zoom-in" class="btn btn-sm btn-outline-secondary" title="Aumentar zoom">
+                                        <i class="bi bi-zoom-in"></i>
+                                    </button>
+                                </div>
                                 <a href="{% if historico.certificado_carimbado %}{{ historico.certificado_carimbado.url }}{% else %}{{ historico.certificado.url }}{% endif %}" 
                                    class="btn btn-sm btn-outline-primary ms-2" 
                                    download 
@@ -214,6 +223,10 @@
                             let pageNum = 1;
                             let pageRendering = false;
                             let pageNumPending = null;
+                            let currentScale = 1.5; // Escala inicial
+                            const MIN_SCALE = 0.5;
+                            const MAX_SCALE = 3.0;
+                            const SCALE_STEP = 0.25;
                             
                             // Carregar PDF via AJAX como ArrayBuffer (similar ao carimbo.html)
                             fetch(certificadoBytesUrl)
@@ -244,7 +257,7 @@
                                 pdfDoc.getPage(num).then(function(page) {
                                     const canvas = document.getElementById('pdf-canvas');
                                     const ctx = canvas.getContext('2d');
-                                    const viewport = page.getViewport({ scale: 1.5 });
+                                    const viewport = page.getViewport({ scale: currentScale });
                                     
                                     canvas.height = viewport.height;
                                     canvas.width = viewport.width;
@@ -283,6 +296,28 @@
                             document.getElementById('next-page').addEventListener('click', function() {
                                 queuePage(pageNum + 1);
                             });
+
+                            // Controles de Zoom
+                            document.getElementById('zoom-out').addEventListener('click', function() {
+                                if (currentScale > MIN_SCALE) {
+                                    currentScale = Math.max(MIN_SCALE, currentScale - SCALE_STEP);
+                                    updateZoomLevel();
+                                    renderPage(pageNum);
+                                }
+                            });
+
+                            document.getElementById('zoom-in').addEventListener('click', function() {
+                                if (currentScale < MAX_SCALE) {
+                                    currentScale = Math.min(MAX_SCALE, currentScale + SCALE_STEP);
+                                    updateZoomLevel();
+                                    renderPage(pageNum);
+                                }
+                            });
+
+                            function updateZoomLevel() {
+                                const percentage = Math.round(currentScale * 100 / 1.5); // Normalizar em relação ao 100%
+                                document.getElementById('zoom-level').textContent = percentage + '%';
+                            }
                         </script>
                     {% else %}
                         <!-- Template Simulado (fallback) -->
@@ -713,6 +748,21 @@
         font-size: 14px;
         color: #666;
         min-width: 150px;
+    }
+    
+    .pdf-zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .zoom-level {
+        min-width: 50px;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+    }
         text-align: center;
     }
     
