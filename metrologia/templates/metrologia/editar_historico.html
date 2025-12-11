@@ -363,16 +363,14 @@
                             {% csrf_token %}
                             
                             <div class="row g-2">
-                                <!-- Resultado -->
+                                <!-- Resultado - Campo Calculado -->
                                 <div class="col-md-6">
                                     <div class="mb-2">
-                                        <label for="resultado_carimbo" class="form-label small fw-bold mb-1">Resultado</label>
-                                        <select id="resultado_carimbo" name="resultado" class="form-select form-select-sm" required>
-                                            <option value="">-- Selecione --</option>
-                                            <option value="APROVADO_SEM_CORRECAO">Aprovado s/ Correção</option>
-                                            <option value="APROVADO_COM_CORRECAO">Aprovado c/ Correção</option>
-                                            <option value="REPROVADO">Reprovado</option>
-                                        </select>
+                                        <label for="resultado_carimbo" class="form-label small fw-bold mb-1">Resultado (Calculado)</label>
+                                        <div class="alert alert-light border p-2 mb-0" id="resultado_display">
+                                            <small class="text-muted">Analisando resultados das faixas...</small>
+                                        </div>
+                                        <input type="hidden" id="resultado_carimbo" name="resultado" value="">
                                     </div>
                                 </div>
 
@@ -451,6 +449,59 @@
 
                         <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
                         <script>
+                            // Função para calcular resultado baseado nas faixas
+                            function calcularResultadoDosCertificado() {
+                                const badges = document.querySelectorAll('table tbody tr .badge');
+                                const resultados = [];
+                                
+                                badges.forEach(badge => {
+                                    const text = badge.textContent.trim();
+                                    if (text.includes('OK') && badge.classList.contains('bg-success')) {
+                                        resultados.push('APROVADO_SEM_CORRECAO');
+                                    } else if (text.includes('OK') && badge.classList.contains('bg-warning')) {
+                                        resultados.push('APROVADO_COM_CORRECAO');
+                                    } else if (text.includes('NOK')) {
+                                        resultados.push('REPROVADO');
+                                    }
+                                });
+
+                                // Lógica de cálculo:
+                                // Se tem algum REPROVADO, resultado é REPROVADO
+                                // Se tem algum COM_CORRECAO e nenhum REPROVADO, é APROVADO_COM_CORRECAO
+                                // Se todos SEM_CORRECAO, é APROVADO_SEM_CORRECAO
+                                let resultadoFinal = 'APROVADO_SEM_CORRECAO'; // padrão
+                                let displayText = '';
+                                let badgeClass = 'bg-success';
+
+                                if (resultados.includes('REPROVADO')) {
+                                    resultadoFinal = 'REPROVADO';
+                                    displayText = '✗ REPROVADO';
+                                    badgeClass = 'bg-danger';
+                                } else if (resultados.includes('APROVADO_COM_CORRECAO')) {
+                                    resultadoFinal = 'APROVADO_COM_CORRECAO';
+                                    displayText = '⚠ APROVADO COM CORREÇÃO';
+                                    badgeClass = 'bg-warning text-dark';
+                                } else if (resultados.length > 0) {
+                                    resultadoFinal = 'APROVADO_SEM_CORRECAO';
+                                    displayText = '✓ APROVADO SEM CORREÇÃO';
+                                    badgeClass = 'bg-success';
+                                } else {
+                                    displayText = 'Nenhum resultado de faixa encontrado';
+                                    badgeClass = 'bg-secondary';
+                                }
+
+                                // Atualizar campo oculto
+                                document.getElementById('resultado_carimbo').value = resultadoFinal;
+
+                                // Atualizar display
+                                const displayDiv = document.getElementById('resultado_display');
+                                if (displayText) {
+                                    displayDiv.innerHTML = '<span class="badge ' + badgeClass + '">' + displayText + '</span>';
+                                } else {
+                                    displayDiv.innerHTML = '<small class="text-muted">Sem resultados de faixa</small>';
+                                }
+                            }
+
                             // Pré-preencher data de validação com hoje
                             document.addEventListener('DOMContentLoaded', function() {
                                 const dataValidacaoInput = document.getElementById('data_validacao_carimbo');
@@ -458,6 +509,9 @@
                                     const today = new Date().toISOString().split('T')[0];
                                     dataValidacaoInput.value = today;
                                 }
+                                
+                                // Calcular resultado inicial
+                                calcularResultadoDosCertificado();
                             });
 
                             // Inicializar PDF.js
