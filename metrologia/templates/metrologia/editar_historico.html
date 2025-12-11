@@ -166,26 +166,109 @@
                 </div>
                 <div class="card-body p-3">
                     <!-- Visualização do PDF Real ou Template -->
-                    {% if historico.certificado_carimbado %}
-                        <!-- Exibir PDF com Carimbo -->
-                        <iframe 
-                            src="{{ historico.certificado_carimbado.url }}" 
-                            class="pdf-iframe"
-                            title="Certificado Carimbado">
-                        </iframe>
-                        <div class="alert alert-success pdf-alert">
-                            <small><i class="bi bi-check-circle"></i> Certificado com carimbo</small>
+                    {% if historico.certificado_carimbado or historico.certificado %}
+                        <!-- Visualizador PDF com PDF.js -->
+                        <div id="pdf-viewer" class="pdf-viewer-container">
+                            <div class="pdf-toolbar">
+                                <button id="prev-page" class="btn btn-sm btn-outline-secondary" title="Página anterior">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <span id="page-info" class="pdf-page-info">
+                                    Página <span id="page-num">1</span> de <span id="page-total">0</span>
+                                </span>
+                                <button id="next-page" class="btn btn-sm btn-outline-secondary" title="Próxima página">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                                <a href="{% if historico.certificado_carimbado %}{{ historico.certificado_carimbado.url }}{% else %}{{ historico.certificado.url }}{% endif %}" 
+                                   class="btn btn-sm btn-outline-primary ms-2" 
+                                   download 
+                                   title="Baixar PDF">
+                                    <i class="bi bi-download"></i> Baixar
+                                </a>
+                            </div>
+                            <div id="pdf-render" class="pdf-render-area">
+                                <canvas id="pdf-canvas" class="pdf-canvas"></canvas>
+                            </div>
                         </div>
-                    {% elif historico.certificado %}
-                        <!-- Exibir PDF Original -->
-                        <iframe 
-                            src="{{ historico.certificado.url }}" 
-                            class="pdf-iframe"
-                            title="Certificado Original">
-                        </iframe>
-                        <div class="alert alert-info pdf-alert">
-                            <small><i class="bi bi-info-circle"></i> Certificado original (pendente de carimbo)</small>
+                        
+                        <div class="alert {% if historico.certificado_carimbado %}alert-success{% else %}alert-info{% endif %} pdf-alert">
+                            <small>
+                                <i class="bi bi-{% if historico.certificado_carimbado %}check-circle{% else %}info-circle{% endif %}"></i>
+                                {% if historico.certificado_carimbado %}
+                                    Certificado com carimbo
+                                {% else %}
+                                    Certificado original (pendente de carimbo)
+                                {% endif %}
+                            </small>
                         </div>
+
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+                        <script>
+                            // Inicializar PDF.js
+                            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                            
+                            const pdfUrl = "{% if historico.certificado_carimbado %}{{ historico.certificado_carimbado.url }}{% else %}{{ historico.certificado.url }}{% endif %}";
+                            let pdfDoc = null;
+                            let pageNum = 1;
+                            let pageRendering = false;
+                            let pageNumPending = null;
+
+                            function renderPage(num) {
+                                pageRendering = true;
+                                pdfDoc.getPage(num).then(function(page) {
+                                    const canvas = document.getElementById('pdf-canvas');
+                                    const ctx = canvas.getContext('2d');
+                                    const viewport = page.getViewport({ scale: 1.5 });
+                                    
+                                    canvas.height = viewport.height;
+                                    canvas.width = viewport.width;
+
+                                    const renderContext = {
+                                        canvasContext: ctx,
+                                        viewport: viewport
+                                    };
+                                    
+                                    page.render(renderContext).promise.then(function() {
+                                        pageRendering = false;
+                                        document.getElementById('page-num').textContent = num;
+                                        
+                                        if (pageNumPending !== null) {
+                                            renderPage(pageNumPending);
+                                            pageNumPending = null;
+                                        }
+                                    });
+                                });
+                            }
+
+                            function queuePage(num) {
+                                if (num < 1 || num > pdfDoc.numPages) return;
+                                pageNum = num;
+                                if (pageRendering) {
+                                    pageNumPending = num;
+                                } else {
+                                    renderPage(num);
+                                }
+                            }
+
+                            document.getElementById('prev-page').addEventListener('click', function() {
+                                queuePage(pageNum - 1);
+                            });
+
+                            document.getElementById('next-page').addEventListener('click', function() {
+                                queuePage(pageNum + 1);
+                            });
+
+                            // Carregar PDF
+                            pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+                                pdfDoc = pdf;
+                                document.getElementById('page-total').textContent = pdf.numPages;
+                                document.getElementById('prev-page').disabled = true;
+                                renderPage(pageNum);
+                            }).catch(function(error) {
+                                console.error('Erro ao carregar PDF:', error);
+                                document.getElementById('pdf-render').innerHTML = '<div class="alert alert-danger">Erro ao carregar o PDF. Tente fazer download e abrir localmente.</div>';
+                            });
+                        </script>
                     {% else %}
                         <!-- Template Simulado (fallback) -->
                         <div class="cert-preview">
@@ -591,6 +674,47 @@
     .pdf-alert {
         margin-top: 12px;
         margin-bottom: 0;
+    }
+    
+    /* PDF Viewer com PDF.js */
+    .pdf-viewer-container {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+        background: #f5f5f5;
+    }
+    
+    .pdf-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: #f9f9f9;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .pdf-page-info {
+        display: inline-block;
+        font-size: 14px;
+        color: #666;
+        min-width: 150px;
+        text-align: center;
+    }
+    
+    .pdf-render-area {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 20px;
+        max-height: 600px;
+        overflow-y: auto;
+        background: #f5f5f5;
+    }
+    
+    .pdf-canvas {
+        border: 1px solid #ddd;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     
     /* Classes de apoio para template simulado */
