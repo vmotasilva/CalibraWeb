@@ -1,5 +1,5 @@
 from django import forms
-from metrologia.models import FaixaMedicao
+from metrologia.models import FaixaMedicao, Cotacao, OcorrenciaCotacao
 from django.core.exceptions import ValidationError
 
 
@@ -70,3 +70,75 @@ class FaixaMedicaoFormWithValidation(forms.ModelForm):
                 )
         
         return cleaned_data
+
+
+# ==============================================================================
+# COTAÇÃO
+# ==============================================================================
+
+class CotacaoForm(forms.ModelForm):
+    """Form para criar e editar cotações"""
+    
+    class Meta:
+        model = Cotacao
+        fields = ['fornecedor', 'instrumentos', 'valor', 'observacoes']
+        widgets = {
+            'fornecedor': forms.Select(attrs={'class': 'form-select'}),
+            'instrumentos': forms.CheckboxSelectMultiple(),
+            'valor': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': 'Valor em R$'
+            }),
+            'observacoes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Observações adicionais'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['fornecedor'].queryset = self.fields['fornecedor'].queryset.filter(ativo=True)
+        self.fields['instrumentos'].queryset = self.fields['instrumentos'].queryset.filter(ativo=True)
+
+
+class CotacaoAprovarForm(forms.ModelForm):
+    """Form para aprovar cotação e definir valor"""
+    
+    class Meta:
+        model = Cotacao
+        fields = ['valor', 'observacoes']
+        widgets = {
+            'valor': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': 'Valor em R$'
+            }),
+            'observacoes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Observações'
+            }),
+        }
+
+
+class OcorrenciaCotacaoForm(forms.ModelForm):
+    """Form para registrar ocorrências na cotação"""
+    
+    class Meta:
+        model = OcorrenciaCotacao
+        fields = ['tipo', 'descricao', 'acao_tomada']
+        widgets = {
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'descricao': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Descreva a ocorrência'
+            }),
+            'acao_tomada': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Que ação foi tomada?'
+            }),
+        }

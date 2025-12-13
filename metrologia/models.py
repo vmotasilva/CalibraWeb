@@ -415,3 +415,145 @@ class HistoricoCalibracao(models.Model):
         verbose_name = "Histórico Calibração"
         verbose_name_plural = "Históricos de Calibração"
         ordering = ["-data_calibracao"]
+
+
+# ==============================================================================
+# COTAÇÃO DE CALIBRAÇÃO
+# ==============================================================================
+
+class Cotacao(models.Model):
+    """
+    Solicitação de orçamento para calibração de instrumentos
+    """
+    STATUS_CHOICES = [
+        ('CRIADA', 'Criada'),
+        ('ENVIADA', 'Enviada para Fornecedor'),
+        ('PROPOSTA_RECEBIDA', 'Proposta Recebida'),
+        ('APROVADA', 'Aprovada'),
+        ('REPROVADA', 'Reprovada'),
+        ('CANCELADA', 'Cancelada'),
+    ]
+
+    fornecedor = models.ForeignKey(
+        'fornecedores.Fornecedor',
+        on_delete=models.PROTECT,
+        related_name='cotacoes',
+        verbose_name='Fornecedor'
+    )
+    instrumentos = models.ManyToManyField(
+        'Instrumento',
+        related_name='cotacoes',
+        verbose_name='Instrumentos',
+        help_text='Selecione um ou mais instrumentos para calibração'
+    )
+    data_criacao = models.DateTimeField(auto_now_add=True, verbose_name='Data de Criação')
+    data_envio = models.DateTimeField(null=True, blank=True, verbose_name='Data de Envio')
+    data_proposta = models.DateTimeField(null=True, blank=True, verbose_name='Data Recebimento Proposta')
+    data_decisao = models.DateTimeField(null=True, blank=True, verbose_name='Data Aprovação/Reprovação')
+    
+    valor = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='Valor Orçado (R$)'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='CRIADA',
+        verbose_name='Status'
+    )
+    observacoes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Observações'
+    )
+    
+    # Rastreamento
+    criado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cotacoes_criadas',
+        verbose_name='Criado por'
+    )
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Cotação #{self.id} - {self.fornecedor.empresa} - {self.get_status_display()}"
+
+    class Meta:
+        verbose_name = "Cotação"
+        verbose_name_plural = "Cotações"
+        ordering = ["-data_criacao"]
+
+
+class OcorrenciaCotacao(models.Model):
+    """
+    Rastreamento de ocorrências/eventos na cotação
+    Mapeia situações externas ao fluxo estabelecido
+    """
+    TIPO_CHOICES = [
+        ('ATRASO', 'Atraso no Envio'),
+        ('FALTA_RESPOSTA', 'Falta de Resposta'),
+        ('VALOR_ALTO', 'Valor Orçado Alto'),
+        ('VALOR_BAIXO', 'Valor Orçado Baixo'),
+        ('PRAZO', 'Prazo de Entrega'),
+        ('QUALIDADE', 'Dúvida sobre Qualidade'),
+        ('COMUNICACAO', 'Problemas de Comunicação'),
+        ('DOCUMENTACAO', 'Falta de Documentação'),
+        ('RECURSO', 'Recurso/Reclamação'),
+        ('OUTRO', 'Outro'),
+    ]
+
+    cotacao = models.ForeignKey(
+        Cotacao,
+        on_delete=models.CASCADE,
+        related_name='ocorrencias',
+        verbose_name='Cotação'
+    )
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES,
+        verbose_name='Tipo de Ocorrência'
+    )
+    data = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Data da Ocorrência'
+    )
+    descricao = models.TextField(
+        verbose_name='Descrição',
+        help_text='Detalhe sobre a ocorrência'
+    )
+    acao_tomada = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Ação Tomada',
+        help_text='Qual ação foi tomada em resposta'
+    )
+    responsavel = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Responsável pelo Registro'
+    )
+    resolvida = models.BooleanField(
+        default=False,
+        verbose_name='Ocorrência Resolvida'
+    )
+    data_resolucao = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Data de Resolução'
+    )
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - Cotação #{self.cotacao.id}"
+
+    class Meta:
+        verbose_name = "Ocorrência de Cotação"
+        verbose_name_plural = "Ocorrências de Cotação"
+        ordering = ["-data"]
