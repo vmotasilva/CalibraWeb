@@ -16,13 +16,16 @@
         
         <div>
             {% if can_edit %}
-            <a href="/admin/rh/colaborador/{{ alvo.id }}/change/" target="_blank" class="btn btn-outline-secondary">
+            <a href="/rh/colaborador/{{ alvo.id }}/editar/" class="btn btn-outline-secondary">
                 <i class="bi bi-pencil"></i> Editar Dados
             </a>
             {% endif %}
             {% if can_register_occ %}
                 <a href="{% url 'registrar_ocorrencia' %}?colab_id={{ alvo.id }}" class="btn btn-outline-primary ms-2">
                     <i class="bi bi-exclamation-triangle"></i> Nova Ocorrência
+                </a>
+                <a href="/rh/colaborador/{{ alvo.id }}/ferias/registrar/" class="btn btn-outline-success ms-2">
+                    <i class="bi bi-calendar-check"></i> Registrar Férias
                 </a>
             {% endif %}
             <a href="{% url 'modulo_rh' %}" class="btn btn-outline-dark ms-2">
@@ -175,9 +178,9 @@
                                         {{ f.periodo_aquisitivo_inicio|date:"d/m/Y" }} a {{ f.periodo_aquisitivo_fim|date:"d/m/Y" }}
                                     </td>
                                     <td>
-                                        {% if f.data_limite %}
-                                            <span class="fw-bold {% if f.data_limite < now %}text-danger{% endif %}">
-                                                {{ f.data_limite|date:"d/m/Y" }}
+                                        {% if f.vencimento %}
+                                            <span class="fw-bold {% if f.vencimento < today %}text-danger{% endif %}">
+                                                {{ f.vencimento|date:"d/m/Y" }}
                                             </span>
                                         {% else %} - {% endif %}
                                     </td>
@@ -189,29 +192,17 @@
                                             <span class="text-muted small">Não programado</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ f.dias_gozados|default:"-" }}</td>
-                                    <!-- DADOS DIAS VENDIDOS -->
+                                    <td>{{ f.dias_solicitados|default:"-" }}</td>
+                                    <td>-</td>
                                     <td>
-                                        {% if f.dias_vendidos > 0 %}
-                                            <span class="badge bg-success text-white" title="Abono Pecuniário">+{{ f.dias_vendidos }}</span>
-                                        {% else %}
-                                            <span class="text-muted">-</span>
-                                        {% endif %}
+                                        <span class="badge bg-secondary">{{ f.status|default:"-" }}</span>
                                     </td>
                                     <td>
-                                        {% if f.status == 'GOZADAS' %}
-                                            <span class="badge bg-secondary">CONCLUÍDO</span>
-                                        {% elif f.status == 'PROGRAMADAS' %}
-                                            <span class="badge bg-primary">AGENDADO</span>
-                                        {% elif f.status == 'VENDIDAS' %}
-                                            <span class="badge bg-info text-dark">ABONO</span>
-                                        {% else %}
-                                            {% if f.periodo_aquisitivo_fim and f.periodo_aquisitivo_fim < today %}
-                                                <span class="badge bg-danger">VENCIDO</span>
-                                            {% else %}
-                                                <span class="badge bg-warning text-dark">AQUISITIVO</span>
-                                            {% endif %}
-                                        {% endif %}
+                                        <a href="{% url 'editar_ferias' colab_id=alvo.id ferias_id=f.id %}" class="btn btn-sm btn-outline-primary me-1" title="Editar férias"><i class="bi bi-pencil"></i></a>
+                                        <form method="post" action="{% url 'excluir_ferias' colab_id=alvo.id ferias_id=f.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir férias" onclick="return confirm('Tem certeza que deseja excluir este registro de férias?');"><i class="bi bi-trash"></i></button>
+                                        </form>
                                     </td>
                                 </tr>
                                 {% empty %}

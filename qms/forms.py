@@ -88,18 +88,20 @@ class ResultadoFaixaCalibracaoForm(forms.ModelForm):
                 'class': 'form-control',
                 'step': '0.0001',
                 'placeholder': 'Erro Máximo Admissível',
-                'readonly': 'readonly',
-                'disabled': 'disabled'
+                'readonly': 'readonly'
             }),
             'eme': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'step': '0.0001',
                 'placeholder': 'Erro Máximo do Equipamento',
-                'readonly': 'readonly',
-                'disabled': 'disabled'
+                'readonly': 'readonly'
             }),
             'resultado': forms.Select(attrs={
-                'class': 'form-select',
-                'disabled': 'disabled'
+                'class': 'form-select'
             })
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Fazer o resultado obrigatório False para permitir que seja calculado automaticamente
+        self.fields['resultado'].required = False

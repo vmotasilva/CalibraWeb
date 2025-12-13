@@ -60,10 +60,9 @@ INSTALLED_APPS = [
     "procurements.apps.ProcurementsConfig",
     "documents.apps.DocumentsConfig",
     "shared.apps.SharedConfig",
-    
+    "fornecedores.apps.FornecedoresConfig",
     # Módulo legado (compatibilidade - mantém 3 cross-app models: SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob)
     "qms",
-    
     # Aplicações de terceiros
     "widget_tweaks",
 ]

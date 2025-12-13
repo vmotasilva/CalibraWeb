@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Reavaliações de {{ fornecedor.empresa }}</h3>
+<a href="{% url 'fornecedores:reavaliacao_create' fornecedor.pk %}" class="btn btn-primary mb-2">Nova Reavaliação</a>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Data</th>
+            <th>Avaliador</th>
+            <th>Percentual</th>
+            <th>Resultado</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for av in reavaliacoes %}
+        <tr>
+            <td>{{ av.data|date:'d/m/Y' }}</td>
+            <td>{{ av.avaliador }}</td>
+            <td>{{ av.pontuacao_ano|floatformat:2 }}%</td>
+            <td>{{ av.resultado }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">Nenhuma reavaliação registrada.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary">Voltar</a>
+{% endblock %}

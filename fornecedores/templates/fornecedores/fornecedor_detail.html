@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Detalhes do Fornecedor</h2>
+<table class="table">
+    <tr><th>Empresa</th><td>{{ fornecedor.empresa }}</td></tr>
+    <tr><th>Nome Fantasia</th><td>{{ fornecedor.nome_fantasia }}</td></tr>
+    <tr><th>Endereço</th><td>{{ fornecedor.endereco }}</td></tr>
+    <tr><th>CNPJ</th><td>{{ fornecedor.cnpj }}</td></tr>
+    <tr><th>SIRET</th><td>{{ fornecedor.siret }}</td></tr>
+    <tr><th>EIN</th><td>{{ fornecedor.ein }}</td></tr>
+    <tr><th>Telefone</th><td>{{ fornecedor.telefone }}</td></tr>
+    <tr><th>UF</th><td>{{ fornecedor.uf }}</td></tr>
+    <tr><th>Tipo</th><td>{{ fornecedor.get_tipo_display }}</td></tr>
+    <tr><th>Ativo</th><td>{{ fornecedor.ativo|yesno:"Sim,Não" }}</td></tr>
+</table>
+<a href="{% url 'fornecedores:fornecedor_update' fornecedor.pk %}" class="btn btn-warning">Editar</a>
+<a href="{% url 'fornecedores:fornecedor_list' %}" class="btn btn-secondary">Voltar</a>
+
+<h3>Documentos</h3>
+<a href="{% url 'fornecedores:documento_create' fornecedor.pk %}" class="btn btn-sm btn-primary mb-2">Novo Documento</a>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Categoria</th>
+            <th>Arquivo</th>
+            <th>Validade</th>
+            <th>Observação</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for doc in fornecedor.documentos.all %}
+        <tr>
+            <td>{{ doc.categoria }}</td>
+            <td><a href="{{ doc.arquivo.url }}" target="_blank">Download</a></td>
+            <td>{{ doc.data_validade|date:'d/m/Y' }}</td>
+            <td>{{ doc.observacao }}</td>
+            <td>
+                <a href="{% url 'fornecedores:documento_delete' fornecedor.pk doc.pk %}" class="btn btn-sm btn-danger">Remover</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Nenhum documento cadastrado.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
+
+<h3>Monitoramento <span class="badge bg-success">Pontuação: {{ pontuacao_geral|floatformat:1 }}</span></h3>
+<div class="accordion" id="monitoramentoAccordion">
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingProduto">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProduto" aria-expanded="true" aria-controls="collapseProduto">
+                Produto <span class="badge bg-danger ms-2">{{ soma_produto|floatformat:1 }}</span>
+            </button>
+        </h2>
+        <div id="collapseProduto" class="accordion-collapse collapse" aria-labelledby="headingProduto" data-bs-parent="#monitoramentoAccordion">
+            <div class="accordion-body p-0">
+                <table class="table table-bordered mb-0">
+                    <thead><tr><th>Pergunta</th><th>Ocorrências</th><th>Saldo</th></tr></thead>
+                    <tbody>
+                        {% for item in monitoramento_produto %}
+                        <tr>
+                            <td>{{ item.pergunta.texto }}</td>
+                            <td>{{ item.ocorrencias }}</td>
+                            <td>{{ item.saldo|floatformat:1 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3">Nenhuma pergunta de produto.</td></tr>
+                        {% endfor %}
+                        <tr class="table-secondary fw-bold"><td colspan="2">Total Produto</td><td>{{ soma_produto|floatformat:1 }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingServico">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseServico" aria-expanded="false" aria-controls="collapseServico">
+                Serviço <span class="badge bg-danger ms-2">{{ soma_servico|floatformat:1 }}</span>
+            </button>
+        </h2>
+        <div id="collapseServico" class="accordion-collapse collapse" aria-labelledby="headingServico" data-bs-parent="#monitoramentoAccordion">
+            <div class="accordion-body p-0">
+                <table class="table table-bordered mb-0">
+                    <thead><tr><th>Pergunta</th><th>Ocorrências</th><th>Saldo</th></tr></thead>
+                    <tbody>
+                        {% for item in monitoramento_servico %}
+                        <tr>
+                            <td>{{ item.pergunta.texto }}</td>
+                            <td>{{ item.ocorrencias }}</td>
+                            <td>{{ item.saldo|floatformat:1 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3">Nenhuma pergunta de serviço.</td></tr>
+                        {% endfor %}
+                        <tr class="table-secondary fw-bold"><td colspan="2">Total Serviço</td><td>{{ soma_servico|floatformat:1 }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingAmbos">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAmbos" aria-expanded="false" aria-controls="collapseAmbos">
+                Ambos <span class="badge bg-danger ms-2">{{ soma_ambos|floatformat:1 }}</span>
+            </button>
+        </h2>
+        <div id="collapseAmbos" class="accordion-collapse collapse" aria-labelledby="headingAmbos" data-bs-parent="#monitoramentoAccordion">
+            <div class="accordion-body p-0">
+                <table class="table table-bordered mb-0">
+                    <thead><tr><th>Pergunta</th><th>Ocorrências</th><th>Saldo</th></tr></thead>
+                    <tbody>
+                        {% for item in monitoramento_ambos %}
+                        <tr>
+                            <td>{{ item.pergunta.texto }}</td>
+                            <td>{{ item.ocorrencias }}</td>
+                            <td>{{ item.saldo|floatformat:1 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3">Nenhuma pergunta de ambos.</td></tr>
+                        {% endfor %}
+                        <tr class="table-secondary fw-bold"><td colspan="2">Total Ambos</td><td>{{ soma_ambos|floatformat:1 }}</td></tr>
+                    <tr class="table-info fw-bold"><td colspan="2">Saldo Total</td><td>{{ saldo_total|floatformat:1 }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="my-3">
+    <a href="{% url 'fornecedores:avaliacao_list' fornecedor.pk %}" class="btn btn-primary btn-lg fw-bold shadow">Ver Registros de Monitoramento</a>
+</div>
+
+<h3>Reavaliações</h3>
+<a href="{% url 'fornecedores:reavaliacao_list' fornecedor.pk %}" class="btn btn-sm btn-outline-primary mb-2">Ver Reavaliações</a>
+<a href="{% url 'fornecedores:export_avaliacoes_excel' fornecedor.pk %}" class="btn btn-sm btn-outline-success mb-2">Exportar Avaliações/Reavaliações (Excel)</a>
+{% endblock %}

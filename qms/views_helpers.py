@@ -67,11 +67,21 @@ def get_all_subordinates(colaborador):
     Returns:
         set: IDs dos subordinados
     """
+    from rh.models import Colaborador
+    from django.db.models import Q
+    
     subordinados = set()
-    diretos = colaborador.liderados.all()
+    
+    # Subordinados diretos (pessoas que têm este colaborador como lider, supervisor ou gerente)
+    diretos = Colaborador.objects.filter(
+        Q(lider=colaborador) | Q(supervisor=colaborador) | Q(gerente=colaborador)
+    )
+    
     for direto in diretos:
         subordinados.add(direto.id)
+        # Recursivamente adicionar subordinados indiretos
         subordinados.update(get_all_subordinates(direto))
+    
     return subordinados
 
 

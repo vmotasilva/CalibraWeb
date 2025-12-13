@@ -1,3 +1,32 @@
+
+from django import forms
+from rh.models import Colaborador, Ocorrencia, Ferias
+
+class FeriasForm(forms.ModelForm):
+    class Meta:
+        model = Ferias
+        fields = [
+            "periodo_aquisitivo_inicio",
+            "periodo_aquisitivo_fim",
+            "status",
+            "data_inicio",
+            "data_fim",
+            "dias_solicitados",
+            "aprovada",
+            "vencimento",
+            "descricao"
+        ]
+        widgets = {
+            "periodo_aquisitivo_inicio": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "periodo_aquisitivo_fim": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "status": forms.Select(attrs={"class": "form-select"}),
+            "data_inicio": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "data_fim": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "dias_solicitados": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
+            "aprovada": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "vencimento": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "descricao": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
+        }
 # -*- coding: utf-8 -*-
 """
 Forms para RH Module

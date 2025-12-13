@@ -1,3 +1,70 @@
+
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from django.http import HttpResponseRedirect
+
+# Edição de férias
+@login_required
+@require_http_methods(["GET", "POST"])
+def editar_ferias_view(request, colab_id, ferias_id):
+    ferias = get_object_or_404(Ferias, id=ferias_id, colaborador_id=colab_id)
+    colaborador = ferias.colaborador
+    if request.method == "POST":
+        form = FeriasForm(request.POST, instance=ferias)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Registro de férias atualizado com sucesso!")
+            return redirect('detalhe_colaborador', colab_id=colaborador.id)
+        else:
+            messages.error(request, "Verifique os dados do formulário.")
+    else:
+        form = FeriasForm(instance=ferias)
+    return render(request, 'rh/ferias_form.html', {"form": form, "colaborador": colaborador, "edicao": True})
+
+# Exclusão de férias
+@login_required
+@require_http_methods(["POST"])
+def excluir_ferias_view(request, colab_id, ferias_id):
+    ferias = get_object_or_404(Ferias, id=ferias_id, colaborador_id=colab_id)
+    colaborador = ferias.colaborador
+    ferias.delete()
+    # Atualiza o campo em_ferias do colaborador após exclusão
+    hoje = date.today()
+    ferias_ativas = Ferias.objects.filter(
+        colaborador=colaborador,
+        aprovada=True,
+        data_inicio__lte=hoje,
+        data_fim__gte=hoje
+    ).exists()
+    colaborador.em_ferias = ferias_ativas
+    colaborador.save(update_fields=["em_ferias"])
+    messages.success(request, "Registro de férias excluído com sucesso!")
+    return redirect('detalhe_colaborador', colab_id=colaborador.id)
+
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
+from django.shortcuts import get_object_or_404, render, redirect
+from django.contrib import messages
+from rh.models import Colaborador, Ocorrencia, Ferias
+from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def registrar_ferias_view(request, colab_id):
+    colaborador = get_object_or_404(Colaborador, id=colab_id)
+    if request.method == "POST":
+        form = FeriasForm(request.POST)
+        if form.is_valid():
+            ferias = form.save(commit=False)
+            ferias.colaborador = colaborador
+            ferias.save()
+            messages.success(request, "Férias registradas com sucesso!")
+            return redirect('detalhe_colaborador', colab_id=colaborador.id)
+        else:
+            messages.error(request, "Verifique os dados do formulário.")
+    else:
+        form = FeriasForm()
+    return render(request, 'rh/ferias_form.html', {"form": form, "colaborador": colaborador})
 # -*- coding: utf-8 -*-
 """
 Views para o módulo RH (Recursos Humanos)
@@ -21,7 +88,52 @@ from organization.models import Setor, CentroCusto, HierarquiaSetor
 from rh.forms import ColaboradorForm, OcorrenciaForm
 
 # Imports dos helpers
-from qms.views_helpers import get_all_subordinates
+from qms.views_helpers import get_all_subordinates, get_colaborador_for_user
+
+
+def can_user_access_colaborador(request_user, target_colaborador):
+    """
+    Verifica se o usuário logado pode acessar as informações de um colaborador.
+    Retorna True se:
+    - É superusuário
+    - É staff (RH/DP/Qualidade)
+    - É o próprio colaborador
+    - É lider/supervisor/gerente do colaborador (direto ou indireto)
+    """
+    if request_user.is_superuser:
+        return True
+    
+    usuario_logado = get_colaborador_for_user(request_user)
+    if not usuario_logado:
+        return False
+    
+    # Verificar se está em setor administrativo
+    setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
+    if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
+        return True
+    
+    # Verificar se é gerente ou diretor
+    if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
+       HierarquiaSetor.objects.filter(diretor=usuario_logado).exists():
+        return True
+    
+    # Verificar se é o próprio colaborador
+    if usuario_logado.id == target_colaborador.id:
+        return True
+    
+    # Verificar se é subordinado direto (lider, supervisor, gerente)
+    if Colaborador.objects.filter(
+        Q(lider=usuario_logado) | Q(supervisor=usuario_logado) | Q(gerente=usuario_logado),
+        id=target_colaborador.id
+    ).exists():
+        return True
+    
+    # Verificar se é subordinado indireto
+    subordinados = get_all_subordinates(usuario_logado)
+    if target_colaborador.id in subordinados:
+        return True
+    
+    return False
 
 
 @login_required
@@ -29,52 +141,63 @@ def modulo_rh_view(request):
     """Dashboard principal do módulo de RH com filtros avançados."""
     colab = None
     try:
-        colab = Colaborador.objects.filter(user_django=request.user).first()
+        colab = get_colaborador_for_user(request.user)
     except Exception:
         pass
 
     # 1. VISIBILIDADE - Quem pode ver todos vs sua árvore
     ids_permitidos = set()
     can_see_salary = False
-
     can_view_all = False
+
+    # Verificar se é superusuário (mesmo sem Colaborador associado)
     if request.user.is_superuser:
         can_view_all = True
     elif colab:
+        # Verificar se está em setor administrativo (RH, DP, QUALIDADE)
         setor_nome = (colab.setor.nome.upper() if colab.setor else "")
         if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
             can_view_all = True
+        # Verificar se é gerente
         elif (
             "GERENTE" in str(colab.cargo).upper()
             or HierarquiaSetor.objects.filter(gerente=colab).exists()
         ):
             can_view_all = True
 
+    # Definir IDs permitidos baseado em permissão
     if can_view_all:
+        # Ver todos os colaboradores
         ids_permitidos = set(Colaborador.objects.all().values_list("id", flat=True))
     elif colab:
-        # Inclui subordinados diretos e a própria pessoa
-        ids_permitidos = get_all_subordinates(colab)
+        # Ver apenas subordinados diretos e a si mesmo
+        # Subordinados por liderança
         ids_permitidos.add(colab.id)
-        # Também inclui relacionamentos diretos
+        
+        # Subordinados diretos (lider, supervisor, gerente)
         diretos = Colaborador.objects.filter(
             Q(lider=colab) | Q(supervisor=colab) | Q(gerente=colab)
         ).values_list('id', flat=True)
         ids_permitidos.update(diretos)
+        
+        # Subordinados indiretos (função auxiliar)
+        subordinados_indiretos = get_all_subordinates(colab)
+        ids_permitidos.update(subordinados_indiretos)
     else:
+        # Usuário não tem colaborador associado
         ids_permitidos = set()
 
     # Permissão para ver salário
     if request.user.is_superuser:
         can_see_salary = True
     elif colab:
-        if "GERENTE" in str(colab.cargo).upper() or \
-           HierarquiaSetor.objects.filter(gerente=colab).exists() or \
-           ("DIRETOR" in str(colab.cargo).upper()) or \
-           HierarquiaSetor.objects.filter(diretor=colab).exists():
+        if ("GERENTE" in str(colab.cargo).upper() or
+            HierarquiaSetor.objects.filter(gerente=colab).exists() or
+            "DIRETOR" in str(colab.cargo).upper() or
+            HierarquiaSetor.objects.filter(diretor=colab).exists()):
             can_see_salary = True
 
-    # QuerySet base
+    # QuerySet base com filtros de visibilidade
     funcionarios_base = Colaborador.objects.filter(
         id__in=list(ids_permitidos)
     ).select_related('setor', 'centro_custo', 'lider', 'supervisor', 'gerente').prefetch_related(
@@ -99,7 +222,13 @@ def modulo_rh_view(request):
     turnos_map = dict(Colaborador._meta.get_field('turno').choices)
     turnos_filtro = [(turno, turnos_map.get(turno, turno)) for turno in turnos_unicos if turno]
 
-    funcionarios_visiveis = funcionarios_base
+
+    # Filtro de férias (checkbox ou query param 'em_ferias')
+    em_ferias_param = request.GET.get('em_ferias')
+    if em_ferias_param == '1':
+        funcionarios_visiveis = funcionarios_base.filter(em_ferias=True)
+    else:
+        funcionarios_visiveis = funcionarios_base
 
     # Estatísticas de Treinamento por colaborador
     for f in funcionarios_visiveis:
@@ -134,13 +263,18 @@ def modulo_rh_view(request):
 @login_required
 def detalhe_colaborador_view(request, colab_id):
     """Visualiza detalhes completos do colaborador com permissões granulares."""
+    alvo = get_object_or_404(Colaborador, id=colab_id)
+    
+    # Verificar permissão de acesso
+    if not can_user_access_colaborador(request.user, alvo):
+        messages.error(request, "Acesso Negado. Você não tem permissão para ver este colaborador.")
+        return redirect("modulo_rh")
+    
     usuario_logado = None
     try:
-        usuario_logado = Colaborador.objects.filter(user_django=request.user).first()
+        usuario_logado = get_colaborador_for_user(request.user)
     except Exception:
         pass
-    
-    alvo = get_object_or_404(Colaborador, id=colab_id)
 
     # Busca hierarquia por setor/turno
     supervisor_rh = None
@@ -159,29 +293,6 @@ def detalhe_colaborador_view(request, colab_id):
         if hierarquia:
             supervisor_rh = hierarquia.supervisor
             gerente_rh = hierarquia.gerente
-
-    # Segurança: pode ver todos se for superuser, gerente, RH/DP/Qualidade
-    if not request.user.is_superuser:
-        permitido = False
-        if usuario_logado:
-            setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
-            pode_ver_todos = False
-            if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
-                pode_ver_todos = True
-            if ("GERENTE" in str(usuario_logado.cargo).upper() or
-                HierarquiaSetor.objects.filter(gerente=usuario_logado).exists()):
-                pode_ver_todos = True
-            if pode_ver_todos:
-                permitido = True
-            elif usuario_logado.id == alvo.id:
-                permitido = True
-            else:
-                meus_subordinados = get_all_subordinates(usuario_logado)
-                if alvo.id in meus_subordinados:
-                    permitido = True
-        if not permitido:
-            messages.error(request, "Acesso Negado.")
-            return redirect("modulo_rh")
 
     # Permissão para ver salário
     can_see_salary = False
@@ -227,21 +338,12 @@ def detalhe_colaborador_view(request, colab_id):
     ferias_programadas = 0
     hoje = date.today()
 
+
     for f in ferias_qs:
-        dt_limite = (
-            f.data_limite
-            if f.data_limite
-            else (
-                f.periodo_aquisitivo_fim + timedelta(days=365)
-                if f.periodo_aquisitivo_fim
-                else None
-            )
-        )
-
-        if dt_limite and dt_limite < hoje:
-            if f.status != "GOZADAS" and (not f.data_inicio or f.data_inicio < hoje):
-                ferias_vencidas += 1
-
+        dt_vencimento = getattr(f, 'vencimento', None)
+        # Só conta como vencida se não for GOZADAS
+        if dt_vencimento and dt_vencimento < hoje and f.status != 'GOZADAS':
+            ferias_vencidas += 1
         if f.data_inicio and f.data_inicio > hoje:
             ferias_programadas += 1
 
@@ -267,26 +369,18 @@ def detalhe_colaborador_view(request, colab_id):
 @login_required
 def editar_colaborador_view(request, colab_id):
     """Edita dados de um colaborador com permissões de RH."""
-    usuario_logado = None
-    try:
-        usuario_logado = Colaborador.objects.filter(user_django=request.user).first()
-    except Exception:
-        pass
-    
     alvo = get_object_or_404(Colaborador, id=colab_id)
 
-    if not (request.user.is_superuser or request.user.is_staff):
-        permitido = False
-        if usuario_logado:
-            if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
-                permitido = True
-            else:
-                meus_subordinados = get_all_subordinates(usuario_logado)
-                if alvo.id in meus_subordinados:
-                    permitido = True
-        if not permitido:
-            messages.error(request, "Acesso Negado.")
-            return redirect("modulo_rh")
+    # Verificação de acesso usando função auxiliar
+    if not can_user_access_colaborador(request.user, alvo):
+        messages.error(request, "Acesso Negado. Você não tem permissão para editar este colaborador.")
+        return redirect("modulo_rh")
+    
+    usuario_logado = None
+    try:
+        usuario_logado = get_colaborador_for_user(request.user)
+    except Exception:
+        pass
 
     if request.method == "POST":
         form = ColaboradorForm(request.POST, instance=alvo)
@@ -311,10 +405,11 @@ def registrar_ocorrencia_view(request):
     """Registra nova ocorrência de RH para um colaborador."""
     usuario_logado = None
     try:
-        usuario_logado = Colaborador.objects.filter(user_django=request.user).first()
+        usuario_logado = get_colaborador_for_user(request.user)
     except Exception:
         pass
     
+    # Verificar permissão geral de acesso ao módulo
     permitido = False
     if request.user.is_superuser or request.user.is_staff:
         permitido = True
@@ -330,10 +425,27 @@ def registrar_ocorrencia_view(request):
         return redirect("modulo_rh")
 
     preselect_id = request.GET.get("colab_id")
+    
+    # Se há um colaborador pré-selecionado, verificar acesso
+    if preselect_id:
+        try:
+            colab_pré = Colaborador.objects.get(id=preselect_id)
+            if not can_user_access_colaborador(request.user, colab_pré):
+                messages.error(request, "Acesso Negado. Você não tem permissão para registrar ocorrências para este colaborador.")
+                return redirect("modulo_rh")
+        except Colaborador.DoesNotExist:
+            pass
+    
     if request.method == "POST":
         form = OcorrenciaForm(request.POST, request.FILES)
         if form.is_valid():
             oc = form.save(commit=False)
+            
+            # Verificar acesso ao colaborador selecionado no formulário
+            if oc.colaborador and not can_user_access_colaborador(request.user, oc.colaborador):
+                messages.error(request, "Acesso Negado. Você não tem permissão para registrar ocorrências para este colaborador.")
+                return redirect("modulo_rh")
+            
             if not oc.condutor:
                 oc.condutor = request.user
             oc.save()
@@ -365,10 +477,15 @@ def editar_ocorrencia_view(request, occ_id):
     
     ocorrencia = get_object_or_404(Ocorrencia, id=occ_id)
     
-    # Verificar permissão (superuser, staff ou RH)
+    # Verificar permissão ao colaborador da ocorrência
+    if not can_user_access_colaborador(request.user, ocorrencia.colaborador):
+        messages.error(request, "Acesso Negado. Você não tem permissão para editar ocorrências deste colaborador.")
+        return redirect("modulo_rh")
+    
+    # Verificar permissão geral para editar ocorrências (superuser, staff ou RH)
     usuario_logado = None
     try:
-        usuario_logado = Colaborador.objects.filter(user_django=request.user).first()
+        usuario_logado = get_colaborador_for_user(request.user)
     except Exception:
         pass
     
@@ -411,10 +528,15 @@ def deletar_ocorrencia_view(request, occ_id):
     """Exclui uma ocorrência."""
     ocorrencia = get_object_or_404(Ocorrencia, id=occ_id)
     
-    # Verificar permissão (superuser, staff ou RH)
+    # Verificar permissão ao colaborador da ocorrência
+    if not can_user_access_colaborador(request.user, ocorrencia.colaborador):
+        messages.error(request, "Acesso Negado. Você não tem permissão para deletar ocorrências deste colaborador.")
+        return redirect("modulo_rh")
+    
+    # Verificar permissão geral para deletar ocorrências (superuser, staff ou RH)
     usuario_logado = None
     try:
-        usuario_logado = Colaborador.objects.filter(user_django=request.user).first()
+        usuario_logado = get_colaborador_for_user(request.user)
     except Exception:
         pass
     

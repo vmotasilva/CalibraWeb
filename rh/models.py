@@ -3,6 +3,11 @@ from django.contrib.auth.models import User
 from datetime import date, timedelta
 from decimal import Decimal
 from core.models import TURNOS_CHOICES
+from django.db import models
+from django.contrib.auth.models import User
+from datetime import date, timedelta
+from decimal import Decimal
+from core.models import TURNOS_CHOICES
 
 # ==============================================================================
 # RH - RECURSOS HUMANOS
@@ -78,11 +83,19 @@ class Colaborador(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        self.matricula = self.matricula.upper().strip()
-        self.nome_completo = self.nome_completo.upper().strip()
-        if self.cpf:
-            self.cpf = self.cpf.replace(".", "").replace("-", "").strip()
         super().save(*args, **kwargs)
+        # Atualiza o campo em_ferias do colaborador
+        hoje = date.today()
+        colaborador = self.colaborador
+        # Verifica se existe algum registro de férias aprovado e ativo
+        ferias_ativas = Ferias.objects.filter(
+            colaborador=colaborador,
+            aprovada=True,
+            data_inicio__lte=hoje,
+            data_fim__gte=hoje
+        ).exists()
+        colaborador.em_ferias = ferias_ativas
+        colaborador.save(update_fields=["em_ferias"])
 
     def get_chefia(self):
         if not self.setor:
@@ -120,10 +133,25 @@ class Ferias(models.Model):
     colaborador = models.ForeignKey(
         Colaborador, on_delete=models.CASCADE, verbose_name="Colaborador"
     )
+
+    periodo_aquisitivo_inicio = models.DateField(verbose_name="Início do Período Aquisitivo", null=True, blank=True)
+    periodo_aquisitivo_fim = models.DateField(verbose_name="Fim do Período Aquisitivo", null=True, blank=True)
+    STATUS_CHOICES = [
+        ("PLANEJADO", "Planejado"),
+        ("EM_ANDAMENTO", "Em andamento"),
+        ("CONCLUIDO", "Concluído")
+    ]
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        verbose_name="Status das Férias",
+        default="PLANEJADO"
+    )
     data_inicio = models.DateField(verbose_name="Data de Início")
     data_fim = models.DateField(verbose_name="Data de Término")
     dias_solicitados = models.IntegerField(verbose_name="Dias Solicitados")
     aprovada = models.BooleanField(default=False, verbose_name="Aprovada?")
+    vencimento = models.DateField(verbose_name="Vencimento das Férias", null=True, blank=True)
     descricao = models.TextField(null=True, blank=True, verbose_name="Observações")
 
     def dias_decorridos(self):
@@ -132,8 +160,31 @@ class Ferias(models.Model):
     def dias_restantes(self):
         return (self.data_fim - date.today()).days
 
+
     def esta_em_ferias(self):
         return self.data_inicio <= date.today() <= self.data_fim
+
+    def save(self, *args, **kwargs):
+        hoje = date.today()
+        # Atualiza status automaticamente
+        if self.data_inicio and self.data_fim:
+            if self.data_inicio > hoje:
+                self.status = "PLANEJADO"
+            elif self.data_inicio <= hoje <= self.data_fim:
+                self.status = "EM_ANDAMENTO"
+            elif hoje > self.data_fim:
+                self.status = "CONCLUIDO"
+        super().save(*args, **kwargs)
+        # Atualiza o campo em_ferias do colaborador
+        colaborador = self.colaborador
+        ferias_ativas = Ferias.objects.filter(
+            colaborador=colaborador,
+            aprovada=True,
+            data_inicio__lte=hoje,
+            data_fim__gte=hoje
+        ).exists()
+        colaborador.em_ferias = ferias_ativas
+        colaborador.save(update_fields=["em_ferias"])
 
     def __str__(self):
         return f"{self.colaborador.nome_completo} ({self.data_inicio} a {self.data_fim})"

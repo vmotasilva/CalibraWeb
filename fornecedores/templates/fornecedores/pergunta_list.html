@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% load fornecedor_extras %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Perguntas de Avaliação</h2>
+    <a href="{% url 'fornecedores:pergunta_create' %}" class="btn btn-primary mb-3">Nova Pergunta</a>
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Tipo</th>
+                <th>Pergunta</th>
+                <th>Produto/Serviço</th>
+                <th>Ordem</th>
+                <th>Ativo</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pergunta in perguntas %}
+            <tr>
+                <td>{{ pergunta.get_tipo_display }}</td>
+                <td>{{ pergunta.texto }}</td>
+                <td>{% if pergunta.produto_servico %}{{ pergunta.get_produto_servico_display }}{% else %}-{% endif %}</td>
+                <td>{{ pergunta.ordem }}</td>
+                <td>{% if pergunta.ativo %}Sim{% else %}Não{% endif %}</td>
+                <td>
+                    <a href="{% url 'fornecedores:pergunta_edit' pergunta.pk %}" class="btn btn-sm btn-warning">Editar</a>
+                    <a href="{% url 'fornecedores:pergunta_delete' pergunta.pk %}" class="btn btn-sm btn-danger">Remover</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">Nenhuma pergunta cadastrada.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

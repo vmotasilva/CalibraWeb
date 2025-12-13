@@ -148,19 +148,40 @@
                             {{ historico_form.observacoes|add_class:"form-control form-control-sm" }}
                         </div>
 
-                        <div class="mb-3">
-                            <label for="id_certificado" class="form-label fw-bold small">Certificado (PDF)</label>
-                            {{ historico_form.certificado|add_class:"form-control form-control-sm" }}
+                        <!-- SEÇÃO DE CERTIFICADO -->
+                        <div class="card bg-light border-primary mt-3">
+                            <div class="card-header bg-primary text-white py-2">
+                                <i class="bi bi-file-pdf"></i> Certificado (PDF)
+                            </div>
+                            <div class="card-body p-3">
+                                {% if historico.certificado %}
+                                <div class="mb-3">
+                                    <small class="text-muted">Certificado Atual:</small>
+                                    <a href="{{ historico.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                </div>
+                                <hr class="my-2">
+                                {% endif %}
+                                <label for="id_certificado" class="form-label fw-bold small">Selecionar novo certificado:</label>
+                                <div class="input-group">
+                                    <input type="file" id="id_certificado" name="certificado" class="form-control form-control-sm" accept=".pdf">
+                                    <button type="submit" class="btn btn-primary btn-sm" name="action" value="anexar_certificado">
+                                        <i class="bi bi-paperclip"></i> Anexar
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <hr class="my-2">
+                        <hr class="my-4">
 
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-sm">
+                            <button type="submit" class="btn btn-success btn-lg fw-bold" name="action" value="update_history">
                                 <i class="bi bi-save"></i> Salvar Histórico
                             </button>
                         </div>
                     </form>
+
                 </div>
 
                 <!-- SEÇÃO 2: RESULTADOS POR FAIXA -->
@@ -259,6 +280,7 @@
                                                             {% csrf_token %}
                                                             <input type="hidden" name="action" value="update_resultado">
                                                             <input type="hidden" name="resultado_id" value="{{ rf.id }}">
+                                                            <input type="hidden" name="resultado" id="resultado_hidden_{{ rf.id }}" value="{{ rf.resultado }}">
                                                             <div class="modal-body">
                                                                 <div class="alert alert-info">
                                                                     <small><strong>Tolerância da Faixa:</strong> ± {{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:"N/A" }}</small>
@@ -1476,11 +1498,23 @@
                     if (resultadoDiv) {
                         resultadoDiv.innerHTML = `<span class="badge ${badgeClass}">${badgeText}</span>`;
                         console.log('Resultado atualizado:', resultado);
+                        
+                        // Atualizar o campo hidden com o resultado calculado
+                        const resultadoHidden = modal.querySelector('input[id^="resultado_hidden_"]');
+                        if (resultadoHidden) {
+                            resultadoHidden.value = resultado;
+                            console.log('Campo hidden atualizado com:', resultado);
+                        }
                     }
                 } else {
                     // Sem valores suficientes
                     if (resultadoDiv) {
                         resultadoDiv.innerHTML = '<span class="badge bg-secondary">Preencha Erro e Incerteza</span>';
+                    }
+                    // Resetar o campo hidden
+                    const resultadoHidden = modal.querySelector('input[id^="resultado_hidden_"]');
+                    if (resultadoHidden) {
+                        resultadoHidden.value = '';
                     }
                 }
             }

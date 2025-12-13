@@ -79,6 +79,18 @@
                         <li><a class="dropdown-item" href="{% url 'importar_hierarquia' %}">🌳 Importar Hierarquia</a></li>
                     </ul>
                 </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-truck"></i> Fornecedores
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_list' %}">Lista de Fornecedores</a></li>
+                        <li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_create' %}">Novo Fornecedor</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'fornecedores:pergunta_list' %}">Perguntas de Avaliação</a></li>
+                    </ul>
+                </li>
             </ul>
 
             <div class="d-flex align-items-center border-start border-secondary ps-3 ms-2">

@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect
 from django.urls import path, include
 from django.http import JsonResponse
 from procurements.views import nova_solicitacao
-from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view, editar_ocorrencia_view, deletar_ocorrencia_view
+from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view, editar_ocorrencia_view, deletar_ocorrencia_view, registrar_ferias_view, editar_ferias_view, excluir_ferias_view
 from metrologia.views import export_metrologia_view, export_etiquetas_view, detalhe_instrumento_view, modulo_metrologia_view
 from qms.views import (
     editar_instrumento_view, gerenciar_faixas_instrumento_view, editar_faixa_view,
@@ -152,11 +152,16 @@ urlpatterns = [
     
     # 6. Application modules URLs - include all qms URLs with prefix to avoid conflicts
     path("api/", include("qms.urls")),
+    # Fornecedores
+    path("fornecedores/", include("fornecedores.urls")),
     
     # 7. RH app URLs
     path("rh/", modulo_rh_view, name="modulo_rh"),
     path("rh/colaborador/<int:colab_id>/", detalhe_colaborador_view, name="detalhe_colaborador"),
     path("rh/colaborador/<int:colab_id>/editar/", editar_colaborador_view, name="editar_colaborador"),
+    path("rh/colaborador/<int:colab_id>/ferias/registrar/", registrar_ferias_view, name="registrar_ferias"),
+    path("rh/colaborador/<int:colab_id>/ferias/<int:ferias_id>/editar/", editar_ferias_view, name="editar_ferias"),
+    path("rh/colaborador/<int:colab_id>/ferias/<int:ferias_id>/excluir/", excluir_ferias_view, name="excluir_ferias"),
     path("rh/ocorrencia/", registrar_ocorrencia_view, name="registrar_ocorrencia"),
     path("rh/ocorrencia/<int:occ_id>/editar/", editar_ocorrencia_view, name="editar_ocorrencia"),
     path("rh/ocorrencia/<int:occ_id>/deletar/", deletar_ocorrencia_view, name="deletar_ocorrencia"),

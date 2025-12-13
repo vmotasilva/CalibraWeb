@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load fornecedor_extras %}
+{% block content %}
+<h2>{% if fornecedor %}Editar Fornecedor{% else %}Novo Fornecedor{% endif %}</h2>
+<form method="post" class="row g-3" style="max-width: 500px;">
+    {% csrf_token %}
+    {% for field in form %}
+        {% if field.name == 'ativo' %}
+            <div class="col-12">
+                <label class="form-label">ATIVO</label><br>
+                <div class="form-check">
+                    {{ field|add_class:'form-check-input' }}
+                    <label class="form-check-label" for="id_ativo">Ativo</label>
+                </div>
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+        {% else %}
+            <div class="col-12">
+                <label class="form-label">{{ field.label }}{% if field.field.required %}*{% endif %}</label>
+                {{ field|add_class:'form-control' }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+        {% endif %}
+    {% endfor %}
+    <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-success">Salvar</button>
+        <a href="{% url 'fornecedores:fornecedor_list' %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

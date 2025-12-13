@@ -91,30 +91,12 @@ def modulo_metrologia_view(request):
     setor_filter = request.GET.get('setor', '')
     search_query = request.GET.get('search', '')
     
-    # Apply status filters
+    # Apenas filtros de categoria, setor e busca, sem filtrar por status no backend
     today = date.today()
-    if status_filter == 'vencidos':
-        instrumentos = instrumentos.filter(data_proxima_calibracao__lt=today, ativo=True)
-    elif status_filter == 'avencer':
-        thirty_days = today + timedelta(days=30)
-        instrumentos = instrumentos.filter(
-            data_proxima_calibracao__gte=today,
-            data_proxima_calibracao__lte=thirty_days,
-            ativo=True
-        )
-    elif status_filter == 'vigentes':
-        thirty_days = today + timedelta(days=30)
-        instrumentos = instrumentos.filter(
-            data_proxima_calibracao__gt=thirty_days,
-            ativo=True
-        )
-    
     if categoria_filter:
         instrumentos = instrumentos.filter(categoria__id=categoria_filter)
-    
     if setor_filter:
         instrumentos = instrumentos.filter(setor__id=setor_filter)
-    
     if search_query:
         from django.db.models import Q
         instrumentos = instrumentos.filter(
@@ -1321,10 +1303,17 @@ def editar_historico_calibracao_view(request, historico_id):
                 resultado = ResultadoFaixaCalibracao.objects.get(id=resultado_id, historico=historico)
                 form = ResultadoFaixaCalibracaoForm(request.POST, instance=resultado)
                 if form.is_valid():
-                    form.save()
+                    # Não atribuir o valor de resultado do formulário, deixar o save() calcular
+                    resultado = form.save(commit=False)
+                    # O método save() do modelo será chamado, que recalcula resultado automaticamente
+                    resultado.save()
                     messages.success(request, 'Resultado da faixa atualizado com sucesso.')
                 else:
-                    messages.error(request, 'Erro ao atualizar resultado.')
+                    # Exibir erros detalhados no feedback
+                    error_msg = 'Erro ao atualizar resultado: '
+                    for field, errors in form.errors.items():
+                        error_msg += f"{field}: {', '.join(errors)}. "
+                    messages.error(request, error_msg)
             except ResultadoFaixaCalibracao.DoesNotExist:
                 messages.error(request, 'Resultado não encontrado.')
             return redirect('editar_historico_calibracao', historico_id=historico_id)
