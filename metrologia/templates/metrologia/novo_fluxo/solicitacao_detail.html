@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ solicitacao.numero }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>
+                <i class="bi bi-file-earmark-text"></i> {{ solicitacao.numero }}
+            </h1>
+            <p class="text-muted">
+                Criado em {{ solicitacao.data_criacao|date:"d/m/Y H:i" }}
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'metrologia:solicitacao_itens' solicitacao.id %}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Gerenciar Itens
+            </a>
+            <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- Informações Gerais -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Informações Gerais</h6>
+                </div>
+                <div class="card-body">
+                    <p>
+                        <strong>Status:</strong>
+                        <span class="badge bg-info">{{ solicitacao.get_status_display }}</span>
+                    </p>
+                    <p>
+                        <strong>Prioridade:</strong>
+                        <span class="badge bg-warning">{{ solicitacao.get_prioridade_display }}</span>
+                    </p>
+                    <p>
+                        <strong>Responsável:</strong>
+                        {{ solicitacao.responsavel.get_full_name|default:solicitacao.responsavel.username }}
+                    </p>
+                    <p>
+                        <strong>Departamento:</strong>
+                        {{ solicitacao.departamento|default:"-" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Período de Vencimento</h6>
+                </div>
+                <div class="card-body">
+                    <p>
+                        <strong>De:</strong> {{ solicitacao.data_inicio_vencimento|date:"d/m/Y" }}
+                    </p>
+                    <p>
+                        <strong>Até:</strong> {{ solicitacao.data_fim_vencimento|date:"d/m/Y" }}
+                    </p>
+                    <p>
+                        <strong>Descrição:</strong> {{ solicitacao.descricao|truncatewords:20|default:"-" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Itens da Solicitação -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">
+                <i class="bi bi-list-check"></i> Itens ({{ itens.count }})
+            </h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Instrumento</th>
+                        <th>Descrição</th>
+                        <th>Tipo de Pontos</th>
+                        <th>Faixa Mínima</th>
+                        <th>Faixa Centro</th>
+                        <th>Faixa Máxima</th>
+                        <th>Unidade</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                        <tr>
+                            <td><strong>{{ item.instrumento.tag }}</strong></td>
+                            <td>{{ item.instrumento.descricao }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ item.get_tipo_pontos_display }}</span>
+                            </td>
+                            <td>{{ item.faixa_min|default:"---" }}</td>
+                            <td>{{ item.faixa_centro|default:"---" }}</td>
+                            <td>{{ item.faixa_max|default:"---" }}</td>
+                            <td>{{ item.unidade_pontos|default:"---" }}</td>
+                            <td>
+                                <a href="{% url 'metrologia:item_solicitacao_edit' item.id %}" 
+                                   class="btn btn-sm btn-primary" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'metrologia:item_solicitacao_delete' item.id %}" 
+                                   class="btn btn-sm btn-danger" 
+                                   onclick="return confirm('Tem certeza?')" title="Remover">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-3">
+                                Nenhum item adicionado
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Cotações de Fornecedores -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                <i class="bi bi-currency-dollar"></i> Cotações ({{ cotacoes.count }})
+            </h6>
+            <a href="{% url 'metrologia:cotacao_fornecedor_create' solicitacao.id %}" class="btn btn-sm btn-success">
+                <i class="bi bi-plus-circle"></i> Adicionar Cotação
+            </a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Número</th>
+                        <th>Fornecedor</th>
+                        <th>Status</th>
+                        <th>Itens</th>
+                        <th>Valor Total</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cotacao in cotacoes %}
+                        <tr>
+                            <td><strong>{{ cotacao.numero }}</strong></td>
+                            <td>{{ cotacao.fornecedor.empresa }}</td>
+                            <td><span class="badge bg-info">{{ cotacao.get_status_display }}</span></td>
+                            <td><span class="badge bg-light text-dark">{{ cotacao.itens.count }}</span></td>
+                            <td>
+                                <strong>
+                                    R$ {{ cotacao.get_valor_total|default:0|floatformat:2 }}
+                                </strong>
+                            </td>
+                            <td>
+                                <a href="{% url 'metrologia:cotacao_fornecedor_detail' cotacao.id %}" 
+                                   class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-3">
+                                Nenhuma cotação adicionada
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Atendimentos -->
+    <div class="card">
+        <div class="card-header">
+            <h6 class="mb-0">
+                <i class="bi bi-check2-square"></i> Atendimentos ({{ atendimentos.count }})
+            </h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Necessidade</th>
+                        <th>Fornecedor</th>
+                        <th>Data Prevista</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for atendimento in atendimentos %}
+                        <tr>
+                            <td>{{ atendimento.item_solicitacao.instrumento.tag }}</td>
+                            <td>{{ atendimento.item_cotacao.cotacao_fornecedor.fornecedor.empresa }}</td>
+                            <td>{{ atendimento.data_prevista_atendimento|date:"d/m/Y" }}</td>
+                            <td><span class="badge bg-success">{{ atendimento.get_status_display }}</span></td>
+                            <td>
+                                <a href="{% url 'metrologia:atendimento_detail' atendimento.id %}" 
+                                   class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-3">
+                                Nenhum atendimento selecionado
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
