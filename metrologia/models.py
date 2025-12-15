@@ -642,6 +642,18 @@ class SolicitacaoCotacao(models.Model):
     # Rastreamento
     atualizado_em = models.DateTimeField(auto_now=True)
     
+    def save(self, *args, **kwargs):
+        # Gera numero automaticamente se não existir
+        if not self.numero:
+            from datetime import datetime
+            year = datetime.now().year
+            # Conta quantas solicitações já foram criadas este ano
+            count = SolicitacaoCotacao.objects.filter(
+                numero__startswith=f"SOL-{year}-"
+            ).count() + 1
+            self.numero = f"SOL-{year}-{count:04d}"
+        super().save(*args, **kwargs)
+    
     def __str__(self):
         return f"{self.numero} - {self.get_status_display()}"
     

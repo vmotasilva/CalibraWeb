@@ -55,38 +55,16 @@ def solicitacao_list(request):
 
 @login_required
 def solicitacao_create(request):
-    """Cria uma nova solicitação de cotação - ETAPA 1"""
-    if request.method == 'POST':
-        form = SolicitacaoCotacaoForm(request.POST)
-        # IDs dos instrumentos selecionados via checkboxes
-        instrumento_ids = request.POST.getlist('instrumentos_selecionados')
-        if form.is_valid():
-            solicitacao = form.save(commit=False)
-            solicitacao.responsavel = request.user
-            solicitacao.save()
-            if instrumento_ids:
-                from metrologia.models import Instrumento, ItemSolicitacaoCotacao
-                for instr_id in instrumento_ids:
-                    try:
-                        instrumento = Instrumento.objects.get(id=instr_id)
-                        ItemSolicitacaoCotacao.objects.create(
-                            solicitacao=solicitacao,
-                            instrumento=instrumento,
-                            necessidade='Necessário',
-                            quantidade=1
-                        )
-                    except Instrumento.DoesNotExist:
-                        pass
-            else:
-                messages.warning(request, "Selecione pelo menos um instrumento para cotação.")
-                solicitacao.delete()
-                return render(request, 'metrologia/novo_fluxo/solicitacao_form.html', {'form': form, 'titulo': 'Criar Solicitação de Cotação'})
-            messages.success(request, f"Solicitação {solicitacao.numero} criada com sucesso!")
-            return redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
-    else:
-        form = SolicitacaoCotacaoForm()
-    context = {'form': form, 'titulo': 'Criar Solicitação de Cotação'}
-    return render(request, 'metrologia/novo_fluxo/solicitacao_form.html', context)
+    """Cria uma nova solicitação de cotação automaticamente - ETAPA 1"""
+    # Criar solicitação com valores padrão
+    solicitacao = SolicitacaoCotacao.objects.create(
+        responsavel=request.user,
+        dias_vencimento=30,  # Valor padrão
+        status='ABERTA'
+    )
+    
+    messages.success(request, f"Solicitação {solicitacao.numero} criada com sucesso!")
+    return redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
 
 
 @login_required
