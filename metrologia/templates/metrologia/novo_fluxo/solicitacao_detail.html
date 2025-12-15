@@ -21,9 +21,14 @@
             </p>
         </div>
         <div class="col-md-4 text-end">
-            <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Voltar
-            </a>
+            <div class="btn-group" role="group">
+                <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+                <a href="{% url 'metrologia:solicitacao_delete' solicitacao.id %}" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Deletar
+                </a>
+            </div>
         </div>
     </div>
 

@@ -15,6 +15,7 @@ urlpatterns = [
     path('solicitacoes/', views.solicitacao_list, name='solicitacao_list'),
     path('solicitacoes/nova/', views.solicitacao_create, name='solicitacao_create'),
     path('solicitacoes/<int:pk>/', views.solicitacao_detail, name='solicitacao_detail'),
+    path('solicitacoes/<int:pk>/deletar/', views.solicitacao_delete, name='solicitacao_delete'),
     path('solicitacoes/<int:pk>/itens/', views.solicitacao_itens, name='solicitacao_itens'),
     path('itens-solicitacao/<int:pk>/editar/', views.item_solicitacao_edit, name='item_solicitacao_edit'),
     path('itens-solicitacao/<int:pk>/deletar/', views.item_solicitacao_delete, name='item_solicitacao_delete'),

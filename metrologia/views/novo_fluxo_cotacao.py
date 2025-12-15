@@ -85,6 +85,21 @@ def solicitacao_detail(request, pk):
 
 
 @login_required
+def solicitacao_delete(request, pk):
+    """Deleta uma solicitação de cotação"""
+    solicitacao = get_object_or_404(SolicitacaoCotacao, pk=pk)
+    
+    if request.method == 'POST':
+        numero = solicitacao.numero
+        solicitacao.delete()
+        messages.success(request, f"Solicitação {numero} deletada com sucesso.")
+        return redirect('metrologia:solicitacao_list')
+    
+    context = {'solicitacao': solicitacao}
+    return render(request, 'metrologia/novo_fluxo/solicitacao_confirm_delete.html', context)
+
+
+@login_required
 def solicitacao_itens(request, pk):
     """Gerencia items de uma solicitação - ETAPA 1"""
     solicitacao = get_object_or_404(SolicitacaoCotacao, pk=pk)
