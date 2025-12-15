@@ -82,10 +82,6 @@
                 </a>
                 
                 <hr class="my-2"> 
-                
-                <a href="/admin/qms/processocotacao/add/" class="btn btn-info text-white btn-action">
-                    💰 Nova Cotação
-                </a>
             </div>
         </div>
         
@@ -119,7 +115,7 @@
                         {% for item in lista_urgentes %}
                         <tr>
                             <td>
-                                <a href="{% url 'visualizar_instrumento' item.id %}" class="text-decoration-none fw-bold text-dark">
+                                <a href="{% url 'modulo_metrologia' %}" class="text-decoration-none fw-bold text-dark">
                                     {{ item.tag }}
                                 </a>
                             </td>

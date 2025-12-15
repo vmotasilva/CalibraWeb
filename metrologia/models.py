@@ -90,6 +90,19 @@ class Instrumento(models.Model):
         'organization.Setor', on_delete=models.SET_NULL, null=True, blank=True
     )
     localizacao = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Tratativa de Calibração
+    TRATATIVA_CHOICES = [
+        ('INTERNA', 'Interna'),
+        ('EXTERNA', 'Externa'),
+    ]
+    tratativa_calibracao = models.CharField(
+        max_length=10,
+        choices=TRATATIVA_CHOICES,
+        default='INTERNA',
+        verbose_name='Tratativa de Calibração',
+        help_text='Indica se a calibração é feita internamente ou com fornecedor externo'
+    )
 
     class Meta:
         verbose_name = "Instrumento"
@@ -557,3 +570,512 @@ class OcorrenciaCotacao(models.Model):
         verbose_name = "Ocorrência de Cotação"
         verbose_name_plural = "Ocorrências de Cotação"
         ordering = ["-data"]
+
+# ==============================================================================
+# NOVO FLUXO DE COTAÇÕES - ETAPAS 1-4
+# ==============================================================================
+
+class SolicitacaoCotacao(models.Model):
+    """
+    ETAPA 1: Solicitação de Cotação - Define necessidades e período de vencimento
+    Agrupa múltiplos instrumentos que precisam de serviço em um mesmo período
+    """
+    STATUS_CHOICES = [
+        ('ABERTA', 'Aberta'),
+        ('AGUARDANDO_COTACOES', 'Aguardando Cotações'),
+        ('COTACOES_RECEBIDAS', 'Cotações Recebidas'),
+        ('ENCERRADA', 'Encerrada'),
+        ('CANCELADA', 'Cancelada'),
+    ]
+    
+    PRIORIDADE_CHOICES = [
+        ('BAIXA', 'Baixa'),
+        ('MEDIA', 'Média'),
+        ('ALTA', 'Alta'),
+        ('CRITICA', 'Crítica'),
+    ]
+    
+    # Identificação
+    numero = models.CharField(
+        max_length=20,
+        unique=True,
+        verbose_name='Número da Solicitação',
+        help_text='Auto-gerado: SOL-YYYY-####'
+    )
+    
+    # Dados principais
+    data_criacao = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Data de Criação'
+    )
+    responsavel = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacoes_cotacao_criadas',
+        verbose_name='Responsável'
+    )
+    departamento = models.ForeignKey(
+        'organization.Setor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Departamento / Setor'
+    )
+    
+    # Período de vencimento
+    dias_vencimento = models.PositiveIntegerField(
+        default=30,
+        verbose_name='Dias no Futuro',
+        help_text='Quantos dias no futuro buscar instrumentos vencidos ou vencendo'
+    )
+    
+    # Status e Controle
+    status = models.CharField(
+        max_length=25,
+        choices=STATUS_CHOICES,
+        default='ABERTA',
+        verbose_name='Status'
+    )
+    
+    # Rastreamento
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.numero} - {self.get_status_display()}"
+    
+    class Meta:
+        verbose_name = "Solicitação de Cotação"
+        verbose_name_plural = "Solicitações de Cotação"
+        ordering = ["-data_criacao"]
+
+
+class ItemSolicitacaoCotacao(models.Model):
+    """
+    ETAPA 1: Itens da Solicitação - Cada instrumento que será cotado
+    """
+    solicitacao = models.ForeignKey(
+        SolicitacaoCotacao,
+        on_delete=models.CASCADE,
+        related_name='itens',
+        verbose_name='Solicitação'
+    )
+    instrumento = models.ForeignKey(
+        Instrumento,
+        on_delete=models.PROTECT,
+        related_name='solicitacoes_itens',
+        verbose_name='Instrumento'
+    )
+    
+    # Pontos de Calibração
+    TIPO_PONTOS_CHOICES = [
+        ('3', '3 Pontos'),
+        ('6', '6 Pontos'),
+        ('9', '9 Pontos'),
+    ]
+    
+    tipo_pontos = models.CharField(
+        max_length=1,
+        choices=TIPO_PONTOS_CHOICES,
+        default='3',
+        verbose_name='Tipo de Pontos de Calibração'
+    )
+    
+    # Faixas de medição para cada tipo de ponto
+    # Para 3 pontos
+    faixa_min = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Faixa Mínima'
+    )
+    faixa_centro = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Faixa Centro'
+    )
+    faixa_max = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Faixa Máxima'
+    )
+    
+    # Unidade de medida dos pontos
+    unidade_pontos = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name='Unidade dos Pontos'
+    )
+    
+    # Notas
+    notas = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Notas Adicionais'
+    )
+    
+    # Rastreamento
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.solicitacao.numero} - {self.instrumento.tag}"
+    
+    class Meta:
+        verbose_name = "Item da Solicitação de Cotação"
+        verbose_name_plural = "Itens da Solicitação de Cotação"
+        unique_together = ('solicitacao', 'instrumento')
+        ordering = ['instrumento__tag']
+
+
+class CotacaoFornecedor(models.Model):
+    """
+    ETAPA 2: Cotação do Fornecedor - Proposta de um fornecedor para atender solicitação
+    """
+    STATUS_CHOICES = [
+        ('RASCUNHO', 'Rascunho'),
+        ('ENVIADA', 'Enviada para Fornecedor'),
+        ('RESPONDIDA', 'Proposta Respondida'),
+        ('ACEITA', 'Aceita'),
+        ('REJEITADA', 'Rejeitada'),
+        ('CANCELADA', 'Cancelada'),
+    ]
+    
+    # Ligação com a necessidade
+    solicitacao = models.ForeignKey(
+        SolicitacaoCotacao,
+        on_delete=models.CASCADE,
+        related_name='cotacoes_fornecedores',
+        verbose_name='Solicitação'
+    )
+    fornecedor = models.ForeignKey(
+        'fornecedores.Fornecedor',
+        on_delete=models.PROTECT,
+        related_name='cotacoes_novo_fluxo',
+        verbose_name='Fornecedor'
+    )
+    
+    # Identificação
+    numero = models.CharField(
+        max_length=20,
+        unique=True,
+        verbose_name='Número da Cotação',
+        help_text='Auto-gerado: COT-YYYY-####-FOR###'
+    )
+    data_criacao = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Data de Criação'
+    )
+    data_envio_para_fornecedor = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Data de Envio para Fornecedor'
+    )
+    data_proposta_recebida = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Data de Recebimento da Proposta'
+    )
+    
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='RASCUNHO',
+        verbose_name='Status'
+    )
+    
+    # Observações gerais
+    observacoes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Observações Gerais da Cotação'
+    )
+    
+    # Rastreamento
+    criado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cotacoes_fornecedor_criadas',
+        verbose_name='Criado por'
+    )
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.numero} - {self.fornecedor.empresa}"
+    
+    def get_valor_total(self):
+        """Calcula o valor total da cotação"""
+        return sum(item.valor_total for item in self.itens.all())
+    
+    class Meta:
+        verbose_name = "Cotação do Fornecedor"
+        verbose_name_plural = "Cotações de Fornecedores"
+        ordering = ["-data_criacao"]
+        unique_together = ('solicitacao', 'fornecedor')
+
+
+class ItemCotacao(models.Model):
+    """
+    ETAPA 2: Item da Cotação - Detalhe de cada instrumento/serviço na cotação do fornecedor
+    """
+    TIPO_SERVICO_CHOICES = [
+        ('CALIBRACAO', 'Calibração de Instrumento Existente'),
+        ('AQUISICAO', 'Aquisição de Instrumento Novo'),
+    ]
+    
+    cotacao_fornecedor = models.ForeignKey(
+        CotacaoFornecedor,
+        on_delete=models.CASCADE,
+        related_name='itens',
+        verbose_name='Cotação do Fornecedor'
+    )
+    item_solicitacao = models.ForeignKey(
+        ItemSolicitacaoCotacao,
+        on_delete=models.PROTECT,
+        related_name='cotacoes_itens',
+        verbose_name='Item da Solicitação'
+    )
+    instrumento = models.ForeignKey(
+        Instrumento,
+        on_delete=models.PROTECT,
+        related_name='cotacoes_itens',
+        verbose_name='Instrumento'
+    )
+    
+    # O fornecedor consegue atender?
+    pode_atender = models.BooleanField(
+        default=False,
+        verbose_name='Pode Atender esta Necessidade?'
+    )
+    
+    # Tipo de serviço (importante para automatizações)
+    tipo_servico = models.CharField(
+        max_length=20,
+        choices=TIPO_SERVICO_CHOICES,
+        default='CALIBRACAO',
+        verbose_name='Tipo de Serviço'
+    )
+    
+    # Valores
+    valor_unitario = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='Valor Unitário (R$)'
+    )
+    quantidade = models.IntegerField(
+        default=1,
+        verbose_name='Quantidade'
+    )
+    valor_total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='Valor Total (R$)',
+        help_text='Calculado automaticamente: valor_unitário × quantidade'
+    )
+    
+    # Prazo
+    prazo_dias = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Prazo (dias)',
+        help_text='Quantos dias para executar o serviço?'
+    )
+    
+    # Descrição
+    descricao_servico = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Descrição do Serviço',
+        help_text='Detalhe do que será feito, normas aplicáveis, etc.'
+    )
+    
+    # Rastreamento
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        """Calcula valor_total antes de salvar"""
+        self.valor_total = self.valor_unitario * self.quantidade
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.cotacao_fornecedor.numero} - {self.instrumento.tag}"
+    
+    class Meta:
+        verbose_name = "Item da Cotação"
+        verbose_name_plural = "Itens de Cotação"
+        unique_together = ('cotacao_fornecedor', 'instrumento')
+        ordering = ['instrumento__tag']
+
+
+class AtendimentoSolicitacao(models.Model):
+    """
+    ETAPA 3: Atendimento - Define qual cotação atenderá qual necessidade
+    Permite múltiplas cotações para mesma necessidade (ex: 2 fornecedores diferentes)
+    """
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('CONFIRMADA', 'Confirmada'),
+        ('EXECUTANDO', 'Executando'),
+        ('CONCLUIDA', 'Concluída'),
+        ('CANCELADA', 'Cancelada'),
+    ]
+    
+    solicitacao = models.ForeignKey(
+        SolicitacaoCotacao,
+        on_delete=models.CASCADE,
+        related_name='atendimentos',
+        verbose_name='Solicitação'
+    )
+    item_solicitacao = models.ForeignKey(
+        ItemSolicitacaoCotacao,
+        on_delete=models.PROTECT,
+        related_name='atendimentos',
+        verbose_name='Item da Solicitação'
+    )
+    item_cotacao = models.ForeignKey(
+        ItemCotacao,
+        on_delete=models.PROTECT,
+        related_name='atendimentos',
+        verbose_name='Item da Cotação (Fornecedor)'
+    )
+    
+    # Rastreamento
+    data_escolha = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Data da Escolha'
+    )
+    responsavel = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='atendimentos_definidos',
+        verbose_name='Responsável pela Escolha'
+    )
+    
+    # Planejamento
+    data_prevista_atendimento = models.DateField(
+        verbose_name='Data Prevista de Atendimento',
+        help_text='Quando será executado o serviço?'
+    )
+    observacoes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Observações'
+    )
+    
+    # Status
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_CHOICES,
+        default='PENDENTE',
+        verbose_name='Status'
+    )
+    
+    # Rastreamento adicional
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Atendimento #{self.id} - {self.item_solicitacao.instrumento.tag}"
+    
+    class Meta:
+        verbose_name = "Atendimento de Solicitação"
+        verbose_name_plural = "Atendimentos de Solicitação"
+        ordering = ['-data_escolha']
+        # Permite múltiplas cotações para mesma necessidade
+        # unique_together = ('item_solicitacao', 'item_cotacao')
+
+
+class ProcessoAutomatizacao(models.Model):
+    """
+    ETAPA 4: Rastreamento de processos automáticos disparados pelo atendimento
+    Quando um atendimento é confirmado, cria automaticamente:
+    - RegistroCalibracao (se tipo_servico = 'CALIBRACAO')
+    - Processo de Substituição (se tipo_servico = 'AQUISICAO')
+    """
+    TIPO_PROCESSO_CHOICES = [
+        ('AQUISICAO', 'Aquisição de Instrumento'),
+        ('CALIBRACAO', 'Calibração'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('ATIVA', 'Ativa'),
+        ('CONCLUIDA', 'Concluída'),
+        ('ERRO', 'Erro'),
+        ('CANCELADA', 'Cancelada'),
+    ]
+    
+    atendimento = models.ForeignKey(
+        AtendimentoSolicitacao,
+        on_delete=models.CASCADE,
+        related_name='processos_automatizacao',
+        verbose_name='Atendimento'
+    )
+    
+    # Tipo de processo
+    tipo_processo = models.CharField(
+        max_length=20,
+        choices=TIPO_PROCESSO_CHOICES,
+        verbose_name='Tipo de Processo'
+    )
+    
+    # Rastreamento
+    data_inicio = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Data de Início'
+    )
+    data_conclusao = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Data de Conclusão'
+    )
+    
+    # Referência ao objeto criado (dinâmico: pode ser RegistroCalibracao, Substituicao, etc.)
+    id_objeto_criado = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='ID do Objeto Criado'
+    )
+    nome_modelo_objeto = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name='Modelo do Objeto',
+        help_text='Ex: RegistroCalibracao, ProcessoSubstituicao'
+    )
+    
+    # Status
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_CHOICES,
+        default='ATIVA',
+        verbose_name='Status'
+    )
+    
+    # Observações
+    observacoes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Observações',
+        help_text='Registrar erros ou detalhes do processo'
+    )
+    
+    # Rastreamento
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Processo {self.get_tipo_processo_display()} - Atendimento #{self.atendimento.id}"
+    
+    class Meta:
+        verbose_name = "Processo de Automatização"
+        verbose_name_plural = "Processos de Automatização"
+        ordering = ['-data_inicio']

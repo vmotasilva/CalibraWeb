@@ -2,7 +2,9 @@ from django.contrib import admin
 from .models import (
     CategoriaInstrumento, Instrumento, FaixaMedicao, HistoricoCalibracao,
     ArquivoPadrao, ResultadoFaixaCalibracao, OrdemCalibracao,
-    InstrumentoReferencia, FaixaMedicaoPadrao, Cotacao, OcorrenciaCotacao
+    InstrumentoReferencia, FaixaMedicaoPadrao, Cotacao, OcorrenciaCotacao,
+    SolicitacaoCotacao, ItemSolicitacaoCotacao, CotacaoFornecedor, 
+    ItemCotacao, AtendimentoSolicitacao, ProcessoAutomatizacao
 )
 from qms.models import SolicitacaoInstrumento, OcorrenciaInstrumento
 from qms.admin import admin_site
@@ -15,9 +17,9 @@ class CategoriaInstrumentoAdmin(admin.ModelAdmin):
 
 
 class InstrumentoAdmin(admin.ModelAdmin):
-    list_display = ['tag', 'descricao', 'categoria', 'ativo', 'data_proxima_calibracao']
+    list_display = ['tag', 'descricao', 'categoria', 'tratativa_calibracao', 'ativo', 'data_proxima_calibracao']
     search_fields = ['tag', 'descricao', 'serie']
-    list_filter = ['categoria', 'ativo']
+    list_filter = ['categoria', 'tratativa_calibracao', 'ativo']
     list_select_related = ['categoria', 'responsavel', 'setor']  # FK optimization
     list_prefetch_related = ['processocotacao']  # M2M optimization
     ordering = ['-ativo', 'tag']
@@ -181,3 +183,145 @@ admin_site.register(InstrumentoReferencia, InstrumentoReferenciaAdmin)
 admin_site.register(FaixaMedicaoPadrao, FaixaMedicaoPadraoAdmin)
 admin_site.register(Cotacao, CotacaoAdmin)
 admin_site.register(OcorrenciaCotacao, OcorrenciaCotacaoAdmin)
+
+
+# ==============================================================================
+# NOVO FLUXO DE COTAÇÕES - ETAPAS 1-4
+# ==============================================================================
+
+class ItemSolicitacaoCotacaoInline(admin.TabularInline):
+    model = ItemSolicitacaoCotacao
+    extra = 1
+    fields = ['instrumento', 'necessidade', 'quantidade', 'notas']
+
+
+class SolicitacaoCotacaoAdmin(admin.ModelAdmin):
+    list_display = ['numero', 'status', 'responsavel', 'data_criacao']
+    search_fields = ['numero', 'responsavel__username']
+    list_filter = ['status', 'data_criacao', 'departamento']
+    readonly_fields = ['numero', 'data_criacao', 'atualizado_em']
+    inlines = [ItemSolicitacaoCotacaoInline]
+    fieldsets = (
+        ('Identificação', {
+            'fields': ('numero', 'data_criacao', 'atualizado_em')
+        }),
+        ('Responsáveis', {
+            'fields': ('responsavel', 'departamento')
+        }),
+        ('Período de Vencimento', {
+            'fields': ('dias_vencimento',)
+        }),
+        ('Status', {
+            'fields': ('status',)
+        }),
+    )
+    ordering = ['-data_criacao']
+
+
+class ItemCotacaoInline(admin.TabularInline):
+    model = ItemCotacao
+    extra = 1
+    fields = ['instrumento', 'pode_atender', 'tipo_servico', 'valor_unitario', 'quantidade', 'valor_total', 'prazo_dias']
+    readonly_fields = ['valor_total']
+
+
+class CotacaoFornecedorAdmin(admin.ModelAdmin):
+    list_display = ['numero', 'fornecedor', 'status', 'solicitacao', 'data_criacao']
+    search_fields = ['numero', 'fornecedor__empresa', 'observacoes']
+    list_filter = ['status', 'data_criacao', 'solicitacao']
+    readonly_fields = ['numero', 'data_criacao', 'atualizado_em']
+    inlines = [ItemCotacaoInline]
+    fieldsets = (
+        ('Identificação', {
+            'fields': ('numero', 'solicitacao', 'fornecedor', 'data_criacao', 'atualizado_em')
+        }),
+        ('Datas Importantes', {
+            'fields': ('data_envio_para_fornecedor', 'data_proposta_recebida'),
+            'classes': ('collapse',)
+        }),
+        ('Status e Observações', {
+            'fields': ('status', 'observacoes')
+        }),
+        ('Rastreamento', {
+            'fields': ('criado_por',),
+            'classes': ('collapse',)
+        }),
+    )
+    ordering = ['-data_criacao']
+
+
+class ItemCotacaoAdmin(admin.ModelAdmin):
+    list_display = ['instrumento', 'cotacao_fornecedor', 'pode_atender', 'tipo_servico', 'valor_total', 'prazo_dias']
+    search_fields = ['instrumento__tag', 'cotacao_fornecedor__numero', 'descricao_servico']
+    list_filter = ['pode_atender', 'tipo_servico', 'data_criacao']
+    readonly_fields = ['valor_total', 'data_criacao']
+    fieldsets = (
+        ('Identificação', {
+            'fields': ('cotacao_fornecedor', 'item_solicitacao', 'instrumento', 'data_criacao')
+        }),
+        ('Capacidade de Atendimento', {
+            'fields': ('pode_atender', 'tipo_servico')
+        }),
+        ('Valores', {
+            'fields': ('valor_unitario', 'quantidade', 'valor_total')
+        }),
+        ('Execução', {
+            'fields': ('prazo_dias', 'descricao_servico')
+        }),
+    )
+    ordering = ['-data_criacao']
+
+
+class AtendimentoSolicitacaoAdmin(admin.ModelAdmin):
+    list_display = ['id', 'item_solicitacao', 'item_cotacao', 'status', 'data_prevista_atendimento', 'responsavel']
+    search_fields = ['item_solicitacao__instrumento__tag', 'solicitacao__numero']
+    list_filter = ['status', 'data_escolha', 'data_prevista_atendimento']
+    readonly_fields = ['data_escolha', 'atualizado_em']
+    fieldsets = (
+        ('Necessidade e Cotação', {
+            'fields': ('solicitacao', 'item_solicitacao', 'item_cotacao')
+        }),
+        ('Atribuição', {
+            'fields': ('responsavel', 'data_escolha')
+        }),
+        ('Execução', {
+            'fields': ('data_prevista_atendimento', 'status')
+        }),
+        ('Observações', {
+            'fields': ('observacoes', 'atualizado_em')
+        }),
+    )
+    ordering = ['-data_escolha']
+
+
+class ProcessoAutomatizacaoAdmin(admin.ModelAdmin):
+    list_display = ['id', 'atendimento', 'tipo_processo', 'status', 'data_inicio', 'data_conclusao']
+    search_fields = ['atendimento__id', 'observacoes']
+    list_filter = ['tipo_processo', 'status', 'data_inicio']
+    readonly_fields = ['data_inicio', 'data_conclusao', 'atualizado_em']
+    fieldsets = (
+        ('Atendimento', {
+            'fields': ('atendimento',)
+        }),
+        ('Processo', {
+            'fields': ('tipo_processo', 'status')
+        }),
+        ('Objeto Criado', {
+            'fields': ('nome_modelo_objeto', 'id_objeto_criado')
+        }),
+        ('Timeline', {
+            'fields': ('data_inicio', 'data_conclusao', 'atualizado_em')
+        }),
+        ('Observações', {
+            'fields': ('observacoes',)
+        }),
+    )
+    ordering = ['-data_inicio']
+
+
+admin_site.register(SolicitacaoCotacao, SolicitacaoCotacaoAdmin)
+admin_site.register(ItemSolicitacaoCotacao, admin.ModelAdmin)
+admin_site.register(CotacaoFornecedor, CotacaoFornecedorAdmin)
+admin_site.register(ItemCotacao, ItemCotacaoAdmin)
+admin_site.register(AtendimentoSolicitacao, AtendimentoSolicitacaoAdmin)
+admin_site.register(ProcessoAutomatizacao, ProcessoAutomatizacaoAdmin)

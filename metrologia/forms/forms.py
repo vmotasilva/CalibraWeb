@@ -4,7 +4,12 @@ Forms para Metrologia Module
 """
 
 from django import forms
-from metrologia.models import Instrumento, HistoricoCalibracao, FaixaMedicao
+from metrologia.models import (
+    Instrumento, HistoricoCalibracao, FaixaMedicao, Cotacao, OcorrenciaCotacao,
+    SolicitacaoCotacao, ItemSolicitacaoCotacao, CotacaoFornecedor,
+    ItemCotacao, AtendimentoSolicitacao
+)
+from .widgets import InstrumentosModalWidget
 
 
 class InstrumentoForm(forms.ModelForm):
@@ -14,7 +19,7 @@ class InstrumentoForm(forms.ModelForm):
         model = Instrumento
         fields = [
             'tag', 'descricao', 'categoria', 'setor', 'fabricante', 'modelo', 
-            'serie', 'frequencia_meses', 'ativo'
+            'serie', 'frequencia_meses', 'tratativa_calibracao', 'ativo'
         ]
         widgets = {
             'tag': forms.TextInput(attrs={
@@ -35,6 +40,7 @@ class InstrumentoForm(forms.ModelForm):
                 'min': '0',
                 'step': '1'
             }),
+            'tratativa_calibracao': forms.Select(attrs={'class': 'form-select'}),
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
@@ -153,3 +159,221 @@ class FaixaMedicaoFormWithValidation(forms.ModelForm):
                 )
         
         return cleaned_data
+
+
+class CotacaoForm(forms.ModelForm):
+    """Formulário para criar/editar cotações."""
+
+    class Meta:
+        model = Cotacao
+        fields = ['fornecedor', 'instrumentos', 'valor', 'observacoes']
+        widgets = {
+            'fornecedor': forms.Select(attrs={'class': 'form-select'}),
+            'instrumentos': forms.SelectMultiple(attrs={'class': 'form-select', 'size': '10'}),
+            'valor': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': 'Valor da cotação'
+            }),
+            'observacoes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Observações sobre a cotação'
+            }),
+        }
+
+    def clean_instrumentos(self):
+        data = self.cleaned_data.get('instrumentos')
+        if isinstance(data, str):
+            # Se vier como string separada por vírgula
+            ids = [int(i) for i in data.split(',') if i.strip().isdigit()]
+            return ids
+        elif isinstance(data, list):
+            return [int(i) for i in data if str(i).strip().isdigit()]
+        return data
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Se o POST vier com instrumentos_ids como string, converte para lista
+        data = self.data
+        if data and 'instrumentos_ids' in data:
+            val = data.get('instrumentos_ids')
+            if isinstance(val, str):
+                ids = [int(i) for i in val.split(',') if i.strip().isdigit()]
+                self.data = self.data.copy()
+                self.data.setlist('instrumentos', [str(i) for i in ids])
+
+
+class CotacaoAprovarForm(forms.ModelForm):
+    """Formulário para aprovar cotações."""
+    
+    class Meta:
+        model = Cotacao
+        fields = ['valor', 'observacoes']
+        widgets = {
+            'valor': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': 'Valor aprovado'
+            }),
+            'observacoes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Observações da aprovação'
+            }),
+        }
+
+
+class OcorrenciaCotacaoForm(forms.ModelForm):
+    """Formulário para registrar ocorrências em cotações."""
+    
+    class Meta:
+        model = OcorrenciaCotacao
+        fields = ['tipo', 'descricao', 'acao_tomada']
+        widgets = {
+            'tipo': forms.Select(attrs={'class': 'form-select'}),
+            'descricao': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Descrição da ocorrência'
+            }),
+            'acao_tomada': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Ação tomada para resolver'
+            }),
+        }
+
+# ==============================================================================
+# NOVO FLUXO DE COTAÇÕES - ETAPAS 1-4
+# ==============================================================================
+
+class SolicitacaoCotacaoForm(forms.ModelForm):
+    """ETAPA 1: Formulário para criar uma Solicitação de Cotação"""
+    
+
+    
+    class Meta:
+        model = SolicitacaoCotacao
+        fields = ['dias_vencimento']
+        widgets = {
+            'dias_vencimento': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'type': 'number',
+                'min': '1',
+                'max': '365',
+                'value': '30',
+                'placeholder': 'Ex: 30'
+            }),
+        }
+    
+
+    
+
+
+
+class ItemSolicitacaoCotacaoForm(forms.ModelForm):
+    """ETAPA 1: Formulário para adicionar itens (instrumentos) à solicitação"""
+    
+    class Meta:
+        model = ItemSolicitacaoCotacao
+        fields = ['instrumento', 'tipo_pontos', 'faixa_min', 'faixa_centro', 'faixa_max', 'unidade_pontos', 'notas']
+        widgets = {
+            'instrumento': forms.Select(attrs={'class': 'form-select'}),
+            'tipo_pontos': forms.Select(attrs={'class': 'form-select'}),
+            'faixa_min': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Faixa Mínima',
+                'step': '0.0001'
+            }),
+            'faixa_centro': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Faixa Centro',
+                'step': '0.0001'
+            }),
+            'faixa_max': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Faixa Máxima',
+                'step': '0.0001'
+            }),
+            'unidade_pontos': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: mm, V, °C'
+            }),
+            'notas': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Notas adicionais (opcional)'
+            }),
+        }
+
+
+class CotacaoFornecedorForm(forms.ModelForm):
+    """ETAPA 2: Formulário para criar uma Cotação do Fornecedor"""
+    
+    class Meta:
+        model = CotacaoFornecedor
+        fields = ['fornecedor', 'observacoes']
+        widgets = {
+            'fornecedor': forms.Select(attrs={'class': 'form-select'}),
+            'observacoes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Observações gerais sobre a cotação'
+            }),
+        }
+
+
+class ItemCotacaoForm(forms.ModelForm):
+    """ETAPA 2: Formulário para adicionar itens (instrumentos) à cotação do fornecedor"""
+    
+    class Meta:
+        model = ItemCotacao
+        fields = ['item_solicitacao', 'instrumento', 'pode_atender', 'tipo_servico', 
+                  'valor_unitario', 'quantidade', 'prazo_dias', 'descricao_servico']
+        widgets = {
+            'item_solicitacao': forms.Select(attrs={'class': 'form-select'}),
+            'instrumento': forms.Select(attrs={'class': 'form-select'}),
+            'pode_atender': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'tipo_servico': forms.RadioSelect(attrs={'class': 'form-check-input'}),
+            'valor_unitario': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': 'R$ 0,00'
+            }),
+            'quantidade': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'value': '1'
+            }),
+            'prazo_dias': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'placeholder': 'Dias para executar'
+            }),
+            'descricao_servico': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Detalhe do serviço, normas aplicáveis, etc.'
+            }),
+        }
+
+
+class AtendimentoSolicitacaoForm(forms.ModelForm):
+    """ETAPA 3: Formulário para selecionar qual cotação atenderá cada necessidade"""
+    
+    class Meta:
+        model = AtendimentoSolicitacao
+        fields = ['item_cotacao', 'data_prevista_atendimento', 'observacoes']
+        widgets = {
+            'item_cotacao': forms.Select(attrs={'class': 'form-select'}),
+            'data_prevista_atendimento': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date'
+            }),
+            'observacoes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Observações sobre a escolha (opcional)'
+            }),
+        }

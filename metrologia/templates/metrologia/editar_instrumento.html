@@ -15,6 +15,10 @@
                         <a href="{% url 'visualizar_instrumento' instrumento.id %}" class="btn btn-light btn-sm">
                             <i class="fas fa-times"></i> Cancelar
                         </a>
+                        <!-- Botão Voltar para lista de instrumentos com filtros -->
+                        <a href="{% url 'modulo_metrologia' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary ms-2">
+                            <i class="bi bi-arrow-left"></i> Voltar para lista
+                        </a>
                     </div>
                 </div>
 
@@ -133,16 +137,24 @@
                                 </div>
 
                                 <div class="row">
-                                    <div class="col-md-6 mb-3">
+                                    <div class="col-md-4 mb-3">
                                         <label for="id_frequencia_meses" class="form-label">Frequência (meses)</label>
                                         <input type="number" class="form-control" id="id_frequencia_meses" name="frequencia_meses" 
                                             value="{{ instrumento.frequencia_meses|default:'12' }}" min="1">
                                     </div>
-                                    <div class="col-md-6 mb-3">
+                                    <div class="col-md-4 mb-3">
                                         <label for="id_tolerancia_processo" class="form-label">Tolerância do Processo (+/-)</label>
                                         <input type="text" class="form-control" id="id_tolerancia_processo" name="tolerancia_processo"
                                             value="{% if instrumento.tolerancia_processo %}{{ instrumento.tolerancia_processo }}{% endif %}"
                                             placeholder="Ex: 0.1000">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="id_tratativa_calibracao" class="form-label">Tratativa de Calibração <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="id_tratativa_calibracao" name="tratativa_calibracao" required>
+                                            <option value="">-- Selecione --</option>
+                                            <option value="INTERNA" {% if instrumento.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>Interna</option>
+                                            <option value="EXTERNA" {% if instrumento.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>Externa</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

@@ -35,6 +35,30 @@ from .views import (
     api_faixa_medicao_view,
 )
 
+from .novo_fluxo_cotacao import (
+    # ETAPA 1: Solicitação de Cotação
+    solicitacao_list,
+    solicitacao_create,
+    solicitacao_detail,
+    solicitacao_itens,
+    item_solicitacao_edit,
+    item_solicitacao_delete,
+    
+    # ETAPA 2: Cotações de Fornecedores
+    cotacao_fornecedor_create,
+    cotacao_fornecedor_detail,
+    cotacao_fornecedor_itens,
+    item_cotacao_delete,
+    
+    # ETAPA 3: Atendimentos
+    atendimento_create,
+    atendimento_detail,
+    atendimento_confirmar,
+    
+    # API
+    api_instrumentos_vencendo,
+)
+
 __all__ = [
     'renomear_arquivo_padrao_view',
     'remover_arquivo_padrao_view',
@@ -54,4 +78,18 @@ __all__ = [
     'aplicar_carimbo_certificado_view',
     'visualizar_historico_calibracao_view',
     'api_faixa_medicao_view',
-]
+    # NOVO FLUXO
+    'solicitacao_list',
+    'solicitacao_create',
+    'solicitacao_detail',
+    'solicitacao_itens',
+    'item_solicitacao_edit',
+    'item_solicitacao_delete',
+    'cotacao_fornecedor_create',
+    'cotacao_fornecedor_detail',
+    'cotacao_fornecedor_itens',
+    'item_cotacao_delete',
+    'atendimento_create',
+    'atendimento_detail',
+    'atendimento_confirmar',
+    'api_instrumentos_vencendo',]

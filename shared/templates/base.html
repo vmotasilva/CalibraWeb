@@ -36,18 +36,21 @@
                     <ul class="dropdown-menu shadow">
                         <li><h6 class="dropdown-header text-muted">VISÃO GERAL</h6></li>
                         <li>
-                            <a class="dropdown-item" href="{% url 'home' %}">
+                            <a class="dropdown-item" href="{% url 'dashboard' %}">
                                 <i class="bi bi-speedometer2"></i> Dashboard Metrologia
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{% url 'nova_solicitacao' %}">
+                            <a class="dropdown-item" href="{% url 'metrologia:solicitacao_list' %}">
                                 <i class="bi bi-hand-index-thumb"></i> Nova Solicitação
                             </a>
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header text-muted">GESTÃO</h6></li>
                         <li><a class="dropdown-item" href="{% url 'modulo_metrologia' %}">📋 Lista de Instrumentos</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">COTAÇÕES</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'metrologia:solicitacao_list' %}">📝 Solicitações de Cotação</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
                         <li><a class="dropdown-item" href="{% url 'importar_instrumentos' %}">📥 Importar Instrumentos</a></li>

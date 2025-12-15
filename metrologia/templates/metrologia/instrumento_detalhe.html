@@ -24,6 +24,7 @@
             <a href="{% url 'modulo_metrologia' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary me-2">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
+            </a>
             {% if instrumento.ativo %}
                 <span class="badge bg-success fs-6 px-3 py-2">ATIVO</span>
             {% else %}
@@ -80,6 +81,21 @@
                                 {{ instrumento.data_proxima_calibracao|date:"d/m/Y"|default:"-" }}
                             </div>
                         </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="label-detail">Tratativa de Calibração</div>
+                    <div class="value-detail">
+                        {% if instrumento.tratativa_calibracao == 'INTERNA' %}
+                            <span class="badge bg-info">
+                                <i class="bi bi-building"></i> Interna
+                            </span>
+                        {% else %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-briefcase"></i> Externa
+                            </span>
+                        {% endif %}
                     </div>
                 </div>
             </div>

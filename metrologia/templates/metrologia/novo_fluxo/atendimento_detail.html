@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}Atendimento #{{ atendimento.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="bi bi-check2-square"></i> Atendimento #{{ atendimento.id }}</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            {% if atendimento.status == 'PENDENTE' %}
+                <a href="{% url 'metrologia:atendimento_confirmar' atendimento.id %}" 
+                   class="btn btn-success" 
+                   onclick="return confirm('Confirmar este atendimento? Isso pode disparar automatizações.')">
+                    <i class="bi bi-check-circle"></i> Confirmar
+                </a>
+            {% endif %}
+            <a href="javascript:history.back()" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Necessidade</h6>
+                </div>
+                <div class="card-body">
+                    <p>
+                        <strong>Solicitação:</strong> {{ atendimento.solicitacao.numero }}<br>
+                        <strong>Instrumento:</strong> {{ atendimento.item_solicitacao.instrumento.tag }}<br>
+                        <strong>Necessidade:</strong> {{ atendimento.item_solicitacao.necessidade }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Cotação Selecionada</h6>
+                </div>
+                <div class="card-body">
+                    <p>
+                        <strong>Cotação:</strong> {{ atendimento.item_cotacao.cotacao_fornecedor.numero }}<br>
+                        <strong>Fornecedor:</strong> {{ atendimento.item_cotacao.cotacao_fornecedor.fornecedor.empresa }}<br>
+                        <strong>Valor:</strong> R$ {{ atendimento.item_cotacao.valor_total|floatformat:2 }}<br>
+                        <strong>Tipo:</strong> 
+                        {% if atendimento.item_cotacao.tipo_servico == 'CALIBRACAO' %}
+                            <span class="badge bg-info">Calibração</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Aquisição</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h6 class="mb-0">Detalhes do Atendimento</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>
+                        <strong>Status:</strong> 
+                        <span class="badge bg-info">{{ atendimento.get_status_display }}</span>
+                    </p>
+                    <p>
+                        <strong>Data Prevista:</strong> 
+                        {{ atendimento.data_prevista_atendimento|date:"d/m/Y" }}
+                    </p>
+                    <p>
+                        <strong>Responsável:</strong>
+                        {{ atendimento.responsavel.get_full_name|default:atendimento.responsavel.username }}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p>
+                        <strong>Data Escolha:</strong>
+                        {{ atendimento.data_escolha|date:"d/m/Y H:i" }}
+                    </p>
+                    <p>
+                        <strong>Última Atualização:</strong>
+                        {{ atendimento.atualizado_em|date:"d/m/Y H:i" }}
+                    </p>
+                </div>
+            </div>
+            {% if atendimento.observacoes %}
+                <p>
+                    <strong>Observações:</strong><br>
+                    {{ atendimento.observacoes }}
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -8,3 +8,4 @@ class MetrologiaConfig(AppConfig):
     
     def ready(self):
         import metrologia.signals
+        import metrologia.signals_novo_fluxo

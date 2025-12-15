@@ -35,6 +35,12 @@ from qms.views_helpers import dl_df, dl_generic, parse_date
 # ==============================================================================
 
 @login_required
+@login_required
+def home_view(request):
+    """Página inicial com boas-vindas ao usuário."""
+    return render(request, 'shared/home.html')
+
+
 def dashboard_view(request):
     """Dashboard principal agregando dados de todos os módulos."""
     nome_display = request.user.username

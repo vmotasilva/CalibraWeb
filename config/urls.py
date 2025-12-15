@@ -18,9 +18,15 @@ from qms.views import (
     remover_carimbo_certificado_view
 )
 from shared.views import (
-    dl_template_instr, dl_template_colab, dl_template_hierarquia,
-    dl_template_historico, dl_template_ferias, dl_template_categorias,
-    dl_template_procedimentos, dl_template_colab_dados
+    home_view,
+    dl_template_instr,
+    dl_template_colab,
+    dl_template_hierarquia,
+    dl_template_historico,
+    dl_template_ferias,
+    dl_template_categorias,
+    dl_template_procedimentos,
+    dl_template_colab_dados
 )
 
 # Health check view for Railway
@@ -98,9 +104,12 @@ urlpatterns = [
     # 1. Health check for Railway
     path("healthz", health_check, name="health_check"),
     path("health", health_check, name="health"),
-    
+
+    # Página inicial personalizada (agora padrão)
+    path("", home_view, name="home"),
+    path("home/", home_view, name="home_page"),
+
     # 2. Dashboard principal
-    path("", root_view, name="home"),  # 'home' is used in templates
     path("dashboard/", root_view, name="dashboard"),  # alternative name
     
     # 3. Admin
@@ -154,6 +163,8 @@ urlpatterns = [
     path("api/", include("qms.urls")),
     # Fornecedores
     path("fornecedores/", include("fornecedores.urls")),
+    # Metrologia - Cotação module URLs
+    path("metrologia/", include("metrologia.urls")),
     
     # 7. RH app URLs
     path("rh/", modulo_rh_view, name="modulo_rh"),

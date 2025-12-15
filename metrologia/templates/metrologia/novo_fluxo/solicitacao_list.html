@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Solicitações de Cotação{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>
+                <i class="bi bi-file-earmark-text"></i> Solicitações de Cotação
+            </h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'metrologia:solicitacao_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Nova Solicitação
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-6">
+                    <label for="status" class="form-label">Status</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">Todos os status</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if status == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="prioridade" class="form-label">Prioridade</label>
+                    <select name="prioridade" id="prioridade" class="form-select">
+                        <option value="">Todas as prioridades</option>
+                        {% for value, label in prioridade_choices %}
+                            <option value="{{ value }}" {% if prioridade == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                    <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-sm btn-secondary">
+                        <i class="bi bi-arrow-clockwise"></i> Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Solicitações -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Número</th>
+                        <th>Responsável</th>
+                        <th>Status</th>
+                        <th>Prioridade</th>
+                        <th>Período de Vencimento</th>
+                        <th>Itens</th>
+                        <th>Cotações</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for solicitacao in solicitacoes %}
+                        <tr>
+                            <td>
+                                <strong>{{ solicitacao.numero }}</strong>
+                            </td>
+                            <td>
+                                {% if solicitacao.responsavel %}
+                                    {{ solicitacao.responsavel.get_full_name|default:solicitacao.responsavel.username }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% with status=solicitacao.get_status_display %}
+                                    {% if solicitacao.status == 'ABERTA' %}
+                                        <span class="badge bg-info">{{ status }}</span>
+                                    {% elif solicitacao.status == 'AGUARDANDO_COTACOES' %}
+                                        <span class="badge bg-warning text-dark">{{ status }}</span>
+                                    {% elif solicitacao.status == 'COTACOES_RECEBIDAS' %}
+                                        <span class="badge bg-success">{{ status }}</span>
+                                    {% elif solicitacao.status == 'ENCERRADA' %}
+                                        <span class="badge bg-secondary">{{ status }}</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">{{ status }}</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td>
+                                {% with prioridade=solicitacao.get_prioridade_display %}
+                                    {% if solicitacao.prioridade == 'CRITICA' %}
+                                        <span class="badge bg-danger">{{ prioridade }}</span>
+                                    {% elif solicitacao.prioridade == 'ALTA' %}
+                                        <span class="badge bg-warning text-dark">{{ prioridade }}</span>
+                                    {% elif solicitacao.prioridade == 'MEDIA' %}
+                                        <span class="badge bg-info">{{ prioridade }}</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">{{ prioridade }}</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td>
+                                <small>
+                                    {{ solicitacao.data_inicio_vencimento|date:"d/m/Y" }} até
+                                    {{ solicitacao.data_fim_vencimento|date:"d/m/Y" }}
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">
+                                    {{ solicitacao.itens.count }} item(ns)
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">
+                                    {{ solicitacao.cotacoes_fornecedores.count }} cotação(ões)
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'metrologia:solicitacao_detail' solicitacao.id %}" 
+                                       class="btn btn-outline-primary" title="Visualizar">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'metrologia:solicitacao_itens' solicitacao.id %}" 
+                                       class="btn btn-outline-secondary" title="Gerenciar itens">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox"></i> Nenhuma solicitação encontrada
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

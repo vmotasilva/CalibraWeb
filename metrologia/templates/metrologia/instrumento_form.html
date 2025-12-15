@@ -80,13 +80,19 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="id_localizacao" class="form-label fw-bold">Localização</label>
-                                    {{ form.localizacao|add_class:"form-control" }}
-                                    {% if form.localizacao.errors %}<small class="text-danger">{{ form.localizacao.errors }}</small>{% endif %}
+                                    <label for="id_frequencia_meses" class="form-label fw-bold">Frequência (meses)</label>
+                                    {{ form.frequencia_meses|add_class:"form-control" }}
+                                    {% if form.frequencia_meses.errors %}<small class="text-danger">{{ form.frequencia_meses.errors }}</small>{% endif %}
                                 </div>
                             </div>
-
-                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_tratativa_calibracao" class="form-label fw-bold">Tratativa de Calibração <span class="text-danger">*</span></label>
+                                    {{ form.tratativa_calibracao|add_class:"form-select" }}
+                                    {% if form.tratativa_calibracao.errors %}<small class="text-danger">{{ form.tratativa_calibracao.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                        </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="id_responsavel" class="form-label fw-bold">Responsável</label>

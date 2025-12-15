@@ -9,6 +9,14 @@ from .forms import (
     ImportacaoInstrumentosForm,
     ImportacaoHistoricoForm,
     FaixaMedicaoFormWithValidation,
+    CotacaoForm,
+    CotacaoAprovarForm,
+    OcorrenciaCotacaoForm,
+    SolicitacaoCotacaoForm,
+    ItemSolicitacaoCotacaoForm,
+    CotacaoFornecedorForm,
+    ItemCotacaoForm,
+    AtendimentoSolicitacaoForm,
 )
 
 __all__ = [
@@ -17,4 +25,11 @@ __all__ = [
     'ImportacaoInstrumentosForm',
     'ImportacaoHistoricoForm',
     'FaixaMedicaoFormWithValidation',
-]
+    'CotacaoForm',
+    'CotacaoAprovarForm',
+    'OcorrenciaCotacaoForm',
+    'SolicitacaoCotacaoForm',
+    'ItemSolicitacaoCotacaoForm',
+    'CotacaoFornecedorForm',
+    'ItemCotacaoForm',
+    'AtendimentoSolicitacaoForm',]

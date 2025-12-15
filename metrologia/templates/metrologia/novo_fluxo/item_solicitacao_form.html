@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>{{ titulo }}</h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'metrologia:solicitacao_itens' solicitacao.id %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pencil-square"></i> Dados do Item
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Informações do Instrumento (somente leitura) -->
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Instrumento</strong></label>
+                            <div class="form-control-plaintext">
+                                <strong>{{ item.instrumento.tag }}</strong> - {{ item.instrumento.descricao }}
+                            </div>
+                        </div>
+
+                        <!-- Tipo de Pontos de Calibração -->
+                        <div class="mb-3">
+                            <label for="{{ form.tipo_pontos.id_for_label }}" class="form-label">
+                                <strong>{{ form.tipo_pontos.label }}</strong>
+                            </label>
+                            {{ form.tipo_pontos }}
+                            {% if form.tipo_pontos.errors %}
+                                <div class="invalid-feedback d-block">{{ form.tipo_pontos.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Selecione quantos pontos de calibração serão utilizados
+                            </small>
+                        </div>
+
+                        <!-- Faixas de Medição -->
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title mb-3">
+                                    <i class="bi bi-rulers"></i> Faixas de Medição
+                                </h6>
+
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.faixa_min.id_for_label }}" class="form-label">
+                                            {{ form.faixa_min.label }} (Mínima)
+                                        </label>
+                                        {{ form.faixa_min }}
+                                        {% if form.faixa_min.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.faixa_min.errors }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.faixa_centro.id_for_label }}" class="form-label">
+                                            {{ form.faixa_centro.label }}
+                                        </label>
+                                        {{ form.faixa_centro }}
+                                        {% if form.faixa_centro.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.faixa_centro.errors }}</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-4 mb-3">
+                                        <label for="{{ form.faixa_max.id_for_label }}" class="form-label">
+                                            {{ form.faixa_max.label }} (Máxima)
+                                        </label>
+                                        {{ form.faixa_max }}
+                                        {% if form.faixa_max.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.faixa_max.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.unidade_pontos.id_for_label }}" class="form-label">
+                                            {{ form.unidade_pontos.label }}
+                                        </label>
+                                        {{ form.unidade_pontos }}
+                                        {% if form.unidade_pontos.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.unidade_pontos.errors }}</div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">
+                                            Ex: mm, V, °C, %
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notas Adicionais -->
+                        <div class="mb-3 mt-3">
+                            <label for="{{ form.notas.id_for_label }}" class="form-label">
+                                {{ form.notas.label }}
+                            </label>
+                            {{ form.notas }}
+                            {% if form.notas.errors %}
+                                <div class="invalid-feedback d-block">{{ form.notas.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Salvar Alterações
+                            </button>
+                            <a href="{% url 'metrologia:solicitacao_itens' solicitacao.id %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resumo -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Resumo</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Solicitação:</strong> {{ solicitacao.numero }}</p>
+                    <p><strong>Instrumento:</strong> {{ item.instrumento.tag }}</p>
+                    <p><strong>Categoria:</strong> {{ item.instrumento.categoria }}</p>
+                    <p><strong>Próxima Calibração:</strong> {{ item.instrumento.data_proxima_calibracao|date:"d/m/Y"|default:"Sem data" }}</p>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Informações</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">
+                        <i class="bi bi-info-circle"></i>
+                        Os pontos de calibração indicam em quantas faixas o instrumento será testado durante a calibração.
+                    </p>
+                    <p class="text-muted small">
+                        <i class="bi bi-info-circle"></i>
+                        Posteriormente, esses dados poderão ser preenchidos automaticamente com base no histórico do instrumento.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

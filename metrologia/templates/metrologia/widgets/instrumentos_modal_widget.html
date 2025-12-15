@@ -1,0 +1,279 @@
+{% load static %}
+
+<div class="mb-3">
+    <!-- Campo Hidden para armazenar IDs selecionados -->
+    <input type="hidden" id="{{ name }}_ids" name="{{ name }}_ids" value="">
+    
+    <!-- Botão para abrir modal -->
+    <button type="button" class="btn btn-primary btn-lg w-100 mb-3" data-bs-toggle="modal" data-bs-target="#instrumentosModal">
+        📋 Selecionar Instrumentos
+    </button>
+    
+    <!-- Área de instrumentos selecionados -->
+    <div id="{{ name }}_selected" class="alert alert-info d-none">
+        <strong>Instrumentos selecionados:</strong>
+        <div id="{{ name }}_selected_list" class="mt-2"></div>
+    </div>
+    
+    <!-- Modal para seleção de instrumentos -->
+    <div class="modal fade" id="instrumentosModal" tabindex="-1" aria-labelledby="instrumentosModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="instrumentosModalLabel">Selecionar Instrumentos para Cotação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Botões de seleção rápida -->
+                    <div class="mb-3 d-flex gap-2 align-items-center">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="{{ name }}_select_all_btn">Selecionar Todos</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="{{ name }}_clear_all_btn">Limpar Seleção</button>
+                        <span class="badge bg-info ms-auto">
+                            <span id="{{ name }}_visible_count">0</span> de <span id="{{ name }}_total_count">0</span> instrumentos
+                        </span>
+                    </div>
+                    <!-- Filtros avançados -->
+                    <div class="row mb-3 g-2">
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">Categoria</label>
+                            <select id="{{ name }}_categoria_filter" class="form-select">
+                                <option value="">Todas</option>
+                                {% for cat in categorias %}
+                                <option value="{{ cat.id }}">{{ cat.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">Setor</label>
+                            <select id="{{ name }}_setor_filter" class="form-select">
+                                <option value="">Todos</option>
+                                {% for setor in setores %}
+                                <option value="{{ setor.id }}">{{ setor.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">Vencimento</label>
+                            <select id="{{ name }}_venc_filter" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="vencido">Vencido</option>
+                                <option value="vencendo">Vencendo em {{ dias_vencimento }} dias</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">Tratativa</label>
+                            <select id="{{ name }}_tratativa_filter" class="form-select">
+                                <option value="">Todas</option>
+                                <option value="INTERNA">Interna</option>
+                                <option value="EXTERNA">Externa</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Campo de busca/filtro -->
+                    <div class="mb-3">
+                        <input type="text" 
+                               id="{{ name }}_search" 
+                               class="form-control" 
+                               placeholder="🔍 Filtrar por TAG, descrição ou categoria...">
+                    </div>
+                    
+                    <!-- Tabela de instrumentos -->
+                    <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 40px;"></th>
+                                    <th style="width: 80px;">TAG</th>
+                                    <th>Descrição</th>
+                                    <th style="width: 120px;">Categoria</th>
+                                    <th style="width: 100px;">Tratativa</th>
+                                </tr>
+                            </thead>
+                            <tbody id="{{ name }}_table_body">
+                                {% for inst in instrumentos_info %}
+                                <tr class="instrument-row"
+                                    data-instrument-id="{{ inst.id }}"
+                                    data-categoria-id="{{ inst.categoria_id }}"
+                                    data-setor-id="{{ inst.setor_id }}"
+                                    data-venc-status="{{ inst.venc_status }}"
+                                    data-tratativa="{{ inst.tratativa }}"
+                                    data-search-text="{{ inst.tag|lower }} {{ inst.descricao|lower }} {{ inst.categoria|lower }} {{ inst.setor|lower }}">
+                                    <td>
+                                        <input type="checkbox" 
+                                               class="form-check-input instrument-checkbox" 
+                                               data-instrument-id="{{ inst.id }}"
+                                               data-instrument-tag="{{ inst.tag }}"
+                                               {% if inst.id|stringformat:"s" in selected_ids %}checked{% endif %}>
+                                    </td>
+                                    <td><strong>{{ inst.tag }}</strong></td>
+                                    <td>{{ inst.descricao }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ inst.categoria }}</span>
+                                        {% if inst.venc_status == 'vencido' %}
+                                            <span class="badge bg-danger ms-1">Vencido</span>
+                                        {% elif inst.venc_status == 'vencendo' %}
+                                            <span class="badge bg-warning text-dark ms-1">Vencendo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if inst.tratativa == 'INTERNA' %}
+                                            <span class="badge bg-info">Interna</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Externa</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Informações -->
+                    <div class="alert alert-info small mt-3 mb-0">
+                        <strong id="{{ name }}_count">0</strong> instrumento(s) selecionado(s)
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Confirmar Seleção</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fieldName = '{{ name }}';
+    const hiddenInput = document.getElementById(fieldName + '_ids');
+    const searchInput = document.getElementById(fieldName + '_search');
+    const tableBody = document.getElementById(fieldName + '_table_body');
+    const selectedDiv = document.getElementById(fieldName + '_selected');
+    const selectedList = document.getElementById(fieldName + '_selected_list');
+    const countSpan = document.getElementById(fieldName + '_count');
+    const visibleCountSpan = document.getElementById(fieldName + '_visible_count');
+    const totalCountSpan = document.getElementById(fieldName + '_total_count');
+
+    // Filtros
+    const categoriaFilter = document.getElementById(fieldName + '_categoria_filter');
+    const setorFilter = document.getElementById(fieldName + '_setor_filter');
+    const vencFilter = document.getElementById(fieldName + '_venc_filter');
+    const trativaFilter = document.getElementById(fieldName + '_tratativa_filter');
+    
+    // Atualizar contador de instrumentos
+    function updateInstrumentCount() {
+        const totalRows = document.querySelectorAll('.instrument-row').length;
+        const visibleRows = document.querySelectorAll('.instrument-row:not([style*="display: none"])').length;
+        
+        if (visibleCountSpan) visibleCountSpan.textContent = visibleRows;
+        if (totalCountSpan) totalCountSpan.textContent = totalRows;
+    }
+    
+    // Inicializa a lista de selecionados
+    function updateSelectedList() {
+        const selectedCheckboxes = document.querySelectorAll(`input[type="checkbox"].instrument-checkbox:checked`);
+        const selectedIds = Array.from(selectedCheckboxes).map(cb => cb.getAttribute('data-instrument-id'));
+        
+        hiddenInput.value = selectedIds.join(',');
+        countSpan.textContent = selectedIds.length;
+        
+        // Atualiza a exibição de selecionados
+        if (selectedIds.length > 0) {
+            selectedDiv.classList.remove('d-none');
+            selectedList.innerHTML = selectedCheckboxes
+                .map(cb => `
+                    <span class="badge bg-primary me-2 mb-2">
+                        ${cb.getAttribute('data-instrument-tag')}
+                        <button type="button" class="btn-close btn-close-white ms-1" data-instrument-id="${cb.getAttribute('data-instrument-id')}" style="font-size: 0.65rem;"></button>
+                    </span>
+                `)
+                .join('');
+            
+            // Event listeners para remover badges
+            selectedList.querySelectorAll('.btn-close').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const id = this.getAttribute('data-instrument-id');
+                    document.querySelector(`input[type="checkbox"][data-instrument-id="${id}"]`).checked = false;
+                    updateSelectedList();
+                });
+            });
+        } else {
+            selectedDiv.classList.add('d-none');
+        }
+    }
+    
+
+    // Função de filtro geral
+    function filterTable() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const categoria = categoriaFilter.value;
+        const setor = setorFilter.value;
+        const venc = vencFilter.value;
+        const tratativa = trativaFilter.value;
+        document.querySelectorAll('.instrument-row').forEach(row => {
+            const searchText = row.getAttribute('data-search-text');
+            const catId = row.getAttribute('data-categoria-id');
+            const setorId = row.getAttribute('data-setor-id');
+            const vencStatus = row.getAttribute('data-venc-status');
+            const tratativaStatus = row.getAttribute('data-tratativa');
+            let show = true;
+            if (searchTerm && !searchText.includes(searchTerm)) show = false;
+            if (categoria && catId !== categoria) show = false;
+            if (setor && setorId !== setor) show = false;
+            if (venc && vencStatus !== venc) show = false;
+            if (tratativa && tratativaStatus !== tratativa) show = false;
+            row.style.display = show ? '' : 'none';
+        });
+        updateInstrumentCount();
+    }
+
+    // Event listeners para filtros
+    if (searchInput) searchInput.addEventListener('keyup', filterTable);
+    if (categoriaFilter) categoriaFilter.addEventListener('change', filterTable);
+    if (setorFilter) setorFilter.addEventListener('change', filterTable);
+    if (vencFilter) vencFilter.addEventListener('change', filterTable);
+    if (trativaFilter) trativaFilter.addEventListener('change', filterTable);
+    
+    // Event listeners para checkboxes
+    document.querySelectorAll(`input[type="checkbox"].instrument-checkbox`).forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedList);
+    });
+    
+    // Selecionar todos os instrumentos visíveis
+    const selectAllBtn = document.getElementById(fieldName + '_select_all_btn');
+    // Limpar seleção dos instrumentos visíveis
+    const clearAllBtn = document.getElementById(fieldName + '_clear_all_btn');
+    
+    // Selecionar todos os instrumentos visíveis
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            document.querySelectorAll('.instrument-row').forEach(row => {
+                if (row.style.display !== 'none') {
+                    const cb = row.querySelector('input[type="checkbox"].instrument-checkbox');
+                    if (cb) cb.checked = true;
+                }
+            });
+            updateSelectedList();
+        });
+    }
+
+    // Limpar seleção dos instrumentos visíveis
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+            document.querySelectorAll('.instrument-row').forEach(row => {
+                if (row.style.display !== 'none') {
+                    const cb = row.querySelector('input[type="checkbox"].instrument-checkbox');
+                    if (cb) cb.checked = false;
+                }
+            });
+            updateSelectedList();
+        });
+    }
+    
+    // Inicializa
+    updateSelectedList();
+    updateInstrumentCount();
+    filterTable();
+});
+</script>

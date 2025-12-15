@@ -1,4 +1,5 @@
 from .views import (
+    home_view,
     dashboard_view,
     health_check,
     dl_template_instr,
@@ -17,6 +18,7 @@ from .views import (
 )
 
 __all__ = [
+    'home_view',
     'dashboard_view',
     'health_check',
     'dl_template_instr',

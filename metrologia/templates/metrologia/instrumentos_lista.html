@@ -182,13 +182,14 @@
                 <table class="table table-hover table-sm mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 15%">Tag</th>
-                            <th style="width: 25%">Descrição</th>
-                            <th style="width: 15%">Categoria</th>
-                            <th style="width: 15%">Setor</th>
+                            <th style="width: 12%">Tag</th>
+                            <th style="width: 22%">Descrição</th>
+                            <th style="width: 12%">Categoria</th>
+                            <th style="width: 12%">Setor</th>
+                            <th style="width: 10%">Tratativa</th>
                             <th style="width: 12%">Próxima Calib.</th>
                             <th style="width: 10%">Status</th>
-                            <th style="width: 8%">Ações</th>
+                            <th style="width: 10%">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -210,6 +211,17 @@
                                             {{ inst.setor.nome }}
                                         {% else %}
                                             <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if inst.tratativa_calibracao == 'INTERNA' %}
+                                            <span class="badge bg-info">
+                                                <i class="bi bi-building"></i> Interna
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-briefcase"></i> Externa
+                                            </span>
                                         {% endif %}
                                     </td>
                                     <td>
