@@ -325,22 +325,42 @@ function adicionarFaixasSelecionadas() {
         return;
     }
 
-    const summaryDiv = document.getElementById('faixas-summary');
-    const countElement = document.getElementById('count-faixas');
+    let summaryDiv = document.getElementById('faixas-summary');
+    const cardBody = document.querySelector('.card-header.bg-info')?.nextElementSibling;
     
-    // Se não existe elemento de resumo, criar
-    if (!summaryDiv) {
-        const card = document.querySelector('.card-header.bg-info');
-        if (card && card.nextElementSibling) {
-            const cardBody = card.nextElementSibling;
-            const newDiv = document.createElement('div');
-            newDiv.id = 'faixas-summary';
-            newDiv.className = 'small';
-            cardBody.insertBefore(newDiv, cardBody.firstChild);
-        }
+    // Se não existe div de resumo, substituir conteúdo do card
+    if (!cardBody) {
+        alert('Erro ao localizar área de resumo');
+        return;
     }
 
-    updateFaixasSummary();
+    // Limpar o card e reconstruir com as faixas selecionadas
+    let html = '<div id="faixas-summary" class="small">';
+    
+    checkboxes.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        if (row) {
+            const tds = row.querySelectorAll('td');
+            if (tds.length >= 3) {
+                const minimo = tds[1]?.textContent || '0';
+                const maximo = tds[2]?.textContent || '0';
+                const unidade = tds[3]?.textContent || '';
+                
+                html += `
+                    <div class="badge bg-light text-dark mb-2 me-2 p-2 d-inline-block" style="max-width: 100%;">
+                        <i class="bi bi-check2"></i>
+                        ${minimo.trim()} - ${maximo.trim()} ${unidade.trim()}
+                    </div>
+                `;
+            }
+        }
+    });
+    
+    html += '</div>';
+    html += `<small class="text-muted d-block mt-2">Total: <strong id="count-faixas">${checkboxes.length}</strong> faixa(s) selecionada(s)</small>`;
+    
+    cardBody.innerHTML = html;
+    
     alert(`${checkboxes.length} faixa(s) adicionada(s) com sucesso!`);
 }
 
