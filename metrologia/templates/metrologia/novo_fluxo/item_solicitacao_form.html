@@ -16,10 +16,37 @@
         </div>
     </div>
 
+    <!-- Resumo do Pedido -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <div class="row">
+                    <div class="col-md-3">
+                        <p class="mb-2"><strong>Solicitação:</strong></p>
+                        <p class="mb-0">{{ solicitacao.numero }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-2"><strong>Instrumento:</strong></p>
+                        <p class="mb-0">{{ item.instrumento.tag }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-2"><strong>Categoria:</strong></p>
+                        <p class="mb-0">{{ item.instrumento.categoria }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p class="mb-2"><strong>Próxima Calibração:</strong></p>
+                        <p class="mb-0">{{ item.instrumento.data_proxima_calibracao|date:"d/m/Y"|default:"Sem data" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
+            <!-- Card Principal com Dados do Item -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="bi bi-pencil-square"></i> Dados do Item
                     </h5>
@@ -37,7 +64,7 @@
                         </div>
 
                         <!-- Tipo de Pontos de Calibração -->
-                        <div class="mb-3">
+                        <div class="mb-4 pb-3 border-bottom">
                             <label for="{{ form.tipo_pontos.id_for_label }}" class="form-label">
                                 <strong>{{ form.tipo_pontos.label }}</strong>
                             </label>
@@ -50,121 +77,109 @@
                             </small>
                         </div>
 
-                        <!-- Faixas de Medição -->
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h6 class="card-title mb-3">
-                                    <i class="bi bi-rulers"></i> Faixas de Medição
-                                </h6>
+                        <!-- Faixas Cadastradas no Instrumento -->
+                        <div class="mb-4 pb-3 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <label class="form-label mb-0"><strong>Faixas Cadastradas do Instrumento:</strong></label>
+                                <button type="button" class="btn btn-sm btn-success" onclick="toggleAllFaixas(document.getElementById('checkAllFaixas'))">
+                                    <i class="bi bi-check2-all"></i> Selecionar Tudo
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 40px;">
+                                                <input type="checkbox" id="checkAllFaixas" onclick="toggleAllFaixas(this)">
+                                            </th>
+                                            <th>Mínimo</th>
+                                            <th>Máximo</th>
+                                            <th>Unidade</th>
+                                            <th>Nominal</th>
+                                            <th>Tolerância (±)</th>
+                                            <th>Pontos de Calibração</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for faixa in faixas %}
+                                            <tr>
+                                                <td>
+                                                    <input type="checkbox" 
+                                                           name="faixas_selecionadas" 
+                                                           value="{{ faixa.id }}"
+                                                           class="faixa-checkbox"
+                                                           onchange="updateFaixasSummary()"
+                                                           {% if faixa.id in faixas_selecionadas %}checked{% endif %}>
+                                                </td>
+                                                <td>{{ faixa.valor_minimo }}</td>
+                                                <td>{{ faixa.valor_maximo }}</td>
+                                                <td><strong>{{ faixa.unidade.nome }}</strong></td>
+                                                <td>{{ faixa.nominal|default:"-" }}</td>
+                                                <td>{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
+                                                <td>
+                                                    <select name="pontos_faixa_{{ faixa.id }}" class="form-select form-select-sm" {% if faixa.id not in faixas_selecionadas %}disabled{% endif %}>
+                                                        <option value="3" selected>3 Pontos</option>
+                                                        <option value="6">6 Pontos</option>
+                                                        <option value="9">9 Pontos</option>
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <small class="text-muted mt-2 d-block">
+                                Selecione as faixas que deseja calibrar e defina quantos pontos de calibração para cada faixa.
+                            </small>
+                        </div>
 
-                                {% if faixas %}
-                                    <!-- Faixas Cadastradas no Instrumento -->
-                                    <div class="mb-4 pb-3 border-bottom">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <label class="form-label mb-0"><strong>Faixas Cadastradas do Instrumento:</strong></label>
-                                            <button type="button" class="btn btn-sm btn-success" onclick="toggleAllFaixas(document.getElementById('checkAllFaixas'))">
-                                                <i class="bi bi-check2-all"></i> Selecionar Tudo
-                                            </button>
-                                        </div>
-                                        <div class="table-responsive">
-                                            <table class="table table-sm mb-0">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th style="width: 40px;">
-                                                            <input type="checkbox" id="checkAllFaixas" onclick="toggleAllFaixas(this)">
-                                                        </th>
-                                                        <th>Mínimo</th>
-                                                        <th>Máximo</th>
-                                                        <th>Unidade</th>
-                                                        <th>Nominal</th>
-                                                        <th>Tolerância (±)</th>
-                                                        <th>Pontos de Calibração</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {% for faixa in faixas %}
-                                                        <tr>
-                                                            <td>
-                                                                <input type="checkbox" 
-                                                                       name="faixas_selecionadas" 
-                                                                       value="{{ faixa.id }}"
-                                                                       class="faixa-checkbox"
-                                                                       onchange="updateFaixasSummary()"
-                                                                       {% if faixa.id in faixas_selecionadas %}checked{% endif %}>
-                                                            </td>
-                                                            <td>{{ faixa.valor_minimo }}</td>
-                                                            <td>{{ faixa.valor_maximo }}</td>
-                                                            <td><strong>{{ faixa.unidade.nome }}</strong></td>
-                                                            <td>{{ faixa.nominal|default:"-" }}</td>
-                                                            <td>{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
-                                                            <td>
-                                                                <select name="pontos_faixa_{{ faixa.id }}" class="form-select form-select-sm" {% if faixa.id not in faixas_selecionadas %}disabled{% endif %}>
-                                                                    <option value="">Selecione...</option>
-                                                                    <option value="3" {% if faixa.id in faixas_selecionadas %}selected{% endif %}>3 Pontos</option>
-                                                                    <option value="6">6 Pontos</option>
-                                                                    <option value="9">9 Pontos</option>
-                                                                </select>
-                                                            </td>
-                                                        </tr>
-                                                    {% endfor %}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <small class="text-muted mt-2 d-block">
-                                            Selecione as faixas que deseja calibrar e defina quantos pontos de calibração para cada faixa.
-                                        </small>
-                                    </div>
+                        <!-- Formulário para Entrada Manual de Faixas -->
+                        <label class="form-label"><strong>Preencher Faixa Manualmente:</strong></label>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.faixa_min.id_for_label }}" class="form-label">
+                                    {{ form.faixa_min.label }} (Mínima)
+                                </label>
+                                {{ form.faixa_min }}
+                                {% if form.faixa_min.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.faixa_min.errors }}</div>
                                 {% endif %}
+                            </div>
 
-                                <!-- Formulário para Entrada Manual de Faixas -->
-                                <label class="form-label"><strong>Preencher Faixa Manualmente:</strong></label>
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.faixa_centro.id_for_label }}" class="form-label">
+                                    {{ form.faixa_centro.label }}
+                                </label>
+                                {{ form.faixa_centro }}
+                                {% if form.faixa_centro.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.faixa_centro.errors }}</div>
+                                {% endif %}
+                            </div>
 
-                                <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.faixa_min.id_for_label }}" class="form-label">
-                                            {{ form.faixa_min.label }} (Mínima)
-                                        </label>
-                                        {{ form.faixa_min }}
-                                        {% if form.faixa_min.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.faixa_min.errors }}</div>
-                                        {% endif %}
-                                    </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="{{ form.faixa_max.id_for_label }}" class="form-label">
+                                    {{ form.faixa_max.label }} (Máxima)
+                                </label>
+                                {{ form.faixa_max }}
+                                {% if form.faixa_max.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.faixa_max.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
 
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.faixa_centro.id_for_label }}" class="form-label">
-                                            {{ form.faixa_centro.label }}
-                                        </label>
-                                        {{ form.faixa_centro }}
-                                        {% if form.faixa_centro.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.faixa_centro.errors }}</div>
-                                        {% endif %}
-                                    </div>
-
-                                    <div class="col-md-4 mb-3">
-                                        <label for="{{ form.faixa_max.id_for_label }}" class="form-label">
-                                            {{ form.faixa_max.label }} (Máxima)
-                                        </label>
-                                        {{ form.faixa_max }}
-                                        {% if form.faixa_max.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.faixa_max.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="{{ form.unidade_pontos.id_for_label }}" class="form-label">
-                                            {{ form.unidade_pontos.label }}
-                                        </label>
-                                        {{ form.unidade_pontos }}
-                                        {% if form.unidade_pontos.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.unidade_pontos.errors }}</div>
-                                        {% endif %}
-                                        <small class="form-text text-muted">
-                                            Ex: mm, V, °C, %
-                                        </small>
-                                    </div>
-                                </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.unidade_pontos.id_for_label }}" class="form-label">
+                                    {{ form.unidade_pontos.label }}
+                                </label>
+                                {{ form.unidade_pontos }}
+                                {% if form.unidade_pontos.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.unidade_pontos.errors }}</div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Ex: mm, V, °C, %
+                                </small>
                             </div>
                         </div>
 
@@ -191,24 +206,9 @@
                     </form>
                 </div>
             </div>
-        </div>
 
-        <!-- Resumo -->
-        <div class="col-md-4">
+            <!-- Faixas Selecionadas - Abaixo do Card Principal -->
             <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0">Resumo</h6>
-                </div>
-                <div class="card-body">
-                    <p><strong>Solicitação:</strong> {{ solicitacao.numero }}</p>
-                    <p><strong>Instrumento:</strong> {{ item.instrumento.tag }}</p>
-                    <p><strong>Categoria:</strong> {{ item.instrumento.categoria }}</p>
-                    <p><strong>Próxima Calibração:</strong> {{ item.instrumento.data_proxima_calibracao|date:"d/m/Y"|default:"Sem data" }}</p>
-                </div>
-            </div>
-
-            <!-- Faixas Selecionadas -->
-            <div class="card mt-3">
                 <div class="card-header bg-info text-white">
                     <h6 class="mb-0">
                         <i class="bi bi-check-circle"></i> Faixas Selecionadas
@@ -234,19 +234,35 @@
                     {% endif %}
                 </div>
             </div>
+        </div>
 
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h6 class="mb-0">Informações</h6>
+        <!-- Coluna Lateral de Informações -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle"></i> Informações Úteis
+                    </h6>
                 </div>
                 <div class="card-body">
                     <p class="text-muted small">
-                        <i class="bi bi-info-circle"></i>
-                        Selecione as faixas de medição que serão calibradas neste instrumento.
+                        <i class="bi bi-check-circle"></i>
+                        <strong>Seleção de Faixas:</strong> Escolha todas as faixas que serão calibradas.
                     </p>
+                    <hr>
                     <p class="text-muted small">
-                        <i class="bi bi-info-circle"></i>
-                        Você pode selecionar múltiplas faixas com diferentes unidades de medida.
+                        <i class="bi bi-rulers"></i>
+                        <strong>Pontos de Calibração:</strong> Cada faixa pode ter 3, 6 ou 9 pontos de calibração.
+                    </p>
+                    <hr>
+                    <p class="text-muted small">
+                        <i class="bi bi-layout-split"></i>
+                        <strong>Múltiplas Unidades:</strong> Você pode selecionar faixas com diferentes unidades de medida.
+                    </p>
+                    <hr>
+                    <p class="text-muted small">
+                        <i class="bi bi-pencil"></i>
+                        <strong>Entrada Manual:</strong> Preencha manualmente se precisar de faixas customizadas.
                     </p>
                 </div>
             </div>
