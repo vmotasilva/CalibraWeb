@@ -84,18 +84,6 @@ class Colaborador(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # Atualiza o campo em_ferias do colaborador
-        hoje = date.today()
-        colaborador = self.colaborador
-        # Verifica se existe algum registro de férias aprovado e ativo
-        ferias_ativas = Ferias.objects.filter(
-            colaborador=colaborador,
-            aprovada=True,
-            data_inicio__lte=hoje,
-            data_fim__gte=hoje
-        ).exists()
-        colaborador.em_ferias = ferias_ativas
-        colaborador.save(update_fields=["em_ferias"])
 
     def get_chefia(self):
         if not self.setor:
