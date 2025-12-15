@@ -103,10 +103,10 @@
                                                 <td>{{ faixa.nominal|default:"-" }}</td>
                                                 <td>{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
                                                 <td>
-                                                    <select name="pontos_faixa_{{ faixa.id }}" class="form-select form-select-sm" {% if faixa.id not in faixas_selecionadas %}disabled{% endif %}>
+                                                    <select name="pontos_faixa_{{ faixa.id }}" class="form-select form-select-sm" onchange="preencherPontosAutomaticamente('{{ faixa.id }}', '{{ faixa.valor_minimo }}', '{{ faixa.valor_maximo }}', '{{ faixa.nominal|default:"" }}')" {% if faixa.id not in faixas_selecionadas %}disabled{% endif %}>
                                                         <option value="3" selected>3 Pontos</option>
-                                                        <option value="6">6 Pontos</option>
-                                                        <option value="9">9 Pontos</option>
+                                                        <option value="5">5 Pontos</option>
+                                                        <option value="7">7 Pontos</option>
                                                     </select>
                                                 </td>
                                             </tr>
@@ -209,8 +209,8 @@
                         </label>
                         <select id="manual_pontos_faixa" class="form-select">
                             <option value="3" selected>3 Pontos</option>
-                            <option value="6">6 Pontos</option>
-                            <option value="9">9 Pontos</option>
+                            <option value="5">5 Pontos</option>
+                            <option value="7">7 Pontos</option>
                         </select>
                     </div>
                 </form>
@@ -337,6 +337,64 @@ function updateFaixasSummary() {
             selectPontos.disabled = !cb.checked;
         }
     });
+}
+
+function preencherPontosAutomaticamente(faixaId, minimo, maximo, nominal) {
+    const min = parseFloat(minimo);
+    const max = parseFloat(maximo);
+    const nom = nominal ? parseFloat(nominal) : (min + max) / 2;
+    
+    // Pequeno offset das extremidades (5% da faixa)
+    const faixa = max - min;
+    const offset = faixa * 0.05;
+    
+    const selectPontos = document.querySelector(`select[name="pontos_faixa_${faixaId}"]`);
+    const numPontos = parseInt(selectPontos.value) || 3;
+    
+    let valores = [];
+    
+    if (numPontos === 3) {
+        valores = [
+            min + offset,           // Ponto 1: Um pouco acima do mínimo
+            nom,                    // Ponto 2: Nominal
+            max - offset            // Ponto 3: Um pouco abaixo do máximo
+        ];
+    } else if (numPontos === 5) {
+        const p1 = min + offset;
+        const p5 = max - offset;
+        valores = [
+            p1,                                 // Ponto 1: Um pouco acima do mínimo
+            (p1 + nom) / 2,                     // Ponto 2: Meio entre p1 e nominal
+            nom,                                // Ponto 3: Nominal
+            (nom + p5) / 2,                     // Ponto 4: Meio entre nominal e p5
+            p5                                  // Ponto 5: Um pouco abaixo do máximo
+        ];
+    } else if (numPontos === 7) {
+        const p1 = min + offset;
+        const p7 = max - offset;
+        const p4 = nom;
+        
+        // Entre p1 e p4: 1/3 e 2/3
+        const p2 = p1 + (p4 - p1) * (1/3);
+        const p3 = p1 + (p4 - p1) * (2/3);
+        
+        // Entre p4 e p7: 1/3 e 2/3
+        const p5 = p4 + (p7 - p4) * (1/3);
+        const p6 = p4 + (p7 - p4) * (2/3);
+        
+        valores = [p1, p2, p3, p4, p5, p6, p7];
+    }
+    
+    // Preencher os campos com os valores calculados
+    for (let i = 0; i < valores.length; i++) {
+        const input = document.querySelector(`input[name="ponto_${faixaId}_${i + 1}"]`);
+        if (input) {
+            input.value = valores[i].toFixed(4);
+        }
+    }
+    
+    // Atualizar o resumo para refletir a mudança
+    updateFaixasSummary();
 }
 
 function adicionarFaixaManual() {
