@@ -63,20 +63,6 @@
                             </div>
                         </div>
 
-                        <!-- Tipo de Pontos de Calibração -->
-                        <div class="mb-4 pb-3 border-bottom">
-                            <label for="{{ form.tipo_pontos.id_for_label }}" class="form-label">
-                                <strong>{{ form.tipo_pontos.label }}</strong>
-                            </label>
-                            {{ form.tipo_pontos }}
-                            {% if form.tipo_pontos.errors %}
-                                <div class="invalid-feedback d-block">{{ form.tipo_pontos.errors }}</div>
-                            {% endif %}
-                            <small class="form-text text-muted">
-                                Selecione quantos pontos de calibração serão utilizados
-                            </small>
-                        </div>
-
                         <!-- Faixas Cadastradas no Instrumento -->
                         <div class="mb-4 pb-3 border-bottom">
                             <div class="d-flex justify-content-between align-items-center mb-3">
