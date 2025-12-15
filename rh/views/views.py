@@ -1,70 +1,3 @@
-
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods
-from django.http import HttpResponseRedirect
-
-# Edição de férias
-@login_required
-@require_http_methods(["GET", "POST"])
-def editar_ferias_view(request, colab_id, ferias_id):
-    ferias = get_object_or_404(Ferias, id=ferias_id, colaborador_id=colab_id)
-    colaborador = ferias.colaborador
-    if request.method == "POST":
-        form = FeriasForm(request.POST, instance=ferias)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Registro de férias atualizado com sucesso!")
-            return redirect('detalhe_colaborador', colab_id=colaborador.id)
-        else:
-            messages.error(request, "Verifique os dados do formulário.")
-    else:
-        form = FeriasForm(instance=ferias)
-    return render(request, 'rh/ferias_form.html', {"form": form, "colaborador": colaborador, "edicao": True})
-
-# Exclusão de férias
-@login_required
-@require_http_methods(["POST"])
-def excluir_ferias_view(request, colab_id, ferias_id):
-    ferias = get_object_or_404(Ferias, id=ferias_id, colaborador_id=colab_id)
-    colaborador = ferias.colaborador
-    ferias.delete()
-    # Atualiza o campo em_ferias do colaborador após exclusão
-    hoje = date.today()
-    ferias_ativas = Ferias.objects.filter(
-        colaborador=colaborador,
-        aprovada=True,
-        data_inicio__lte=hoje,
-        data_fim__gte=hoje
-    ).exists()
-    colaborador.em_ferias = ferias_ativas
-    colaborador.save(update_fields=["em_ferias"])
-    messages.success(request, "Registro de férias excluído com sucesso!")
-    return redirect('detalhe_colaborador', colab_id=colaborador.id)
-
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_http_methods
-from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib import messages
-from rh.models import Colaborador, Ocorrencia, Ferias
-from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
-
-@login_required
-@require_http_methods(["GET", "POST"])
-def registrar_ferias_view(request, colab_id):
-    colaborador = get_object_or_404(Colaborador, id=colab_id)
-    if request.method == "POST":
-        form = FeriasForm(request.POST)
-        if form.is_valid():
-            ferias = form.save(commit=False)
-            ferias.colaborador = colaborador
-            ferias.save()
-            messages.success(request, "Férias registradas com sucesso!")
-            return redirect('detalhe_colaborador', colab_id=colaborador.id)
-        else:
-            messages.error(request, "Verifique os dados do formulário.")
-    else:
-        form = FeriasForm()
-    return render(request, 'rh/ferias_form.html', {"form": form, "colaborador": colaborador})
 # -*- coding: utf-8 -*-
 """
 Views para o módulo RH (Recursos Humanos)
@@ -76,16 +9,17 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.db.models import Q
+from django.http import HttpResponseRedirect
 import logging
 
 logger = logging.getLogger(__name__)
 
 # Imports dos models
-from rh.models import Colaborador, Ocorrencia
+from rh.models import Colaborador, Ocorrencia, Ferias
 from organization.models import Setor, CentroCusto, HierarquiaSetor
 
 # Imports dos forms
-from rh.forms import ColaboradorForm, OcorrenciaForm
+from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
 
 # Imports dos helpers
 from qms.views_helpers import get_all_subordinates, get_colaborador_for_user
@@ -555,3 +489,98 @@ def deletar_ocorrencia_view(request, occ_id):
     ocorrencia.delete()
     messages.success(request, "Ocorrência excluída com sucesso!")
     return redirect("detalhe_colaborador", colab_id=colaborador_id)
+
+
+# ==============================================================================
+# VIEWS DE FÉRIAS
+# ==============================================================================
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def registrar_ferias_view(request, colab_id):
+    """Registra novo período de férias para um colaborador."""
+    colaborador = get_object_or_404(Colaborador, id=colab_id)
+    
+    # Verificar permissão de acesso ao colaborador
+    if not can_user_access_colaborador(request.user, colaborador):
+        messages.error(request, "Acesso Negado. Você não tem permissão para registrar férias para este colaborador.")
+        return redirect("modulo_rh")
+    
+    if request.method == "POST":
+        form = FeriasForm(request.POST)
+        if form.is_valid():
+            ferias = form.save(commit=False)
+            ferias.colaborador = colaborador
+            ferias.save()
+            messages.success(request, "Férias registradas com sucesso!")
+            return redirect('detalhe_colaborador', colab_id=colaborador.id)
+        else:
+            messages.error(request, "Verifique os dados do formulário.")
+    else:
+        form = FeriasForm()
+    
+    return render(request, 'rh/ferias_form.html', {
+        "form": form, 
+        "colaborador": colaborador,
+        "titulo": "Registrar Férias"
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def editar_ferias_view(request, colab_id, ferias_id):
+    """Edita um período de férias existente."""
+    ferias = get_object_or_404(Ferias, id=ferias_id, colaborador_id=colab_id)
+    colaborador = ferias.colaborador
+    
+    # Verificar permissão de acesso ao colaborador
+    if not can_user_access_colaborador(request.user, colaborador):
+        messages.error(request, "Acesso Negado. Você não tem permissão para editar férias deste colaborador.")
+        return redirect("modulo_rh")
+    
+    if request.method == "POST":
+        form = FeriasForm(request.POST, instance=ferias)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Registro de férias atualizado com sucesso!")
+            return redirect('detalhe_colaborador', colab_id=colaborador.id)
+        else:
+            messages.error(request, "Verifique os dados do formulário.")
+    else:
+        form = FeriasForm(instance=ferias)
+    
+    return render(request, 'rh/ferias_form.html', {
+        "form": form, 
+        "colaborador": colaborador,
+        "edicao": True,
+        "titulo": "Editar Férias"
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def excluir_ferias_view(request, colab_id, ferias_id):
+    """Exclui um período de férias."""
+    ferias = get_object_or_404(Ferias, id=ferias_id, colaborador_id=colab_id)
+    colaborador = ferias.colaborador
+    
+    # Verificar permissão de acesso ao colaborador
+    if not can_user_access_colaborador(request.user, colaborador):
+        messages.error(request, "Acesso Negado. Você não tem permissão para excluir férias deste colaborador.")
+        return redirect("modulo_rh")
+    
+    ferias.delete()
+    
+    # Atualiza o campo em_ferias do colaborador após exclusão
+    hoje = date.today()
+    ferias_ativas = Ferias.objects.filter(
+        colaborador=colaborador,
+        aprovada=True,
+        data_inicio__lte=hoje,
+        data_fim__gte=hoje
+    ).exists()
+    colaborador.em_ferias = ferias_ativas
+    colaborador.save(update_fields=["em_ferias"])
+    
+    messages.success(request, "Registro de férias excluído com sucesso!")
+    return redirect('detalhe_colaborador', colab_id=colaborador.id)
