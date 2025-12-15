@@ -780,10 +780,77 @@ class ItemSolicitacaoFaixa(models.Model):
         verbose_name='Valor Máximo (Override)'
     )
     
+    # Número de pontos de calibração para esta faixa
+    numero_pontos = models.IntegerField(
+        default=3,
+        choices=[(3, '3 Pontos'), (5, '5 Pontos'), (7, '7 Pontos')],
+        verbose_name='Número de Pontos de Calibração'
+    )
+    
+    # Pontos de calibração (até 7)
+    ponto_1 = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Ponto 1'
+    )
+    ponto_2 = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Ponto 2'
+    )
+    ponto_3 = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Ponto 3'
+    )
+    ponto_4 = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Ponto 4'
+    )
+    ponto_5 = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Ponto 5'
+    )
+    ponto_6 = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Ponto 6'
+    )
+    ponto_7 = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Ponto 7'
+    )
+    
     data_criacao = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"{self.item_solicitacao} - {self.faixa_medicao}"
+    
+    def get_pontos(self):
+        """Retorna uma lista com os pontos preenchidos"""
+        pontos = []
+        for i in range(1, self.numero_pontos + 1):
+            valor = getattr(self, f'ponto_{i}', None)
+            if valor:
+                pontos.append(valor)
+        return pontos
     
     class Meta:
         verbose_name = "Faixa de Item de Solicitação"

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load custom_tags %}
 
 {% block title %}Itens - {{ solicitacao.numero }}{% endblock %}
 
@@ -48,10 +49,7 @@
                                 <th>Instrumento</th>
                                 <th>Descrição</th>
                                 <th>Tipo de Pontos</th>
-                                <th>Faixa Mínima</th>
-                                <th>Faixa Centro</th>
-                                <th>Faixa Máxima</th>
-                                <th>Unidade</th>
+                                <th>Faixas Selecionadas</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -63,10 +61,31 @@
                                     <td>
                                         <span class="badge bg-info">{{ item.get_tipo_pontos_display }}</span>
                                     </td>
-                                    <td>{{ item.faixa_min|default:"---" }}</td>
-                                    <td>{{ item.faixa_centro|default:"---" }}</td>
-                                    <td>{{ item.faixa_max|default:"---" }}</td>
-                                    <td>{{ item.unidade_pontos|default:"---" }}</td>
+                                    <td>
+                                        {% if item.faixas_selecionadas.all %}
+                                            <div class="small">
+                                                {% for faixa_item in item.faixas_selecionadas.all %}
+                                                    <div class="mb-2">
+                                                        <span class="badge bg-success">
+                                                            {{ faixa_item.faixa_medicao.valor_minimo }} - {{ faixa_item.faixa_medicao.valor_maximo }} {{ faixa_item.faixa_medicao.unidade.nome }}
+                                                        </span>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            {% for i in "1234567" %}
+                                                                {% with ponto=faixa_item|get_ponto:i %}
+                                                                    {% if ponto %}
+                                                                        P{{ i }}: {{ ponto }}&nbsp;&nbsp;
+                                                                    {% endif %}
+                                                                {% endwith %}
+                                                            {% endfor %}
+                                                        </small>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">Nenhuma faixa selecionada</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         <a href="{% url 'metrologia:item_solicitacao_edit' item.id %}" 
                                            class="btn btn-sm btn-primary" title="Editar">
@@ -81,7 +100,7 @@
                                 </tr>
                             {% empty %}
                                 <tr>
-                                    <td colspan="8" class="text-center text-muted py-4">
+                                    <td colspan="5" class="text-center text-muted py-4">
                                         <i class="bi bi-inbox"></i><br>
                                         Nenhum item adicionado
                                     </td>

@@ -76,11 +76,27 @@ def solicitacao_detail(request, pk):
     cotacoes = solicitacao.cotacoes_fornecedores.prefetch_related('itens')
     atendimentos = solicitacao.atendimentos.select_related('item_cotacao__cotacao_fornecedor__fornecedor')
     
+    # Listar instrumentos disponíveis para seleção
+    instrumentos_disponiveis = Instrumento.objects.filter(ativo=True).order_by('tag')
+    
+    # Datas para filtro de vencimento
+    hoje = datetime.now().date()
+    dias_30 = hoje + timedelta(days=30)
+    dias_60 = hoje + timedelta(days=60)
+    dias_90 = hoje + timedelta(days=90)
+    dias_120 = hoje + timedelta(days=120)
+    
     context = {
         'solicitacao': solicitacao,
         'itens': itens,
         'cotacoes': cotacoes,
         'atendimentos': atendimentos,
+        'instrumentos_disponiveis': instrumentos_disponiveis,
+        'hoje': hoje,
+        'dias_30': dias_30,
+        'dias_60': dias_60,
+        'dias_90': dias_90,
+        'dias_120': dias_120,
     }
     return render(request, 'metrologia/novo_fluxo/solicitacao_detail.html', context)
 
@@ -139,7 +155,7 @@ def solicitacao_itens(request, pk):
             if count_duplicados > 0:
                 messages.warning(request, f"{count_duplicados} instrumento(s) já estava(m) adicionado(s).")
             
-            return redirect('metrologia:solicitacao_itens', pk=solicitacao.id)
+            return redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
         else:
             # Adicionar item via formulário individual (fallback)
             form = ItemSolicitacaoCotacaoForm(request.POST)
@@ -157,7 +173,7 @@ def solicitacao_itens(request, pk):
                     item.save()
                     messages.success(request, f"Instrumento {item.instrumento.tag} adicionado.")
                 
-                return redirect('metrologia:solicitacao_itens', pk=solicitacao.id)
+                return redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
     else:
         form = ItemSolicitacaoCotacaoForm()
     
@@ -200,25 +216,67 @@ def item_solicitacao_edit(request, pk):
     
     if request.method == 'POST':
         form = ItemSolicitacaoCotacaoForm(request.POST, instance=item)
-        # IDs das faixas selecionadas
-        faixa_ids = request.POST.getlist('faixas_selecionadas')
+        
+        # IDs das faixas selecionadas - vindo do campo hidden
+        faixas_hidden = request.POST.get('faixas_selecionadas_hidden', '')
+        print(f"DEBUG: faixas_hidden = '{faixas_hidden}'")
+        faixa_ids = [fid.strip() for fid in faixas_hidden.split(',') if fid.strip()]
+        print(f"DEBUG: faixa_ids após parsing = {faixa_ids}")
+        
+        # Fallback para checkboxes normais (se não houver hidden)
+        if not faixa_ids:
+            faixa_ids = request.POST.getlist('faixas_selecionadas')
+            print(f"DEBUG: faixa_ids após fallback = {faixa_ids}")
         
         if form.is_valid():
             form.save()
             
-            # Atualizar faixas selecionadas
+            # Atualizar faixas selecionadas e pontos
             # Remover faixas não selecionadas
             ItemSolicitacaoFaixa.objects.filter(item_solicitacao=item).delete()
             
-            # Adicionar novas faixas selecionadas
+            # Se não houver faixas selecionadas, pegar TODAS as faixas do instrumento com 3 pontos
+            if not faixa_ids:
+                from metrologia.models import FaixaMedicao
+                faixa_ids = list(item.instrumento.faixas.values_list('id', flat=True))
+                print(f"DEBUG: Ativando automação. faixa_ids = {faixa_ids}")
+                print(f"DEBUG: Total de faixas a adicionar: {len(faixa_ids)}")
+            else:
+                print(f"DEBUG: Usando faixas selecionadas manualmente: {faixa_ids}")
+            
+            # Adicionar novas faixas selecionadas com seus pontos
             for faixa_id in faixa_ids:
                 try:
                     from metrologia.models import FaixaMedicao
                     faixa = FaixaMedicao.objects.get(id=faixa_id)
-                    ItemSolicitacaoFaixa.objects.create(
+                    print(f"DEBUG: Processando faixa {faixa_id}")
+                    
+                    # Obter número de pontos selecionado
+                    num_pontos_key = f'pontos_faixa_{faixa_id}'
+                    numero_pontos = int(request.POST.get(num_pontos_key, 3))
+                    print(f"DEBUG: Faixa {faixa_id} com {numero_pontos} pontos")
+                    
+                    # Criar registro da faixa
+                    faixa_item = ItemSolicitacaoFaixa.objects.create(
                         item_solicitacao=item,
-                        faixa_medicao=faixa
+                        faixa_medicao=faixa,
+                        numero_pontos=numero_pontos
                     )
+                    print(f"DEBUG: ItemSolicitacaoFaixa criado: {faixa_item.id}")
+                    
+
+                    # Salvar os pontos de calibração
+                    for i in range(1, numero_pontos + 1):
+                        ponto_key = f'ponto_{faixa_id}_{i}'
+                        ponto_value = request.POST.get(ponto_key)
+                        if ponto_value:
+                            try:
+                                setattr(faixa_item, f'ponto_{i}', float(ponto_value))
+                            except (ValueError, TypeError):
+                                pass
+                    
+                    faixa_item.save()
+                    
                 except FaixaMedicao.DoesNotExist:
                     pass
             
@@ -229,14 +287,20 @@ def item_solicitacao_edit(request, pk):
     
     # Carregar faixas do instrumento
     faixas = item.instrumento.faixas.all()
-    faixas_selecionadas = item.faixas_selecionadas.values_list('faixa_medicao_id', flat=True)
+    faixas_selecionadas = item.faixas_selecionadas.all()
+    
+    # Construir dicionário de faixas selecionadas para o template
+    faixas_selecionadas_dict = {}
+    for faixa_item in faixas_selecionadas:
+        faixas_selecionadas_dict[faixa_item.faixa_medicao_id] = faixa_item
     
     context = {
         'form': form,
         'item': item,
         'solicitacao': item.solicitacao,
         'faixas': faixas,
-        'faixas_selecionadas': faixas_selecionadas,
+        'faixas_selecionadas': faixas_selecionadas_dict.keys(),
+        'faixas_selecionadas_dict': faixas_selecionadas_dict,
         'titulo': f'Editar Item - {item.instrumento.tag}'
     }
     return render(request, 'metrologia/novo_fluxo/item_solicitacao_form.html', context)
@@ -252,7 +316,7 @@ def item_solicitacao_delete(request, pk):
         instrumento_tag = item.instrumento.tag
         item.delete()
         messages.success(request, f"Instrumento {instrumento_tag} removido.")
-        return redirect('metrologia:solicitacao_itens', pk=solicitacao_id)
+        return redirect('metrologia:solicitacao_detail', pk=solicitacao_id)
     
     context = {'item': item}
     return render(request, 'metrologia/novo_fluxo/item_solicitacao_confirm_delete.html', context)
