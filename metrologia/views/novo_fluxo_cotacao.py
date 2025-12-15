@@ -20,7 +20,8 @@ from decimal import Decimal
 
 from metrologia.models import (
     SolicitacaoCotacao, ItemSolicitacaoCotacao, CotacaoFornecedor,
-    ItemCotacao, AtendimentoSolicitacao, Instrumento, ProcessoAutomatizacao
+    ItemCotacao, AtendimentoSolicitacao, Instrumento, ProcessoAutomatizacao,
+    ItemSolicitacaoFaixa
 )
 from metrologia.forms import (
     SolicitacaoCotacaoForm, ItemSolicitacaoCotacaoForm, CotacaoFornecedorForm,
@@ -199,8 +200,28 @@ def item_solicitacao_edit(request, pk):
     
     if request.method == 'POST':
         form = ItemSolicitacaoCotacaoForm(request.POST, instance=item)
+        # IDs das faixas selecionadas
+        faixa_ids = request.POST.getlist('faixas_selecionadas')
+        
         if form.is_valid():
             form.save()
+            
+            # Atualizar faixas selecionadas
+            # Remover faixas não selecionadas
+            ItemSolicitacaoFaixa.objects.filter(item_solicitacao=item).delete()
+            
+            # Adicionar novas faixas selecionadas
+            for faixa_id in faixa_ids:
+                try:
+                    from metrologia.models import FaixaMedicao
+                    faixa = FaixaMedicao.objects.get(id=faixa_id)
+                    ItemSolicitacaoFaixa.objects.create(
+                        item_solicitacao=item,
+                        faixa_medicao=faixa
+                    )
+                except FaixaMedicao.DoesNotExist:
+                    pass
+            
             messages.success(request, f"Instrumento {item.instrumento.tag} atualizado com sucesso!")
             return redirect('metrologia:solicitacao_itens', pk=solicitacao_id)
     else:
@@ -208,12 +229,14 @@ def item_solicitacao_edit(request, pk):
     
     # Carregar faixas do instrumento
     faixas = item.instrumento.faixas.all()
+    faixas_selecionadas = item.faixas_selecionadas.values_list('faixa_medicao_id', flat=True)
     
     context = {
         'form': form,
         'item': item,
         'solicitacao': item.solicitacao,
         'faixas': faixas,
+        'faixas_selecionadas': faixas_selecionadas,
         'titulo': f'Editar Item - {item.instrumento.tag}'
     }
     return render(request, 'metrologia/novo_fluxo/item_solicitacao_form.html', context)

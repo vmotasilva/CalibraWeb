@@ -746,6 +746,52 @@ class ItemSolicitacaoCotacao(models.Model):
         ordering = ['instrumento__tag']
 
 
+class ItemSolicitacaoFaixa(models.Model):
+    """
+    Faixas selecionadas para calibração de um item da solicitação
+    Permite múltiplas faixas com diferentes unidades de medida para um mesmo instrumento
+    """
+    item_solicitacao = models.ForeignKey(
+        ItemSolicitacaoCotacao,
+        on_delete=models.CASCADE,
+        related_name='faixas_selecionadas',
+        verbose_name='Item da Solicitação'
+    )
+    faixa_medicao = models.ForeignKey(
+        FaixaMedicao,
+        on_delete=models.CASCADE,
+        related_name='items_solicitacao',
+        verbose_name='Faixa de Medição'
+    )
+    
+    # Permite sobrescrita manual se necessário
+    valor_minimo = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Valor Mínimo (Override)'
+    )
+    valor_maximo = models.DecimalField(
+        max_digits=15,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        verbose_name='Valor Máximo (Override)'
+    )
+    
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.item_solicitacao} - {self.faixa_medicao}"
+    
+    class Meta:
+        verbose_name = "Faixa de Item de Solicitação"
+        verbose_name_plural = "Faixas de Itens de Solicitação"
+        unique_together = ('item_solicitacao', 'faixa_medicao')
+        ordering = ['faixa_medicao__valor_minimo']
+
+
 class CotacaoFornecedor(models.Model):
     """
     ETAPA 2: Cotação do Fornecedor - Proposta de um fornecedor para atender solicitação
