@@ -43,7 +43,7 @@
     </div>
 
     <div class="row">
-        <div class="col-md-8">
+        <div class="col-md-12">
             <!-- Card Principal com Dados do Item -->
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
@@ -129,6 +129,18 @@
                             <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFaixaManual">
                                 <i class="bi bi-plus"></i> Adicionar Faixa Manual
                             </button>
+                        </div>
+
+                        <!-- Campos de Pontos de Calibração -->
+                        <div id="pontosCalibracaoContainer" class="mb-4" style="display: none;">
+                            <div class="card bg-light">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Valores dos Pontos de Calibração</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="pontosFields" class="row"></div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Botões -->
@@ -275,6 +287,74 @@ function updateFaixasSummary() {
             selectPontos.disabled = !cb.checked;
         }
     });
+    
+    // Gerar campos de pontos se houver faixas selecionadas
+    gerarCamposPontos();
+}
+
+function gerarCamposPontos() {
+    const checkboxes = document.querySelectorAll('input[name="faixas_selecionadas"]:checked');
+    const container = document.getElementById('pontosCalibracaoContainer');
+    const pontosFields = document.getElementById('pontosFields');
+    
+    if (checkboxes.length === 0) {
+        container.style.display = 'none';
+        pontosFields.innerHTML = '';
+        return;
+    }
+    
+    container.style.display = 'block';
+    pontosFields.innerHTML = '';
+    
+    checkboxes.forEach(checkbox => {
+        const faixaId = checkbox.value;
+        const selectPontos = document.querySelector(`select[name="pontos_faixa_${faixaId}"]`);
+        const row = checkbox.closest('tr');
+        const tds = row?.querySelectorAll('td');
+        
+        if (selectPontos && row && tds.length >= 3) {
+            const minimo = tds[1]?.textContent?.trim() || '0';
+            const maximo = tds[2]?.textContent?.trim() || '0';
+            const unidade = tds[3]?.textContent?.trim() || '';
+            const numPontos = parseInt(selectPontos.value) || 3;
+            
+            const fieldGroup = document.createElement('div');
+            fieldGroup.className = 'col-md-6 mb-4';
+            
+            let html = `
+                <div class="border rounded p-3 bg-white">
+                    <h6 class="mb-3">
+                        <strong>${minimo} - ${maximo} ${unidade}</strong>
+                    </h6>
+                    <small class="text-muted mb-2 d-block">Preencha os ${numPontos} pontos de calibração:</small>
+                    <div class="row g-2">
+            `;
+            
+            for (let i = 1; i <= numPontos; i++) {
+                html += `
+                    <div class="col-12">
+                        <label class="form-label mb-1">
+                            <small><strong>Ponto ${i}</strong></small>
+                        </label>
+                        <input type="number" 
+                               step="0.0001" 
+                               placeholder="Valor" 
+                               class="form-control form-control-sm"
+                               name="ponto_${faixaId}_${i}"
+                               value="">
+                    </div>
+                `;
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            fieldGroup.innerHTML = html;
+            pontosFields.appendChild(fieldGroup);
+        }
+    });
 }
 
 function adicionarFaixasSelecionadas() {
@@ -414,8 +494,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!this.checked) {
                     selectPontos.value = '3';
                 }
+                // Adicionar listener ao dropdown de pontos
+                selectPontos.addEventListener('change', function() {
+                    gerarCamposPontos();
+                });
             }
             updateFaixasSummary();
+        });
+    });
+    
+    // Adicionar listeners aos dropdowns de pontos já existentes
+    const selectsPontos = document.querySelectorAll('select[name^="pontos_faixa_"]');
+    selectsPontos.forEach(select => {
+        select.addEventListener('change', function() {
+            gerarCamposPontos();
         });
     });
 });
