@@ -393,6 +393,13 @@ function preencherPontosAutomaticamente(faixaId, minimo, maximo, nominal) {
         }
     }
     
+    // Validar que os pontos são crescentes
+    for (let i = 0; i < valores.length - 1; i++) {
+        if (valores[i] >= valores[i + 1]) {
+            console.warn(`Aviso: Ponto ${i + 1} (${valores[i].toFixed(4)}) não é menor que Ponto ${i + 2} (${valores[i + 1].toFixed(4)})`);
+        }
+    }
+    
     // Atualizar o resumo para refletir a mudança
     updateFaixasSummary();
 }
