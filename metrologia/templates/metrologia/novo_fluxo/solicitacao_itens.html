@@ -108,21 +108,37 @@
                         {% if instrumentos_disponiveis %}
                             <!-- Filtros e Contadores -->
                             <div class="row mb-4">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="filtroStatus" class="form-label"><strong>Filtrar por Período de Vencimento:</strong></label>
-                                        <select class="form-select" id="filtroStatus" onchange="filtrarInstrumentos()">
-                                            <option value="">Todos os Instrumentos</option>
-                                            <option value="vencidos">Vencidos</option>
-                                            <option value="30dias">Até 30 dias</option>
-                                            <option value="60dias">Até 60 dias</option>
-                                            <option value="90dias">Até 90 dias</option>
-                                            <option value="120dias">Até 120 dias</option>
-                                            <option value="acima120">Acima de 120 dias</option>
-                                        </select>
+                                <div class="col-md-12">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="filtroStatus" class="form-label"><strong>Filtrar por Período de Vencimento:</strong></label>
+                                                <select class="form-select" id="filtroStatus" onchange="filtrarInstrumentos()">
+                                                    <option value="">Todos os Períodos</option>
+                                                    <option value="vencidos">Vencidos</option>
+                                                    <option value="30dias">Até 30 dias</option>
+                                                    <option value="60dias">Até 60 dias</option>
+                                                    <option value="90dias">Até 90 dias</option>
+                                                    <option value="120dias">Até 120 dias</option>
+                                                    <option value="acima120">Acima de 120 dias</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="filtroCategoria" class="form-label"><strong>Filtrar por Categoria:</strong></label>
+                                                <select class="form-select" id="filtroCategoria" onchange="filtrarInstrumentos()">
+                                                    <option value="">Todas as Categorias</option>
+                                                    {% regroup instrumentos_disponiveis by categoria as categorias_list %}
+                                                    {% for categoria_group in categorias_list %}
+                                                        <option value="{{ categoria_group.grouper }}">{{ categoria_group.grouper }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-12 mt-2">
                                     <div class="row g-2">
                                         <div class="col-6">
                                             <div class="alert alert-danger mb-0 py-2" role="alert">
@@ -190,17 +206,17 @@
                                     <tbody>
                                         {% for instrumento in instrumentos_disponiveis %}
                                             {% if instrumento.data_proxima_calibracao < hoje %}
-                                                <tr class="table-danger status-vencidos" data-status="vencidos" data-dias="0">
+                                                <tr class="table-danger status-vencidos" data-status="vencidos" data-dias="0" data-categoria="{{ instrumento.categoria }}">
                                             {% elif instrumento.data_proxima_calibracao <= dias_30 %}
-                                                <tr class="table-warning status-30dias" data-status="30dias" data-dias="1">
+                                                <tr class="table-warning status-30dias" data-status="30dias" data-dias="1" data-categoria="{{ instrumento.categoria }}">
                                             {% elif instrumento.data_proxima_calibracao <= dias_60 %}
-                                                <tr class="table-info status-60dias" data-status="60dias" data-dias="2">
+                                                <tr class="table-info status-60dias" data-status="60dias" data-dias="2" data-categoria="{{ instrumento.categoria }}">
                                             {% elif instrumento.data_proxima_calibracao <= dias_90 %}
-                                                <tr class="" data-status="90dias" data-dias="3">
+                                                <tr class="" data-status="90dias" data-dias="3" data-categoria="{{ instrumento.categoria }}">
                                             {% elif instrumento.data_proxima_calibracao <= dias_120 %}
-                                                <tr class="" data-status="120dias" data-dias="4">
+                                                <tr class="" data-status="120dias" data-dias="4" data-categoria="{{ instrumento.categoria }}">
                                             {% else %}
-                                                <tr class="table-light status-acima120" data-status="acima120" data-dias="5">
+                                                <tr class="table-light status-acima120" data-status="acima120" data-dias="5" data-categoria="{{ instrumento.categoria }}">
                                             {% endif %}
                                                     <td><input type="checkbox" name="instrumentos_selecionados" value="{{ instrumento.id }}" class="checkbox-instrumento" onchange="atualizarContador()"></td>
                                                     <td><strong>{{ instrumento.tag }}</strong></td>
@@ -276,48 +292,57 @@
     }
 
     function filtrarInstrumentos() {
-        const filtro = document.getElementById('filtroStatus').value;
+        const filtroStatus = document.getElementById('filtroStatus').value;
+        const filtroCategoria = document.getElementById('filtroCategoria').value;
         const linhas = document.querySelectorAll('#tabelaInstrumentos tbody tr');
         
         linhas.forEach(linha => {
-            if (filtro === '') {
+            const categoria = linha.getAttribute('data-categoria');
+            const status = linha.getAttribute('data-status');
+            const dias = parseInt(linha.getAttribute('data-dias'));
+            
+            let mostrar = true;
+            
+            // Filtro de categoria
+            if (filtroCategoria !== '' && categoria !== filtroCategoria) {
+                mostrar = false;
+            }
+            
+            // Filtro de período (apenas se mostrar for verdadeiro)
+            if (mostrar && filtroStatus !== '') {
+                let mostrarPorStatus = false;
+                
+                switch(filtroStatus) {
+                    case 'vencidos':
+                        mostrarPorStatus = dias === 0;
+                        break;
+                    case '30dias':
+                        mostrarPorStatus = dias === 0 || dias === 1;
+                        break;
+                    case '60dias':
+                        mostrarPorStatus = dias === 0 || dias === 1 || dias === 2;
+                        break;
+                    case '90dias':
+                        mostrarPorStatus = dias === 0 || dias === 1 || dias === 2 || dias === 3;
+                        break;
+                    case '120dias':
+                        mostrarPorStatus = dias === 0 || dias === 1 || dias === 2 || dias === 3 || dias === 4;
+                        break;
+                    case 'acima120':
+                        mostrarPorStatus = dias === 5;
+                        break;
+                }
+                
+                mostrar = mostrarPorStatus;
+            }
+            
+            if (mostrar) {
                 linha.style.display = '';
                 linha.querySelector('input[type="checkbox"]').disabled = false;
             } else {
-                const status = linha.getAttribute('data-status');
-                const dias = parseInt(linha.getAttribute('data-dias'));
-                let mostrar = false;
-
-                // Lógica de filtro por período
-                switch(filtro) {
-                    case 'vencidos':
-                        mostrar = dias === 0;
-                        break;
-                    case '30dias':
-                        mostrar = dias === 0 || dias === 1;
-                        break;
-                    case '60dias':
-                        mostrar = dias === 0 || dias === 1 || dias === 2;
-                        break;
-                    case '90dias':
-                        mostrar = dias === 0 || dias === 1 || dias === 2 || dias === 3;
-                        break;
-                    case '120dias':
-                        mostrar = dias === 0 || dias === 1 || dias === 2 || dias === 3 || dias === 4;
-                        break;
-                    case 'acima120':
-                        mostrar = dias === 5;
-                        break;
-                }
-
-                if (mostrar) {
-                    linha.style.display = '';
-                    linha.querySelector('input[type="checkbox"]').disabled = false;
-                } else {
-                    linha.style.display = 'none';
-                    linha.querySelector('input[type="checkbox"]').disabled = true;
-                    linha.querySelector('input[type="checkbox"]').checked = false;
-                }
+                linha.style.display = 'none';
+                linha.querySelector('input[type="checkbox"]').disabled = true;
+                linha.querySelector('input[type="checkbox"]').checked = false;
             }
         });
         

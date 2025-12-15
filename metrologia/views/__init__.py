@@ -40,6 +40,7 @@ from .novo_fluxo_cotacao import (
     solicitacao_list,
     solicitacao_create,
     solicitacao_detail,
+    solicitacao_delete,
     solicitacao_itens,
     item_solicitacao_edit,
     item_solicitacao_delete,

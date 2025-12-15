@@ -126,8 +126,7 @@ def solicitacao_itens(request, pk):
                     else:
                         ItemSolicitacaoCotacao.objects.create(
                             solicitacao=solicitacao,
-                            instrumento=instrumento,
-                            necessidade='Necessário'
+                            instrumento=instrumento
                         )
                         count_adicionados += 1
                 except Instrumento.DoesNotExist:
