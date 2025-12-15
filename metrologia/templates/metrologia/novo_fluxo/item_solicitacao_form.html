@@ -146,10 +146,16 @@
 
             <!-- Faixas Selecionadas - Abaixo do Card Principal -->
             <div class="card">
-                <div class="card-header bg-info text-white">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                     <h6 class="mb-0">
                         <i class="bi bi-check-circle"></i> Faixas Selecionadas
                     </h6>
+                    <i class="bi bi-info-circle" 
+                       data-bs-toggle="popover" 
+                       data-bs-placement="left"
+                       data-bs-title="Como usar"
+                       data-bs-content="Selecione as faixas que deseja calibrar. Para cada faixa, escolha a quantidade de pontos de calibração (3, 6 ou 9). Você pode adicionar faixas manuais clicando em 'Adicionar Faixa Manual'."
+                       style="cursor: help; font-size: 1.1rem;"></i>
                 </div>
                 <div class="card-body">
                     {% if faixas_selecionadas %}
@@ -169,38 +175,6 @@
                     {% else %}
                         <p class="text-muted small mb-0">Nenhuma faixa selecionada ainda.</p>
                     {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Coluna Lateral de Informações -->
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header bg-secondary text-white">
-                    <h6 class="mb-0">
-                        <i class="bi bi-info-circle"></i> Informações Úteis
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted small">
-                        <i class="bi bi-check-circle"></i>
-                        <strong>Seleção de Faixas:</strong> Escolha todas as faixas que serão calibradas.
-                    </p>
-                    <hr>
-                    <p class="text-muted small">
-                        <i class="bi bi-rulers"></i>
-                        <strong>Pontos de Calibração:</strong> Cada faixa pode ter 3, 6 ou 9 pontos de calibração.
-                    </p>
-                    <hr>
-                    <p class="text-muted small">
-                        <i class="bi bi-layout-split"></i>
-                        <strong>Múltiplas Unidades:</strong> Você pode selecionar faixas com diferentes unidades de medida.
-                    </p>
-                    <hr>
-                    <p class="text-muted small">
-                        <i class="bi bi-pencil"></i>
-                        <strong>Entrada Manual:</strong> Preencha manualmente se precisar de faixas customizadas.
-                    </p>
                 </div>
             </div>
         </div>
@@ -422,6 +396,14 @@ function adicionarFaixaManual() {
 
 // Atualizar resumo ao mudar checkbox
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar popovers do Bootstrap
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    const popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl, {
+            trigger: 'hover'
+        });
+    });
+
     const checkboxes = document.querySelectorAll('input[name="faixas_selecionadas"]');
     checkboxes.forEach(cb => {
         cb.addEventListener('change', function() {
