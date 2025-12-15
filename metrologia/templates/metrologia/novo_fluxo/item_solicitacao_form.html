@@ -81,9 +81,14 @@
                         <div class="mb-4 pb-3 border-bottom">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label mb-0"><strong>Faixas Cadastradas do Instrumento:</strong></label>
-                                <button type="button" class="btn btn-sm btn-success" onclick="toggleAllFaixas(document.getElementById('checkAllFaixas'))">
-                                    <i class="bi bi-check2-all"></i> Selecionar Tudo
-                                </button>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-success" onclick="toggleAllFaixas(document.getElementById('checkAllFaixas'))">
+                                        <i class="bi bi-check2-all"></i> Selecionar Tudo
+                                    </button>
+                                    <button type="button" class="btn btn-primary" onclick="adicionarFaixasSelecionadas()">
+                                        <i class="bi bi-plus-circle"></i> Adicionar
+                                    </button>
+                                </div>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-sm mb-0">
@@ -133,65 +138,11 @@
                             </small>
                         </div>
 
-                        <!-- Formulário para Entrada Manual de Faixas -->
-                        <label class="form-label"><strong>Preencher Faixa Manualmente:</strong></label>
-
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="{{ form.faixa_min.id_for_label }}" class="form-label">
-                                    {{ form.faixa_min.label }} (Mínima)
-                                </label>
-                                {{ form.faixa_min }}
-                                {% if form.faixa_min.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.faixa_min.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-md-4 mb-3">
-                                <label for="{{ form.faixa_centro.id_for_label }}" class="form-label">
-                                    {{ form.faixa_centro.label }}
-                                </label>
-                                {{ form.faixa_centro }}
-                                {% if form.faixa_centro.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.faixa_centro.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-md-4 mb-3">
-                                <label for="{{ form.faixa_max.id_for_label }}" class="form-label">
-                                    {{ form.faixa_max.label }} (Máxima)
-                                </label>
-                                {{ form.faixa_max }}
-                                {% if form.faixa_max.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.faixa_max.errors }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="{{ form.unidade_pontos.id_for_label }}" class="form-label">
-                                    {{ form.unidade_pontos.label }}
-                                </label>
-                                {{ form.unidade_pontos }}
-                                {% if form.unidade_pontos.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.unidade_pontos.errors }}</div>
-                                {% endif %}
-                                <small class="form-text text-muted">
-                                    Ex: mm, V, °C, %
-                                </small>
-                            </div>
-                        </div>
-
-                        <!-- Notas Adicionais -->
-                        <div class="mb-3 mt-3">
-                            <label for="{{ form.notas.id_for_label }}" class="form-label">
-                                {{ form.notas.label }}
-                            </label>
-                            {{ form.notas }}
-                            {% if form.notas.errors %}
-                                <div class="invalid-feedback d-block">{{ form.notas.errors }}</div>
-                            {% endif %}
+                        <!-- Botão para Entrada Manual -->
+                        <div class="mb-4">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFaixaManual">
+                                <i class="bi bi-plus"></i> Adicionar Faixa Manual
+                            </button>
                         </div>
 
                         <!-- Botões -->
@@ -270,6 +221,69 @@
     </div>
 </div>
 
+<!-- Modal para Entrada Manual de Faixa -->
+<div class="modal fade" id="modalFaixaManual" tabindex="-1" aria-labelledby="modalFaixaManualLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalFaixaManualLabel">
+                    <i class="bi bi-plus-circle"></i> Adicionar Faixa Manual
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formFaixaManual">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="manual_faixa_min" class="form-label">
+                                {{ form.faixa_min.label }} (Mínima)
+                            </label>
+                            <input type="number" step="0.0001" id="manual_faixa_min" class="form-control" placeholder="Ex: 19.0000">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="manual_faixa_max" class="form-label">
+                                {{ form.faixa_max.label }} (Máxima)
+                            </label>
+                            <input type="number" step="0.0001" id="manual_faixa_max" class="form-control" placeholder="Ex: 25.0000">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="manual_faixa_centro" class="form-label">
+                            {{ form.faixa_centro.label }}
+                        </label>
+                        <input type="number" step="0.0001" id="manual_faixa_centro" class="form-control" placeholder="Ex: 22.0000">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="manual_unidade_pontos" class="form-label">
+                            {{ form.unidade_pontos.label }}
+                        </label>
+                        <input type="text" id="manual_unidade_pontos" class="form-control" placeholder="Ex: mm, V, °C, %">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="manual_pontos_faixa" class="form-label">
+                            <strong>Pontos de Calibração</strong>
+                        </label>
+                        <select id="manual_pontos_faixa" class="form-select">
+                            <option value="3" selected>3 Pontos</option>
+                            <option value="6">6 Pontos</option>
+                            <option value="9">9 Pontos</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="adicionarFaixaManual()">
+                    <i class="bi bi-plus-circle"></i> Adicionar Faixa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function toggleAllFaixas(source) {
     const checkboxes = document.querySelectorAll('input[name="faixas_selecionadas"]');
@@ -303,6 +317,103 @@ function updateFaixasSummary() {
     });
 }
 
+function adicionarFaixasSelecionadas() {
+    const checkboxes = document.querySelectorAll('input[name="faixas_selecionadas"]:checked');
+    
+    if (checkboxes.length === 0) {
+        alert('Selecione pelo menos uma faixa para adicionar');
+        return;
+    }
+
+    const summaryDiv = document.getElementById('faixas-summary');
+    const countElement = document.getElementById('count-faixas');
+    
+    // Se não existe elemento de resumo, criar
+    if (!summaryDiv) {
+        const card = document.querySelector('.card-header.bg-info');
+        if (card && card.nextElementSibling) {
+            const cardBody = card.nextElementSibling;
+            const newDiv = document.createElement('div');
+            newDiv.id = 'faixas-summary';
+            newDiv.className = 'small';
+            cardBody.insertBefore(newDiv, cardBody.firstChild);
+        }
+    }
+
+    updateFaixasSummary();
+    alert(`${checkboxes.length} faixa(s) adicionada(s) com sucesso!`);
+}
+
+function adicionarFaixaManual() {
+    const minimo = document.getElementById('manual_faixa_min').value;
+    const maximo = document.getElementById('manual_faixa_max').value;
+    const centro = document.getElementById('manual_faixa_centro').value;
+    const unidade = document.getElementById('manual_unidade_pontos').value;
+    const pontos = document.getElementById('manual_pontos_faixa').value;
+
+    // Validação básica
+    if (!minimo || !maximo || !unidade) {
+        alert('Preenchimento obrigatório: Mínimo, Máximo e Unidade');
+        return;
+    }
+
+    if (parseFloat(minimo) >= parseFloat(maximo)) {
+        alert('O valor mínimo deve ser menor que o valor máximo');
+        return;
+    }
+
+    // Adicionar à tabela dinamicamente
+    const tableBody = document.querySelector('table tbody');
+    const newRow = document.createElement('tr');
+    const rowId = 'manual-faixa-' + Date.now();
+    
+    newRow.innerHTML = `
+        <td>
+            <input type="checkbox" 
+                   name="faixas_selecionadas" 
+                   value="${rowId}"
+                   class="faixa-checkbox"
+                   onchange="updateFaixasSummary()"
+                   checked>
+        </td>
+        <td>${parseFloat(minimo).toFixed(4)}</td>
+        <td>${parseFloat(maximo).toFixed(4)}</td>
+        <td><strong>${unidade}</strong></td>
+        <td>${centro ? parseFloat(centro).toFixed(4) : '-'}</td>
+        <td>-</td>
+        <td>
+            <select name="pontos_faixa_${rowId}" class="form-select form-select-sm">
+                <option value="3" ${pontos === '3' ? 'selected' : ''}>3 Pontos</option>
+                <option value="6" ${pontos === '6' ? 'selected' : ''}>6 Pontos</option>
+                <option value="9" ${pontos === '9' ? 'selected' : ''}>9 Pontos</option>
+            </select>
+        </td>
+    `;
+
+    tableBody.appendChild(newRow);
+
+    // Adicionar ao resumo
+    const summaryDiv = document.getElementById('faixas-summary');
+    if (summaryDiv) {
+        const badge = document.createElement('div');
+        badge.className = 'badge bg-light text-dark mb-2 me-2 p-2 d-inline-block';
+        badge.style.maxWidth = '100%';
+        badge.innerHTML = `
+            <i class="bi bi-check2"></i>
+            ${parseFloat(minimo).toFixed(4)} - ${parseFloat(maximo).toFixed(4)} ${unidade}
+        `;
+        summaryDiv.appendChild(badge);
+    }
+
+    // Limpar form e fechar modal
+    document.getElementById('formFaixaManual').reset();
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalFaixaManual'));
+    modal.hide();
+
+    updateFaixasSummary();
+    alert('Faixa manual adicionada com sucesso!');
+}
+
 // Atualizar resumo ao mudar checkbox
 document.addEventListener('DOMContentLoaded', function() {
     const checkboxes = document.querySelectorAll('input[name="faixas_selecionadas"]');
@@ -313,22 +424,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (selectPontos) {
                 selectPontos.disabled = !this.checked;
                 if (!this.checked) {
-                    selectPontos.value = '';
+                    selectPontos.value = '3';
                 }
             }
             updateFaixasSummary();
         });
     });
 });
-
-function preencherFaixa(minimo, maximo, unidade) {
-    document.getElementById('id_faixa_min').value = minimo;
-    document.getElementById('id_faixa_max').value = maximo;
-    document.getElementById('id_unidade_pontos').value = unidade;
-    
-    // Scroll para o topo do formulário
-    document.querySelector('.card-body').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
 </script>
 {% endblock %}
 
