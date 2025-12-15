@@ -67,14 +67,9 @@
                         <div class="mb-4 pb-3 border-bottom">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <label class="form-label mb-0"><strong>Faixas Cadastradas do Instrumento:</strong></label>
-                                <div class="btn-group btn-group-sm">
-                                    <button type="button" class="btn btn-success" onclick="toggleAllFaixas(document.getElementById('checkAllFaixas'))">
-                                        <i class="bi bi-check2-all"></i> Selecionar Tudo
-                                    </button>
-                                    <button type="button" class="btn btn-primary" onclick="adicionarFaixasSelecionadas()">
-                                        <i class="bi bi-plus-circle"></i> Adicionar
-                                    </button>
-                                </div>
+                                <button type="button" class="btn btn-success btn-sm" onclick="toggleAllFaixas(document.getElementById('checkAllFaixas'))">
+                                    <i class="bi bi-check2-all"></i> Selecionar Tudo
+                                </button>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-sm mb-0">
@@ -131,18 +126,6 @@
                             </button>
                         </div>
 
-                        <!-- Campos de Pontos de Calibração -->
-                        <div id="pontosCalibracaoContainer" class="mb-4" style="display: none;">
-                            <div class="card bg-light">
-                                <div class="card-header">
-                                    <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Valores dos Pontos de Calibração</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div id="pontosFields" class="row"></div>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Botões -->
                         <div class="mt-4">
                             <button type="submit" class="btn btn-primary">
@@ -170,23 +153,9 @@
                        style="cursor: help; font-size: 1.1rem;"></i>
                 </div>
                 <div class="card-body">
-                    {% if faixas_selecionadas %}
-                        <div id="faixas-summary" class="small">
-                            {% for faixa in faixas %}
-                                {% if faixa.id in faixas_selecionadas %}
-                                    <div class="badge bg-light text-dark mb-2 me-2 p-2 d-inline-block" style="max-width: 100%;">
-                                        <i class="bi bi-check2"></i>
-                                        {{ faixa.valor_minimo }} - {{ faixa.valor_maximo }} {{ faixa.unidade.nome }}
-                                    </div>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
-                        <small class="text-muted d-block mt-2">
-                            Total: <strong id="count-faixas">{{ faixas_selecionadas|length }}</strong> faixa(s) selecionada(s)
-                        </small>
-                    {% else %}
+                    <div id="faixas-summary-container">
                         <p class="text-muted small mb-0">Nenhuma faixa selecionada ainda.</p>
-                    {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -273,10 +242,91 @@ function toggleAllFaixas(source) {
 
 function updateFaixasSummary() {
     const checkboxes = document.querySelectorAll('input[name="faixas_selecionadas"]:checked');
-    const countElement = document.getElementById('count-faixas');
-    if (countElement) {
-        countElement.textContent = checkboxes.length;
+    const container = document.getElementById('faixas-summary-container');
+    
+    if (checkboxes.length === 0) {
+        container.innerHTML = '<p class="text-muted small mb-0">Nenhuma faixa selecionada ainda.</p>';
+        return;
     }
+    
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Mínimo</th>
+                        <th>Máximo</th>
+                        <th>Unidade</th>
+                        <th>Nominal</th>
+                        <th>Tolerância (±)</th>
+                        <th>Pontos</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    checkboxes.forEach(checkbox => {
+        const row = checkbox.closest('tr');
+        if (row) {
+            const tds = row.querySelectorAll('td');
+            if (tds.length >= 7) {
+                const minimo = tds[1]?.textContent?.trim() || '0';
+                const maximo = tds[2]?.textContent?.trim() || '0';
+                const unidade = tds[3]?.textContent?.trim() || '';
+                const nominal = tds[4]?.textContent?.trim() || '-';
+                const tolerancia = tds[5]?.textContent?.trim() || '-';
+                
+                const faixaId = checkbox.value;
+                const selectPontos = document.querySelector(`select[name="pontos_faixa_${faixaId}"]`);
+                const numPontos = selectPontos ? parseInt(selectPontos.value) || 3 : 3;
+                
+                html += `
+                    <tr>
+                        <td>${minimo}</td>
+                        <td>${maximo}</td>
+                        <td><strong>${unidade}</strong></td>
+                        <td>${nominal}</td>
+                        <td>${tolerancia}</td>
+                        <td>${numPontos} Pontos</td>
+                    </tr>
+                    <tr class="table-light">
+                        <td colspan="6">
+                            <div class="row g-2 mt-1 mb-1">
+                `;
+                
+                for (let i = 1; i <= numPontos; i++) {
+                    html += `
+                        <div class="col-md-4 col-lg-3">
+                            <label class="form-label mb-1"><small><strong>Ponto ${i}</strong></small></label>
+                            <input type="number" 
+                                   step="0.0001" 
+                                   placeholder="Valor" 
+                                   class="form-control form-control-sm"
+                                   name="ponto_${faixaId}_${i}"
+                                   value="">
+                        </div>
+                    `;
+                }
+                
+                html += `
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <small class="text-muted d-block mt-2">
+            Total: <strong id="count-faixas">${checkboxes.length}</strong> faixa(s) selecionada(s)
+        </small>
+    `;
+    
+    container.innerHTML = html;
     
     // Habilitar/desabilitar dropdowns de pontos para cada faixa
     const allCheckboxes = document.querySelectorAll('input[name="faixas_selecionadas"]');
@@ -287,121 +337,6 @@ function updateFaixasSummary() {
             selectPontos.disabled = !cb.checked;
         }
     });
-    
-    // Gerar campos de pontos se houver faixas selecionadas
-    gerarCamposPontos();
-}
-
-function gerarCamposPontos() {
-    const checkboxes = document.querySelectorAll('input[name="faixas_selecionadas"]:checked');
-    const container = document.getElementById('pontosCalibracaoContainer');
-    const pontosFields = document.getElementById('pontosFields');
-    
-    if (checkboxes.length === 0) {
-        container.style.display = 'none';
-        pontosFields.innerHTML = '';
-        return;
-    }
-    
-    container.style.display = 'block';
-    pontosFields.innerHTML = '';
-    
-    checkboxes.forEach(checkbox => {
-        const faixaId = checkbox.value;
-        const selectPontos = document.querySelector(`select[name="pontos_faixa_${faixaId}"]`);
-        const row = checkbox.closest('tr');
-        const tds = row?.querySelectorAll('td');
-        
-        if (selectPontos && row && tds.length >= 3) {
-            const minimo = tds[1]?.textContent?.trim() || '0';
-            const maximo = tds[2]?.textContent?.trim() || '0';
-            const unidade = tds[3]?.textContent?.trim() || '';
-            const numPontos = parseInt(selectPontos.value) || 3;
-            
-            const fieldGroup = document.createElement('div');
-            fieldGroup.className = 'col-md-6 mb-4';
-            
-            let html = `
-                <div class="border rounded p-3 bg-white">
-                    <h6 class="mb-3">
-                        <strong>${minimo} - ${maximo} ${unidade}</strong>
-                    </h6>
-                    <small class="text-muted mb-2 d-block">Preencha os ${numPontos} pontos de calibração:</small>
-                    <div class="row g-2">
-            `;
-            
-            for (let i = 1; i <= numPontos; i++) {
-                html += `
-                    <div class="col-12">
-                        <label class="form-label mb-1">
-                            <small><strong>Ponto ${i}</strong></small>
-                        </label>
-                        <input type="number" 
-                               step="0.0001" 
-                               placeholder="Valor" 
-                               class="form-control form-control-sm"
-                               name="ponto_${faixaId}_${i}"
-                               value="">
-                    </div>
-                `;
-            }
-            
-            html += `
-                    </div>
-                </div>
-            `;
-            
-            fieldGroup.innerHTML = html;
-            pontosFields.appendChild(fieldGroup);
-        }
-    });
-}
-
-function adicionarFaixasSelecionadas() {
-    const checkboxes = document.querySelectorAll('input[name="faixas_selecionadas"]:checked');
-    
-    if (checkboxes.length === 0) {
-        alert('Selecione pelo menos uma faixa para adicionar');
-        return;
-    }
-
-    let summaryDiv = document.getElementById('faixas-summary');
-    const cardBody = document.querySelector('.card-header.bg-info')?.nextElementSibling;
-    
-    // Se não existe div de resumo, substituir conteúdo do card
-    if (!cardBody) {
-        alert('Erro ao localizar área de resumo');
-        return;
-    }
-
-    // Limpar o card e reconstruir com as faixas selecionadas
-    let html = '<div id="faixas-summary" class="small">';
-    
-    checkboxes.forEach(checkbox => {
-        const row = checkbox.closest('tr');
-        if (row) {
-            const tds = row.querySelectorAll('td');
-            if (tds.length >= 3) {
-                const minimo = tds[1]?.textContent || '0';
-                const maximo = tds[2]?.textContent || '0';
-                const unidade = tds[3]?.textContent || '';
-                
-                html += `
-                    <div class="badge bg-light text-dark mb-2 me-2 p-2 d-inline-block" style="max-width: 100%;">
-                        <i class="bi bi-check2"></i>
-                        ${minimo.trim()} - ${maximo.trim()} ${unidade.trim()}
-                    </div>
-                `;
-            }
-        }
-    });
-    
-    html += '</div>';
-    html += `<small class="text-muted d-block mt-2">Total: <strong id="count-faixas">${checkboxes.length}</strong> faixa(s) selecionada(s)</small>`;
-    
-    cardBody.innerHTML = html;
-    
-    alert(`${checkboxes.length} faixa(s) adicionada(s) com sucesso!`);
 }
 
 function adicionarFaixaManual() {
@@ -496,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 // Adicionar listener ao dropdown de pontos
                 selectPontos.addEventListener('change', function() {
-                    gerarCamposPontos();
+                    updateFaixasSummary();
                 });
             }
             updateFaixasSummary();
@@ -507,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectsPontos = document.querySelectorAll('select[name^="pontos_faixa_"]');
     selectsPontos.forEach(select => {
         select.addEventListener('change', function() {
-            gerarCamposPontos();
+            updateFaixasSummary();
         });
     });
 });
