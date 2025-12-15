@@ -206,10 +206,14 @@ def item_solicitacao_edit(request, pk):
     else:
         form = ItemSolicitacaoCotacaoForm(instance=item)
     
+    # Carregar faixas do instrumento
+    faixas = item.instrumento.faixas.all()
+    
     context = {
         'form': form,
         'item': item,
         'solicitacao': item.solicitacao,
+        'faixas': faixas,
         'titulo': f'Editar Item - {item.instrumento.tag}'
     }
     return render(request, 'metrologia/novo_fluxo/item_solicitacao_form.html', context)
