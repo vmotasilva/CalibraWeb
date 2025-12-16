@@ -29,7 +29,6 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         widget=forms.FileInput(attrs={
             'class': 'form-control form-control-sm',
             'accept': '.pdf',
-            'multiple': True,
         })
     )
     
