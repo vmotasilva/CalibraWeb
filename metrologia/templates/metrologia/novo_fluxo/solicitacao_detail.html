@@ -146,8 +146,12 @@
                                 </strong>
                             </td>
                             <td>
+                                <a href="{% url 'metrologia:cotacao_fornecedor_update' cotacao.id %}" 
+                                   class="btn btn-sm btn-warning" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
                                 <a href="{% url 'metrologia:cotacao_fornecedor_detail' cotacao.id %}" 
-                                   class="btn btn-sm btn-primary">
+                                   class="btn btn-sm btn-primary" title="Visualizar">
                                     <i class="bi bi-eye"></i>
                                 </a>
                             </td>

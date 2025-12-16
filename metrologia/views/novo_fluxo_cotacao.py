@@ -367,8 +367,8 @@ def cotacao_fornecedor_create(request, solicitacao_pk):
             cotacao.solicitacao = solicitacao
             cotacao.criado_por = request.user
             cotacao.save()
-            messages.success(request, f"Cotação {cotacao.numero} criada. Agora adicione os itens.")
-            return redirect('metrologia:cotacao_fornecedor_itens', pk=cotacao.id)
+            messages.success(request, f"Cotação {cotacao.numero} criada. Preencha os dados e itens.")
+            return redirect('metrologia:cotacao_fornecedor_update', pk=cotacao.id)
     else:
         form = CotacaoFornecedorForm()
     
