@@ -6,7 +6,7 @@ decorators individuais em cada view.
 
 from django.shortcuts import redirect
 from django.contrib import messages
-from django.urls.resolve import resolve
+from django.urls import resolve
 from shared.permissions import has_module_access, MODULES_PERMISSIONS
 
 
