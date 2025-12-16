@@ -323,14 +323,9 @@ class CotacaoFornecedorForm(forms.ModelForm):
     
     class Meta:
         model = CotacaoFornecedor
-        fields = ['fornecedor', 'observacoes']
+        fields = ['fornecedor']
         widgets = {
             'fornecedor': forms.Select(attrs={'class': 'form-select'}),
-            'observacoes': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 4,
-                'placeholder': 'Observações gerais sobre a cotação'
-            }),
         }
 
 

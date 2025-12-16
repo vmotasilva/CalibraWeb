@@ -13,11 +13,6 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-info mb-4">
-                        <strong>Solicitação:</strong> {{ solicitacao.numero }}<br>
-                        <small>Período: {{ solicitacao.data_inicio_vencimento|date:"d/m/Y" }} até {{ solicitacao.data_fim_vencimento|date:"d/m/Y" }}</small>
-                    </div>
-
                     {% if messages %}
                         {% for message in messages %}
                             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
@@ -27,31 +22,45 @@
                         {% endfor %}
                     {% endif %}
 
+                    <!-- Painel de Informações da Solicitação -->
+                    <div class="alert alert-info mb-4 p-3">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Solicitação:</strong> {{ solicitacao.numero }}<br>
+                                <small class="text-muted">Criada em {{ solicitacao.data_criacao|date:"d/m/Y" }}</small>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Data de Solicitação de Orçamento:</strong><br>
+                                <small class="text-muted">
+                                    {% if solicitacao.data_solicitacao_orcamento %}
+                                        {{ solicitacao.data_solicitacao_orcamento|date:"d/m/Y" }}
+                                    {% else %}
+                                        <span class="badge bg-warning">Não informada</span>
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
                     <form method="post">
                         {% csrf_token %}
                         
-                        {% for field in form %}
-                            <div class="mb-3">
-                                {{ field.label_tag }}
-                                {{ field }}
-                                {% if field.errors %}
-                                    <div class="alert alert-danger mt-2 py-1">{{ field.errors }}</div>
-                                {% endif %}
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
                             </div>
-                        {% endfor %}
+                        {% endif %}
 
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle"></i> Criar Cotação
-                            </button>
-                            <a href="{% url 'metrologia:solicitacao_detail' solicitacao.id %}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left"></i> Cancelar
-                            </a>
+                        <!-- Campo de Fornecedor -->
+                        <div class="mb-4">
+                            <label for="{{ form.fornecedor.id_for_label }}" class="form-label fw-bold">
+                                <i class="bi bi-building"></i> {{ form.fornecedor.label }}
+                            </label>
+                            {{ form.fornecedor }}
+                            {% if form.fornecedor.errors %}
+                                <div class="alert alert-danger mt-2 py-1">
+                                    {{ form.fornecedor.errors }}
+                                </div>
+                            {% endif %}
                         </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
