@@ -323,9 +323,19 @@ class CotacaoFornecedorForm(forms.ModelForm):
     
     class Meta:
         model = CotacaoFornecedor
-        fields = ['fornecedor']
+        fields = ['fornecedor', 'data_solicitacao', 'data_retorno_fornecedor']
         widgets = {
-            'fornecedor': forms.Select(attrs={'class': 'form-select'}),
+            'fornecedor': forms.Select(attrs={
+                'class': 'form-select',
+            }),
+            'data_solicitacao': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+            }),
+            'data_retorno_fornecedor': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+            }),
         }
 
 
@@ -335,7 +345,7 @@ class ItemCotacaoForm(forms.ModelForm):
     class Meta:
         model = ItemCotacao
         fields = ['item_solicitacao', 'instrumento', 'pode_atender', 'tipo_servico', 
-                  'valor_unitario', 'quantidade', 'prazo_dias', 'descricao_servico']
+                  'valor_unitario', 'quantidade', 'local_atendimento', 'prazo_dias', 'descricao_servico']
         widgets = {
             'item_solicitacao': forms.Select(attrs={'class': 'form-select'}),
             'instrumento': forms.Select(attrs={'class': 'form-select'}),
@@ -350,6 +360,9 @@ class ItemCotacaoForm(forms.ModelForm):
                 'class': 'form-control',
                 'min': '1',
                 'value': '1'
+            }),
+            'local_atendimento': forms.Select(attrs={
+                'class': 'form-select',
             }),
             'prazo_dias': forms.NumberInput(attrs={
                 'class': 'form-control',

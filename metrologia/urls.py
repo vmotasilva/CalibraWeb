@@ -24,6 +24,7 @@ urlpatterns = [
     # ETAPA 2: COTAÇÕES DE FORNECEDORES
     path('solicitacoes/<int:solicitacao_pk>/cotacao-fornecedor/nova/', views.cotacao_fornecedor_create, name='cotacao_fornecedor_create'),
     path('cotacao-fornecedor/<int:pk>/', views.cotacao_fornecedor_detail, name='cotacao_fornecedor_detail'),
+    path('cotacao-fornecedor/<int:pk>/editar/', views.cotacao_fornecedor_update, name='cotacao_fornecedor_update'),
     path('cotacao-fornecedor/<int:pk>/itens/', views.cotacao_fornecedor_itens, name='cotacao_fornecedor_itens'),
     path('itens-cotacao/<int:pk>/deletar/', views.item_cotacao_delete, name='item_cotacao_delete'),
 

@@ -381,6 +381,59 @@ def cotacao_fornecedor_create(request, solicitacao_pk):
 
 
 @login_required
+def cotacao_fornecedor_update(request, pk):
+    """Edita uma cotação de fornecedor - ETAPA 2"""
+    cotacao = get_object_or_404(CotacaoFornecedor, pk=pk)
+    
+    if request.method == 'POST':
+        form = CotacaoFornecedorForm(request.POST, instance=cotacao)
+        if form.is_valid():
+            form.save()
+            
+            # Processar itens se houver POST de valores/atendimento
+            itens_ids = request.POST.getlist('item_ids')
+            for item_id in itens_ids:
+                try:
+                    item = ItemCotacao.objects.get(id=item_id, cotacao_fornecedor=cotacao)
+                    
+                    # Atualizar se o fornecedor pode atender
+                    pode_atender = f'item_{item_id}_pode_atender' in request.POST
+                    item.pode_atender = pode_atender
+                    
+                    # Atualizar valor
+                    valor = request.POST.get(f'item_{item_id}_valor')
+                    if valor:
+                        item.valor_unitario = Decimal(valor)
+                    
+                    # Atualizar local de atendimento
+                    local = request.POST.get(f'item_{item_id}_local')
+                    if local:
+                        item.local_atendimento = local
+                    
+                    item.save()
+                except (ItemCotacao.DoesNotExist, ValueError):
+                    pass
+            
+            messages.success(request, f"Cotação {cotacao.numero} atualizada com sucesso!")
+            return redirect('metrologia:cotacao_fornecedor_detail', pk=cotacao.id)
+    else:
+        form = CotacaoFornecedorForm(instance=cotacao)
+    
+    # Buscar itens da solicitação para exibir na tabela
+    itens_solicitacao = cotacao.solicitacao.itens.all()
+    
+    context = {
+        'form': form,
+        'cotacao': cotacao,
+        'solicitacao': cotacao.solicitacao,
+        'itens_solicitacao': itens_solicitacao,
+        'titulo': f'Editar Cotação {cotacao.numero}',
+        'mode': 'edit'
+    }
+    return render(request, 'metrologia/novo_fluxo/cotacao_fornecedor_form.html', context)
+
+
+@login_required
 def cotacao_fornecedor_detail(request, pk):
     """Detalha uma cotação de fornecedor - ETAPA 2"""
     cotacao = get_object_or_404(CotacaoFornecedor, pk=pk)

@@ -49,6 +49,7 @@ from .novo_fluxo_cotacao import (
     # ETAPA 2: Cotações de Fornecedores
     cotacao_fornecedor_create,
     cotacao_fornecedor_detail,
+    cotacao_fornecedor_update,
     cotacao_fornecedor_itens,
     item_cotacao_delete,
     
@@ -91,6 +92,7 @@ __all__ = [
     'item_solicitacao_delete',
     'cotacao_fornecedor_create',
     'cotacao_fornecedor_detail',
+    'cotacao_fornecedor_update',
     'cotacao_fornecedor_itens',
     'item_cotacao_delete',
     'atendimento_create',

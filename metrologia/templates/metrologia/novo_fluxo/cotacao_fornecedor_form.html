@@ -3,64 +3,183 @@
 {% block title %}{{ titulo }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-currency-dollar"></i> {{ titulo }}
-                    </h5>
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2>
+                <i class="bi bi-currency-dollar"></i> {{ titulo }}
+            </h2>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Card com informações principais -->
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Informações da Solicitação e Cotação</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Solicitação:</strong> {{ solicitacao.numero }}</p>
+                    <p><strong>Criada em:</strong> {{ solicitacao.data_criacao|date:"d/m/Y" }}</p>
                 </div>
-                <div class="card-body">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
+                <div class="col-md-6">
+                    <p><strong>Data de Solicitação de Orçamento:</strong> 
+                        {% if solicitacao.data_solicitacao_orcamento %}
+                            {{ solicitacao.data_solicitacao_orcamento|date:"d/m/Y" }}
+                        {% else %}
+                            <span class="badge bg-warning">Não informada</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    <!-- Painel de Informações da Solicitação -->
-                    <div class="alert alert-info mb-4 p-3">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <strong>Solicitação:</strong> {{ solicitacao.numero }}<br>
-                                <small class="text-muted">Criada em {{ solicitacao.data_criacao|date:"d/m/Y" }}</small>
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Data de Solicitação de Orçamento:</strong><br>
-                                <small class="text-muted">
-                                    {% if solicitacao.data_solicitacao_orcamento %}
-                                        {{ solicitacao.data_solicitacao_orcamento|date:"d/m/Y" }}
-                                    {% else %}
-                                        <span class="badge bg-warning">Não informada</span>
-                                    {% endif %}
-                                </small>
-                            </div>
-                        </div>
+    <!-- Formulário de Cotação -->
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Dados da Cotação</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" id="cotacaoForm">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ form.non_field_errors }}
                     </div>
+                {% endif %}
 
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        {% if form.non_field_errors %}
-                            <div class="alert alert-danger">
-                                {{ form.non_field_errors }}
+                <div class="row">
+                    <!-- Fornecedor -->
+                    <div class="col-md-6 mb-4">
+                        <label for="{{ form.fornecedor.id_for_label }}" class="form-label fw-bold">
+                            <i class="bi bi-building"></i> {{ form.fornecedor.label }}
+                        </label>
+                        {{ form.fornecedor }}
+                        {% if form.fornecedor.errors %}
+                            <div class="alert alert-danger mt-2 py-1">
+                                {{ form.fornecedor.errors }}
                             </div>
                         {% endif %}
+                    </div>
 
-                        <!-- Campo de Fornecedor -->
-                        <div class="mb-4">
-                            <label for="{{ form.fornecedor.id_for_label }}" class="form-label fw-bold">
-                                <i class="bi bi-building"></i> {{ form.fornecedor.label }}
-                            </label>
-                            {{ form.fornecedor }}
-                            {% if form.fornecedor.errors %}
-                                <div class="alert alert-danger mt-2 py-1">
-                                    {{ form.fornecedor.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
+                    <!-- Data de Solicitação -->
+                    <div class="col-md-6 mb-4">
+                        <label for="{{ form.data_solicitacao.id_for_label }}" class="form-label fw-bold">
+                            <i class="bi bi-calendar"></i> {{ form.data_solicitacao.label }}
+                        </label>
+                        {{ form.data_solicitacao }}
+                        {% if form.data_solicitacao.errors %}
+                            <div class="alert alert-danger mt-2 py-1">
+                                {{ form.data_solicitacao.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Data de Retorno do Fornecedor -->
+                    <div class="col-md-6 mb-4">
+                        <label for="{{ form.data_retorno_fornecedor.id_for_label }}" class="form-label fw-bold">
+                            <i class="bi bi-calendar-check"></i> {{ form.data_retorno_fornecedor.label }}
+                        </label>
+                        {{ form.data_retorno_fornecedor }}
+                        <small class="text-muted d-block mt-2">Quando o fornecedor retornou com a proposta</small>
+                        {% if form.data_retorno_fornecedor.errors %}
+                            <div class="alert alert-danger mt-2 py-1">
+                                {{ form.data_retorno_fornecedor.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Tabela de Instrumentos (quando em modo edição e após retorno) -->
+                {% if mode == 'edit' and form.data_retorno_fornecedor.value %}
+                    <hr class="my-4">
+                    
+                    <h6 class="mb-3"><i class="bi bi-table"></i> Instrumentos da Solicitação</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%"></th>
+                                    <th>Instrumento</th>
+                                    <th>Descrição</th>
+                                    <th width="15%">Pode Atender?</th>
+                                    <th width="15%">Valor Cobrado</th>
+                                    <th width="18%">Local de Atendimento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in itens_solicitacao %}
+                                    <tr>
+                                        <td class="text-center">
+                                            <input type="checkbox" 
+                                                   name="item_ids" 
+                                                   value="{{ item.id }}"
+                                                   class="form-check-input">
+                                        </td>
+                                        <td><strong>{{ item.instrumento.tag }}</strong></td>
+                                        <td>{{ item.instrumento.descricao }}</td>
+                                        <td class="text-center">
+                                            <input type="checkbox" 
+                                                   name="item_{{ item.id }}_pode_atender" 
+                                                   class="form-check-input"
+                                                   id="pode_atender_{{ item.id }}">
+                                        </td>
+                                        <td>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">R$</span>
+                                                <input type="number" 
+                                                       name="item_{{ item.id }}_valor"
+                                                       class="form-control"
+                                                       placeholder="0,00"
+                                                       step="0.01"
+                                                       min="0">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <select name="item_{{ item.id }}_local" 
+                                                    class="form-select form-select-sm">
+                                                <option value="">-- Selecione --</option>
+                                                <option value="NO_LOCAL">No local (Cliente)</option>
+                                                <option value="NO_LABORATORIO">No Laboratório</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-3">
+                                            Nenhum instrumento adicionado na solicitação
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Salvar Cotação
+                    </button>
+                    <a href="{% url 'metrologia:solicitacao_detail' solicitacao.id %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

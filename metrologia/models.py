@@ -903,6 +903,16 @@ class CotacaoFornecedor(models.Model):
         auto_now_add=True,
         verbose_name='Data de Criação'
     )
+    data_solicitacao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Data de Solicitação'
+    )
+    data_retorno_fornecedor = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name='Data de Retorno do Fornecedor'
+    )
     data_envio_para_fornecedor = models.DateTimeField(
         null=True,
         blank=True,
@@ -963,6 +973,11 @@ class ItemCotacao(models.Model):
         ('AQUISICAO', 'Aquisição de Instrumento Novo'),
     ]
     
+    LOCAL_ATENDIMENTO_CHOICES = [
+        ('NO_LOCAL', 'No local (Cliente)'),
+        ('NO_LABORATORIO', 'No Laboratório (Fornecedor)'),
+    ]
+    
     cotacao_fornecedor = models.ForeignKey(
         CotacaoFornecedor,
         on_delete=models.CASCADE,
@@ -994,6 +1009,15 @@ class ItemCotacao(models.Model):
         choices=TIPO_SERVICO_CHOICES,
         default='CALIBRACAO',
         verbose_name='Tipo de Serviço'
+    )
+    
+    # Local de atendimento
+    local_atendimento = models.CharField(
+        max_length=20,
+        choices=LOCAL_ATENDIMENTO_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name='Local de Atendimento'
     )
     
     # Valores
