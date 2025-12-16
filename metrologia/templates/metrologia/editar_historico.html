@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load widget_tweaks %}
+{% load widget_tweaks custom_tags %}
 
 {% block content %}
 <div class="container-fluid py-4">
@@ -116,7 +116,7 @@
                                                 <div class="list-group-item d-flex justify-content-between align-items-center py-2">
                                                     <div class="small">
                                                         <i class="bi bi-file-pdf text-danger"></i> {{ padrao.nome }}<br>
-                                                        <small class="text-muted">{{ padrao.arquivo.size|filesizeformat }}</small>
+                                                        <small class="text-muted">{{ padrao.arquivo|safe_filesize }}</small>
                                                     </div>
                                                     <div class="btn-group btn-group-sm">
                                                         <a href="{{ padrao.arquivo.url }}" download class="btn btn-sm btn-outline-primary">
@@ -393,7 +393,7 @@
                                         <i class="bi bi-file-pdf text-danger"></i>
                                         Certificado Original
                                     </div>
-                                    <small class="text-muted">{{ historico.certificado.size|filesizeformat }}</small>
+                                    <small class="text-muted">{{ historico.certificado|safe_filesize }}</small>
                                 </div>
                                 <div class="btn-group btn-group-sm ms-2">
                                     <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('original', '{% url 'get_certificado_bytes' historico.id %}?tipo=original')">
@@ -421,7 +421,7 @@
                                         Certificado Carimbado
                                         <span class="badge bg-success ms-1">✓ Validado</span>
                                     </div>
-                                    <small class="text-muted">{{ historico.certificado_carimbado.size|filesizeformat }}</small>
+                                    <small class="text-muted">{{ historico.certificado_carimbado|safe_filesize }}</small>
                                 </div>
                                 <div class="btn-group btn-group-sm ms-2">
                                     <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('carimbado', '{% url 'get_certificado_bytes' historico.id %}?tipo=carimbado')">
