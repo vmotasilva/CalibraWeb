@@ -976,6 +976,7 @@ class ItemCotacao(models.Model):
     LOCAL_ATENDIMENTO_CHOICES = [
         ('NO_LOCAL', 'No local (Cliente)'),
         ('NO_LABORATORIO', 'No Laboratório (Fornecedor)'),
+        ('COMPRAR_NOVO', 'Comprar Novo'),
     ]
     
     cotacao_fornecedor = models.ForeignKey(
@@ -1011,13 +1012,13 @@ class ItemCotacao(models.Model):
         verbose_name='Tipo de Serviço'
     )
     
-    # Local de atendimento
+    # Tipo de atendimento
     local_atendimento = models.CharField(
         max_length=20,
         choices=LOCAL_ATENDIMENTO_CHOICES,
         null=True,
         blank=True,
-        verbose_name='Local de Atendimento'
+        verbose_name='Tipo de Atendimento'
     )
     
     # Valores
