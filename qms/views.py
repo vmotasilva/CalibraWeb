@@ -1386,7 +1386,7 @@ def editar_historico_calibracao_view(request, historico_id):
                 
                 # Feedback message
                 if has_files:
-                    messages.success(request, f'Histórico atualizado e {len(uploaded_files)} arquivo(s) adicionado(s) com sucesso.')
+                    messages.success(request, f'Histórico atualizado e {len([f for f in uploaded_files if f])} arquivo(s) adicionado(s) com sucesso.')
                 else:
                     messages.success(request, 'Histórico atualizado com sucesso.')
                 
