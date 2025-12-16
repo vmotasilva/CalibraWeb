@@ -32,9 +32,25 @@
                             </div>
                         {% endif %}
 
-                        <!-- Campo de Dias de Vencimento -->
+                        <!-- Campo de Data de Solicitação de Orçamento -->
                         <div class="mb-4 p-3 bg-light rounded border border-primary">
-                            <label for="{{ form.dias_vencimento.id_for_label }}" class="form-label fw-bold text-primary">
+                            <label for="{{ form.data_solicitacao_orcamento.id_for_label }}" class="form-label fw-bold text-primary">
+                                <i class="bi bi-calendar"></i> {{ form.data_solicitacao_orcamento.label }}
+                            </label>
+                            {{ form.data_solicitacao_orcamento }}
+                            <small class="form-text text-muted d-block mt-2">
+                                Data em que o orçamento foi solicitado
+                            </small>
+                            {% if form.data_solicitacao_orcamento.errors %}
+                                <div class="alert alert-danger mt-2 py-1">
+                                    {{ form.data_solicitacao_orcamento.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Campo de Dias de Vencimento -->
+                        <div class="mb-4 p-3 bg-light rounded border border-info">
+                            <label for="{{ form.dias_vencimento.id_for_label }}" class="form-label fw-bold text-info">
                                 <i class="bi bi-calendar-event"></i> {{ form.dias_vencimento.label }}
                             </label>
                             {{ form.dias_vencimento }}
@@ -48,11 +64,35 @@
                             {% endif %}
                         </div>
 
+                        <!-- Campo de Responsável -->
+                        <div class="mb-4">
+                            <label for="{{ form.responsavel.id_for_label }}" class="form-label fw-bold">
+                                <i class="bi bi-person"></i> {{ form.responsavel.label }}
+                            </label>
+                            {{ form.responsavel }}
+                            {% if form.responsavel.errors %}
+                                <div class="alert alert-danger mt-2 py-1">
+                                    {{ form.responsavel.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
 
+                        <!-- Campo de Departamento -->
+                        <div class="mb-4">
+                            <label for="{{ form.departamento.id_for_label }}" class="form-label fw-bold">
+                                <i class="bi bi-building"></i> {{ form.departamento.label }}
+                            </label>
+                            {{ form.departamento }}
+                            {% if form.departamento.errors %}
+                                <div class="alert alert-danger mt-2 py-1">
+                                    {{ form.departamento.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle"></i> Criar Solicitação
+                                <i class="bi bi-check-circle"></i> Salvar Alterações
                             </button>
                             <a href="javascript:history.back()" class="btn btn-secondary">
                                 <i class="bi bi-arrow-left"></i> Cancelar

@@ -255,8 +255,12 @@ class SolicitacaoCotacaoForm(forms.ModelForm):
     
     class Meta:
         model = SolicitacaoCotacao
-        fields = ['dias_vencimento']
+        fields = ['data_solicitacao_orcamento', 'dias_vencimento', 'responsavel', 'departamento']
         widgets = {
+            'data_solicitacao_orcamento': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+            }),
             'dias_vencimento': forms.NumberInput(attrs={
                 'class': 'form-control',
                 'type': 'number',
@@ -264,6 +268,12 @@ class SolicitacaoCotacaoForm(forms.ModelForm):
                 'max': '365',
                 'value': '30',
                 'placeholder': 'Ex: 30'
+            }),
+            'responsavel': forms.Select(attrs={
+                'class': 'form-control',
+            }),
+            'departamento': forms.Select(attrs={
+                'class': 'form-control',
             }),
         }
     

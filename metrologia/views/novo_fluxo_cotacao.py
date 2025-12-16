@@ -56,16 +56,23 @@ def solicitacao_list(request):
 
 @login_required
 def solicitacao_create(request):
-    """Cria uma nova solicitação de cotação automaticamente - ETAPA 1"""
-    # Criar solicitação com valores padrão
-    solicitacao = SolicitacaoCotacao.objects.create(
-        responsavel=request.user,
-        dias_vencimento=30,  # Valor padrão
-        status='ABERTA'
-    )
+    """Cria uma nova solicitação de cotação - ETAPA 1"""
+    if request.method == 'POST':
+        form = SolicitacaoCotacaoForm(request.POST)
+        if form.is_valid():
+            solicitacao = form.save(commit=False)
+            solicitacao.responsavel = request.user
+            solicitacao.save()
+            messages.success(request, f"Solicitação {solicitacao.numero} criada com sucesso!")
+            return redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
+    else:
+        form = SolicitacaoCotacaoForm()
     
-    messages.success(request, f"Solicitação {solicitacao.numero} criada com sucesso!")
-    return redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
+    context = {
+        'form': form,
+        'titulo': 'Criar Nova Solicitação de Orçamento',
+    }
+    return render(request, 'metrologia/novo_fluxo/solicitacao_form.html', context)
 
 
 @login_required
@@ -99,6 +106,28 @@ def solicitacao_detail(request, pk):
         'dias_120': dias_120,
     }
     return render(request, 'metrologia/novo_fluxo/solicitacao_detail.html', context)
+
+
+@login_required
+def solicitacao_update(request, pk):
+    """Atualiza informações da solicitação de cotação - ETAPA 1"""
+    solicitacao = get_object_or_404(SolicitacaoCotacao, pk=pk)
+    
+    if request.method == 'POST':
+        form = SolicitacaoCotacaoForm(request.POST, instance=solicitacao)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Solicitação {solicitacao.numero} atualizada com sucesso!")
+            return redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
+    else:
+        form = SolicitacaoCotacaoForm(instance=solicitacao)
+    
+    context = {
+        'solicitacao': solicitacao,
+        'form': form,
+        'titulo': f'Editar Solicitação {solicitacao.numero}',
+    }
+    return render(request, 'metrologia/novo_fluxo/solicitacao_form.html', context)
 
 
 @login_required

@@ -608,6 +608,12 @@ class SolicitacaoCotacao(models.Model):
         auto_now_add=True,
         verbose_name='Data de Criação'
     )
+    data_solicitacao_orcamento = models.DateField(
+        verbose_name='Data de Solicitação de Orçamento',
+        help_text='Data em que o orçamento foi solicitado',
+        null=True,
+        blank=True
+    )
     responsavel = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
