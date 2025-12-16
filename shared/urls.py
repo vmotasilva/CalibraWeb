@@ -7,8 +7,8 @@ urlpatterns = [
     path('imports/jobs/json/', views.import_jobs_json_view, name='import_jobs_json'),
     
     # Access Control
-    # path('acesso-negado/<str:module>/', views.access_denied_view, name='access_denied'),
-    # path('acesso-negado/', views.access_denied_view, name='access_denied'),
+    path('acesso-negado/<str:module>/', views.access_denied_view, name='access_denied'),
+    path('acesso-negado/', views.access_denied_view, name='access_denied'),
     
     # Shared URLs
     # path('', views.dashboard_view, name='dashboard'),
