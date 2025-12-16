@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Acesso Negado{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <!-- Alert de Acesso Negado -->
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill me-3" style="font-size: 2rem;"></i>
+                    <div>
+                        <h4 class="alert-heading mb-2">❌ Acesso Negado</h4>
+                        <p class="mb-0">
+                            Desculpe, você não tem permissão para acessar este módulo.
+                            {% if module %}
+                                <strong>Módulo: {{ module }}</strong>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+
+            <!-- Card com informações -->
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lock"></i> Permissão Insuficiente
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">
+                        Seu usuário <strong>{{ user.username }}</strong> não possui acesso a este módulo.
+                    </p>
+                    
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>O que fazer?</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Solicite permissão ao administrador do sistema</li>
+                            <li>Verifique se está logado com a conta correta</li>
+                            <li>Entre em contato com o suporte técnico</li>
+                        </ul>
+                    </div>
+
+                    <hr>
+
+                    <!-- Informações do Usuário -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Usuário:</strong> {{ user.username }}</p>
+                            <p><strong>Nome:</strong> {{ user.first_name }} {{ user.last_name }}</p>
+                            <p><strong>Email:</strong> {{ user.email }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Staff:</strong> {% if user.is_staff %}<span class="badge bg-success">Sim</span>{% else %}<span class="badge bg-secondary">Não</span>{% endif %}</p>
+                            <p><strong>Superusuário:</strong> {% if user.is_superuser %}<span class="badge bg-success">Sim</span>{% else %}<span class="badge bg-secondary">Não</span>{% endif %}</p>
+                            <p><strong>Grupos:</strong>
+                                {% if user.groups.all %}
+                                    {% for group in user.groups.all %}
+                                        <span class="badge bg-primary">{{ group.name }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="badge bg-secondary">Nenhum grupo</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="mt-4 d-flex gap-2">
+                <a href="javascript:history.back();" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+                <a href="{% url 'root' %}" class="btn btn-primary">
+                    <i class="bi bi-house"></i> Ir para Home
+                </a>
+                {% if user.is_staff %}
+                    <a href="/admin/" class="btn btn-warning">
+                        <i class="bi bi-gear"></i> Admin
+                    </a>
+                {% endif %}
+            </div>
+
+            <!-- Footer -->
+            <div class="mt-5 text-center text-muted">
+                <small>
+                    Calibra QMS - Sistema de Gerenciamento da Qualidade<br>
+                    Se continuar tendo problemas, contate o administrador: admin@calibraqms.local
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .alert {
+        border-left: 4px solid currentColor;
+    }
+    
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .btn {
+        min-width: 100px;
+    }
+</style>
+{% endblock %}
