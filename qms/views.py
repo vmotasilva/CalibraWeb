@@ -169,8 +169,9 @@ def novo_instrumento_view(request, instrumento_id=None):
 
 @login_required
 def detalhe_instrumento_view(request, instrumento_id):
-    """View instrument details with calibration history."""
+    """View instrument details with calibration history and quotations."""
     from datetime import date
+    from metrologia.models import ItemCotacao, AtendimentoSolicitacao, ProcessoAutomatizacao
     
     # Get instrument or return 404
     instrumento = get_object_or_404(Instrumento, id=instrumento_id)
@@ -206,6 +207,88 @@ def detalhe_instrumento_view(request, instrumento_id):
         faixas = []
         logger.error(f"Erro ao buscar faixas para instrumento {instrumento_id}: {str(e)}")
 
+    # NEW: Get quotation-related data - fetch AtendimentoSolicitacao directly
+    try:
+        # Get all atendimentos for this instrument
+        atendimentos_instrumento = list(
+            AtendimentoSolicitacao.objects.filter(
+                item_cotacao__instrumento=instrumento
+            ).select_related(
+                'item_cotacao__cotacao_fornecedor__fornecedor',
+                'item_cotacao__item_solicitacao__solicitacao',
+                'solicitacao'
+            ).prefetch_related(
+                'historicos_calibracao'  # Include related calibration history
+            ).order_by('-data_escolha')
+        )
+        
+        # Separate by service type
+        cotacoes_calibracao = [a for a in atendimentos_instrumento if a.item_cotacao.tipo_servico == 'CALIBRACAO']
+        cotacoes_aquisicao = [a for a in atendimentos_instrumento if a.item_cotacao.tipo_servico == 'AQUISICAO']
+        
+        # Keep original list for backward compatibility
+        cotacoes_itens = atendimentos_instrumento
+    except Exception as e:
+        cotacoes_itens = []
+        cotacoes_calibracao = []
+        cotacoes_aquisicao = []
+        logger.error(f"Erro ao buscar cotações para instrumento {instrumento_id}: {str(e)}")
+
+    # Get ALL quotation items for this instrument (complete history)
+    try:
+        todas_cotacoes = list(
+            ItemCotacao.objects.filter(
+                instrumento=instrumento
+            ).select_related(
+                'cotacao_fornecedor__fornecedor',
+                'item_solicitacao__solicitacao'
+            ).order_by('-cotacao_fornecedor__data_criacao')
+        )
+    except Exception as e:
+        todas_cotacoes = []
+        logger.error(f"Erro ao buscar todas as cotações para instrumento {instrumento_id}: {str(e)}")
+
+    # Get all quotation requests (SolicitacaoCotacao) that contain items with this instrument
+    try:
+        from metrologia.models import ItemSolicitacaoCotacao, SolicitacaoCotacao
+        
+        solicitacoes_cotacao = list(
+            SolicitacaoCotacao.objects.filter(
+                itens__instrumento=instrumento
+            ).select_related(
+                'responsavel'
+            ).distinct().order_by('-data_criacao')
+        )
+    except Exception as e:
+        solicitacoes_cotacao = []
+        logger.error(f"Erro ao buscar solicitações de cotação para instrumento {instrumento_id}: {str(e)}")
+
+    try:
+        rastreios_laboratorio = list(
+            AtendimentoSolicitacao.objects.filter(
+                item_solicitacao__instrumento=instrumento,
+                item_cotacao__local_atendimento='NO_LABORATORIO'
+            ).select_related(
+                'item_cotacao__cotacao_fornecedor__fornecedor',
+                'item_solicitacao'
+            ).order_by('-data_escolha')
+        )
+    except Exception as e:
+        rastreios_laboratorio = []
+        logger.error(f"Erro ao buscar rastreios para instrumento {instrumento_id}: {str(e)}")
+
+    try:
+        processos_automatizacao = list(
+            ProcessoAutomatizacao.objects.filter(
+                atendimento__item_solicitacao__instrumento=instrumento
+            ).select_related(
+                'atendimento__item_cotacao'
+            ).order_by('-data_inicio')
+        )
+    except Exception as e:
+        processos_automatizacao = []
+        logger.error(f"Erro ao buscar processos de automatização para instrumento {instrumento_id}: {str(e)}")
+
     context = {
         'instrumento': instrumento,
         'historicos': historicos,
@@ -213,6 +296,13 @@ def detalhe_instrumento_view(request, instrumento_id):
         'faixas': faixas,
         'today': date.today(),
         'edit_url': f"/instrumento/{instrumento.id}/editar/",
+        # NEW: Quotation data
+        'cotacoes_calibracao': cotacoes_calibracao,
+        'cotacoes_aquisicao': cotacoes_aquisicao,
+        'todas_cotacoes': todas_cotacoes,
+        'solicitacoes_cotacao': solicitacoes_cotacao,
+        'rastreios_laboratorio': rastreios_laboratorio,
+        'processos_automatizacao': processos_automatizacao,
     }
     return render(request, 'metrologia/instrumento_detalhe.html', context)
 

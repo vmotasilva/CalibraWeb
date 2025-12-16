@@ -323,7 +323,7 @@ class CotacaoFornecedorForm(forms.ModelForm):
     
     class Meta:
         model = CotacaoFornecedor
-        fields = ['fornecedor', 'data_solicitacao', 'data_retorno_fornecedor']
+        fields = ['fornecedor', 'data_solicitacao', 'data_retorno_fornecedor', 'aprovada']
         widgets = {
             'fornecedor': forms.Select(attrs={
                 'class': 'form-select',
@@ -335,6 +335,9 @@ class CotacaoFornecedorForm(forms.ModelForm):
             'data_retorno_fornecedor': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date',
+            }),
+            'aprovada': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
             }),
         }
 

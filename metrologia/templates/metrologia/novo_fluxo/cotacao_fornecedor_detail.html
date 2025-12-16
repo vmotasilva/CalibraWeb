@@ -14,10 +14,15 @@
             </p>
         </div>
         <div class="col-md-4 text-end">
-            <a href="{% url 'metrologia:cotacao_fornecedor_itens' cotacao.id %}" class="btn btn-primary">
-                <i class="bi bi-pencil"></i> Gerenciar Itens
+            {% if cotacao.aprovada %}
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAdicionarAtendimento">
+                    <i class="bi bi-plus-circle"></i> Adicionar ao Atendimento
+                </button>
+            {% endif %}
+            <a href="{% url 'metrologia:cotacao_fornecedor_update' cotacao.id %}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Editar
             </a>
-            <a href="javascript:history.back()" class="btn btn-secondary">
+            <a href="{% url 'metrologia:solicitacao_detail' cotacao.solicitacao.id %}" class="btn btn-secondary">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
         </div>
@@ -105,4 +110,91 @@
         </div>
     </div>
 </div>
+
+<!-- Modal para adicionar itens da cotação ao atendimento -->
+<div class="modal fade" id="modalAdicionarAtendimento" tabindex="-1" aria-labelledby="modalAdicionarAtendimentoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'metrologia:atendimento_create_from_cotacao' cotacao.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAdicionarAtendimentoLabel">
+                        Adicionar Itens da Cotação ao Atendimento
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    {% if itens %}
+                        <p class="mb-3"><small class="text-muted">Selecione quais instrumentos deseja adicionar ao planejamento de atendimento:</small></p>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="40">
+                                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                        </th>
+                                        <th>Instrumento</th>
+                                        <th>Descrição</th>
+                                        <th>Tipo de Atendimento</th>
+                                        <th>Pode Atender?</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in itens %}
+                                        <tr>
+                                            <td class="text-center">
+                                                <input type="checkbox" name="itens_selecionados" value="{{ item.id }}" class="item-checkbox">
+                                            </td>
+                                            <td><strong>{{ item.instrumento.tag }}</strong></td>
+                                            <td>{{ item.instrumento.descricao }}</td>
+                                            <td>
+                                                <span class="badge bg-info">
+                                                    {{ item.get_local_atendimento_display }}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                {% if item.pode_atender %}
+                                                    <i class="bi bi-check-circle text-success"></i>
+                                                {% else %}
+                                                    <i class="bi bi-x-circle text-danger"></i>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Data prevista de atendimento -->
+                        <div class="mb-3 mt-3">
+                            <label for="dataPrevista" class="form-label fw-bold">Data Prevista de Atendimento</label>
+                            <input type="date" class="form-control" id="dataPrevista" name="data_prevista" required>
+                        </div>
+                    {% else %}
+                        <p class="text-center text-muted">Nenhum item disponível nesta cotação.</p>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {% if itens %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i> Adicionar ao Atendimento
+                        </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const selectAll = document.getElementById('selectAll');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+</script>
+
 {% endblock %}

@@ -354,6 +354,17 @@ class HistoricoCalibracao(models.Model):
         null=True,
         blank=True,
     )
+    # NEW: Linkagem com cotação (quando calibração é feita via fornecedor da solicitação)
+    atendimento = models.ForeignKey(
+        'AtendimentoSolicitacao',
+        on_delete=models.SET_NULL,
+        related_name='historicos_calibracao',
+        verbose_name='Atendimento da Solicitação',
+        null=True,
+        blank=True,
+        help_text='Atendimento da cotação que originou esta calibração'
+    )
+    
     arquivos_padroes = models.ManyToManyField(
         ArquivoPadrao, blank=True, related_name='historicos', verbose_name='Arquivos de Padrões (PDF)'
     )
@@ -576,17 +587,107 @@ class OcorrenciaCotacao(models.Model):
 # ==============================================================================
 
 class SolicitacaoCotacao(models.Model):
+    def reabrir(self):
+        if self.status == 'CONCLUIDA':
+            # Volta ao status automático conforme progresso
+            self.status = 'ABERTA'  # fallback
+            self.atualizar_status_automatico()
+            self.save(update_fields=['status'])
+
+    def reativar(self):
+        if self.status == 'CANCELADA':
+            self.status = 'ABERTA'
+            self.save(update_fields=['status'])
     """
     ETAPA 1: Solicitação de Cotação - Define necessidades e período de vencimento
     Agrupa múltiplos instrumentos que precisam de serviço em um mesmo período
     """
     STATUS_CHOICES = [
         ('ABERTA', 'Aberta'),
-        ('AGUARDANDO_COTACOES', 'Aguardando Cotações'),
-        ('COTACOES_RECEBIDAS', 'Cotações Recebidas'),
-        ('ENCERRADA', 'Encerrada'),
+        ('INSTRUMENTOS_SELECIONADOS', 'Instrumentos Selecionados'),
+        ('COTACAO_SOLICITADA', 'Cotação Solicitada'),
+        ('AGUARDANDO_PLANEJAMENTO', 'Aguardando Planejamento'),
+        ('PARCIALMENTE_PLANEJADA', 'Parcialmente Planejada'),
+        ('PLANEJADA', 'Planejada'),
+        ('PARCIALMENTE_REALIZADO', 'Parcialmente Realizado'),
+        ('REALIZADO', 'Realizado'),
+        ('CONCLUIDA', 'Concluída'),
         ('CANCELADA', 'Cancelada'),
     ]
+
+    def atualizar_status_automatico(self):
+        """
+        Atualiza o status da solicitação conforme o progresso dos itens, cotações e atendimentos.
+        Ordem de verificação (do final para o início do workflow):
+        1. REALIZADO / PARCIALMENTE_REALIZADO (execução completa)
+        2. PLANEJADA (planejamento completo)
+        3. PARCIALMENTE_PLANEJADA (planejamento parcial)
+        4. AGUARDANDO_PLANEJAMENTO (cotações aprovadas, sem planejamento)
+        5. COTACAO_SOLICITADA (cotações respondidas)
+        6. INSTRUMENTOS_SELECIONADOS (itens sem cotações)
+        7. ABERTA (sem itens)
+        """
+        novo_status = self.status
+        
+        # Verificar primeiro se há atendimentos
+        atendimentos_total = self.atendimentos.count()
+        
+        if atendimentos_total > 0:
+            # Contar atendimentos completos conforme o tipo de local
+            atendimentos_completos = 0
+            for atendimento in self.atendimentos.all():
+                local = atendimento.item_cotacao.local_atendimento
+                
+                if local == 'NO_LOCAL' and atendimento.data_realizada:
+                    atendimentos_completos += 1
+                elif local == 'NO_LABORATORIO' and atendimento.data_retorno:
+                    atendimentos_completos += 1
+                elif local == 'COMPRAR_NOVO' and atendimento.data_chegada:
+                    atendimentos_completos += 1
+            
+            # Determinar status baseado na execução
+            if atendimentos_completos == atendimentos_total:
+                novo_status = 'REALIZADO'
+            elif atendimentos_completos > 0:
+                novo_status = 'PARCIALMENTE_REALIZADO'
+            # Se nenhum está completo, continua verificando planejamento
+            elif atendimentos_total > 0:
+                # Verificar planejamento
+                atendimentos_planejados = self.atendimentos.filter(data_prevista_atendimento__isnull=False).count()
+                
+                if atendimentos_planejados == atendimentos_total:
+                    novo_status = 'PLANEJADA'
+                elif atendimentos_planejados > 0:
+                    novo_status = 'PARCIALMENTE_PLANEJADA'
+                else:
+                    # Sem planejamento, mas com atendimentos selecionados
+                    novo_status = 'AGUARDANDO_PLANEJAMENTO'
+        else:
+            # Sem atendimentos, verificar cotações
+            if self.itens.count() == 0:
+                novo_status = 'ABERTA'
+            elif self.cotacoes_fornecedores.count() == 0:
+                novo_status = 'INSTRUMENTOS_SELECIONADOS'
+            elif self.cotacoes_fornecedores.filter(status='RESPONDIDA').exists():
+                novo_status = 'COTACAO_SOLICITADA'
+            elif self.cotacoes_fornecedores.filter(status='ACEITA').exists():
+                novo_status = 'AGUARDANDO_PLANEJAMENTO'
+            else:
+                # Manter status atual como fallback
+                novo_status = self.status
+        
+        # Atualizar se houver mudança (não alterar CONCLUIDA ou CANCELADA)
+        if novo_status != self.status and self.status not in ['CONCLUIDA', 'CANCELADA']:
+            type(self).objects.filter(pk=self.pk).update(status=novo_status)
+            self.status = novo_status
+
+    def marcar_concluida(self):
+        self.status = 'CONCLUIDA'
+        self.save(update_fields=['status'])
+
+    def marcar_cancelada(self):
+        self.status = 'CANCELADA'
+        self.save(update_fields=['status'])
     
     PRIORIDADE_CHOICES = [
         ('BAIXA', 'Baixa'),
@@ -653,12 +754,14 @@ class SolicitacaoCotacao(models.Model):
         if not self.numero:
             from datetime import datetime
             year = datetime.now().year
-            # Conta quantas solicitações já foram criadas este ano
             count = SolicitacaoCotacao.objects.filter(
                 numero__startswith=f"SOL-{year}-"
             ).count() + 1
             self.numero = f"SOL-{year}-{count:04d}"
         super().save(*args, **kwargs)
+        # Atualiza status automaticamente, exceto se for concluída ou cancelada
+        if self.status not in ['CONCLUIDA', 'CANCELADA']:
+            self.atualizar_status_automatico()
     
     def __str__(self):
         return f"{self.numero} - {self.get_status_display()}"
@@ -932,11 +1035,37 @@ class CotacaoFornecedor(models.Model):
         verbose_name='Status'
     )
     
+    # Aprovação interna para planejamento
+    aprovada = models.BooleanField(
+        default=False,
+        verbose_name='Cotação Aprovada'
+    )
+    data_aprovacao = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Data de Aprovação'
+    )
+    aprovado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cotacoes_fornecedor_aprovadas',
+        verbose_name='Aprovado por'
+    )
+    
     # Observações gerais
     observacoes = models.TextField(
         blank=True,
         null=True,
         verbose_name='Observações Gerais da Cotação'
+    )
+    
+    # Observações de execução/entrega
+    observacoes_execucao = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Observações de Execução/Entrega'
     )
     
     # Rastreamento
@@ -1123,6 +1252,44 @@ class AtendimentoSolicitacao(models.Model):
         verbose_name='Data Prevista de Atendimento',
         help_text='Quando será executado o serviço?'
     )
+    
+    # Execução - Para NO_LOCAL
+    data_realizada = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='Data Realizada (No Local)'
+    )
+    tecnico_responsavel = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name='Técnico Responsável'
+    )
+    
+    # Execução - Para NO_LABORATORIO
+    data_envio = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='Data de Envio (Lab)'
+    )
+    data_retorno_previsto = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='Data Retorno Previsto'
+    )
+    data_retorno = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='Data de Retorno (Lab)'
+    )
+    
+    # Execução - Para COMPRAR_NOVO
+    data_chegada = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='Data de Chegada (Compra Novo)'
+    )
+    
     observacoes = models.TextField(
         blank=True,
         null=True,

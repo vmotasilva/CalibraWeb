@@ -641,6 +641,21 @@ def detalhe_instrumento_view(request, instrumento_id):
     if hasattr(inst, "faixas"):
         faixas = inst.faixas.all()
 
+    # Get all quotation requests (SolicitacaoCotacao) that contain items with this instrument
+    try:
+        from metrologia.models import SolicitacaoCotacao
+        
+        solicitacoes_cotacao = list(
+            SolicitacaoCotacao.objects.filter(
+                itens__instrumento=inst
+            ).select_related(
+                'responsavel'
+            ).distinct().order_by('-data_criacao')
+        )
+    except Exception as e:
+        solicitacoes_cotacao = []
+        logger.error(f"Erro ao buscar solicitações de cotação para instrumento {instrumento_id}: {str(e)}")
+
     return render(
         request,
         "metrologia/instrumento_detalhe.html",
@@ -653,6 +668,7 @@ def detalhe_instrumento_view(request, instrumento_id):
             "form_ocorrencia": form_ocorrencia,
             "today": date.today(),
             "edit_url": f"/instrumento/{inst.id}/editar/",
+            "solicitacoes_cotacao": solicitacoes_cotacao,
         },
     )
 

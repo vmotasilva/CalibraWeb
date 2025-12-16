@@ -30,13 +30,9 @@ from .views import (
     preview_certificado_view,
     aplicar_carimbo_certificado_view,
     visualizar_historico_calibracao_view,
-    
-    # API
-    api_faixa_medicao_view,
 )
 
 from .novo_fluxo_cotacao import (
-    # ETAPA 1: Solicitação de Cotação
     solicitacao_list,
     solicitacao_create,
     solicitacao_detail,
@@ -45,21 +41,25 @@ from .novo_fluxo_cotacao import (
     solicitacao_itens,
     item_solicitacao_edit,
     item_solicitacao_delete,
-    
-    # ETAPA 2: Cotações de Fornecedores
     cotacao_fornecedor_create,
     cotacao_fornecedor_detail,
     cotacao_fornecedor_update,
-    cotacao_fornecedor_itens,
-    item_cotacao_delete,
-    
-    # ETAPA 3: Atendimentos
     atendimento_create,
     atendimento_detail,
+    atendimento_create_from_cotacao,
+    atendimento_atualizar_dados,
+    atendimento_atualizar_cotacao,
     atendimento_confirmar,
-    
-    # API
     api_instrumentos_vencendo,
+    solicitacao_marcar_concluida,
+    solicitacao_marcar_cancelada,
+    solicitacao_reativar,
+    solicitacao_reabrir,
+    atendimento_atualizar_data_calibracao,
+    atendimento_atualizar_chegada,
+    atendimento_atualizar_rastreio,
+    atendimento_registrar_historico,
+    atendimento_iniciar_substituicao,
 )
 
 __all__ = [
@@ -93,9 +93,21 @@ __all__ = [
     'cotacao_fornecedor_create',
     'cotacao_fornecedor_detail',
     'cotacao_fornecedor_update',
-    'cotacao_fornecedor_itens',
-    'item_cotacao_delete',
+
     'atendimento_create',
     'atendimento_detail',
+    'atendimento_create_from_cotacao',
+    'atendimento_atualizar_dados',
+    'atendimento_atualizar_cotacao',
     'atendimento_confirmar',
-    'api_instrumentos_vencendo',]
+    'api_instrumentos_vencendo',
+    'solicitacao_marcar_concluida',
+    'solicitacao_marcar_cancelada',
+    'solicitacao_reativar',
+    'solicitacao_reabrir',
+    'atendimento_atualizar_data_calibracao',
+    'atendimento_atualizar_chegada',
+    'atendimento_atualizar_rastreio',
+    'atendimento_registrar_historico',
+    'atendimento_iniciar_substituicao',
+]
