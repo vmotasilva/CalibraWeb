@@ -30,13 +30,19 @@ def get_ponto(faixa_item, index):
 
 @register.filter
 def safe_filesize(file_field):
-    """Get file size safely, handling missing files"""
+    """Get file size safely, handling missing files - returns formatted size or error message"""
     if not file_field:
         return "-"
     try:
         # Check if file exists
         if file_field.storage.exists(file_field.name):
-            return format_html("{}", file_field.size)
+            size = file_field.size
+            # Format bytes to human readable
+            for unit in ['B', 'KB', 'MB', 'GB']:
+                if size < 1024.0:
+                    return format_html("{:.1f} {}", size, unit)
+                size /= 1024.0
+            return format_html("{:.1f} TB", size)
         else:
             return format_html('<span class="text-danger"><i class="bi bi-exclamation-circle"></i> Arquivo não encontrado</span>')
     except Exception:
