@@ -27,10 +27,10 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         label='Fazer Upload de Novos Padrões',
         required=False,
         widget=forms.FileInput(attrs={
-            'class': 'form-control',
+            'class': 'form-control form-control-sm',
             'accept': '.pdf',
-        }),
-        validators=[validate_pdf_file]
+            'multiple': True,
+        })
     )
     
     # Campos com required=False para permitir atualização parcial
@@ -92,16 +92,25 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         instance = super().save(commit=False)
         
         # Processar upload de novos arquivos de padrão
-        if self.files.getlist('novos_arquivos_padroes'):
-            for uploaded_file in self.files.getlist('novos_arquivos_padroes'):
-                # Criar novo ArquivoPadrao
-                novo_padrao = ArquivoPadrao.objects.create(
-                    nome=uploaded_file.name.replace('.pdf', ''),
-                    descricao='',
-                    arquivo=uploaded_file
-                )
-                # Adicionar ao formulário
-                instance.arquivos_padroes.add(novo_padrao)
+        uploaded_files = self.files.getlist('novos_arquivos_padroes')
+        if uploaded_files:
+            for uploaded_file in uploaded_files:
+                if uploaded_file:  # Verificar se o arquivo não está vazio
+                    try:
+                        # Validar arquivo PDF
+                        validate_pdf_file(uploaded_file)
+                        
+                        # Criar novo ArquivoPadrao
+                        novo_padrao = ArquivoPadrao.objects.create(
+                            nome=uploaded_file.name.replace('.pdf', ''),
+                            descricao='',
+                            arquivo=uploaded_file
+                        )
+                        # Adicionar ao formulário
+                        instance.arquivos_padroes.add(novo_padrao)
+                    except ValidationError as e:
+                        # Log do erro, mas não bloqueia o save
+                        print(f"Erro ao validar arquivo {uploaded_file.name}: {str(e)}")
         
         if commit:
             instance.save()

@@ -1376,9 +1376,20 @@ def editar_historico_calibracao_view(request, historico_id):
 
         if action == 'update_history':
             form = HistoricoCalibracaoForm(request.POST, request.FILES, instance=historico)
+            
+            # Check if files were uploaded
+            uploaded_files = request.FILES.getlist('novos_arquivos_padroes')
+            has_files = any(f for f in uploaded_files if f)
+            
             if form.is_valid():
                 form.save()
-                messages.success(request, 'Histórico atualizado com sucesso.')
+                
+                # Feedback message
+                if has_files:
+                    messages.success(request, f'Histórico atualizado e {len(uploaded_files)} arquivo(s) adicionado(s) com sucesso.')
+                else:
+                    messages.success(request, 'Histórico atualizado com sucesso.')
+                
                 return redirect('editar_historico_calibracao', historico_id=historico_id)
             else:
                 # Mostrar erros específicos
