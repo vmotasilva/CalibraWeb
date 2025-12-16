@@ -1374,6 +1374,19 @@ def editar_historico_calibracao_view(request, historico_id):
                 messages.error(request, 'Padrão não encontrado.')
             return redirect('editar_historico_calibracao', historico_id=historico_id)
 
+        # Handle certificate upload
+        elif action == 'anexar_certificado':
+            if 'certificado' in request.FILES:
+                try:
+                    historico.certificado = request.FILES['certificado']
+                    historico.save()
+                    messages.success(request, 'Certificado anexado com sucesso.')
+                except Exception as e:
+                    messages.error(request, f'Erro ao anexar certificado: {str(e)}')
+            else:
+                messages.warning(request, 'Selecione um arquivo de certificado para anexar.')
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
+
         if action == 'update_history':
             form = HistoricoCalibracaoForm(request.POST, request.FILES, instance=historico)
             
