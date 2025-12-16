@@ -1,5 +1,6 @@
 from django import template
 from datetime import timedelta
+from django.utils.html import format_html
 
 register = template.Library()
 
@@ -26,3 +27,17 @@ def get_ponto(faixa_item, index):
         return None
     except (AttributeError, ValueError, TypeError):
         return None
+
+@register.filter
+def safe_filesize(file_field):
+    """Get file size safely, handling missing files"""
+    if not file_field:
+        return "-"
+    try:
+        # Check if file exists
+        if file_field.storage.exists(file_field.name):
+            return format_html("{}", file_field.size)
+        else:
+            return format_html('<span class="text-danger"><i class="bi bi-exclamation-circle"></i> Arquivo não encontrado</span>')
+    except Exception:
+        return format_html('<span class="text-warning"><i class="bi bi-question-circle"></i> Tamanho indisponível</span>')
