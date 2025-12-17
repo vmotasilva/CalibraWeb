@@ -132,10 +132,10 @@
             </div>
 
             <!-- FAIXAS DE MEDIÇÃO -->
-            {% if faixas %}
+            {% if faixas_instrumentos %}
             <div class="card shadow-sm mt-4">
                 <div class="card-header bg-warning text-white">
-                    <i class="bi bi-bar-chart"></i> Faixas de Medição ({{ total_faixas }})
+                    <i class="bi bi-bar-chart"></i> Faixas de Medição dos Instrumentos ({{ total_faixas_instrumentos }})
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -152,7 +152,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for faixa in faixas %}
+                                {% for faixa in faixas_instrumentos %}
                                 <tr>
                                     <td><strong>{{ faixa.instrumento.tag }}</strong></td>
                                     <td>{{ faixa.unidade.nome }}</td>
@@ -169,6 +169,76 @@
                 </div>
             </div>
             {% endif %}
+
+            <!-- FAIXAS PADRÃO DA CATEGORIA -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-star"></i> Faixas Padrão da Categoria ({{ total_faixas_padrao }})</span>
+                    <a href="{% url 'metrologia:faixa_categoria_create' categoria.id %}" class="btn btn-sm btn-light">
+                        <i class="bi bi-plus-circle"></i> Adicionar Faixa
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    {% if faixas_padrao %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="12%">Unidade</th>
+                                    <th width="12%">Mín.</th>
+                                    <th width="12%">Máx.</th>
+                                    <th width="12%">Nominal</th>
+                                    <th width="12%">Tolerância</th>
+                                    <th width="12%">Resolução</th>
+                                    <th width="8%">Status</th>
+                                    <th width="18%">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for faixa in faixas_padrao %}
+                                <tr>
+                                    <td><strong>{{ faixa.unidade.nome }}</strong></td>
+                                    <td>{{ faixa.valor_minimo }}</td>
+                                    <td>{{ faixa.valor_maximo }}</td>
+                                    <td>{{ faixa.nominal|default:"-" }}</td>
+                                    <td>{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
+                                    <td>{{ faixa.resolucao|default:"-" }}</td>
+                                    <td>
+                                        {% if faixa.ativa %}
+                                        <span class="badge bg-success">Ativa</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inativa</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'metrologia:faixa_categoria_update' faixa.id %}" class="btn btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Editar
+                                            </a>
+                                            <form method="post" action="{% url 'metrologia:faixa_categoria_delete' faixa.id %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Remover faixa padrão?')">
+                                                    <i class="bi bi-trash"></i> Remover
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-4 text-center text-muted">
+                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                        <p class="mt-3">Nenhuma faixa padrão cadastrada.</p>
+                        <a href="{% url 'metrologia:faixa_categoria_create' categoria.id %}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus-circle"></i> Criar Primeira Faixa
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 
@@ -176,9 +246,9 @@
     <div class="row mt-4">
         <div class="col-md-12">
             <div class="alert alert-info" role="alert">
-                <i class="bi bi-info-circle"></i> <strong>Informação:</strong> 
-                As faixas de medição são automaticamente associadas aos instrumentos quando cadastrados. 
-                Cada instrumento pode ter múltiplas faixas, e as faixas podem ter tolerâncias e resoluções diferentes.
+                <i class="bi bi-info-circle"></i> <strong>Como funcionam as faixas padrão:</strong> 
+                As faixas padrão definidas aqui serão sugeridas ao criar novos instrumentos desta categoria, 
+                facilitando o preenchimento rápido. Porém, os valores podem ser ajustados durante o cadastro do instrumento sem qualquer restrição.
             </div>
         </div>
     </div>

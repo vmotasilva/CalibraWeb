@@ -18,6 +18,7 @@ from .forms import (
     ItemCotacaoForm,
     AtendimentoSolicitacaoForm,
     CategoriaInstrumentoForm,
+    FaixaMedicaoPadraoCategoriForm,
 )
 
 __all__ = [

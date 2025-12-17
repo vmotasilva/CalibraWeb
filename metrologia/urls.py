@@ -17,6 +17,12 @@ urlpatterns = [
     path('categorias/<int:categoria_id>/editar/', categorias.categoria_update_view, name='categoria_update'),
     path('categorias/<int:categoria_id>/deletar/', categorias.categoria_delete_view, name='categoria_delete'),
     path('api/categorias/', categorias.categorias_api_view, name='categorias_api'),
+    
+    # Faixas padrão de categorias
+    path('categorias/<int:categoria_id>/faixa/nova/', categorias.faixa_categoria_create_view, name='faixa_categoria_create'),
+    path('faixa/<int:faixa_id>/editar/', categorias.faixa_categoria_update_view, name='faixa_categoria_update'),
+    path('faixa/<int:faixa_id>/deletar/', categorias.faixa_categoria_delete_view, name='faixa_categoria_delete'),
+    path('api/categorias/<int:categoria_id>/faixas/', categorias.faixas_categoria_api_view, name='faixas_categoria_api'),
 
     # ==============================================================================
     # NOVO FLUXO DE COTAÇÕES - ETAPAS 1-4

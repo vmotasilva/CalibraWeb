@@ -22,6 +22,51 @@ class CategoriaInstrumento(models.Model):
         verbose_name_plural = "Categorias de Instrumentos"
 
 
+class FaixaMedicaoPadraoCategoria(models.Model):
+    """
+    Faixas padrão de medição para uma categoria de instrumentos.
+    Permite que ao criar um novo instrumento, as faixas da categoria sejam sugeridas como base,
+    mas possam ser ajustadas sem obrigatoriedade de manter os valores originais.
+    """
+    categoria = models.ForeignKey(
+        CategoriaInstrumento, on_delete=models.CASCADE,
+        related_name="faixas_padrao_medicao",
+        verbose_name="Categoria",
+        help_text="Categoria de instrumento para esta faixa padrão"
+    )
+    
+    unidade = models.ForeignKey('core.UnidadeMedida', on_delete=models.PROTECT)
+    
+    valor_minimo = models.DecimalField(max_digits=10, decimal_places=4)
+    valor_maximo = models.DecimalField(max_digits=10, decimal_places=4)
+    resolucao = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True
+    )
+    nominal = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True,
+        help_text="Valor central/nominal do processo"
+    )
+    tolerancia_mais_menos = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True,
+        help_text="Variação aceitável (+/-)"
+    )
+    
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+    ativa = models.BooleanField(default=True, verbose_name="Faixa Ativa")
+
+    def __str__(self):
+        return f"{self.categoria.nome} - {self.valor_minimo} a {self.valor_maximo} {self.unidade.nome}"
+
+    class Meta:
+        verbose_name = "Faixa de Medição Padrão de Categoria"
+        verbose_name_plural = "Faixas de Medição Padrão de Categorias"
+        unique_together = [
+            ('categoria', 'unidade', 'valor_minimo', 'valor_maximo'),
+        ]
+        ordering = ['categoria', 'valor_minimo']
+
+
 class InstrumentoReferencia(models.Model):
     """
     Modelo para rastrear substituição de instrumentos

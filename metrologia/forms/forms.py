@@ -7,7 +7,7 @@ from django import forms
 from metrologia.models import (
     Instrumento, HistoricoCalibracao, FaixaMedicao, Cotacao, OcorrenciaCotacao,
     SolicitacaoCotacao, ItemSolicitacaoCotacao, CotacaoFornecedor,
-    ItemCotacao, AtendimentoSolicitacao, CategoriaInstrumento
+    ItemCotacao, AtendimentoSolicitacao, CategoriaInstrumento, FaixaMedicaoPadraoCategoria
 )
 from .widgets import InstrumentosModalWidget
 
@@ -407,3 +407,53 @@ class CategoriaInstrumentoForm(forms.ModelForm):
                 'class': 'form-select',
             }),
         }
+
+
+class FaixaMedicaoPadraoCategoriForm(forms.ModelForm):
+    """Formulário para criar e atualizar faixas padrão de categorias."""
+    
+    class Meta:
+        model = FaixaMedicaoPadraoCategoria
+        fields = ['unidade', 'valor_minimo', 'valor_maximo', 'resolucao', 'nominal', 'tolerancia_mais_menos', 'ativa']
+        widgets = {
+            'unidade': forms.Select(attrs={'class': 'form-select'}),
+            'valor_minimo': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.0001',
+                'placeholder': 'Valor mínimo'
+            }),
+            'valor_maximo': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.0001',
+                'placeholder': 'Valor máximo'
+            }),
+            'resolucao': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.0001',
+                'placeholder': 'Resolução (opcional)'
+            }),
+            'nominal': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.0001',
+                'placeholder': 'Valor nominal (opcional)'
+            }),
+            'tolerancia_mais_menos': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.0001',
+                'placeholder': 'Tolerância ±X (opcional)'
+            }),
+            'ativa': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        valor_minimo = cleaned_data.get('valor_minimo')
+        valor_maximo = cleaned_data.get('valor_maximo')
+        
+        if valor_minimo is not None and valor_maximo is not None:
+            if valor_minimo >= valor_maximo:
+                raise forms.ValidationError(
+                    "Valor mínimo deve ser menor que valor máximo."
+                )
+        
+        return cleaned_data

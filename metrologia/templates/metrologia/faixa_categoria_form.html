@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-bar-chart"></i> {{ titulo }}</h2>
+            {% if faixa %}
+            <p class="text-muted mb-0">ID: {{ faixa.id }}</p>
+            {% endif %}
+        </div>
+        <a href="{% url 'metrologia:categoria_detail' categoria.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <!-- CARD DO FORMULÁRIO -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-plus-circle"></i> Configurar Faixa de Medição Padrão
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+
+                        <!-- UNIDADE -->
+                        <div class="mb-3">
+                            <label for="id_unidade" class="form-label fw-bold">
+                                Unidade de Medida <span class="text-danger">*</span>
+                            </label>
+                            {{ form.unidade|add_class:"form-select form-select-lg" }}
+                            {% if form.unidade.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.unidade.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- VALORES -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_valor_minimo" class="form-label fw-bold">
+                                        Valor Mínimo <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.valor_minimo|add_class:"form-control form-control-lg" }}
+                                    {% if form.valor_minimo.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.valor_minimo.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_valor_maximo" class="form-label fw-bold">
+                                        Valor Máximo <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.valor_maximo|add_class:"form-control form-control-lg" }}
+                                    {% if form.valor_maximo.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.valor_maximo.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VALORES OPCIONAIS -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_resolucao" class="form-label fw-bold">
+                                        Resolução
+                                    </label>
+                                    {{ form.resolucao|add_class:"form-control" }}
+                                    <small class="form-text text-muted">
+                                        Capacidade de discriminação do instrumento
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_nominal" class="form-label fw-bold">
+                                        Valor Nominal
+                                    </label>
+                                    {{ form.nominal|add_class:"form-control" }}
+                                    <small class="form-text text-muted">
+                                        Valor central/nominal do processo
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_tolerancia_mais_menos" class="form-label fw-bold">
+                                        Tolerância
+                                    </label>
+                                    {{ form.tolerancia_mais_menos|add_class:"form-control" }}
+                                    <small class="form-text text-muted">
+                                        Variação aceitável (±X)
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- STATUS -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.ativa|add_class:"form-check-input" }}
+                                <label class="form-check-label fw-bold" for="id_ativa">
+                                    Faixa Ativa
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Faixas inativas não serão sugeridas ao criar novos instrumentos
+                            </small>
+                        </div>
+
+                        <!-- BOTÕES -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle"></i> Salvar Faixa
+                            </button>
+                            <a href="{% url 'metrologia:categoria_detail' categoria.id %}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFORMAÇÕES LATERAL -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-info-circle"></i> Sobre Faixas Padrão
+                </div>
+                <div class="card-body">
+                    <p class="small mb-3">
+                        <strong>Faixas padrão</strong> são sugeridas ao criar novos instrumentos da categoria, 
+                        mas podem ser ajustadas conforme necessário.
+                    </p>
+                    <hr>
+                    <p class="small mb-0">
+                        <strong>Categoria:</strong><br>
+                        {{ categoria.nome }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- CARD DE DICAS -->
+            <div class="card shadow-sm mt-3">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-lightbulb"></i> Dicas
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li><strong>Valores:</strong> Use valores que refletem o equipamento típico da categoria</li>
+                        <li><strong>Resolução:</strong> Capacidade de discriminação do instrumento</li>
+                        <li><strong>Nominal:</strong> Valor central esperado no processo</li>
+                        <li><strong>Tolerância:</strong> Variação aceitável (ex: 0.05 para ±0.05)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .needs-validation .form-control:invalid {
+        border-color: #dc3545;
+    }
+    .needs-validation .form-control:valid {
+        border-color: #198754;
+    }
+</style>
+{% endblock %}
