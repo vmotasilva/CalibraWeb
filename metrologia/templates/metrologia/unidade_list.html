@@ -9,13 +9,13 @@
     <div class="row mb-4">
         <div class="col-md-8">
             <h1 class="display-5">
-                <i class="fas fa-ruler"></i> Unidades de Medida
+                <i class="bi bi-rulers"></i> Unidades de Medida
             </h1>
             <p class="text-muted">Gerenciamento de unidades de medida utilizadas nas faixas de medição</p>
         </div>
         <div class="col-md-4 text-end">
             <a href="{% url 'metrologia:unidade_create' %}" class="btn btn-success btn-lg">
-                <i class="fas fa-plus"></i> Nova Unidade
+                <i class="bi bi-plus-circle"></i> Nova Unidade
             </a>
         </div>
     </div>
@@ -24,7 +24,7 @@
     {% if messages %}
         {% for message in messages %}
             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+                <i class="bi bi-{% if message.tags == 'success' %}check-circle-fill{% elif message.tags == 'error' %}exclamation-circle-fill{% else %}info-circle-fill{% endif %}"></i>
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
@@ -41,13 +41,13 @@
                 </div>
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary btn-lg w-100">
-                        <i class="fas fa-search"></i> Buscar
+                        <i class="bi bi-search"></i> Buscar
                     </button>
                 </div>
                 {% if search %}
                     <div class="col-12">
                         <a href="{% url 'metrologia:unidades_list' %}" class="btn btn-outline-secondary btn-sm">
-                            Limpar busca
+                            <i class="bi bi-x-circle"></i> Limpar busca
                         </a>
                     </div>
                 {% endif %}
@@ -59,7 +59,7 @@
     <div class="row mb-4">
         <div class="col-md-12">
             <div class="alert alert-info" role="alert">
-                <i class="fas fa-info-circle"></i>
+                <i class="bi bi-info-circle"></i>
                 <strong>Total de unidades:</strong> {{ total_count }}
                 {% if search %}
                     | <strong>Resultados encontrados:</strong> {{ unidades.paginator.count }}
@@ -96,18 +96,20 @@
                                     </small>
                                 </td>
                                 <td class="text-center">
-                                    <a href="{% url 'metrologia:unidade_detail' unidade.id %}" 
-                                       class="btn btn-sm btn-info" title="Ver detalhes">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{% url 'metrologia:unidade_update' unidade.id %}" 
-                                       class="btn btn-sm btn-warning" title="Editar">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'metrologia:unidade_delete' unidade.id %}" 
-                                       class="btn btn-sm btn-danger" title="Deletar">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'metrologia:unidade_detail' unidade.id %}" 
+                                           class="btn btn-sm btn-info" title="Ver detalhes">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <a href="{% url 'metrologia:unidade_update' unidade.id %}" 
+                                           class="btn btn-sm btn-warning" title="Editar unidade">
+                                            <i class="bi bi-pencil-square"></i> Editar
+                                        </a>
+                                        <a href="{% url 'metrologia:unidade_delete' unidade.id %}" 
+                                           class="btn btn-sm btn-danger" title="Deletar unidade">
+                                            <i class="bi bi-trash"></i> Deletar
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -115,7 +117,7 @@
                 </table>
             {% else %}
                 <div class="text-center py-5">
-                    <i class="fas fa-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                    <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
                     <p class="text-muted mt-3">
                         {% if search %}
                             Nenhuma unidade encontrada com "{{ search }}"
@@ -125,7 +127,7 @@
                     </p>
                     {% if not search %}
                         <a href="{% url 'metrologia:unidade_create' %}" class="btn btn-success mt-2">
-                            <i class="fas fa-plus"></i> Criar Primeira Unidade
+                            <i class="bi bi-plus-circle"></i> Criar Primeira Unidade
                         </a>
                     {% endif %}
                 </div>
@@ -171,4 +173,35 @@
     {% endif %}
 
 </div>
+
+<style>
+    .btn-group .btn-sm {
+        font-size: 0.875rem;
+        padding: 0.4rem 0.65rem;
+        border-radius: 0.25rem;
+    }
+    
+    .btn-group .btn-sm i {
+        margin-right: 0.35rem;
+        font-weight: 500;
+    }
+    
+    .btn-group {
+        display: inline-flex;
+        gap: 0.35rem;
+    }
+    
+    .btn-info:hover {
+        background-color: #0d6efd;
+    }
+    
+    .btn-warning:hover {
+        background-color: #fd7e14;
+    }
+    
+    .btn-danger:hover {
+        background-color: #dc3545;
+    }
+</style>
+{% endblock %}
 {% endblock %}
