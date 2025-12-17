@@ -103,7 +103,7 @@
                         </div>
                         <div class="col-6">
                             <div class="text-center">
-                                <h3 class="mb-0">{{ category.total_faixas|default:0 }}</h3>
+                                <h3 class="mb-0">{{ total_faixas_padrao|default:0 }}</h3>
                                 <small class="text-muted">Faixa(s)</small>
                             </div>
                         </div>
@@ -161,6 +161,85 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- SEÇÃO DE FAIXAS PADRÃO (se editando) -->
+    {% if categoria and faixas_padrao is not None %}
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-star"></i> Faixas Padrão de Medição ({{ total_faixas_padrao }})</span>
+            <a href="{% url 'metrologia:faixa_categoria_create' categoria.id %}" class="btn btn-sm btn-light">
+                <i class="bi bi-plus-circle"></i> Adicionar Faixa
+            </a>
+        </div>
+        <div class="card-body p-0">
+            {% if faixas_padrao %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="12%">Unidade</th>
+                            <th width="12%">Mín.</th>
+                            <th width="12%">Máx.</th>
+                            <th width="12%">Nominal</th>
+                            <th width="12%">Tolerância</th>
+                            <th width="12%">Resolução</th>
+                            <th width="8%">Status</th>
+                            <th width="18%">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for faixa in faixas_padrao %}
+                        <tr>
+                            <td><strong>{{ faixa.unidade.nome }}</strong></td>
+                            <td>{{ faixa.valor_minimo }}</td>
+                            <td>{{ faixa.valor_maximo }}</td>
+                            <td>{{ faixa.nominal|default:"-" }}</td>
+                            <td>{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
+                            <td>{{ faixa.resolucao|default:"-" }}</td>
+                            <td>
+                                {% if faixa.ativa %}
+                                <span class="badge bg-success">Ativa</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inativa</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'metrologia:faixa_categoria_update' faixa.id %}" class="btn btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </a>
+                                    <form method="post" action="{% url 'metrologia:faixa_categoria_delete' faixa.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Remover faixa padrão?')">
+                                            <i class="bi bi-trash"></i> Remover
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-inbox" style="font-size: 1.5rem;"></i>
+                <p class="mt-2">Nenhuma faixa padrão cadastrada.</p>
+                <a href="{% url 'metrologia:faixa_categoria_create' categoria.id %}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-circle"></i> Criar Primeira Faixa
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- INFORMAÇÕES SOBRE FAIXAS PADRÃO -->
+    <div class="alert alert-info mt-4" role="alert">
+        <i class="bi bi-info-circle"></i> <strong>Faixas Padrão:</strong> 
+        As faixas definidas aqui serão sugeridas ao criar novos instrumentos desta categoria, facilitando o preenchimento rápido. 
+        Os valores podem ser ajustados durante o cadastro do instrumento sem qualquer restrição.
+    </div>
+    {% endif %}
 </div>
 
 <style>

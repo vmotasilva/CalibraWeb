@@ -74,12 +74,19 @@ def categoria_update_view(request, categoria_id):
     # Contar instrumentos nesta categoria
     total_instrumentos = categoria.instrumento_set.count()
     
+    # Faixas padrão da categoria
+    faixas_padrao = FaixaMedicaoPadraoCategoria.objects.filter(
+        categoria=categoria
+    ).select_related('unidade').order_by('valor_minimo')
+    
     context = {
         'form': form,
         'categoria': categoria,
         'titulo': f'Editar Categoria: {categoria.nome}',
         'acao': 'Atualizar',
         'total_instrumentos': total_instrumentos,
+        'faixas_padrao': faixas_padrao,
+        'total_faixas_padrao': faixas_padrao.count(),
     }
     return render(request, 'metrologia/categoria_form.html', context)
 
@@ -260,3 +267,258 @@ def faixas_categoria_api_view(request, categoria_id):
     ]
     
     return JsonResponse({'faixas': data})
+
+
+@login_required
+@require_http_methods(["POST"])
+def faixa_categoria_add_to_instrument_view(request, categoria_id):
+    """Adicionar uma faixa padrão da categoria a um instrumento."""
+    categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
+    
+    instrumento_id = request.POST.get('instrumento_id')
+    faixa_padrao_id = request.POST.get('faixa_padrao_id')
+    
+    instrumento = get_object_or_404(Instrumento, id=instrumento_id, categoria=categoria)
+    faixa_padrao = get_object_or_404(FaixaMedicaoPadraoCategoria, id=faixa_padrao_id, categoria=categoria)
+    
+    # Verificar se já existe essa faixa no instrumento
+    faixa_existente = FaixaMedicao.objects.filter(
+        instrumento=instrumento,
+        unidade=faixa_padrao.unidade,
+        valor_minimo=faixa_padrao.valor_minimo,
+        valor_maximo=faixa_padrao.valor_maximo
+    ).exists()
+    
+    if faixa_existente:
+        messages.warning(request, 'Esta faixa já existe para este instrumento.')
+    else:
+        # Criar nova faixa baseada na faixa padrão
+        nova_faixa = FaixaMedicao.objects.create(
+            instrumento=instrumento,
+            unidade=faixa_padrao.unidade,
+            valor_minimo=faixa_padrao.valor_minimo,
+            valor_maximo=faixa_padrao.valor_maximo,
+            resolucao=faixa_padrao.resolucao,
+            nominal=faixa_padrao.nominal,
+            tolerancia_mais_menos=faixa_padrao.tolerancia_mais_menos,
+        )
+        messages.success(
+            request, 
+            f'Faixa ({faixa_padrao.valor_minimo} - {faixa_padrao.valor_maximo} {faixa_padrao.unidade.nome}) adicionada ao instrumento "{instrumento.descricao}" com sucesso.'
+        )
+    
+    return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def faixa_instrumento_delete_view(request, categoria_id, faixa_id):
+    """Remover uma faixa de um instrumento."""
+    categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
+    faixa = get_object_or_404(FaixaMedicao, id=faixa_id, instrumento__categoria=categoria)
+    
+    instrumento_tag = faixa.instrumento.tag
+    faixa_descricao = f"{faixa.valor_minimo} - {faixa.valor_maximo} {faixa.unidade.nome}"
+    
+    faixa.delete()
+    messages.success(
+        request, 
+        f'Faixa "{faixa_descricao}" removida do instrumento "{instrumento_tag}".'
+    )
+    
+    return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def faixa_instrumento_replace_view(request, categoria_id, faixa_id):
+    """Substituir uma faixa de um instrumento por uma faixa padrão."""
+    categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
+    faixa_atual = get_object_or_404(FaixaMedicao, id=faixa_id, instrumento__categoria=categoria)
+    
+    # Faixas padrão disponíveis
+    faixas_padrao = FaixaMedicaoPadraoCategoria.objects.filter(
+        categoria=categoria
+    ).select_related('unidade').order_by('valor_minimo')
+    
+    if request.method == 'POST':
+        faixa_padrao_id = request.POST.get('faixa_padrao_id')
+        faixa_padrao = get_object_or_404(FaixaMedicaoPadraoCategoria, id=faixa_padrao_id, categoria=categoria)
+        
+        # Verificar se a nova faixa já existe no instrumento
+        faixa_existente = FaixaMedicao.objects.filter(
+            instrumento=faixa_atual.instrumento,
+            unidade=faixa_padrao.unidade,
+            valor_minimo=faixa_padrao.valor_minimo,
+            valor_maximo=faixa_padrao.valor_maximo
+        ).exclude(id=faixa_atual.id).exists()
+        
+        if faixa_existente:
+            messages.warning(request, 'A faixa padrão selecionada já existe para este instrumento.')
+            return redirect('metrologia:faixa_instrumento_replace', categoria_id=categoria_id, faixa_id=faixa_id)
+        
+        # Atualizar a faixa com valores da faixa padrão
+        faixa_antiga = f"{faixa_atual.valor_minimo} - {faixa_atual.valor_maximo} {faixa_atual.unidade.nome}"
+        
+        faixa_atual.unidade = faixa_padrao.unidade
+        faixa_atual.valor_minimo = faixa_padrao.valor_minimo
+        faixa_atual.valor_maximo = faixa_padrao.valor_maximo
+        faixa_atual.resolucao = faixa_padrao.resolucao
+        faixa_atual.nominal = faixa_padrao.nominal
+        faixa_atual.tolerancia_mais_menos = faixa_padrao.tolerancia_mais_menos
+        faixa_atual.save()
+        
+        faixa_nova = f"{faixa_padrao.valor_minimo} - {faixa_padrao.valor_maximo} {faixa_padrao.unidade.nome}"
+        messages.success(
+            request, 
+            f'Faixa do instrumento "{faixa_atual.instrumento.tag}" substituída de "{faixa_antiga}" para "{faixa_nova}".'
+        )
+        
+        return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+    
+    context = {
+        'categoria': categoria,
+        'faixa_atual': faixa_atual,
+        'faixas_padrao': faixas_padrao,
+        'titulo': f'Substituir Faixa - {faixa_atual.instrumento.tag}',
+    }
+    return render(request, 'metrologia/faixa_instrumento_replace.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def faixa_instrumento_bulk_delete_view(request, categoria_id):
+    """Remover múltiplas faixas de instrumentos em massa."""
+    categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
+    
+    faixa_ids = request.POST.getlist('faixa_ids')
+    
+    if not faixa_ids:
+        messages.warning(request, 'Nenhuma faixa foi selecionada.')
+        return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+    
+    # Validar que todas as faixas pertencem à categoria
+    faixas = FaixaMedicao.objects.filter(
+        id__in=faixa_ids,
+        instrumento__categoria=categoria
+    )
+    
+    if faixas.count() != len(faixa_ids):
+        messages.error(request, 'Algumas faixas selecionadas não pertencem a esta categoria.')
+        return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+    
+    quantidade = faixas.count()
+    faixas.delete()
+    
+    messages.success(request, f'{quantidade} faixa(s) removida(s) com sucesso.')
+    return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def faixa_instrumento_bulk_replace_view(request, categoria_id):
+    """Substituir múltiplas faixas por uma faixa padrão."""
+    categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
+    
+    # Faixas padrão disponíveis
+    faixas_padrao = FaixaMedicaoPadraoCategoria.objects.filter(
+        categoria=categoria
+    ).select_related('unidade').order_by('valor_minimo')
+    
+    if request.method == 'POST':
+        faixa_ids = request.POST.getlist('faixa_ids')
+        faixa_padrao_id = request.POST.get('faixa_padrao_id')
+        
+        if not faixa_ids:
+            messages.warning(request, 'Nenhuma faixa foi selecionada.')
+            return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+        
+        if not faixa_padrao_id:
+            messages.error(request, 'Nenhuma faixa padrão foi selecionada.')
+            return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+        
+        faixa_padrao = get_object_or_404(FaixaMedicaoPadraoCategoria, id=faixa_padrao_id, categoria=categoria)
+        
+        # Validar e atualizar faixas
+        faixas = FaixaMedicao.objects.filter(
+            id__in=faixa_ids,
+            instrumento__categoria=categoria
+        )
+        
+        if faixas.count() != len(faixa_ids):
+            messages.error(request, 'Algumas faixas selecionadas não pertencem a esta categoria.')
+            return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+        
+        quantidade = 0
+        for faixa in faixas:
+            # Verificar se a nova faixa já existe neste instrumento
+            faixa_existente = FaixaMedicao.objects.filter(
+                instrumento=faixa.instrumento,
+                unidade=faixa_padrao.unidade,
+                valor_minimo=faixa_padrao.valor_minimo,
+                valor_maximo=faixa_padrao.valor_maximo
+            ).exclude(id=faixa.id).exists()
+            
+            if not faixa_existente:
+                faixa.unidade = faixa_padrao.unidade
+                faixa.valor_minimo = faixa_padrao.valor_minimo
+                faixa.valor_maximo = faixa_padrao.valor_maximo
+                faixa.resolucao = faixa_padrao.resolucao
+                faixa.nominal = faixa_padrao.nominal
+                faixa.tolerancia_mais_menos = faixa_padrao.tolerancia_mais_menos
+                faixa.save()
+                quantidade += 1
+        
+        if quantidade > 0:
+            messages.success(
+                request, 
+                f'{quantidade} faixa(s) substituída(s) pela faixa padrão "{faixa_padrao.valor_minimo} - {faixa_padrao.valor_maximo} {faixa_padrao.unidade.nome}".'
+            )
+        else:
+            messages.warning(request, 'Nenhuma faixa foi substituída (todas já existem nos instrumentos).')
+        
+        return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+    
+    context = {
+        'categoria': categoria,
+        'faixas_padrao': faixas_padrao,
+        'titulo': f'Substituir Faixas em Massa - {categoria.nome}',
+    }
+    return render(request, 'metrologia/faixa_instrumento_bulk_replace.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def instrumento_bulk_change_category_view(request, categoria_id):
+    """Alterar categoria de múltiplos instrumentos em massa."""
+    categoria_destino = get_object_or_404(CategoriaInstrumento, id=categoria_id)
+    
+    instrumento_ids = request.POST.getlist('instrumento_ids')
+    
+    if not instrumento_ids:
+        messages.warning(request, 'Nenhum instrumento foi selecionado.')
+        return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+    
+    # Obter instrumentos de qualquer categoria
+    instrumentos = Instrumento.objects.filter(id__in=instrumento_ids)
+    
+    if instrumentos.count() != len(instrumento_ids):
+        messages.error(request, 'Alguns instrumentos selecionados não foram encontrados.')
+        return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+    
+    quantidade = 0
+    for instrumento in instrumentos:
+        if instrumento.categoria != categoria_destino:
+            instrumento.categoria = categoria_destino
+            instrumento.save()
+            quantidade += 1
+    
+    if quantidade > 0:
+        messages.success(
+            request, 
+            f'{quantidade} instrumento(s) movido(s) para a categoria "{categoria_destino.nome}" com sucesso.'
+        )
+    else:
+        messages.info(request, 'Os instrumentos selecionados já estão nesta categoria.')
+    
+    return redirect('metrologia:categoria_detail', categoria_id=categoria_id)

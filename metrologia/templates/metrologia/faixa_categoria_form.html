@@ -24,7 +24,7 @@
                     <i class="bi bi-plus-circle"></i> Configurar Faixa de Medição Padrão
                 </div>
                 <div class="card-body">
-                    <form method="post" class="needs-validation">
+                    <form method="post" class="needs-validation" id="formFaixa">
                         {% csrf_token %}
 
                         <!-- UNIDADE -->
@@ -40,14 +40,60 @@
                             {% endif %}
                         </div>
 
-                        <!-- VALORES -->
+                        <!-- VALORES OPCIONAIS (NOMINAL E TOLERÂNCIA) -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_nominal" class="form-label fw-bold">
+                                        Valor Nominal
+                                    </label>
+                                    {{ form.nominal|add_class:"form-control form-control-lg" }}
+                                    <small class="form-text text-muted">
+                                        Valor central/nominal do processo
+                                    </small>
+                                    {% if form.nominal.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.nominal.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_tolerancia_mais_menos" class="form-label fw-bold">
+                                        Tolerância (±X)
+                                    </label>
+                                    {{ form.tolerancia_mais_menos|add_class:"form-control form-control-lg" }}
+                                    <small class="form-text text-muted">
+                                        Variação aceitável (ex: 0.05 para ±0.05)
+                                    </small>
+                                    {% if form.tolerancia_mais_menos.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.tolerancia_mais_menos.errors %}{{ error }}{% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VALORES CALCULADOS AUTOMATICAMENTE -->
+                        <div class="alert alert-light border border-primary" id="alertAutoCalc" style="display: none;">
+                            <small class="text-muted"><i class="bi bi-info-circle"></i> Os valores abaixo são calculados automaticamente.</small>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="id_valor_minimo" class="form-label fw-bold">
                                         Valor Mínimo <span class="text-danger">*</span>
                                     </label>
-                                    {{ form.valor_minimo|add_class:"form-control form-control-lg" }}
+                                    <div class="input-group input-group-lg">
+                                        {{ form.valor_minimo|add_class:"form-control" }}
+                                        <span class="input-group-text"><i class="bi bi-calculator"></i></span>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Nominal - Tolerância
+                                    </small>
                                     {% if form.valor_minimo.errors %}
                                     <div class="invalid-feedback d-block">
                                         {% for error in form.valor_minimo.errors %}{{ error }}{% endfor %}
@@ -60,7 +106,13 @@
                                     <label for="id_valor_maximo" class="form-label fw-bold">
                                         Valor Máximo <span class="text-danger">*</span>
                                     </label>
-                                    {{ form.valor_maximo|add_class:"form-control form-control-lg" }}
+                                    <div class="input-group input-group-lg">
+                                        {{ form.valor_maximo|add_class:"form-control" }}
+                                        <span class="input-group-text"><i class="bi bi-calculator"></i></span>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Nominal + Tolerância
+                                    </small>
                                     {% if form.valor_maximo.errors %}
                                     <div class="invalid-feedback d-block">
                                         {% for error in form.valor_maximo.errors %}{{ error }}{% endfor %}
@@ -70,41 +122,20 @@
                             </div>
                         </div>
 
-                        <!-- VALORES OPCIONAIS -->
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="id_resolucao" class="form-label fw-bold">
-                                        Resolução
-                                    </label>
-                                    {{ form.resolucao|add_class:"form-control" }}
-                                    <small class="form-text text-muted">
-                                        Capacidade de discriminação do instrumento
-                                    </small>
-                                </div>
+                        <!-- RESOLUÇÃO -->
+                        <div class="mb-3">
+                            <label for="id_resolucao" class="form-label fw-bold">
+                                Resolução
+                            </label>
+                            {{ form.resolucao|add_class:"form-control" }}
+                            <small class="form-text text-muted">
+                                Capacidade de discriminação do instrumento
+                            </small>
+                            {% if form.resolucao.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.resolucao.errors %}{{ error }}{% endfor %}
                             </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="id_nominal" class="form-label fw-bold">
-                                        Valor Nominal
-                                    </label>
-                                    {{ form.nominal|add_class:"form-control" }}
-                                    <small class="form-text text-muted">
-                                        Valor central/nominal do processo
-                                    </small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label for="id_tolerancia_mais_menos" class="form-label fw-bold">
-                                        Tolerância
-                                    </label>
-                                    {{ form.tolerancia_mais_menos|add_class:"form-control" }}
-                                    <small class="form-text text-muted">
-                                        Variação aceitável (±X)
-                                    </small>
-                                </div>
-                            </div>
+                            {% endif %}
                         </div>
 
                         <!-- STATUS -->
@@ -179,4 +210,38 @@
         border-color: #198754;
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nominalInput = document.getElementById('id_nominal');
+    const toleranciaInput = document.getElementById('id_tolerancia_mais_menos');
+    const minimoInput = document.getElementById('id_valor_minimo');
+    const maximoInput = document.getElementById('id_valor_maximo');
+    const alertAutoCalc = document.getElementById('alertAutoCalc');
+
+    function calcularValores() {
+        const nominal = parseFloat(nominalInput.value) || 0;
+        const tolerancia = parseFloat(toleranciaInput.value) || 0;
+
+        if (nominal !== 0 && tolerancia !== 0) {
+            const minimo = nominal - tolerancia;
+            const maximo = nominal + tolerancia;
+
+            minimoInput.value = minimo.toFixed(4);
+            maximoInput.value = maximo.toFixed(4);
+            alertAutoCalc.style.display = 'block';
+        } else {
+            alertAutoCalc.style.display = 'none';
+        }
+    }
+
+    if (nominalInput && toleranciaInput) {
+        nominalInput.addEventListener('input', calcularValores);
+        toleranciaInput.addEventListener('input', calcularValores);
+        
+        // Calcular ao carregar a página (se estiver editando)
+        calcularValores();
+    }
+});
+</script>
 {% endblock %}

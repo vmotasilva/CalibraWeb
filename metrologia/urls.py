@@ -20,6 +20,12 @@ urlpatterns = [
     
     # Faixas padrão de categorias
     path('categorias/<int:categoria_id>/faixa/nova/', categorias.faixa_categoria_create_view, name='faixa_categoria_create'),
+    path('categorias/<int:categoria_id>/faixa/adicionar-instrumento/', categorias.faixa_categoria_add_to_instrument_view, name='faixa_categoria_add_to_instrument'),
+    path('categorias/<int:categoria_id>/faixa-instrumento/<int:faixa_id>/remover/', categorias.faixa_instrumento_delete_view, name='faixa_instrumento_delete'),
+    path('categorias/<int:categoria_id>/faixa-instrumento/<int:faixa_id>/substituir/', categorias.faixa_instrumento_replace_view, name='faixa_instrumento_replace'),
+    path('categorias/<int:categoria_id>/faixa-instrumento/remover-em-massa/', categorias.faixa_instrumento_bulk_delete_view, name='faixa_instrumento_bulk_delete'),
+    path('categorias/<int:categoria_id>/faixa-instrumento/substituir-em-massa/', categorias.faixa_instrumento_bulk_replace_view, name='faixa_instrumento_bulk_replace'),
+    path('categorias/<int:categoria_id>/instrumento/alterar-categoria-em-massa/', categorias.instrumento_bulk_change_category_view, name='instrumento_bulk_change_category'),
     path('faixa/<int:faixa_id>/editar/', categorias.faixa_categoria_update_view, name='faixa_categoria_update'),
     path('faixa/<int:faixa_id>/deletar/', categorias.faixa_categoria_delete_view, name='faixa_categoria_delete'),
     path('api/categorias/<int:categoria_id>/faixas/', categorias.faixas_categoria_api_view, name='faixas_categoria_api'),
