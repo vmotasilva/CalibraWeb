@@ -7,7 +7,7 @@ from django import forms
 from metrologia.models import (
     Instrumento, HistoricoCalibracao, FaixaMedicao, Cotacao, OcorrenciaCotacao,
     SolicitacaoCotacao, ItemSolicitacaoCotacao, CotacaoFornecedor,
-    ItemCotacao, AtendimentoSolicitacao
+    ItemCotacao, AtendimentoSolicitacao, CategoriaInstrumento
 )
 from .widgets import InstrumentosModalWidget
 
@@ -56,7 +56,6 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             'tipo_calibracao', 'responsavel', 'fornecedor', 'tem_selo_rbc',
             'certificado'
         ]
-        # arquivos_padroes NÃO deve estar aqui!
         widgets = {
             'data_calibracao': forms.DateInput(attrs={
                 'class': 'form-control',
@@ -89,7 +88,6 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Pré-preencher responsável com nome do usuário logado
         if not self.is_bound and user is not None:
             first = (getattr(user, 'first_name', '') or '').strip()
             last = (getattr(user, 'last_name', '') or '').strip()
@@ -102,7 +100,6 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             if nome_resp:
                 self.fields['responsavel'].initial = nome_resp
         
-        # responsável é obrigatório
         self.fields['responsavel'].required = True
 
 
@@ -185,7 +182,6 @@ class CotacaoForm(forms.ModelForm):
     def clean_instrumentos(self):
         data = self.cleaned_data.get('instrumentos')
         if isinstance(data, str):
-            # Se vier como string separada por vírgula
             ids = [int(i) for i in data.split(',') if i.strip().isdigit()]
             return ids
         elif isinstance(data, list):
@@ -194,7 +190,6 @@ class CotacaoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Se o POST vier com instrumentos_ids como string, converte para lista
         data = self.data
         if data and 'instrumentos_ids' in data:
             val = data.get('instrumentos_ids')
@@ -244,15 +239,10 @@ class OcorrenciaCotacaoForm(forms.ModelForm):
             }),
         }
 
-# ==============================================================================
-# NOVO FLUXO DE COTAÇÕES - ETAPAS 1-4
-# ==============================================================================
 
 class SolicitacaoCotacaoForm(forms.ModelForm):
     """ETAPA 1: Formulário para criar uma Solicitação de Cotação"""
-    
 
-    
     class Meta:
         model = SolicitacaoCotacao
         fields = ['data_solicitacao_orcamento', 'dias_vencimento', 'responsavel', 'departamento']
@@ -276,10 +266,6 @@ class SolicitacaoCotacaoForm(forms.ModelForm):
                 'class': 'form-control',
             }),
         }
-    
-
-    
-
 
 
 class ItemSolicitacaoCotacaoForm(forms.ModelForm):
@@ -396,5 +382,28 @@ class AtendimentoSolicitacaoForm(forms.ModelForm):
                 'class': 'form-control',
                 'rows': 3,
                 'placeholder': 'Observações sobre a escolha (opcional)'
+            }),
+        }
+
+
+class CategoriaInstrumentoForm(forms.ModelForm):
+    """Formulário para criar e atualizar categorias de instrumentos."""
+    
+    class Meta:
+        model = CategoriaInstrumento
+        fields = ['nome', 'descricao', 'unidade_padrao']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-control form-control-lg',
+                'placeholder': 'Ex: Paquímetro, Micrometro, Termômetro, etc',
+                'required': 'required',
+            }),
+            'descricao': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Descreva a categoria e suas características principais',
+            }),
+            'unidade_padrao': forms.Select(attrs={
+                'class': 'form-select',
             }),
         }

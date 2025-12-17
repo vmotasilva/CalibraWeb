@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load custom_tags %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-tags"></i> {{ categoria.nome }}</h2>
+            <p class="text-muted mb-0">ID: {{ categoria.id }}</p>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{% url 'metrologia:categoria_update' categoria.id %}" class="btn btn-warning">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+            <a href="{% url 'metrologia:categorias_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- LAYOUT: Esquerda (Info) + Direita (Instrumentos) -->
+    <div class="row mb-4 g-4">
+        <!-- COLUNA 1: INFORMAÇÕES DA CATEGORIA -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-info-circle"></i> Informações da Categoria
+                </div>
+                <div class="card-body">
+                    <!-- NOME -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Nome</label>
+                        <p class="mb-0"><strong>{{ categoria.nome }}</strong></p>
+                    </div>
+
+                    <!-- UNIDADE PADRÃO -->
+                    {% if categoria.unidade_padrao %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Unidade Padrão</label>
+                        <p class="mb-0"><strong>{{ categoria.unidade_padrao.nome }}</strong></p>
+                    </div>
+                    {% endif %}
+
+                    <!-- DESCRIÇÃO -->
+                    {% if categoria.descricao %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Descrição</label>
+                        <p class="mb-0 text-muted" style="white-space: pre-wrap;">{{ categoria.descricao }}</p>
+                    </div>
+                    {% endif %}
+
+                    <hr>
+
+                    <!-- ESTATÍSTICAS -->
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div>
+                                <h3 class="mb-1">{{ total_instrumentos }}</h3>
+                                <small class="text-muted">Instrumento(s)</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div>
+                                <h3 class="mb-1">{{ total_faixas }}</h3>
+                                <small class="text-muted">Faixa(s)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUNA 2: INSTRUMENTOS -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-hourglass-split"></i> Instrumentos Cadastrados ({{ total_instrumentos }})
+                </div>
+                <div class="card-body p-0">
+                    {% if instrumentos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="15%">TAG</th>
+                                    <th width="25%">Descrição</th>
+                                    <th width="15%">Fabricante</th>
+                                    <th width="15%">Setor</th>
+                                    <th width="15%">Faixas</th>
+                                    <th width="15%">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for instrumento in instrumentos %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ instrumento.tag }}</strong>
+                                        {% if not instrumento.ativo %}
+                                        <br><span class="badge bg-danger">INATIVO</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ instrumento.descricao }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ instrumento.fabricante|default:"-" }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ instrumento.setor.nome|default:"-" }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ instrumento.faixas.count }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-4 text-center text-muted">
+                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                        <p class="mt-3">Nenhum instrumento cadastrado nesta categoria.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- FAIXAS DE MEDIÇÃO -->
+            {% if faixas %}
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-warning text-white">
+                    <i class="bi bi-bar-chart"></i> Faixas de Medição ({{ total_faixas }})
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="15%">Instrumento</th>
+                                    <th width="10%">Unidade</th>
+                                    <th width="12%">Mín.</th>
+                                    <th width="12%">Máx.</th>
+                                    <th width="12%">Nominal</th>
+                                    <th width="12%">Tolerância</th>
+                                    <th width="12%">Resolução</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for faixa in faixas %}
+                                <tr>
+                                    <td><strong>{{ faixa.instrumento.tag }}</strong></td>
+                                    <td>{{ faixa.unidade.nome }}</td>
+                                    <td>{{ faixa.valor_minimo }}</td>
+                                    <td>{{ faixa.valor_maximo }}</td>
+                                    <td>{{ faixa.nominal|default:"-" }}</td>
+                                    <td>{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
+                                    <td>{{ faixa.resolucao|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- INFORMAÇÕES ÚTEIS -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="alert alert-info" role="alert">
+                <i class="bi bi-info-circle"></i> <strong>Informação:</strong> 
+                As faixas de medição são automaticamente associadas aos instrumentos quando cadastrados. 
+                Cada instrumento pode ter múltiplas faixas, e as faixas podem ter tolerâncias e resoluções diferentes.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

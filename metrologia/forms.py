@@ -1,5 +1,5 @@
 from django import forms
-from metrologia.models import FaixaMedicao, Cotacao, OcorrenciaCotacao
+from metrologia.models import FaixaMedicao, Cotacao, OcorrenciaCotacao, CategoriaInstrumento
 from django.core.exceptions import ValidationError
 
 
@@ -140,5 +140,28 @@ class OcorrenciaCotacaoForm(forms.ModelForm):
                 'class': 'form-control',
                 'rows': 3,
                 'placeholder': 'Que ação foi tomada?'
+            }),
+        }
+
+
+class CategoriaInstrumentoForm(forms.ModelForm):
+    """Form para criar e atualizar categorias de instrumentos."""
+    
+    class Meta:
+        model = CategoriaInstrumento
+        fields = ['nome', 'descricao', 'unidade_padrao']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-control form-control-lg',
+                'placeholder': 'Ex: Paquímetro, Micrometro, Termômetro, etc',
+                'required': 'required',
+            }),
+            'descricao': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Descreva a categoria e suas características principais',
+            }),
+            'unidade_padrao': forms.Select(attrs={
+                'class': 'form-select',
             }),
         }

@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-tags"></i> {{ titulo }}</h2>
+            {% if categoria %}
+            <p class="text-muted mb-0">ID: {{ categoria.id }}</p>
+            {% endif %}
+        </div>
+        <a href="{% url 'metrologia:categorias_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <!-- CARD DO FORMULÁRIO -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-pencil-square"></i> Informações da Categoria
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+
+                        <!-- NOME -->
+                        <div class="mb-3">
+                            <label for="id_nome" class="form-label fw-bold">
+                                Nome da Categoria <span class="text-danger">*</span>
+                            </label>
+                            {{ form.nome|add_class:"form-control form-control-lg" }}
+                            {% if form.nome.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.nome.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Ex: Paquímetro, Micrometro, Termômetro, Manômetro, etc
+                            </small>
+                        </div>
+
+                        <!-- DESCRIÇÃO -->
+                        <div class="mb-3">
+                            <label for="id_descricao" class="form-label fw-bold">Descrição</label>
+                            {{ form.descricao|add_class:"form-control" }}
+                            {% if form.descricao.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.descricao.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Descreva características, especificações ou observações importantes sobre esta categoria
+                            </small>
+                        </div>
+
+                        <!-- UNIDADE PADRÃO -->
+                        <div class="mb-3">
+                            <label for="id_unidade_padrao" class="form-label fw-bold">Unidade Padrão</label>
+                            {{ form.unidade_padrao|add_class:"form-select" }}
+                            {% if form.unidade_padrao.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.unidade_padrao.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Unidade de medida padrão para instrumentos desta categoria (opcional)
+                            </small>
+                        </div>
+
+                        <!-- BOTÕES -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle"></i> {{ acao }} Categoria
+                            </button>
+                            <a href="{% url 'metrologia:categorias_list' %}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFORMAÇÕES LATERAL -->
+        <div class="col-lg-4">
+            {% if categoria %}
+            <!-- CARD DE ESTATÍSTICAS -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-graph-up"></i> Estatísticas
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h3 class="mb-0">{{ total_instrumentos }}</h3>
+                                <small class="text-muted">Instrumento(s)</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h3 class="mb-0">{{ category.total_faixas|default:0 }}</h3>
+                                <small class="text-muted">Faixa(s)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD DE INFORMAÇÕES -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <i class="bi bi-info-circle"></i> Informações
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Criada em:</small><br>
+                        <strong>-</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Última atualização:</small><br>
+                        <strong>-</strong>
+                    </div>
+                    <hr>
+                    <p class="small text-muted mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Instrumentos associados a esta categoria não podem ser deletados enquanto a categoria existir.
+                    </p>
+                </div>
+            </div>
+            {% else %}
+            <!-- CARD DE DICAS -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-lightbulb"></i> Dicas de Preenchimento
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Nome:</strong>
+                        <p class="small text-muted">Deve ser descritivo e único. Exemplos:
+                            <br>• Paquímetro
+                            <br>• Micrometro
+                            <br>• Termômetro Digital
+                            <br>• Manômetro
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Descrição:</strong>
+                        <p class="small text-muted">Use para adicionar contexto, características técnicas ou notas de importância.</p>
+                    </div>
+                    <div>
+                        <strong>Unidade Padrão:</strong>
+                        <p class="small text-muted">Será sugerida ao criar faixas de medição para instrumentos desta categoria.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .needs-validation .form-control:invalid {
+        border-color: #dc3545;
+    }
+    .needs-validation .form-control:valid {
+        border-color: #198754;
+    }
+</style>
+{% endblock %}

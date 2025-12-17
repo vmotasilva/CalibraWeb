@@ -1,11 +1,22 @@
 from django.urls import path
 from . import views
+from .views import categorias
 
 app_name = 'metrologia'
 
 urlpatterns = [
     # Metrologia URLs
     # path('', views.modulo_metrologia_view, name='dashboard'),
+
+    # ==============================================================================
+    # GERENCIAMENTO DE CATEGORIAS
+    # ==============================================================================
+    path('categorias/', categorias.categorias_list_view, name='categorias_list'),
+    path('categorias/nova/', categorias.categoria_create_view, name='categoria_create'),
+    path('categorias/<int:categoria_id>/', categorias.categoria_detail_view, name='categoria_detail'),
+    path('categorias/<int:categoria_id>/editar/', categorias.categoria_update_view, name='categoria_update'),
+    path('categorias/<int:categoria_id>/deletar/', categorias.categoria_delete_view, name='categoria_delete'),
+    path('api/categorias/', categorias.categorias_api_view, name='categorias_api'),
 
     # ==============================================================================
     # NOVO FLUXO DE COTAÇÕES - ETAPAS 1-4
