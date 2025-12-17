@@ -1,28 +1,48 @@
-FROM python:3.12-slim
+# Build stage - compile dependencies with build tools
+FROM python:3.12-slim as builder
 
-# Prevents Python from writing .pyc files and buffering stdout
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
-# System deps (build + runtime)
+# Install only build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only production requirements and install
+COPY requirements-prod.txt .
+RUN pip install --upgrade pip && \
+    pip wheel --no-cache-dir --wheel-dir /wheels -r requirements-prod.txt
+
+# Runtime stage - lean production image
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Install only runtime dependencies (no build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
     bash \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt ./
-RUN pip install -r requirements.txt
+# Copy wheels from builder and install
+COPY --from=builder /wheels /wheels
+COPY requirements-prod.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache /wheels/*
 
+# Copy application code
 COPY . .
-
-# Skip collectstatic during build; handled by start.sh at runtime
-# to ensure SECRET_KEY and DATABASE_URL are available.
-# ARG DJANGO_STATIC=1
-# ENV DJANGO_SETTINGS_MODULE=config.settings
-# RUN python manage.py collectstatic --noinput || echo "Skipping collectstatic if settings not configured"
 
 EXPOSE 8000
 CMD ["sh", "-c", "python manage.py check && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3 --timeout 120 --access-logfile - --error-logfile -"]

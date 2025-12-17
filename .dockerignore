@@ -1,0 +1,93 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Documentation
+*.md
+docs/
+README*
+
+# Tests
+tests/
+test_*.py
+*_test.py
+.pytest_cache/
+
+# Local development
+.env
+.env.local
+*.sqlite3
+db.sqlite3
+local_settings.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (if used)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Misc
+*.log
+*.pot
+*.csv
+.cache/
+temp/
+tmp/
+__MACOSX/
+
+# Django specific
+staticfiles/
+media/
+.venv
+
+# Celery
+celerybeat-schedule

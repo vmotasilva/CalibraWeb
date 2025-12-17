@@ -1,0 +1,15 @@
+# Production dependencies
+-r requirements-prod.txt
+
+# Development and testing
+pytest==8.0.0
+pytest-django==4.8.0
+pytest-cov==6.0.0
+black==24.10.0
+flake8==7.1.1
+isort==5.13.2
+bandit==1.8.1
+safety==3.2.3
+pre-commit==4.0.1
+django-extensions==3.2.3
+flower==2.0.1
