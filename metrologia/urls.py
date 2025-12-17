@@ -1,12 +1,21 @@
 from django.urls import path
 from . import views
-from .views import categorias
+from .views import categorias, unidades
 
 app_name = 'metrologia'
 
 urlpatterns = [
     # Metrologia URLs
     # path('', views.modulo_metrologia_view, name='dashboard'),
+
+    # ==============================================================================
+    # GERENCIAMENTO DE UNIDADES DE MEDIDA
+    # ==============================================================================
+    path('unidades/', unidades.unidades_list_view, name='unidades_list'),
+    path('unidades/nova/', unidades.unidade_create_view, name='unidade_create'),
+    path('unidades/<int:unidade_id>/', unidades.unidade_detail_view, name='unidade_detail'),
+    path('unidades/<int:unidade_id>/editar/', unidades.unidade_update_view, name='unidade_update'),
+    path('unidades/<int:unidade_id>/deletar/', unidades.unidade_delete_view, name='unidade_delete'),
 
     # ==============================================================================
     # GERENCIAMENTO DE CATEGORIAS

@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Deletar Unidade - CalibraWeb{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <!-- Header -->
+            <div class="mb-4">
+                <a href="{% url 'metrologia:unidades_list' %}" class="btn btn-outline-secondary mb-3">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+                <h1 class="display-6 text-danger">
+                    <i class="fas fa-trash"></i> Confirmar Exclusão
+                </h1>
+            </div>
+
+            <!-- Card de Confirmação -->
+            <div class="card border-danger">
+                <div class="card-body p-4">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Atenção!</strong> Esta ação é irreversível!
+                    </div>
+
+                    <!-- Detalhes da Unidade -->
+                    <div class="mb-4">
+                        <h5 class="mb-3">Unidade a ser deletada:</h5>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <p class="mb-1"><strong>Nome:</strong> <code>{{ unidade.nome }}</code></p>
+                                {% if unidade.descricao %}
+                                    <p class="mb-0"><strong>Descrição:</strong> {{ unidade.descricao }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Verificação de Dependências -->
+                    {% if total_faixas > 0 %}
+                        <div class="alert alert-danger" role="alert">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <strong>Não é possível deletar!</strong>
+                            <p class="mb-0 mt-2">
+                                Esta unidade está sendo utilizada em {{ total_faixas }} faixa(s) de medição:
+                            </p>
+                            <ul class="mb-0 mt-2">
+                                {% if faixas_padrao_count > 0 %}
+                                    <li>{{ faixas_padrao_count }} faixa(s) padrão de categoria</li>
+                                {% endif %}
+                                {% if faixas_instrumento_count > 0 %}
+                                    <li>{{ faixas_instrumento_count }} faixa(s) de instrumento</li>
+                                {% endif %}
+                            </ul>
+                            <p class="mb-0 mt-3">
+                                <small>Para deletar, primeiro remova todos os usos desta unidade.</small>
+                            </p>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'metrologia:unidade_detail' unidade.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                        </div>
+                    {% else %}
+                        <!-- Formulário de Confirmação -->
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle"></i>
+                            Esta unidade não está sendo utilizada e pode ser deletada com segurança.
+                        </div>
+
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="form-check mb-4">
+                                <input class="form-check-input" type="checkbox" id="confirmDelete" required>
+                                <label class="form-check-label" for="confirmDelete">
+                                    Confirmo que desejo deletar a unidade <strong>"{{ unidade.nome }}"</strong> 
+                                    e compreendo que essa ação é irreversível.
+                                </label>
+                            </div>
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a href="{% url 'metrologia:unidade_detail' unidade.id %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-trash"></i> Deletar Unidade
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

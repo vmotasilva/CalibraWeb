@@ -1,6 +1,7 @@
 from django import forms
-from metrologia.models import FaixaMedicao, Cotacao, OcorrenciaCotacao, CategoriaInstrumento
 from django.core.exceptions import ValidationError
+from core.models import UnidadeMedida
+from metrologia.models import FaixaMedicao, Cotacao, OcorrenciaCotacao, CategoriaInstrumento
 
 
 def validate_faixa_range(valor_minimo, valor_maximo):
@@ -149,7 +150,7 @@ class CategoriaInstrumentoForm(forms.ModelForm):
     
     class Meta:
         model = CategoriaInstrumento
-        fields = ['nome', 'descricao', 'unidade_padrao']
+        fields = ['nome', 'descricao']
         widgets = {
             'nome': forms.TextInput(attrs={
                 'class': 'form-control form-control-lg',
@@ -161,7 +162,54 @@ class CategoriaInstrumentoForm(forms.ModelForm):
                 'rows': 4,
                 'placeholder': 'Descreva a categoria e suas características principais',
             }),
-            'unidade_padrao': forms.Select(attrs={
-                'class': 'form-select',
+        }
+
+# ==============================================================================
+# UNIDADE DE MEDIDA
+# ==============================================================================
+
+class UnidadeMedidaForm(forms.ModelForm):
+    """Form para criar e editar unidades de medida."""
+    
+    class Meta:
+        model = UnidadeMedida
+        fields = ['nome', 'descricao']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-control form-control-lg',
+                'placeholder': 'Ex: mm, cm, m, kg, g, etc',
+                'required': 'required',
+            }),
+            'descricao': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Descrição da unidade de medida (opcional)',
             }),
         }
+    
+    def clean_nome(self):
+        """Validar nome único e sem espaços em branco."""
+        nome = self.cleaned_data.get('nome', '').strip()
+        
+        if not nome:
+            raise ValidationError('Nome da unidade é obrigatório')
+        
+        # Verificar se já existe com mesmo nome (case-insensitive)
+        existing = UnidadeMedida.objects.filter(nome__iexact=nome)
+        
+        if self.instance.pk:
+            # Se está editando, excluir a própria instância da verificação
+            existing = existing.exclude(pk=self.instance.pk)
+        
+        if existing.exists():
+            raise ValidationError(f'Já existe uma unidade com nome "{nome}"')
+        
+        return nome
+    
+    def save(self, commit=True):
+        """Garantir que o nome não tenha espaços extras."""
+        instance = super().save(commit=False)
+        instance.nome = instance.nome.strip()
+        if commit:
+            instance.save()
+        return instance

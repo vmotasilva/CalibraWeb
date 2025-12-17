@@ -19,6 +19,7 @@ from .forms import (
     AtendimentoSolicitacaoForm,
     CategoriaInstrumentoForm,
     FaixaMedicaoPadraoCategoriForm,
+    UnidadeMedidaForm,
 )
 
 __all__ = [
@@ -34,4 +35,8 @@ __all__ = [
     'ItemSolicitacaoCotacaoForm',
     'CotacaoFornecedorForm',
     'ItemCotacaoForm',
-    'AtendimentoSolicitacaoForm',]
+    'AtendimentoSolicitacaoForm',
+    'CategoriaInstrumentoForm',
+    'FaixaMedicaoPadraoCategoriForm',
+    'UnidadeMedidaForm',
+]

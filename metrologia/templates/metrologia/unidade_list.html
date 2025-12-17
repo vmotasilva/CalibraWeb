@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Unidades de Medida - CalibraWeb{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-5">
+                <i class="fas fa-ruler"></i> Unidades de Medida
+            </h1>
+            <p class="text-muted">Gerenciamento de unidades de medida utilizadas nas faixas de medição</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'metrologia:unidade_create' %}" class="btn btn-success btn-lg">
+                <i class="fas fa-plus"></i> Nova Unidade
+            </a>
+        </div>
+    </div>
+
+    <!-- Mensagens -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Busca -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-8">
+                    <input type="text" name="search" class="form-control form-control-lg" 
+                           placeholder="Buscar por nome ou descrição..." value="{{ search }}">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+                {% if search %}
+                    <div class="col-12">
+                        <a href="{% url 'metrologia:unidades_list' %}" class="btn btn-outline-secondary btn-sm">
+                            Limpar busca
+                        </a>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-info" role="alert">
+                <i class="fas fa-info-circle"></i>
+                <strong>Total de unidades:</strong> {{ total_count }}
+                {% if search %}
+                    | <strong>Resultados encontrados:</strong> {{ unidades.paginator.count }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Unidades -->
+    <div class="card">
+        <div class="table-responsive">
+            {% if unidades %}
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 30%">Nome</th>
+                            <th style="width: 50%">Descrição</th>
+                            <th style="width: 20%" class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for unidade in unidades %}
+                            <tr>
+                                <td>
+                                    <strong>{{ unidade.nome }}</strong>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if unidade.descricao %}
+                                            {{ unidade.descricao }}
+                                        {% else %}
+                                            <em>Sem descrição</em>
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td class="text-center">
+                                    <a href="{% url 'metrologia:unidade_detail' unidade.id %}" 
+                                       class="btn btn-sm btn-info" title="Ver detalhes">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'metrologia:unidade_update' unidade.id %}" 
+                                       class="btn btn-sm btn-warning" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'metrologia:unidade_delete' unidade.id %}" 
+                                       class="btn btn-sm btn-danger" title="Deletar">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                    <p class="text-muted mt-3">
+                        {% if search %}
+                            Nenhuma unidade encontrada com "{{ search }}"
+                        {% else %}
+                            Nenhuma unidade de medida cadastrada
+                        {% endif %}
+                    </p>
+                    {% if not search %}
+                        <a href="{% url 'metrologia:unidade_create' %}" class="btn btn-success mt-2">
+                            <i class="fas fa-plus"></i> Criar Primeira Unidade
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Paginação -->
+    {% if unidades.has_other_pages %}
+        <nav aria-label="Paginação" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if unidades.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}">Primeira</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ unidades.previous_page_number }}{% if search %}&search={{ search }}{% endif %}">Anterior</a>
+                    </li>
+                {% endif %}
+
+                {% for num in unidades.paginator.page_range %}
+                    {% if unidades.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if unidades.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ unidades.next_page_number }}{% if search %}&search={{ search }}{% endif %}">Próxima</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ unidades.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}">Última</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+
+</div>
+{% endblock %}

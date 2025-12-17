@@ -11,9 +11,6 @@ from decimal import Decimal
 class CategoriaInstrumento(models.Model):
     nome = models.CharField(max_length=100)
     descricao = models.TextField(blank=True, null=True)
-    unidade_padrao = models.ForeignKey(
-        'core.UnidadeMedida', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Unidade Padrão'
-    )
 
     def __str__(self):
         return self.nome
