@@ -122,8 +122,6 @@ class Ferias(models.Model):
         Colaborador, on_delete=models.CASCADE, verbose_name="Colaborador"
     )
 
-    periodo_aquisitivo_inicio = models.DateField(verbose_name="Início do Período Aquisitivo", null=True, blank=True)
-    periodo_aquisitivo_fim = models.DateField(verbose_name="Fim do Período Aquisitivo", null=True, blank=True)
     STATUS_CHOICES = [
         ("PLANEJADO", "Planejado"),
         ("EM_ANDAMENTO", "Em andamento"),

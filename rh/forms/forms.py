@@ -6,8 +6,6 @@ class FeriasForm(forms.ModelForm):
     class Meta:
         model = Ferias
         fields = [
-            "periodo_aquisitivo_inicio",
-            "periodo_aquisitivo_fim",
             "status",
             "data_inicio",
             "data_fim",
@@ -17,8 +15,6 @@ class FeriasForm(forms.ModelForm):
             "descricao"
         ]
         widgets = {
-            "periodo_aquisitivo_inicio": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "periodo_aquisitivo_fim": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "status": forms.Select(attrs={"class": "form-select"}),
             "data_inicio": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "data_fim": forms.DateInput(attrs={"class": "form-control", "type": "date"}),

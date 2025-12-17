@@ -874,8 +874,6 @@ def import_ferias_task(job_id, filepath):
                     if len(sample_errors) < 5:
                         sample_errors.append(f'Colaborador não encontrado: {matricula}')
                     continue
-                dt_aq_ini = parse_date(row.get('AQUISITIVO_INICIO'))
-                dt_aq_fim = parse_date(row.get('AQUISITIVO_FIM'))
                 dt_ini = parse_date(row.get('DATA_INICIO'))
                 dt_fim = parse_date(row.get('DATA_FIM'))
                 dias_vend = row.get('DIAS_VENDIDOS')
@@ -883,16 +881,15 @@ def import_ferias_task(job_id, filepath):
                     dias_vend = int(float(dias_vend)) if dias_vend not in [None, ''] else 0
                 except Exception:
                     dias_vend = 0
-                if not dt_aq_fim:
+                if not dt_ini:
                     if len(sample_errors) < 5:
-                        sample_errors.append(f'Período aquisitivo fim ausente para {matricula}')
+                        sample_errors.append(f'Data de início ausente para {matricula}')
                     continue
                 Ferias.objects.update_or_create(
                     colaborador=colab,
-                    periodo_aquisitivo_fim=dt_aq_fim,
+                    data_inicio=dt_ini,
+                    data_fim=dt_fim,
                     defaults={
-                        'periodo_aquisitivo_inicio': dt_aq_ini,
-                        'data_inicio': dt_ini,
                         'data_fim': dt_fim,
                         'dias_vendidos': dias_vend,
                         'status': (str(row.get('STATUS') or 'PROGRAMADAS').strip() or 'PROGRAMADAS'),

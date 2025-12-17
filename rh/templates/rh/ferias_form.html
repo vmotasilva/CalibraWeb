@@ -12,27 +12,13 @@
             <form method="post">
                 {% csrf_token %}
                 <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label class="form-label">Início do Período Aquisitivo</label>
-                                            {{ form.periodo_aquisitivo_inicio }}
-                                            {% if form.periodo_aquisitivo_inicio.errors %}
-                                                <div class="invalid-feedback d-block">{{ form.periodo_aquisitivo_inicio.errors }}</div>
-                                            {% endif %}
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label">Fim do Período Aquisitivo</label>
-                                            {{ form.periodo_aquisitivo_fim }}
-                                            {% if form.periodo_aquisitivo_fim.errors %}
-                                                <div class="invalid-feedback d-block">{{ form.periodo_aquisitivo_fim.errors }}</div>
-                                            {% endif %}
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label">Status das Férias</label>
-                                            {{ form.status }}
-                                            {% if form.status.errors %}
-                                                <div class="invalid-feedback d-block">{{ form.status.errors }}</div>
-                                            {% endif %}
-                                        </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Status das Férias</label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                            <div class="invalid-feedback d-block">{{ form.status.errors }}</div>
+                        {% endif %}
+                    </div>
                     <div class="col-md-6">
                         <label class="form-label">Data de Início <span class="text-danger">*</span></label>
                         {{ form.data_inicio }}
