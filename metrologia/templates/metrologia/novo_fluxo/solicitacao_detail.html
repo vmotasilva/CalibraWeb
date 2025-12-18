@@ -478,7 +478,7 @@
 <div class="modal fade" id="modalSelecionarInstrumentos" tabindex="-1" aria-labelledby="modalSelecionarInstrumentosLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <form method="post" id="formSelecionarInstrumentos" action="{% url 'metrologia:solicitacao_detail' solicitacao.id %}">
+            <form method="post" id="formSelecionarInstrumentos" action="{% url 'metrologia:solicitacao_itens' solicitacao.id %}">
                 {% csrf_token %}
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalSelecionarInstrumentosLabel">Adicionar Instrumentos à Solicitação</h5>
