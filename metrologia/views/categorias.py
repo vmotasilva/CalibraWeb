@@ -118,10 +118,10 @@ def categoria_detail_view(request, categoria_id):
     """Detalhar categoria e mostrar instrumentos relacionados."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
     
-    # Instrumentos nesta categoria
+    # Instrumentos nesta categoria (ordenados por TAG em ordem crescente)
     instrumentos = Instrumento.objects.filter(
         categoria=categoria
-    ).select_related('setor', 'responsavel').prefetch_related('faixas')
+    ).select_related('setor', 'responsavel').prefetch_related('faixas').order_by('tag')
     
     # Faixas de medição (agregadas de todos os instrumentos da categoria)
     faixas_instrumentos = FaixaMedicao.objects.filter(
