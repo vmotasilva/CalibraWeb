@@ -1588,21 +1588,6 @@ def listar_instrumentos_view(request):
     categorias = CategoriaInstrumento.objects.all().order_by('nome')
     setores = Setor.objects.all().order_by('nome')
     
-    # Helper function para gerar URL de ordenação com toggle de direção
-    def get_sort_url(field_name):
-        """Gera URL de ordenação, alternando entre ASC e DESC"""
-        new_dir = 'desc' if (sort_by == field_name and sort_dir == 'asc') else 'asc'
-        params = {
-            'q': search_query,
-            'status': status_filter,
-            'categoria': categoria_filter,
-            'setor': setor_filter,
-            'ativo': ativo_filter,
-            'sort': field_name,
-            'dir': new_dir,
-        }
-        return '?' + '&'.join(f'{k}={v}' for k, v in params.items() if v)
-    
     context = {
         'page_obj': page_items,  # For compatibility with tests
         'paginator': paginator,  # Expose paginator for accessing per_page
@@ -1621,7 +1606,6 @@ def listar_instrumentos_view(request):
         'today_30days': today + timedelta(days=30),
         'sort_by': sort_by,
         'sort_dir': sort_dir,
-        'get_sort_url': get_sort_url,
     }
     return render(request, 'metrologia/instrumentos_lista.html', context)
 

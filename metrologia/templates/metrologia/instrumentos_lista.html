@@ -183,7 +183,7 @@
                     <thead class="table-light">
                         <tr>
                             <th style="width: 12%">
-                                <a href="{{ get_sort_url 'tag' }}" class="text-decoration-none text-reset" title="Ordenar por TAG">
+                                <a href="?q={{ search_query }}&status={{ status_filter }}&categoria={{ categoria_filter }}&setor={{ setor_filter }}&ativo={{ ativo_filter }}&sort=tag&dir={% if sort_by == 'tag' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none text-reset" title="Ordenar por TAG">
                                     Tag
                                     {% if sort_by == 'tag' %}
                                         {% if sort_dir == 'asc' %}
@@ -197,7 +197,7 @@
                                 </a>
                             </th>
                             <th style="width: 22%">
-                                <a href="{{ get_sort_url 'descricao' }}" class="text-decoration-none text-reset" title="Ordenar por Descrição">
+                                <a href="?q={{ search_query }}&status={{ status_filter }}&categoria={{ categoria_filter }}&setor={{ setor_filter }}&ativo={{ ativo_filter }}&sort=descricao&dir={% if sort_by == 'descricao' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none text-reset" title="Ordenar por Descrição">
                                     Descrição
                                     {% if sort_by == 'descricao' %}
                                         {% if sort_dir == 'asc' %}
@@ -211,7 +211,7 @@
                                 </a>
                             </th>
                             <th style="width: 12%">
-                                <a href="{{ get_sort_url 'categoria__nome' }}" class="text-decoration-none text-reset" title="Ordenar por Categoria">
+                                <a href="?q={{ search_query }}&status={{ status_filter }}&categoria={{ categoria_filter }}&setor={{ setor_filter }}&ativo={{ ativo_filter }}&sort=categoria__nome&dir={% if sort_by == 'categoria__nome' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none text-reset" title="Ordenar por Categoria">
                                     Categoria
                                     {% if sort_by == 'categoria__nome' %}
                                         {% if sort_dir == 'asc' %}
@@ -225,7 +225,7 @@
                                 </a>
                             </th>
                             <th style="width: 12%">
-                                <a href="{{ get_sort_url 'setor__nome' }}" class="text-decoration-none text-reset" title="Ordenar por Setor">
+                                <a href="?q={{ search_query }}&status={{ status_filter }}&categoria={{ categoria_filter }}&setor={{ setor_filter }}&ativo={{ ativo_filter }}&sort=setor__nome&dir={% if sort_by == 'setor__nome' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none text-reset" title="Ordenar por Setor">
                                     Setor
                                     {% if sort_by == 'setor__nome' %}
                                         {% if sort_dir == 'asc' %}
@@ -240,7 +240,7 @@
                             </th>
                             <th style="width: 10%">Tratativa</th>
                             <th style="width: 12%">
-                                <a href="{{ get_sort_url 'data_proxima_calibracao' }}" class="text-decoration-none text-reset" title="Ordenar por Próxima Calibração">
+                                <a href="?q={{ search_query }}&status={{ status_filter }}&categoria={{ categoria_filter }}&setor={{ setor_filter }}&ativo={{ ativo_filter }}&sort=data_proxima_calibracao&dir={% if sort_by == 'data_proxima_calibracao' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="text-decoration-none text-reset" title="Ordenar por Próxima Calibração">
                                     Próxima Calib.
                                     {% if sort_by == 'data_proxima_calibracao' %}
                                         {% if sort_dir == 'asc' %}
