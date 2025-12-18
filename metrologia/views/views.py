@@ -792,7 +792,7 @@ def remover_certificado_historico_view(request, historico_id):
 
 @login_required
 def registrar_historico_calibracao_view(request, instrumento_id):
-    """Registra novo histórico de calibração com validação de faixas."""
+    """Registra novo histórico de calibração e redireciona para edição no template unificado."""
     try:
         instrumento = get_object_or_404(Instrumento, id=instrumento_id)
         logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}")
@@ -802,64 +802,6 @@ def registrar_historico_calibracao_view(request, instrumento_id):
             
             if form.is_valid():
                 try:
-                    # Validação de faixas
-                    faixas_qs = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
-                    entradas_validas = []
-                    problemas = []
-                    ativos_marcados = 0
-
-                    for faixa in faixas_qs:
-                        prefix = f"faixa_{faixa.id}_"
-                        ativa_key = prefix + "ativa"
-                        if ativa_key not in request.POST:
-                            continue
-                        ativos_marcados += 1
-
-                        erro_str = (request.POST.get(prefix + "erro", "") or "").strip()
-                        inc_str = (request.POST.get(prefix + "incerteza", "") or "").strip()
-                        tol_str = (request.POST.get(prefix + "tolerancia", "") or "").strip()
-
-                        tol_val = None
-                        if tol_str:
-                            try:
-                                tol_val = Decimal(str(tol_str))
-                            except Exception:
-                                tol_val = None
-                        else:
-                            tol_val = faixa.tolerancia_mais_menos
-
-                        try:
-                            erro_val = Decimal(str(erro_str)) if erro_str != "" else None
-                        except Exception:
-                            erro_val = None
-                        try:
-                            inc_val = Decimal(str(inc_str)) if inc_str != "" else None
-                        except Exception:
-                            inc_val = None
-
-                        if erro_val is None or inc_val is None or tol_val is None:
-                            problemas.append(f"Faixa {faixa.valor_minimo}-{faixa.valor_maximo}: dados incompletos.")
-                            continue
-
-                        entradas_validas.append({
-                            'faixa': faixa,
-                            'erro': erro_val,
-                            'inc': inc_val,
-                            'tol': tol_val,
-                        })
-
-                    if ativos_marcados > 0 and len(entradas_validas) == 0:
-                        messages.error(request, "Selecione ao menos uma faixa com dados completos.")
-                        for p in problemas:
-                            messages.warning(request, p)
-                        form.add_error(None, "Dados de faixas incompletos.")
-                        faixas_medicao = faixas_qs
-                        return render(request, 'metrologia/historico_calibracao_form.html', {
-                            'form': form,
-                            'instrumento': instrumento,
-                            'faixas_medicao': faixas_medicao
-                        })
-
                     # Salva histórico
                     historico = form.save(commit=False)
                     historico.instrumento = instrumento
@@ -873,47 +815,12 @@ def registrar_historico_calibracao_view(request, instrumento_id):
                         obj = ArquivoPadrao.objects.create(arquivo=arquivo, nome=nome)
                         historico.arquivos_padroes.add(obj)
 
-                    criadas = 0
-                    ignoradas = 0
-                    for ent in entradas_validas:
-                        try:
-                            ResultadoFaixaCalibracao.objects.create(
-                                historico=historico,
-                                faixa_medicao=ent['faixa'],
-                                erro_encontrado=ent['erro'],
-                                incerteza=ent['inc'],
-                                tolerancia_usada=ent['tol'],
-                                desconsiderada=False,
-                            )
-                            criadas += 1
-                        except Exception as e_create:
-                            logger.error(f"Erro criando ResultadoFaixaCalibracao: {e_create}")
-                            ignoradas += 1
-
-                    # Atualiza resultado geral
-                    try:
-                        resultados = list(historico.resultados_faixas.values_list('resultado', flat=True))
-                        overall = None
-                        if resultados:
-                            if 'REPROVADO' in resultados:
-                                overall = 'REPROVADO'
-                            elif 'APROVADO_COM_CORRECAO' in resultados:
-                                overall = 'APROVADO_COM_CORRECAO'
-                            else:
-                                overall = 'APROVADO_SEM_CORRECAO'
-                        if overall and historico.resultado != overall:
-                            historico.resultado = overall
-                            historico.save(update_fields=['resultado'])
-                    except Exception:
-                        pass
-
-                    msg = f"Histórico registrado! Faixas: {criadas}."
-                    if ignoradas:
-                        msg += f" Ignoradas: {ignoradas}."
+                    msg = f"✓ Histórico criado com sucesso! Agora preencha os resultados das faixas de medição."
                     messages.success(request, msg)
                     
                     logger.info(f"Histórico {historico.id} criado para instrumento {instrumento_id}")
-                    return redirect('detalhe_instrumento', instrumento_id=instrumento.id)
+                    # Redireciona para edição no template unificado
+                    return redirect('editar_historico_calibracao', historico_id=historico.id)
                 except Exception as save_error:
                     logger.error(f"Erro ao salvar histórico: {save_error}", exc_info=True)
                     messages.error(request, f'Erro ao salvar histórico: {str(save_error)}')
@@ -923,6 +830,8 @@ def registrar_historico_calibracao_view(request, instrumento_id):
         else:
             form = HistoricoCalibracaoForm(instrumento=instrumento, user=request.user)
         
+        # Renderiza form de criação com template simplificado ou redireciona
+        # Obs: mantém compatibilidade se houver erro na criação
         faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
         
         return render(request, 'metrologia/historico_calibracao_form.html', {
