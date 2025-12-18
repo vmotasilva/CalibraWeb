@@ -123,10 +123,10 @@ def categoria_detail_view(request, categoria_id):
         categoria=categoria
     ).select_related('setor', 'responsavel').prefetch_related('faixas').order_by('tag')
     
-    # Faixas de medição (agregadas de todos os instrumentos da categoria)
+    # Faixas de medição (agregadas de todos os instrumentos da categoria, ordenadas por TAG do instrumento)
     faixas_instrumentos = FaixaMedicao.objects.filter(
         instrumento__categoria=categoria
-    ).select_related('instrumento', 'unidade').distinct()
+    ).select_related('instrumento', 'unidade').distinct().order_by('instrumento__tag')
     
     # Faixas padrão da categoria
     faixas_padrao = FaixaMedicaoPadraoCategoria.objects.filter(
