@@ -182,12 +182,77 @@
                 <table class="table table-hover table-sm mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 12%">Tag</th>
-                            <th style="width: 22%">Descrição</th>
-                            <th style="width: 12%">Categoria</th>
-                            <th style="width: 12%">Setor</th>
+                            <th style="width: 12%">
+                                <a href="{{ get_sort_url 'tag' }}" class="text-decoration-none text-reset" title="Ordenar por TAG">
+                                    Tag
+                                    {% if sort_by == 'tag' %}
+                                        {% if sort_dir == 'asc' %}
+                                            <i class="bi bi-sort-up ms-1"></i>
+                                        {% else %}
+                                            <i class="bi bi-sort-down ms-1"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th style="width: 22%">
+                                <a href="{{ get_sort_url 'descricao' }}" class="text-decoration-none text-reset" title="Ordenar por Descrição">
+                                    Descrição
+                                    {% if sort_by == 'descricao' %}
+                                        {% if sort_dir == 'asc' %}
+                                            <i class="bi bi-sort-up ms-1"></i>
+                                        {% else %}
+                                            <i class="bi bi-sort-down ms-1"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th style="width: 12%">
+                                <a href="{{ get_sort_url 'categoria__nome' }}" class="text-decoration-none text-reset" title="Ordenar por Categoria">
+                                    Categoria
+                                    {% if sort_by == 'categoria__nome' %}
+                                        {% if sort_dir == 'asc' %}
+                                            <i class="bi bi-sort-up ms-1"></i>
+                                        {% else %}
+                                            <i class="bi bi-sort-down ms-1"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th style="width: 12%">
+                                <a href="{{ get_sort_url 'setor__nome' }}" class="text-decoration-none text-reset" title="Ordenar por Setor">
+                                    Setor
+                                    {% if sort_by == 'setor__nome' %}
+                                        {% if sort_dir == 'asc' %}
+                                            <i class="bi bi-sort-up ms-1"></i>
+                                        {% else %}
+                                            <i class="bi bi-sort-down ms-1"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
                             <th style="width: 10%">Tratativa</th>
-                            <th style="width: 12%">Próxima Calib.</th>
+                            <th style="width: 12%">
+                                <a href="{{ get_sort_url 'data_proxima_calibracao' }}" class="text-decoration-none text-reset" title="Ordenar por Próxima Calibração">
+                                    Próxima Calib.
+                                    {% if sort_by == 'data_proxima_calibracao' %}
+                                        {% if sort_dir == 'asc' %}
+                                            <i class="bi bi-sort-up ms-1"></i>
+                                        {% else %}
+                                            <i class="bi bi-sort-down ms-1"></i>
+                                        {% endif %}
+                                    {% else %}
+                                        <i class="bi bi-arrow-down-up text-muted ms-1" style="font-size: 0.8em;"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
                             <th style="width: 10%">Status</th>
                             <th style="width: 10%">Ações</th>
                         </tr>

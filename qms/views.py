@@ -1516,6 +1516,15 @@ def listar_instrumentos_view(request):
     categoria_filter = request.GET.get('categoria', '')
     setor_filter = request.GET.get('setor', '')
     ativo_filter = request.GET.get('ativo', '')
+    sort_by = request.GET.get('sort', 'tag')  # Campo de ordenação
+    sort_dir = request.GET.get('dir', 'asc')  # Direção: asc ou desc
+    
+    # Validar campo de ordenação para prevenir SQL injection
+    VALID_SORT_FIELDS = ['tag', 'descricao', 'categoria__nome', 'setor__nome', 'data_proxima_calibracao', 'ativo']
+    if sort_by not in VALID_SORT_FIELDS:
+        sort_by = 'tag'
+    if sort_dir not in ['asc', 'desc']:
+        sort_dir = 'asc'
     
     # Apply search filter
     if search_query:
@@ -1560,12 +1569,13 @@ def listar_instrumentos_view(request):
     elif ativo_filter == 'inativos':
         instrumentos = instrumentos.filter(ativo=False)
     
-    # Order by tag
-    instrumentos = instrumentos.order_by('tag')
+    # Apply sorting
+    order_field = sort_by if sort_dir == 'asc' else f'-{sort_by}'
+    instrumentos = instrumentos.order_by(order_field)
     
     # Pagination with caching for large datasets
     page_number = PaginationHelper.get_page_from_request(request)
-    cache_key = f'instrumentos_count_filters_{search_query}_{status_filter}_{categoria_filter}_{setor_filter}_{ativo_filter}'
+    cache_key = f'instrumentos_count_filters_{search_query}_{status_filter}_{categoria_filter}_{setor_filter}_{ativo_filter}_{sort_by}_{sort_dir}'
     
     paginator = OffsetPaginator(page_size=50, cache_count=True)
     page_items, pagination_metadata = paginator.paginate_queryset(
@@ -1577,6 +1587,21 @@ def listar_instrumentos_view(request):
     # Get filter options for dropdowns
     categorias = CategoriaInstrumento.objects.all().order_by('nome')
     setores = Setor.objects.all().order_by('nome')
+    
+    # Helper function para gerar URL de ordenação com toggle de direção
+    def get_sort_url(field_name):
+        """Gera URL de ordenação, alternando entre ASC e DESC"""
+        new_dir = 'desc' if (sort_by == field_name and sort_dir == 'asc') else 'asc'
+        params = {
+            'q': search_query,
+            'status': status_filter,
+            'categoria': categoria_filter,
+            'setor': setor_filter,
+            'ativo': ativo_filter,
+            'sort': field_name,
+            'dir': new_dir,
+        }
+        return '?' + '&'.join(f'{k}={v}' for k, v in params.items() if v)
     
     context = {
         'page_obj': page_items,  # For compatibility with tests
@@ -1594,6 +1619,9 @@ def listar_instrumentos_view(request):
         'total_instrumentos': pagination_metadata.total_items,
         'today': today,
         'today_30days': today + timedelta(days=30),
+        'sort_by': sort_by,
+        'sort_dir': sort_dir,
+        'get_sort_url': get_sort_url,
     }
     return render(request, 'metrologia/instrumentos_lista.html', context)
 
