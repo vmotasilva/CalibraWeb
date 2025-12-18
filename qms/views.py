@@ -81,9 +81,10 @@ def dashboard_view(request):
 def modulo_metrologia_view(request):
     """Metrologia module main view."""
     from datetime import date, timedelta
+    from django.db.models.functions import Lower
     
     # Retrieve all instruments and related data
-    instrumentos = Instrumento.objects.all().select_related('setor', 'categoria').prefetch_related('faixas')
+    instrumentos = Instrumento.objects.all().select_related('setor', 'categoria').prefetch_related('faixas').order_by('tag')
     
     # Get filter parameters from request
     status_filter = request.GET.get('status', '')
@@ -105,9 +106,9 @@ def modulo_metrologia_view(request):
             Q(fabricante__icontains=search_query)
         )
     
-    # Get available categories and sectors for filter options
-    categorias_filtro = CategoriaInstrumento.objects.all()
-    setores_filtro = Setor.objects.all()
+    # Get available categories and sectors for filter options - ORDENADOS ALFABETICAMENTE
+    categorias_filtro = CategoriaInstrumento.objects.all().order_by(Lower('nome'))
+    setores_filtro = Setor.objects.all().order_by(Lower('nome'))
     
     context = {
         'instrumentos': instrumentos,
