@@ -42,6 +42,26 @@
                     </div>
                     {% endif %}
 
+                    <!-- SIGLA -->
+                    {% if categoria.sigla %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Sigla (Prefixo)</label>
+                        <p class="mb-0"><span class="badge bg-primary fs-6">{{ categoria.sigla }}</span></p>
+                    </div>
+                    {% endif %}
+
+                    <!-- TRATATIVA DE CALIBRAÇÃO -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Tratativa de Calibração</label>
+                        <p class="mb-0">
+                            {% if categoria.tratativa_calibracao == 'INTERNA' %}
+                                <span class="badge bg-success">Interna</span>
+                            {% elif categoria.tratativa_calibracao == 'EXTERNA' %}
+                                <span class="badge bg-warning">Externa</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
                     <!-- DESCRIÇÃO -->
                     {% if categoria.descricao %}
                     <div class="mb-3">

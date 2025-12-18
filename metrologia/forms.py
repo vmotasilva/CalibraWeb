@@ -150,17 +150,25 @@ class CategoriaInstrumentoForm(forms.ModelForm):
     
     class Meta:
         model = CategoriaInstrumento
-        fields = ['nome', 'descricao']
+        fields = ['nome', 'sigla', 'descricao', 'tratativa_calibracao']
         widgets = {
             'nome': forms.TextInput(attrs={
                 'class': 'form-control form-control-lg',
                 'placeholder': 'Ex: Paquímetro, Micrometro, Termômetro, etc',
                 'required': 'required',
             }),
+            'sigla': forms.TextInput(attrs={
+                'class': 'form-control form-control-lg',
+                'placeholder': 'Ex: PA, MI, TH, etc',
+                'maxlength': '10',
+            }),
             'descricao': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 4,
                 'placeholder': 'Descreva a categoria e suas características principais',
+            }),
+            'tratativa_calibracao': forms.Select(attrs={
+                'class': 'form-select form-select-lg',
             }),
         }
 

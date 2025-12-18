@@ -43,6 +43,20 @@
                             </small>
                         </div>
 
+                        <!-- SIGLA -->
+                        <div class="mb-3">
+                            <label for="id_sigla" class="form-label fw-bold">Sigla (Prefixo)</label>
+                            {{ form.sigla|add_class:"form-control form-control-lg" }}
+                            {% if form.sigla.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.sigla.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Prefixo padrão para códigos de instrumentos. Ex: TH para termohigrômetros, PA para paquímetros
+                            </small>
+                        </div>
+
                         <!-- DESCRIÇÃO -->
                         <div class="mb-3">
                             <label for="id_descricao" class="form-label fw-bold">Descrição</label>
@@ -54,6 +68,22 @@
                             {% endif %}
                             <small class="form-text text-muted">
                                 Descreva características, especificações ou observações importantes sobre esta categoria
+                            </small>
+                        </div>
+
+                        <!-- TRATATIVA DE CALIBRAÇÃO -->
+                        <div class="mb-3">
+                            <label for="id_tratativa_calibracao" class="form-label fw-bold">
+                                Tratativa de Calibração <span class="text-danger">*</span>
+                            </label>
+                            {{ form.tratativa_calibracao|add_class:"form-select form-select-lg" }}
+                            {% if form.tratativa_calibracao.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.tratativa_calibracao.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Define se os instrumentos desta categoria são calibrados internamente ou externamente
                             </small>
                         </div>
 
@@ -110,6 +140,58 @@
                     </div>
                 </div>
             </div>
+
+            <!-- CARD DE ATUALIZAÇÃO EM MASSA -->
+            {% if total_instrumentos > 0 %}
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-warning text-white">
+                    <i class="bi bi-lightning"></i> Atualizar em Massa
+                </div>
+                <div class="card-body">
+                    <!-- Atualizar Sigla -->
+                    <form method="post" action="{% url 'metrologia:categoria_bulk_update_sigla' categoria.id %}" class="mb-3">
+                        {% csrf_token %}
+                        <label class="form-label small fw-bold">Atualizar Sigla</label>
+                        <div class="input-group">
+                            <input type="text" name="sigla" class="form-control form-control-sm" 
+                                   value="{{ categoria.sigla }}" placeholder="Ex: TH" maxlength="10">
+                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Atualizar sigla">
+                                <i class="bi bi-save"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <label class="form-check-label">
+                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input">
+                                Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                            </label>
+                        </small>
+                    </form>
+
+                    <hr>
+
+                    <!-- Atualizar Tratativa -->
+                    <form method="post" action="{% url 'metrologia:categoria_bulk_update_tratativa' categoria.id %}">
+                        {% csrf_token %}
+                        <label class="form-label small fw-bold">Atualizar Tratativa</label>
+                        <div class="input-group">
+                            <select name="tratativa_calibracao" class="form-select form-select-sm">
+                                <option value="INTERNA" {% if categoria.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>Interna</option>
+                                <option value="EXTERNA" {% if categoria.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>Externa</option>
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Atualizar tratativa">
+                                <i class="bi bi-save"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <label class="form-check-label">
+                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input">
+                                Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                            </label>
+                        </small>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- CARD DE INFORMAÇÕES -->
             <div class="card shadow-sm">

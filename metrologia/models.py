@@ -9,8 +9,25 @@ from decimal import Decimal
 # ==============================================================================
 
 class CategoriaInstrumento(models.Model):
+    TRATATIVA_CHOICES = [
+        ('INTERNA', 'Interna'),
+        ('EXTERNA', 'Externa'),
+    ]
+    
     nome = models.CharField(max_length=100)
     descricao = models.TextField(blank=True, null=True)
+    sigla = models.CharField(
+        max_length=10, 
+        blank=True, 
+        null=True,
+        help_text="Prefixo padrão para códigos de instrumentos (Ex: TH para termohigrômetros)"
+    )
+    tratativa_calibracao = models.CharField(
+        max_length=20,
+        choices=TRATATIVA_CHOICES,
+        default='INTERNA',
+        help_text="Tipo de calibração padrão para instrumentos desta categoria"
+    )
 
     def __str__(self):
         return self.nome

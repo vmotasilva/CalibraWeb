@@ -522,3 +522,89 @@ def instrumento_bulk_change_category_view(request, categoria_id):
         messages.info(request, 'Os instrumentos selecionados já estão nesta categoria.')
     
     return redirect('metrologia:categoria_detail', categoria_id=categoria_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def categoria_bulk_update_sigla_view(request, categoria_id):
+    """Atualizar sigla da categoria e aplicar a todos os instrumentos."""
+    categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
+    
+    nova_sigla = request.POST.get('sigla', '').strip()
+    aplicar_instrumentos = request.POST.get('aplicar_instrumentos') == 'on'
+    
+    if not nova_sigla:
+        messages.error(request, 'Sigla não pode ser vazia.')
+        return redirect('metrologia:categoria_update', categoria_id=categoria_id)
+    
+    # Atualizar sigla da categoria
+    categoria.sigla = nova_sigla
+    categoria.save()
+    
+    mensagem = f'Categoria atualizada com sigla "{nova_sigla}".'
+    
+    # Se opção marcada, atualizar tags dos instrumentos
+    if aplicar_instrumentos:
+        instrumentos = Instrumento.objects.filter(categoria=categoria)
+        atualizados = 0
+        
+        for instrumento in instrumentos:
+            # Atualizar tag para começar com a sigla
+            partes_tag = instrumento.tag.split('-')
+            if len(partes_tag) >= 2:
+                # Substituir o prefixo existente pela nova sigla
+                nova_tag = f"{nova_sigla}-{'-'.join(partes_tag[1:])}"
+            else:
+                # Se a tag não tem hífen, adicionar sigla como prefixo
+                nova_tag = f"{nova_sigla}-{instrumento.tag}"
+            
+            # Verificar se a nova tag já existe
+            if not Instrumento.objects.filter(tag=nova_tag).exclude(id=instrumento.id).exists():
+                instrumento.tag = nova_tag
+                instrumento.save()
+                atualizados += 1
+        
+        if atualizados > 0:
+            mensagem += f' {atualizados} instrumento(s) tiveram suas tags atualizadas.'
+    
+    messages.success(request, mensagem)
+    return redirect('metrologia:categoria_update', categoria_id=categoria_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def categoria_bulk_update_tratativa_view(request, categoria_id):
+    """Atualizar tratativa de calibração da categoria e aplicar a todos os instrumentos."""
+    categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
+    
+    nova_tratativa = request.POST.get('tratativa_calibracao', '').strip()
+    aplicar_instrumentos = request.POST.get('aplicar_instrumentos') == 'on'
+    
+    # Validar opção de tratativa
+    opcoes_validas = [choice[0] for choice in CategoriaInstrumento.TRATATIVA_CHOICES]
+    if nova_tratativa not in opcoes_validas:
+        messages.error(request, 'Tratativa de calibração inválida.')
+        return redirect('metrologia:categoria_update', categoria_id=categoria_id)
+    
+    # Atualizar tratativa da categoria
+    categoria.tratativa_calibracao = nova_tratativa
+    categoria.save()
+    
+    mensagem = f'Categoria atualizada com tratativa "{dict(CategoriaInstrumento.TRATATIVA_CHOICES).get(nova_tratativa)}".'
+    
+    # Se opção marcada, atualizar tratativa de todos os instrumentos
+    if aplicar_instrumentos:
+        instrumentos = Instrumento.objects.filter(categoria=categoria)
+        atualizados = 0
+        
+        for instrumento in instrumentos:
+            if instrumento.tratativa_calibracao != nova_tratativa:
+                instrumento.tratativa_calibracao = nova_tratativa
+                instrumento.save()
+                atualizados += 1
+        
+        if atualizados > 0:
+            mensagem += f' {atualizados} instrumento(s) tiveram suas tratativas atualizadas.'
+    
+    messages.success(request, mensagem)
+    return redirect('metrologia:categoria_update', categoria_id=categoria_id)
