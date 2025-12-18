@@ -295,13 +295,14 @@ def modulo_metrologia_view(request):
         messages.info(request, "Filtro sugerido: A Vencer (30d) (aplicado na interface).")
 
     # Filtros
+    from django.db.models.functions import Lower
     setores_ids = Instrumento.objects.all().values_list("setor", flat=True).distinct()
-    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by("nome")
+    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by(Lower("nome"))
 
     categorias_ids = Instrumento.objects.all().values_list("categoria", flat=True).distinct()
     categorias_filtro = CategoriaInstrumento.objects.filter(
         id__in=categorias_ids
-    ).order_by("nome")
+    ).order_by(Lower("nome"))
 
     ctx = {
         "instrumentos": instrumentos,

@@ -1585,8 +1585,10 @@ def listar_instrumentos_view(request):
     )
     
     # Get filter options for dropdowns
-    categorias = CategoriaInstrumento.objects.all().order_by('nome')
-    setores = Setor.objects.all().order_by('nome')
+    from django.db.models import F
+    from django.db.models.functions import Lower
+    categorias = CategoriaInstrumento.objects.all().order_by(Lower('nome'))
+    setores = Setor.objects.all().order_by(Lower('nome'))
     
     context = {
         'page_obj': page_items,  # For compatibility with tests
