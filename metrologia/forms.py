@@ -159,8 +159,8 @@ class CategoriaInstrumentoForm(forms.ModelForm):
             }),
             'sigla': forms.TextInput(attrs={
                 'class': 'form-control form-control-lg',
-                'placeholder': 'Ex: PA, MI, TH, etc',
-                'maxlength': '10',
+                'placeholder': 'Ex: TH, PA, MI',
+                'maxlength': '3',
             }),
             'descricao': forms.Textarea(attrs={
                 'class': 'form-control',

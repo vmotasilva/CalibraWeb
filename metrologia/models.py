@@ -17,7 +17,7 @@ class CategoriaInstrumento(models.Model):
     nome = models.CharField(max_length=100)
     descricao = models.TextField(blank=True, null=True)
     sigla = models.CharField(
-        max_length=10, 
+        max_length=3, 
         blank=True, 
         null=True,
         help_text="Prefixo padrão para códigos de instrumentos (Ex: TH para termohigrômetros)"

@@ -149,46 +149,55 @@
                 </div>
                 <div class="card-body">
                     <!-- Atualizar Sigla -->
-                    <form method="post" action="{% url 'metrologia:categoria_bulk_update_sigla' categoria.id %}" class="mb-3">
-                        {% csrf_token %}
-                        <label class="form-label small fw-bold">Atualizar Sigla</label>
-                        <div class="input-group">
-                            <input type="text" name="sigla" class="form-control form-control-sm" 
-                                   value="{{ categoria.sigla }}" placeholder="Ex: TH" maxlength="10">
-                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Atualizar sigla">
-                                <i class="bi bi-save"></i>
-                            </button>
-                        </div>
-                        <small class="text-muted d-block mt-2">
-                            <label class="form-check-label">
-                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input">
-                                Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                    <div class="mb-3">
+                        <form method="post" action="{% url 'metrologia:categoria_bulk_update_sigla' categoria.id %}" class="w-100">
+                            {% csrf_token %}
+                            <label class="form-label small fw-bold mb-2">
+                                <i class="bi bi-tag"></i> Atualizar Sigla
                             </label>
-                        </small>
-                    </form>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" name="sigla" class="form-control" 
+                                       value="{{ categoria.sigla|default:'' }}" placeholder="Ex: TH" 
+                                       maxlength="3" required>
+                                <button type="submit" class="btn btn-primary" title="Atualizar sigla">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-check form-check-sm">
+                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input" id="aplSigla">
+                                <label class="form-check-label" for="aplSigla">
+                                    Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                                </label>
+                            </div>
+                        </form>
+                    </div>
 
-                    <hr>
+                    <hr class="my-2">
 
                     <!-- Atualizar Tratativa -->
-                    <form method="post" action="{% url 'metrologia:categoria_bulk_update_tratativa' categoria.id %}">
-                        {% csrf_token %}
-                        <label class="form-label small fw-bold">Atualizar Tratativa</label>
-                        <div class="input-group">
-                            <select name="tratativa_calibracao" class="form-select form-select-sm">
-                                <option value="INTERNA" {% if categoria.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>Interna</option>
-                                <option value="EXTERNA" {% if categoria.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>Externa</option>
-                            </select>
-                            <button type="submit" class="btn btn-sm btn-outline-primary" title="Atualizar tratativa">
-                                <i class="bi bi-save"></i>
-                            </button>
-                        </div>
-                        <small class="text-muted d-block mt-2">
-                            <label class="form-check-label">
-                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input">
-                                Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                    <div class="mb-0">
+                        <form method="post" action="{% url 'metrologia:categoria_bulk_update_tratativa' categoria.id %}" class="w-100">
+                            {% csrf_token %}
+                            <label class="form-label small fw-bold mb-2">
+                                <i class="bi bi-arrow-repeat"></i> Atualizar Tratativa
                             </label>
-                        </small>
-                    </form>
+                            <div class="input-group input-group-sm mb-2">
+                                <select name="tratativa_calibracao" class="form-select form-select-sm">
+                                    <option value="INTERNA" {% if categoria.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>🔧 Interna</option>
+                                    <option value="EXTERNA" {% if categoria.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>🏢 Externa</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary" title="Atualizar tratativa">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-check form-check-sm">
+                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input" id="aplTratativa">
+                                <label class="form-check-label" for="aplTratativa">
+                                    Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                                </label>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
             {% endif %}
