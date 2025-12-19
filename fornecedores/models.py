@@ -42,7 +42,7 @@ class DocumentoFornecedor(models.Model):
 
 class AvaliacaoFornecedor(models.Model):
     TIPO_CHOICES = [
-        ("SELECAO", "Seleção"),
+        ("SELECAO", "Avaliação"),
         ("REAVALIACAO", "Reavaliação"),
         ("MONITORAMENTO", "Monitoramento"),
     ]
@@ -61,7 +61,7 @@ class AvaliacaoFornecedor(models.Model):
 
 class PerguntaAvaliacao(models.Model):
     TIPO_CHOICES = [
-        ("SELECAO", "Seleção"),
+        ("SELECAO", "Avaliação"),
         ("REAVALIACAO", "Reavaliação"),
         ("MONITORAMENTO", "Monitoramento"),
     ]
