@@ -12,6 +12,9 @@
     <tr><th>UF</th><td>{{ fornecedor.uf }}</td></tr>
     <tr><th>Tipo</th><td>{{ fornecedor.get_tipo_display }}</td></tr>
     <tr><th>Ativo</th><td>{{ fornecedor.ativo|yesno:"Sim,Não" }}</td></tr>
+    <tr><th>Licença de funcionamento</th><td>{{ fornecedor.licenca_funcionamento|yesno:"Sim,Não" }}</td></tr>
+    <tr><th>Autorização de funcionamento</th><td>{{ fornecedor.autorizacao_funcionamento|yesno:"Sim,Não" }}</td></tr>
+    <tr><th>Certificado ISO 9001, ISO 13485 ou ISO 17025</th><td>{{ fornecedor.certificado_iso|yesno:"Sim,Não" }}</td></tr>
 </table>
 <a href="{% url 'fornecedores:fornecedor_update' fornecedor.pk %}" class="btn btn-warning">Editar</a>
 <a href="{% url 'fornecedores:fornecedor_list' %}" class="btn btn-secondary">Voltar</a>

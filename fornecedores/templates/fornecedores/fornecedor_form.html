@@ -5,12 +5,11 @@
 <form method="post" class="row g-3" style="max-width: 500px;">
     {% csrf_token %}
     {% for field in form %}
-        {% if field.name == 'ativo' %}
+        {% if field.name in 'ativo|licenca_funcionamento|autorizacao_funcionamento|certificado_iso' %}
             <div class="col-12">
-                <label class="form-label">ATIVO</label><br>
                 <div class="form-check">
                     {{ field|add_class:'form-check-input' }}
-                    <label class="form-check-label" for="id_ativo">Ativo</label>
+                    <label class="form-check-label" for="id_{{ field.name }}">{{ field.label }}</label>
                 </div>
                 {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
                 {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}

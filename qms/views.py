@@ -94,6 +94,11 @@ def modulo_metrologia_view(request):
     
     # Apenas filtros de categoria, setor e busca, sem filtrar por status no backend
     today = date.today()
+    alerta_30d = today + timedelta(days=30)
+    alerta_60d = today + timedelta(days=60)
+    alerta_90d = today + timedelta(days=90)
+    alerta_120d = today + timedelta(days=120)
+    
     if categoria_filter:
         instrumentos = instrumentos.filter(categoria__id=categoria_filter)
     if setor_filter:
@@ -124,7 +129,10 @@ def modulo_metrologia_view(request):
         'today': today,
         'today_30days': today + timedelta(days=30),
         'hoje': today,
-        'alerta_30d': today + timedelta(days=30),
+        'alerta_30d': alerta_30d,
+        'alerta_60d': alerta_60d,
+        'alerta_90d': alerta_90d,
+        'alerta_120d': alerta_120d,
     }
     return render(request, 'metrologia/dashboard.html', context)
 

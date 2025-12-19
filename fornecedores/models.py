@@ -19,6 +19,9 @@ class Fornecedor(models.Model):
     uf = models.CharField(max_length=2)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default="NAO_CRITICO")
     ativo = models.BooleanField(default=True)
+    licenca_funcionamento = models.BooleanField(default=False, verbose_name="Licença de funcionamento")
+    autorizacao_funcionamento = models.BooleanField(default=False, verbose_name="Autorização de funcionamento")
+    certificado_iso = models.BooleanField(default=False, verbose_name="Certificado ISO 9001, ISO 13485 ou ISO 17025")
     
     def __str__(self):
         return self.empresa
