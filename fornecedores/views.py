@@ -745,3 +745,43 @@ def avaliacao_matriz_create(request, fornecedor_id):
         "servicos_anteriores": servicos_anteriores,
         "respostas_anteriores": respostas_anteriores,
     })
+
+@login_required
+def reavaliacao_delete(request, fornecedor_id):
+    """
+    Deleta a última reavaliação de um fornecedor.
+    Sempre delete a mais recente para manter consistência.
+    """
+    fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
+    
+    # Pega a última reavaliação
+    ultima_reavaliacao = fornecedor.avaliacoes.filter(
+        tipo=AvaliacaoFornecedor.REAVALIACAO
+    ).order_by('-data').first()
+    
+    if not ultima_reavaliacao:
+        messages.error(request, "Nenhuma reavaliação encontrada para deletar.")
+        return redirect('fornecedores:reavaliacao_list', fornecedor_id=fornecedor_id)
+    
+    if request.method == 'POST':
+        # Deleta todas as respostas da reavaliação
+        ultima_reavaliacao.respostas.all().delete()
+        
+        # Deleta a reavaliação
+        reavaliacao_data = ultima_reavaliacao.data
+        ultima_reavaliacao.delete()
+        
+        messages.success(
+            request, 
+            f"Reavaliação de {reavaliacao_data.strftime('%d/%m/%Y')} deletada com sucesso."
+        )
+        return redirect('fornecedores:reavaliacao_list', fornecedor_id=fornecedor_id)
+    
+    # GET - mostra confirmação
+    respostas = ultima_reavaliacao.respostas.all()
+    
+    return render(request, "fornecedores/reavaliacao_delete_confirm.html", {
+        "fornecedor": fornecedor,
+        "reavaliacao": ultima_reavaliacao,
+        "total_respostas": respostas.count(),
+    })

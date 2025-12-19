@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Confirmar Exclusão
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <strong>⚠️ Atenção!</strong> Esta ação é irreversível e não pode ser desfeita.
+                    </div>
+
+                    <h6 class="mb-3">Você está prestes a deletar:</h6>
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <p class="mb-2">
+                                <strong>Fornecedor:</strong> {{ fornecedor.empresa }}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Data da Reavaliação:</strong> 
+                                <span class="badge bg-info">{{ reavaliacao.data|date:"d/m/Y" }}</span>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Pontuação:</strong> 
+                                <span class="badge bg-success">{{ reavaliacao.pontuacao_ano|floatformat:1 }}%</span>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Resultado:</strong> 
+                                <span class="badge" style="background-color: {% if reavaliacao.resultado == 'Aprovado' %}#28a745{% else %}#dc3545{% endif %}">
+                                    {{ reavaliacao.resultado }}
+                                </span>
+                            </p>
+                            <p class="mb-0">
+                                <strong>Total de Respostas:</strong> 
+                                <span class="badge bg-primary">{{ total_respostas }}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Importante:</strong> Apenas a <strong>última reavaliação</strong> (mais recente) pode ser deletada. Se precisar remover uma reavaliação anterior, primeiro delete as mais recentes.
+                    </div>
+
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-danger flex-grow-1">
+                                <i class="bi bi-trash"></i> Sim, Deletar Reavaliação
+                            </button>
+                            <a href="{% url 'fornecedores:reavaliacao_list' fornecedor.pk %}" class="btn btn-secondary flex-grow-1">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

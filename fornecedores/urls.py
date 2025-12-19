@@ -18,6 +18,7 @@ urlpatterns = [
     path("<int:fornecedor_id>/avaliacoes/<int:avaliacao_id>/editar/", views.avaliacao_edit, name="avaliacao_edit"),
     path("<int:fornecedor_id>/reavaliacoes/", views.reavaliacao_list, name="reavaliacao_list"),
     path("<int:fornecedor_id>/reavaliacoes/nova/", views.reavaliacao_create, name="reavaliacao_create"),
+    path("<int:fornecedor_id>/reavaliacoes/deletar/", views.reavaliacao_delete, name="reavaliacao_delete"),
     path("<int:fornecedor_id>/exportar-avaliacoes/", views.export_avaliacoes_excel, name="export_avaliacoes_excel"),
 
     # Perguntas de Avaliação
