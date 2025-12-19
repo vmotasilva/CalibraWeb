@@ -63,7 +63,7 @@
                 Requisitos 
                 {% if ultima_avaliacao_selecao %}
                 <span class="badge bg-success ms-2">{{ percentual_avaliacao|floatformat:1 }}%</span>
-                <span class="badge bg-info ms-2">{{ ultima_avaliacao_selecao.resultado }}</span>
+                <span class="badge ms-2" style="background-color: {% if ultima_avaliacao_selecao.resultado == 'Excelente' %}#28a745{% elif ultima_avaliacao_selecao.resultado == 'Bom' %}#17a2b8{% elif ultima_avaliacao_selecao.resultado == 'Satisfatório' %}#ffc107{% else %}#dc3545{% endif %}">{{ ultima_avaliacao_selecao.resultado }}</span>
                 {% endif %}
             </button>
         </h2>
@@ -226,7 +226,7 @@
                 Critérios 
                 {% if ultima_reavaliacao %}
                 <span class="badge bg-success ms-2">{{ percentual_reavaliacao|floatformat:1 }}%</span>
-                <span class="badge bg-info ms-2">{{ ultima_reavaliacao.resultado }}</span>
+                <span class="badge ms-2" style="background-color: {% if ultima_reavaliacao.resultado == 'Aprovado' %}#28a745{% elif ultima_reavaliacao.resultado == 'Reprovado' %}#dc3545{% else %}#6c757d{% endif %}">{{ ultima_reavaliacao.resultado }}</span>
                 {% endif %}
             </button>
         </h2>
