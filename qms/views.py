@@ -316,13 +316,19 @@ def detalhe_instrumento_view(request, instrumento_id):
 def registrar_historico_calibracao_view(request, instrumento_id):
     """Cria novo histórico de calibração e redireciona para edição no template unificado (editar_historico.html)."""
     try:
+        from datetime import date
+        
         instrumento = get_object_or_404(Instrumento, id=instrumento_id)
         logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}, user={request.user}")
         
-        # Cria um novo histórico vazio para o instrumento
+        # Cria um novo histórico vazio para o instrumento com campos obrigatórios preenchidos
         historico = HistoricoCalibracao.objects.create(
             instrumento=instrumento,
-            resultado='PENDENTE'  # Estado inicial
+            data_calibracao=date.today(),  # Campo obrigatório
+            data_aprovacao=date.today(),  # Campo obrigatório com default
+            numero_certificado="S/N",  # Campo obrigatório com default
+            tipo_calibracao="EXTERNA",  # Campo obrigatório com default
+            resultado="APROVADO_SEM_CORRECAO"  # Campo obrigatório com default
         )
         
         logger.info(f"✓ Histórico vazio {historico.id} criado com sucesso para instrumento {instrumento_id}")
