@@ -297,15 +297,27 @@ def avaliacao_selecao_create(request, fornecedor_id):
     ).order_by("-data").first()
     
     if request.method == "POST":
-        # Cria nova avaliação SELECAO
-        avaliacao = AvaliacaoFornecedor(
-            fornecedor=fornecedor,
-            data=request.POST.get("data") or timezone.now().date(),
-            tipo="SELECAO",
-            avaliador=request.user,
-            observacao=request.POST.get("observacao", "")
-        )
-        avaliacao.save()
+        # Se existe avaliação de hoje, atualiza ao invés de criar
+        data_submit = request.POST.get("data") or timezone.now().date()
+        
+        if ultima_avaliacao and ultima_avaliacao.data == data_submit:
+            # Atualizar avaliação existente
+            avaliacao = ultima_avaliacao
+            avaliacao.observacao = request.POST.get("observacao", "")
+            avaliacao.save()
+            
+            # Deleta respostas antigas
+            avaliacao.respostas.all().delete()
+        else:
+            # Cria nova avaliação SELECAO
+            avaliacao = AvaliacaoFornecedor(
+                fornecedor=fornecedor,
+                data=data_submit,
+                tipo="SELECAO",
+                avaliador=request.user,
+                observacao=request.POST.get("observacao", "")
+            )
+            avaliacao.save()
         
         # Salva as respostas
         total_sim = 0
@@ -376,15 +388,27 @@ def avaliacao_reavaliacao_create(request, fornecedor_id):
     ).order_by("-data").first()
     
     if request.method == "POST":
-        # Cria nova reavaliação
-        avaliacao = AvaliacaoFornecedor(
-            fornecedor=fornecedor,
-            data=request.POST.get("data") or timezone.now().date(),
-            tipo="REAVALIACAO",
-            avaliador=request.user,
-            observacao=request.POST.get("observacao", "")
-        )
-        avaliacao.save()
+        # Se existe reavaliação de hoje ou há menos de 1 minuto, atualiza ao invés de criar
+        data_submit = request.POST.get("data") or timezone.now().date()
+        
+        if ultima_reavaliacao and ultima_reavaliacao.data == data_submit:
+            # Atualizar reavaliação existente
+            avaliacao = ultima_reavaliacao
+            avaliacao.observacao = request.POST.get("observacao", "")
+            avaliacao.save()
+            
+            # Deleta respostas antigas
+            avaliacao.respostas.all().delete()
+        else:
+            # Cria nova reavaliação
+            avaliacao = AvaliacaoFornecedor(
+                fornecedor=fornecedor,
+                data=data_submit,
+                tipo="REAVALIACAO",
+                avaliador=request.user,
+                observacao=request.POST.get("observacao", "")
+            )
+            avaliacao.save()
         
         # Salva as respostas
         total_sim = 0
@@ -453,11 +477,30 @@ def avaliacao_create(request, fornecedor_id):
             perguntas = perguntas.filter(models.Q(produto_servico=tipo_nota) | models.Q(produto_servico="AMBOS"))
         perguntas = perguntas.order_by("ordem")
         if form.is_valid():
-            avaliacao = form.save(commit=False)
-            avaliacao.fornecedor = fornecedor
-            avaliacao.tipo = "MONITORAMENTO"
-            avaliacao.avaliador = request.user
-            avaliacao.save()
+            # Se existe avaliação de hoje, atualiza ao invés de criar
+            data_submit = form.cleaned_data.get("data") or timezone.now().date()
+            
+            ultima_avaliacao = AvaliacaoFornecedor.objects.filter(
+                fornecedor=fornecedor,
+                tipo="MONITORAMENTO",
+                data=data_submit
+            ).order_by("-id").first()
+            
+            if ultima_avaliacao:
+                # Atualizar avaliação existente
+                avaliacao = ultima_avaliacao
+                avaliacao.save()
+                
+                # Deleta respostas antigas
+                avaliacao.respostas.all().delete()
+            else:
+                # Cria nova avaliação
+                avaliacao = form.save(commit=False)
+                avaliacao.fornecedor = fornecedor
+                avaliacao.tipo = "MONITORAMENTO"
+                avaliacao.avaliador = request.user
+                avaliacao.save()
+            
             total_ocorrencias = 0
             for p in perguntas:
                 resposta_val = request.POST.get(f"resposta_{p.id}")
