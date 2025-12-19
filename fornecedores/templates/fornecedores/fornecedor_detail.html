@@ -238,8 +238,7 @@
                         <p class="mb-2"><strong>Última reavaliação:</strong> {{ ultima_reavaliacao.data|date:"d/m/Y" }}</p>
                         <p class="mb-3"><strong>Resultado da Reavaliação:</strong> 
                             <span class="badge" style="background-color: 
-                                {% if ultima_reavaliacao.resultado == 'Excelente' %}#28a745
-                                {% elif ultima_reavaliacao.resultado == 'Aprovado' %}#17a2b8
+                                {% if ultima_reavaliacao.resultado == 'Aprovado' %}#28a745
                                 {% elif ultima_reavaliacao.resultado == 'Reprovado' %}#dc3545
                                 {% else %}#6c757d
                                 {% endif %}">
