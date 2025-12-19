@@ -100,7 +100,7 @@
                     </div>
                     {% endif %}
                     
-                    <a href="{% url 'fornecedores:avaliacao_create' fornecedor.pk %}" class="btn btn-primary">
+                    <a href="{% url 'fornecedores:avaliacao_selecao_create' fornecedor.pk %}" class="btn btn-primary">
                         {% if ultima_avaliacao_selecao %}Responder Novamente{% else %}Responder Avaliação{% endif %}
                     </a>
                 {% else %}
