@@ -13,7 +13,7 @@
     </div>
     {% endif %}
     
-    <form method="post" class="mt-4">
+    <form method="post" id="matrizForm" class="mt-4">
         {% csrf_token %}
         
         <div class="mb-3">
@@ -26,136 +26,30 @@
             <textarea name="observacao" id="observacao" class="form-control" rows="3"></textarea>
         </div>
         
-        <h4 class="mt-5 mb-3">Seleção de Fornecedor</h4>
+        <!-- BLOCO DE PRODUTOS -->
+        <div class="mt-5">
+            <h4 class="mb-3">PRODUTOS</h4>
+            <div class="mb-3">
+                <label for="produtos" class="form-label">Produtos Fornecidos (um por linha)</label>
+                <textarea name="produtos" id="produtos" class="form-control" rows="4" placeholder="Produto 1&#10;Produto 2&#10;Produto 3"></textarea>
+                <small class="text-muted">Digite cada produto em uma linha separada</small>
+            </div>
+            <div id="matrizProdutos" class="mt-4"></div>
+        </div>
         
-        <!-- MATRIZ DE AVALIAÇÃO -->
-        <div class="table-responsive">
-            <table class="table table-bordered border-dark">
-                <thead class="table-dark">
-                    <tr>
-                        <th style="width: 25%; vertical-align: middle;">Tipo do Produto/Serviço</th>
-                        <th colspan="4" class="text-center">Requisitos (marcar com "X")</th>
-                        <th style="width: 20%;">Observações</th>
-                    </tr>
-                    <tr class="table-dark">
-                        <th></th>
-                        <th class="text-center" style="width: 12.5%;">A</th>
-                        <th class="text-center" style="width: 12.5%;">B</th>
-                        <th class="text-center" style="width: 12.5%;">C</th>
-                        <th class="text-center" style="width: 12.5%;">D</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- LINHA: PRODUTO -->
-                    <tr>
-                        <td class="table-active"><strong>Produto</strong></td>
-                        <td class="text-center">
-                            <div class="form-check d-flex justify-content-center">
-                                <input 
-                                    class="form-check-input" 
-                                    type="checkbox" 
-                                    id="matriz_PRODUTO_A" 
-                                    name="matriz_PRODUTO_A"
-                                    {% if matriz_data.PRODUTO.A %}checked{% endif %}
-                                >
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="form-check d-flex justify-content-center">
-                                <input 
-                                    class="form-check-input" 
-                                    type="checkbox" 
-                                    id="matriz_PRODUTO_B" 
-                                    name="matriz_PRODUTO_B"
-                                    {% if matriz_data.PRODUTO.B %}checked{% endif %}
-                                >
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="form-check d-flex justify-content-center">
-                                <input 
-                                    class="form-check-input" 
-                                    type="checkbox" 
-                                    id="matriz_PRODUTO_C" 
-                                    name="matriz_PRODUTO_C"
-                                    {% if matriz_data.PRODUTO.C %}checked{% endif %}
-                                >
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="form-check d-flex justify-content-center">
-                                <input 
-                                    class="form-check-input" 
-                                    type="checkbox" 
-                                    id="matriz_PRODUTO_D" 
-                                    name="matriz_PRODUTO_D"
-                                    {% if matriz_data.PRODUTO.D %}checked{% endif %}
-                                >
-                            </div>
-                        </td>
-                        <td>
-                            <textarea class="form-control form-control-sm" placeholder="Obs..." rows="2"></textarea>
-                        </td>
-                    </tr>
-                    
-                    <!-- LINHA: SERVIÇO -->
-                    <tr>
-                        <td class="table-active"><strong>Serviço</strong></td>
-                        <td class="text-center">
-                            <div class="form-check d-flex justify-content-center">
-                                <input 
-                                    class="form-check-input" 
-                                    type="checkbox" 
-                                    id="matriz_SERVICO_A" 
-                                    name="matriz_SERVICO_A"
-                                    {% if matriz_data.SERVICO.A %}checked{% endif %}
-                                >
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="form-check d-flex justify-content-center">
-                                <input 
-                                    class="form-check-input" 
-                                    type="checkbox" 
-                                    id="matriz_SERVICO_B" 
-                                    name="matriz_SERVICO_B"
-                                    {% if matriz_data.SERVICO.B %}checked{% endif %}
-                                >
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="form-check d-flex justify-content-center">
-                                <input 
-                                    class="form-check-input" 
-                                    type="checkbox" 
-                                    id="matriz_SERVICO_C" 
-                                    name="matriz_SERVICO_C"
-                                    {% if matriz_data.SERVICO.C %}checked{% endif %}
-                                >
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <div class="form-check d-flex justify-content-center">
-                                <input 
-                                    class="form-check-input" 
-                                    type="checkbox" 
-                                    id="matriz_SERVICO_D" 
-                                    name="matriz_SERVICO_D"
-                                    {% if matriz_data.SERVICO.D %}checked{% endif %}
-                                >
-                            </div>
-                        </td>
-                        <td>
-                            <textarea class="form-control form-control-sm" placeholder="Obs..." rows="2"></textarea>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- BLOCO DE SERVIÇOS -->
+        <div class="mt-5">
+            <h4 class="mb-3">SERVIÇOS</h4>
+            <div class="mb-3">
+                <label for="servicos" class="form-label">Serviços Prestados (um por linha)</label>
+                <textarea name="servicos" id="servicos" class="form-control" rows="4" placeholder="Serviço 1&#10;Serviço 2&#10;Serviço 3"></textarea>
+                <small class="text-muted">Digite cada serviço em uma linha separada</small>
+            </div>
+            <div id="matrizServicos" class="mt-4"></div>
         </div>
         
         <!-- LEGENDA -->
-        <div class="mt-4 p-3" style="background-color: #f8f9fa; border-left: 4px solid #333;">
+        <div class="mt-5 p-3" style="background-color: #f8f9fa; border-left: 4px solid #333;">
             <strong>Legenda:</strong>
             <ul class="mb-0 mt-2">
                 <li><strong>A</strong> – Certificado ISO 9001, ISO 13485 ou ISO 17025;</li>
@@ -176,5 +70,63 @@
 <script>
     // Auto-preenchimento da data com hoje
     document.getElementById('data').valueAsDate = new Date();
+    
+    // Dados anteriores
+    const respostasAnteriores = {{ respostas_anteriores|safe }};
+    
+    // Função para gerar matriz de um tipo (Produto ou Serviço)
+    function gerarMatriz(tipo) {
+        const textareaId = tipo === 'PRODUTO' ? 'produtos' : 'servicos';
+        const containerDiv = tipo === 'PRODUTO' ? 'matrizProdutos' : 'matrizServicos';
+        const textarea = document.getElementById(textareaId);
+        const itens = textarea.value.split('\n').map(s => s.trim()).filter(s => s);
+        
+        if (itens.length === 0) {
+            document.getElementById(containerDiv).innerHTML = '';
+            return;
+        }
+        
+        let html = '<div class="table-responsive"><table class="table table-bordered border-dark"><thead class="table-dark"><tr>';
+        html += '<th style="width: 25%; vertical-align: middle;">' + tipo + '</th>';
+        html += '<th colspan="4" class="text-center">Requisitos (marcar com "X")</th>';
+        html += '</tr><tr class="table-dark">';
+        html += '<th></th>';
+        html += '<th class="text-center" style="width: 18.75%;">A</th>';
+        html += '<th class="text-center" style="width: 18.75%;">B</th>';
+        html += '<th class="text-center" style="width: 18.75%;">C</th>';
+        html += '<th class="text-center" style="width: 18.75%;">D</th>';
+        html += '</tr></thead><tbody>';
+        
+        itens.forEach(item => {
+            html += '<tr><td class="table-active"><strong>' + escapeHtml(item) + '</strong></td>';
+            ['A', 'B', 'C', 'D'].forEach(req => {
+                const fieldName = 'matriz_' + tipo + '_' + item + '_' + req;
+                const respKey = tipo + '_' + item + '_' + req;
+                const isChecked = respostasAnteriores[respKey] ? 'checked' : '';
+                html += '<td class="text-center"><input class="form-check-input" type="checkbox" name="' + fieldName + '" ' + isChecked + '></td>';
+            });
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table></div>';
+        document.getElementById(containerDiv).innerHTML = html;
+    }
+    
+    // Escapa caracteres HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Atualiza matrizes quando textos mudam
+    document.getElementById('produtos').addEventListener('input', () => gerarMatriz('PRODUTO'));
+    document.getElementById('servicos').addEventListener('input', () => gerarMatriz('SERVICO'));
+    
+    // Carrega matrizes iniciais
+    document.addEventListener('DOMContentLoaded', () => {
+        gerarMatriz('PRODUTO');
+        gerarMatriz('SERVICO');
+    });
 </script>
 {% endblock %}

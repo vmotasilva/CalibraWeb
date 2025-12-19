@@ -106,25 +106,22 @@ class OcorrenciaNota(models.Model):
         return f"{self.avaliacao} - {self.descricao}"
 
 class RespostaMatrizAvaliacao(models.Model):
-    """Armazena respostas de matriz (requisitos A, B, C, D por tipo de produto/serviço)"""
+    """Armazena respostas de matriz (requisitos A, B, C, D por produto/serviço específico)"""
     REQUISITO_CHOICES = [
         ("A", "A - Certificado ISO 9001, ISO 13485 ou ISO 17025"),
         ("B", "B - Outros (AFE - Autorização de Funcionamento ou Licença)"),
         ("C", "C - Documentos legais (Contrato Social, CNPJ, Inscrição Estadual/Municipal)"),
         ("D", "D - Referência de mercado"),
     ]
-    TIPO_CHOICES = [
-        ("PRODUTO", "Produto"),
-        ("SERVICO", "Serviço"),
-    ]
     
     avaliacao = models.ForeignKey(AvaliacaoFornecedor, on_delete=models.CASCADE, related_name="respostas_matriz")
-    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)  # Produto ou Serviço
+    tipo = models.CharField(max_length=10, choices=[("PRODUTO", "Produto"), ("SERVICO", "Serviço")])
+    nome_item = models.CharField(max_length=255, default="")  # Nome específico do produto/serviço
     requisito = models.CharField(max_length=1, choices=REQUISITO_CHOICES)  # A, B, C ou D
     respondido = models.BooleanField(default=False)  # Se o requisito foi atendido
     
     class Meta:
-        unique_together = [['avaliacao', 'tipo', 'requisito']]
+        unique_together = [['avaliacao', 'tipo', 'nome_item', 'requisito']]
     
     def __str__(self):
-        return f"{self.avaliacao} - {self.get_tipo_display()} - {self.get_requisito_display()}"
+        return f"{self.avaliacao} - {self.get_tipo_display()}: {self.nome_item} ({self.get_requisito_display()})"

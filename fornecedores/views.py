@@ -573,7 +573,7 @@ def export_avaliacoes_excel(request, fornecedor_id):
     return response
 
 def avaliacao_matriz_create(request, fornecedor_id):
-    """Criar/editar avaliação tipo matriz com requisitos A, B, C, D"""
+    """Criar/editar avaliação tipo matriz com requisitos A, B, C, D para múltiplos produtos/serviços"""
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     
     # Busca última avaliação de matriz (MONITORAMENTO com tipo_nota preenchido)
@@ -593,17 +593,28 @@ def avaliacao_matriz_create(request, fornecedor_id):
         )
         avaliacao.save()
         
-        # Salva as respostas da matriz
-        tipos = ["PRODUTO", "SERVICO"]
-        requisitos = ["A", "B", "C", "D"]
-        
-        for tipo in tipos:
-            for requisito in requisitos:
-                # Campo do formulário: matriz_PRODUTO_A, matriz_SERVICO_B, etc
-                respondido = request.POST.get(f"matriz_{tipo}_{requisito}") == "on"
+        # Processa produtos
+        produtos = [p.strip() for p in request.POST.get("produtos", "").split("\n") if p.strip()]
+        for produto in produtos:
+            for requisito in ["A", "B", "C", "D"]:
+                respondido = request.POST.get(f"matriz_PRODUTO_{produto}_{requisito}") == "on"
                 RespostaMatrizAvaliacao.objects.create(
                     avaliacao=avaliacao,
-                    tipo=tipo,
+                    tipo="PRODUTO",
+                    nome_item=produto,
+                    requisito=requisito,
+                    respondido=respondido
+                )
+        
+        # Processa serviços
+        servicos = [s.strip() for s in request.POST.get("servicos", "").split("\n") if s.strip()]
+        for servico in servicos:
+            for requisito in ["A", "B", "C", "D"]:
+                respondido = request.POST.get(f"matriz_SERVICO_{servico}_{requisito}") == "on"
+                RespostaMatrizAvaliacao.objects.create(
+                    avaliacao=avaliacao,
+                    tipo="SERVICO",
+                    nome_item=servico,
                     requisito=requisito,
                     respondido=respondido
                 )
@@ -612,29 +623,32 @@ def avaliacao_matriz_create(request, fornecedor_id):
         return redirect(reverse("fornecedores:fornecedor_detail", args=[fornecedor.pk]))
     
     # GET - Montar dados anteriores para pré-preenchimento
+    produtos_anteriores = []
+    servicos_anteriores = []
     respostas_anteriores = {}
+    
     if ultima_matriz:
+        # Agrupa respostas por tipo e nome_item
         for resposta in ultima_matriz.respostas_matriz.all():
-            key = f"{resposta.tipo}_{resposta.requisito}"
+            tipo = resposta.tipo
+            nome = resposta.nome_item
+            requisito = resposta.requisito
+            
+            # Adiciona à lista se não existe
+            if tipo == "PRODUTO" and nome not in produtos_anteriores:
+                produtos_anteriores.append(nome)
+            elif tipo == "SERVICO" and nome not in servicos_anteriores:
+                servicos_anteriores.append(nome)
+            
+            # Armazena respostas
+            key = f"{tipo}_{nome}_{requisito}"
             respostas_anteriores[key] = resposta.respondido
-    
-    # Preparar estrutura para template
-    matriz_data = {
-        "PRODUTO": {},
-        "SERVICO": {}
-    }
-    requisitos = ["A", "B", "C", "D"]
-    tipos = ["PRODUTO", "SERVICO"]
-    
-    for tipo in tipos:
-        for requisito in requisitos:
-            key = f"{tipo}_{requisito}"
-            matriz_data[tipo][requisito] = respostas_anteriores.get(key, False)
     
     return render(request, "fornecedores/avaliacao_matriz_form.html", {
         "fornecedor": fornecedor,
-        "matriz_data": matriz_data,
         "ultima_matriz": ultima_matriz,
-        "requisitos": requisitos,
-        "tipos": tipos,
+        "produtos_anteriores": "\n".join(produtos_anteriores),
+        "servicos_anteriores": "\n".join(servicos_anteriores),
+        "respostas_anteriores": respostas_anteriores,
+        "requisitos": ["A", "B", "C", "D"],
     })
