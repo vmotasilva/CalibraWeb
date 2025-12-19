@@ -440,14 +440,13 @@ def avaliacao_reavaliacao_create(request, fornecedor_id):
         percentual = (total_sim / total_perguntas * 100) if total_perguntas > 0 else 0
         avaliacao.pontuacao_ano = percentual
         
+        # Reavaliação: Aprovado (≥60%) ou Reprovado (<60%)
         if percentual >= 80:
             avaliacao.resultado = "Excelente"
         elif percentual >= 60:
-            avaliacao.resultado = "Bom"
-        elif percentual >= 40:
-            avaliacao.resultado = "Satisfatório"
+            avaliacao.resultado = "Aprovado"
         else:
-            avaliacao.resultado = "Insatisfatório"
+            avaliacao.resultado = "Reprovado"
         
         avaliacao.save()
         messages.success(request, "Reavaliação registrada com sucesso!")

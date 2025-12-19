@@ -239,9 +239,9 @@
                         <p class="mb-3"><strong>Resultado da Reavaliação:</strong> 
                             <span class="badge" style="background-color: 
                                 {% if ultima_reavaliacao.resultado == 'Excelente' %}#28a745
-                                {% elif ultima_reavaliacao.resultado == 'Bom' %}#17a2b8
-                                {% elif ultima_reavaliacao.resultado == 'Satisfatório' %}#ffc107
-                                {% else %}#dc3545
+                                {% elif ultima_reavaliacao.resultado == 'Aprovado' %}#17a2b8
+                                {% elif ultima_reavaliacao.resultado == 'Reprovado' %}#dc3545
+                                {% else %}#6c757d
                                 {% endif %}">
                                 {{ percentual_reavaliacao|floatformat:0 }}% - {{ ultima_reavaliacao.resultado }}
                             </span>
