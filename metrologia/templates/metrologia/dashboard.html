@@ -160,8 +160,20 @@
                                 <label class="form-check-label small text-danger fw-bold">Vencidos</label>
                             </div>
                             <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER" data-category="situacao">
-                                <label class="form-check-label small text-warning fw-bold">A Vencer (30d)</label>
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_30" data-category="situacao">
+                                <label class="form-check-label small text-warning fw-bold">A Vencer (30 dias)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_60" data-category="situacao">
+                                <label class="form-check-label small text-warning">A Vencer (60 dias)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_90" data-category="situacao">
+                                <label class="form-check-label small text-warning">A Vencer (90 dias)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_120" data-category="situacao">
+                                <label class="form-check-label small text-warning">A Vencer (120 dias)</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input filter-checkbox" type="checkbox" value="EM_DIA" data-category="situacao">
@@ -260,7 +272,7 @@
                             data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
                             data-categoria="{{ i.categoria_id|default:'' }}"
                             data-setor="{{ i.setor_id|default:'' }}"
-                            data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
+                            data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
                             <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" /></td>
                             
                             <td class="ps-4 py-2 fw-bold text-primary font-monospace">
@@ -291,7 +303,13 @@
                                     {% if i.data_proxima_calibracao < hoje %}
                                         <span class="badge bg-danger">VENCIDO ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
                                     {% elif i.data_proxima_calibracao <= alerta_30d %}
-                                        <span class="badge bg-warning text-dark">A VENCER ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                        <span class="badge bg-warning text-dark">A VENCER 30d ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                    {% elif i.data_proxima_calibracao <= alerta_60d %}
+                                        <span class="badge bg-warning text-dark">A VENCER 60d ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                    {% elif i.data_proxima_calibracao <= alerta_90d %}
+                                        <span class="badge bg-info text-white">A VENCER 90d ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                    {% elif i.data_proxima_calibracao <= alerta_120d %}
+                                        <span class="badge bg-info text-white">A VENCER 120d ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
                                     {% else %}
                                         <span class="text-success small fw-bold">{{ i.data_proxima_calibracao|date:"d/m/Y" }}</span>
                                     {% endif %}

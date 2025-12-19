@@ -285,6 +285,9 @@ def modulo_metrologia_view(request):
     status_filter = request.GET.get("status")
     hoje = date.today()
     alerta_30d = hoje + timedelta(days=30)
+    alerta_60d = hoje + timedelta(days=60)
+    alerta_90d = hoje + timedelta(days=90)
+    alerta_120d = hoje + timedelta(days=120)
     
     if status_filter == "vencidos":
         messages.info(request, "Filtro sugerido: VENCIDOS (aplicado na interface).")
@@ -307,6 +310,9 @@ def modulo_metrologia_view(request):
         "categorias_filtro": categorias_filtro,
         "hoje": hoje,
         "alerta_30d": alerta_30d,
+        "alerta_60d": alerta_60d,
+        "alerta_90d": alerta_90d,
+        "alerta_120d": alerta_120d,
         "can_edit": True,
     }
     return render(request, "metrologia/dashboard.html", ctx)
@@ -352,6 +358,9 @@ def export_metrologia_view(request):
     # Monta dados para exportação
     hoje = date.today()
     alerta_30d = hoje + timedelta(days=30)
+    alerta_60d = hoje + timedelta(days=60)
+    alerta_90d = hoje + timedelta(days=90)
+    alerta_120d = hoje + timedelta(days=120)
     rows = []
     
     for inst in qs:
@@ -360,7 +369,13 @@ def export_metrologia_view(request):
             if inst.data_proxima_calibracao < hoje:
                 situacao = 'VENCIDO'
             elif inst.data_proxima_calibracao <= alerta_30d:
-                situacao = 'AVENCER'
+                situacao = 'AVENCER_30'
+            elif inst.data_proxima_calibracao <= alerta_60d:
+                situacao = 'AVENCER_60'
+            elif inst.data_proxima_calibracao <= alerta_90d:
+                situacao = 'AVENCER_90'
+            elif inst.data_proxima_calibracao <= alerta_120d:
+                situacao = 'AVENCER_120'
         
         if sit and situacao not in sit:
             continue
@@ -447,6 +462,9 @@ def export_etiquetas_view(request):
     # Filtra por situação
     hoje = date.today()
     alerta_30d = hoje + timedelta(days=30)
+    alerta_60d = hoje + timedelta(days=60)
+    alerta_90d = hoje + timedelta(days=90)
+    alerta_120d = hoje + timedelta(days=120)
     instrumentos = []
     base_iter = qs.order_by('tag')
     if selected_ids:
@@ -458,7 +476,13 @@ def export_etiquetas_view(request):
             if inst.data_proxima_calibracao < hoje:
                 situacao = 'VENCIDO'
             elif inst.data_proxima_calibracao <= alerta_30d:
-                situacao = 'AVENCER'
+                situacao = 'AVENCER_30'
+            elif inst.data_proxima_calibracao <= alerta_60d:
+                situacao = 'AVENCER_60'
+            elif inst.data_proxima_calibracao <= alerta_90d:
+                situacao = 'AVENCER_90'
+            elif inst.data_proxima_calibracao <= alerta_120d:
+                situacao = 'AVENCER_120'
         if sit and situacao not in sit:
             continue
         instrumentos.append((inst, situacao))
