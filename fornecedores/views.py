@@ -127,14 +127,20 @@ def fornecedor_list(request):
             Q(cnpj__icontains=q)
         )
     
-    # Adicionar datas das últimas avaliações para cada fornecedor
+    # Adicionar pontuações atuais para cada fornecedor
+    fornecedores_com_pontuacoes = []
     for fornecedor in fornecedores:
-        fornecedor.ultima_avaliacao_data = fornecedor.avaliacoes.filter(tipo="SELECAO").values_list('data', flat=True).first()
-        fornecedor.ultima_monitoramento_data = fornecedor.avaliacoes.filter(tipo="MONITORAMENTO").values_list('data', flat=True).first()
-        fornecedor.ultima_reavaliacao_data = fornecedor.avaliacoes.filter(tipo="REAVALIACAO").values_list('data', flat=True).first()
+        avaliacao_selecao = fornecedor.avaliacoes.filter(tipo="SELECAO").order_by("-data").first()
+        monitoramento = fornecedor.avaliacoes.filter(tipo="MONITORAMENTO").order_by("-data").first()
+        reavaliacao = fornecedor.avaliacoes.filter(tipo="REAVALIACAO").order_by("-data").first()
+        
+        fornecedor.pontuacao_selecao = avaliacao_selecao.pontuacao_ano if avaliacao_selecao else "—"
+        fornecedor.pontuacao_monitoramento = monitoramento.pontuacao_ano if monitoramento else "—"
+        fornecedor.pontuacao_reavaliacao = reavaliacao.pontuacao_ano if reavaliacao else "—"
+        fornecedores_com_pontuacoes.append(fornecedor)
     
     ufs = Fornecedor.objects.values_list("uf", flat=True).distinct().order_by("uf")
-    return render(request, "fornecedores/fornecedor_list.html", {"fornecedores": fornecedores, "ufs": ufs})
+    return render(request, "fornecedores/fornecedor_list.html", {"fornecedores": fornecedores_com_pontuacoes, "ufs": ufs})
 
 def fornecedor_detail(request, pk):
     fornecedor = get_object_or_404(Fornecedor, pk=pk)
