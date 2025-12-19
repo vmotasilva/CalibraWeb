@@ -570,7 +570,11 @@ def aplicar_carimbo_certificado_view(request, historico_id):
             # CRITICAL: Frontend sends coordinates with TOP-origin (Y=0 at top, like canvas)
             # PDF uses BOTTOM-origin (Y=0 at bottom)
             # Convert Y from top-origin to bottom-origin
-            stamp_y_pdf = page_height - stamp_y
+            try:
+                stamp_y_pdf = page_height - stamp_y
+            except Exception as e:
+                logger.error(f"❌ Error converting Y coordinate: page_height={page_height}, stamp_y={stamp_y}, error={str(e)}")
+                stamp_y_pdf = 100  # Fallback value
             
             # IMPORTANT: In canvas (preview), the stamp expands DOWN and RIGHT from the origin point
             # In PDF, it expands UP and RIGHT from the origin point
@@ -611,18 +615,26 @@ def aplicar_carimbo_certificado_view(request, historico_id):
             
             logger.info(f"🎨 Stamp created with color: RGB({r}, {g}, {b}) for {resultado}")
             
-            # Read stamp from buffer - convert to bytes
-            stamp_buffer_bytes = BytesIO(stamp_buffer.getvalue())
-            stamp_pdf = PdfReader(stamp_buffer_bytes)
+            try:
+                # Read stamp from buffer - convert to bytes
+                stamp_buffer_bytes = BytesIO(stamp_buffer.getvalue())
+                stamp_pdf = PdfReader(stamp_buffer_bytes)
+            except Exception as e:
+                logger.error(f"❌ Error reading stamp PDF from buffer: {str(e)}", exc_info=True)
+                raise Exception(f"Erro ao processar carimbo: {str(e)}")
             stamp_page = stamp_pdf.pages[0]
             
             # Apply stamp to specific page or all pages
-            writer = PdfWriter()
-            for idx, page in enumerate(original_pdf.pages):
-                # Only apply stamp to the specified page
-                if idx == (carimbo_page - 1):  # carimbo_page is 1-indexed
-                    page.merge_page(stamp_page)
-                writer.add_page(page)
+            try:
+                writer = PdfWriter()
+                for idx, page in enumerate(original_pdf.pages):
+                    # Only apply stamp to the specified page
+                    if idx == (carimbo_page - 1):  # carimbo_page is 1-indexed
+                        page.merge_page(stamp_page)
+                    writer.add_page(page)
+            except Exception as e:
+                logger.error(f"❌ Error merging stamp with original PDF: {str(e)}", exc_info=True)
+                raise Exception(f"Erro ao aplicar carimbo ao PDF: {str(e)}")
             
             # Save stamped PDF
             stamped_buffer = BytesIO()
