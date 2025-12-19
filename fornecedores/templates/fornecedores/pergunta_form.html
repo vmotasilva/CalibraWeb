@@ -14,7 +14,7 @@
             <label for="id_texto" class="form-label">Pergunta</label>
             {{ form.texto|add_class:'form-control' }}
         </div>
-        <div class="mb-3">
+        <div class="mb-3" id="produto_servico_container">
             <label for="id_produto_servico" class="form-label">Produto/Serviço</label>
             {{ form.produto_servico|add_class:'form-select' }}
             <div class="form-text">Obrigatório para perguntas de Monitoramento</div>
@@ -31,4 +31,28 @@
         <a href="{% url 'fornecedores:pergunta_list' %}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoSelect = document.getElementById('id_tipo');
+    const produtoServicioContainer = document.getElementById('produto_servico_container');
+    
+    function toggleProdutoServicoField() {
+        const selectedValue = tipoSelect.value;
+        if (selectedValue === 'MONITORAMENTO') {
+            produtoServicioContainer.style.display = 'block';
+        } else {
+            produtoServicioContainer.style.display = 'none';
+            // Limpar a seleção quando ocultar
+            document.getElementById('id_produto_servico').value = '';
+        }
+    }
+    
+    // Executar ao carregar a página
+    toggleProdutoServicoField();
+    
+    // Executar quando o tipo mudar
+    tipoSelect.addEventListener('change', toggleProdutoServicoField);
+});
+</script>
 {% endblock %}
