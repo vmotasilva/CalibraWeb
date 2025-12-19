@@ -290,6 +290,15 @@
 </div>
 
 <h3>Reavaliações</h3>
-<a href="{% url 'fornecedores:reavaliacao_list' fornecedor.pk %}" class="btn btn-sm btn-outline-primary mb-2">Ver Reavaliações</a>
-<a href="{% url 'fornecedores:export_avaliacoes_excel' fornecedor.pk %}" class="btn btn-sm btn-outline-success mb-2">Exportar Avaliações/Reavaliações (Excel)</a>
+<div class="d-flex gap-2 mb-3">
+    <a href="{% url 'fornecedores:reavaliacao_list' fornecedor.pk %}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-list-check"></i> Ver Histórico de Reavaliações
+    </a>
+    <a href="{% url 'fornecedores:reavaliacao_list' fornecedor.pk %}" class="btn btn-sm btn-primary">
+        <i class="bi bi-plus-circle"></i> Adicionar Nova Reavaliação
+    </a>
+    <a href="{% url 'fornecedores:export_avaliacoes_excel' fornecedor.pk %}" class="btn btn-sm btn-outline-success">
+        <i class="bi bi-download"></i> Exportar Avaliações/Reavaliações
+    </a>
+</div>
 {% endblock %}
