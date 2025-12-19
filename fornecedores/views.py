@@ -130,10 +130,42 @@ def fornecedor_list(request):
 def fornecedor_detail(request, pk):
     fornecedor = get_object_or_404(Fornecedor, pk=pk)
     
-    # Perguntas de Avaliação (SELECAO)
-    perguntas_avaliacao = PerguntaAvaliacao.objects.filter(tipo="SELECAO", ativo=True).order_by("ordem")
+    # Perguntas de Avaliação agrupadas por tipo
+    perguntas_por_tipo = {
+        "SELECAO": {
+            "nome": "Avaliação",
+            "subgrupos": {"Requisitos": []},
+            "perguntas": []
+        },
+        "REAVALIACAO": {
+            "nome": "Reavaliação",
+            "subgrupos": {"Critérios": []},
+            "perguntas": []
+        },
+        "MONITORAMENTO": {
+            "nome": "Monitoramento",
+            "subgrupos": {"PRODUTO": [], "SERVICO": [], "AMBOS": []},
+            "perguntas": []
+        }
+    }
     
-    # Perguntas de Monitoramento
+    # Busca todas as perguntas ativas
+    todas_perguntas = PerguntaAvaliacao.objects.filter(ativo=True).order_by("tipo", "ordem")
+    
+    for pergunta in todas_perguntas:
+        if pergunta.tipo == "SELECAO":
+            perguntas_por_tipo["SELECAO"]["perguntas"].append(pergunta)
+        elif pergunta.tipo == "REAVALIACAO":
+            perguntas_por_tipo["REAVALIACAO"]["perguntas"].append(pergunta)
+        elif pergunta.tipo == "MONITORAMENTO":
+            if pergunta.produto_servico == "PRODUTO":
+                perguntas_por_tipo["MONITORAMENTO"]["subgrupos"]["PRODUTO"].append(pergunta)
+            elif pergunta.produto_servico == "SERVICO":
+                perguntas_por_tipo["MONITORAMENTO"]["subgrupos"]["SERVICO"].append(pergunta)
+            elif pergunta.produto_servico == "AMBOS":
+                perguntas_por_tipo["MONITORAMENTO"]["subgrupos"]["AMBOS"].append(pergunta)
+    
+    # Perguntas de Monitoramento (para cálculo de pontuação)
     perguntas = PerguntaAvaliacao.objects.filter(tipo="MONITORAMENTO", ativo=True).order_by("ordem")
     grupos = {"PRODUTO": [], "SERVICO": [], "AMBOS": []}
     for pergunta in perguntas:
@@ -158,7 +190,7 @@ def fornecedor_detail(request, pk):
     pontuacao_geral = 100 + saldo_total  # saldo_total é negativo
     return render(request, "fornecedores/fornecedor_detail.html", {
         "fornecedor": fornecedor,
-        "perguntas_avaliacao": perguntas_avaliacao,
+        "perguntas_por_tipo": perguntas_por_tipo,
         "monitoramento_produto": grupos["PRODUTO"],
         "monitoramento_servico": grupos["SERVICO"],
         "monitoramento_ambos": grupos["AMBOS"],
