@@ -573,10 +573,10 @@ def export_avaliacoes_excel(request, fornecedor_id):
     return response
 
 def avaliacao_matriz_create(request, fornecedor_id):
-    """Criar/editar avaliação tipo matriz com requisitos A, B, C, D para múltiplos produtos/serviços"""
+    """Criar/editar avaliação tipo matriz com requisitos A, B, C, D para Produto e Serviço"""
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     
-    # Busca última avaliação de matriz (MONITORAMENTO com tipo_nota preenchido)
+    # Busca última avaliação de matriz (MONITORAMENTO)
     ultima_matriz = AvaliacaoFornecedor.objects.filter(
         fornecedor=fornecedor,
         tipo="MONITORAMENTO"
@@ -593,62 +593,70 @@ def avaliacao_matriz_create(request, fornecedor_id):
         )
         avaliacao.save()
         
-        # Processa produtos
-        produtos = [p.strip() for p in request.POST.get("produtos", "").split("\n") if p.strip()]
-        for produto in produtos:
-            for requisito in ["A", "B", "C", "D"]:
-                respondido = request.POST.get(f"matriz_PRODUTO_{produto}_{requisito}") == "on"
-                RespostaMatrizAvaliacao.objects.create(
-                    avaliacao=avaliacao,
-                    tipo="PRODUTO",
-                    nome_item=produto,
-                    requisito=requisito,
-                    respondido=respondido
-                )
+        # Processa Produtos
+        for requisito in ["A", "B", "C", "D"]:
+            respondido = request.POST.get(f"matriz_PRODUTO_{requisito}") == "on"
+            RespostaMatrizAvaliacao.objects.create(
+                avaliacao=avaliacao,
+                tipo="PRODUTO",
+                nome_item="Produto",  # Genérico para produto
+                requisito=requisito,
+                respondido=respondido
+            )
         
-        # Processa serviços
+        # Processa Serviços
+        for requisito in ["A", "B", "C", "D"]:
+            respondido = request.POST.get(f"matriz_SERVICO_{requisito}") == "on"
+            RespostaMatrizAvaliacao.objects.create(
+                avaliacao=avaliacao,
+                tipo="SERVICO",
+                nome_item="Serviço",  # Genérico para serviço
+                requisito=requisito,
+                respondido=respondido
+            )
+        
+        # Processa produtos/serviços listados (armazena na observação ou como respostas separadas)
+        produtos = [p.strip() for p in request.POST.get("produtos", "").split("\n") if p.strip()]
         servicos = [s.strip() for s in request.POST.get("servicos", "").split("\n") if s.strip()]
-        for servico in servicos:
-            for requisito in ["A", "B", "C", "D"]:
-                respondido = request.POST.get(f"matriz_SERVICO_{servico}_{requisito}") == "on"
-                RespostaMatrizAvaliacao.objects.create(
-                    avaliacao=avaliacao,
-                    tipo="SERVICO",
-                    nome_item=servico,
-                    requisito=requisito,
-                    respondido=respondido
-                )
+        
+        # Adiciona listagem de produtos e serviços na observação
+        detalhes = []
+        if produtos:
+            detalhes.append("PRODUTOS:\n- " + "\n- ".join(produtos))
+        if servicos:
+            detalhes.append("SERVIÇOS:\n- " + "\n- ".join(servicos))
+        
+        if detalhes:
+            avaliacao.observacao = (avaliacao.observacao + "\n\n" if avaliacao.observacao else "") + "\n\n".join(detalhes)
+            avaliacao.save()
         
         messages.success(request, "Avaliação de matriz registrada com sucesso!")
         return redirect(reverse("fornecedores:fornecedor_detail", args=[fornecedor.pk]))
     
     # GET - Montar dados anteriores para pré-preenchimento
-    produtos_anteriores = []
-    servicos_anteriores = []
+    produtos_anteriores = ""
+    servicos_anteriores = ""
     respostas_anteriores = {}
     
     if ultima_matriz:
-        # Agrupa respostas por tipo e nome_item
+        # Extrai produtos e serviços da observação
+        obs = ultima_matriz.observacao or ""
+        if "PRODUTOS:" in obs:
+            produtos_section = obs.split("PRODUTOS:")[1].split("SERVIÇOS:")[0] if "SERVIÇOS:" in obs else obs.split("PRODUTOS:")[1]
+            produtos_anteriores = "\n".join([line.strip().lstrip("- ") for line in produtos_section.strip().split("\n") if line.strip()])
+        if "SERVIÇOS:" in obs:
+            servicos_section = obs.split("SERVIÇOS:")[1]
+            servicos_anteriores = "\n".join([line.strip().lstrip("- ") for line in servicos_section.strip().split("\n") if line.strip()])
+        
+        # Busca respostas anteriores
         for resposta in ultima_matriz.respostas_matriz.all():
-            tipo = resposta.tipo
-            nome = resposta.nome_item
-            requisito = resposta.requisito
-            
-            # Adiciona à lista se não existe
-            if tipo == "PRODUTO" and nome not in produtos_anteriores:
-                produtos_anteriores.append(nome)
-            elif tipo == "SERVICO" and nome not in servicos_anteriores:
-                servicos_anteriores.append(nome)
-            
-            # Armazena respostas
-            key = f"{tipo}_{nome}_{requisito}"
+            key = f"{resposta.tipo}_{resposta.requisito}"
             respostas_anteriores[key] = resposta.respondido
     
     return render(request, "fornecedores/avaliacao_matriz_form.html", {
         "fornecedor": fornecedor,
         "ultima_matriz": ultima_matriz,
-        "produtos_anteriores": "\n".join(produtos_anteriores),
-        "servicos_anteriores": "\n".join(servicos_anteriores),
+        "produtos_anteriores": produtos_anteriores,
+        "servicos_anteriores": servicos_anteriores,
         "respostas_anteriores": respostas_anteriores,
-        "requisitos": ["A", "B", "C", "D"],
     })
