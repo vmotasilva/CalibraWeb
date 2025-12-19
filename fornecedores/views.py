@@ -757,7 +757,7 @@ def reavaliacao_delete(request, fornecedor_id):
     
     # Pega a última reavaliação
     ultima_reavaliacao = fornecedor.avaliacoes.filter(
-        tipo=AvaliacaoFornecedor.REAVALIACAO
+        tipo="REAVALIACAO"
     ).order_by('-data').first()
     
     if not ultima_reavaliacao:
