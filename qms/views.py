@@ -1344,7 +1344,7 @@ def editar_faixa_view(request, faixa_id):
 @login_required
 def editar_historico_calibracao_view(request, historico_id):
     """Edit calibration history and its range results."""
-    from .forms_historico import HistoricoCalibracaoForm
+    from .forms_historico import HistoricoCalibracaoForm, validate_pdf_file
     from .forms import ResultadoFaixaCalibracaoForm
     from metrologia.models import ResultadoFaixaCalibracao, FaixaMedicao
     
@@ -1419,6 +1419,27 @@ def editar_historico_calibracao_view(request, historico_id):
             if form.is_valid():
                 print(f"DEBUG VIEW: Formulário válido para histórico {historico_id}")
                 form.save()
+                
+                # PROCESSAR ARQUIVOS DE PADRÃO MANUALMENTE
+                print(f"DEBUG VIEW: Processando arquivos...")
+                uploaded_files = request.FILES.getlist('novos_arquivos_padroes')
+                print(f"DEBUG VIEW: Arquivos encontrados: {len(uploaded_files)}")
+                
+                for idx, uploaded_file in enumerate(uploaded_files):
+                    if uploaded_file:
+                        try:
+                            print(f"DEBUG VIEW: Validando arquivo {idx+1}: {uploaded_file.name}")
+                            validate_pdf_file(uploaded_file)
+                            
+                            novo_padrao = ArquivoPadrao.objects.create(
+                                nome=uploaded_file.name.replace('.pdf', ''),
+                                descricao='',
+                                arquivo=uploaded_file
+                            )
+                            historico.arquivos_padroes.add(novo_padrao)
+                            print(f"✓ Arquivo '{uploaded_file.name}' vinculado com sucesso")
+                        except Exception as e:
+                            print(f"✗ Erro ao processar {uploaded_file.name}: {str(e)}")
                 
                 # Reload do histórico para ver os arquivos atualizados
                 historico.refresh_from_db()
