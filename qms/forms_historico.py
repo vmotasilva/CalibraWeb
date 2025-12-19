@@ -2,6 +2,12 @@ from django import forms
 from django.core.exceptions import ValidationError
 from metrologia.models import HistoricoCalibracao, ArquivoPadrao
 
+
+class MultipleFileInput(forms.ClearableFileInput):
+    """Widget customizado que suporta múltiplos uploads de arquivo."""
+    allow_multiple_selected = True
+
+
 def validate_pdf_file(file):
     """Validate that uploaded file is a PDF."""
     valid_mime_types = ['application/pdf']
@@ -26,10 +32,9 @@ class HistoricoCalibracaoForm(forms.ModelForm):
     novos_arquivos_padroes = forms.FileField(
         label='Fazer Upload de Novos Padrões',
         required=False,
-        widget=forms.FileInput(attrs={
+        widget=MultipleFileInput(attrs={
             'class': 'form-control form-control-sm',
             'accept': '.pdf',
-            'multiple': True,
         })
     )
     
