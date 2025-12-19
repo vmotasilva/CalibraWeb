@@ -795,7 +795,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
     """Cria novo histórico de calibração e redireciona para edição no template unificado (editar_historico.html)."""
     try:
         instrumento = get_object_or_404(Instrumento, id=instrumento_id)
-        logger.info(f"Registrar histórico: instrumento_id={instrumento_id}")
+        logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}, user={request.user}")
         
         # Cria um novo histórico vazio para o instrumento
         historico = HistoricoCalibracao.objects.create(
@@ -803,14 +803,14 @@ def registrar_historico_calibracao_view(request, instrumento_id):
             resultado='PENDENTE'  # Estado inicial
         )
         
-        logger.info(f"Histórico vazio {historico.id} criado para instrumento {instrumento_id}")
+        logger.info(f"✓ Histórico vazio {historico.id} criado com sucesso para instrumento {instrumento_id}")
         
         # Redireciona para edição no template unificado (editar_historico.html)
-        messages.success(request, "✓ Novo histórico criado! Preencha os dados abaixo.")
+        messages.success(request, f"✓ Novo histórico criado! Agora preencha os dados.")
         return redirect('editar_historico_calibracao', historico_id=historico.id)
         
     except Exception as e:
-        logger.error(f"Erro crítico em registrar_historico_calibracao_view: {e}", exc_info=True)
+        logger.error(f"❌ Erro crítico em registrar_historico_calibracao_view: {e}", exc_info=True)
         messages.error(request, f'Erro ao criar histórico: {str(e)}')
         return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
 

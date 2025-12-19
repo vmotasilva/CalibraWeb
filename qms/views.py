@@ -314,25 +314,27 @@ def detalhe_instrumento_view(request, instrumento_id):
 
 @login_required
 def registrar_historico_calibracao_view(request, instrumento_id):
-    """Register a new calibration history record."""
-    from metrologia.models import FaixaMedicao
-    
-    instrumento = get_object_or_404(Instrumento, id=instrumento_id)
-    
-    if request.method == 'POST':
-        # Handle form submission
-        # TODO: Implement form processing
-        messages.success(request, 'Histórico de calibração registrado com sucesso.')
-        return redirect('visualizar_instrumento', instrumento_id=instrumento_id)
-    
-    # Get measurement ranges for this instrument
-    faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
-    
-    context = {
-        'instrumento': instrumento,
-        'faixas_medicao': faixas_medicao,
-    }
-    return render(request, 'metrologia/historico_calibracao_form.html', context)
+    """Cria novo histórico de calibração e redireciona para edição no template unificado (editar_historico.html)."""
+    try:
+        instrumento = get_object_or_404(Instrumento, id=instrumento_id)
+        logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}, user={request.user}")
+        
+        # Cria um novo histórico vazio para o instrumento
+        historico = HistoricoCalibracao.objects.create(
+            instrumento=instrumento,
+            resultado='PENDENTE'  # Estado inicial
+        )
+        
+        logger.info(f"✓ Histórico vazio {historico.id} criado com sucesso para instrumento {instrumento_id}")
+        
+        # Redireciona para edição no template unificado (editar_historico.html)
+        messages.success(request, f"✓ Novo histórico criado! Agora preencha os dados.")
+        return redirect('editar_historico_calibracao', historico_id=historico.id)
+        
+    except Exception as e:
+        logger.error(f"❌ Erro crítico em registrar_historico_calibracao_view: {e}", exc_info=True)
+        messages.error(request, f'Erro ao criar histórico: {str(e)}')
+        return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
 
 
 @login_required
