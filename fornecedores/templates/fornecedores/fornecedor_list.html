@@ -77,12 +77,12 @@
             </td>
             <td>
                 {% if fornecedor.pontuacao_monitoramento != "—" %}
-                    {% if fornecedor.pontuacao_monitoramento >= 80 %}
-                        <span class="badge bg-success">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
-                    {% elif fornecedor.pontuacao_monitoramento >= 60 %}
-                        <span class="badge bg-warning">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
+                    {% if fornecedor.resultado_monitoramento == "Excelente" %}
+                        <span class="badge bg-success" title="Excelente">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
+                    {% elif fornecedor.resultado_monitoramento == "Bom" %}
+                        <span class="badge bg-warning" title="Bom">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
                     {% else %}
-                        <span class="badge bg-danger">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
+                        <span class="badge bg-danger" title="Ruim">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
                     {% endif %}
                 {% else %}
                     <span class="text-muted">{{ fornecedor.pontuacao_monitoramento }}</span>
