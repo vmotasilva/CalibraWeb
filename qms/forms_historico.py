@@ -98,31 +98,47 @@ class HistoricoCalibracaoForm(forms.ModelForm):
         
         # Salvar instância SEMPRE se commit=True (necessário para vincular arquivos)
         if commit:
+            print(f"DEBUG SAVE: Salvando instância histórico {instance.id}")
             instance.save()
+            print(f"DEBUG SAVE: Instância salva com sucesso")
         
         # Processar upload de novos arquivos de padrão (depois de salvar a instância)
+        print(f"DEBUG SAVE: self.files = {self.files}")
         uploaded_files = self.files.getlist('novos_arquivos_padroes') if self.files else []
+        print(f"DEBUG SAVE: Arquivos encontrados: {len(uploaded_files)}")
         
         if uploaded_files and any(f for f in uploaded_files if f):
             # Só processa se houver arquivos realmente
-            for uploaded_file in uploaded_files:
+            print(f"DEBUG SAVE: Processando {len([f for f in uploaded_files if f])} arquivo(s)...")
+            for idx, uploaded_file in enumerate(uploaded_files):
                 if uploaded_file:  # Verificar se o arquivo não está vazio
+                    print(f"DEBUG SAVE: Processando arquivo {idx+1}: {uploaded_file.name} ({uploaded_file.size} bytes)")
                     try:
                         # Validar arquivo PDF
+                        print(f"DEBUG SAVE: Validando arquivo...")
                         validate_pdf_file(uploaded_file)
+                        print(f"DEBUG SAVE: Arquivo validado com sucesso")
                         
                         # Criar novo ArquivoPadrao
+                        print(f"DEBUG SAVE: Criando ArquivoPadrao...")
                         novo_padrao = ArquivoPadrao.objects.create(
                             nome=uploaded_file.name.replace('.pdf', ''),
                             descricao='',
                             arquivo=uploaded_file
                         )
+                        print(f"DEBUG SAVE: ArquivoPadrao criado: {novo_padrao.id}")
+                        
                         # Adicionar ao histórico
+                        print(f"DEBUG SAVE: Vinculando ao histórico...")
                         instance.arquivos_padroes.add(novo_padrao)
                         print(f"✓ Arquivo '{uploaded_file.name}' vinculado ao histórico {instance.id}")
                     except ValidationError as e:
                         print(f"✗ Erro de validação ao processar arquivo {getattr(uploaded_file, 'name', 'desconhecido')}: {str(e)}")
                     except Exception as e:
+                        import traceback
                         print(f"✗ Erro ao processar arquivo {getattr(uploaded_file, 'name', 'desconhecido')}: {str(e)}")
+                        traceback.print_exc()
+        else:
+            print(f"DEBUG SAVE: Nenhum arquivo para processar")
         
         return instance
