@@ -383,13 +383,9 @@ def avaliacao_selecao_create(request, fornecedor_id):
     })
 
 def avaliacao_reavaliacao_create(request, fornecedor_id):
-    """Criar/editar reavaliação (REAVALIACAO) - apenas em janeiro"""
+    """Criar/editar reavaliação (REAVALIACAO) - anualmente a partir de janeiro"""
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     perguntas = PerguntaAvaliacao.objects.filter(tipo="REAVALIACAO", ativo=True).order_by("ordem")
-    
-    # Validar se é janeiro
-    hoje = timezone.now().date()
-    mes_atual = hoje.month
     
     # Busca última reavaliação
     ultima_reavaliacao = AvaliacaoFornecedor.objects.filter(
@@ -406,13 +402,24 @@ def avaliacao_reavaliacao_create(request, fornecedor_id):
         except (ValueError, TypeError):
             data_submit = timezone.now().date()
         
-        # Validar se a data está em janeiro
-        if data_submit.month != 1:
-            messages.error(request, "Reavaliação só pode ser realizada em janeiro!")
+        # Validar: reavaliação só pode ser feita a partir de janeiro
+        # e apenas uma vez por ano (safra anual)
+        if data_submit.month < 1:  # Impossível, mas segurança
+            data_submit = timezone.now().date()
+        
+        # Validar se já existe uma reavaliação no mesmo ano
+        reavaliacao_ano_atual = AvaliacaoFornecedor.objects.filter(
+            fornecedor=fornecedor,
+            tipo="REAVALIACAO",
+            data__year=data_submit.year
+        ).exclude(id=ultima_reavaliacao.id if ultima_reavaliacao else None).exists()
+        
+        if reavaliacao_ano_atual and not (ultima_reavaliacao and ultima_reavaliacao.data.year == data_submit.year and ultima_reavaliacao.data == data_submit):
+            messages.error(request, "Já existe uma reavaliação registrada para este ano. A próxima reavaliação só poderá ser realizada a partir de janeiro do próximo ano.")
             return redirect(reverse("fornecedores:fornecedor_detail", args=[fornecedor.pk]))
         
         if ultima_reavaliacao and ultima_reavaliacao.data == data_submit:
-            # Atualizar reavaliação existente
+            # Atualizar reavaliação existente (mesma data)
             avaliacao = ultima_reavaliacao
             avaliacao.observacao = request.POST.get("observacao", "")
             avaliacao.save()
