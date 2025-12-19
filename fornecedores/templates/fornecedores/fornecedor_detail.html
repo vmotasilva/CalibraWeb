@@ -51,6 +51,7 @@
 
 
 <h3>Avaliação
+    <span class="badge bg-success">Pontuação: {{ percentual_avaliacao|floatformat:1 }}</span>
     <a href="{% url 'fornecedores:avaliacao_matriz_create' fornecedor.pk %}" class="btn btn-sm btn-info ms-2">
         <i class="bi bi-table"></i> Matriz
     </a>
@@ -217,7 +218,7 @@
     <a href="{% url 'fornecedores:avaliacao_list' fornecedor.pk %}" class="btn btn-primary btn-lg fw-bold shadow">Ver Registros de Monitoramento</a>
 </div>
 
-<h3 class="mt-4">Reavaliação</h3>
+<h3 class="mt-4">Reavaliação <span class="badge bg-success">Pontuação: {{ percentual_reavaliacao|floatformat:1 }}</span></h3>
 <div class="accordion" id="reavaliaoAccordion">
     <div class="accordion-item">
         <h2 class="accordion-header" id="headingReavaliacao">
