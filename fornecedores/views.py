@@ -309,18 +309,30 @@ def avaliacao_selecao_create(request, fornecedor_id):
         avaliacao.save()
         messages.success(request, "Avaliação de Seleção registrada com sucesso!")
         return redirect(reverse("fornecedores:fornecedor_detail", args=[fornecedor.pk]))
-    else:
-        # GET - Montar contexto
-        respostas_dict = {}
-        if ultima_avaliacao:
-            for resposta in ultima_avaliacao.respostas.all():
-                respostas_dict[resposta.pergunta_id] = resposta
+    
+    # GET - Montar lista de respostas para pré-preenchimento
+    respostas_existentes = {}
+    if ultima_avaliacao:
+        for resposta in ultima_avaliacao.respostas.all():
+            respostas_existentes[resposta.pergunta_id] = {
+                'resposta': resposta.resposta,
+                'observacao': resposta.observacao
+            }
+    
+    # Preparar lista de perguntas com respostas
+    perguntas_com_respostas = []
+    for pergunta in perguntas:
+        resp = respostas_existentes.get(pergunta.id, {'resposta': False, 'observacao': ''})
+        perguntas_com_respostas.append({
+            'pergunta': pergunta,
+            'resposta_anterior': resp['resposta'],
+            'observacao_anterior': resp['observacao']
+        })
     
     return render(request, "fornecedores/avaliacao_selecao_form.html", {
         "fornecedor": fornecedor,
-        "perguntas": perguntas,
+        "perguntas_com_respostas": perguntas_com_respostas,
         "ultima_avaliacao": ultima_avaliacao,
-        "respostas_dict": respostas_dict if request.method == "GET" and ultima_avaliacao else {}
     })
 
 def avaliacao_create(request, fornecedor_id):

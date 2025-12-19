@@ -17,7 +17,7 @@
         
         <div class="mb-3">
             <label for="data" class="form-label">Data da Avaliação</label>
-            <input type="date" name="data" id="data" class="form-control" required value="{{ hoje|date:'Y-m-d' }}">
+            <input type="date" name="data" id="data" class="form-control" required>
         </div>
         
         <div class="mb-3">
@@ -27,12 +27,12 @@
         
         <h4 class="mt-4 mb-3">Perguntas</h4>
         <div class="list-group">
-            {% for pergunta in perguntas %}
+            {% for item in perguntas_com_respostas %}
             <div class="list-group-item">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div class="flex-grow-1">
-                        <h5>{{ pergunta.texto }}</h5>
-                        <small class="text-muted">Ordem: {{ pergunta.ordem }}</small>
+                        <h5>{{ item.pergunta.texto }}</h5>
+                        <small class="text-muted">Ordem: {{ item.pergunta.ordem }}</small>
                     </div>
                 </div>
                 
@@ -40,25 +40,23 @@
                     <input 
                         class="form-check-input" 
                         type="checkbox" 
-                        id="resposta_{{ pergunta.id }}" 
-                        name="resposta_{{ pergunta.id }}"
-                        {% if respostas_dict|get:pergunta.id %}
-                            {% if respostas_dict|get:pergunta.id|getattr:'resposta' %}checked{% endif %}
-                        {% endif %}
+                        id="resposta_{{ item.pergunta.id }}" 
+                        name="resposta_{{ item.pergunta.id }}"
+                        {% if item.resposta_anterior %}checked{% endif %}
                     >
-                    <label class="form-check-label" for="resposta_{{ pergunta.id }}">
+                    <label class="form-check-label" for="resposta_{{ item.pergunta.id }}">
                         Sim
                     </label>
                 </div>
                 
                 <div class="mt-2">
-                    <label for="observacao_{{ pergunta.id }}" class="form-label small">Observação</label>
+                    <label for="observacao_{{ item.pergunta.id }}" class="form-label small">Observação</label>
                     <textarea 
-                        name="observacao_{{ pergunta.id }}" 
-                        id="observacao_{{ pergunta.id }}" 
+                        name="observacao_{{ item.pergunta.id }}" 
+                        id="observacao_{{ item.pergunta.id }}" 
                         class="form-control form-control-sm" 
                         rows="2"
-                    >{% if respostas_dict|get:pergunta.id %}{{ respostas_dict|get:pergunta.id|getattr:'observacao' }}{% endif %}</textarea>
+                    >{{ item.observacao_anterior }}</textarea>
                 </div>
             </div>
             {% endfor %}
@@ -73,7 +71,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
     const dataInput = document.getElementById('data');
     
     // Preencher data com hoje se vazio
