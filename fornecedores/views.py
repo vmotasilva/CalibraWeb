@@ -383,9 +383,13 @@ def avaliacao_selecao_create(request, fornecedor_id):
     })
 
 def avaliacao_reavaliacao_create(request, fornecedor_id):
-    """Criar/editar reavaliação (REAVALIACAO)"""
+    """Criar/editar reavaliação (REAVALIACAO) - apenas em janeiro"""
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     perguntas = PerguntaAvaliacao.objects.filter(tipo="REAVALIACAO", ativo=True).order_by("ordem")
+    
+    # Validar se é janeiro
+    hoje = timezone.now().date()
+    mes_atual = hoje.month
     
     # Busca última reavaliação
     ultima_reavaliacao = AvaliacaoFornecedor.objects.filter(
@@ -401,6 +405,11 @@ def avaliacao_reavaliacao_create(request, fornecedor_id):
             data_submit = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else timezone.now().date()
         except (ValueError, TypeError):
             data_submit = timezone.now().date()
+        
+        # Validar se a data está em janeiro
+        if data_submit.month != 1:
+            messages.error(request, "Reavaliação só pode ser realizada em janeiro!")
+            return redirect(reverse("fornecedores:fornecedor_detail", args=[fornecedor.pk]))
         
         if ultima_reavaliacao and ultima_reavaliacao.data == data_submit:
             # Atualizar reavaliação existente
@@ -600,7 +609,23 @@ def reavaliacao_create(request, fornecedor_id):
 def reavaliacao_list(request, fornecedor_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     reavaliacoes = fornecedor.avaliacoes.filter(tipo="REAVALIACAO").order_by("-data")
-    return render(request, "fornecedores/reavaliacao_list.html", {"reavaliacoes": reavaliacoes, "fornecedor": fornecedor})
+    
+    # Enriquecer dados de reavaliações com respostas
+    reavaliacoes_detalhes = []
+    for reavaliacao in reavaliacoes:
+        respostas = RespostaAvaliacao.objects.filter(avaliacao=reavaliacao).order_by("pergunta__ordem")
+        reavaliacoes_detalhes.append({
+            'reavaliacao': reavaliacao,
+            'respostas': respostas,
+            'total_respostas': respostas.count(),
+            'respostas_sim': respostas.filter(resposta=True).count(),
+        })
+    
+    return render(request, "fornecedores/reavaliacao_list.html", {
+        "reavaliacoes_detalhes": reavaliacoes_detalhes,
+        "fornecedor": fornecedor,
+        "total_reavaliacoes": len(reavaliacoes_detalhes)
+    })
 
 def export_avaliacoes_excel(request, fornecedor_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)

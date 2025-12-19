@@ -1,28 +1,100 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<h3>Reavaliações de {{ fornecedor.empresa }}</h3>
-<a href="{% url 'fornecedores:reavaliacao_create' fornecedor.pk %}" class="btn btn-primary mb-2">Nova Reavaliação</a>
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Data</th>
-            <th>Avaliador</th>
-            <th>Percentual</th>
-            <th>Resultado</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for av in reavaliacoes %}
-        <tr>
-            <td>{{ av.data|date:'d/m/Y' }}</td>
-            <td>{{ av.avaliador }}</td>
-            <td>{{ av.pontuacao_ano|floatformat:2 }}%</td>
-            <td>{{ av.resultado }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="4">Nenhuma reavaliação registrada.</td></tr>
+<div class="container mt-4">
+    <h2>Histórico de Reavaliações - {{ fornecedor.empresa }}</h2>
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-info">Total: {{ total_reavaliacoes }} reavaliação(ões)</span>
+        </div>
+        <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Nova Reavaliação
+        </a>
+    </div>
+    
+    {% if reavaliacoes_detalhes %}
+    <div class="accordion" id="reavalicoesAccordion">
+        {% for item in reavaliacoes_detalhes %}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading_{{ item.reavaliacao.id }}">
+                <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ item.reavaliacao.id }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">
+                    <strong>{{ item.reavaliacao.data|date:"d/m/Y" }}</strong>
+                    <span class="badge bg-success ms-2">{{ item.reavaliacao.pontuacao_ano|floatformat:1 }}%</span>
+                    <span class="badge ms-2" style="background-color: {% if item.reavaliacao.resultado == 'Aprovado' %}#28a745{% else %}#dc3545{% endif %}">
+                        {{ item.reavaliacao.resultado }}
+                    </span>
+                    <small class="text-muted ms-3">Avaliador: {{ item.reavaliacao.avaliador.get_full_name|default:item.reavaliacao.avaliador }}</small>
+                </button>
+            </h2>
+            <div id="collapse_{{ item.reavaliacao.id }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading_{{ item.reavaliacao.id }}" data-bs-parent="#reavalicoesAccordion">
+                <div class="accordion-body">
+                    <div class="mb-4">
+                        <h5>Resultado da Reavaliação</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <p class="mb-2"><strong>Data:</strong> {{ item.reavaliacao.data|date:"d/m/Y" }}</p>
+                                <p class="mb-2"><strong>Avaliador:</strong> {{ item.reavaliacao.avaliador.get_full_name|default:item.reavaliacao.avaliador }}</p>
+                                <p class="mb-2"><strong>Pontuação:</strong> 
+                                    <span class="badge bg-success">{{ item.reavaliacao.pontuacao_ano|floatformat:1 }}%</span>
+                                </p>
+                                <p class="mb-2"><strong>Resultado:</strong> 
+                                    <span class="badge" style="background-color: {% if item.reavaliacao.resultado == 'Aprovado' %}#28a745{% else %}#dc3545{% endif %}">
+                                        {{ item.reavaliacao.resultado }}
+                                    </span>
+                                </p>
+                                {% if item.reavaliacao.observacao %}
+                                <p class="mb-0"><strong>Observação:</strong> {{ item.reavaliacao.observacao }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Respostas do Critérios</h5>
+                        <div class="list-group">
+                            {% for resposta in item.respostas %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ resposta.pergunta.texto }}</h6>
+                                        <small class="text-muted">Ordem: {{ resposta.pergunta.ordem }}</small>
+                                    </div>
+                                    <span class="badge {% if resposta.resposta %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ resposta.resposta|yesno:"SIM,NÃO" }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-sm btn-warning">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                        <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-sm btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
         {% endfor %}
-    </tbody>
-</table>
-<a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary">Voltar</a>
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        <strong>Nenhuma reavaliação registrada ainda.</strong>
+        <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-primary ms-2">
+            Realizar Primeira Reavaliação
+        </a>
+    </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar ao Fornecedor
+        </a>
+    </div>
+</div>
 {% endblock %}

@@ -4,6 +4,10 @@
 <div class="container mt-4">
     <h2>Reavaliação - {{ fornecedor.empresa }}</h2>
     
+    <div class="alert alert-warning" role="alert">
+        <strong>⚠️ Importante:</strong> A Reavaliação deve ser realizada apenas em <strong>janeiro</strong> (primeiro mês do ano).
+    </div>
+    
     {% if ultima_reavaliacao %}
     <div class="alert alert-info" role="alert">
         <strong>Última reavaliação:</strong> {{ ultima_reavaliacao.data|date:"d/m/Y" }} 
