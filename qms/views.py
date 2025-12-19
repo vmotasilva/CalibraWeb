@@ -1410,7 +1410,13 @@ def editar_historico_calibracao_view(request, historico_id):
                         print(f"DEBUG: Arquivo - {f.name} ({f.size} bytes, content_type: {f.content_type})")
             
             if form.is_valid():
+                print(f"DEBUG: Formulário válido para histórico {historico_id}")
                 form.save()
+                
+                # Reload do histórico para ver os arquivos atualizados
+                historico.refresh_from_db()
+                padroes_count = historico.arquivos_padroes.count()
+                print(f"DEBUG: Histórico agora tem {padroes_count} padrão(s)")
                 
                 # Feedback message
                 if has_files:
