@@ -96,7 +96,7 @@ def pergunta_delete(request, pk):
 from .forms_pergunta import PerguntaAvaliacaoForm
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
-from .models import Fornecedor, DocumentoFornecedor, AvaliacaoFornecedor, PerguntaAvaliacao, RespostaAvaliacao
+from .models import Fornecedor, DocumentoFornecedor, AvaliacaoFornecedor, PerguntaAvaliacao, RespostaAvaliacao, RespostaMatrizAvaliacao
 from django.db import models
 from .forms import FornecedorForm
 from .forms_documento import DocumentoFornecedorForm
@@ -571,3 +571,70 @@ def export_avaliacoes_excel(request, fornecedor_id):
     response['Content-Disposition'] = f'attachment; filename=avaliacoes_{fornecedor.empresa}.xlsx'
     df.to_excel(response, index=False)
     return response
+
+def avaliacao_matriz_create(request, fornecedor_id):
+    """Criar/editar avaliação tipo matriz com requisitos A, B, C, D"""
+    fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
+    
+    # Busca última avaliação de matriz (MONITORAMENTO com tipo_nota preenchido)
+    ultima_matriz = AvaliacaoFornecedor.objects.filter(
+        fornecedor=fornecedor,
+        tipo="MONITORAMENTO"
+    ).order_by("-data").first()
+    
+    if request.method == "POST":
+        # Cria nova avaliação de matriz
+        avaliacao = AvaliacaoFornecedor(
+            fornecedor=fornecedor,
+            data=request.POST.get("data") or timezone.now().date(),
+            tipo="MONITORAMENTO",
+            avaliador=request.user,
+            observacao=request.POST.get("observacao", "")
+        )
+        avaliacao.save()
+        
+        # Salva as respostas da matriz
+        tipos = ["PRODUTO", "SERVICO"]
+        requisitos = ["A", "B", "C", "D"]
+        
+        for tipo in tipos:
+            for requisito in requisitos:
+                # Campo do formulário: matriz_PRODUTO_A, matriz_SERVICO_B, etc
+                respondido = request.POST.get(f"matriz_{tipo}_{requisito}") == "on"
+                RespostaMatrizAvaliacao.objects.create(
+                    avaliacao=avaliacao,
+                    tipo=tipo,
+                    requisito=requisito,
+                    respondido=respondido
+                )
+        
+        messages.success(request, "Avaliação de matriz registrada com sucesso!")
+        return redirect(reverse("fornecedores:fornecedor_detail", args=[fornecedor.pk]))
+    
+    # GET - Montar dados anteriores para pré-preenchimento
+    respostas_anteriores = {}
+    if ultima_matriz:
+        for resposta in ultima_matriz.respostas_matriz.all():
+            key = f"{resposta.tipo}_{resposta.requisito}"
+            respostas_anteriores[key] = resposta.respondido
+    
+    # Preparar estrutura para template
+    matriz_data = {
+        "PRODUTO": {},
+        "SERVICO": {}
+    }
+    requisitos = ["A", "B", "C", "D"]
+    tipos = ["PRODUTO", "SERVICO"]
+    
+    for tipo in tipos:
+        for requisito in requisitos:
+            key = f"{tipo}_{requisito}"
+            matriz_data[tipo][requisito] = respostas_anteriores.get(key, False)
+    
+    return render(request, "fornecedores/avaliacao_matriz_form.html", {
+        "fornecedor": fornecedor,
+        "matriz_data": matriz_data,
+        "ultima_matriz": ultima_matriz,
+        "requisitos": requisitos,
+        "tipos": tipos,
+    })

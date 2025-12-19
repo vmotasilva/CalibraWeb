@@ -115,7 +115,15 @@
 </div>
 
 
-<h3>Reavaliação</h3>
+<h3 class="mt-4">Seleção de Fornecedor (Matriz)</h3>
+<div class="mb-3">
+    <a href="{% url 'fornecedores:avaliacao_matriz_create' fornecedor.pk %}" class="btn btn-info btn-lg">
+        <i class="bi bi-table"></i> Preencher Matriz de Seleção
+    </a>
+</div>
+
+
+<h3 class="mt-4">Reavaliação</h3>
 <div class="accordion" id="reavaliaoAccordion">
     <div class="accordion-item">
         <h2 class="accordion-header" id="headingReavaliacao">

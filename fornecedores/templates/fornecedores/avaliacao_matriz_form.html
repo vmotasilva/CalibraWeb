@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Avaliação - Seleção de Fornecedor (Matriz) - {{ fornecedor.empresa }}</h2>
+    
+    {% if ultima_matriz %}
+    <div class="alert alert-info" role="alert">
+        <strong>Última avaliação:</strong> {{ ultima_matriz.data|date:"d/m/Y" }}
+        {% if ultima_matriz.observacao %}
+        <br><strong>Observação anterior:</strong> {{ ultima_matriz.observacao }}
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <form method="post" class="mt-4">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="data" class="form-label">Data da Avaliação</label>
+            <input type="date" name="data" id="data" class="form-control" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="observacao" class="form-label">Observações Gerais</label>
+            <textarea name="observacao" id="observacao" class="form-control" rows="3"></textarea>
+        </div>
+        
+        <h4 class="mt-5 mb-3">Seleção de Fornecedor</h4>
+        
+        <!-- MATRIZ DE AVALIAÇÃO -->
+        <div class="table-responsive">
+            <table class="table table-bordered border-dark">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 25%; vertical-align: middle;">Tipo do Produto/Serviço</th>
+                        <th colspan="4" class="text-center">Requisitos (marcar com "X")</th>
+                        <th style="width: 20%;">Observações</th>
+                    </tr>
+                    <tr class="table-dark">
+                        <th></th>
+                        <th class="text-center" style="width: 12.5%;">A</th>
+                        <th class="text-center" style="width: 12.5%;">B</th>
+                        <th class="text-center" style="width: 12.5%;">C</th>
+                        <th class="text-center" style="width: 12.5%;">D</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- LINHA: PRODUTO -->
+                    <tr>
+                        <td class="table-active"><strong>Produto</strong></td>
+                        <td class="text-center">
+                            <div class="form-check d-flex justify-content-center">
+                                <input 
+                                    class="form-check-input" 
+                                    type="checkbox" 
+                                    id="matriz_PRODUTO_A" 
+                                    name="matriz_PRODUTO_A"
+                                    {% if matriz_data.PRODUTO.A %}checked{% endif %}
+                                >
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check d-flex justify-content-center">
+                                <input 
+                                    class="form-check-input" 
+                                    type="checkbox" 
+                                    id="matriz_PRODUTO_B" 
+                                    name="matriz_PRODUTO_B"
+                                    {% if matriz_data.PRODUTO.B %}checked{% endif %}
+                                >
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check d-flex justify-content-center">
+                                <input 
+                                    class="form-check-input" 
+                                    type="checkbox" 
+                                    id="matriz_PRODUTO_C" 
+                                    name="matriz_PRODUTO_C"
+                                    {% if matriz_data.PRODUTO.C %}checked{% endif %}
+                                >
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check d-flex justify-content-center">
+                                <input 
+                                    class="form-check-input" 
+                                    type="checkbox" 
+                                    id="matriz_PRODUTO_D" 
+                                    name="matriz_PRODUTO_D"
+                                    {% if matriz_data.PRODUTO.D %}checked{% endif %}
+                                >
+                            </div>
+                        </td>
+                        <td>
+                            <textarea class="form-control form-control-sm" placeholder="Obs..." rows="2"></textarea>
+                        </td>
+                    </tr>
+                    
+                    <!-- LINHA: SERVIÇO -->
+                    <tr>
+                        <td class="table-active"><strong>Serviço</strong></td>
+                        <td class="text-center">
+                            <div class="form-check d-flex justify-content-center">
+                                <input 
+                                    class="form-check-input" 
+                                    type="checkbox" 
+                                    id="matriz_SERVICO_A" 
+                                    name="matriz_SERVICO_A"
+                                    {% if matriz_data.SERVICO.A %}checked{% endif %}
+                                >
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check d-flex justify-content-center">
+                                <input 
+                                    class="form-check-input" 
+                                    type="checkbox" 
+                                    id="matriz_SERVICO_B" 
+                                    name="matriz_SERVICO_B"
+                                    {% if matriz_data.SERVICO.B %}checked{% endif %}
+                                >
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check d-flex justify-content-center">
+                                <input 
+                                    class="form-check-input" 
+                                    type="checkbox" 
+                                    id="matriz_SERVICO_C" 
+                                    name="matriz_SERVICO_C"
+                                    {% if matriz_data.SERVICO.C %}checked{% endif %}
+                                >
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check d-flex justify-content-center">
+                                <input 
+                                    class="form-check-input" 
+                                    type="checkbox" 
+                                    id="matriz_SERVICO_D" 
+                                    name="matriz_SERVICO_D"
+                                    {% if matriz_data.SERVICO.D %}checked{% endif %}
+                                >
+                            </div>
+                        </td>
+                        <td>
+                            <textarea class="form-control form-control-sm" placeholder="Obs..." rows="2"></textarea>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- LEGENDA -->
+        <div class="mt-4 p-3" style="background-color: #f8f9fa; border-left: 4px solid #333;">
+            <strong>Legenda:</strong>
+            <ul class="mb-0 mt-2">
+                <li><strong>A</strong> – Certificado ISO 9001, ISO 13485 ou ISO 17025;</li>
+                <li><strong>B</strong> – Outros (AFE – Autorização de Funcionamento ou Empresas e/ou Licença de Funcionamento de acordo com a área de atuação);</li>
+                <li><strong>C</strong> – Documentos legais (Contrato Social, CNPJ, Inscrição Estadual e/ou Municipal);</li>
+                <li><strong>D</strong> – Referência de mercado.</li>
+            </ul>
+        </div>
+        
+        <!-- BOTÕES -->
+        <div class="mt-5 d-flex gap-2">
+            <button type="submit" class="btn btn-success btn-lg">Salvar Avaliação</button>
+            <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary btn-lg">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Auto-preenchimento da data com hoje
+    document.getElementById('data').valueAsDate = new Date();
+</script>
+{% endblock %}
