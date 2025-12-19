@@ -16,9 +16,9 @@ def validate_pdf_file(file):
     if not file.name.lower().endswith('.pdf'):
         raise ValidationError('O arquivo deve ser um PDF. Extensão inválida.')
     
-    # Check MIME type if available
-    if hasattr(file, 'content_type'):
-        if file.content_type not in valid_mime_types:
+    # Check MIME type if available (mais permissivo para uploads múltiplos)
+    if hasattr(file, 'content_type') and file.content_type:
+        if file.content_type not in valid_mime_types and 'pdf' not in file.content_type.lower():
             raise ValidationError(f'Tipo de arquivo inválido: {file.content_type}. Deve ser PDF.')
     
     # Check file size (max 50MB)
@@ -116,6 +116,9 @@ class HistoricoCalibracaoForm(forms.ModelForm):
                     )
                     # Adicionar ao formulário
                     instance.arquivos_padroes.add(novo_padrao)
+                except ValidationError as e:
+                    # Log do erro de validação, mas não bloqueia o save
+                    print(f"Erro de validação ao processar arquivo {getattr(uploaded_file, 'name', 'desconhecido')}: {str(e)}")
                 except Exception as e:
                     # Log do erro, mas não bloqueia o save
                     print(f"Erro ao processar arquivo {getattr(uploaded_file, 'name', 'desconhecido')}: {str(e)}")
