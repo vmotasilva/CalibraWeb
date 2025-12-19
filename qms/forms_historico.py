@@ -96,31 +96,33 @@ class HistoricoCalibracaoForm(forms.ModelForm):
     def save(self, commit=True):
         instance = super().save(commit=False)
         
-        # Salvar instância primeiro se houver mudanças no modelo
+        # Salvar instância SEMPRE se commit=True (necessário para vincular arquivos)
         if commit:
             instance.save()
         
         # Processar upload de novos arquivos de padrão (depois de salvar a instância)
         uploaded_files = self.files.getlist('novos_arquivos_padroes') if self.files else []
-        for uploaded_file in uploaded_files:
-            if uploaded_file:  # Verificar se o arquivo não está vazio
-                try:
-                    # Validar arquivo PDF
-                    validate_pdf_file(uploaded_file)
-                    
-                    # Criar novo ArquivoPadrao
-                    novo_padrao = ArquivoPadrao.objects.create(
-                        nome=uploaded_file.name.replace('.pdf', ''),
-                        descricao='',
-                        arquivo=uploaded_file
-                    )
-                    # Adicionar ao formulário
-                    instance.arquivos_padroes.add(novo_padrao)
-                except ValidationError as e:
-                    # Log do erro de validação, mas não bloqueia o save
-                    print(f"Erro de validação ao processar arquivo {getattr(uploaded_file, 'name', 'desconhecido')}: {str(e)}")
-                except Exception as e:
-                    # Log do erro, mas não bloqueia o save
-                    print(f"Erro ao processar arquivo {getattr(uploaded_file, 'name', 'desconhecido')}: {str(e)}")
+        
+        if uploaded_files and any(f for f in uploaded_files if f):
+            # Só processa se houver arquivos realmente
+            for uploaded_file in uploaded_files:
+                if uploaded_file:  # Verificar se o arquivo não está vazio
+                    try:
+                        # Validar arquivo PDF
+                        validate_pdf_file(uploaded_file)
+                        
+                        # Criar novo ArquivoPadrao
+                        novo_padrao = ArquivoPadrao.objects.create(
+                            nome=uploaded_file.name.replace('.pdf', ''),
+                            descricao='',
+                            arquivo=uploaded_file
+                        )
+                        # Adicionar ao histórico
+                        instance.arquivos_padroes.add(novo_padrao)
+                        print(f"✓ Arquivo '{uploaded_file.name}' vinculado ao histórico {instance.id}")
+                    except ValidationError as e:
+                        print(f"✗ Erro de validação ao processar arquivo {getattr(uploaded_file, 'name', 'desconhecido')}: {str(e)}")
+                    except Exception as e:
+                        print(f"✗ Erro ao processar arquivo {getattr(uploaded_file, 'name', 'desconhecido')}: {str(e)}")
         
         return instance
