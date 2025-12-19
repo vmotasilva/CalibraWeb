@@ -484,8 +484,10 @@ def get_certificado_bytes_view(request, historico_id):
     
     try:
         # Read PDF file and return as bytes
-        with certificado.open('rb') as f:
-            pdf_bytes = f.read()
+        if certificado.size == 0:
+            return JsonResponse({'error': 'Arquivo de certificado vazio'}, status=400)
+        
+        pdf_bytes = certificado.read()
         
         return HttpResponse(
             pdf_bytes,
@@ -493,7 +495,8 @@ def get_certificado_bytes_view(request, historico_id):
             headers={'Content-Disposition': f'inline; filename="{certificado.name}"'}
         )
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.error(f"Erro ao ler certificado: {str(e)}", exc_info=True)
+        return JsonResponse({'error': f'Erro ao ler certificado: {str(e)}'}, status=500)
 
 
 @login_required
