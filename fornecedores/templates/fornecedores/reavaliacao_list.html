@@ -8,9 +8,9 @@
         <div>
             <span class="badge bg-info">Total: {{ total_reavaliacoes }} reavaliação(ões)</span>
         </div>
-        <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Nova Reavaliação
-        </a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#novaReavaliacao">
+            <i class="bi bi-plus-circle"></i> Adicionar Nova Reavaliação
+        </button>
     </div>
     
     {% if reavaliacoes_detalhes %}
@@ -85,9 +85,9 @@
     {% else %}
     <div class="alert alert-info" role="alert">
         <strong>Nenhuma reavaliação registrada ainda.</strong>
-        <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-primary ms-2">
+        <button type="button" class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#novaReavaliacao">
             Realizar Primeira Reavaliação
-        </a>
+        </button>
     </div>
     {% endif %}
     
@@ -97,4 +97,53 @@
         </a>
     </div>
 </div>
+
+<!-- Modal para Nova Reavaliação -->
+<div class="modal fade" id="novaReavaliacao" tabindex="-1" aria-labelledby="novaReavaliacaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="novaReavaliacaoLabel">
+                    <i class="bi bi-plus-circle"></i> Nova Reavaliação - {{ fornecedor.empresa }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning" role="alert">
+                    <strong>⚠️ Importante:</strong> A Reavaliação deve ser realizada <strong>a partir de janeiro</strong> (e apenas uma vez por ano). É permitido atrasos até o final do ano, mas a próxima reavaliação só poderá ser feita a partir de janeiro do próximo ano.
+                </div>
+                <form method="post" action="{% url 'fornecedores:reavaliacao_create' fornecedor.pk %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="data" class="form-label">Data da Reavaliação</label>
+                        <input 
+                            type="date" 
+                            name="data" 
+                            id="data" 
+                            class="form-control" 
+                            value="{{ today|date:'Y-m-d' }}"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observacao" class="form-label">Observação</label>
+                        <textarea name="observacao" id="observacao" class="form-control" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>Próximo passo:</strong> Após preencher essas informações, você será direcionado para responder os critérios de avaliação.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="document.querySelector('#novaReavaliacao form').submit()">
+                    <i class="bi bi-arrow-right"></i> Continuar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

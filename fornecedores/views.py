@@ -631,7 +631,8 @@ def reavaliacao_list(request, fornecedor_id):
     return render(request, "fornecedores/reavaliacao_list.html", {
         "reavaliacoes_detalhes": reavaliacoes_detalhes,
         "fornecedor": fornecedor,
-        "total_reavaliacoes": len(reavaliacoes_detalhes)
+        "total_reavaliacoes": len(reavaliacoes_detalhes),
+        "today": timezone.now().date()
     })
 
 def export_avaliacoes_excel(request, fornecedor_id):
