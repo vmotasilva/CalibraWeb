@@ -441,10 +441,6 @@ def avaliacao_reavaliacao_create(request, fornecedor_id):
         "fornecedor": fornecedor,
         "perguntas_com_respostas": perguntas_com_respostas,
         "ultima_reavaliacao": ultima_reavaliacao,
-    })    return render(request, "fornecedores/avaliacao_selecao_form.html", {
-        "fornecedor": fornecedor,
-        "perguntas_com_respostas": perguntas_com_respostas,
-        "ultima_avaliacao": ultima_avaliacao,
     })
 
 def avaliacao_create(request, fornecedor_id):
