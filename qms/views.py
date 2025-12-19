@@ -466,6 +466,9 @@ def remover_certificado_historico_view(request, historico_id):
 @login_required
 def get_certificado_bytes_view(request, historico_id):
     """Return certificate PDF as bytes for PDF.js viewer."""
+    from django.core.files.storage import default_storage
+    import os
+    
     historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
     
     # Get the type of certificate to return (original or stamped)
@@ -480,22 +483,44 @@ def get_certificado_bytes_view(request, historico_id):
         certificado = historico.certificado_carimbado or historico.certificado
     
     if not certificado:
+        logger.warning(f"Certificado não encontrado para historico {historico_id}")
         return JsonResponse({'error': 'Certificado não encontrado'}, status=404)
     
     try:
-        # Read PDF file and return as bytes
-        if certificado.size == 0:
+        # Verify file exists and has content
+        file_path = certificado.name
+        logger.info(f"Tentando ler certificado: {file_path}")
+        
+        # Check if file exists
+        if not default_storage.exists(file_path):
+            logger.error(f"Arquivo não existe no storage: {file_path}")
+            return JsonResponse({'error': 'Arquivo de certificado não encontrado no armazenamento'}, status=404)
+        
+        # Get file size
+        file_size = default_storage.size(file_path)
+        logger.info(f"Tamanho do arquivo: {file_size} bytes")
+        
+        if file_size == 0:
+            logger.error(f"Arquivo de certificado vazio: {file_path}")
             return JsonResponse({'error': 'Arquivo de certificado vazio'}, status=400)
         
-        pdf_bytes = certificado.read()
+        # Read file content
+        with default_storage.open(file_path, 'rb') as f:
+            pdf_bytes = f.read()
+        
+        if not pdf_bytes:
+            logger.error(f"Não foi possível ler o conteúdo do arquivo: {file_path}")
+            return JsonResponse({'error': 'Não foi possível ler o conteúdo do arquivo'}, status=400)
+        
+        logger.info(f"Certificado lido com sucesso: {len(pdf_bytes)} bytes")
         
         return HttpResponse(
             pdf_bytes,
             content_type='application/pdf',
-            headers={'Content-Disposition': f'inline; filename="{certificado.name}"'}
+            headers={'Content-Disposition': f'inline; filename="{os.path.basename(file_path)}"'}
         )
     except Exception as e:
-        logger.error(f"Erro ao ler certificado: {str(e)}", exc_info=True)
+        logger.error(f"Erro ao ler certificado para historico {historico_id}: {str(e)}", exc_info=True)
         return JsonResponse({'error': f'Erro ao ler certificado: {str(e)}'}, status=500)
 
 
