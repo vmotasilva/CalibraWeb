@@ -11,6 +11,7 @@ urlpatterns = [
     path("<int:fornecedor_id>/documentos/novo/", views.documento_create, name="documento_create"),
     path("<int:fornecedor_id>/documentos/<int:doc_id>/remover/", views.documento_delete, name="documento_delete"),
     path("<int:fornecedor_id>/avaliacoes/selecao/", views.avaliacao_selecao_create, name="avaliacao_selecao_create"),
+    path("<int:fornecedor_id>/avaliacoes/reavaliacao/", views.avaliacao_reavaliacao_create, name="avaliacao_reavaliacao_create"),
     path("<int:fornecedor_id>/avaliacoes/", views.avaliacao_list, name="avaliacao_list"),
     path("<int:fornecedor_id>/avaliacoes/nova/", views.avaliacao_create, name="avaliacao_create"),
     path("<int:fornecedor_id>/avaliacoes/<int:avaliacao_id>/editar/", views.avaliacao_edit, name="avaliacao_edit"),

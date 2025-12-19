@@ -157,6 +157,32 @@ def fornecedor_detail(request, pk):
             respostas_sim = respostas_avaliacao.filter(resposta=True).count()
             percentual_avaliacao = (respostas_sim / total_perguntas * 100) if total_perguntas > 0 else 0
     
+    # Perguntas de Reavaliação (REAVALIACAO)
+    perguntas_reavaliacao = PerguntaAvaliacao.objects.filter(tipo="REAVALIACAO", ativo=True).order_by("ordem")
+    
+    # Respostas de Reavaliação - última reavaliação
+    ultima_reavaliacao = None
+    respostas_reavaliacao = []
+    percentual_reavaliacao = 0
+    
+    if perguntas_reavaliacao.exists():
+        # Busca a última reavaliação do tipo REAVALIACAO
+        ultima_reavaliacao = AvaliacaoFornecedor.objects.filter(
+            fornecedor=fornecedor,
+            tipo="REAVALIACAO"
+        ).order_by("-data").first()
+        
+        if ultima_reavaliacao:
+            # Busca todas as respostas dessa reavaliação
+            respostas_reavaliacao = RespostaAvaliacao.objects.filter(
+                avaliacao=ultima_reavaliacao
+            ).order_by("pergunta__ordem")
+            
+            # Calcula percentual: (respostas SIM / total perguntas) * 100
+            total_perguntas = perguntas_reavaliacao.count()
+            respostas_sim = respostas_reavaliacao.filter(resposta=True).count()
+            percentual_reavaliacao = (respostas_sim / total_perguntas * 100) if total_perguntas > 0 else 0
+    
     # Perguntas de Monitoramento
     perguntas = PerguntaAvaliacao.objects.filter(tipo="MONITORAMENTO", ativo=True).order_by("ordem")
     grupos = {"PRODUTO": [], "SERVICO": [], "AMBOS": []}
@@ -186,6 +212,10 @@ def fornecedor_detail(request, pk):
         "ultima_avaliacao_selecao": ultima_avaliacao_selecao,
         "respostas_avaliacao": respostas_avaliacao,
         "percentual_avaliacao": percentual_avaliacao,
+        "perguntas_reavaliacao": perguntas_reavaliacao,
+        "ultima_reavaliacao": ultima_reavaliacao,
+        "respostas_reavaliacao": respostas_reavaliacao,
+        "percentual_reavaliacao": percentual_reavaliacao,
         "monitoramento_produto": grupos["PRODUTO"],
         "monitoramento_servico": grupos["SERVICO"],
         "monitoramento_ambos": grupos["AMBOS"],
@@ -329,6 +359,89 @@ def avaliacao_selecao_create(request, fornecedor_id):
         })
     
     return render(request, "fornecedores/avaliacao_selecao_form.html", {
+        "fornecedor": fornecedor,
+        "perguntas_com_respostas": perguntas_com_respostas,
+        "ultima_avaliacao": ultima_avaliacao,
+    })
+
+def avaliacao_reavaliacao_create(request, fornecedor_id):
+    """Criar/editar reavaliação (REAVALIACAO)"""
+    fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
+    perguntas = PerguntaAvaliacao.objects.filter(tipo="REAVALIACAO", ativo=True).order_by("ordem")
+    
+    # Busca última reavaliação
+    ultima_reavaliacao = AvaliacaoFornecedor.objects.filter(
+        fornecedor=fornecedor,
+        tipo="REAVALIACAO"
+    ).order_by("-data").first()
+    
+    if request.method == "POST":
+        # Cria nova reavaliação
+        avaliacao = AvaliacaoFornecedor(
+            fornecedor=fornecedor,
+            data=request.POST.get("data") or timezone.now().date(),
+            tipo="REAVALIACAO",
+            avaliador=request.user,
+            observacao=request.POST.get("observacao", "")
+        )
+        avaliacao.save()
+        
+        # Salva as respostas
+        total_sim = 0
+        for p in perguntas:
+            resposta_val = request.POST.get(f"resposta_{p.id}")
+            resposta_bool = resposta_val == "on"
+            if resposta_bool:
+                total_sim += 1
+            RespostaAvaliacao.objects.create(
+                avaliacao=avaliacao,
+                pergunta=p,
+                resposta=resposta_bool,
+                observacao=""
+            )
+        
+        # Calcula pontuação percentual
+        total_perguntas = perguntas.count()
+        percentual = (total_sim / total_perguntas * 100) if total_perguntas > 0 else 0
+        avaliacao.pontuacao_ano = percentual
+        
+        if percentual >= 80:
+            avaliacao.resultado = "Excelente"
+        elif percentual >= 60:
+            avaliacao.resultado = "Bom"
+        elif percentual >= 40:
+            avaliacao.resultado = "Satisfatório"
+        else:
+            avaliacao.resultado = "Insatisfatório"
+        
+        avaliacao.save()
+        messages.success(request, "Reavaliação registrada com sucesso!")
+        return redirect(reverse("fornecedores:fornecedor_detail", args=[fornecedor.pk]))
+    
+    # GET - Montar lista de respostas para pré-preenchimento
+    respostas_existentes = {}
+    if ultima_reavaliacao:
+        for resposta in ultima_reavaliacao.respostas.all():
+            respostas_existentes[resposta.pergunta_id] = {
+                'resposta': resposta.resposta,
+                'observacao': resposta.observacao
+            }
+    
+    # Preparar lista de perguntas com respostas
+    perguntas_com_respostas = []
+    for pergunta in perguntas:
+        resp = respostas_existentes.get(pergunta.id, {'resposta': False, 'observacao': ''})
+        perguntas_com_respostas.append({
+            'pergunta': pergunta,
+            'resposta_anterior': resp['resposta'],
+            'observacao_anterior': resp['observacao']
+        })
+    
+    return render(request, "fornecedores/avaliacao_reavaliacao_form.html", {
+        "fornecedor": fornecedor,
+        "perguntas_com_respostas": perguntas_com_respostas,
+        "ultima_reavaliacao": ultima_reavaliacao,
+    })    return render(request, "fornecedores/avaliacao_selecao_form.html", {
         "fornecedor": fornecedor,
         "perguntas_com_respostas": perguntas_com_respostas,
         "ultima_avaliacao": ultima_avaliacao,

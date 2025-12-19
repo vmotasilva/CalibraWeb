@@ -112,6 +112,68 @@
 </div>
 
 
+<h3>Reavaliação</h3>
+<div class="accordion" id="reavaliaoAccordion">
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingReavaliacao">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseReavaliacao" aria-expanded="true" aria-controls="collapseReavaliacao">
+                Critérios 
+                {% if ultima_reavaliacao %}
+                <span class="badge bg-success ms-2">{{ percentual_reavaliacao|floatformat:1 }}%</span>
+                {% endif %}
+            </button>
+        </h2>
+        <div id="collapseReavaliacao" class="accordion-collapse collapse show" aria-labelledby="headingReavaliacao" data-bs-parent="#reavaliaoAccordion">
+            <div class="accordion-body">
+                {% if perguntas_reavaliacao %}
+                    {% if ultima_reavaliacao %}
+                    <div class="mb-3">
+                        <p class="mb-2"><strong>Última reavaliação:</strong> {{ ultima_reavaliacao.data|date:"d/m/Y" }}</p>
+                        <div class="list-group">
+                            {% for resposta in respostas_reavaliacao %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span>{{ resposta.pergunta.texto }}</span>
+                                        <small class="d-block text-muted">Ordem: {{ resposta.pergunta.ordem }}</small>
+                                    </div>
+                                    <span class="badge {% if resposta.resposta %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ resposta.resposta|yesno:"SIM,NÃO" }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info" role="alert">
+                        <strong>Nenhuma reavaliação respondida ainda.</strong>
+                    </div>
+                    <div class="list-group mb-3">
+                        {% for pergunta in perguntas_reavaliacao %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span>{{ pergunta.texto }}</span>
+                                <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
+                            </div>
+                            <span class="badge bg-secondary">Pendente</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-primary">
+                        {% if ultima_reavaliacao %}Responder Novamente{% else %}Responder Reavaliação{% endif %}
+                    </a>
+                {% else %}
+                <p class="text-muted"><em>Nenhuma pergunta de reavaliação cadastrada.</em></p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <h3>Monitoramento <span class="badge bg-success">Pontuação: {{ pontuacao_geral|floatformat:1 }}</span></h3>
 <div class="accordion" id="monitoramentoAccordion">
     <div class="accordion-item">
