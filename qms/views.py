@@ -474,34 +474,49 @@ def get_certificado_bytes_view(request, historico_id):
     # Get the type of certificate to return (original or stamped)
     tipo = request.GET.get('tipo', 'carimbado')  # Default to stamped if available
     
+    logger.info(f"[GET_CERT] Requisição de certificado tipo='{tipo}' para historico {historico_id}")
+    logger.info(f"[GET_CERT] certificado_carimbado: {historico.certificado_carimbado.name if historico.certificado_carimbado else 'None'}")
+    logger.info(f"[GET_CERT] certificado: {historico.certificado.name if historico.certificado else 'None'}")
+    
     if tipo == 'carimbado':
-        certificado = historico.certificado_carimbado or historico.certificado
+        certificado = historico.certificado_carimbado if historico.certificado_carimbado else historico.certificado
     elif tipo == 'original':
         certificado = historico.certificado
     else:
         # Fallback: prefer stamped, then original
-        certificado = historico.certificado_carimbado or historico.certificado
+        certificado = historico.certificado_carimbado if historico.certificado_carimbado else historico.certificado
     
     if not certificado:
-        logger.warning(f"Certificado não encontrado para historico {historico_id}")
+        logger.warning(f"[GET_CERT] Nenhum certificado disponível para historico {historico_id} (tipo={tipo})")
         return JsonResponse({'error': 'Certificado não encontrado'}, status=404)
     
     try:
-        # Verify file exists and has content
+        # Get the file name/path
         file_path = certificado.name
-        logger.info(f"Tentando ler certificado: {file_path}")
+        logger.info(f"[GET_CERT] Tentando ler arquivo: {file_path}")
         
         # Check if file exists
         if not default_storage.exists(file_path):
-            logger.error(f"Arquivo não existe no storage: {file_path}")
-            return JsonResponse({'error': 'Arquivo de certificado não encontrado no armazenamento'}, status=404)
+            logger.error(f"[GET_CERT] Arquivo não existe no storage: {file_path}")
+            logger.info(f"[GET_CERT] Arquivos disponíveis no storage:")
+            # Try to list files in the directory
+            try:
+                from django.conf import settings
+                media_root = settings.MEDIA_ROOT
+                cert_dir = os.path.join(media_root, 'certificados')
+                if os.path.exists(cert_dir):
+                    files = os.listdir(cert_dir)
+                    logger.info(f"[GET_CERT] Arquivos em {cert_dir}: {files}")
+            except Exception as e:
+                logger.error(f"[GET_CERT] Erro ao listar arquivos: {str(e)}")
+            return JsonResponse({'error': f'Arquivo não encontrado: {file_path}'}, status=404)
         
         # Get file size
         file_size = default_storage.size(file_path)
-        logger.info(f"Tamanho do arquivo: {file_size} bytes")
+        logger.info(f"[GET_CERT] Tamanho do arquivo: {file_size} bytes")
         
         if file_size == 0:
-            logger.error(f"Arquivo de certificado vazio: {file_path}")
+            logger.error(f"[GET_CERT] Arquivo vazio: {file_path}")
             return JsonResponse({'error': 'Arquivo de certificado vazio'}, status=400)
         
         # Read file content
@@ -509,10 +524,10 @@ def get_certificado_bytes_view(request, historico_id):
             pdf_bytes = f.read()
         
         if not pdf_bytes:
-            logger.error(f"Não foi possível ler o conteúdo do arquivo: {file_path}")
+            logger.error(f"[GET_CERT] Conteúdo vazio após leitura: {file_path}")
             return JsonResponse({'error': 'Não foi possível ler o conteúdo do arquivo'}, status=400)
         
-        logger.info(f"Certificado lido com sucesso: {len(pdf_bytes)} bytes")
+        logger.info(f"[GET_CERT] Certificado lido com sucesso: {len(pdf_bytes)} bytes")
         
         return HttpResponse(
             pdf_bytes,
@@ -520,7 +535,7 @@ def get_certificado_bytes_view(request, historico_id):
             headers={'Content-Disposition': f'inline; filename="{os.path.basename(file_path)}"'}
         )
     except Exception as e:
-        logger.error(f"Erro ao ler certificado para historico {historico_id}: {str(e)}", exc_info=True)
+        logger.error(f"[GET_CERT] Erro ao ler certificado para historico {historico_id}: {str(e)}", exc_info=True)
         return JsonResponse({'error': f'Erro ao ler certificado: {str(e)}'}, status=500)
 
 
