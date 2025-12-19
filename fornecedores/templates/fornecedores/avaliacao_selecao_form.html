@@ -17,7 +17,14 @@
         
         <div class="mb-3">
             <label for="data" class="form-label">Data da Avaliação</label>
-            <input type="date" name="data" id="data" class="form-control" required>
+            <input 
+                type="date" 
+                name="data" 
+                id="data" 
+                class="form-control" 
+                value="{% if ultima_avaliacao %}{{ ultima_avaliacao.data|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}"
+                required
+            >
         </div>
         
         <div class="mb-3">

@@ -297,8 +297,13 @@ def avaliacao_selecao_create(request, fornecedor_id):
     ).order_by("-data").first()
     
     if request.method == "POST":
-        # Se existe avaliação de hoje, atualiza ao invés de criar
-        data_submit = request.POST.get("data") or timezone.now().date()
+        # Converte data do POST (string) para date object
+        data_str = request.POST.get("data")
+        try:
+            from datetime import datetime
+            data_submit = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else timezone.now().date()
+        except (ValueError, TypeError):
+            data_submit = timezone.now().date()
         
         if ultima_avaliacao and ultima_avaliacao.data == data_submit:
             # Atualizar avaliação existente
@@ -374,6 +379,7 @@ def avaliacao_selecao_create(request, fornecedor_id):
         "fornecedor": fornecedor,
         "perguntas_com_respostas": perguntas_com_respostas,
         "ultima_avaliacao": ultima_avaliacao,
+        "today": timezone.now().date(),
     })
 
 def avaliacao_reavaliacao_create(request, fornecedor_id):
@@ -388,8 +394,13 @@ def avaliacao_reavaliacao_create(request, fornecedor_id):
     ).order_by("-data").first()
     
     if request.method == "POST":
-        # Se existe reavaliação de hoje ou há menos de 1 minuto, atualiza ao invés de criar
-        data_submit = request.POST.get("data") or timezone.now().date()
+        # Converte data do POST (string) para date object
+        data_str = request.POST.get("data")
+        try:
+            from datetime import datetime
+            data_submit = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else timezone.now().date()
+        except (ValueError, TypeError):
+            data_submit = timezone.now().date()
         
         if ultima_reavaliacao and ultima_reavaliacao.data == data_submit:
             # Atualizar reavaliação existente
@@ -465,6 +476,7 @@ def avaliacao_reavaliacao_create(request, fornecedor_id):
         "fornecedor": fornecedor,
         "perguntas_com_respostas": perguntas_com_respostas,
         "ultima_reavaliacao": ultima_reavaliacao,
+        "today": timezone.now().date(),
     })
 
 def avaliacao_create(request, fornecedor_id):
