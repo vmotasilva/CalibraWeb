@@ -1397,38 +1397,19 @@ def editar_historico_calibracao_view(request, historico_id):
             return redirect('editar_historico_calibracao', historico_id=historico_id)
 
         if action == 'update_history':
-            print(f"\nDEBUG VIEW: === INICIANDO UPDATE_HISTORY ===")
-            print(f"DEBUG VIEW: Histórico ID: {historico_id}")
-            print(f"DEBUG VIEW: request.FILES keys: {list(request.FILES.keys())}")
-            
             form = HistoricoCalibracaoForm(request.POST, request.FILES, instance=historico)
             
             # Check if files were uploaded
             uploaded_files = request.FILES.getlist('novos_arquivos_padroes')
             has_files = any(f for f in uploaded_files if f)
             
-            print(f"DEBUG VIEW: Arquivos no request: {len(uploaded_files)}")
-            if has_files:
-                print(f"DEBUG VIEW: {len(uploaded_files)} arquivo(s) selecionado(s)")
-                for f in uploaded_files:
-                    if f:
-                        print(f"DEBUG VIEW: Arquivo - {f.name} ({f.size} bytes, content_type: {f.content_type})")
-            else:
-                print(f"DEBUG VIEW: Nenhum arquivo selecionado")
-            
             if form.is_valid():
-                print(f"DEBUG VIEW: Formulário válido para histórico {historico_id}")
                 form.save()
                 
                 # PROCESSAR ARQUIVOS DE PADRÃO MANUALMENTE
-                print(f"DEBUG VIEW: Processando arquivos...")
-                uploaded_files = request.FILES.getlist('novos_arquivos_padroes')
-                print(f"DEBUG VIEW: Arquivos encontrados: {len(uploaded_files)}")
-                
                 for idx, uploaded_file in enumerate(uploaded_files):
                     if uploaded_file:
                         try:
-                            print(f"DEBUG VIEW: Validando arquivo {idx+1}: {uploaded_file.name}")
                             validate_pdf_file(uploaded_file)
                             
                             # Criar ArquivoPadrao vinculado diretamente ao histórico
@@ -1438,15 +1419,9 @@ def editar_historico_calibracao_view(request, historico_id):
                                 descricao='',
                                 arquivo=uploaded_file
                             )
-                            print(f"✓ Arquivo '{uploaded_file.name}' criado e vinculado com sucesso")
                         except Exception as e:
-                            print(f"✗ Erro ao processar {uploaded_file.name}: {str(e)}")
-                
-                # Reload do histórico para ver os arquivos atualizados
-                historico.refresh_from_db()
-                padroes_count = historico.padroes_arquivo.count()
-                print(f"DEBUG VIEW: Histórico agora tem {padroes_count} padrão(s)")
-                print(f"DEBUG VIEW: === FIM UPDATE_HISTORY (SUCESSO) ===\n")
+                            # Erros silenciosos para não bloquear o upload
+                            pass
                 
                 # Feedback message
                 if has_files:
@@ -1455,14 +1430,6 @@ def editar_historico_calibracao_view(request, historico_id):
                     messages.success(request, 'Histórico atualizado com sucesso.')
                 
                 return redirect('editar_historico_calibracao', historico_id=historico_id)
-            else:
-                # Mostrar erros específicos
-                error_msg = 'Erro ao atualizar histórico: '
-                for field, errors in form.errors.items():
-                    error_msg += f"{field}: {', '.join(errors)}. "
-                print(f"DEBUG VIEW: Form errors: {form.errors}")
-                print(f"DEBUG VIEW: === FIM UPDATE_HISTORY (ERRO) ===\n")
-                messages.error(request, error_msg)
         
         elif action == 'update_resultado':
             resultado_id = request.POST.get('resultado_id')
