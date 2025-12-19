@@ -28,25 +28,27 @@
         
         <!-- BLOCO DE PRODUTOS -->
         <div class="mt-5">
-            <h4 class="mb-3">PRODUTOS</h4>
+            <h4 class="mb-3">PRODUTOS FORNECIDOS</h4>
             <div class="mb-3">
-                <label for="produtos" class="form-label">Produtos Fornecidos (um por linha)</label>
-                <textarea name="produtos" id="produtos" class="form-control" rows="4" placeholder="Produto 1&#10;Produto 2&#10;Produto 3"></textarea>
+                <label for="produtos" class="form-label">Produtos (um por linha)</label>
+                <textarea name="produtos" id="produtos" class="form-control" rows="4" placeholder="Produto 1&#10;Produto 2&#10;Produto 3">{{ produtos_anteriores }}</textarea>
                 <small class="text-muted">Digite cada produto em uma linha separada</small>
             </div>
-            <div id="matrizProdutos" class="mt-4"></div>
         </div>
         
         <!-- BLOCO DE SERVIÇOS -->
-        <div class="mt-5">
-            <h4 class="mb-3">SERVIÇOS</h4>
+        <div class="mt-4">
+            <h4 class="mb-3">SERVIÇOS PRESTADOS</h4>
             <div class="mb-3">
-                <label for="servicos" class="form-label">Serviços Prestados (um por linha)</label>
-                <textarea name="servicos" id="servicos" class="form-control" rows="4" placeholder="Serviço 1&#10;Serviço 2&#10;Serviço 3"></textarea>
+                <label for="servicos" class="form-label">Serviços (um por linha)</label>
+                <textarea name="servicos" id="servicos" class="form-control" rows="4" placeholder="Serviço 1&#10;Serviço 2&#10;Serviço 3">{{ servicos_anteriores }}</textarea>
                 <small class="text-muted">Digite cada serviço em uma linha separada</small>
             </div>
-            <div id="matrizServicos" class="mt-4"></div>
         </div>
+        
+        <!-- MATRIZ ÚNICA DE AVALIAÇÃO -->
+        <h4 class="mt-5 mb-4">SELEÇÃO DE FORNECEDOR</h4>
+        <div id="matrizContainer" class="table-responsive"></div>
         
         <!-- LEGENDA -->
         <div class="mt-5 p-3" style="background-color: #f8f9fa; border-left: 4px solid #333;">
@@ -74,42 +76,64 @@
     // Dados anteriores
     const respostasAnteriores = {{ respostas_anteriores|safe }};
     
-    // Função para gerar matriz de um tipo (Produto ou Serviço)
-    function gerarMatriz(tipo) {
-        const textareaId = tipo === 'PRODUTO' ? 'produtos' : 'servicos';
-        const containerDiv = tipo === 'PRODUTO' ? 'matrizProdutos' : 'matrizServicos';
-        const textarea = document.getElementById(textareaId);
-        const itens = textarea.value.split('\n').map(s => s.trim()).filter(s => s);
+    // Função para gerar matriz única com produtos e serviços
+    function gerarMatriz() {
+        const produtosText = document.getElementById('produtos').value;
+        const servicosText = document.getElementById('servicos').value;
         
-        if (itens.length === 0) {
-            document.getElementById(containerDiv).innerHTML = '';
+        const produtos = produtosText.split('\n').map(s => s.trim()).filter(s => s);
+        const servicos = servicosText.split('\n').map(s => s.trim()).filter(s => s);
+        
+        if (produtos.length === 0 && servicos.length === 0) {
+            document.getElementById('matrizContainer').innerHTML = '<p class="text-muted">Digite produtos e/ou serviços acima para ver a matriz.</p>';
             return;
         }
         
-        let html = '<div class="table-responsive"><table class="table table-bordered border-dark"><thead class="table-dark"><tr>';
-        html += '<th style="width: 25%; vertical-align: middle;">' + tipo + '</th>';
+        // Inicia tabela
+        let html = '<div class="table-responsive"><table class="table table-bordered border-dark">';
+        html += '<thead class="table-dark"><tr>';
+        html += '<th style="width: 30%; vertical-align: middle;">Tipo do Produto/Serviço</th>';
         html += '<th colspan="4" class="text-center">Requisitos (marcar com "X")</th>';
         html += '</tr><tr class="table-dark">';
         html += '<th></th>';
-        html += '<th class="text-center" style="width: 18.75%;">A</th>';
-        html += '<th class="text-center" style="width: 18.75%;">B</th>';
-        html += '<th class="text-center" style="width: 18.75%;">C</th>';
-        html += '<th class="text-center" style="width: 18.75%;">D</th>';
+        html += '<th class="text-center" style="width: 17.5%;">A</th>';
+        html += '<th class="text-center" style="width: 17.5%;">B</th>';
+        html += '<th class="text-center" style="width: 17.5%;">C</th>';
+        html += '<th class="text-center" style="width: 17.5%;">D</th>';
         html += '</tr></thead><tbody>';
         
-        itens.forEach(item => {
-            html += '<tr><td class="table-active"><strong>' + escapeHtml(item) + '</strong></td>';
-            ['A', 'B', 'C', 'D'].forEach(req => {
-                const fieldName = 'matriz_' + tipo + '_' + item + '_' + req;
-                const respKey = tipo + '_' + item + '_' + req;
-                const isChecked = respostasAnteriores[respKey] ? 'checked' : '';
-                html += '<td class="text-center"><input class="form-check-input" type="checkbox" name="' + fieldName + '" ' + isChecked + '></td>';
+        // Linha para Produtos
+        if (produtos.length > 0) {
+            html += '<tr class="table-info"><td colspan="5" class="fw-bold">PRODUTOS</td></tr>';
+            produtos.forEach(produto => {
+                html += '<tr><td class="table-active ps-4">' + escapeHtml(produto) + '</td>';
+                ['A', 'B', 'C', 'D'].forEach(req => {
+                    const fieldName = 'matriz_PRODUTO_' + produto + '_' + req;
+                    const respKey = 'PRODUTO_' + produto + '_' + req;
+                    const isChecked = respostasAnteriores[respKey] ? 'checked' : '';
+                    html += '<td class="text-center"><input class="form-check-input" type="checkbox" name="' + fieldName + '" ' + isChecked + '></td>';
+                });
+                html += '</tr>';
             });
-            html += '</tr>';
-        });
+        }
+        
+        // Linha para Serviços
+        if (servicos.length > 0) {
+            html += '<tr class="table-info"><td colspan="5" class="fw-bold">SERVIÇOS</td></tr>';
+            servicos.forEach(servico => {
+                html += '<tr><td class="table-active ps-4">' + escapeHtml(servico) + '</td>';
+                ['A', 'B', 'C', 'D'].forEach(req => {
+                    const fieldName = 'matriz_SERVICO_' + servico + '_' + req;
+                    const respKey = 'SERVICO_' + servico + '_' + req;
+                    const isChecked = respostasAnteriores[respKey] ? 'checked' : '';
+                    html += '<td class="text-center"><input class="form-check-input" type="checkbox" name="' + fieldName + '" ' + isChecked + '></td>';
+                });
+                html += '</tr>';
+            });
+        }
         
         html += '</tbody></table></div>';
-        document.getElementById(containerDiv).innerHTML = html;
+        document.getElementById('matrizContainer').innerHTML = html;
     }
     
     // Escapa caracteres HTML
@@ -119,14 +143,11 @@
         return div.innerHTML;
     }
     
-    // Atualiza matrizes quando textos mudam
-    document.getElementById('produtos').addEventListener('input', () => gerarMatriz('PRODUTO'));
-    document.getElementById('servicos').addEventListener('input', () => gerarMatriz('SERVICO'));
+    // Atualiza matriz quando textos mudam
+    document.getElementById('produtos').addEventListener('input', gerarMatriz);
+    document.getElementById('servicos').addEventListener('input', gerarMatriz);
     
-    // Carrega matrizes iniciais
-    document.addEventListener('DOMContentLoaded', () => {
-        gerarMatriz('PRODUTO');
-        gerarMatriz('SERVICO');
-    });
+    // Carrega matriz inicial
+    document.addEventListener('DOMContentLoaded', gerarMatriz);
 </script>
 {% endblock %}
