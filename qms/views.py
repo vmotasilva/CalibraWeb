@@ -1347,8 +1347,14 @@ def editar_historico_calibracao_view(request, historico_id):
     from .forms_historico import HistoricoCalibracaoForm, validate_pdf_file
     from .forms import ResultadoFaixaCalibracaoForm
     from metrologia.models import ResultadoFaixaCalibracao, FaixaMedicao
+    from django.db.models import Prefetch
     
-    historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    # Prefetch padroes_arquivo para evitar N+1 queries e garantir que estejam carregados
+    try:
+        historico = HistoricoCalibracao.objects.prefetch_related('padroes_arquivo').get(id=historico_id)
+    except HistoricoCalibracao.DoesNotExist:
+        raise Http404("Histórico de calibração não encontrado")
+    
     resultados_faixa = historico.resultados_faixa.all().select_related('faixa')
     
     if request.method == 'POST':
@@ -1403,25 +1409,42 @@ def editar_historico_calibracao_view(request, historico_id):
             uploaded_files = request.FILES.getlist('novos_arquivos_padroes')
             has_files = any(f for f in uploaded_files if f)
             
+            print(f"[DEBUG] FILES RECEIVED: {len(uploaded_files)} files")
+            print(f"[DEBUG] HAS_FILES: {has_files}")
+            for f in uploaded_files:
+                if f:
+                    print(f"[DEBUG] File: {f.name} ({f.size} bytes)")
+            
             if form.is_valid():
                 form.save()
+                print(f"[DEBUG] Form saved for historico {historico_id}")
                 
                 # PROCESSAR ARQUIVOS DE PADRÃO MANUALMENTE
-                for idx, uploaded_file in enumerate(uploaded_files):
-                    if uploaded_file:
-                        try:
-                            validate_pdf_file(uploaded_file)
-                            
-                            # Criar ArquivoPadrao vinculado diretamente ao histórico
-                            novo_padrao = ArquivoPadrao.objects.create(
-                                historico=historico,
-                                nome=uploaded_file.name.replace('.pdf', ''),
-                                descricao='',
-                                arquivo=uploaded_file
-                            )
-                        except Exception as e:
-                            # Erros silenciosos para não bloquear o upload
-                            pass
+                if uploaded_files:
+                    print(f"[DEBUG] Processing {len(uploaded_files)} files...")
+                    for idx, uploaded_file in enumerate(uploaded_files):
+                        if uploaded_file:
+                            try:
+                                validate_pdf_file(uploaded_file)
+                                print(f"[DEBUG] File {idx+1} validated: {uploaded_file.name}")
+                                
+                                # Criar ArquivoPadrao vinculado diretamente ao histórico
+                                novo_padrao = ArquivoPadrao.objects.create(
+                                    historico=historico,
+                                    nome=uploaded_file.name.replace('.pdf', ''),
+                                    descricao='',
+                                    arquivo=uploaded_file
+                                )
+                                print(f"[DEBUG] ArquivoPadrao created: {novo_padrao.id}")
+                            except Exception as e:
+                                print(f"[ERROR] Failed to process {uploaded_file.name}: {str(e)}")
+                                import traceback
+                                traceback.print_exc()
+                
+                # Verificar padrões salvos
+                historico.refresh_from_db()
+                padroes_count = historico.padroes_arquivo.count()
+                print(f"[DEBUG] Total padrões agora: {padroes_count}")
                 
                 # Feedback message
                 if has_files:
@@ -1430,6 +1453,13 @@ def editar_historico_calibracao_view(request, historico_id):
                     messages.success(request, 'Histórico atualizado com sucesso.')
                 
                 return redirect('editar_historico_calibracao', historico_id=historico_id)
+            else:
+                # Mostrar erros específicos
+                error_msg = 'Erro ao atualizar histórico: '
+                for field, errors in form.errors.items():
+                    error_msg += f"{field}: {', '.join(errors)}. "
+                print(f"[ERROR] Form errors: {form.errors}")
+                messages.error(request, error_msg)
         
         elif action == 'update_resultado':
             resultado_id = request.POST.get('resultado_id')
@@ -1505,6 +1535,10 @@ def editar_historico_calibracao_view(request, historico_id):
     
     # Get faixas that don't have results yet
     faixas_sem_resultados = [f for f in faixas_disponiveis if f.id not in faixas_com_resultados]
+    
+    # DEBUG: Log padroes count before rendering
+    padroes_count = historico.padroes_arquivo.count()
+    print(f"[DEBUG] Rendering editar_historico: historico={historico.id}, padroes_count={padroes_count}")
     
     context = {
         'historico': historico,
