@@ -74,9 +74,11 @@
                             <i class="bi bi-pencil"></i> Editar
                         </a>
                         <form method="get" action="{% url 'fornecedores:reavaliacao_delete' fornecedor.pk %}" style="display: inline;">
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja deletar a última reavaliação de {{ item.reavaliacao.data|date:\"d/m/Y\" }}? Esta ação não pode ser desfeita.')">
+                            {% with data_formatada=item.reavaliacao.data|date:"d/m/Y" %}
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja deletar a última reavaliação de {{ data_formatada }}? Esta ação não pode ser desfeita.')">
                                 <i class="bi bi-trash"></i> Deletar Última
                             </button>
+                            {% endwith %}
                         </form>
                         <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-sm btn-secondary">
                             <i class="bi bi-arrow-left"></i> Voltar

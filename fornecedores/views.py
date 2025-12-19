@@ -96,6 +96,7 @@ def pergunta_delete(request, pk):
 from .forms_pergunta import PerguntaAvaliacaoForm
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
+from django.contrib.auth.decorators import login_required
 from .models import Fornecedor, DocumentoFornecedor, AvaliacaoFornecedor, PerguntaAvaliacao, RespostaAvaliacao, RespostaMatrizAvaliacao
 from django.db import models
 from .forms import FornecedorForm
