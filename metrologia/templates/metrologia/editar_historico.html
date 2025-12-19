@@ -23,7 +23,7 @@
                     <i class="bi bi-calendar-check"></i> Dados do Histórico
                 </div>
                 <div class="card-body pb-2">
-                    <form method="post" enctype="multipart/form-data" class="needs-validation">
+                    <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="update_history">
 
@@ -126,12 +126,9 @@
                                                         <a href="{% url 'download_arquivo_padrao' padrao.id %}" class="btn btn-sm btn-outline-primary">
                                                             <i class="bi bi-download"></i> Download
                                                         </a>
-                                                        <form method="post" style="display: inline;">
-                                                            {% csrf_token %}
-                                                            <button type="submit" name="acao" value="remover_padrao_{{ padrao.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover padrão {{ padrao.nome }}?')">
-                                                                <i class="bi bi-trash"></i>
-                                                            </button>
-                                                        </form>
+                                                        <button type="submit" name="acao" value="remover_padrao_{{ padrao.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover padrão {{ padrao.nome }}?')">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
                                                     </div>
                                                 </div>
                                                 {% endfor %}
@@ -168,15 +165,12 @@
                                 <hr class="my-2">
                                 {% endif %}
                                 <label for="id_certificado" class="form-label fw-bold small">Selecionar novo certificado:</label>
-                                <form method="post" enctype="multipart/form-data" style="display: inline;">
-                                    {% csrf_token %}
-                                    <div class="input-group">
-                                        <input type="file" id="id_certificado" name="certificado" class="form-control form-control-sm" accept=".pdf">
-                                        <button type="submit" class="btn btn-primary btn-sm" name="action" value="anexar_certificado">
-                                            <i class="bi bi-paperclip"></i> Anexar
-                                        </button>
-                                    </div>
-                                </form>
+                                <div class="input-group">
+                                    <input type="file" id="id_certificado" name="certificado" class="form-control form-control-sm" accept=".pdf">
+                                    <button type="submit" class="btn btn-primary btn-sm" name="action" value="anexar_certificado">
+                                        <i class="bi bi-paperclip"></i> Anexar
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
