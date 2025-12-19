@@ -792,57 +792,27 @@ def remover_certificado_historico_view(request, historico_id):
 
 @login_required
 def registrar_historico_calibracao_view(request, instrumento_id):
-    """Registra novo histórico de calibração e redireciona para edição no template unificado."""
+    """Cria novo histórico de calibração e redireciona para edição no template unificado (editar_historico.html)."""
     try:
         instrumento = get_object_or_404(Instrumento, id=instrumento_id)
-        logger.info(f"Registrar histórico: instrumento_id={instrumento_id}, method={request.method}")
+        logger.info(f"Registrar histórico: instrumento_id={instrumento_id}")
         
-        if request.method == 'POST':
-            form = HistoricoCalibracaoForm(request.POST, request.FILES, instrumento=instrumento, user=request.user)
-            
-            if form.is_valid():
-                try:
-                    # Salva histórico
-                    historico = form.save(commit=False)
-                    historico.instrumento = instrumento
-                    historico.save()
-                    form.save_m2m()
-
-                    # Salva arquivos PDF de padrões
-                    arquivos_padroes = request.FILES.getlist('arquivos_padroes')
-                    for arquivo in arquivos_padroes:
-                        nome = arquivo.name
-                        obj = ArquivoPadrao.objects.create(arquivo=arquivo, nome=nome)
-                        historico.arquivos_padroes.add(obj)
-
-                    msg = f"✓ Histórico criado com sucesso! Agora preencha os resultados das faixas de medição."
-                    messages.success(request, msg)
-                    
-                    logger.info(f"Histórico {historico.id} criado para instrumento {instrumento_id}")
-                    # Redireciona para edição no template unificado
-                    return redirect('editar_historico_calibracao', historico_id=historico.id)
-                except Exception as save_error:
-                    logger.error(f"Erro ao salvar histórico: {save_error}", exc_info=True)
-                    messages.error(request, f'Erro ao salvar histórico: {str(save_error)}')
-            else:
-                logger.warning(f"Form inválido. Erros: {form.errors}")
-                messages.error(request, 'Corrija os erros no formulário.')
-        else:
-            form = HistoricoCalibracaoForm(instrumento=instrumento, user=request.user)
+        # Cria um novo histórico vazio para o instrumento
+        historico = HistoricoCalibracao.objects.create(
+            instrumento=instrumento,
+            resultado='PENDENTE'  # Estado inicial
+        )
         
-        # Renderiza form de criação com template simplificado ou redireciona
-        # Obs: mantém compatibilidade se houver erro na criação
-        faixas_medicao = FaixaMedicao.objects.filter(instrumento=instrumento).order_by('valor_minimo')
+        logger.info(f"Histórico vazio {historico.id} criado para instrumento {instrumento_id}")
         
-        return render(request, 'metrologia/historico_calibracao_form.html', {
-            'form': form,
-            'instrumento': instrumento,
-            'faixas_medicao': faixas_medicao
-        })
+        # Redireciona para edição no template unificado (editar_historico.html)
+        messages.info(request, "✓ Novo histórico criado! Preencha os dados abaixo.")
+        return redirect('editar_historico_calibracao', historico_id=historico.id)
+        
     except Exception as e:
         logger.error(f"Erro crítico em registrar_historico_calibracao_view: {e}", exc_info=True)
-        messages.error(request, f'Erro ao processar requisição: {str(e)}')
-        return redirect('modulo_metrologia')
+        messages.error(request, f'Erro ao criar histórico: {str(e)}')
+        return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
 
 
 @login_required
