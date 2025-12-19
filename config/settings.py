@@ -225,7 +225,38 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # Em produção (Railway/Gunicorn), recomenda-se usar um storage externo (ex.: S3)
 # ou montar um volume persistente e servir via NGINX. WhiteNoise não serve MEDIA.
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+
+# Configurar o armazenamento de mídia de forma robusta
+# Prioridade: S3 > Azure Blob > Volume Persistente Local
+if os.environ.get('USE_S3'):
+    # Usar AWS S3 se configurado
+    INSTALLED_APPS.append('storages')
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'us-east-1')
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+    AWS_DEFAULT_ACL = 'public-read'
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    MEDIA_ROOT = None  # S3 não usa MEDIA_ROOT local
+    logger = __import__('logging').getLogger(__name__)
+    logger.info("✅ Usando AWS S3 para armazenamento de mídia")
+elif os.environ.get('PERSIST_MEDIA_PATH'):
+    # Usar um volume persistente configurado
+    MEDIA_ROOT = Path(os.environ.get('PERSIST_MEDIA_PATH'))
+    MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+    logger = __import__('logging').getLogger(__name__)
+    logger.info(f"✅ Usando volume persistente em: {MEDIA_ROOT}")
+else:
+    # Fallback: armazenamento local (recomendado apenas para desenvolvimento)
+    MEDIA_ROOT = BASE_DIR / "media"
+    logger = __import__('logging').getLogger(__name__)
+    if not DEBUG:
+        logger.warning("⚠️ AVISO: Usando armazenamento local em produção. Arquivos podem ser perdidos!")
+        logger.warning("Configure USE_S3 ou PERSIST_MEDIA_PATH para produção.")
 
 # Algoritmo de compressão e cache do WhiteNoise
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
