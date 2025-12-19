@@ -225,7 +225,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        <a href="{% url 'visualizar_historico_calibracao' item.id %}" class="btn btn-sm btn-outline-info" title="Visualizar/Editar"><i class="bi bi-eye"></i></a>
+                                        <a href="{% url 'editar_historico_calibracao' item.id %}" class="btn btn-sm btn-primary" title="Editar histórico"><i class="bi bi-pencil-square"></i> Editar</a>
                                         {% if item.certificado %}
                                             <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary" title="Baixar PDF"><i class="bi bi-download"></i></a>
                                             <form method="post" action="/metrologia/historico/{{ item.id }}/remover-certificado/" class="d-inline" onsubmit="return confirm('Remover apenas o PDF deste registro?');">
