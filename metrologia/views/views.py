@@ -806,7 +806,7 @@ def registrar_historico_calibracao_view(request, instrumento_id):
         logger.info(f"Histórico vazio {historico.id} criado para instrumento {instrumento_id}")
         
         # Redireciona para edição no template unificado (editar_historico.html)
-        messages.info(request, "✓ Novo histórico criado! Preencha os dados abaixo.")
+        messages.success(request, "✓ Novo histórico criado! Preencha os dados abaixo.")
         return redirect('editar_historico_calibracao', historico_id=historico.id)
         
     except Exception as e:

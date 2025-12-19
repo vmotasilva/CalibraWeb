@@ -162,9 +162,12 @@
             </div>
 
             <div class="d-flex justify-content-end mb-2">
-                <a href="{% url 'registrar_historico_calibracao' instrumento.id %}" class="btn btn-primary btn-sm">
-                    <i class="bi bi-plus-circle"></i> Registrar novo histórico
-                </a>
+                <form method="post" action="{% url 'registrar_historico_calibracao' instrumento.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-circle"></i> Registrar novo histórico
+                    </button>
+                </form>
             </div>
             <ul class="nav nav-tabs" id="myTab" role="tablist">
                 <li class="nav-item">
