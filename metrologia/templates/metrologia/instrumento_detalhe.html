@@ -64,8 +64,14 @@
             </div>
 
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-success text-white">
-                    <i class="bi bi-calendar-check"></i> Status da Calibração
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-calendar-check"></i> Status da Calibração</span>
+                    <form method="post" action="{% url 'atualizar_datas_calibracao' instrumento.id %}" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-light" title="Atualizar datas baseado no histórico mais recente">
+                            <i class="bi bi-arrow-clockwise"></i> Atualizar Datas
+                        </button>
+                    </form>
                 </div>
                 <div class="card-body">
                     <div class="row">

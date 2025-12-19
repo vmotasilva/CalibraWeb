@@ -2377,5 +2377,49 @@ def editar_instrumento_view(request, instrumento_id):
     return render(request, 'metrologia/editar_instrumento.html', context)
 
 
+@login_required
+@require_POST
+def atualizar_datas_calibracao_view(request, instrumento_id):
+    """Atualiza as datas de calibração do instrumento baseado no histórico."""
+    from dateutil.relativedelta import relativedelta
+    
+    instrumento = get_object_or_404(Instrumento, id=instrumento_id)
+    
+    try:
+        # Buscar o histórico mais recente
+        ultimo_historico = HistoricoCalibracao.objects.filter(
+            instrumento=instrumento
+        ).order_by('-data_calibracao').first()
+        
+        if not ultimo_historico:
+            messages.warning(request, 'Nenhum histórico de calibração encontrado para este instrumento.')
+            return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
+        
+        # Atualizar data da última calibração
+        instrumento.data_ultima_calibracao = ultimo_historico.data_calibracao
+        
+        # Recalcular próxima calibração baseado na frequência
+        if instrumento.categoria and instrumento.categoria.frequencia_calibracao_meses:
+            meses = instrumento.categoria.frequencia_calibracao_meses
+            instrumento.data_proxima_calibracao = ultimo_historico.data_calibracao + relativedelta(months=meses)
+        else:
+            # Se não tiver frequência configurada, usar o valor do histórico se existir
+            instrumento.data_proxima_calibracao = ultimo_historico.proxima_calibracao
+        
+        instrumento.save(update_fields=['data_ultima_calibracao', 'data_proxima_calibracao'])
+        
+        logger.info(f"Datas de calibração atualizadas para instrumento {instrumento.tag}")
+        messages.success(
+            request, 
+            f'Datas de calibração atualizadas: Última: {instrumento.data_ultima_calibracao.strftime("%d/%m/%Y")}, '
+            f'Próxima: {instrumento.data_proxima_calibracao.strftime("%d/%m/%Y") if instrumento.data_proxima_calibracao else "N/A"}'
+        )
+    except Exception as e:
+        logger.error(f"Erro ao atualizar datas de calibração: {str(e)}", exc_info=True)
+        messages.error(request, f'Erro ao atualizar datas: {str(e)}')
+    
+    return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
+
+
 
 
