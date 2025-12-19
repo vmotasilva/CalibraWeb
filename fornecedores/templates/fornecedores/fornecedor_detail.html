@@ -47,6 +47,30 @@
 
 
 
+<h3>Avaliação</h3>
+{% if perguntas_avaliacao %}
+<div class="list-group">
+    {% for pergunta in perguntas_avaliacao %}
+    <div class="list-group-item">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h5 class="mb-1">{{ pergunta.texto }}</h5>
+                <small class="text-muted">Ordem: {{ pergunta.ordem }}</small>
+            </div>
+            {% if pergunta.ativo %}
+            <span class="badge bg-success">Ativa</span>
+            {% else %}
+            <span class="badge bg-secondary">Inativa</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted"><em>Nenhuma pergunta de avaliação cadastrada.</em></p>
+{% endif %}
+
+
 <h3>Monitoramento <span class="badge bg-success">Pontuação: {{ pontuacao_geral|floatformat:1 }}</span></h3>
 <div class="accordion" id="monitoramentoAccordion">
     <div class="accordion-item">

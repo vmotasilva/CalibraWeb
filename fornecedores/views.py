@@ -129,6 +129,11 @@ def fornecedor_list(request):
 
 def fornecedor_detail(request, pk):
     fornecedor = get_object_or_404(Fornecedor, pk=pk)
+    
+    # Perguntas de Avaliação (SELECAO)
+    perguntas_avaliacao = PerguntaAvaliacao.objects.filter(tipo="SELECAO", ativo=True).order_by("ordem")
+    
+    # Perguntas de Monitoramento
     perguntas = PerguntaAvaliacao.objects.filter(tipo="MONITORAMENTO", ativo=True).order_by("ordem")
     grupos = {"PRODUTO": [], "SERVICO": [], "AMBOS": []}
     for pergunta in perguntas:
@@ -153,6 +158,7 @@ def fornecedor_detail(request, pk):
     pontuacao_geral = 100 + saldo_total  # saldo_total é negativo
     return render(request, "fornecedores/fornecedor_detail.html", {
         "fornecedor": fornecedor,
+        "perguntas_avaliacao": perguntas_avaliacao,
         "monitoramento_produto": grupos["PRODUTO"],
         "monitoramento_servico": grupos["SERVICO"],
         "monitoramento_ambos": grupos["AMBOS"],
