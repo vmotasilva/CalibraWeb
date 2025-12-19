@@ -48,21 +48,34 @@
 
 
 <h3>Avaliação</h3>
-{% if perguntas_avaliacao %}
-<div class="list-group">
-    {% for pergunta in perguntas_avaliacao %}
-    <div class="list-group-item d-flex justify-content-between align-items-center">
-        <div>
-            <span>{{ pergunta.texto }}</span>
-            <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
+<div class="accordion" id="avaliacaoAccordion">
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingAvaliacao">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAvaliacao" aria-expanded="true" aria-controls="collapseAvaliacao">
+                Requisitos
+            </button>
+        </h2>
+        <div id="collapseAvaliacao" class="accordion-collapse collapse show" aria-labelledby="headingAvaliacao" data-bs-parent="#avaliacaoAccordion">
+            <div class="accordion-body">
+                {% if perguntas_avaliacao %}
+                <div class="list-group">
+                    {% for pergunta in perguntas_avaliacao %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span>{{ pergunta.texto }}</span>
+                            <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
+                        </div>
+                        <span class="badge bg-success">Ativa</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted"><em>Nenhuma pergunta de avaliação cadastrada.</em></p>
+                {% endif %}
+            </div>
         </div>
-        <span class="badge bg-success">Ativa</span>
     </div>
-    {% endfor %}
 </div>
-{% else %}
-<p class="text-muted"><em>Nenhuma pergunta de avaliação cadastrada.</em></p>
-{% endif %}
 
 
 <h3>Monitoramento <span class="badge bg-success">Pontuação: {{ pontuacao_geral|floatformat:1 }}</span></h3>
