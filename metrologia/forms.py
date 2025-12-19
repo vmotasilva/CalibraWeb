@@ -150,7 +150,7 @@ class CategoriaInstrumentoForm(forms.ModelForm):
     
     class Meta:
         model = CategoriaInstrumento
-        fields = ['nome', 'sigla', 'descricao', 'tratativa_calibracao']
+        fields = ['nome', 'sigla', 'descricao', 'tratativa_calibracao', 'frequencia_calibracao_meses']
         widgets = {
             'nome': forms.TextInput(attrs={
                 'class': 'form-control form-control-lg',
@@ -169,6 +169,13 @@ class CategoriaInstrumentoForm(forms.ModelForm):
             }),
             'tratativa_calibracao': forms.Select(attrs={
                 'class': 'form-select form-select-lg',
+            }),
+            'frequencia_calibracao_meses': forms.NumberInput(attrs={
+                'class': 'form-control form-control-lg',
+                'type': 'number',
+                'min': '1',
+                'placeholder': 'Intervalo em meses entre calibrações',
+                'value': '12',
             }),
         }
 

@@ -28,6 +28,13 @@ class CategoriaInstrumento(models.Model):
         default='INTERNA',
         help_text="Tipo de calibração padrão para instrumentos desta categoria"
     )
+    frequencia_calibracao_meses = models.IntegerField(
+        default=12,
+        null=True,
+        blank=True,
+        verbose_name="Frequência de Calibração (Meses)",
+        help_text="Intervalo em meses entre as calibrações para instrumentos desta categoria"
+    )
 
     def __str__(self):
         return self.nome
@@ -489,6 +496,13 @@ class HistoricoCalibracao(models.Model):
                 self.resultado = "APROVADO_SEM_CORRECAO"
             else:
                 self.resultado = "REPROVADO"
+        
+        # Auto-calculate próxima_calibracao based on category frequency
+        if self.instrumento and self.instrumento.categoria and self.instrumento.categoria.frequencia_calibracao_meses:
+            from dateutil.relativedelta import relativedelta
+            meses = self.instrumento.categoria.frequencia_calibracao_meses
+            self.proxima_calibracao = self.data_calibracao + relativedelta(months=meses)
+        
         super().save(*args, **kwargs)
 
     def __str__(self):

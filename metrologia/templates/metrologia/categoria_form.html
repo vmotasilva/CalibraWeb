@@ -87,6 +87,22 @@
                             </small>
                         </div>
 
+                        <!-- FREQUÊNCIA DE CALIBRAÇÃO -->
+                        <div class="mb-3">
+                            <label for="id_frequencia_calibracao_meses" class="form-label fw-bold">
+                                Frequência de Calibração (Meses) <span class="text-danger">*</span>
+                            </label>
+                            {{ form.frequencia_calibracao_meses|add_class:"form-control form-control-lg" }}
+                            {% if form.frequencia_calibracao_meses.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.frequencia_calibracao_meses.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Intervalo em meses entre as calibrações. Será usado para calcular automaticamente a próxima calibração dos instrumentos
+                            </small>
+                        </div>
+
                         <!-- UNIDADE PADRÃO -->
                         <div class="mb-3">
                             <label for="id_unidade_padrao" class="form-label fw-bold">Unidade Padrão</label>
