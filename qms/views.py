@@ -741,15 +741,63 @@ def renomear_arquivo_padrao_view(request, arquivo_id):
 
 
 @login_required
+@login_required
 def remover_arquivo_padrao_view(request, arquivo_id):
-    """Remove a standard file."""
-    # TODO: Implement standard file model and logic
-    if request.method == 'POST':
-        # TODO: Delete file
-        messages.success(request, 'Arquivo removido com sucesso.')
-        return redirect('modulo_metrologia')
+    """Remove a standard file (fallback POST version)."""
+    from metrologia.models import ArquivoPadrao
     
-    return HttpResponse('Not implemented yet', status=501)
+    if request.method == 'POST':
+        try:
+            padrao = ArquivoPadrao.objects.get(id=arquivo_id)
+            padrao_nome = padrao.nome
+            padrao.delete()
+            messages.success(request, f'Padrão "{padrao_nome}" removido com sucesso.')
+            # Redirect to referrer if available
+            referrer = request.META.get('HTTP_REFERER')
+            return redirect(referrer) if referrer else redirect('modulo_metrologia')
+        except ArquivoPadrao.DoesNotExist:
+            messages.error(request, 'Padrão não encontrado.')
+            return redirect('modulo_metrologia')
+        except Exception as e:
+            messages.error(request, f'Erro ao remover padrão: {str(e)}')
+            return redirect('modulo_metrologia')
+    
+    return HttpResponse('Método não permitido', status=405)
+
+
+@login_required
+def download_arquivo_padrao_view(request, arquivo_id):
+    """Download a standard file with correct PDF headers."""
+    from metrologia.models import ArquivoPadrao
+    from django.http import FileResponse
+    
+    try:
+        padrao = ArquivoPadrao.objects.get(id=arquivo_id)
+        arquivo = padrao.arquivo
+        
+        if not arquivo:
+            raise Http404("Arquivo não encontrado")
+        
+        # Garantir que o arquivo existe
+        if not arquivo.storage.exists(arquivo.name):
+            raise Http404("Arquivo não existe no servidor")
+        
+        # Abrir arquivo
+        arquivo_aberto = arquivo.open('rb')
+        
+        # Gerar nome do arquivo para download (garantir que tem .pdf)
+        nome_arquivo = f"{padrao.nome}.pdf"
+        if not nome_arquivo.endswith('.pdf'):
+            nome_arquivo = f"{nome_arquivo}.pdf"
+        
+        # Criar resposta com headers corretos para PDF
+        response = FileResponse(arquivo_aberto, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{nome_arquivo}"'
+        response['Content-Type'] = 'application/pdf'
+        
+        return response
+    except ArquivoPadrao.DoesNotExist:
+        raise Http404("Padrão não encontrado")
 
 
 # ==============================================================================
@@ -1359,6 +1407,30 @@ def editar_historico_calibracao_view(request, historico_id):
     
     if request.method == 'POST':
         action = request.POST.get('acao') or request.POST.get('action')
+
+        # Handle standard PDF upload (simples)
+        if action == 'upload_padroes':
+            from metrologia.models import ArquivoPadrao
+            uploaded_files = request.FILES.getlist('novos_arquivos_padroes')
+            if uploaded_files:
+                from .forms_historico import validate_pdf_file
+                count = 0
+                for uploaded_file in uploaded_files:
+                    try:
+                        validate_pdf_file(uploaded_file)
+                        ArquivoPadrao.objects.create(
+                            historico=historico,
+                            nome=uploaded_file.name.replace('.pdf', ''),
+                            arquivo=uploaded_file
+                        )
+                        count += 1
+                    except Exception as e:
+                        messages.error(request, f'Erro ao anexar {uploaded_file.name}: {str(e)}')
+                if count > 0:
+                    messages.success(request, f'{count} padrão(ões) anexado(s) com sucesso.')
+            else:
+                messages.warning(request, 'Selecione pelo menos um arquivo PDF.')
+            return redirect('editar_historico_calibracao', historico_id=historico_id)
 
         # Handle certificate removal
         if action == 'remover_certificado_original':
