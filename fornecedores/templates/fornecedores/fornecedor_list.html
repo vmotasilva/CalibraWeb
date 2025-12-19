@@ -46,6 +46,9 @@
             <th>CNPJ</th>
             <th>UF</th>
             <th>Tipo</th>
+            <th>Avaliação</th>
+            <th>Monitoramento</th>
+            <th>Reavaliação</th>
             <th>Ações</th>
         </tr>
     </thead>
@@ -57,13 +60,16 @@
             <td>{{ fornecedor.cnpj }}</td>
             <td>{{ fornecedor.uf }}</td>
             <td>{{ fornecedor.get_tipo_display }}</td>
+            <td>{{ fornecedor.ultima_avaliacao_data|date:"d/m/Y"|default:"—" }}</td>
+            <td>{{ fornecedor.ultima_monitoramento_data|date:"d/m/Y"|default:"—" }}</td>
+            <td>{{ fornecedor.ultima_reavaliacao_data|date:"d/m/Y"|default:"—" }}</td>
             <td>
                 <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-sm btn-info">Detalhes</a>
                 <a href="{% url 'fornecedores:fornecedor_update' fornecedor.pk %}" class="btn btn-sm btn-warning">Editar</a>
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="6">Nenhum fornecedor cadastrado.</td></tr>
+        <tr><td colspan="9">Nenhum fornecedor cadastrado.</td></tr>
         {% endfor %}
     </tbody>
 </table>

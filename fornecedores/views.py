@@ -126,6 +126,13 @@ def fornecedor_list(request):
             Q(nome_fantasia__icontains=q) |
             Q(cnpj__icontains=q)
         )
+    
+    # Adicionar datas das últimas avaliações para cada fornecedor
+    for fornecedor in fornecedores:
+        fornecedor.ultima_avaliacao_data = fornecedor.avaliacoes.filter(tipo="SELECAO").values_list('data', flat=True).first()
+        fornecedor.ultima_monitoramento_data = fornecedor.avaliacoes.filter(tipo="MONITORAMENTO").values_list('data', flat=True).first()
+        fornecedor.ultima_reavaliacao_data = fornecedor.avaliacoes.filter(tipo="REAVALIACAO").values_list('data', flat=True).first()
+    
     ufs = Fornecedor.objects.values_list("uf", flat=True).distinct().order_by("uf")
     return render(request, "fornecedores/fornecedor_list.html", {"fornecedores": fornecedores, "ufs": ufs})
 
