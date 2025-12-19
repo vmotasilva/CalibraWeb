@@ -434,7 +434,8 @@ function applyStateFromQuery(){
         if (dashStatus === 'vencidos') {
             sit.push('VENCIDO');
         } else if (dashStatus === 'avencer') {
-            sit.push('AVENCER');
+            // Map legacy 'avencer' to all AVENCER_* ranges
+            sit.push('AVENCER_30', 'AVENCER_60', 'AVENCER_90', 'AVENCER_120');
         }
     }
     const cat = (sp.get('cat') || '').split(',').filter(Boolean);
