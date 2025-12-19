@@ -168,12 +168,15 @@
                                 <hr class="my-2">
                                 {% endif %}
                                 <label for="id_certificado" class="form-label fw-bold small">Selecionar novo certificado:</label>
-                                <div class="input-group">
-                                    <input type="file" id="id_certificado" name="certificado" class="form-control form-control-sm" accept=".pdf">
-                                    <button type="submit" class="btn btn-primary btn-sm" name="action" value="anexar_certificado">
-                                        <i class="bi bi-paperclip"></i> Anexar
-                                    </button>
-                                </div>
+                                <form method="post" enctype="multipart/form-data" style="display: inline;">
+                                    {% csrf_token %}
+                                    <div class="input-group">
+                                        <input type="file" id="id_certificado" name="certificado" class="form-control form-control-sm" accept=".pdf">
+                                        <button type="submit" class="btn btn-primary btn-sm" name="action" value="anexar_certificado">
+                                            <i class="bi bi-paperclip"></i> Anexar
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
 
