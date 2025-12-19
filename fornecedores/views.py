@@ -281,7 +281,6 @@ def avaliacao_selecao_create(request, fornecedor_id):
         total_sim = 0
         for p in perguntas:
             resposta_val = request.POST.get(f"resposta_{p.id}")
-            obs_val = request.POST.get(f"observacao_{p.id}", "")
             resposta_bool = resposta_val == "on"
             if resposta_bool:
                 total_sim += 1
@@ -289,7 +288,7 @@ def avaliacao_selecao_create(request, fornecedor_id):
                 avaliacao=avaliacao,
                 pergunta=p,
                 resposta=resposta_bool,
-                observacao=obs_val
+                observacao=""
             )
         
         # Calcula pontuação percentual
