@@ -62,21 +62,39 @@
             <td>{{ fornecedor.get_tipo_display }}</td>
             <td>
                 {% if fornecedor.pontuacao_selecao != "—" %}
-                    <span class="badge bg-primary">{{ fornecedor.pontuacao_selecao|floatformat:1 }}%</span>
+                    {% if fornecedor.resultado_selecao == "Excelente" %}
+                        <span class="badge bg-success">{{ fornecedor.pontuacao_selecao|floatformat:1 }}%</span>
+                    {% elif fornecedor.resultado_selecao == "Bom" %}
+                        <span class="badge bg-info">{{ fornecedor.pontuacao_selecao|floatformat:1 }}%</span>
+                    {% elif fornecedor.resultado_selecao == "Satisfatório" %}
+                        <span class="badge bg-warning">{{ fornecedor.pontuacao_selecao|floatformat:1 }}%</span>
+                    {% else %}
+                        <span class="badge bg-danger">{{ fornecedor.pontuacao_selecao|floatformat:1 }}%</span>
+                    {% endif %}
                 {% else %}
                     <span class="text-muted">{{ fornecedor.pontuacao_selecao }}</span>
                 {% endif %}
             </td>
             <td>
                 {% if fornecedor.pontuacao_monitoramento != "—" %}
-                    <span class="badge bg-info">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
+                    {% if fornecedor.pontuacao_monitoramento >= 80 %}
+                        <span class="badge bg-success">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
+                    {% elif fornecedor.pontuacao_monitoramento >= 60 %}
+                        <span class="badge bg-warning">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
+                    {% else %}
+                        <span class="badge bg-danger">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
+                    {% endif %}
                 {% else %}
                     <span class="text-muted">{{ fornecedor.pontuacao_monitoramento }}</span>
                 {% endif %}
             </td>
             <td>
                 {% if fornecedor.pontuacao_reavaliacao != "—" %}
-                    <span class="badge bg-success">{{ fornecedor.pontuacao_reavaliacao|floatformat:1 }}%</span>
+                    {% if fornecedor.resultado_reavaliacao == "Aprovado" %}
+                        <span class="badge bg-success">{{ fornecedor.pontuacao_reavaliacao|floatformat:1 }}%</span>
+                    {% else %}
+                        <span class="badge bg-danger">{{ fornecedor.pontuacao_reavaliacao|floatformat:1 }}%</span>
+                    {% endif %}
                 {% else %}
                     <span class="text-muted">{{ fornecedor.pontuacao_reavaliacao }}</span>
                 {% endif %}

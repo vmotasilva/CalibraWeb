@@ -135,8 +135,14 @@ def fornecedor_list(request):
         reavaliacao = fornecedor.avaliacoes.filter(tipo="REAVALIACAO").order_by("-data").first()
         
         fornecedor.pontuacao_selecao = avaliacao_selecao.pontuacao_ano if avaliacao_selecao else "—"
+        fornecedor.resultado_selecao = avaliacao_selecao.resultado if avaliacao_selecao else ""
+        
         fornecedor.pontuacao_monitoramento = monitoramento.pontuacao_ano if monitoramento else "—"
+        fornecedor.resultado_monitoramento = monitoramento.resultado if monitoramento else ""
+        
         fornecedor.pontuacao_reavaliacao = reavaliacao.pontuacao_ano if reavaliacao else "—"
+        fornecedor.resultado_reavaliacao = reavaliacao.resultado if reavaliacao else ""
+        
         fornecedores_com_pontuacoes.append(fornecedor)
     
     ufs = Fornecedor.objects.values_list("uf", flat=True).distinct().order_by("uf")
