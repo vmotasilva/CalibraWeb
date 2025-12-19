@@ -272,17 +272,29 @@ class FaixaMedicaoPadrao(models.Model):
 
 
 class ArquivoPadrao(models.Model):
+    """Arquivo de padrão de calibração associado a um histórico específico."""
+    historico = models.ForeignKey(
+        'HistoricoCalibracao',
+        on_delete=models.CASCADE,
+        related_name='padroes_arquivo',
+        verbose_name='Histórico de Calibração',
+        null=True,
+        blank=True
+    )
     nome = models.CharField(max_length=255)
     descricao = models.TextField(blank=True, null=True)
     arquivo = models.FileField(upload_to='padroes/')
     data_upload = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
+        if self.historico:
+            return f"{self.nome} - {self.historico.instrumento.tag}"
         return self.nome
 
     class Meta:
         verbose_name = "Arquivo Padrão"
         verbose_name_plural = "Arquivos Padrões"
+        ordering = ['-data_upload']
 
 
 class ResultadoFaixaCalibracao(models.Model):
@@ -431,10 +443,6 @@ class HistoricoCalibracao(models.Model):
         help_text='Atendimento da cotação que originou esta calibração'
     )
     
-    arquivos_padroes = models.ManyToManyField(
-        ArquivoPadrao, blank=True, related_name='historicos', verbose_name='Arquivos de Padrões (PDF)'
-    )
-
     data_calibracao = models.DateField()
     data_aprovacao = models.DateField(default=date.today)
     numero_certificado = models.CharField(max_length=100, default="S/N")

@@ -130,10 +130,7 @@ def remover_arquivo_padrao_view(request, arquivo_id):
             return redirect('registrar_historico_calibracao', instrumento_id=historicos[0].instrumento_id)
         return redirect('modulo_metrologia')
     
-    # Remove associação do arquivo com todos históricos
-    for historico in historicos:
-        historico.arquivos_padroes.remove(arquivo)
-    
+    # Remove arquivo (já não precisa remover de históricos pois há FK)
     logger.info(f"Usuário {request.user.username} removeu arquivo PDF id={arquivo.id}")
     arquivo.arquivo.delete(save=False)
     arquivo.delete()

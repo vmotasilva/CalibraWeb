@@ -154,7 +154,7 @@ class HistoricoCalibraoQueryOptimizer:
         """
         return (HistoricoCalibracao.objects
             .select_related('instrumento', 'instrumento__categoria')
-            .prefetch_related('arquivos_padroes')
+            .prefetch_related('padroes_arquivo')
             .order_by('-data_calibracao')
         )
     
@@ -166,7 +166,7 @@ class HistoricoCalibraoQueryOptimizer:
         return (HistoricoCalibracao.objects
             .filter(instrumento_id=instrumento_id)
             .select_related('instrumento')
-            .prefetch_related('arquivos_padroes')
+            .prefetch_related('padroes_arquivo')
             .order_by('-data_calibracao')
         )
     

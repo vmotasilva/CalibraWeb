@@ -57,7 +57,6 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             'certificado',
             'resultado',
             'observacoes',
-            'arquivos_padroes',
         ]
         widgets = {
             'data_calibracao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -72,7 +71,6 @@ class HistoricoCalibracaoForm(forms.ModelForm):
             'proxima_calibracao': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'certificado': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf'}),
             'observacoes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'arquivos_padroes': forms.CheckboxSelectMultiple(attrs={'class': 'padroes-checkbox'}),
         }
     
     def clean_certificado(self):

@@ -1377,7 +1377,7 @@ def editar_historico_calibracao_view(request, historico_id):
             try:
                 padrao = ArquivoPadrao.objects.get(id=padrao_id)
                 padrao_nome = padrao.nome
-                historico.arquivos_padroes.remove(padrao)
+                padrao.delete()
                 messages.success(request, f'Padrão "{padrao_nome}" removido com sucesso.')
             except ArquivoPadrao.DoesNotExist:
                 messages.error(request, 'Padrão não encontrado.')
@@ -1431,19 +1431,20 @@ def editar_historico_calibracao_view(request, historico_id):
                             print(f"DEBUG VIEW: Validando arquivo {idx+1}: {uploaded_file.name}")
                             validate_pdf_file(uploaded_file)
                             
+                            # Criar ArquivoPadrao vinculado diretamente ao histórico
                             novo_padrao = ArquivoPadrao.objects.create(
+                                historico=historico,
                                 nome=uploaded_file.name.replace('.pdf', ''),
                                 descricao='',
                                 arquivo=uploaded_file
                             )
-                            historico.arquivos_padroes.add(novo_padrao)
-                            print(f"✓ Arquivo '{uploaded_file.name}' vinculado com sucesso")
+                            print(f"✓ Arquivo '{uploaded_file.name}' criado e vinculado com sucesso")
                         except Exception as e:
                             print(f"✗ Erro ao processar {uploaded_file.name}: {str(e)}")
                 
                 # Reload do histórico para ver os arquivos atualizados
                 historico.refresh_from_db()
-                padroes_count = historico.arquivos_padroes.count()
+                padroes_count = historico.padroes_arquivo.count()
                 print(f"DEBUG VIEW: Histórico agora tem {padroes_count} padrão(s)")
                 print(f"DEBUG VIEW: === FIM UPDATE_HISTORY (SUCESSO) ===\n")
                 
