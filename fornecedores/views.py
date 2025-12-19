@@ -105,6 +105,7 @@ from django.contrib import messages
 import pandas as pd
 from django.http import HttpResponse
 from django.db.models import Q
+from django.utils import timezone
 
 def fornecedor_list(request):
     fornecedores = Fornecedor.objects.all()
@@ -133,6 +134,29 @@ def fornecedor_detail(request, pk):
     # Perguntas de Avaliação (SELECAO)
     perguntas_avaliacao = PerguntaAvaliacao.objects.filter(tipo="SELECAO", ativo=True).order_by("ordem")
     
+    # Respostas de Avaliação (SELECAO) - última avaliação
+    ultima_avaliacao_selecao = None
+    respostas_avaliacao = []
+    percentual_avaliacao = 0
+    
+    if perguntas_avaliacao.exists():
+        # Busca a última avaliação do tipo SELECAO
+        ultima_avaliacao_selecao = AvaliacaoFornecedor.objects.filter(
+            fornecedor=fornecedor,
+            tipo="SELECAO"
+        ).order_by("-data").first()
+        
+        if ultima_avaliacao_selecao:
+            # Busca todas as respostas dessa avaliação
+            respostas_avaliacao = RespostaAvaliacao.objects.filter(
+                avaliacao=ultima_avaliacao_selecao
+            ).order_by("pergunta__ordem")
+            
+            # Calcula percentual: (respostas SIM / total perguntas) * 100
+            total_perguntas = perguntas_avaliacao.count()
+            respostas_sim = respostas_avaliacao.filter(resposta=True).count()
+            percentual_avaliacao = (respostas_sim / total_perguntas * 100) if total_perguntas > 0 else 0
+    
     # Perguntas de Monitoramento
     perguntas = PerguntaAvaliacao.objects.filter(tipo="MONITORAMENTO", ativo=True).order_by("ordem")
     grupos = {"PRODUTO": [], "SERVICO": [], "AMBOS": []}
@@ -159,6 +183,9 @@ def fornecedor_detail(request, pk):
     return render(request, "fornecedores/fornecedor_detail.html", {
         "fornecedor": fornecedor,
         "perguntas_avaliacao": perguntas_avaliacao,
+        "ultima_avaliacao_selecao": ultima_avaliacao_selecao,
+        "respostas_avaliacao": respostas_avaliacao,
+        "percentual_avaliacao": percentual_avaliacao,
         "monitoramento_produto": grupos["PRODUTO"],
         "monitoramento_servico": grupos["SERVICO"],
         "monitoramento_ambos": grupos["AMBOS"],
@@ -227,6 +254,74 @@ def documento_delete(request, fornecedor_id, doc_id):
         messages.success(request, "Documento removido com sucesso!")
         return redirect(reverse("fornecedores:fornecedor_detail", args=[fornecedor.pk]))
     return render(request, "fornecedores/documento_confirm_delete.html", {"documento": doc, "fornecedor": fornecedor})
+
+def avaliacao_selecao_create(request, fornecedor_id):
+    """Criar/editar avaliação de SELECAO (Avaliação Inicial)"""
+    fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
+    perguntas = PerguntaAvaliacao.objects.filter(tipo="SELECAO", ativo=True).order_by("ordem")
+    
+    # Busca última avaliação SELECAO
+    ultima_avaliacao = AvaliacaoFornecedor.objects.filter(
+        fornecedor=fornecedor,
+        tipo="SELECAO"
+    ).order_by("-data").first()
+    
+    if request.method == "POST":
+        # Cria nova avaliação SELECAO
+        avaliacao = AvaliacaoFornecedor(
+            fornecedor=fornecedor,
+            data=request.POST.get("data") or timezone.now().date(),
+            tipo="SELECAO",
+            avaliador=request.user,
+            observacao=request.POST.get("observacao", "")
+        )
+        avaliacao.save()
+        
+        # Salva as respostas
+        total_sim = 0
+        for p in perguntas:
+            resposta_val = request.POST.get(f"resposta_{p.id}")
+            obs_val = request.POST.get(f"observacao_{p.id}", "")
+            resposta_bool = resposta_val == "on"
+            if resposta_bool:
+                total_sim += 1
+            RespostaAvaliacao.objects.create(
+                avaliacao=avaliacao,
+                pergunta=p,
+                resposta=resposta_bool,
+                observacao=obs_val
+            )
+        
+        # Calcula pontuação percentual
+        total_perguntas = perguntas.count()
+        percentual = (total_sim / total_perguntas * 100) if total_perguntas > 0 else 0
+        avaliacao.pontuacao_ano = percentual
+        
+        if percentual >= 80:
+            avaliacao.resultado = "Excelente"
+        elif percentual >= 60:
+            avaliacao.resultado = "Bom"
+        elif percentual >= 40:
+            avaliacao.resultado = "Satisfatório"
+        else:
+            avaliacao.resultado = "Insatisfatório"
+        
+        avaliacao.save()
+        messages.success(request, "Avaliação de Seleção registrada com sucesso!")
+        return redirect(reverse("fornecedores:fornecedor_detail", args=[fornecedor.pk]))
+    else:
+        # GET - Montar contexto
+        respostas_dict = {}
+        if ultima_avaliacao:
+            for resposta in ultima_avaliacao.respostas.all():
+                respostas_dict[resposta.pergunta_id] = resposta
+    
+    return render(request, "fornecedores/avaliacao_selecao_form.html", {
+        "fornecedor": fornecedor,
+        "perguntas": perguntas,
+        "ultima_avaliacao": ultima_avaliacao,
+        "respostas_dict": respostas_dict if request.method == "GET" and ultima_avaliacao else {}
+    })
 
 def avaliacao_create(request, fornecedor_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)

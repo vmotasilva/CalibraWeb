@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Avaliação de Seleção - {{ fornecedor.empresa }}</h2>
+    
+    {% if ultima_avaliacao %}
+    <div class="alert alert-info" role="alert">
+        <strong>Última avaliação:</strong> {{ ultima_avaliacao.data|date:"d/m/Y" }} 
+        <strong>Resultado:</strong> {{ ultima_avaliacao.resultado }}
+        <strong>Pontuação:</strong> {{ ultima_avaliacao.pontuacao_ano|floatformat:1 }}%
+    </div>
+    {% endif %}
+    
+    <form method="post" class="mt-4">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="data" class="form-label">Data da Avaliação</label>
+            <input type="date" name="data" id="data" class="form-control" required value="{{ hoje|date:'Y-m-d' }}">
+        </div>
+        
+        <div class="mb-3">
+            <label for="observacao" class="form-label">Observação</label>
+            <textarea name="observacao" id="observacao" class="form-control" rows="3"></textarea>
+        </div>
+        
+        <h4 class="mt-4 mb-3">Perguntas</h4>
+        <div class="list-group">
+            {% for pergunta in perguntas %}
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="flex-grow-1">
+                        <h5>{{ pergunta.texto }}</h5>
+                        <small class="text-muted">Ordem: {{ pergunta.ordem }}</small>
+                    </div>
+                </div>
+                
+                <div class="form-check form-check-inline">
+                    <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="resposta_{{ pergunta.id }}" 
+                        name="resposta_{{ pergunta.id }}"
+                        {% if respostas_dict|get:pergunta.id %}
+                            {% if respostas_dict|get:pergunta.id|getattr:'resposta' %}checked{% endif %}
+                        {% endif %}
+                    >
+                    <label class="form-check-label" for="resposta_{{ pergunta.id }}">
+                        Sim
+                    </label>
+                </div>
+                
+                <div class="mt-2">
+                    <label for="observacao_{{ pergunta.id }}" class="form-label small">Observação</label>
+                    <textarea 
+                        name="observacao_{{ pergunta.id }}" 
+                        id="observacao_{{ pergunta.id }}" 
+                        class="form-control form-control-sm" 
+                        rows="2"
+                    >{% if respostas_dict|get:pergunta.id %}{{ respostas_dict|get:pergunta.id|getattr:'observacao' }}{% endif %}</textarea>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="mt-4">
+            <button type="submit" class="btn btn-success btn-lg">Salvar Avaliação</button>
+            <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary btn-lg">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const dataInput = document.getElementById('data');
+    
+    // Preencher data com hoje se vazio
+    if (!dataInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dataInput.value = today;
+    }
+});
+</script>
+{% endblock %}
