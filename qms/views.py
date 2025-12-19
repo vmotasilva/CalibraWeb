@@ -472,23 +472,31 @@ def get_certificado_bytes_view(request, historico_id):
     historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
     
     # Get the type of certificate to return (original or stamped)
-    tipo = request.GET.get('tipo', 'carimbado')  # Default to stamped if available
+    tipo = request.GET.get('tipo', 'auto')  # Changed default to 'auto'
     
     logger.info(f"[GET_CERT] Requisição de certificado tipo='{tipo}' para historico {historico_id}")
     logger.info(f"[GET_CERT] certificado_carimbado: {historico.certificado_carimbado.name if historico.certificado_carimbado else 'None'}")
     logger.info(f"[GET_CERT] certificado: {historico.certificado.name if historico.certificado else 'None'}")
     
+    # Smart selection logic
+    certificado = None
+    
     if tipo == 'carimbado':
-        certificado = historico.certificado_carimbado if historico.certificado_carimbado else historico.certificado
+        certificado = historico.certificado_carimbado
+        if not certificado:
+            logger.info(f"[GET_CERT] Certificado carimbado não disponível, usando original")
+            certificado = historico.certificado
     elif tipo == 'original':
         certificado = historico.certificado
-    else:
-        # Fallback: prefer stamped, then original
+        if not certificado:
+            logger.info(f"[GET_CERT] Certificado original não disponível, usando carimbado")
+            certificado = historico.certificado_carimbado
+    else:  # tipo == 'auto' or any other value - prefer carimbado, fallback to original
         certificado = historico.certificado_carimbado if historico.certificado_carimbado else historico.certificado
     
     if not certificado:
-        logger.warning(f"[GET_CERT] Nenhum certificado disponível para historico {historico_id} (tipo={tipo})")
-        return JsonResponse({'error': 'Certificado não encontrado'}, status=404)
+        logger.warning(f"[GET_CERT] Nenhum certificado disponível para historico {historico_id}")
+        return JsonResponse({'error': 'Nenhum certificado disponível'}, status=404)
     
     try:
         # Get the file name/path
@@ -498,17 +506,6 @@ def get_certificado_bytes_view(request, historico_id):
         # Check if file exists
         if not default_storage.exists(file_path):
             logger.error(f"[GET_CERT] Arquivo não existe no storage: {file_path}")
-            logger.info(f"[GET_CERT] Arquivos disponíveis no storage:")
-            # Try to list files in the directory
-            try:
-                from django.conf import settings
-                media_root = settings.MEDIA_ROOT
-                cert_dir = os.path.join(media_root, 'certificados')
-                if os.path.exists(cert_dir):
-                    files = os.listdir(cert_dir)
-                    logger.info(f"[GET_CERT] Arquivos em {cert_dir}: {files}")
-            except Exception as e:
-                logger.error(f"[GET_CERT] Erro ao listar arquivos: {str(e)}")
             return JsonResponse({'error': f'Arquivo não encontrado: {file_path}'}, status=404)
         
         # Get file size
@@ -526,6 +523,11 @@ def get_certificado_bytes_view(request, historico_id):
         if not pdf_bytes:
             logger.error(f"[GET_CERT] Conteúdo vazio após leitura: {file_path}")
             return JsonResponse({'error': 'Não foi possível ler o conteúdo do arquivo'}, status=400)
+        
+        # Validate PDF header
+        if not pdf_bytes.startswith(b'%PDF'):
+            logger.error(f"[GET_CERT] Arquivo não é um PDF válido: {file_path}")
+            return JsonResponse({'error': 'Arquivo não é um PDF válido'}, status=400)
         
         logger.info(f"[GET_CERT] Certificado lido com sucesso: {len(pdf_bytes)} bytes")
         

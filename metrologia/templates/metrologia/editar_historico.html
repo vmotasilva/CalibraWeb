@@ -634,7 +634,7 @@
                             // Inicializar PDF.js
                             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
                             
-                            const certificadoBytesUrl = "{% url 'get_certificado_bytes' historico.id %}";
+                            const certificadoBytesUrl = "{% url 'get_certificado_bytes' historico.id %}?tipo=auto";
                             console.log('Carregando PDF de:', certificadoBytesUrl);
                             
                             let pdfDoc = null;
