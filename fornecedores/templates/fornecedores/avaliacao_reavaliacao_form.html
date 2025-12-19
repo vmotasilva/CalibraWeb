@@ -31,7 +31,7 @@
             <div class="list-group-item">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div class="flex-grow-1">
-                        <h5>{{ item.pergunta.texto }}</h5>
+                        <h6 class="mb-1">{{ item.pergunta.texto }}</h6>
                         <small class="text-muted">Ordem: {{ item.pergunta.ordem }}</small>
                     </div>
                 </div>
@@ -52,7 +52,48 @@
             {% endfor %}
         </div>
         
-        <div class="mt-4">
+        <div class="mt-5 p-3" style="background-color: #f8f9fa; border-left: 4px solid #333;">
+            <strong>Legenda:</strong>
+            <div class="table-responsive mt-3">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="text-center" style="width: 20%;">Pontuação</th>
+                            <th class="text-center" style="width: 20%;">Critério</th>
+                            <th class="text-center" style="width: 60%;">Significado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center fw-bold">100%</td>
+                            <td class="text-center">Sim</td>
+                            <td>Existe evidências</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center fw-bold">0%</td>
+                            <td class="text-center">Não</td>
+                            <td>Não possui controle e/ou não existe evidências</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center fw-bold">N/A</td>
+                            <td class="text-center">Não existe esta atividade</td>
+                            <td>Requisito não aplicável</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-3 p-2" style="background-color: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                <small class="text-muted">
+                    <strong>Avaliação:</strong><br>
+                    Total de Pontos Possíveis = 100 pontos<br>
+                    Avaliação do Fornecedor = 60 pontos<br>
+                    <em>Abrir relatório de não conformidade (RNC) para fornecedor abaixo de 60 pontos ou não cumprir os critérios de avaliação obrigatórios.</em>
+                </small>
+            </div>
+        </div>
+        
+        <div class="mt-5">
             <button type="submit" class="btn btn-success btn-lg">Salvar Reavaliação</button>
             <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary btn-lg">Cancelar</a>
         </div>
