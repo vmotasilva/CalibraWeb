@@ -78,11 +78,11 @@
             <td>
                 {% if fornecedor.pontuacao_monitoramento != "—" %}
                     {% if fornecedor.resultado_monitoramento == "Excelente" %}
-                        <span class="badge bg-success" title="Excelente">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
+                        <span class="badge bg-success" title="Excelente">{{ fornecedor.pontuacao_monitoramento|floatformat:2 }}</span>
                     {% elif fornecedor.resultado_monitoramento == "Bom" %}
-                        <span class="badge bg-warning" title="Bom">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
+                        <span class="badge bg-warning" title="Bom">{{ fornecedor.pontuacao_monitoramento|floatformat:2 }}</span>
                     {% else %}
-                        <span class="badge bg-danger" title="Ruim">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}%</span>
+                        <span class="badge bg-danger" title="Ruim">{{ fornecedor.pontuacao_monitoramento|floatformat:2 }}</span>
                     {% endif %}
                 {% else %}
                     <span class="text-muted">{{ fornecedor.pontuacao_monitoramento }}</span>

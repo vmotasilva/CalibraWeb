@@ -39,7 +39,7 @@ def avaliacao_edit(request, fornecedor_id, avaliacao_id):
                     resposta=resposta_bool,
                     observacao=obs_val
                 )
-            avaliacao.pontuacao_ano = max(0, 100 - total_ocorrencias)
+            avaliacao.pontuacao_ano = max(0, 100 - total_ocorrencias * 0.5)
             if avaliacao.pontuacao_ano >= 75:
                 avaliacao.resultado = "Excelente"
             elif avaliacao.pontuacao_ano >= 50:
@@ -559,7 +559,7 @@ def avaliacao_create(request, fornecedor_id):
                     resposta=resposta_bool,
                     observacao=obs_val
                 )
-            avaliacao.pontuacao_ano = max(0, 100 - total_ocorrencias)
+            avaliacao.pontuacao_ano = max(0, 100 - total_ocorrencias * 0.5)
             if avaliacao.pontuacao_ano >= 75:
                 avaliacao.resultado = "Excelente"
             elif avaliacao.pontuacao_ano >= 50:
