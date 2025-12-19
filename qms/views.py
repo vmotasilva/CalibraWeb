@@ -540,6 +540,29 @@ def get_certificado_bytes_view(request, historico_id):
 
 
 @login_required
+def debug_certificado_view(request, historico_id):
+    """Debug view to check certificate status."""
+    historico = get_object_or_404(HistoricoCalibracao, id=historico_id)
+    
+    data = {
+        'historico_id': historico_id,
+        'certificado_original': {
+            'exists': bool(historico.certificado),
+            'name': historico.certificado.name if historico.certificado else None,
+            'size': historico.certificado.size if historico.certificado else None,
+        },
+        'certificado_carimbado': {
+            'exists': bool(historico.certificado_carimbado),
+            'name': historico.certificado_carimbado.name if historico.certificado_carimbado else None,
+            'size': historico.certificado_carimbado.size if historico.certificado_carimbado else None,
+        },
+        'certificado_validado': historico.certificado_validado,
+    }
+    
+    return JsonResponse(data)
+
+
+@login_required
 def aplicar_carimbo_certificado_view(request, historico_id):
     """Apply a stamp/seal to a certificate PDF."""
     from pypdf import PdfReader, PdfWriter

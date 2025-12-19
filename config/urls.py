@@ -12,7 +12,7 @@ from metrologia.views import export_metrologia_view, export_etiquetas_view, deta
 from qms.views import (
     editar_instrumento_view, gerenciar_faixas_instrumento_view, editar_faixa_view,
     registrar_historico_calibracao_view, preview_certificado_view, download_certificado_view,
-    get_certificado_bytes_view,
+    get_certificado_bytes_view, debug_certificado_view,
     visualizar_historico_calibracao_view, editar_historico_calibracao_view, remover_historico_view,
     anexar_certificado_historico_view, remover_certificado_historico_view, aplicar_carimbo_certificado_view,
     remover_carimbo_certificado_view, remover_arquivo_padrao_view, download_arquivo_padrao_view
@@ -151,6 +151,7 @@ urlpatterns = [
     path("metrologia/historico/<int:historico_id>/preview/", preview_certificado_view, name="preview_certificado"),
     path("metrologia/historico/<int:historico_id>/download/", download_certificado_view, name="download_certificado"),
     path("metrologia/historico/<int:historico_id>/certificado-bytes/", get_certificado_bytes_view, name="get_certificado_bytes"),
+    path("metrologia/historico/<int:historico_id>/debug-certificado/", debug_certificado_view, name="debug_certificado"),
     path("metrologia/historico/<int:historico_id>/visualizar/", visualizar_historico_calibracao_view, name="visualizar_historico_calibracao"),
     path("metrologia/historico/<int:historico_id>/editar/", editar_historico_calibracao_view, name="editar_historico_calibracao"),
     path("metrologia/historico/<int:historico_id>/remover/", remover_historico_view, name="remover_historico"),
