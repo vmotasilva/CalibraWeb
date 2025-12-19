@@ -48,149 +48,21 @@
 
 
 <h3>Avaliação</h3>
-<div class="accordion" id="avaliacaoAccordion">
-    {% for tipo_key, tipo_data in perguntas_por_tipo.items %}
-        {% if tipo_key == "SELECAO" %}
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="heading{{ tipo_key }}">
-                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ tipo_key }}" aria-expanded="true" aria-controls="collapse{{ tipo_key }}">
-                        {{ tipo_data.nome }}
-                    </button>
-                </h2>
-                <div id="collapse{{ tipo_key }}" class="accordion-collapse collapse show" aria-labelledby="heading{{ tipo_key }}" data-bs-parent="#avaliacaoAccordion">
-                    <div class="accordion-body">
-                        {% if tipo_data.perguntas %}
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <strong>Requisitos</strong>
-                            </div>
-                            <div class="list-group list-group-flush">
-                                {% for pergunta in tipo_data.perguntas %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <span>{{ pergunta.texto }}</span>
-                                        <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
-                                    </div>
-                                    <span class="badge bg-success">Ativa</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% else %}
-                        <p class="text-muted"><em>Nenhuma pergunta de avaliação cadastrada.</em></p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        {% elif tipo_key == "REAVALIACAO" %}
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="heading{{ tipo_key }}">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ tipo_key }}" aria-expanded="false" aria-controls="collapse{{ tipo_key }}">
-                        {{ tipo_data.nome }}
-                    </button>
-                </h2>
-                <div id="collapse{{ tipo_key }}" class="accordion-collapse collapse" aria-labelledby="heading{{ tipo_key }}" data-bs-parent="#avaliacaoAccordion">
-                    <div class="accordion-body">
-                        {% if tipo_data.perguntas %}
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <strong>Critérios</strong>
-                            </div>
-                            <div class="list-group list-group-flush">
-                                {% for pergunta in tipo_data.perguntas %}
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <span>{{ pergunta.texto }}</span>
-                                        <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
-                                    </div>
-                                    <span class="badge bg-success">Ativa</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% else %}
-                        <p class="text-muted"><em>Nenhuma pergunta de reavaliação cadastrada.</em></p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        {% elif tipo_key == "MONITORAMENTO" %}
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="heading{{ tipo_key }}">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ tipo_key }}" aria-expanded="false" aria-controls="collapse{{ tipo_key }}">
-                        {{ tipo_data.nome }}
-                    </button>
-                </h2>
-                <div id="collapse{{ tipo_key }}" class="accordion-collapse collapse" aria-labelledby="heading{{ tipo_key }}" data-bs-parent="#avaliacaoAccordion">
-                    <div class="accordion-body">
-                        {% with prod=tipo_data.subgrupos.PRODUTO serv=tipo_data.subgrupos.SERVICO amb=tipo_data.subgrupos.AMBOS %}
-                            {% if prod or serv or amb %}
-                                {% if prod %}
-                                <div class="card mb-3">
-                                    <div class="card-header bg-light">
-                                        <strong>Produto</strong>
-                                    </div>
-                                    <div class="list-group list-group-flush">
-                                        {% for pergunta in prod %}
-                                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <span>{{ pergunta.texto }}</span>
-                                                <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
-                                            </div>
-                                            <span class="badge bg-success">Ativa</span>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                {% endif %}
-                                
-                                {% if serv %}
-                                <div class="card mb-3">
-                                    <div class="card-header bg-light">
-                                        <strong>Serviço</strong>
-                                    </div>
-                                    <div class="list-group list-group-flush">
-                                        {% for pergunta in serv %}
-                                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <span>{{ pergunta.texto }}</span>
-                                                <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
-                                            </div>
-                                            <span class="badge bg-success">Ativa</span>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                {% endif %}
-                                
-                                {% if amb %}
-                                <div class="card mb-3">
-                                    <div class="card-header bg-light">
-                                        <strong>Ambos</strong>
-                                    </div>
-                                    <div class="list-group list-group-flush">
-                                        {% for pergunta in amb %}
-                                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <span>{{ pergunta.texto }}</span>
-                                                <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
-                                            </div>
-                                            <span class="badge bg-success">Ativa</span>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                {% endif %}
-                            {% else %}
-                            <p class="text-muted"><em>Nenhuma pergunta de monitoramento cadastrada.</em></p>
-                            {% endif %}
-                        {% endwith %}
-                    </div>
-                </div>
-            </div>
-        {% endif %}
+{% if perguntas_avaliacao %}
+<div class="list-group">
+    {% for pergunta in perguntas_avaliacao %}
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+            <span>{{ pergunta.texto }}</span>
+            <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
+        </div>
+        <span class="badge bg-success">Ativa</span>
+    </div>
     {% endfor %}
 </div>
+{% else %}
+<p class="text-muted"><em>Nenhuma pergunta de avaliação cadastrada.</em></p>
+{% endif %}
 
 
 <h3>Monitoramento <span class="badge bg-success">Pontuação: {{ pontuacao_geral|floatformat:1 }}</span></h3>
