@@ -1403,6 +1403,12 @@ def editar_historico_calibracao_view(request, historico_id):
             uploaded_files = request.FILES.getlist('novos_arquivos_padroes')
             has_files = any(f for f in uploaded_files if f)
             
+            if has_files:
+                print(f"DEBUG: {len(uploaded_files)} arquivo(s) selecionado(s)")
+                for f in uploaded_files:
+                    if f:
+                        print(f"DEBUG: Arquivo - {f.name} ({f.size} bytes, content_type: {f.content_type})")
+            
             if form.is_valid():
                 form.save()
                 
@@ -1418,6 +1424,7 @@ def editar_historico_calibracao_view(request, historico_id):
                 error_msg = 'Erro ao atualizar histórico: '
                 for field, errors in form.errors.items():
                     error_msg += f"{field}: {', '.join(errors)}. "
+                print(f"DEBUG: Form errors: {form.errors}")
                 messages.error(request, error_msg)
         
         elif action == 'update_resultado':
