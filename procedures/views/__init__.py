@@ -6,6 +6,7 @@ from .views import (
     # Procedimentos
     procedimentos_list_view,
     export_procedimentos_excel_view,
+    importar_procedimentos_view,
     novo_procedimento_view,
     editar_procedimento_view,
     detalhe_procedimento_view,
@@ -35,6 +36,7 @@ __all__ = [
     # Procedimentos
     'procedimentos_list_view',
     'export_procedimentos_excel_view',
+    'importar_procedimentos_view',
     'novo_procedimento_view',
     'editar_procedimento_view',
     'detalhe_procedimento_view',
