@@ -170,7 +170,7 @@ urlpatterns = [
     path("metrologia/arquivo-padrao/<int:arquivo_id>/download/", download_arquivo_padrao_view, name="download_arquivo_padrao"),
     
     # 6. Application modules URLs - include all qms URLs with prefix to avoid conflicts
-    path("api/", include("qms.urls")),
+    path("api/", include(("qms.urls", "qms"))),
     # Fornecedores
     path("fornecedores/", include("fornecedores.urls")),
     # Metrologia - Cotação module URLs
