@@ -11,14 +11,20 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name="colaborador",
-            name="pacotes_treinamento",
-            field=models.ManyToManyField(
-                blank=True,
-                related_name="colaboradores",
-                to="procedures.pacotetreinamento",
-                verbose_name="Pacotes Atribuídos",
-            ),
+        migrations.RunSQL(
+            sql="SELECT 1;",  # No-op SQL - table may already exist
+            reverse_sql="SELECT 1;",
+            state_operations=[
+                migrations.AddField(
+                    model_name="colaborador",
+                    name="pacotes_treinamento",
+                    field=models.ManyToManyField(
+                        blank=True,
+                        related_name="colaboradores",
+                        to="procedures.pacotetreinamento",
+                        verbose_name="Pacotes Atribuídos",
+                    ),
+                ),
+            ]
         ),
     ]
