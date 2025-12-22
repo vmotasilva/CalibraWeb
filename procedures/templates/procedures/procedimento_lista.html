@@ -5,6 +5,7 @@
 
 {% block header_actions %}
     <a href="{% url 'procedures:novo_procedimento' %}" class="btn btn-primary btn-sm">+ Novo Procedimento</a>
+    <a href="{% url 'procedures:importar_procedimentos' %}" class="btn btn-warning btn-sm">📤 Importar em Massa</a>
     <a href="{% url 'procedures:export_procedimentos_excel' %}" class="btn btn-success btn-sm">📥 Exportar Excel</a>
 {% endblock %}
 

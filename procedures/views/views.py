@@ -131,6 +131,60 @@ def export_procedimentos_excel_view(request):
 
 
 @login_required
+def importar_procedimentos_view(request):
+    """Importação em massa de procedimentos via arquivo Excel/CSV."""
+    if not can_manage_procedimentos(request.user):
+        messages.error(request, 'Sem permissão para importar procedimentos.')
+        return redirect('procedimentos_list')
+    
+    from procedures.forms import ImportacaoProcedimentosForm
+    from procedures.services.importacao_procedimentos import ImportacaoProcedimentosService
+    from django.utils.safestring import mark_safe
+    
+    relatorio_html = None
+    modo = request.POST.get('modo', 'upsert')
+    
+    if request.method == 'POST' and request.FILES.get('arquivo_excel'):
+        form = ImportacaoProcedimentosForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                arquivo = request.FILES['arquivo_excel']
+                servico = ImportacaoProcedimentosService(arquivo)
+                
+                # Processa arquivo
+                resultados = servico.processar(modo=modo)
+                
+                # Gera relatório
+                relatorio_html = mark_safe(servico.gerar_relatorio_html())
+                
+                # Mensagem de sucesso
+                if resultados['erros'] == 0:
+                    messages.success(request, 
+                        f"✅ Importação concluída com sucesso! "
+                        f"{resultados['criados']} criados, {resultados['atualizados']} atualizados.")
+                else:
+                    messages.warning(request, 
+                        f"⚠️ Importação com algumas inconsistências: "
+                        f"{resultados['criados']} criados, {resultados['atualizados']} atualizados, "
+                        f"{resultados['erros']} erros. Verifique os detalhes abaixo.")
+                
+                logger.info(f"Importação de procedimentos realizada por {request.user}: "
+                           f"Criados: {resultados['criados']}, Atualizados: {resultados['atualizados']}, Erros: {resultados['erros']}")
+                
+            except Exception as e:
+                messages.error(request, f"❌ Erro ao processar arquivo: {str(e)}")
+                logger.error(f"Erro ao importar procedimentos: {e}", exc_info=True)
+    else:
+        form = ImportacaoProcedimentosForm()
+    
+    return render(request, 'procedures/procedimentos_importar.html', {
+        'form': form,
+        'relatorio_html': relatorio_html,
+        'modo': modo,
+    })
+
+
+@login_required
 def novo_procedimento_view(request):
     """Cria novo procedimento."""
     if not can_manage_procedimentos(request.user):
