@@ -44,13 +44,13 @@
         </a>
     </div>
     <div class="col-md-3">
-        <a href="/admin/qms/processocotacao/" class="card-counter info">
+        <a href="{% url 'metrologia:solicitacao_list' %}" class="card-counter info">
             <span class="count-numbers">{{ qtd_cotacoes }}</span>
             <span class="count-name">Cotações Abertas</span>
         </a>
     </div>
     <div class="col-md-3">
-        <a href="/admin/qms/solicitacaoinstrumento/?status__exact=PENDENTE" class="card-counter primary">
+        <a href="{% url 'qms:solicitacao_list' %}" class="card-counter primary">
             <span class="count-numbers">{{ qtd_pendentes|default:"0" }}</span>
             <span class="count-name">Solicitações Pendentes</span>
         </a>

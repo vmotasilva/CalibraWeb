@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Solicitações de Instrumentos{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>
+                <i class="bi bi-file-earmark-text"></i> Solicitações de Instrumentos
+            </h1>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="status" class="form-label">Status</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">Todos os Status</option>
+                        {% for code, label in status_choices %}
+                            <option value="{{ code }}" {% if selected_status == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="tipo" class="form-label">Tipo</label>
+                    <select name="tipo" id="tipo" class="form-select">
+                        <option value="">Todos os Tipos</option>
+                        {% for code, label in tipo_choices %}
+                            <option value="{{ code }}" {% if selected_tipo == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Solicitações -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-list-check"></i> 
+                Solicitações 
+                <span class="badge bg-light text-dark">{{ solicitacoes.paginator.count }}</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            {% if solicitacoes %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Solicitante</th>
+                                <th>Tipo</th>
+                                <th>Instrumento Alvo</th>
+                                <th>Motivo</th>
+                                <th>Status</th>
+                                <th style="width: 80px;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sol in solicitacoes %}
+                                <tr>
+                                    <td>
+                                        <small>{{ sol.data_solicitacao|date:"d/m/Y H:i" }}</small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ sol.solicitante.username }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ sol.get_tipo_display }}</span>
+                                    </td>
+                                    <td>
+                                        {% if sol.instrumento_alvo %}
+                                            <a href="{% url 'visualizar_instrumento' sol.instrumento_alvo.id %}">
+                                                {{ sol.instrumento_alvo.tag }}
+                                            </a>
+                                        {% else %}
+                                            <em class="text-muted">N/A</em>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ sol.motivo|truncatewords:10 }}</small>
+                                    </td>
+                                    <td>
+                                        {% if sol.status == 'PENDENTE' %}
+                                            <span class="badge bg-warning text-dark">{{ sol.get_status_display }}</span>
+                                        {% elif sol.status == 'EM_ANALISE' %}
+                                            <span class="badge bg-info">{{ sol.get_status_display }}</span>
+                                        {% elif sol.status == 'APROVADO' %}
+                                            <span class="badge bg-success">{{ sol.get_status_display }}</span>
+                                        {% elif sol.status == 'REJEITADO' %}
+                                            <span class="badge bg-danger">{{ sol.get_status_display }}</span>
+                                        {% elif sol.status == 'CONCLUIDO' %}
+                                            <span class="badge bg-secondary">{{ sol.get_status_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">{{ sol.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#detailModal{{ sol.id }}">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <!-- Modal de Detalhes -->
+                                <div class="modal fade" id="detailModal{{ sol.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">
+                                                    <i class="bi bi-file-earmark-text"></i>
+                                                    Solicitação #{{ sol.id }}
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <strong>Solicitante:</strong><br>
+                                                        {{ sol.solicitante.username }}
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <strong>Data:</strong><br>
+                                                        {{ sol.data_solicitacao|date:"d/m/Y H:i" }}
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <strong>Tipo:</strong><br>
+                                                        <span class="badge bg-info">{{ sol.get_tipo_display }}</span>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <strong>Status:</strong><br>
+                                                        {% if sol.status == 'PENDENTE' %}
+                                                            <span class="badge bg-warning text-dark">{{ sol.get_status_display }}</span>
+                                                        {% elif sol.status == 'EM_ANALISE' %}
+                                                            <span class="badge bg-info">{{ sol.get_status_display }}</span>
+                                                        {% elif sol.status == 'APROVADO' %}
+                                                            <span class="badge bg-success">{{ sol.get_status_display }}</span>
+                                                        {% elif sol.status == 'REJEITADO' %}
+                                                            <span class="badge bg-danger">{{ sol.get_status_display }}</span>
+                                                        {% elif sol.status == 'CONCLUIDO' %}
+                                                            <span class="badge bg-secondary">{{ sol.get_status_display }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                {% if sol.instrumento_alvo %}
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-12">
+                                                            <strong>Instrumento Alvo:</strong><br>
+                                                            <a href="{% url 'visualizar_instrumento' sol.instrumento_alvo.id %}">
+                                                                {{ sol.instrumento_alvo.tag }} - {{ sol.instrumento_alvo.descricao }}
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                                <div class="row mb-3">
+                                                    <div class="col-md-12">
+                                                        <strong>Motivo:</strong><br>
+                                                        <p>{{ sol.motivo }}</p>
+                                                    </div>
+                                                </div>
+                                                {% if sol.resposta_qualidade %}
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-12">
+                                                            <strong>Resposta do Setor de Qualidade:</strong><br>
+                                                            <div class="alert alert-info">
+                                                                {{ sol.resposta_qualidade }}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginação -->
+                {% if solicitacoes.has_other_pages %}
+                    <nav aria-label="Paginação" class="p-3">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if solicitacoes.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1&status={{ selected_status }}&tipo={{ selected_tipo }}">Primeira</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ solicitacoes.previous_page_number }}&status={{ selected_status }}&tipo={{ selected_tipo }}">Anterior</a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in solicitacoes.paginator.page_range %}
+                                {% if solicitacoes.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}&status={{ selected_status }}&tipo={{ selected_tipo }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if solicitacoes.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ solicitacoes.next_page_number }}&status={{ selected_status }}&tipo={{ selected_tipo }}">Próxima</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ solicitacoes.paginator.num_pages }}&status={{ selected_status }}&tipo={{ selected_tipo }}">Última</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="p-4 text-center text-muted">
+                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                    <p>Nenhuma solicitação encontrada com os filtros selecionados.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

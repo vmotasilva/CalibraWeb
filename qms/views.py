@@ -2429,5 +2429,44 @@ def atualizar_datas_calibracao_view(request, instrumento_id):
     return redirect('detalhe_instrumento', instrumento_id=instrumento_id)
 
 
+# ==============================================================================
+# SOLICITAÇÕES DE INSTRUMENTO - Cross-App Management
+# ==============================================================================
+
+@login_required
+def solicitacao_list(request):
+    """Lista solicitações de instrumentos com filtros"""
+    # Get all solicitações or filter by status
+    queryset = SolicitacaoInstrumento.objects.select_related('solicitante', 'instrumento_alvo').order_by('-data_solicitacao')
+    
+    # Filter by status if provided
+    status = request.GET.get('status', '')
+    if status:
+        queryset = queryset.filter(status=status)
+    
+    # Filter by tipo if provided
+    tipo = request.GET.get('tipo', '')
+    if tipo:
+        queryset = queryset.filter(tipo=tipo)
+    
+    # Pagination
+    page = request.GET.get('page', 1)
+    paginator = Paginator(queryset, 20)
+    try:
+        solicitacoes = paginator.page(page)
+    except Exception as e:
+        solicitacoes = paginator.page(1)
+    
+    context = {
+        'solicitacoes': solicitacoes,
+        'status_choices': SolicitacaoInstrumento.STATUS_CHOICES,
+        'tipo_choices': SolicitacaoInstrumento.TIPO_CHOICES,
+        'selected_status': status,
+        'selected_tipo': tipo,
+    }
+    
+    return render(request, 'qms/solicitacao_list.html', context)
+
+
 
 

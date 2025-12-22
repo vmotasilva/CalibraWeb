@@ -2,6 +2,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Solicitações de Instrumento
+    path("solicitacoes/", views.solicitacao_list, name="solicitacao_list"),
+    
     # Application module routes
     path("metrologia/", views.modulo_metrologia_view, name="modulo_metrologia"),
     path("metrologia/instrumentos/", views.listar_instrumentos_view, name="listar_instrumentos"),
