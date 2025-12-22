@@ -20,8 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Imports dos models
 from metrologia.models import Instrumento
-from procurements.models import ProcessoCotacao
-from training.models import RegistroTreinamento
+from procedures.models import ProcessoCotacao, RegistroTreinamento
 from rh.models import Colaborador
 from organization.models import CentroCusto
 from qms.models import SolicitacaoInstrumento, ImportJob

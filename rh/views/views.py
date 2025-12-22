@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.db.models import Q
 from django.http import HttpResponseRedirect
+from django.core.paginator import Paginator
 import logging
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,33 @@ def can_user_access_colaborador(request_user, target_colaborador):
         return True
     
     return False
+
+
+def get_colaboradores_acessiveis(request_user):
+    """
+    Retorna queryset de colaboradores que o usuário tem permissão de acesso.
+    """
+    if request_user.is_superuser:
+        return Colaborador.objects.all()
+    
+    usuario_logado = get_colaborador_for_user(request_user)
+    if not usuario_logado:
+        return Colaborador.objects.none()
+    
+    # Se é staff (RH/DP/Qualidade), pode ver todos
+    setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
+    if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
+        return Colaborador.objects.all()
+    
+    # Se é gerente ou diretor, pode ver seus subordinados
+    if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
+       HierarquiaSetor.objects.filter(diretor=usuario_logado).exists():
+        subordinados_ids = get_all_subordinates(usuario_logado)
+        subordinados_ids.add(usuario_logado.id)
+        return Colaborador.objects.filter(id__in=subordinados_ids)
+    
+    # Caso contrário, pode ver apenas a si mesmo
+    return Colaborador.objects.filter(id=usuario_logado.id)
 
 
 @login_required
@@ -489,6 +517,69 @@ def deletar_ocorrencia_view(request, occ_id):
     ocorrencia.delete()
     messages.success(request, "Ocorrência excluída com sucesso!")
     return redirect("detalhe_colaborador", colab_id=colaborador_id)
+
+
+@login_required
+def listar_ocorrencias_view(request):
+    """Lista todas as ocorrências registradas, ordenadas por mais recentes primeiro."""
+    usuario_logado = None
+    try:
+        usuario_logado = get_colaborador_for_user(request.user)
+    except Exception:
+        pass
+    
+    # Verificar permissão geral de acesso ao módulo
+    permitido = False
+    if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    elif usuario_logado:
+        if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
+            permitido = True
+        if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
+           HierarquiaSetor.objects.filter(supervisor=usuario_logado).exists():
+            permitido = True
+    
+    if not permitido:
+        messages.error(request, "Você não tem permissão para acessar a listagem de ocorrências.")
+        return redirect("modulo_rh")
+    
+    # Obter todas as ocorrências ou filtradas por acesso
+    if request.user.is_superuser or request.user.is_staff:
+        ocorrencias = Ocorrencia.objects.all().select_related('colaborador', 'condutor').order_by('-data_ocorrencia')
+    else:
+        # Filtrar apenas colaboradores que o usuário tem acesso
+        colaboradores_acessiveis = get_colaboradores_acessiveis(request.user)
+        ocorrencias = Ocorrencia.objects.filter(colaborador__in=colaboradores_acessiveis).select_related('colaborador', 'condutor').order_by('-data_ocorrencia')
+    
+    # Filtros opcionais
+    colaborador_id = request.GET.get('colaborador_id')
+    tipo = request.GET.get('tipo')
+    natureza = request.GET.get('natureza')
+    
+    if colaborador_id:
+        ocorrencias = ocorrencias.filter(colaborador_id=colaborador_id)
+    
+    if tipo:
+        ocorrencias = ocorrencias.filter(tipo=tipo)
+    
+    if natureza:
+        ocorrencias = ocorrencias.filter(natureza=natureza)
+    
+    # Paginação
+    paginator = Paginator(ocorrencias, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'ocorrencias': page_obj.object_list,
+        'tipos': Ocorrencia.TIPO_CHOICES,
+        'naturezas': Ocorrencia.NATUREZA_CHOICES,
+        'colaboradores': Colaborador.objects.all().order_by('nome_completo') if (request.user.is_superuser or request.user.is_staff) else None,
+        'total_ocorrencias': paginator.count,
+    }
+    
+    return render(request, 'rh/ocorrencias_lista.html', context)
 
 
 # ==============================================================================

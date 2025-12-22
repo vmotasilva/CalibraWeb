@@ -250,9 +250,12 @@
                                                 </button>
                                             </form>
                                         {% endif %}
-                                        <a href="/metrologia/historico/{{ item.id }}/remover/" class="btn btn-sm btn-outline-danger ms-1" title="Apagar registro" onclick="return confirm('Tem certeza que deseja remover este registro do histórico? Esta ação não pode ser desfeita.');">
-                                            <i class="bi bi-x-circle"></i>
-                                        </a>
+                                        <form method="post" action="/metrologia/historico/{{ item.id }}/remover/" class="d-inline" onsubmit="return confirm('Tem certeza que deseja remover este registro do histórico? Esta ação não pode ser desfeita.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger ms-1" title="Apagar registro">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                                 {% empty %}

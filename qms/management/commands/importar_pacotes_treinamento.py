@@ -11,7 +11,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from rh.models import PacoteTreinamento
-from training.models import Procedimento
+from procedures.models import Procedimento
 
 
 class Command(BaseCommand):

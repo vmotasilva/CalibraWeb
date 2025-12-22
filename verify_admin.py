@@ -16,8 +16,8 @@ from core.models import UnidadeMedida
 from organization.models import Setor, CentroCusto, HierarquiaSetor
 from rh.models import Colaborador, Ferias, Ocorrencia, DocumentoPessoal
 from metrologia.models import CategoriaInstrumento, Instrumento, FaixaMedicao, HistoricoCalibracao, ArquivoPadrao, ResultadoFaixaCalibracao, OrdemCalibracao
-from procurements.models import Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
-from training.models import Area, Procedimento, ProcedimentoRevisao, PacoteTreinamento, RegistroTreinamento
+from procedures.models import Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
+from procedures.models import Area, Procedimento, ProcedimentoRevisao, PacoteTreinamento, RegistroTreinamento
 from qms.models import SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob
 
 # List of all models

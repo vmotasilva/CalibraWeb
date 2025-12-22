@@ -62,8 +62,8 @@ try:
         CategoriaInstrumento, Instrumento, FaixaMedicao, HistoricoCalibracao,
         ArquivoPadrao, ResultadoFaixaCalibracao, OrdemCalibracao
     )
-    from training.models import Area, Procedimento, ProcedimentoRevisao, PacoteTreinamento, RegistroTreinamento
-    from procurements.models import Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
+    from procedures.models import Area, Procedimento, ProcedimentoRevisao, PacoteTreinamento, RegistroTreinamento
+    from procedures.models import Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
     from qms.models import SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob
     print("  - All 27 models imported successfully: ✅")
 except ImportError as e:

@@ -10,7 +10,7 @@ from metrologia.models import (
 )
 from organization.models import Setor, CentroCusto
 from rh.models import Colaborador, PacoteTreinamento
-from training.models import Procedimento
+from procedures.models import Procedimento
 
 
 class Command(BaseCommand):

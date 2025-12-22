@@ -1,0 +1,101 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Procedimentos{% endblock %}
+{% block header_title %}Lista de Procedimentos{% endblock %}
+
+{% block header_actions %}
+    <a href="{% url 'procedures:novo_procedimento' %}" class="btn btn-primary btn-sm">+ Novo Procedimento</a>
+    <a href="{% url 'procedures:export_procedimentos_excel' %}" class="btn btn-success btn-sm">📥 Exportar Excel</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">Filtrar Procedimentos</h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" name="q" class="form-control" placeholder="Buscar código ou nome" value="{{ termo }}">
+            </div>
+            <div class="col-md-3">
+                <input type="text" name="classificacao" class="form-control" placeholder="Classificação" value="{{ classificacao }}">
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="rev" class="form-control" placeholder="Revisão" value="{{ rev }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">Procedimentos ({{ page_obj.paginator.count }})</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Código</th>
+                    <th>Nome</th>
+                    <th>Classificação</th>
+                    <th>Revisão</th>
+                    <th>Última Revisão</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for proc in procedimentos %}
+                <tr>
+                    <td><strong>{{ proc.codigo }}</strong></td>
+                    <td>{{ proc.nome|truncatewords:10 }}</td>
+                    <td><span class="badge bg-info">{{ proc.classificacao }}</span></td>
+                    <td>{{ proc.numero_revisao }}</td>
+                    <td>{{ proc.ultima_revisao|date:"d/m/Y" }}</td>
+                    <td>
+                        <a href="{% url 'procedures:detalhe_procedimento' proc.id %}" class="btn btn-sm btn-info">Ver</a>
+                        <a href="{% url 'procedures:editar_procedimento' proc.id %}" class="btn btn-sm btn-warning">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">Nenhum procedimento encontrado</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Paginação -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4" aria-label="Paginação">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1{{ querystring_base }}">Primeira</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ querystring_base }}">Anterior</a>
+        </li>
+        {% endif %}
+        
+        <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ querystring_base }}">Próxima</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ querystring_base }}">Última</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

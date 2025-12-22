@@ -56,8 +56,7 @@ INSTALLED_APPS = [
     "organization.apps.OrganizationConfig",
     "rh.apps.RhConfig",
     "metrologia.apps.MetrologiaConfig",
-    "training.apps.TrainingConfig",
-    "procurements.apps.ProcurementsConfig",
+    "procedures.apps.ProceduresConfig",  # Unificação de training + procurements
     "documents.apps.DocumentsConfig",
     "shared.apps.SharedConfig",
     "fornecedores.apps.FornecedoresConfig",

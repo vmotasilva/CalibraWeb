@@ -9,8 +9,7 @@
 # - organization.models: Setor, CentroCusto, HierarquiaSetor
 # - rh.models: Colaborador, Ferias, Ocorrencia, DocumentoPessoal
 # - metrologia.models: Instrumento, HistoricoCalibracao, FaixaMedicao, CategoriaInstrumento, ArquivoPadrao, ResultadoFaixaCalibracao, OrdemCalibracao
-# - procurements.models: Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
-# - training.models: Procedimento, Area, PacoteTreinamento, ProcedimentoRevisao, RegistroTreinamento
+# - procedures.models: Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento, Procedimento, Area, PacoteTreinamento, ProcedimentoRevisao, RegistroTreinamento
 #
 # THIS FILE (qms.models) ONLY exports these 3 cross-app models:
 # ==============================================================================

@@ -6,7 +6,7 @@ Execução: python manage.py importar_procedimentos
 import json
 from pathlib import Path
 from django.core.management.base import BaseCommand
-from training.models import Procedimento
+from procedures.models import Procedimento
 
 
 class Command(BaseCommand):

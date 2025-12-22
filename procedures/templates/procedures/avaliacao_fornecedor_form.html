@@ -1,0 +1,23 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Formulário de Avaliação{% endblock %}
+{% block header_title %}Nova Avaliação de Fornecedor{% endblock %}
+
+{% block content %}
+<div class="card">
+    <form method="POST">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="mb-3">
+                {{ field.label_tag }}
+                {{ field }}
+                {% if field.errors %}
+                    <div class="alert alert-danger mt-2">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">Salvar Avaliação</button>
+        <a href="javascript:history.back()" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

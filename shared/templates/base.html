@@ -56,12 +56,12 @@
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'procedimentos_lista' %}">
+                    <a class="nav-link" href="{% url 'procedures:procedimentos_list' %}">
                         <i class="bi bi-journal-bookmark"></i> Procedimentos
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'treinamentos_lista' %}">
+                    <a class="nav-link" href="{% url 'procedures:treinamentos_list' %}">
                         <i class="bi bi-mortarboard"></i> Treinamentos
                     </a>
                 </li>
@@ -73,6 +73,7 @@
                     <ul class="dropdown-menu shadow">
                         <li><h6 class="dropdown-header text-muted">EQUIPE</h6></li>
                         <li><a class="dropdown-item" href="{% url 'modulo_rh' %}">👥 Colaboradores</a></li>
+                        <li><a class="dropdown-item" href="{% url 'listar_ocorrencias' %}">⚠️ Ocorrências</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
                         <li><a class="dropdown-item" href="{% url 'importar_colaboradores' %}">📥 Importar Pessoas</a></li>

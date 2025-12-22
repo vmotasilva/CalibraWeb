@@ -12,21 +12,10 @@ class Migration(migrations.Migration):
     dependencies = [
         ("organization", "0002_initial"),
         ("rh", "0001_initial"),
-        ("training", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
-        migrations.AddField(
-            model_name="colaborador",
-            name="pacotes_treinamento",
-            field=models.ManyToManyField(
-                blank=True,
-                related_name="colaboradores",
-                to="training.pacotetreinamento",
-                verbose_name="Pacotes Atribuídos",
-            ),
-        ),
         migrations.AddField(
             model_name="colaborador",
             name="setor",

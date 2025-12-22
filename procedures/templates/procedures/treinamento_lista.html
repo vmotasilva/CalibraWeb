@@ -1,0 +1,69 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Treinamentos{% endblock %}
+{% block header_title %}Matriz de Treinamentos{% endblock %}
+
+{% block header_actions %}
+    <a href="{% url 'procedures:novo_treinamento' %}" class="btn btn-primary btn-sm">+ Novo Treinamento</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">Filtros</h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <input type="text" name="q" class="form-control" placeholder="Buscar" value="{{ busca }}">
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">Todos os Status</option>
+                    <option value="VIGENTE" {% if status == 'VIGENTE' %}selected{% endif %}>VIGENTE</option>
+                    <option value="PENDENTE" {% if status == 'PENDENTE' %}selected{% endif %}>PENDENTE</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">Registros ({{ treinamentos|length }})</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Procedimento</th>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in treinamentos %}
+                <tr>
+                    <td>{{ t.colaborador.nome_completo }}</td>
+                    <td>{{ t.procedimento.codigo }}</td>
+                    <td>{{ t.data_treinamento|date:"d/m/Y" }}</td>
+                    <td><span class="badge {% if t.status_treinamento == 'VIGENTE' %}bg-success{% else %}bg-warning{% endif %}">{{ t.status_treinamento }}</span></td>
+                    <td>
+                        <a href="{% url 'procedures:editar_treinamento' t.id %}" class="btn btn-sm btn-warning">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted">Nenhum treinamento encontrado</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

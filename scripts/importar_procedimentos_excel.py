@@ -7,7 +7,7 @@ from datetime import datetime
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
-from training.models import Procedimento, Area
+from procedures.models import Procedimento, Area
 from organization.models import Setor
 
 # Caminho do arquivo Excel

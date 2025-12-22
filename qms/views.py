@@ -42,7 +42,7 @@ from metrologia.models import (
     ResultadoFaixaCalibracao,
 )
 from rh.models import Colaborador
-from training.models import Procedimento
+from procedures.models import Procedimento
 from organization.models import Setor
 from .models import (
     ImportJob,

@@ -6,16 +6,17 @@ from django.contrib.auth import views as auth_views
 from django.shortcuts import render, redirect
 from django.urls import path, include
 from django.http import JsonResponse
-from procurements.views import nova_solicitacao
-from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view, editar_ocorrencia_view, deletar_ocorrencia_view, registrar_ferias_view, editar_ferias_view, excluir_ferias_view
-from metrologia.views import export_metrologia_view, export_etiquetas_view, detalhe_instrumento_view, modulo_metrologia_view
+# from procedures.views import nova_solicitacao  # TODO: Implementar se necessário
+from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view, editar_ocorrencia_view, deletar_ocorrencia_view, listar_ocorrencias_view, registrar_ferias_view, editar_ferias_view, excluir_ferias_view
+from metrologia.views import export_metrologia_view, export_etiquetas_view, detalhe_instrumento_view, modulo_metrologia_view, remover_historico_view, visualizar_historico_calibracao_view
 from qms.views import (
     editar_instrumento_view, gerenciar_faixas_instrumento_view, editar_faixa_view,
     registrar_historico_calibracao_view, preview_certificado_view, download_certificado_view,
     get_certificado_bytes_view, debug_certificado_view, atualizar_datas_calibracao_view,
-    visualizar_historico_calibracao_view, editar_historico_calibracao_view, remover_historico_view,
+    editar_historico_calibracao_view,
     anexar_certificado_historico_view, remover_certificado_historico_view, aplicar_carimbo_certificado_view,
-    remover_carimbo_certificado_view, remover_arquivo_padrao_view, download_arquivo_padrao_view
+    remover_carimbo_certificado_view, remover_arquivo_padrao_view, download_arquivo_padrao_view,
+    imp_colab_view, imp_hierarquia_view, imp_ferias_view
 )
 from shared.views import (
     home_view,
@@ -40,8 +41,7 @@ def root_view(request):
     """Root view that handles authentication and shows dashboard"""
     if request.user.is_authenticated:
         # Import here to avoid circular imports
-        from metrologia.models import Instrumento
-        from procurements.models import ProcessoCotacao
+        from metrologia.models import Instrumento, SolicitacaoCotacao
         from rh.models import Colaborador
         from qms.models import SolicitacaoInstrumento
         from datetime import date, timedelta
@@ -62,7 +62,11 @@ def root_view(request):
                 data_proxima_calibracao__lte=trinta_dias, ativo=True
             ).order_by("data_proxima_calibracao")[:5]
 
-            # Procurements
+            # Cotações em aberto
+            qtd_cotacoes = SolicitacaoCotacao.objects.filter(status="ABERTA").count()
+            solicitacoes_cotacao = SolicitacaoCotacao.objects.filter(status="ABERTA").order_by("-data_criacao")[:10]
+
+            # Solicitações pendentes
             qtd_pendentes = SolicitacaoInstrumento.objects.filter(status="PENDENTE").count()
 
             context = {
@@ -70,12 +74,14 @@ def root_view(request):
                 "qtd_vencidos": qtd_vencidos,
                 "qtd_avencer": qtd_avencer,
                 "lista_urgentes": lista_urgentes,
-                "qtd_cotacoes": ProcessoCotacao.objects.filter(status="ABERTO").count(),
+                "qtd_cotacoes": qtd_cotacoes,
+                "solicitacoes_cotacao": solicitacoes_cotacao,
                 "qtd_pendentes": qtd_pendentes,
                 "today": hoje,
             }
         except Exception as e:
             # If there's a database error, show minimal context
+            from datetime import date
             context = {
                 "nome_display": request.user.username,
                 "qtd_vencidos": 0,
@@ -178,16 +184,12 @@ urlpatterns = [
     path("rh/colaborador/<int:colab_id>/ferias/<int:ferias_id>/editar/", editar_ferias_view, name="editar_ferias"),
     path("rh/colaborador/<int:colab_id>/ferias/<int:ferias_id>/excluir/", excluir_ferias_view, name="excluir_ferias"),
     path("rh/ocorrencia/", registrar_ocorrencia_view, name="registrar_ocorrencia"),
+    path("rh/ocorrencia/listar/", listar_ocorrencias_view, name="listar_ocorrencias"),
     path("rh/ocorrencia/<int:occ_id>/editar/", editar_ocorrencia_view, name="editar_ocorrencia"),
     path("rh/ocorrencia/<int:occ_id>/deletar/", deletar_ocorrencia_view, name="deletar_ocorrencia"),
     
-    # 7. Training app URLs
-    path("training/", include("training.urls")),
-    path("api/treinamentos/", treinamentos_lista_redirect, name="treinamentos_lista"),
-    
-    # 8. Procurements app URLs
-    path("procurements/novo/", nova_solicitacao, name="nova_solicitacao"),
-    path("procurements/", include("procurements.urls")),
+    # 7. Procedures app URLs (Procedimentos, Treinamentos, Fornecedores, Cotações)
+    path("procedures/", include("procedures.urls")),
     
     # 9. Documents app URLs
     path("documents/", include("documents.urls")),

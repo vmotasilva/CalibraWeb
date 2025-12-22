@@ -74,7 +74,7 @@ class Colaborador(models.Model):
         verbose_name="Gerente",
     )
     pacotes_treinamento = models.ManyToManyField(
-        "training.PacoteTreinamento",
+        "procedures.PacoteTreinamento",
         blank=True,
         verbose_name="Pacotes Atribuídos",
         related_name="colaboradores",

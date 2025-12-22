@@ -704,11 +704,22 @@ def remover_historico_view(request, historico_id):
     """Remove um registro de histórico de calibração."""
     hist = get_object_or_404(HistoricoCalibracao, id=historico_id)
     i_id = hist.instrumento.id
-    if hist.certificado:
-        hist.certificado.delete(save=False)
-    hist.delete()
-    messages.success(request, "Removido.")
-    return redirect("detalhe_instrumento", instrumento_id=i_id)
+    
+    if request.method == 'POST':
+        # Remover certificado se existir
+        if hist.certificado:
+            hist.certificado.delete(save=False)
+        # Remover histórico
+        hist.delete()
+        messages.success(request, "Histórico removido com sucesso.")
+        return redirect("detalhe_instrumento", instrumento_id=i_id)
+    
+    # GET request - show confirmation page
+    context = {
+        'historico': hist,
+        'instrumento_id': i_id,
+    }
+    return render(request, 'metrologia/remover_historico_confirm.html', context)
 
 
 @login_required

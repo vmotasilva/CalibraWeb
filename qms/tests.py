@@ -357,7 +357,7 @@ class FornecedorTests(TestCase):
     
     def test_fornecedor_creation(self):
         """Test Fornecedor can be created"""
-        from procurements.models import Fornecedor
+        from procedures.models import Fornecedor
         fornecedor = Fornecedor.objects.create(
             nome_fantasia="Test Labs",
             cnpj="12345678000100",
@@ -371,7 +371,7 @@ class FornecedorTests(TestCase):
     
     def test_fornecedor_status_default(self):
         """Test Fornecedor status default"""
-        from procurements.models import Fornecedor
+        from procedures.models import Fornecedor
         fornecedor = Fornecedor.objects.create(
             nome_fantasia="Lab2",
             cnpj="98765432000100",
@@ -384,7 +384,7 @@ class FornecedorTests(TestCase):
     
     def test_fornecedor_nota_media_default(self):
         """Test Fornecedor nota_media default"""
-        from procurements.models import Fornecedor
+        from procedures.models import Fornecedor
         fornecedor = Fornecedor.objects.create(
             nome_fantasia="Lab3",
             cnpj="11111111000100",
@@ -401,7 +401,7 @@ class AvaliacaoFornecedorTests(TestCase):
     
     def setUp(self):
         """Create test data"""
-        from procurements.models import Fornecedor; from organization.models import Setor; from rh.models import Colaborador
+        from procedures.models import Fornecedor; from organization.models import Setor; from rh.models import Colaborador
         self.fornecedor = Fornecedor.objects.create(
             nome_fantasia="Eval Labs",
             cnpj="22222222000100",
@@ -419,7 +419,7 @@ class AvaliacaoFornecedorTests(TestCase):
     
     def test_avaliacao_fornecedor_creation(self):
         """Test AvaliacaoFornecedor can be created"""
-        from procurements.models import AvaliacaoFornecedor
+        from procedures.models import AvaliacaoFornecedor
         avaliacao = AvaliacaoFornecedor.objects.create(
             fornecedor=self.fornecedor,
             avaliador=self.avaliador,
@@ -432,7 +432,7 @@ class AvaliacaoFornecedorTests(TestCase):
     
     def test_avaliacao_fornecedor_relationship(self):
         """Test AvaliacaoFornecedor relationships"""
-        from procurements.models import AvaliacaoFornecedor
+        from procedures.models import AvaliacaoFornecedor
         avaliacao = AvaliacaoFornecedor.objects.create(
             fornecedor=self.fornecedor,
             avaliador=self.avaliador,
@@ -484,12 +484,12 @@ class QmsImportsTests(TestCase):
     
     def test_fornecedor_model_import(self):
         """Test Fornecedor model can be imported"""
-        from procurements.models import Fornecedor
+        from procedures.models import Fornecedor
         self.assertIsNotNone(Fornecedor)
     
     def test_avaliacao_fornecedor_model_import(self):
         """Test AvaliacaoFornecedor model can be imported"""
-        from procurements.models import AvaliacaoFornecedor
+        from procedures.models import AvaliacaoFornecedor
         self.assertIsNotNone(AvaliacaoFornecedor)
 
 
