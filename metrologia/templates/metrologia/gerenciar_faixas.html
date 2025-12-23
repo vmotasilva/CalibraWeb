@@ -73,6 +73,54 @@
 
         <!-- Coluna Direita: Lista de Faixas -->
         <div class="col-lg-8">
+            {% if instrumento.categoria and faixas_sugeridas %}
+            <!-- Seção de Faixas Sugeridas -->
+            <div class="card shadow-sm mb-4 border-warning">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-lightbulb"></i> Faixas Sugeridas por Categoria</span>
+                    <span class="badge bg-light text-dark">{{ faixas_sugeridas.count }}</span>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">Baseado na categoria <strong>{{ instrumento.categoria.nome }}</strong></p>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 15%;">Unidade</th>
+                                    <th style="width: 30%;">Faixa</th>
+                                    <th style="width: 15%;">Resolução</th>
+                                    <th style="width: 15%;">Nominal</th>
+                                    <th style="width: 15%;">Tolerância</th>
+                                    <th style="width: 10%;">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for faixa_padrao in faixas_sugeridas %}
+                                <tr class="table-light">
+                                    <td><small><strong>{{ faixa_padrao.unidade.nome }}</strong></small></td>
+                                    <td><small><strong>{{ faixa_padrao.valor_minimo }}</strong> a <strong>{{ faixa_padrao.valor_maximo }}</strong></small></td>
+                                    <td><small class="text-muted">{{ faixa_padrao.resolucao|default:"-" }}</small></td>
+                                    <td><small class="text-muted">{{ faixa_padrao.nominal|default:"-" }}</small></td>
+                                    <td><small class="text-muted">{{ faixa_padrao.tolerancia_mais_menos|default:"-" }}</small></td>
+                                    <td>
+                                        <form method="post" style="display: inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="add_suggested">
+                                            <input type="hidden" name="faixa_sugerida_id" value="{{ faixa_padrao.id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning" title="Adicionar faixa sugerida">
+                                                <i class="bi bi-plus-circle"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <div class="card shadow-sm">
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-rulers"></i> Faixas Cadastradas</span>

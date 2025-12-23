@@ -16,7 +16,8 @@ from qms.views import (
     editar_historico_calibracao_view,
     anexar_certificado_historico_view, remover_certificado_historico_view, aplicar_carimbo_certificado_view,
     remover_carimbo_certificado_view, remover_arquivo_padrao_view, download_arquivo_padrao_view,
-    imp_colab_view, imp_hierarquia_view, imp_ferias_view, novo_instrumento_view, substituir_instrumento_view
+    imp_colab_view, imp_hierarquia_view, imp_ferias_view, novo_instrumento_view, substituir_instrumento_view,
+    listar_substitucoes_view
 )
 from shared.views import (
     home_view,
@@ -172,6 +173,7 @@ urlpatterns = [
     path("metrologia/historico/<int:historico_id>/remover-carimbo/", remover_carimbo_certificado_view, name="remover_carimbo_certificado"),
     path("metrologia/arquivo-padrao/<int:arquivo_id>/remover/", remover_arquivo_padrao_view, name="remover_arquivo_padrao"),
     path("metrologia/arquivo-padrao/<int:arquivo_id>/download/", download_arquivo_padrao_view, name="download_arquivo_padrao"),
+    path("referencia/<str:codigo_referencia>/substitucoes/", listar_substitucoes_view, name="listar_substitucoes"),
     
     # 6. Application modules URLs - include all qms URLs with prefix to avoid conflicts
     path("api/", include(("qms.urls", "qms"))),

@@ -1402,10 +1402,18 @@ def gerenciar_faixas_instrumento_view(request, instrumento_id):
     """Manage measurement ranges for an instrument."""
     from .forms import FaixaMedicaoForm
     from metrologia.forms import FaixaMedicaoFormWithValidation
-    from metrologia.models import FaixaMedicao
+    from metrologia.models import FaixaMedicao, FaixaMedicaoPadraoCategoria
     
     instrumento = get_object_or_404(Instrumento, id=instrumento_id)
     faixas = instrumento.faixas.all().order_by('valor_minimo')
+    
+    # Obter faixas padrão da categoria
+    faixas_sugeridas = []
+    if instrumento.categoria:
+        faixas_sugeridas = FaixaMedicaoPadraoCategoria.objects.filter(
+            categoria=instrumento.categoria,
+            ativa=True
+        ).select_related('unidade').order_by('valor_minimo')
     
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -1423,6 +1431,40 @@ def gerenciar_faixas_instrumento_view(request, instrumento_id):
                     for error in errors:
                         messages.error(request, f'{field}: {error}')
         
+        elif action == 'add_suggested':
+            faixa_sugerida_id = request.POST.get('faixa_sugerida_id')
+            try:
+                faixa_padrao = FaixaMedicaoPadraoCategoria.objects.get(
+                    id=faixa_sugerida_id,
+                    categoria=instrumento.categoria
+                )
+                
+                # Verificar se já existe essa faixa
+                faixa_existente = FaixaMedicao.objects.filter(
+                    instrumento=instrumento,
+                    unidade=faixa_padrao.unidade,
+                    valor_minimo=faixa_padrao.valor_minimo,
+                    valor_maximo=faixa_padrao.valor_maximo
+                ).exists()
+                
+                if faixa_existente:
+                    messages.warning(request, f'Faixa {faixa_padrao.valor_minimo}-{faixa_padrao.valor_maximo} já existe para este instrumento.')
+                else:
+                    # Criar nova faixa baseada na faixa padrão
+                    nova_faixa = FaixaMedicao.objects.create(
+                        instrumento=instrumento,
+                        unidade=faixa_padrao.unidade,
+                        valor_minimo=faixa_padrao.valor_minimo,
+                        valor_maximo=faixa_padrao.valor_maximo,
+                        resolucao=faixa_padrao.resolucao,
+                        nominal=faixa_padrao.nominal,
+                        tolerancia_mais_menos=faixa_padrao.tolerancia_mais_menos,
+                    )
+                    messages.success(request, f'Faixa {nova_faixa.valor_minimo}-{nova_faixa.valor_maximo} adicionada com sucesso.')
+            except FaixaMedicaoPadraoCategoria.DoesNotExist:
+                messages.error(request, 'Faixa sugerida não encontrada.')
+            return redirect('gerenciar_faixas_instrumento', instrumento_id=instrumento_id)
+        
         elif action == 'delete':
             faixa_id = request.POST.get('faixa_id')
             try:
@@ -1439,6 +1481,7 @@ def gerenciar_faixas_instrumento_view(request, instrumento_id):
     context = {
         'instrumento': instrumento,
         'faixas': faixas,
+        'faixas_sugeridas': faixas_sugeridas,
         'form': form,
     }
     return render(request, 'metrologia/gerenciar_faixas.html', context)
