@@ -214,7 +214,7 @@ def can_manage_procedimentos(user):
     Returns:
         bool: True se pode gerenciar procedimentos
     """
-    from rh.models import Colaborador, HierarquiaSetor
+    from rh.models import Colaborador
     
     if not user.is_authenticated:
         return False
