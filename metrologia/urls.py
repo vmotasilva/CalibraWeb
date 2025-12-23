@@ -1,12 +1,18 @@
 from django.urls import path
 from . import views
 from .views import categorias, unidades
+from qms import views as qms_views
 
 app_name = 'metrologia'
 
 urlpatterns = [
     # Metrologia URLs
     # path('', views.modulo_metrologia_view, name='dashboard'),
+
+    # ==============================================================================
+    # GERENCIAMENTO DE INSTRUMENTOS
+    # ==============================================================================
+    path('instrumentos/novo/', qms_views.novo_instrumento_view, name='novo_instrumento'),
 
     # ==============================================================================
     # GERENCIAMENTO DE UNIDADES DE MEDIDA
