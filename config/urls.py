@@ -16,7 +16,7 @@ from qms.views import (
     editar_historico_calibracao_view,
     anexar_certificado_historico_view, remover_certificado_historico_view, aplicar_carimbo_certificado_view,
     remover_carimbo_certificado_view, remover_arquivo_padrao_view, download_arquivo_padrao_view,
-    imp_colab_view, imp_hierarquia_view, imp_ferias_view, novo_instrumento_view
+    imp_colab_view, imp_hierarquia_view, imp_ferias_view, novo_instrumento_view, substituir_instrumento_view
 )
 from shared.views import (
     home_view,
@@ -153,6 +153,7 @@ urlpatterns = [
     path("metrologia/instrumento/<int:instrumento_id>/", detalhe_instrumento_view, name="detalhe_instrumento"),
     path("instrumento/<int:instrumento_id>/", detalhe_instrumento_view, name="visualizar_instrumento"),  # Alias for detalhe_instrumento
     path("instrumento/novo/", novo_instrumento_view, name="novo_instrumento"),
+    path("instrumento/<int:instrumento_id>/substituir/", substituir_instrumento_view, name="substituir_instrumento"),
     path("instrumento/<int:instrumento_id>/editar/", editar_instrumento_view, name="editar_instrumento_custom"),
     path("instrumento/<int:instrumento_id>/atualizar-datas/", atualizar_datas_calibracao_view, name="atualizar_datas_calibracao"),
     path("instrumento/<int:instrumento_id>/faixas/", gerenciar_faixas_instrumento_view, name="gerenciar_faixas_instrumento"),
