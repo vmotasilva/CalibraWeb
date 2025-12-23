@@ -3,11 +3,16 @@ builder = "dockerfile"
 
 # Web service (Django + Gunicorn)
 [deploy]
-startCommand = "bash start.sh"
+startCommand = "python setup_persistent_storage.py && bash start.sh"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 healthcheckPath = "/healthz"
 healthcheckTimeout = 100
+
+# Persistent storage for media files (PDFs, certificates, etc)
+[[services.volumes]]
+mountPath = "/data/media"
+name = "media_storage"
 
 # Worker service (Celery Worker)
 [[services]]
