@@ -184,7 +184,7 @@ def imp_instr_view(request):
                     return redirect("modulo_metrologia")
             except Exception as e:
                 messages.error(request, f"Erro ao enfileirar importação: {str(e)}")
-                return redirect("importar_instrumentos")
+                return redirect("metrologia:modulo_metrologia")
     else:
         form = ImportacaoInstrumentosForm()
     

@@ -8,7 +8,7 @@
             <small class="text-muted">Importe múltiplos procedimentos através de arquivo Excel ou CSV</small>
         </div>
         <div>
-            <a href="{% url 'procedimentos_list' %}" class="btn btn-sm btn-outline-secondary">← Voltar</a>
+            <a href="{% url 'procedures:procedimentos_list' %}" class="btn btn-sm btn-outline-secondary">← Voltar</a>
         </div>
     </div>
 
@@ -36,9 +36,14 @@
                     <!-- Botão Template -->
                     <div class="mb-3">
                         <label class="form-label">1️⃣ Baixar Template</label>
-                        <a href="{% url 'dl_template_procedimentos' %}" class="btn btn-outline-primary w-100 mb-2">
+                        <!-- TODO: Implementar download de template
+                        <a href="{% url 'procedures:dl_template_procedimentos' %}" class="btn btn-outline-primary w-100 mb-2">
                             📥 Baixar Template Excel
                         </a>
+                        -->
+                        <div class="alert alert-warning mb-2 py-2 px-3">
+                            <small>Template: Use arquivo Excel com colunas: <strong>Código, Nome, Descrição, Autor</strong></small>
+                        </div>
                         <small class="text-muted d-block">Modelo com estrutura pronta para preenchimento</small>
                     </div>
 

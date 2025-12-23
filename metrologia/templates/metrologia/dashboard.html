@@ -113,15 +113,19 @@
                     </div>
                 </div>
             }
-            <a href="{% url 'importar_instrumentos' %}" class="btn btn-success btn-sm shadow-sm">
+            <!-- Importação de instrumentos via QMS
+            <a href="#" class="btn btn-success btn-sm shadow-sm" disabled>
                 <i class="bi bi-file-earmark-spreadsheet"></i> Importar
             </a>
+            -->
             <a href="/admin/qms/categoriainstrumento/" target="_blank" class="btn btn-outline-primary btn-sm shadow-sm" title="Gerenciar Categorias">
                 <i class="bi bi-tags"></i> Categorias
             </a>
-            <a href="{% url 'import_jobs' %}" class="btn btn-outline-info btn-sm shadow-sm">
+            <!-- TODO: Implementar import_jobs
+            <a href="#" class="btn btn-outline-info btn-sm shadow-sm" disabled>
                 <i class="bi bi-clock-history"></i> Ver Importações
             </a>
+            -->
             <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm">
                 <i class="bi bi-plus-lg"></i> Novo
             </a>
@@ -319,7 +323,7 @@
                             </td>
 
                             <td class="text-end pe-4 py-2">
-                                <a href="{% url 'detalhe_instrumento' i.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill detail-link" style="font-size: 0.75rem;">
+                                <a href="{% url 'visualizar_instrumento' i.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill detail-link" style="font-size: 0.75rem;">
                                     Detalhes
                                 </a>
                             </td>
@@ -519,7 +523,7 @@ function updateExportLink(){
     const btnExport = document.getElementById('btnExport');
     if(!btnExport) return;
     const qs = buildQueryString(getFilterState());
-    btnExport.href = '{% url 'export_metrologia' %}' + (qs ? ('?' + qs) : '');
+    btnExport.href = '{% url 'exportar_instrumentos' %}' + (qs ? ('?' + qs) : '');
 }
 
 function updateEtiquetasLink(){
@@ -533,7 +537,8 @@ function updateEtiquetasLink(){
     const pad = (document.getElementById('etq_pad')?.value || 5);
     const extras = `orient=${encodeURIComponent(orient)}&cols=${encodeURIComponent(cols)}&rows=${encodeURIComponent(rows)}&margin_mm=${encodeURIComponent(margin)}&pad_mm=${encodeURIComponent(pad)}`;
     const finalQs = qs ? (qs + '&' + extras) : extras;
-    btnEtiquetas.href = '{% url 'export_etiquetas' %}' + (finalQs ? ('?' + finalQs) : '');
+    // TODO: Implementar export_etiquetas
+    btnEtiquetas.href = '#'; // '{% url 'export_etiquetas' %}' + (finalQs ? ('?' + finalQs) : '');
 }
 
 function renderEtiquetasSummary(){
