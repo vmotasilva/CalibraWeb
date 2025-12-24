@@ -156,15 +156,18 @@ class ImportacaoProcedimentosService:
         """Valida dados de uma linha."""
         erros = []
         
+        # Converte todos os valores para string
+        dados_str = {k: str(v).strip() if v else '' for k, v in dados.items()}
+        
         # Valida código (obrigatório e único)
-        codigo = dados.get('codigo', '').strip()
+        codigo = dados_str.get('codigo', '').strip()
         if not codigo:
             erros.append("Código é obrigatório")
         elif not (3 <= len(codigo) <= 50):
             erros.append(f"Código deve ter entre 3 e 50 caracteres (atual: {len(codigo)})")
         
         # Valida nome (obrigatório)
-        nome = dados.get('nome', '').strip()
+        nome = dados_str.get('nome', '').strip()
         if not nome:
             erros.append("Nome é obrigatório")
         elif len(nome) > 200:
@@ -173,7 +176,7 @@ class ImportacaoProcedimentosService:
         # Valida datas
         datas = ['ultima_revisao', 'data_aprovacao', 'proxima_revisao', 'data_validade']
         for campo_data in datas:
-            valor = dados.get(campo_data, '')
+            valor = dados_str.get(campo_data, '')
             if valor and valor != '':
                 data = self._parsear_data(valor)
                 if data is None and valor:
@@ -185,17 +188,20 @@ class ImportacaoProcedimentosService:
         """Prepara dados de uma linha para salvar no modelo."""
         dados_preparados = {}
         
+        # Converte todos os valores para string primeiro
+        dados_str = {k: str(v).strip() if v else '' for k, v in dados.items()}
+        
         # Campos de texto
         campos_texto = ['codigo', 'nome', 'descricao', 'pasta', 'classificacao', 'autor', 'numero_revisao', 'documentos_controlados', 'matriz', 'sub_area']
         for campo in campos_texto:
-            valor = dados.get(campo, '').strip() if campo in dados else ''
+            valor = dados_str.get(campo, '').strip() if campo in dados_str else ''
             if valor:
                 dados_preparados[campo] = valor
         
         # Campos de data
         campos_data = ['ultima_revisao', 'data_aprovacao', 'proxima_revisao', 'data_validade']
         for campo in campos_data:
-            valor = dados.get(campo, '')
+            valor = dados_str.get(campo, '')
             if valor and valor != '':
                 data = self._parsear_data(valor)
                 if data:
@@ -233,7 +239,11 @@ class ImportacaoProcedimentosService:
                 dados = row.to_dict()
                 dados = {k: v for k, v in dados.items() if pd.notna(v) and v != ''}
                 
+                # Converte valores para string para evitar AttributeError
+                dados = {k: str(v).strip() if v else '' for k, v in dados.items()}
+                
                 codigo = dados.get('codigo', '').strip()
+
                 
                 # Validação de duplicatas na mesma importação
                 if modo == 'skip_duplicates' and codigo in codigos_processados:
