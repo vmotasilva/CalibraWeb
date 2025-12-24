@@ -3,100 +3,397 @@
 {% block title %}Procedimentos{% endblock %}
 {% block header_title %}Lista de Procedimentos{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Layout em Grid com Sidebar */
+    body { overflow: hidden; }
+
+    .sidebar-scroll {
+        height: calc(100vh - 200px);
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+    .table-container-scroll {
+        height: calc(100vh - 240px);
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        background-color: white;
+    }
+
+    .table-container-scroll thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Filtros Expansíveis */
+    .filter-header {
+        cursor: pointer;
+        padding: 8px 0;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .filter-header:hover {
+        background-color: #f8f9fa;
+    }
+
+    .filter-header i {
+        transition: transform 0.2s ease;
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+
+    .filter-group.open .filter-header i {
+        transform: rotate(180deg);
+    }
+
+    .filter-content {
+        display: none;
+        padding: 8px 0 8px 5px;
+    }
+
+    .filter-group.open .filter-content {
+        display: block;
+    }
+
+    /* Scrollbars Customizados */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+
+    .transition-all {
+        transition: all 0.3s ease;
+    }
+
+    .sidebar-hidden {
+        margin-left: -100%;
+    }
+</style>
+{% endblock %}
+
 {% block header_actions %}
-    <a href="{% url 'procedures:novo_procedimento' %}" class="btn btn-primary btn-sm">+ Novo Procedimento</a>
-    <a href="{% url 'procedures:importar_procedimentos' %}" class="btn btn-warning btn-sm">📤 Importar em Massa</a>
-    <a href="{% url 'procedures:export_procedimentos_excel' %}" class="btn btn-success btn-sm">📥 Exportar Excel</a>
+    <div class="d-flex gap-2">
+        <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Alternar Filtros">
+            <i class="bi bi-layout-sidebar" id="sidebarIcon"></i>
+        </button>
+        <a href="{% url 'procedures:novo_procedimento' %}" class="btn btn-primary btn-sm">+ Novo Procedimento</a>
+        <a href="{% url 'procedures:importar_procedimentos' %}" class="btn btn-warning btn-sm">📤 Importar em Massa</a>
+        <a href="{% url 'procedures:export_procedimentos_excel' %}" class="btn btn-success btn-sm">📥 Exportar Excel</a>
+    </div>
 {% endblock %}
 
 {% block main_content %}
-<div class="card">
-    <div class="card-header">
-        <h6 class="mb-0">Filtrar Procedimentos</h6>
+<div class="row h-100 overflow-hidden g-0">
+    
+    <!-- SIDEBAR FILTROS -->
+    <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
+        
+        <!-- Busca e ações dos filtros -->
+        <div class="mb-2 flex-shrink-0">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Código ou Nome...">
+            </div>
+            <div class="d-flex justify-content-end mt-2">
+                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">
+                    <i class="bi bi-arrow-clockwise"></i> Limpar
+                </button>
+            </div>
+        </div>
+
+        <div class="sidebar-scroll">
+            
+            <!-- 1. CLASSIFICAÇÃO -->
+            <div class="filter-group open mb-2">
+                <div class="filter-header" onclick="toggleFilterGroup(this)">
+                    <label class="form-label small fw-bold text-muted mb-0">CLASSIFICAÇÃO</label>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="filter-content">
+                    <div class="d-flex flex-column gap-1">
+                        {% if classificacoes %}
+                            {% for item in classificacoes %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ item }}" data-category="classificacao" id="class_{{ forloop.counter }}">
+                                <label class="form-check-label small" for="class_{{ forloop.counter }}">{{ item }}</label>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small">Sem classificações</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. PASTA -->
+            <div class="filter-group open mb-2">
+                <div class="filter-header" onclick="toggleFilterGroup(this)">
+                    <label class="form-label small fw-bold text-muted mb-0">PASTA</label>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="filter-content">
+                    <div class="d-flex flex-column gap-1">
+                        {% if pastas %}
+                            {% for item in pastas %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ item }}" data-category="pasta" id="pasta_{{ forloop.counter }}">
+                                <label class="form-check-label small" for="pasta_{{ forloop.counter }}">{{ item }}</label>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small">Sem pastas</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. AUTOR -->
+            <div class="filter-group mb-2">
+                <div class="filter-header" onclick="toggleFilterGroup(this)">
+                    <label class="form-label small fw-bold text-muted mb-0">AUTOR</label>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="filter-content">
+                    <div class="d-flex flex-column gap-1">
+                        {% if autores %}
+                            {% for item in autores %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ item }}" data-category="autor" id="autor_{{ forloop.counter }}">
+                                <label class="form-check-label small" for="autor_{{ forloop.counter }}">{{ item }}</label>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small">Sem autores</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. SUB-ÁREA -->
+            <div class="filter-group mb-2">
+                <div class="filter-header" onclick="toggleFilterGroup(this)">
+                    <label class="form-label small fw-bold text-muted mb-0">SUB-ÁREA</label>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+                <div class="filter-content">
+                    <div class="d-flex flex-column gap-1">
+                        {% if sub_areas %}
+                            {% for item in sub_areas %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ item }}" data-category="sub_area" id="subarea_{{ forloop.counter }}">
+                                <label class="form-check-label small" for="subarea_{{ forloop.counter }}">{{ item }}</label>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small">Sem sub-áreas</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
-    <div class="card-body">
-        <form method="GET" class="row g-3">
-            <div class="col-md-4">
-                <input type="text" name="q" class="form-control" placeholder="Buscar código ou nome" value="{{ termo }}">
-            </div>
-            <div class="col-md-3">
-                <input type="text" name="classificacao" class="form-control" placeholder="Classificação" value="{{ classificacao }}">
-            </div>
-            <div class="col-md-2">
-                <input type="text" name="rev" class="form-control" placeholder="Revisão" value="{{ rev }}">
-            </div>
-            <div class="col-md-3">
-                <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
-            </div>
-        </form>
+
+    <!-- TABELA PRINCIPAL -->
+    <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col">
+        
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+            <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ page_obj.paginator.count }}</span> procedimentos
+            </span>
+        </div>
+
+        <div class="table-container-scroll shadow-sm">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="small text-uppercase text-muted font-monospace">
+                    <tr>
+                        <th class="ps-3 py-3">Código</th>
+                        <th class="py-3">Nome</th>
+                        <th class="py-3">Classificação</th>
+                        <th class="py-3">Revisão</th>
+                        <th class="py-3">Última Revisão</th>
+                        <th class="text-end pe-4 py-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0 bg-white">
+                    {% for proc in procedimentos %}
+                    <tr class="procedimento-row"
+                        data-nome="{{ proc.codigo|lower }} {{ proc.nome|lower }}"
+                        data-classificacao="{{ proc.classificacao|default:''|lower }}"
+                        data-pasta="{{ proc.pasta|default:''|lower }}"
+                        data-autor="{{ proc.autor|default:''|lower }}"
+                        data-sub_area="{{ proc.sub_area|default:''|lower }}">
+                        
+                        <td class="ps-3 py-2 fw-bold text-primary font-monospace">{{ proc.codigo }}</td>
+                        <td class="py-2">
+                            <div class="text-dark small fw-semibold">{{ proc.nome|truncatechars:50 }}</div>
+                        </td>
+                        <td class="py-2">
+                            {% if proc.classificacao %}
+                                <span class="badge bg-light text-dark border fw-normal">{{ proc.classificacao }}</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark border fw-normal">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-2 text-center">{{ proc.numero_revisao|default:"-" }}</td>
+                        <td class="py-2">{{ proc.ultima_revisao|date:"d/m/Y"|default:"-" }}</td>
+                        <td class="text-end pe-4 py-2">
+                            <a href="{% url 'procedures:detalhe_procedimento' proc.id %}" class="btn btn-sm btn-info" title="Visualizar">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'procedures:editar_procedimento' proc.id %}" class="btn btn-sm btn-warning" title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">Nenhum procedimento encontrado</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        {% if page_obj.has_other_pages %}
+        <nav class="mt-3 flex-shrink-0" aria-label="Paginação">
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{{ querystring_base }}">Primeira</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ querystring_base }}">Anterior</a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ querystring_base }}">Próxima</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ querystring_base }}">Última</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
     </div>
 </div>
 
-<div class="card mt-4">
-    <div class="card-header">
-        <h6 class="mb-0">Procedimentos ({{ page_obj.paginator.count }})</h6>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Código</th>
-                    <th>Nome</th>
-                    <th>Classificação</th>
-                    <th>Revisão</th>
-                    <th>Última Revisão</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for proc in procedimentos %}
-                <tr>
-                    <td><strong>{{ proc.codigo }}</strong></td>
-                    <td>{{ proc.nome|truncatewords:10 }}</td>
-                    <td><span class="badge bg-info">{{ proc.classificacao }}</span></td>
-                    <td>{{ proc.numero_revisao }}</td>
-                    <td>{{ proc.ultima_revisao|date:"d/m/Y" }}</td>
-                    <td>
-                        <a href="{% url 'procedures:detalhe_procedimento' proc.id %}" class="btn btn-sm btn-info">Ver</a>
-                        <a href="{% url 'procedures:editar_procedimento' proc.id %}" class="btn btn-sm btn-warning">Editar</a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="text-center text-muted">Nenhum procedimento encontrado</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+<script>
+function toggleFilterGroup(headerEl) {
+    const filterGroup = headerEl.closest('.filter-group');
+    filterGroup.classList.toggle('open');
+}
 
-<!-- Paginação -->
-{% if page_obj.has_other_pages %}
-<nav class="mt-4" aria-label="Paginação">
-    <ul class="pagination">
-        {% if page_obj.has_previous %}
-        <li class="page-item">
-            <a class="page-link" href="?page=1{{ querystring_base }}">Primeira</a>
-        </li>
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ querystring_base }}">Anterior</a>
-        </li>
-        {% endif %}
-        
-        <li class="page-item active">
-            <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-        </li>
-        
-        {% if page_obj.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ querystring_base }}">Próxima</a>
-        </li>
-        <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ querystring_base }}">Última</a>
-        </li>
-        {% endif %}
-    </ul>
-</nav>
-{% endif %}
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar-col');
+    const content = document.getElementById('content-col');
+    const icon = document.getElementById('sidebarIcon');
+
+    if (sidebar.classList.contains('d-none')) {
+        sidebar.classList.remove('d-none');
+        content.classList.replace('col-12', 'col-md-9');
+        content.classList.add('col-lg-10');
+        icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
+    } else {
+        sidebar.classList.add('d-none');
+        content.classList.replace('col-md-9', 'col-12');
+        content.classList.remove('col-lg-10');
+        icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
+    }
+}
+
+function applyFilters() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const checkboxes = document.querySelectorAll('.filter-checkbox:checked');
+    const filterState = {};
+
+    // Agrupa filtros por categoria
+    checkboxes.forEach(cb => {
+        const category = cb.getAttribute('data-category');
+        if (!filterState[category]) filterState[category] = [];
+        filterState[category].push(cb.value.toLowerCase());
+    });
+
+    const rows = document.querySelectorAll('.procedimento-row');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        let show = true;
+
+        // Filtro por busca
+        if (searchTerm) {
+            const nome = row.getAttribute('data-nome') || '';
+            if (!nome.includes(searchTerm)) {
+                show = false;
+            }
+        }
+
+        // Filtros por categoria
+        for (const category in filterState) {
+            if (filterState[category].length > 0) {
+                const dataAttr = row.getAttribute(`data-${category}`) || '';
+                if (!filterState[category].includes(dataAttr.toLowerCase())) {
+                    show = false;
+                    break;
+                }
+            }
+        }
+
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+    });
+
+    document.getElementById('countDisplay').textContent = visibleCount;
+}
+
+function limparFiltros() {
+    document.getElementById('searchInput').value = '';
+    document.querySelectorAll('.filter-checkbox').forEach(cb => cb.checked = false);
+    applyFilters();
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Busca em tempo real
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', applyFilters);
+    }
+
+    // Filtros checkbox
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        cb.addEventListener('change', applyFilters);
+    });
+});
+</script>
 {% endblock %}

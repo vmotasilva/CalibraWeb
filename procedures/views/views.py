@@ -68,6 +68,25 @@ def procedimentos_list_view(request):
     page_obj = paginator.get_page(page_number)
     procedimentos = page_obj.object_list
 
+    # Extrair valores únicos para filtros dinâmicos
+    all_procedimentos = Procedimento.objects.all()
+    classificacoes = sorted(set(
+        p.classificacao for p in all_procedimentos 
+        if p.classificacao
+    ))
+    pastas = sorted(set(
+        p.pasta for p in all_procedimentos 
+        if p.pasta
+    ))
+    autores = sorted(set(
+        p.autor for p in all_procedimentos 
+        if p.autor
+    ))
+    sub_areas = sorted(set(
+        p.sub_area for p in all_procedimentos 
+        if p.sub_area
+    ))
+
     ctx = {
         'procedimentos': procedimentos,
         'termo': termo,
@@ -77,6 +96,10 @@ def procedimentos_list_view(request):
         'rev': rev,
         'setor_id': setor_id,
         'area_id': area_id,
+        'classificacoes': classificacoes,
+        'pastas': pastas,
+        'autores': autores,
+        'sub_areas': sub_areas,
         'querystring_base': '&'.join([p for p in [
             f"q={termo}" if termo else '',
             f"classificacao={classificacao}" if classificacao else '',
