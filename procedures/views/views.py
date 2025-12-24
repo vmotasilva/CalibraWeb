@@ -184,7 +184,6 @@ def importar_procedimentos_view(request):
     from django.utils.safestring import mark_safe
     
     relatorio_html = None
-    modo = request.POST.get('modo', 'upsert')
     
     if request.method == 'POST' and request.FILES.get('arquivo_excel'):
         form = ImportacaoProcedimentosForm(request.POST, request.FILES)
@@ -193,8 +192,8 @@ def importar_procedimentos_view(request):
                 arquivo = request.FILES['arquivo_excel']
                 servico = ImportacaoProcedimentosService(arquivo)
                 
-                # Processa arquivo
-                resultados = servico.processar(modo=modo)
+                # Processa arquivo (modo upsert por padrão)
+                resultados = servico.processar(modo='upsert')
                 
                 # Gera relatório
                 relatorio_html = mark_safe(servico.gerar_relatorio_html())
@@ -222,7 +221,6 @@ def importar_procedimentos_view(request):
     return render(request, 'procedures/procedimentos_importar.html', {
         'form': form,
         'relatorio_html': relatorio_html,
-        'modo': modo,
     })
 
 

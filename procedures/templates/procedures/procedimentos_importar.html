@@ -16,30 +16,27 @@
     <div class="alert alert-info alert-dismissible fade show" role="alert">
         <h6 class="alert-heading">ℹ️ Como usar</h6>
         <ul class="mb-0 small">
-            <li>Baixe o <strong>template Excel</strong> clicando no botão abaixo</li>
-            <li>Preencha com seus dados (veja as <strong>colunas esperadas</strong>)</li>
-            <li>Faça upload do arquivo preenchido</li>
-            <li>Escolha o <strong>modo de importação</strong> apropriado</li>
-            <li>Clique em <strong>Processar Importação</strong></li>
+            <li>Baixe o <strong>template Excel</strong></li>
+            <li>Preencha com seus dados</li>
+            <li>Faça upload e clique em <strong>Processar Importação</strong></li>
         </ul>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
     <div class="row">
         <!-- Seção Esquerda: Upload e Configuração -->
-        <div class="col-lg-5 mb-4">
+        <div class="col-lg-8">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
-                    <h5 class="mb-0">📋 Configuração de Importação</h5>
+                    <h5 class="mb-0">📤 Importação de Procedimentos</h5>
                 </div>
                 <div class="card-body">
                     <!-- Botão Template -->
-                    <div class="mb-3">
-                        <label class="form-label">1️⃣ Baixar Template</label>
-                        <a href="{% url 'procedures:dl_template_procedimentos' %}" class="btn btn-outline-primary w-100 mb-2">
-                            📥 Baixar Template Excel
+                    <div class="mb-4">
+                        <a href="{% url 'procedures:dl_template_procedimentos' %}" class="btn btn-outline-primary">
+                            📥 Baixar Template
                         </a>
-                        <small class="text-muted d-block">Modelo com estrutura pronta para preenchimento</small>
+                        <small class="text-muted d-block mt-2">Baixe o template com todas as colunas necessárias</small>
                     </div>
 
                     <!-- Formulário de Upload -->
@@ -48,7 +45,7 @@
                         
                         <!-- Input de Arquivo -->
                         <div class="mb-3">
-                            <label class="form-label">2️⃣ Arquivo de Importação</label>
+                            <label class="form-label">Selecionar Arquivo</label>
                             <div class="input-group">
                                 <input type="file" 
                                        class="form-control" 
@@ -63,166 +60,11 @@
                             </small>
                         </div>
 
-                        <!-- Modo de Importação -->
-                        <div class="mb-3">
-                            <label class="form-label">3️⃣ Modo de Importação</label>
-                            <div>
-                                <div class="form-check">
-                                    <input type="radio" 
-                                           class="form-check-input" 
-                                           id="modo_upsert" 
-                                           name="modo" 
-                                           value="upsert" 
-                                           checked>
-                                    <label class="form-check-label" for="modo_upsert">
-                                        <strong>Upsert (Recomendado)</strong>
-                                        <br>
-                                        <small class="text-muted">Cria novos e atualiza existentes</small>
-                                    </label>
-                                </div>
-                                <div class="form-check mt-2">
-                                    <input type="radio" 
-                                           class="form-check-input" 
-                                           id="modo_create" 
-                                           name="modo" 
-                                           value="create">
-                                    <label class="form-check-label" for="modo_create">
-                                        <strong>Criar Apenas</strong>
-                                        <br>
-                                        <small class="text-muted">Ignora códigos que já existem</small>
-                                    </label>
-                                </div>
-                                <div class="form-check mt-2">
-                                    <input type="radio" 
-                                           class="form-check-input" 
-                                           id="modo_dry_run" 
-                                           name="modo" 
-                                           value="dry_run">
-                                    <label class="form-check-label" for="modo_dry_run">
-                                        <strong>Simular (Dry Run)</strong>
-                                        <br>
-                                        <small class="text-muted">Valida sem salvar no banco de dados</small>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Botão Submit -->
                         <button type="submit" class="btn btn-success w-100 btn-lg" id="btn-importar">
                             ▶ Processar Importação
                         </button>
                     </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Seção Direita: Informações e Especificações -->
-        <div class="col-lg-7">
-            <!-- Card: Colunas Esperadas -->
-            <div class="card shadow-sm mb-3">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">📊 Colunas Esperadas</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-borderless">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Campo</th>
-                                    <th>Obrigatório</th>
-                                    <th>Formato</th>
-                                </tr>
-                            </thead>
-                            <tbody class="small">
-                                <tr>
-                                    <td><code>codigo</code></td>
-                                    <td><span class="badge bg-danger">Sim</span></td>
-                                    <td>Ex: POP.001 (3-50 caracteres)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>nome</code></td>
-                                    <td><span class="badge bg-danger">Sim</span></td>
-                                    <td>Ex: Procedimento Operacional Padrão</td>
-                                </tr>
-                                <tr>
-                                    <td><code>descricao</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>Texto descritivo (sem limite)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>pasta</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>Ex: QUALIDADE, PRODUÇÃO</td>
-                                </tr>
-                                <tr>
-                                    <td><code>classificacao</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>Ex: POP, IT, INS</td>
-                                </tr>
-                                <tr>
-                                    <td><code>autor</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>Nome do autor</td>
-                                </tr>
-                                <tr>
-                                    <td><code>numero_revisao</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>Ex: 01, 02, 03</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ultima_revisao</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>DD/MM/YYYY ou YYYY-MM-DD</td>
-                                </tr>
-                                <tr>
-                                    <td><code>data_aprovacao</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>DD/MM/YYYY ou YYYY-MM-DD</td>
-                                </tr>
-                                <tr>
-                                    <td><code>proxima_revisao</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>DD/MM/YYYY ou YYYY-MM-DD</td>
-                                </tr>
-                                <tr>
-                                    <td><code>data_validade</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>DD/MM/YYYY ou YYYY-MM-DD</td>
-                                </tr>
-                                <tr>
-                                    <td><code>documentos_controlados</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>Sim/Não ou S/N</td>
-                                </tr>
-                                <tr>
-                                    <td><code>matriz</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>Ex: Matriz Principal</td>
-                                </tr>
-                                <tr>
-                                    <td><code>sub_area</code></td>
-                                    <td><span class="badge bg-secondary">Não</span></td>
-                                    <td>Ex: Área de Processos</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card: Dicas de Importação -->
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">💡 Dicas Importantes</h5>
-                </div>
-                <div class="card-body small">
-                    <ul class="mb-0">
-                        <li><strong>Códigos Únicos:</strong> Cada procedimento deve ter um código único. Duplicatas serão consideradas erro.</li>
-                        <li><strong>Datas Flexíveis:</strong> Aceita múltiplos formatos (DD/MM/YYYY, YYYY-MM-DD, etc)</li>
-                        <li><strong>Sem Limite:</strong> Pode importar centenas de procedimentos de uma vez</li>
-                        <li><strong>Modo Seguro:</strong> Use "Simular" primeiro para testar sem salvar dados</li>
-                        <li><strong>Relatório Detalhado:</strong> Verá exatamente o que foi criado, atualizado ou errou</li>
-                    </ul>
                 </div>
             </div>
         </div>
