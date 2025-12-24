@@ -6,16 +6,50 @@
 {% block extra_css %}
 <style>
     /* Layout em Grid com Sidebar */
-    body { overflow: hidden; }
+    .procedures-container {
+        display: flex;
+        height: calc(100vh - 180px);
+        gap: 0;
+    }
+
+    /* Sidebar com seu próprio scroll */
+    .sidebar-col {
+        width: 280px;
+        flex-shrink: 0;
+        border-right: 1px solid #dee2e6;
+        padding-right: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .sidebar-search {
+        flex-shrink: 0;
+        margin-bottom: 12px;
+    }
 
     .sidebar-scroll {
-        height: calc(100vh - 200px);
+        flex: 1;
         overflow-y: auto;
         padding-right: 5px;
     }
 
+    /* Conteúdo principal com seu próprio scroll */
+    .content-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding-left: 16px;
+    }
+
+    .content-header {
+        flex-shrink: 0;
+        margin-bottom: 12px;
+    }
+
     .table-container-scroll {
-        height: calc(100vh - 240px);
+        flex: 1;
         overflow-y: auto;
         border: 1px solid #dee2e6;
         border-radius: 6px;
@@ -28,6 +62,11 @@
         z-index: 10;
         background-color: #f8f9fa;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .pagination-wrapper {
+        flex-shrink: 0;
+        margin-top: 12px;
     }
 
     /* Filtros Expansíveis */
@@ -66,21 +105,20 @@
 
     /* Scrollbars Customizados */
     ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 8px;
     }
 
     ::-webkit-scrollbar-track {
-        background: #f1f1f1;
+        background: transparent;
     }
 
     ::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 3px;
+        background: #cbd5e1;
+        border-radius: 4px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        background: #a8a8a8;
+        background: #94a3b8;
     }
 
     .transition-all {
@@ -95,9 +133,6 @@
 
 {% block header_actions %}
     <div class="d-flex gap-2">
-        <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Alternar Filtros">
-            <i class="bi bi-layout-sidebar" id="sidebarIcon"></i>
-        </button>
         <a href="{% url 'procedures:novo_procedimento' %}" class="btn btn-primary btn-sm">+ Novo Procedimento</a>
         <a href="{% url 'procedures:importar_procedimentos' %}" class="btn btn-warning btn-sm">📤 Importar em Massa</a>
         <a href="{% url 'procedures:export_procedimentos_excel' %}" class="btn btn-success btn-sm">📥 Exportar Excel</a>
@@ -105,13 +140,13 @@
 {% endblock %}
 
 {% block main_content %}
-<div class="row h-100 overflow-hidden g-0">
+<div class="procedures-container">
     
     <!-- SIDEBAR FILTROS -->
-    <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
+    <div class="sidebar-col" id="sidebar-col">
         
         <!-- Busca e ações dos filtros -->
-        <div class="mb-2 flex-shrink-0">
+        <div class="sidebar-search">
             <div class="input-group input-group-sm">
                 <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                 <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Código ou Nome...">
@@ -147,51 +182,29 @@
                 </div>
             </div>
 
-            <!-- 2. PASTA -->
+            <!-- 2. MATRIZ -->
             <div class="filter-group open mb-2">
                 <div class="filter-header" onclick="toggleFilterGroup(this)">
-                    <label class="form-label small fw-bold text-muted mb-0">PASTA</label>
+                    <label class="form-label small fw-bold text-muted mb-0">MATRIZ</label>
                     <i class="bi bi-chevron-down"></i>
                 </div>
                 <div class="filter-content">
                     <div class="d-flex flex-column gap-1">
-                        {% if pastas %}
-                            {% for item in pastas %}
+                        {% if matrizes %}
+                            {% for item in matrizes %}
                             <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ item }}" data-category="pasta" id="pasta_{{ forloop.counter }}">
-                                <label class="form-check-label small" for="pasta_{{ forloop.counter }}">{{ item }}</label>
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ item }}" data-category="matriz" id="matriz_{{ forloop.counter }}">
+                                <label class="form-check-label small" for="matriz_{{ forloop.counter }}">{{ item }}</label>
                             </div>
                             {% endfor %}
                         {% else %}
-                            <p class="text-muted small">Sem pastas</p>
+                            <p class="text-muted small">Sem matrizes</p>
                         {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- 3. AUTOR -->
-            <div class="filter-group mb-2">
-                <div class="filter-header" onclick="toggleFilterGroup(this)">
-                    <label class="form-label small fw-bold text-muted mb-0">AUTOR</label>
-                    <i class="bi bi-chevron-down"></i>
-                </div>
-                <div class="filter-content">
-                    <div class="d-flex flex-column gap-1">
-                        {% if autores %}
-                            {% for item in autores %}
-                            <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ item }}" data-category="autor" id="autor_{{ forloop.counter }}">
-                                <label class="form-check-label small" for="autor_{{ forloop.counter }}">{{ item }}</label>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <p class="text-muted small">Sem autores</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- 4. SUB-ÁREA -->
+            <!-- 3. SUB-ÁREA -->
             <div class="filter-group mb-2">
                 <div class="filter-header" onclick="toggleFilterGroup(this)">
                     <label class="form-label small fw-bold text-muted mb-0">SUB-ÁREA</label>
@@ -217,9 +230,9 @@
     </div>
 
     <!-- TABELA PRINCIPAL -->
-    <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col">
+    <div class="content-col" id="content-col">
         
-        <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+        <div class="content-header">
             <span class="badge bg-secondary bg-opacity-10 text-secondary border">
                 <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ page_obj.paginator.count }}</span> procedimentos
             </span>
@@ -242,8 +255,7 @@
                     <tr class="procedimento-row"
                         data-nome="{{ proc.codigo|lower }} {{ proc.nome|lower }}"
                         data-classificacao="{{ proc.classificacao|default:''|lower }}"
-                        data-pasta="{{ proc.pasta|default:''|lower }}"
-                        data-autor="{{ proc.autor|default:''|lower }}"
+                        data-matriz="{{ proc.matriz|default:''|lower }}"
                         data-sub_area="{{ proc.sub_area|default:''|lower }}">
                         
                         <td class="ps-3 py-2 fw-bold text-primary font-monospace">{{ proc.codigo }}</td>
@@ -278,33 +290,35 @@
         </div>
 
         <!-- Paginação -->
-        {% if page_obj.has_other_pages %}
-        <nav class="mt-3 flex-shrink-0" aria-label="Paginação">
-            <ul class="pagination pagination-sm mb-0">
-                {% if page_obj.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page=1{{ querystring_base }}">Primeira</a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ querystring_base }}">Anterior</a>
-                </li>
-                {% endif %}
-                
-                <li class="page-item active">
-                    <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-                </li>
-                
-                {% if page_obj.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ querystring_base }}">Próxima</a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ querystring_base }}">Última</a>
-                </li>
-                {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
+        <div class="pagination-wrapper">
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Paginação">
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{{ querystring_base }}">Primeira</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ querystring_base }}">Anterior</a>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ querystring_base }}">Próxima</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{{ querystring_base }}">Última</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -312,24 +326,6 @@
 function toggleFilterGroup(headerEl) {
     const filterGroup = headerEl.closest('.filter-group');
     filterGroup.classList.toggle('open');
-}
-
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar-col');
-    const content = document.getElementById('content-col');
-    const icon = document.getElementById('sidebarIcon');
-
-    if (sidebar.classList.contains('d-none')) {
-        sidebar.classList.remove('d-none');
-        content.classList.replace('col-12', 'col-md-9');
-        content.classList.add('col-lg-10');
-        icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
-    } else {
-        sidebar.classList.add('d-none');
-        content.classList.replace('col-md-9', 'col-12');
-        content.classList.remove('col-lg-10');
-        icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
-    }
 }
 
 function applyFilters() {

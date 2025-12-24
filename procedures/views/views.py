@@ -74,13 +74,9 @@ def procedimentos_list_view(request):
         p.classificacao for p in all_procedimentos 
         if p.classificacao
     ))
-    pastas = sorted(set(
-        p.pasta for p in all_procedimentos 
-        if p.pasta
-    ))
-    autores = sorted(set(
-        p.autor for p in all_procedimentos 
-        if p.autor
+    matrizes = sorted(set(
+        p.matriz for p in all_procedimentos 
+        if p.matriz
     ))
     sub_areas = sorted(set(
         p.sub_area for p in all_procedimentos 
@@ -97,8 +93,7 @@ def procedimentos_list_view(request):
         'setor_id': setor_id,
         'area_id': area_id,
         'classificacoes': classificacoes,
-        'pastas': pastas,
-        'autores': autores,
+        'matrizes': matrizes,
         'sub_areas': sub_areas,
         'querystring_base': '&'.join([p for p in [
             f"q={termo}" if termo else '',
