@@ -5,71 +5,126 @@
 
 {% block extra_css %}
 <style>
-    /* Layout em Grid com Sidebar */
-    .procedures-container {
+    /* Layout inspirado no Metrologia Dashboard */
+    .procedures-wrapper {
         display: flex;
         height: calc(100vh - 180px);
         gap: 0;
+        overflow: hidden;
     }
 
-    /* Sidebar com seu próprio scroll */
-    .sidebar-col {
+    /* SIDEBAR */
+    .procedures-sidebar {
         width: 280px;
         flex-shrink: 0;
         border-right: 1px solid #dee2e6;
-        padding-right: 12px;
+        background-color: #f8f9fa;
         display: flex;
         flex-direction: column;
         overflow: hidden;
     }
 
-    .sidebar-search {
+    .sidebar-search-box {
+        padding: 12px 15px;
         flex-shrink: 0;
-        margin-bottom: 12px;
+        border-bottom: 1px solid #dee2e6;
     }
 
-    .sidebar-scroll {
+    .sidebar-filters {
         flex: 1;
         overflow-y: auto;
-        padding-right: 5px;
+        padding: 0 15px;
+        padding-top: 12px;
     }
 
-    /* Conteúdo principal com seu próprio scroll */
-    .content-col {
+    /* Scrollbar personalizada */
+    .sidebar-filters::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sidebar-filters::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .sidebar-filters::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+
+    .sidebar-filters::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* MAIN CONTENT */
+    .procedures-content {
         flex: 1;
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        padding-left: 16px;
+        padding: 0 16px;
     }
 
     .content-header {
         flex-shrink: 0;
-        margin-bottom: 12px;
+        padding: 12px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #dee2e6;
     }
 
-    .table-container-scroll {
+    .content-header .badge {
+        font-size: 0.85rem;
+    }
+
+    .table-wrapper {
         flex: 1;
         overflow-y: auto;
-        border: 1px solid #dee2e6;
+        margin-top: 12px;
         border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .table-wrapper table {
         background-color: white;
     }
 
-    .table-container-scroll thead th {
+    .table-wrapper thead th {
         position: sticky;
         top: 0;
         z-index: 10;
         background-color: #f8f9fa;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border-bottom: 2px solid #dee2e6;
     }
 
     .pagination-wrapper {
         flex-shrink: 0;
-        margin-top: 12px;
+        padding: 12px 0;
     }
 
-    /* Filtros Expansíveis */
+    /* TABLE SCROLLBAR */
+    .table-wrapper::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* FILTER GROUPS */
+    .filter-group {
+        margin-bottom: 12px;
+    }
+
     .filter-header {
         cursor: pointer;
         padding: 8px 0;
@@ -77,16 +132,19 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid #e2e8f0;
     }
 
     .filter-header:hover {
-        background-color: #f8f9fa;
+        background-color: white;
+        border-radius: 4px;
+        padding-left: 4px;
+        padding-right: 4px;
     }
 
     .filter-header i {
         transition: transform 0.2s ease;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: #6c757d;
     }
 
@@ -96,37 +154,45 @@
 
     .filter-content {
         display: none;
-        padding: 8px 0 8px 5px;
+        padding: 8px 0;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.2s ease;
     }
 
     .filter-group.open .filter-content {
         display: block;
+        max-height: 500px;
     }
 
-    /* Scrollbars Customizados */
-    ::-webkit-scrollbar {
-        width: 8px;
+    .filter-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0;
     }
 
-    ::-webkit-scrollbar-track {
-        background: transparent;
+    .form-check {
+        padding-left: 0;
+        margin-bottom: 6px;
     }
 
-    ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
+    .form-check-input {
+        margin-left: 0;
+        margin-right: 6px;
     }
 
-    ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
+    .form-check-label {
+        margin-bottom: 0;
+        cursor: pointer;
+        font-size: 0.85rem;
     }
 
-    .transition-all {
-        transition: all 0.3s ease;
-    }
-
-    .sidebar-hidden {
-        margin-left: -100%;
+    .btn-clear-filters {
+        width: 100%;
+        margin-top: 8px;
     }
 </style>
 {% endblock %}
@@ -140,39 +206,39 @@
 {% endblock %}
 
 {% block main_content %}
-<div class="procedures-container">
+<div class="procedures-wrapper">
     
-    <!-- SIDEBAR FILTROS -->
-    <div class="sidebar-col" id="sidebar-col">
-        
-        <!-- Busca e ações dos filtros -->
-        <div class="sidebar-search">
+    <!-- SIDEBAR COM FILTROS -->
+    <div class="procedures-sidebar">
+        <div class="sidebar-search-box">
             <div class="input-group input-group-sm">
                 <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Código ou Nome...">
+                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Tag, código...">
             </div>
-            <div class="d-flex justify-content-end mt-2">
-                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">
-                    <i class="bi bi-arrow-clockwise"></i> Limpar
-                </button>
-            </div>
+            <button class="btn btn-sm btn-outline-secondary btn-clear-filters" type="button" onclick="limparFiltros()">
+                <i class="bi bi-arrow-clockwise"></i> Limpar
+            </button>
         </div>
 
-        <div class="sidebar-scroll">
+        <div class="sidebar-filters">
             
-            <!-- 1. CLASSIFICAÇÃO -->
-            <div class="filter-group open mb-2">
+            <!-- CLASSIFICAÇÃO -->
+            <div class="filter-group open">
                 <div class="filter-header" onclick="toggleFilterGroup(this)">
-                    <label class="form-label small fw-bold text-muted mb-0">CLASSIFICAÇÃO</label>
+                    <label class="filter-label mb-0">Classificação</label>
                     <i class="bi bi-chevron-down"></i>
                 </div>
                 <div class="filter-content">
-                    <div class="d-flex flex-column gap-1">
+                    <div class="d-flex flex-column">
                         {% if classificacoes %}
                             {% for item in classificacoes %}
                             <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ item }}" data-category="classificacao" id="class_{{ forloop.counter }}">
-                                <label class="form-check-label small" for="class_{{ forloop.counter }}">{{ item }}</label>
+                                <input class="form-check-input filter-checkbox" type="checkbox" 
+                                       value="{{ item }}" data-category="classificacao" 
+                                       id="class_{{ forloop.counter }}">
+                                <label class="form-check-label" for="class_{{ forloop.counter }}">
+                                    {{ item }}
+                                </label>
                             </div>
                             {% endfor %}
                         {% else %}
@@ -182,19 +248,23 @@
                 </div>
             </div>
 
-            <!-- 2. MATRIZ -->
-            <div class="filter-group open mb-2">
+            <!-- MATRIZ -->
+            <div class="filter-group open">
                 <div class="filter-header" onclick="toggleFilterGroup(this)">
-                    <label class="form-label small fw-bold text-muted mb-0">MATRIZ</label>
+                    <label class="filter-label mb-0">Matriz</label>
                     <i class="bi bi-chevron-down"></i>
                 </div>
                 <div class="filter-content">
-                    <div class="d-flex flex-column gap-1">
+                    <div class="d-flex flex-column">
                         {% if matrizes %}
                             {% for item in matrizes %}
                             <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ item }}" data-category="matriz" id="matriz_{{ forloop.counter }}">
-                                <label class="form-check-label small" for="matriz_{{ forloop.counter }}">{{ item }}</label>
+                                <input class="form-check-input filter-checkbox" type="checkbox" 
+                                       value="{{ item }}" data-category="matriz" 
+                                       id="matriz_{{ forloop.counter }}">
+                                <label class="form-check-label" for="matriz_{{ forloop.counter }}">
+                                    {{ item }}
+                                </label>
                             </div>
                             {% endfor %}
                         {% else %}
@@ -204,19 +274,23 @@
                 </div>
             </div>
 
-            <!-- 3. SUB-ÁREA -->
-            <div class="filter-group mb-2">
+            <!-- SUB-ÁREA -->
+            <div class="filter-group open">
                 <div class="filter-header" onclick="toggleFilterGroup(this)">
-                    <label class="form-label small fw-bold text-muted mb-0">SUB-ÁREA</label>
+                    <label class="filter-label mb-0">Sub-Área</label>
                     <i class="bi bi-chevron-down"></i>
                 </div>
                 <div class="filter-content">
-                    <div class="d-flex flex-column gap-1">
+                    <div class="d-flex flex-column">
                         {% if sub_areas %}
                             {% for item in sub_areas %}
                             <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ item }}" data-category="sub_area" id="subarea_{{ forloop.counter }}">
-                                <label class="form-check-label small" for="subarea_{{ forloop.counter }}">{{ item }}</label>
+                                <input class="form-check-input filter-checkbox" type="checkbox" 
+                                       value="{{ item }}" data-category="sub_area" 
+                                       id="subarea_{{ forloop.counter }}">
+                                <label class="form-check-label" for="subarea_{{ forloop.counter }}">
+                                    {{ item }}
+                                </label>
                             </div>
                             {% endfor %}
                         {% else %}
@@ -225,32 +299,32 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
-    <!-- TABELA PRINCIPAL -->
-    <div class="content-col" id="content-col">
+    <!-- CONTEÚDO PRINCIPAL -->
+    <div class="procedures-content">
         
         <div class="content-header">
             <span class="badge bg-secondary bg-opacity-10 text-secondary border">
-                <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ page_obj.paginator.count }}</span> procedimentos
+                <i class="bi bi-list-ul"></i> 
+                <span id="countDisplay">{{ page_obj.paginator.count }}</span> procedimentos
             </span>
         </div>
 
-        <div class="table-container-scroll shadow-sm">
+        <div class="table-wrapper">
             <table class="table table-hover align-middle mb-0">
-                <thead class="small text-uppercase text-muted font-monospace">
+                <thead>
                     <tr>
-                        <th class="ps-3 py-3">Código</th>
-                        <th class="py-3">Nome</th>
-                        <th class="py-3">Classificação</th>
-                        <th class="py-3">Revisão</th>
-                        <th class="py-3">Última Revisão</th>
-                        <th class="text-end pe-4 py-3">Ações</th>
+                        <th class="ps-3">Código</th>
+                        <th>Nome</th>
+                        <th>Classificação</th>
+                        <th style="width: 80px;">Revisão</th>
+                        <th style="width: 100px;">Última Revisão</th>
+                        <th style="width: 100px;" class="text-end pe-3">Ações</th>
                     </tr>
                 </thead>
-                <tbody class="border-top-0 bg-white">
+                <tbody>
                     {% for proc in procedimentos %}
                     <tr class="procedimento-row"
                         data-nome="{{ proc.codigo|lower }} {{ proc.nome|lower }}"
@@ -258,42 +332,54 @@
                         data-matriz="{{ proc.matriz|default:''|lower }}"
                         data-sub_area="{{ proc.sub_area|default:''|lower }}">
                         
-                        <td class="ps-3 py-2 fw-bold text-primary font-monospace">{{ proc.codigo }}</td>
-                        <td class="py-2">
-                            <div class="text-dark small fw-semibold">{{ proc.nome|truncatechars:50 }}</div>
+                        <td class="ps-3 fw-bold text-primary font-monospace" style="font-size: 0.9rem;">
+                            {{ proc.codigo }}
                         </td>
-                        <td class="py-2">
+                        <td>
+                            <div class="small fw-semibold">{{ proc.nome|truncatechars:60 }}</div>
+                        </td>
+                        <td>
                             {% if proc.classificacao %}
-                                <span class="badge bg-light text-dark border fw-normal">{{ proc.classificacao }}</span>
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info fw-normal" style="font-size: 0.75rem;">
+                                    {{ proc.classificacao }}
+                                </span>
                             {% else %}
-                                <span class="badge bg-light text-dark border fw-normal">-</span>
+                                <span class="text-muted">-</span>
                             {% endif %}
                         </td>
-                        <td class="py-2 text-center">{{ proc.numero_revisao|default:"-" }}</td>
-                        <td class="py-2">{{ proc.ultima_revisao|date:"d/m/Y"|default:"-" }}</td>
-                        <td class="text-end pe-4 py-2">
-                            <a href="{% url 'procedures:detalhe_procedimento' proc.id %}" class="btn btn-sm btn-info" title="Visualizar">
+                        <td class="text-center">
+                            {{ proc.numero_revisao|default:"-" }}
+                        </td>
+                        <td>
+                            {{ proc.ultima_revisao|date:"d/m/Y"|default:"-" }}
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'procedures:detalhe_procedimento' proc.id %}" 
+                               class="btn btn-sm btn-outline-info" title="Visualizar">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <a href="{% url 'procedures:editar_procedimento' proc.id %}" class="btn btn-sm btn-warning" title="Editar">
+                            <a href="{% url 'procedures:editar_procedimento' proc.id %}" 
+                               class="btn btn-sm btn-outline-warning" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Nenhum procedimento encontrado</td>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Nenhum procedimento encontrado
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
-        <!-- Paginação -->
+        <!-- PAGINAÇÃO -->
+        {% if page_obj.has_other_pages %}
         <div class="pagination-wrapper">
-            {% if page_obj.has_other_pages %}
             <nav aria-label="Paginação">
-                <ul class="pagination pagination-sm mb-0">
+                <ul class="pagination pagination-sm justify-content-center mb-0">
                     {% if page_obj.has_previous %}
                     <li class="page-item">
                         <a class="page-link" href="?page=1{{ querystring_base }}">Primeira</a>
@@ -317,8 +403,8 @@
                     {% endif %}
                 </ul>
             </nav>
-            {% endif %}
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -380,13 +466,11 @@ function limparFiltros() {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
-    // Busca em tempo real
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', applyFilters);
     }
 
-    // Filtros checkbox
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
         cb.addEventListener('change', applyFilters);
     });
