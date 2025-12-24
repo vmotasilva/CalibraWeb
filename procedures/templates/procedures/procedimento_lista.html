@@ -17,7 +17,7 @@
     .procedures-sidebar {
         width: 280px;
         flex-shrink: 0;
-        border-right: 1px solid #dee2e6;
+        border-right: 1px solid #e2e8f0;
         background-color: #f8f9fa;
         display: flex;
         flex-direction: column;
@@ -25,16 +25,17 @@
     }
 
     .sidebar-search-box {
-        padding: 12px 15px;
+        padding: 15px;
         flex-shrink: 0;
-        border-bottom: 1px solid #dee2e6;
+        border-bottom: 1px solid #e2e8f0;
+        background-color: white;
     }
 
     .sidebar-filters {
         flex: 1;
         overflow-y: auto;
-        padding: 0 15px;
-        padding-top: 12px;
+        padding: 15px;
+        background-color: #f8f9fa;
     }
 
     /* Scrollbar personalizada */
@@ -122,24 +123,27 @@
 
     /* FILTER GROUPS */
     .filter-group {
-        margin-bottom: 12px;
+        margin-bottom: 16px;
+        background-color: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        overflow: hidden;
     }
 
     .filter-header {
         cursor: pointer;
-        padding: 8px 0;
+        padding: 10px 12px;
         user-select: none;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        background-color: #f8f9fa;
         border-bottom: 1px solid #e2e8f0;
+        transition: background-color 0.2s ease;
     }
 
     .filter-header:hover {
-        background-color: white;
-        border-radius: 4px;
-        padding-left: 4px;
-        padding-right: 4px;
+        background-color: #f0f5f9;
     }
 
     .filter-header i {
@@ -154,7 +158,7 @@
 
     .filter-content {
         display: none;
-        padding: 8px 0;
+        padding: 0;
         max-height: 0;
         overflow: hidden;
         transition: max-height 0.2s ease;
@@ -174,14 +178,20 @@
         margin-bottom: 0;
     }
 
-    .form-check {
-        padding-left: 0;
-        margin-bottom: 6px;
+    .filter-content .form-check {
+        padding: 6px 12px;
+        margin-bottom: 0;
+        border-bottom: 1px solid #f0f5f9;
+    }
+
+    .filter-content .form-check:last-child {
+        border-bottom: none;
     }
 
     .form-check-input {
         margin-left: 0;
         margin-right: 6px;
+        cursor: pointer;
     }
 
     .form-check-label {
@@ -242,7 +252,7 @@
                             </div>
                             {% endfor %}
                         {% else %}
-                            <p class="text-muted small">Sem classificações</p>
+                            <p class="text-muted small m-0 p-2">Sem classificações</p>
                         {% endif %}
                     </div>
                 </div>
@@ -268,7 +278,7 @@
                             </div>
                             {% endfor %}
                         {% else %}
-                            <p class="text-muted small">Sem matrizes</p>
+                            <p class="text-muted small m-0 p-2">Sem matrizes</p>
                         {% endif %}
                     </div>
                 </div>
@@ -294,7 +304,7 @@
                             </div>
                             {% endfor %}
                         {% else %}
-                            <p class="text-muted small">Sem sub-áreas</p>
+                            <p class="text-muted small m-0 p-2">Sem sub-áreas</p>
                         {% endif %}
                     </div>
                 </div>
