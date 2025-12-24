@@ -131,6 +131,48 @@ def export_procedimentos_excel_view(request):
 
 
 @login_required
+def download_template_procedimentos_view(request):
+    """Download do template de importação de procedimentos."""
+    # Dados de exemplo
+    rows = [
+        {
+            'codigo': 'POP.001',
+            'nome': 'Procedimento Operacional Padrão 1',
+            'descricao': 'Descrição do procedimento',
+            'pasta': 'QUALIDADE',
+            'classificacao': 'POP',
+            'autor': 'Nome do Autor',
+            'numero_revisao': '01',
+            'ultima_revisao': '2025-12-24',
+            'data_aprovacao': '2025-12-24',
+            'proxima_revisao': '2026-12-24',
+            'data_validade': '2026-12-24',
+            'documentos_controlados': 'Sim',
+            'matriz': 'Matriz Principal',
+            'sub_area': 'Área de Processos',
+        },
+        {
+            'codigo': 'POP.002',
+            'nome': 'Procedimento Operacional Padrão 2',
+            'descricao': 'Outro procedimento de exemplo',
+            'pasta': 'PRODUÇÃO',
+            'classificacao': 'IT',
+            'autor': 'Outro Autor',
+            'numero_revisao': '02',
+            'ultima_revisao': '2025-12-24',
+            'data_aprovacao': '2025-12-24',
+            'proxima_revisao': '2026-12-24',
+            'data_validade': '2026-12-24',
+            'documentos_controlados': 'Não',
+            'matriz': 'Matriz Principal',
+            'sub_area': 'Área de Produção',
+        },
+    ]
+    
+    return export_to_excel_response(rows, "template_procedimentos.xlsx")
+
+
+@login_required
 def importar_procedimentos_view(request):
     """Importação em massa de procedimentos via arquivo Excel/CSV."""
     if not can_manage_procedimentos(request.user):

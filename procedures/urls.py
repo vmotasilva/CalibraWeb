@@ -15,6 +15,7 @@ urlpatterns = [
     # ==========================
     path('procedimentos/', views.procedimentos_list_view, name='procedimentos_list'),
     path('procedimentos/export/excel/', views.export_procedimentos_excel_view, name='export_procedimentos_excel'),
+    path('procedimentos/template/download/', views.download_template_procedimentos_view, name='dl_template_procedimentos'),
     path('procedimentos/importar/', views.importar_procedimentos_view, name='importar_procedimentos'),
     path('procedimentos/novo/', views.novo_procedimento_view, name='novo_procedimento'),
     path('procedimentos/<int:procedimento_id>/editar/', views.editar_procedimento_view, name='editar_procedimento'),
