@@ -58,8 +58,26 @@
                         <td>{{ proc.autor }}</td>
                     </tr>
                     <tr>
+                        <th>Matriz:</th>
+                        <td>{{ proc.matriz }}</td>
+                    </tr>
+                    <tr>
                         <th>Sub-Área:</th>
                         <td>{{ proc.sub_area }}</td>
+                    </tr>
+                    <tr>
+                        <th>Criticidade:</th>
+                        <td>
+                            {% if proc.criticidade %}
+                                {% if proc.criticidade == 'CRITICO' %}
+                                    <span class="badge bg-danger">Crítico</span>
+                                {% elif proc.criticidade == 'NAO_CRITICO' %}
+                                    <span class="badge bg-success">Não Crítico</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
                     </tr>
                 </table>
             </div>

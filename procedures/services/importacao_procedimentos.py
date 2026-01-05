@@ -44,6 +44,7 @@ class ImportacaoProcedimentosService:
         'documentos_controlados': ['documentos_controlados', 'Documentos Controlados', 'DOCUMENTOS_CONTROLADOS'],
         'matriz': ['matriz', 'Matriz', 'Matrix', 'MATRIZ'],
         'sub_area': ['sub_area', 'Sub-Área', 'Sub Área', 'SUB_AREA'],
+        'criticidade': ['criticidade', 'Criticidade', 'CRITICIDADE', 'Nível de Criticidade', 'CRITICO', 'NAO_CRITICO'],
     }
     
     def __init__(self, arquivo):
@@ -192,7 +193,7 @@ class ImportacaoProcedimentosService:
         dados_str = {k: str(v).strip() if v else '' for k, v in dados.items()}
         
         # Campos de texto
-        campos_texto = ['codigo', 'nome', 'descricao', 'pasta', 'classificacao', 'autor', 'numero_revisao', 'documentos_controlados', 'matriz', 'sub_area']
+        campos_texto = ['codigo', 'nome', 'descricao', 'pasta', 'classificacao', 'autor', 'numero_revisao', 'documentos_controlados', 'matriz', 'sub_area', 'criticidade']
         for campo in campos_texto:
             valor = dados_str.get(campo, '').strip() if campo in dados_str else ''
             if valor:

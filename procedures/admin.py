@@ -5,11 +5,45 @@ Consolida admin de training e procurements
 """
 
 from django.contrib import admin
+from django import forms
+from django.forms.models import BaseInlineFormSet
 from .models import (
     Area, Procedimento, ProcedimentoRevisao, PacoteTreinamento, RegistroTreinamento,
+    Disciplina, DisciplinaProcedimento, PlanejamentoTreinamento, ListaPresenca,
+    TemplateListaPresenca, MapeamentoCampoListaPresenca,
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
 )
 from qms.admin import admin_site
+
+
+# ==============================================================================
+# FORMS E VALIDAÇÕES CUSTOMIZADAS
+# ==============================================================================
+
+class MapeamentoFormSet(BaseInlineFormSet):
+    """FormSet customizado para validar placeholders duplicados"""
+    
+    def clean(self):
+        super().clean()
+        
+        if self.forms:
+            # Verificar placeholders duplicados
+            placeholders_vistos = set()
+            
+            for form in self.forms:
+                if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                    placeholder = form.cleaned_data.get('placeholder', '').strip()
+                    
+                    # Ignorar linhas vazias
+                    if not placeholder:
+                        continue
+                    
+                    if placeholder in placeholders_vistos:
+                        raise forms.ValidationError(
+                            f"O placeholder '{placeholder}' foi adicionado mais de uma vez. "
+                            "Cada placeholder deve ser único no template."
+                        )
+                    placeholders_vistos.add(placeholder)
 
 
 # ==============================================================================
@@ -53,6 +87,50 @@ class RegistroTreinamentoAdmin(admin.ModelAdmin):
     ordering = ['-data_treinamento']
 
 
+class DisciplinaAdmin(admin.ModelAdmin):
+    list_display = ['codigo', 'nome', 'matriz', 'obrigatoriedade_legal', 'ativo']
+    search_fields = ['codigo', 'nome']
+    list_filter = ['matriz', 'obrigatoriedade_legal', 'ativo']
+    list_select_related = ['matriz']
+    ordering = ['codigo']
+
+
+class DisciplinaProcedimentoAdmin(admin.ModelAdmin):
+    list_display = ['disciplina', 'procedimento', 'obrigatorio', 'ordem']
+    search_fields = ['disciplina__nome', 'procedimento__nome']
+    list_filter = ['obrigatorio']
+    list_select_related = ['disciplina', 'procedimento']
+    ordering = ['disciplina', 'ordem']
+
+
+class PlanejamentoTreinamentoAdmin(admin.ModelAdmin):
+    list_display = ['titulo', 'origem', 'data_prevista', 'status']
+    search_fields = ['titulo', 'observacoes']
+    list_filter = ['origem', 'status', 'data_prevista']
+    list_select_related = ['disciplina', 'instrutor']
+    filter_horizontal = ['colaboradores', 'procedimentos']
+    fieldsets = (
+        ('Identificação', {
+            'fields': ('titulo', 'origem')
+        }),
+        ('Relacionamentos', {
+            'fields': ('procedimentos', 'disciplina'),
+            'description': 'Preenchimento conforme tipo de origem'
+        }),
+        ('Participantes', {
+            'fields': ('colaboradores', 'instrutor')
+        }),
+        ('Execução', {
+            'fields': ('data_prevista', 'data_realizada', 'carga_horaria', 'local')
+        }),
+        ('Status e Observações', {
+            'fields': ('status', 'observacoes')
+        }),
+    )
+    readonly_fields = ['criado_em', 'atualizado_em']
+    ordering = ['-data_prevista']
+
+
 # ==============================================================================
 # FORNECEDORES E COTAÇÕES
 # ==============================================================================
@@ -90,6 +168,78 @@ class OrcamentoAdmin(admin.ModelAdmin):
 
 
 # ==============================================================================
+# LISTAS DE PRESENÇA E TEMPLATES
+# ==============================================================================
+
+class ListaPresencaAdmin(admin.ModelAdmin):
+    list_display = ['codigo', 'titulo', 'data_sessao', 'instrutor', 'local']
+    search_fields = ['codigo', 'titulo', 'instrutor_nome']
+    list_filter = ['data_sessao', 'local']
+    list_select_related = ['instrutor', 'criado_por']
+    readonly_fields = ['codigo', 'criado_em', 'atualizado_em']
+    ordering = ['-data_sessao', '-codigo']
+
+
+class MapeamentoCampoListaPresencaInline(admin.TabularInline):
+    model = MapeamentoCampoListaPresenca
+    extra = 0
+    fields = ['placeholder', 'campo_dados', 'formato', 'obrigatorio']
+    readonly_fields = ['placeholder']
+    ordering = ['placeholder']
+    formset = MapeamentoFormSet
+
+
+class TemplateListaPresencaAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'tipo_arquivo', 'tem_pagina_assinatura', 'mapeamento_completo', 'ativo']
+    search_fields = ['nome', 'descricao']
+    list_filter = ['tipo_arquivo', 'ativo', 'tem_pagina_assinatura', 'mapeamento_completo']
+    readonly_fields = ['criado_em', 'atualizado_em', 'mapeamento_completo', 'placeholders_mapeados']
+    inlines = [MapeamentoCampoListaPresencaInline]
+    
+    fieldsets = (
+        ('Identificação', {
+            'fields': ('nome', 'descricao', 'ativo')
+        }),
+        ('Arquivo PDF Template', {
+            'fields': ('tipo_arquivo', 'arquivo_pdf_template'),
+            'description': 'Upload do PDF base com placeholders como {{titulo}}, {{data}}, {{facilitador}}, etc.'
+        }),
+        ('Mapeamento de Placeholders', {
+            'fields': ('mapeamento_completo', 'placeholders_mapeados'),
+            'description': 'Placeholders detectados e configurados no template',
+            'classes': ('collapse',)
+        }),
+        ('Configuração de Página de Assinatura', {
+            'fields': ('tem_pagina_assinatura', 'num_linhas_assinatura')
+        }),
+        ('Metadados', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    change_form_template = 'admin/procedures/templatelistapresenca_change_form.html'
+    
+    def get_urls(self):
+        """Adiciona URLs customizadas para mapeamento de placeholders"""
+        from django.urls import path
+        from procedures.views import template_mapeamento_views
+        
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:pk>/mapear-placeholders/',
+                self.admin_site.admin_view(template_mapeamento_views.mapear_placeholders_view),
+                name='procedures_templatelistapresenca_mapear_placeholders',
+            ),
+        ]
+        return custom_urls + urls
+    
+    ordering = ['-ativo', '-atualizado_em']
+
+
+
+# ==============================================================================
 # REGISTRO NO ADMIN
 # ==============================================================================
 
@@ -99,6 +249,11 @@ admin_site.register(Procedimento, ProcedimentoAdmin)
 admin_site.register(ProcedimentoRevisao, ProcedimentoRevisaoAdmin)
 admin_site.register(PacoteTreinamento, PacoteTreinamentoAdmin)
 admin_site.register(RegistroTreinamento, RegistroTreinamentoAdmin)
+admin_site.register(Disciplina, DisciplinaAdmin)
+admin_site.register(DisciplinaProcedimento, DisciplinaProcedimentoAdmin)
+admin_site.register(PlanejamentoTreinamento, PlanejamentoTreinamentoAdmin)
+admin_site.register(ListaPresenca, ListaPresencaAdmin)
+admin_site.register(TemplateListaPresenca, TemplateListaPresencaAdmin)
 
 # Fornecedores e Cotações
 admin_site.register(Fornecedor, FornecedorAdmin)

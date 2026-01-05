@@ -46,9 +46,10 @@ from qms.views_helpers import export_to_excel_response, can_manage_procedimentos
 def procedimentos_list_view(request):
     """Lista de Procedimentos com filtros avançados."""
     termo = (request.GET.get('q') or '').strip().upper()
-    classificacao = (request.GET.get('classificacao') or '').strip().upper()
-    setor_id = request.GET.get('setor')
-    area_id = request.GET.get('area')
+    classificacao = (request.GET.get('classificacao') or '').strip()
+    matriz = (request.GET.get('matriz') or '').strip()
+    sub_area = (request.GET.get('sub_area') or '').strip()
+    criticidade = (request.GET.get('criticidade') or '').strip()
     rev = (request.GET.get('rev') or '').strip()
 
     qs = Procedimento.objects.all()
@@ -56,10 +57,12 @@ def procedimentos_list_view(request):
         qs = qs.filter(Q(codigo__icontains=termo) | Q(nome__icontains=termo))
     if classificacao:
         qs = qs.filter(classificacao__iexact=classificacao)
-    if setor_id and setor_id.isdigit():
-        qs = qs.filter(pasta__icontains=setor_id)
-    if area_id and area_id.isdigit():
-        qs = qs.filter(sub_area__icontains=area_id)
+    if matriz:
+        qs = qs.filter(matriz__iexact=matriz)
+    if sub_area:
+        qs = qs.filter(sub_area__iexact=sub_area)
+    if criticidade:
+        qs = qs.filter(criticidade__iexact=criticidade)
     if rev:
         qs = qs.filter(numero_revisao__iexact=rev)
 
@@ -82,6 +85,10 @@ def procedimentos_list_view(request):
         p.sub_area for p in all_procedimentos 
         if p.sub_area
     ))
+    criticidades = [
+        ('CRITICO', 'Crítico'),
+        ('NAO_CRITICO', 'Não Crítico'),
+    ]
 
     ctx = {
         'procedimentos': procedimentos,
@@ -90,16 +97,19 @@ def procedimentos_list_view(request):
         'page_obj': page_obj,
         'paginator': paginator,
         'rev': rev,
-        'setor_id': setor_id,
-        'area_id': area_id,
+        'matriz': matriz,
+        'sub_area': sub_area,
+        'criticidade': criticidade,
         'classificacoes': classificacoes,
         'matrizes': matrizes,
         'sub_areas': sub_areas,
+        'criticidades': criticidades,
         'querystring_base': '&'.join([p for p in [
             f"q={termo}" if termo else '',
             f"classificacao={classificacao}" if classificacao else '',
-            f"setor={setor_id}" if setor_id else '',
-            f"area={area_id}" if area_id else '',
+            f"matriz={matriz}" if matriz else '',
+            f"sub_area={sub_area}" if sub_area else '',
+            f"criticidade={criticidade}" if criticidade else '',
             f"rev={rev}" if rev else '',
         ] if p])
     }
@@ -108,11 +118,12 @@ def procedimentos_list_view(request):
 
 @login_required
 def export_procedimentos_excel_view(request):
-    """Exporta procedimentos para Excel respeitando filtros."""
-    termo = (request.GET.get('q') or '').strip().upper()
-    classificacao = (request.GET.get('classificacao') or '').strip().upper()
-    setor_id = request.GET.get('setor')
-    area_id = request.GET.get('area')
+    """Exporta procedimentos para Excel respeitando filtros (mesma estrutura do template de importação)."""
+    termo = (request.GET.get('q') or '').strip()
+    classificacao = (request.GET.get('classificacao') or '').strip()
+    matriz = (request.GET.get('matriz') or '').strip()
+    sub_area = (request.GET.get('sub_area') or '').strip()
+    criticidade = (request.GET.get('criticidade') or '').strip()
     rev = (request.GET.get('rev') or '').strip()
     
     qs = Procedimento.objects.all()
@@ -120,29 +131,34 @@ def export_procedimentos_excel_view(request):
         qs = qs.filter(Q(codigo__icontains=termo) | Q(nome__icontains=termo))
     if classificacao:
         qs = qs.filter(classificacao__iexact=classificacao)
-    if setor_id and setor_id.isdigit():
-        qs = qs.filter(pasta__icontains=setor_id)
-    if area_id and area_id.isdigit():
-        qs = qs.filter(sub_area__icontains=area_id)
+    if matriz:
+        qs = qs.filter(matriz__iexact=matriz)
+    if sub_area:
+        qs = qs.filter(sub_area__iexact=sub_area)
+    if criticidade:
+        qs = qs.filter(criticidade__iexact=criticidade)
     if rev:
         qs = qs.filter(numero_revisao__iexact=rev)
     
+    # Estrutura idêntica ao template de importação
     rows = []
     for p in qs.order_by('codigo'):
         rows.append({
-            'CODIGO': p.codigo,
-            'NOME': p.nome,
-            'CLASSIFICACAO': p.classificacao,
-            'NUMERO_REVISAO': p.numero_revisao,
-            'ULTIMA_REVISAO': p.ultima_revisao.strftime('%Y-%m-%d') if p.ultima_revisao else '',
-            'DATA_APROVACAO': p.data_aprovacao.strftime('%Y-%m-%d') if p.data_aprovacao else '',
-            'PROXIMA_REVISAO': p.proxima_revisao.strftime('%Y-%m-%d') if p.proxima_revisao else '',
-            'DATA_VALIDADE': p.data_validade.strftime('%Y-%m-%d') if p.data_validade else '',
-            'PASTA': p.pasta,
-            'AUTOR': p.autor,
-            'DOCUMENTOS_CONTROLADOS': p.documentos_controlados,
-            'MATRIZ': p.matriz,
-            'SUB_AREA': p.sub_area,
+            'codigo': p.codigo or '',
+            'nome': p.nome or '',
+            'descricao': p.descricao or '',
+            'pasta': p.pasta or '',
+            'classificacao': p.classificacao or '',
+            'autor': p.autor or '',
+            'numero_revisao': p.numero_revisao or '',
+            'ultima_revisao': p.ultima_revisao.strftime('%Y-%m-%d') if p.ultima_revisao else '',
+            'data_aprovacao': p.data_aprovacao.strftime('%Y-%m-%d') if p.data_aprovacao else '',
+            'proxima_revisao': p.proxima_revisao.strftime('%Y-%m-%d') if p.proxima_revisao else '',
+            'data_validade': p.data_validade.strftime('%Y-%m-%d') if p.data_validade else '',
+            'documentos_controlados': p.documentos_controlados or '',
+            'matriz': p.matriz or '',
+            'sub_area': p.sub_area or '',
+            'criticidade': p.criticidade or '',
         })
     
     return export_to_excel_response(rows, "procedimentos_export.xlsx")
@@ -168,6 +184,7 @@ def download_template_procedimentos_view(request):
             'documentos_controlados': 'Sim',
             'matriz': 'Matriz Principal',
             'sub_area': 'Área de Processos',
+            'criticidade': 'CRITICO',
         },
         {
             'codigo': 'POP.002',
@@ -184,6 +201,7 @@ def download_template_procedimentos_view(request):
             'documentos_controlados': 'Não',
             'matriz': 'Matriz Principal',
             'sub_area': 'Área de Produção',
+            'criticidade': 'NAO_CRITICO',
         },
     ]
     
@@ -282,9 +300,10 @@ def editar_procedimento_view(request, procedimento_id):
     else:
         form = ProcedimentoForm(instance=proc)
     
-    return render(request, 'shared/form_generico.html', {
+    return render(request, 'procedures/procedimento_form.html', {
         'form': form,
-        'titulo': f'Editar {proc.codigo}'
+        'proc': proc,
+        'titulo': f'Editar Procedimento: {proc.codigo}'
     })
 
 
@@ -597,3 +616,62 @@ def editar_orcamento_view(request, orcamento_id):
     return render(request, "procedures/orcamento_form.html", {
         "form": form
     })
+
+
+# ==============================================================================
+# API ENDPOINTS
+# ==============================================================================
+
+from django.http import JsonResponse
+
+def api_procedimentos_list(request):
+    """API endpoint para listar procedimentos com filtros e paginação."""
+    termo = (request.GET.get('q') or '').strip()
+    classificacao = (request.GET.get('classificacao') or '').strip()
+    matriz = (request.GET.get('matriz') or '').strip()
+    sub_area = (request.GET.get('sub_area') or '').strip()
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 20))
+    
+    # Query otimizada - apenas campos necessários
+    qs = Procedimento.objects.only('id', 'codigo', 'nome', 'classificacao', 'matriz', 'sub_area')
+    
+    if termo:
+        qs = qs.filter(Q(codigo__icontains=termo) | Q(nome__icontains=termo))
+    if classificacao:
+        qs = qs.filter(classificacao__iexact=classificacao)
+    if matriz:
+        qs = qs.filter(matriz__icontains=matriz)
+    if sub_area:
+        qs = qs.filter(sub_area__icontains=sub_area)
+    
+    qs = qs.order_by('codigo')
+    
+    # Contar total para paginação
+    total = qs.count()
+    
+    # Aplicar paginação
+    start = (page - 1) * page_size
+    end = start + page_size
+    qs = qs[start:end]
+    
+    # Debug
+    print(f"[DEBUG API] Filtros: q='{termo}', matriz='{matriz}', sub_area='{sub_area}'")
+    print(f"[DEBUG API] Total encontrado: {total}")
+    
+    data = {
+        'items': [{
+            'id': p.id,
+            'codigo': p.codigo,
+            'nome': p.nome,
+            'classificacao': p.get_classificacao_display() if hasattr(p, 'get_classificacao_display') else p.classificacao,
+            'matriz': p.matriz or '',
+            'sub_area': p.sub_area or '',
+        } for p in qs],
+        'total': total,
+        'page': page,
+        'page_size': page_size,
+        'has_more': end < total
+    }
+    
+    return JsonResponse(data)

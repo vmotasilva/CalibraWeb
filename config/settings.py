@@ -219,6 +219,11 @@ STATIC_URL = "static/"
 # Onde o Django vai reunir os arquivos estáticos no deploy
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Diretórios onde Django procura por arquivos estáticos em desenvolvimento
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
 # Media (user-uploaded files)
 # Em desenvolvimento, os arquivos serão servidos via `django.views.static.serve`.
 # Em produção (Railway/Gunicorn), recomenda-se usar um storage externo (ex.: S3)
@@ -243,12 +248,19 @@ else:
         logger.warning("Configure PERSIST_MEDIA_PATH para produção.")
 
 # Algoritmo de compressão e cache do WhiteNoise
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Use manifest storage only in production; in development, use regular storage
+if DEBUG:
+    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+else:
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Form data limits - Increased to handle bulk operations with many records
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Default is 1000, increased for bulk deletion with many items
 
 # Configurações de Login e Redirecionamento
 LOGIN_URL = "login"  # Avisa que sua URL se chama apenas 'login' e não 'accounts/login'
@@ -269,6 +281,9 @@ if not DEBUG:
     # Railway já gerencia SSL/HTTPS no proxy, então não precisamos forçar redirect aqui
     SECURE_SSL_REDIRECT = False
     X_FRAME_OPTIONS = "DENY"
+else:
+    # Development settings - allow iframes for PDF preview
+    X_FRAME_OPTIONS = "SAMEORIGIN"
 
 # ==============================================================================
 # EMAIL CONFIGURATION - Fase 5: Export and Scheduled Reports

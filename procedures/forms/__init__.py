@@ -11,6 +11,15 @@ from .forms import (
     AvaliacaoFornecedorForm,
     ProcessoCotacaoForm,
     OrcamentoForm,
+    # Novos forms para gestão de treinamentos
+    DisciplinaForm,
+    MatrizHabilidadeForm,
+    AvaliacaoHabilidadeForm,
+    PerfilTreinamentoForm,
+    GrupoTreinamentoForm,
+    SubGrupoTreinamentoForm,
+    ColaboradorPerfilForm,
+    PlanejamentoTreinamentoForm,
 )
 
 __all__ = [
@@ -22,4 +31,12 @@ __all__ = [
     'AvaliacaoFornecedorForm',
     'ProcessoCotacaoForm',
     'OrcamentoForm',
+    'DisciplinaForm',
+    'MatrizHabilidadeForm',
+    'AvaliacaoHabilidadeForm',
+    'PerfilTreinamentoForm',
+    'GrupoTreinamentoForm',
+    'SubGrupoTreinamentoForm',
+    'ColaboradorPerfilForm',
+    'PlanejamentoTreinamentoForm',
 ]

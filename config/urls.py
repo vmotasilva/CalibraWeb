@@ -5,7 +5,9 @@ from qms.admin import admin_site
 from django.contrib.auth import views as auth_views
 from django.shortcuts import render, redirect
 from django.urls import path, include
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
+from django.views.static import serve
+import os
 # from procedures.views import nova_solicitacao  # TODO: Implementar se necessário
 from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view, editar_ocorrencia_view, deletar_ocorrencia_view, listar_ocorrencias_view, registrar_ferias_view, editar_ferias_view, excluir_ferias_view
 from metrologia.views import export_metrologia_view, export_etiquetas_view, detalhe_instrumento_view, modulo_metrologia_view, remover_historico_view, visualizar_historico_calibracao_view
@@ -35,6 +37,15 @@ from shared.views import (
 def health_check(request):
     """Simple health check endpoint for Railway infrastructure"""
     return JsonResponse({"status": "ok"}, status=200)
+
+
+# Favicon view
+def favicon_view(request):
+    """Serve favicon.ico"""
+    favicon_path = os.path.join(settings.BASE_DIR, 'static', 'favicon.ico')
+    if os.path.exists(favicon_path):
+        return FileResponse(open(favicon_path, 'rb'), content_type='image/x-icon')
+    return JsonResponse({'error': 'favicon not found'}, status=404)
 
 
 # Root view - show dashboard if authenticated, otherwise redirect to login
@@ -108,6 +119,9 @@ def treinamentos_lista_redirect(request):
 
 # Minimal URL configuration
 urlpatterns = [
+    # 0. Favicon
+    path("favicon.ico", favicon_view, name="favicon"),
+    
     # 1. Health check for Railway
     path("healthz", health_check, name="health_check"),
     path("health", health_check, name="health"),
@@ -183,6 +197,7 @@ urlpatterns = [
     path("metrologia/", include("metrologia.urls")),
     
     # 7. RH app URLs
+    path("rh/", include("rh.urls")),  # API endpoints
     path("rh/", modulo_rh_view, name="modulo_rh"),
     path("rh/colaborador/<int:colab_id>/", detalhe_colaborador_view, name="detalhe_colaborador"),
     path("rh/colaborador/<int:colab_id>/editar/", editar_colaborador_view, name="editar_colaborador"),
