@@ -10,9 +10,8 @@ healthcheckPath = "/healthz"
 healthcheckTimeout = 100
 
 # Persistent storage for media files (PDFs, certificates, etc)
-[[services.volumes]]
-mountPath = "/data/media"
-name = "media_storage"
+[deploy.volumes]
+media = "/data/media"
 
 # Worker service (Celery Worker)
 [[services]]
