@@ -4,7 +4,7 @@ Forms para Training Module
 """
 
 from django import forms
-from training.models import Procedimento, RegistroTreinamento
+from procedures.models import Procedimento, RegistroTreinamento
 
 
 class ProcedimentoForm(forms.ModelForm):

@@ -17,7 +17,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Imports dos models
-from training.models import Procedimento, RegistroTreinamento
+from procedures.models import Procedimento, RegistroTreinamento
 from rh.models import Colaborador
 
 # Imports dos forms
