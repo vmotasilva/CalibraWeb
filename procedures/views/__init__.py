@@ -2,8 +2,6 @@
 Procedures Module Views
 """
 
-from . import template_mapeamento_views
-
 from .views import (
     # Procedimentos
     procedimentos_list_view,
