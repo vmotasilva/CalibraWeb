@@ -8,23 +8,25 @@
     </div>
     <form method="get" class="row g-2 mb-3">
         <div class="col-md-3">
-            <input type="text" name="q" value="{{ busca }}" placeholder="Colaborador, código ou título" class="form-control" />
+            <input type="text" name="q" value="{% if busca and busca != 'None' %}{{ busca }}{% endif %}" placeholder="Colaborador, código ou título" class="form-control" />
         </div>
         <div class="col-md-3">
-            <select name="colaborador" class="form-select">
-                <option value="">Colaborador</option>
+            <input type="text" id="colaborador_busca" placeholder="Buscar colaborador..." class="form-control" list="colaboradores_list" />
+            <input type="hidden" name="colaborador" id="colaborador_id" value="{{ colaborador_id }}" />
+            <datalist id="colaboradores_list">
                 {% for c in colaboradores %}
-                    <option value="{{ c.id }}" {% if colaborador_id|add:"0"|stringformat:"d" == c.id %}selected{% endif %}>{{ c.nome_completo }}</option>
+                    <option value="{{ c.nome_completo }}" data-id="{{ c.id }}">{{ c.nome_completo }}</option>
                 {% endfor %}
-            </select>
+            </datalist>
         </div>
         <div class="col-md-3">
-            <select name="procedimento" class="form-select">
-                <option value="">Procedimento</option>
+            <input type="text" id="procedimento_busca" placeholder="Buscar procedimento..." class="form-control" list="procedimentos_list" />
+            <input type="hidden" name="procedimento" id="procedimento_id" value="{{ procedimento_id }}" />
+            <datalist id="procedimentos_list">
                 {% for p in procedimentos %}
-                    <option value="{{ p.id }}" {% if procedimento_id|add:"0"|stringformat:"d" == p.id %}selected{% endif %}>{{ p.codigo }} - {{ p.titulo|default:p.nome|truncatechars:40 }}</option>
+                    <option value="{{ p.codigo }} - {{ p.titulo|default:p.nome }}" data-id="{{ p.id }}">{{ p.codigo }} - {{ p.titulo|default:p.nome }}</option>
                 {% endfor %}
-            </select>
+            </datalist>
         </div>
         <div class="col-md-2">
             <select name="status" class="form-select">
@@ -69,4 +71,50 @@
         </table>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const colaboradoresData = {
+        {% for c in colaboradores %}'{{ c.nome_completo }}': {{ c.id }},{% endfor %}
+    };
+    
+    const procedimentosData = {
+        {% for p in procedimentos %}'{{ p.codigo }} - {{ p.titulo|default:p.nome }}': {{ p.id }},{% endfor %}
+    };
+    
+    const colaboradorInput = document.getElementById('colaborador_busca');
+    const colaboradorId = document.getElementById('colaborador_id');
+    const procedimentoInput = document.getElementById('procedimento_busca');
+    const procedimentoId = document.getElementById('procedimento_id');
+    
+    // Preencher campos de busca com valores pré-selecionados
+    if (colaboradorId.value) {
+        for (let nome in colaboradoresData) {
+            if (colaboradoresData[nome] == colaboradorId.value) {
+                colaboradorInput.value = nome;
+                break;
+            }
+        }
+    }
+    
+    if (procedimentoId.value) {
+        for (let codigo in procedimentosData) {
+            if (procedimentosData[codigo] == procedimentoId.value) {
+                procedimentoInput.value = codigo;
+                break;
+            }
+        }
+    }
+    
+    // Sincronizar quando usuário seleciona da datalist
+    colaboradorInput.addEventListener('change', function() {
+        colaboradorId.value = colaboradoresData[this.value] || '';
+    });
+    
+    procedimentoInput.addEventListener('change', function() {
+        procedimentoId.value = procedimentosData[this.value] || '';
+    });
+});
+</script>
+
 {% endblock %}
