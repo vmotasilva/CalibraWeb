@@ -6,7 +6,7 @@
         <h2 class="mb-0">Treinamentos</h2>
         <a href="{% url 'novo_treinamento' %}" class="btn btn-sm btn-primary">Novo</a>
     </div>
-    <form method="get" class="row g-2 mb-3">
+    <form method="get" class="row g-2 mb-3" id="filtro-form">
         <div class="col-md-3">
             <input type="text" name="q" value="{{ busca }}" placeholder="Colaborador, código ou título" class="form-control" />
         </div>
@@ -35,11 +35,9 @@
                 <option value="PENDENTE" {% if status == 'PENDENTE' %}selected{% endif %}>Pendente</option>
             </select>
         </div>
-        <div class="col-md-1 d-grid">
-            <button class="btn btn-primary">Filtrar</button>
-        </div>
-        <div class="col-md-1 d-grid">
-            <a href="?" class="btn btn-secondary">Limpar</a>
+        <div class="col-md-1 d-flex gap-1">
+            <button type="submit" class="btn btn-primary flex-grow-1" title="Aplicar filtros">Filtrar</button>
+            <button type="button" class="btn btn-warning" id="btn-limpar" title="Limpar todos os filtros">⟲</button>
         </div>
     </form>
     <div class="table-responsive bg-white shadow-sm rounded">
@@ -86,6 +84,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const colaboradorId = document.getElementById('colaborador_id');
     const procedimentoInput = document.getElementById('procedimento_busca');
     const procedimentoId = document.getElementById('procedimento_id');
+    const filtroForm = document.getElementById('filtro-form');
+    const btnLimpar = document.getElementById('btn-limpar');
     
     // Preencher campos de busca com valores pré-selecionados
     if (colaboradorId.value) {
@@ -113,6 +113,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     procedimentoInput.addEventListener('change', function() {
         procedimentoId.value = procedimentosData[this.value] || '';
+    });
+    
+    // Botão de limpar filtros
+    btnLimpar.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Limpar todos os campos
+        filtroForm.querySelector('input[name="q"]').value = '';
+        colaboradorInput.value = '';
+        colaboradorId.value = '';
+        procedimentoInput.value = '';
+        procedimentoId.value = '';
+        filtroForm.querySelector('select[name="status"]').value = '';
+        // Enviar o formulário
+        filtroForm.submit();
     });
 });
 </script>
