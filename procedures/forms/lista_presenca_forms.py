@@ -146,7 +146,7 @@ class ImportacaoTreinamentoForm(forms.Form):
     sobrescrever_existentes = forms.BooleanField(
         label='Sobrescrever treinamentos existentes',
         help_text='Se desativado, treinamentos duplicados serão ignorados',
-        initial=False,
+        initial=True,
         required=False,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
