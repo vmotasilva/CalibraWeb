@@ -1,24 +1,21 @@
 ﻿#!/bin/bash
-set -x
-export PYTHONUNBUFFERED=1
-PORT=${PORT:-8000}
+echo "TESTE 1: ENTRYPOINT INICIADO"
+sleep 2
+echo "TESTE 2: APÓS SLEEP"
+python --version
+echo "TESTE 3: PYTHON OK"
+gunicorn --version
+echo "TESTE 4: GUNICORN OK"
 
-echo "========================================"
-echo "[ENTRYPOINT] Container iniciado"
-echo "[ENTRYPOINT] PORT=${PORT}"
-echo "[ENTRYPOINT] PWD=$(pwd)"
-echo "[ENTRYPOINT] Python: $(python --version 2>&1)"
-echo "[ENTRYPOINT] Gunicorn: $(gunicorn --version 2>&1)"
-echo "========================================"
+# Try to import Django
+python -c "import django; print('TESTE 5: DJANGO OK')"
 
-echo "[ENTRYPOINT] Iniciando Gunicorn..."
+echo "TESTE 6: INICIANDO GUNICORN"
 exec gunicorn \
   config.wsgi:application \
-  --bind 0.0.0.0:${PORT} \
+  --bind 0.0.0.0:8000 \
   --workers 1 \
   --worker-class sync \
-  --max-requests 1000 \
   --timeout 600 \
   --access-logfile - \
-  --error-logfile - \
-  --log-level debug
+  --error-logfile -
