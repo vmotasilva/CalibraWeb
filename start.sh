@@ -19,7 +19,7 @@ echo "==> Starting Gunicorn server on port $PORT..."
 exec gunicorn config.wsgi:application \
     --bind 0.0.0.0:$PORT \
     --workers 3 \
-    --timeout 120 \
+    --timeout 300 \
     --log-level debug \
     --access-logfile - \
     --error-logfile -
