@@ -980,11 +980,17 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                 resultados['mensagens_erro'].append(f"Linha {index + 2}: Matrícula ausente")
                 continue
                 
+            matricula_str = str(row['matricula']).strip()
+            
             try:
-                colaborador = Colaborador.objects.get(matricula=str(row['matricula']).strip())
+                colaborador = Colaborador.objects.get(matricula=matricula_str)
             except Colaborador.DoesNotExist:
                 resultados['erros'] += 1
-                resultados['mensagens_erro'].append(f"Linha {index + 2}: Colaborador {row['matricula']} não encontrado")
+                resultados['mensagens_erro'].append(f"Linha {index + 2}: Colaborador com matrícula '{matricula_str}' não encontrado no sistema")
+                continue
+            except Exception as e:
+                resultados['erros'] += 1
+                resultados['mensagens_erro'].append(f"Linha {index + 2}: Erro ao buscar colaborador - {str(e)}")
                 continue
             
             # Determinar tipo de treinamento
@@ -1210,7 +1216,7 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                 # Criar novo registro com tratamento de erro
                 try:
                     novo_registro = RegistroTreinamento.objects.create(
-                        colaborador=colaborador,
+                        colaborador=colaborador,  # ForeignKey - associação obrigatória
                         colaborador_nome=colaborador.nome_completo if colaborador else '',  # Salvar nome livre também
                         procedimento=procedimento,
                         tipo=tipo,
@@ -1230,7 +1236,12 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                         necessita_avaliacao_eficacia=necessita_avaliacao,
                         data_limite_avaliacao_eficacia=data_limite_avaliacao
                     )
-                    resultados['criados'] += 1
+                    # Verificar se o registro foi criado corretamente
+                    if novo_registro.id:
+                        resultados['criados'] += 1
+                    else:
+                        resultados['erros'] += 1
+                        resultados['mensagens_erro'].append(f"Linha {index + 2}: Falha ao criar registro de treinamento")
                 except Exception as e:
                     resultados['erros'] += 1
                     resultados['mensagens_erro'].append(f"Linha {index + 2}: Erro ao criar registro - {str(e)}")
