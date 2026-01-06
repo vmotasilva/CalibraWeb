@@ -1,0 +1,42 @@
+from django import template
+
+# NOTA: Use {% load custom_filters %} from qms.templatetags.custom_filters
+# Este arquivo está deprecado. Importações devem vir de qms.templatetags
+
+register = template.Library()
+
+
+@register.filter
+def dict_get(dictionary, key):
+    """
+    Obtém um item de um dicionário usando um filtro no template.
+    Uso: {{ dict|dict_get:key }}
+    
+    [DEPRECADO] Use: {% load custom_filters %} from qms app
+    """
+    if dictionary is None:
+        return None
+    return dictionary.get(key)
+
+
+@register.filter
+def get_nested_item(data, keys):
+    """
+    Obtém um item aninhado de um dicionário.
+    Uso: {{ data|get_nested_item:"key1.key2" }}
+    
+    [DEPRECADO] Use: {% load custom_filters %} from qms app
+    """
+    if data is None:
+        return None
+    
+    key_list = str(keys).split('.')
+    value = data
+    
+    for key in key_list:
+        if isinstance(value, dict):
+            value = value.get(key)
+        else:
+            return None
+    
+    return value
