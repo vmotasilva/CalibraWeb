@@ -232,32 +232,52 @@ def detalhe_procedimento_view(request, procedimento_id):
 
 @login_required
 def treinamentos_list_view(request):
-    """Lista de treinamentos realizados com filtros."""
+    """Lista de treinamentos realizados com filtros avançados."""
+    from django.db.models import Q
+    
     qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
-    colaboradores = Colaborador.objects.order_by('nome_completo')
-    procedimentos = Procedimento.objects.order_by('codigo')
+    colaboradores = Colaborador.objects.order_by('nome_completo').distinct()
+    procedimentos = Procedimento.objects.order_by('codigo').distinct()
     
     status = request.GET.get('status')
     colaborador_id = request.GET.get('colaborador')
     procedimento_id = request.GET.get('procedimento')
     busca = request.GET.get('q')
 
-    # Filtro de status - nota: status_treinamento é uma property, não field
-    if status:
-        qs = [t for t in qs if t.status_treinamento == status]
-    
+    # Filtro por colaborador
     if colaborador_id:
         qs = qs.filter(colaborador_id=colaborador_id)
+    
+    # Filtro por procedimento
     if procedimento_id:
         qs = qs.filter(procedimento_id=procedimento_id)
-    if busca:
+    
+    # Filtro por status - filtrando em Python após QuerySet ser materializado se necessário
+    if status:
+        all_records = list(qs)
+        qs = [t for t in all_records if t.status_treinamento == status]
+    
+    # Filtro de busca por texto (antes de filtro de status se ainda for QuerySet)
+    if busca and not status:
         qs = qs.filter(
             Q(colaborador__nome_completo__icontains=busca) |
             Q(procedimento__codigo__icontains=busca) |
             Q(procedimento__nome__icontains=busca)
         )
+    elif busca and isinstance(qs, list):
+        # Se já virou lista (por causa do status), filtra em Python
+        qs = [
+            t for t in qs 
+            if (busca.lower() in t.colaborador.nome_completo.lower() or
+                busca.lower() in t.procedimento.codigo.lower() or
+                busca.lower() in t.procedimento.nome.lower())
+        ]
     
-    treinamentos = qs.order_by('-data_treinamento')[:100]
+    # Ordenar resultados
+    if isinstance(qs, list):
+        treinamentos = sorted(qs, key=lambda x: x.data_treinamento, reverse=True)[:100]
+    else:
+        treinamentos = qs.order_by('-data_treinamento')[:100]
     
     return render(request, "training/treinamento_lista.html", {
         "treinamentos": treinamentos,
