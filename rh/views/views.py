@@ -12,12 +12,14 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.core.paginator import Paginator
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
 # Imports dos models
 from rh.models import Colaborador, Ocorrencia, Ferias
 from organization.models import Setor, CentroCusto, HierarquiaSetor
+from procedures.models import ColaboradorPerfil, PerfilTreinamento
 
 # Imports dos forms
 from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
@@ -287,8 +289,114 @@ def detalhe_colaborador_view(request, colab_id):
             can_view_occ = False
 
     ocorrencias = alvo.ocorrencias.all().order_by("-data_ocorrencia") if can_view_occ else []
-    treinamentos = alvo.treinamentos.all().order_by("-data_treinamento")
+    
+    # Organizar treinamentos em cascata: Perfil > Grupo > Subgrupo > Procedimento
+    from procedures.models import ColaboradorPerfil, SubGrupoTreinamento
+    
+    matriz_treinamentos = {}
+    total_pendentes = 0
+    total_treinamentos = 0
+    
+    # Buscar perfis atribuídos ao colaborador
+    perfis_colab = ColaboradorPerfil.objects.filter(
+        colaborador=alvo, ativo=True
+    ).select_related('perfil').prefetch_related(
+        'perfil__grupos__subgrupos__procedimentos'
+    )
+    
+    for cp in perfis_colab:
+        perfil = cp.perfil
+        grupos_selecionados_ids = cp.grupos_selecionados.get('grupos', []) if cp.grupos_selecionados else []
+        subgrupos_selecionados_ids = cp.grupos_selecionados.get('subgrupos', []) if cp.grupos_selecionados else []
+        
+        if perfil.codigo not in matriz_treinamentos:
+            matriz_treinamentos[perfil.codigo] = {
+                'perfil': perfil,
+                'grupos': {},
+                'pendentes': 0,
+                'total': 0
+            }
+        
+        for grupo in perfil.grupos.all().order_by('ordem', 'nome'):
+            # Filtrar grupos selecionados se houver filtro
+            if grupos_selecionados_ids and grupo.id not in grupos_selecionados_ids:
+                continue
+                
+            if grupo.id not in matriz_treinamentos[perfil.codigo]['grupos']:
+                matriz_treinamentos[perfil.codigo]['grupos'][grupo.id] = {
+                    'grupo': grupo,
+                    'subgrupos': {},
+                    'pendentes': 0,
+                    'total': 0
+                }
+            
+            for subgrupo in grupo.subgrupos.all().order_by('ordem', 'nome'):
+                # Filtrar subgrupos selecionados se houver filtro
+                if subgrupos_selecionados_ids and subgrupo.id not in subgrupos_selecionados_ids:
+                    continue
+                    
+                if subgrupo.id not in matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos']:
+                    matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos'][subgrupo.id] = {
+                        'subgrupo': subgrupo,
+                        'procedimentos': [],
+                        'pendentes': 0,
+                        'total': 0
+                    }
+                
+                # Para cada procedimento do subgrupo, buscar o registro de treinamento
+                for proc in subgrupo.procedimentos.all().order_by('codigo'):
+                    treinamento = alvo.treinamentos.filter(procedimento=proc).first()
+                    
+                    # Contabilizar
+                    total_treinamentos += 1
+                    matriz_treinamentos[perfil.codigo]['total'] += 1
+                    matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['total'] += 1
+                    matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos'][subgrupo.id]['total'] += 1
+                    
+                    # Verificar se está pendente
+                    if not treinamento or treinamento.status_treinamento != 'OK':
+                        total_pendentes += 1
+                        matriz_treinamentos[perfil.codigo]['pendentes'] += 1
+                        matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['pendentes'] += 1
+                        matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos'][subgrupo.id]['pendentes'] += 1
+                    
+                    matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos'][subgrupo.id]['procedimentos'].append({
+                        'procedimento': proc,
+                        'treinamento': treinamento
+                    })
+    
     documentos = alvo.documentos.all().order_by("-arquivo")
+    
+    # Perfis disponíveis para associação (que ainda não estão associados)
+    from procedures.models import PerfilTreinamento
+    perfis_ja_associados = ColaboradorPerfil.objects.filter(
+        colaborador=alvo, ativo=True
+    ).values_list('perfil_id', flat=True)
+    
+    perfis_disponiveis = PerfilTreinamento.objects.filter(ativo=True).exclude(
+        id__in=perfis_ja_associados
+    ).prefetch_related('grupos__subgrupos').order_by('codigo')
+    
+    # Estruturar dados dos perfis para JavaScript (grupos e subgrupos)
+    perfis_data = {}
+    for perfil in perfis_disponiveis:
+        perfis_data[perfil.id] = {
+            'codigo': perfil.codigo,
+            'nome': perfil.nome,
+            'grupos': []
+        }
+        for grupo in perfil.grupos.all().order_by('ordem', 'nome'):
+            grupo_data = {
+                'id': grupo.id,
+                'nome': grupo.nome,
+                'subgrupos': []
+            }
+            for subgrupo in grupo.subgrupos.all().order_by('ordem', 'nome'):
+                grupo_data['subgrupos'].append({
+                    'id': subgrupo.id,
+                    'nome': subgrupo.nome
+                })
+            perfis_data[perfil.id]['grupos'].append(grupo_data)
 
     # Férias
     try:
@@ -316,7 +424,9 @@ def detalhe_colaborador_view(request, colab_id):
         "can_register_occ": can_register_occ,
         "can_view_occ": can_view_occ,
         "ocorrencias": ocorrencias,
-        "treinamentos": treinamentos,
+        "matriz_treinamentos": matriz_treinamentos,
+        "total_treinamentos": total_treinamentos,
+        "total_pendentes": total_pendentes,
         "documentos": documentos,
         "ferias": ferias_qs,
         "kpi_ferias_vencidas": ferias_vencidas,
@@ -324,6 +434,8 @@ def detalhe_colaborador_view(request, colab_id):
         "can_edit": True,
         "supervisor_rh": supervisor_rh,
         "gerente_rh": gerente_rh,
+        "perfis_disponiveis": perfis_disponiveis,
+        "perfis_data": json.dumps(perfis_data),
     }
     return render(request, "rh/colaborador_detalhe.html", ctx)
 
@@ -675,3 +787,151 @@ def excluir_ferias_view(request, colab_id, ferias_id):
     
     messages.success(request, "Registro de férias excluído com sucesso!")
     return redirect('detalhe_colaborador', colab_id=colaborador.id)
+
+
+# ==================== API ENDPOINTS ====================
+
+from django.http import JsonResponse
+
+
+def api_colaboradores(request):
+    """API para buscar colaboradores com filtros"""
+    colaboradores = Colaborador.objects.select_related('setor', 'lider', 'supervisor').all()
+    
+    # Aplicar filtros
+    q = request.GET.get('q', '').strip()
+    if q:
+        colaboradores = colaboradores.filter(
+            Q(nome_completo__icontains=q) |
+            Q(matricula__icontains=q)
+        )
+    
+    setor_id = request.GET.get('setor', '').strip()
+    if setor_id:
+        colaboradores = colaboradores.filter(setor_id=setor_id)
+    
+    cargo = request.GET.get('cargo', '').strip()
+    if cargo:
+        colaboradores = colaboradores.filter(cargo__icontains=cargo)
+    
+    grupo = request.GET.get('grupo', '').strip()
+    if grupo:
+        colaboradores = colaboradores.filter(grupo__icontains=grupo)
+    
+    turno = request.GET.get('turno', '').strip()
+    if turno:
+        colaboradores = colaboradores.filter(turno=turno)
+    
+    lider_id = request.GET.get('lider', '').strip()
+    if lider_id:
+        colaboradores = colaboradores.filter(lider_id=lider_id)
+    
+    supervisor_id = request.GET.get('supervisor', '').strip()
+    if supervisor_id:
+        colaboradores = colaboradores.filter(supervisor_id=supervisor_id)
+    
+    # Limitar resultado
+    colaboradores = colaboradores.order_by('nome_completo')[:200]
+    
+    # Formatar resposta
+    data = {
+        'colaboradores': [
+            {
+                'id': c.id,
+                'nome': c.nome_completo,
+                'matricula': c.matricula,
+                'cargo': c.cargo or '',
+                'setor': c.setor.nome if c.setor else '',
+                'grupo': c.grupo or '',
+                'turno': c.get_turno_display() if c.turno else '',
+            }
+            for c in colaboradores
+        ]
+    }
+    
+    return JsonResponse(data)
+
+
+def api_setores(request):
+    """API para listar setores"""
+    setores = Setor.objects.all().order_by('nome')
+    
+    data = {
+        'setores': [
+            {
+                'id': s.id,
+                'nome': s.nome
+            }
+            for s in setores
+        ]
+    }
+    
+    return JsonResponse(data)
+
+
+def api_cargos(request):
+    """API para listar cargos únicos"""
+    cargos = Colaborador.objects.exclude(
+        cargo__isnull=True
+    ).exclude(
+        cargo=''
+    ).values_list('cargo', flat=True).distinct().order_by('cargo')
+    
+    data = {
+        'cargos': list(cargos)
+    }
+    
+    return JsonResponse(data)
+
+
+def api_grupos(request):
+    """API para listar grupos únicos"""
+    grupos = Colaborador.objects.exclude(
+        grupo__isnull=True
+    ).exclude(
+        grupo=''
+    ).values_list('grupo', flat=True).distinct().order_by('grupo')
+    
+    data = {
+        'grupos': list(grupos)
+    }
+    
+    return JsonResponse(data)
+
+
+def api_lideres(request):
+    """API para listar líderes (colaboradores que são líderes de alguém)"""
+    lideres = Colaborador.objects.filter(
+        liderados__isnull=False
+    ).distinct().order_by('nome_completo')
+    
+    data = {
+        'lideres': [
+            {
+                'id': l.id,
+                'nome': l.nome_completo
+            }
+            for l in lideres
+        ]
+    }
+    
+    return JsonResponse(data)
+
+
+def api_supervisores(request):
+    """API para listar supervisores (colaboradores que são supervisores de alguém)"""
+    supervisores = Colaborador.objects.filter(
+        supervisionados__isnull=False
+    ).distinct().order_by('nome_completo')
+    
+    data = {
+        'supervisores': [
+            {
+                'id': s.id,
+                'nome': s.nome_completo
+            }
+            for s in supervisores
+        ]
+    }
+    
+    return JsonResponse(data)

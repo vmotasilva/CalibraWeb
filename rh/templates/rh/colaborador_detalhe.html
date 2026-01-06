@@ -210,48 +210,169 @@
                 </div>
             </div>
 
-            <!-- TREINAMENTOS (MANTIDO) -->
+            <!-- MATRIZ DE TREINAMENTOS EM CASCATA -->
             <div class="card shadow-sm mb-4 border-0">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <span class="fw-bold"><i class="bi bi-mortarboard"></i> Matriz de Treinamentos</span>
-                    <span class="badge bg-light text-primary">{{ treinamentos.count }}</span>
+                    <div>
+                        <span class="fw-bold"><i class="bi bi-mortarboard"></i> Matriz de Treinamentos</span>
+                        {% if total_treinamentos > 0 %}
+                        <span class="badge bg-light text-primary ms-2">{{ total_treinamentos }} total</span>
+                        {% if total_pendentes > 0 %}
+                        <span class="badge bg-danger ms-1">{{ total_pendentes }} pendente{{ total_pendentes|pluralize }}</span>
+                        {% else %}
+                        <span class="badge bg-success ms-1"><i class="bi bi-check-circle"></i> Tudo OK</span>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    {% if can_edit %}
+                    <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#modalAssociarPerfil">
+                        <i class="bi bi-plus-circle"></i> Associar Perfil
+                    </button>
+                    {% endif %}
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.9rem;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-start ps-3">Procedimento / Treinamento</th>
-                                    <th>Revisão</th>
-                                    <th>Data Realização</th>
-                                    <th>Validade</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for t in treinamentos %}
-                                <tr>
-                                    <td class="text-start ps-3 fw-semibold">
-                                        {{ t.procedimento.codigo }}<br>
-                                        <small class="text-muted fw-normal">{{ t.procedimento.titulo }}</small>
-                                    </td>
-                                    <td>{{ t.revisao_treinada }}</td>
-                                    <td>{{ t.data_treinamento|date:"d/m/Y" }}</td>
-                                    <td>{{ t.validade_treinamento|date:"d/m/Y"|default:"-" }}</td>
-                                    <td>
-                                        {% if t.status_treinamento == 'VIGENTE' %}
-                                            <span class="badge bg-success">VIGENTE</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">PENDENTE</span>
+                    {% if matriz_treinamentos %}
+                        {% for perfil_codigo, perfil_data in matriz_treinamentos.items %}
+                        <div class="accordion accordion-flush" id="accordion-{{ perfil_codigo }}">
+                            <!-- PERFIL -->
+                            <div class="accordion-item border-0">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed bg-light fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#perfil-{{ perfil_codigo }}" aria-expanded="false">
+                                        <i class="bi bi-person-workspace me-2"></i> {{ perfil_data.perfil.codigo }} - {{ perfil_data.perfil.nome }}
+                                        <span class="badge bg-secondary ms-2">{{ perfil_data.total }}</span>
+                                        {% if perfil_data.pendentes > 0 %}
+                                        <span class="badge bg-danger ms-1">{{ perfil_data.pendentes }} pendente{{ perfil_data.pendentes|pluralize }}</span>
                                         {% endif %}
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="5" class="p-4 text-muted">Nenhum treinamento registrado.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                                    </button>
+                                </h2>
+                                <div id="perfil-{{ perfil_codigo }}" class="accordion-collapse collapse" data-bs-parent="#accordion-{{ perfil_codigo }}">
+                                    <div class="accordion-body p-0">
+                                        <!-- Ações do Perfil -->
+                                        <div class="bg-light border-bottom p-2 d-flex justify-content-between align-items-center">
+                                            <div class="d-flex gap-2">
+                                                <a href="{% url 'procedures:detalhe_perfil' perfil_id=perfil_data.perfil.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                    <i class="bi bi-box-arrow-up-right"></i> Ver Perfil Completo
+                                                </a>
+                                                <a href="{% url 'procedures:detalhe_perfil' perfil_id=perfil_data.perfil.id %}" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="bi bi-gear"></i> Gerenciar Treinamentos
+                                                </a>
+                                            </div>
+                                            {% if can_edit %}
+                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmarRemocaoPerfil('{{ perfil_data.perfil.codigo }}', {{ perfil_data.perfil.id }}, {{ alvo.id }})">
+                                                <i class="bi bi-trash"></i> Remover Associação
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                        {% for grupo_id, grupo_data in perfil_data.grupos.items %}
+                                        <!-- GRUPO -->
+                                        <div class="accordion accordion-flush ms-3" id="accordion-grupo-{{ grupo_id }}">
+                                            <div class="accordion-item border-0">
+                                                <h3 class="accordion-header">
+                                                    <button class="accordion-button collapsed bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#grupo-{{ grupo_id }}" aria-expanded="false">
+                                                        <i class="bi bi-folder2-open me-2 text-primary"></i> {{ grupo_data.grupo.nome }}
+                                                        <span class="badge bg-secondary ms-2">{{ grupo_data.total }}</span>
+                                                        {% if grupo_data.pendentes > 0 %}
+                                                        <span class="badge bg-danger ms-1">{{ grupo_data.pendentes }} pendente{{ grupo_data.pendentes|pluralize }}</span>
+                                                        {% endif %}
+                                                    </button>
+                                                </h3>
+                                                <div id="grupo-{{ grupo_id }}" class="accordion-collapse collapse" data-bs-parent="#accordion-grupo-{{ grupo_id }}">
+                                                    <div class="accordion-body p-0">
+                                                        {% for subgrupo_id, subgrupo_data in grupo_data.subgrupos.items %}
+                                                        <!-- SUBGRUPO -->
+                                                        <div class="accordion accordion-flush ms-3" id="accordion-subgrupo-{{ subgrupo_id }}">
+                                                            <div class="accordion-item border-0">
+                                                                <h4 class="accordion-header">
+                                                                    <button class="accordion-button bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#subgrupo-{{ subgrupo_id }}" aria-expanded="true">
+                                                                        <i class="bi bi-folder me-2 text-secondary"></i> {{ subgrupo_data.subgrupo.nome }}
+                                                                        <span class="badge bg-secondary ms-2">{{ subgrupo_data.total }}</span>
+                                                                        {% if subgrupo_data.pendentes > 0 %}
+                                                                        <span class="badge bg-danger ms-1">{{ subgrupo_data.pendentes }} pendente{{ subgrupo_data.pendentes|pluralize }}</span>
+                                                                        {% else %}
+                                                                        <span class="badge bg-success ms-1"><i class="bi bi-check-circle-fill"></i></span>
+                                                                        {% endif %}
+                                                                    </button>
+                                                                </h4>
+                                                                <div id="subgrupo-{{ subgrupo_id }}" class="accordion-collapse collapse show" data-bs-parent="#accordion-subgrupo-{{ subgrupo_id }}">
+                                                                    <div class="accordion-body p-0">
+                                                                        <!-- PROCEDIMENTOS -->
+                                                                        <div class="table-responsive">
+                                                                            <table class="table table-hover mb-0 text-center align-middle" style="font-size: 0.85rem;">
+                                                                                <thead class="table-light">
+                                                                                    <tr>
+                                                                                        <th class="text-start ps-3" style="width: 30%;">Procedimento</th>
+                                                                                        <th style="width: 15%;">Revisão Atual</th>
+                                                                                        <th style="width: 13%;">Data Revisão Doc.</th>
+                                                                                        <th style="width: 13%;">Data Realização</th>
+                                                                                        <th style="width: 13%;">Validade</th>
+                                                                                        <th style="width: 16%;">Status</th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    {% for item in subgrupo_data.procedimentos %}
+                                                                                    <tr>
+                                                                                        <td class="text-start ps-3">
+                                                                                            <strong>{{ item.procedimento.codigo }}</strong><br>
+                                                                                            <small class="text-muted">{{ item.procedimento.nome|truncatewords:10 }}</small>
+                                                                                        </td>
+                                                                                        <td>
+                                                                                            <span class="badge bg-info">Rev. {{ item.procedimento.numero_revisao|default:"?" }}</span>
+                                                                                            {% if item.treinamento %}
+                                                                                                <br><small class="text-muted">(Treinado: {{ item.treinamento.revisao_treinada }})</small>
+                                                                                            {% endif %}
+                                                                                        </td>
+                                                                                        <td>{{ item.procedimento.ultima_revisao|date:"d/m/Y"|default:"-" }}</td>
+                                                                                        <td>
+                                                                                            {% if item.treinamento and item.treinamento.data_treinamento %}
+                                                                                                {{ item.treinamento.data_treinamento|date:"d/m/Y" }}
+                                                                                            {% else %}
+                                                                                                <span class="text-muted">-</span>
+                                                                                            {% endif %}
+                                                                                        </td>
+                                                                                        <td>
+                                                                                            {% if item.treinamento %}
+                                                                                                {{ item.treinamento.validade_treinamento|date:"d/m/Y"|default:"-" }}
+                                                                                            {% else %}
+                                                                                                -
+                                                                                            {% endif %}
+                                                                                        </td>
+                                                                                        <td>
+                                                                                            {% if item.treinamento %}
+                                                                                                {% if item.treinamento.status_treinamento == 'OK' %}
+                                                                                                    <span class="badge bg-success">OK</span>
+                                                                                                {% else %}
+                                                                                                    <span class="badge bg-danger">PENDENTE</span>
+                                                                                                {% endif %}
+                                                                                            {% else %}
+                                                                                                <span class="badge bg-warning text-dark">NÃO TREINADO</span>
+                                                                                            {% endif %}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                    {% endfor %}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-inbox fs-1"></i>
+                            <p class="mt-2">Nenhum perfil de treinamento atribuído a este colaborador.</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -451,4 +572,160 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Associar Perfil -->
+<div class="modal fade" id="modalAssociarPerfil" tabindex="-1" aria-labelledby="modalAssociarPerfilLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'procedures:associar_perfil_colaborador' colaborador_id=alvo.id %}" id="formAssociarPerfil">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalAssociarPerfilLabel">
+                        <i class="bi bi-person-plus"></i> Associar Perfil de Treinamento
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Selecione o perfil e opcionalmente os grupos/subgrupos específicos.
+                        Demandas de treinamento serão criadas automaticamente.
+                    </div>
+                    
+                    <!-- Seleção de Perfil -->
+                    <div class="mb-3">
+                        <label for="selectPerfil" class="form-label fw-bold">Perfil de Treinamento *</label>
+                        <select class="form-select" id="selectPerfil" name="perfil_id" required>
+                            <option value="">Selecione um perfil...</option>
+                            {% for perfil in perfis_disponiveis %}
+                                <option value="{{ perfil.id }}">{{ perfil.codigo }} - {{ perfil.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Seleção de Grupos -->
+                    <div class="mb-3" id="divGrupos" style="display: none;">
+                        <label for="selectGrupos" class="form-label fw-bold">
+                            Grupos <small class="text-muted">(Opcional - deixe vazio para todos)</small>
+                        </label>
+                        <select class="form-select" id="selectGrupos" name="grupos[]" multiple size="5">
+                            <option value="" disabled>Carregando grupos...</option>
+                        </select>
+                        <small class="form-text text-muted">Ctrl+Clique para selecionar múltiplos</small>
+                    </div>
+                    
+                    <!-- Seleção de Subgrupos -->
+                    <div class="mb-3" id="divSubgrupos" style="display: none;">
+                        <label for="selectSubgrupos" class="form-label fw-bold">
+                            Subgrupos <small class="text-muted">(Opcional - deixe vazio para todos)</small>
+                        </label>
+                        <select class="form-select" id="selectSubgrupos" name="subgrupos[]" multiple size="5">
+                            <option value="" disabled>Carregando subgrupos...</option>
+                        </select>
+                        <small class="form-text text-muted">Ctrl+Clique para selecionar múltiplos</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Associar Perfil
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectPerfil = document.getElementById('selectPerfil');
+    const selectGrupos = document.getElementById('selectGrupos');
+    const selectSubgrupos = document.getElementById('selectSubgrupos');
+    const divGrupos = document.getElementById('divGrupos');
+    const divSubgrupos = document.getElementById('divSubgrupos');
+    
+    // Dados dos perfis (grupos e subgrupos)
+    const perfisData = {{ perfis_data|safe }};
+    
+    // Quando mudar o perfil
+    selectPerfil.addEventListener('change', function() {
+        const perfilId = this.value;
+        selectGrupos.innerHTML = '';
+        selectSubgrupos.innerHTML = '';
+        divSubgrupos.style.display = 'none';
+        
+        if (!perfilId) {
+            divGrupos.style.display = 'none';
+            return;
+        }
+        
+        const perfil = perfisData[perfilId];
+        if (perfil && perfil.grupos && perfil.grupos.length > 0) {
+            divGrupos.style.display = 'block';
+            
+            perfil.grupos.forEach(grupo => {
+                const option = document.createElement('option');
+                option.value = grupo.id;
+                option.textContent = grupo.nome;
+                selectGrupos.appendChild(option);
+            });
+        } else {
+            divGrupos.style.display = 'none';
+        }
+    });
+    
+    // Quando mudar os grupos selecionados
+    selectGrupos.addEventListener('change', function() {
+        const gruposSelecionados = Array.from(this.selectedOptions).map(opt => parseInt(opt.value));
+        selectSubgrupos.innerHTML = '';
+        
+        if (gruposSelecionados.length === 0) {
+            divSubgrupos.style.display = 'none';
+            return;
+        }
+        
+        const perfilId = selectPerfil.value;
+        const perfil = perfisData[perfilId];
+        
+        let temSubgrupos = false;
+        perfil.grupos.forEach(grupo => {
+            if (gruposSelecionados.includes(grupo.id)) {
+                grupo.subgrupos.forEach(subgrupo => {
+                    const option = document.createElement('option');
+                    option.value = subgrupo.id;
+                    option.textContent = `${grupo.nome} > ${subgrupo.nome}`;
+                    selectSubgrupos.appendChild(option);
+                    temSubgrupos = true;
+                });
+            }
+        });
+        
+        if (temSubgrupos) {
+            divSubgrupos.style.display = 'block';
+        } else {
+            divSubgrupos.style.display = 'none';
+        }
+    });
+});
+
+// Função para confirmar remoção de perfil
+function confirmarRemocaoPerfil(perfilCodigo, perfilId, colaboradorId) {
+    if (confirm(`Tem certeza que deseja remover a associação com o perfil ${perfilCodigo}?\n\nOs registros de treinamento não serão excluídos, apenas a associação do colaborador com este perfil.`)) {
+        // Criar form e submeter
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/procedures/colaborador-perfil/remover/${colaboradorId}/${perfilId}/`;
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+
 {% endblock %}

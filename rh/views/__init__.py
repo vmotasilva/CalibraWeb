@@ -11,6 +11,13 @@ from .views import (
     registrar_ferias_view,
     editar_ferias_view,
     excluir_ferias_view,
+    # API endpoints
+    api_colaboradores,
+    api_setores,
+    api_cargos,
+    api_grupos,
+    api_lideres,
+    api_supervisores,
 )
 
 __all__ = [
@@ -24,4 +31,11 @@ __all__ = [
     'registrar_ferias_view',
     'editar_ferias_view',
     'excluir_ferias_view',
+    # API endpoints
+    'api_colaboradores',
+    'api_setores',
+    'api_cargos',
+    'api_grupos',
+    'api_lideres',
+    'api_supervisores',
 ]
