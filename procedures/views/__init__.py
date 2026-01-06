@@ -11,6 +11,8 @@ from .views import (
     novo_procedimento_view,
     editar_procedimento_view,
     detalhe_procedimento_view,
+    # API
+    api_procedimentos_list,
     # Treinamentos
     treinamentos_list_view,
     treinamentos_detalhe_view,
@@ -33,6 +35,9 @@ from .views import (
     editar_orcamento_view,
 )
 
+# Import template_mapeamento_views module so admin can use it
+from . import template_mapeamento_views
+
 __all__ = [
     # Procedimentos
     'procedimentos_list_view',
@@ -42,6 +47,8 @@ __all__ = [
     'novo_procedimento_view',
     'editar_procedimento_view',
     'detalhe_procedimento_view',
+    # API
+    'api_procedimentos_list',
     # Treinamentos
     'treinamentos_list_view',
     'treinamentos_detalhe_view',
@@ -62,4 +69,6 @@ __all__ = [
     # Orçamentos
     'novo_orcamento_view',
     'editar_orcamento_view',
+    # Template Mapeamento
+    'template_mapeamento_views',
 ]
