@@ -981,10 +981,19 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
     todas_listas = {l.data_sessao: l for l in ListaPresenca.objects.all()}
     
     # Pré-carregar registros existentes para verificação duplicada mais rápida
-    registros_existentes = {}
+    # Separar em dois dicionários: um para registros com procedimento, outro para sem
+    registros_com_procedimento = {}  # (colaborador_id, procedimento_id) -> True
+    registros_sem_procedimento = {}  # (colaborador_id, titulo_treinamento, data_treinamento) -> True
+    
     for reg in RegistroTreinamento.objects.all().values('colaborador_id', 'procedimento_id', 'titulo_treinamento', 'data_treinamento'):
-        chave = (reg['colaborador_id'], reg['procedimento_id'], reg['titulo_treinamento'], reg['data_treinamento'])
-        registros_existentes[chave] = True
+        if reg['procedimento_id']:
+            # Registros com procedimento - constraint é (colaborador_id, procedimento_id)
+            chave = (reg['colaborador_id'], reg['procedimento_id'])
+            registros_com_procedimento[chave] = True
+        else:
+            # Registros sem procedimento - constraint é (colaborador_id, titulo_treinamento, data_treinamento)
+            chave = (reg['colaborador_id'], reg['titulo_treinamento'], reg['data_treinamento'])
+            registros_sem_procedimento[chave] = True
     
     # Dicionário para agrupar por sessão
     sessoes = {}
@@ -1263,13 +1272,17 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                 lista = sessoes[chave_sessao]
             
             # OTIMIZAÇÃO: Acumular registros para criar em batch
-            # Verificar se já existe registro
+            # Verificar se já existe registro usando a chave correta
             if procedimento:
-                chave_existencia = (colaborador.id, procedimento.id, None, None)
+                # Com procedimento - constraint é (colaborador_id, procedimento_id)
+                chave_existencia = (colaborador.id, procedimento.id)
+                existe = chave_existencia in registros_com_procedimento
             else:
-                chave_existencia = (colaborador.id, None, titulo_treinamento, data_treinamento)
+                # Sem procedimento - constraint é (colaborador_id, titulo_treinamento, data_treinamento)
+                chave_existencia = (colaborador.id, titulo_treinamento, data_treinamento)
+                existe = chave_existencia in registros_sem_procedimento
             
-            if chave_existencia in registros_existentes:
+            if existe:
                 if sobrescrever:
                     # Adicionar à lista de atualização
                     registros_para_atualizar.append({
