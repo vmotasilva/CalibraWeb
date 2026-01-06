@@ -110,7 +110,7 @@ def dashboard_gaps_view(request):
     perfis = PerfilTreinamento.objects.filter(ativo=True).order_by('nome')
     colaboradores = Colaborador.objects.filter(
         is_active=True,
-        colaboradorperfil__ativo=True
+        perfis_treinamento__ativo=True
     ).distinct().order_by('nome')
     
     context = {
