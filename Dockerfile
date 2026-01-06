@@ -49,4 +49,4 @@ COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
-ENTRYPOINT ["/bin/bash", "-c", "source ./entrypoint.sh"]
+ENTRYPOINT ["./entrypoint.sh"]
