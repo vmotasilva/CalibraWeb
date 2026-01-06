@@ -992,36 +992,36 @@ def importar_estrutura_completa_view(request):
                             continue  # Pular para o próximo
                         
                         # Processar grupos/subgrupos selecionados se fornecidos
-                            grupos_selecionados = None
-                            if pd.notna(row.get('Grupos')) or pd.notna(row.get('Subgrupos')):
-                                grupos_ids = []
-                                subgrupos_ids = []
-                                
-                                if pd.notna(row.get('Grupos')):
-                                    grupos_nomes = str(row['Grupos']).split(',')
-                                    for nome in grupos_nomes:
-                                        grupo = GrupoTreinamento.objects.filter(
-                                            perfil=perfil,
-                                            nome__icontains=nome.strip()
-                                        ).first()
-                                        if grupo:
-                                            grupos_ids.append(grupo.id)
-                                
-                                if pd.notna(row.get('Subgrupos')):
-                                    subgrupos_nomes = str(row['Subgrupos']).split(',')
-                                    for nome in subgrupos_nomes:
-                                        subgrupo = SubGrupoTreinamento.objects.filter(
-                                            grupo__perfil=perfil,
-                                            nome__icontains=nome.strip()
-                                        ).first()
-                                        if subgrupo:
-                                            subgrupos_ids.append(subgrupo.id)
-                                
-                                if grupos_ids or subgrupos_ids:
-                                    grupos_selecionados = {
-                                        'grupos': grupos_ids,
-                                        'subgrupos': subgrupos_ids
-                                    }
+                        grupos_selecionados = None
+                        if pd.notna(row.get('Grupos')) or pd.notna(row.get('Subgrupos')):
+                            grupos_ids = []
+                            subgrupos_ids = []
+                            
+                            if pd.notna(row.get('Grupos')):
+                                grupos_nomes = str(row['Grupos']).split(',')
+                                for nome in grupos_nomes:
+                                    grupo = GrupoTreinamento.objects.filter(
+                                        perfil=perfil,
+                                        nome__icontains=nome.strip()
+                                    ).first()
+                                    if grupo:
+                                        grupos_ids.append(grupo.id)
+                            
+                            if pd.notna(row.get('Subgrupos')):
+                                subgrupos_nomes = str(row['Subgrupos']).split(',')
+                                for nome in subgrupos_nomes:
+                                    subgrupo = SubGrupoTreinamento.objects.filter(
+                                        grupo__perfil=perfil,
+                                        nome__icontains=nome.strip()
+                                    ).first()
+                                    if subgrupo:
+                                        subgrupos_ids.append(subgrupo.id)
+                            
+                            if grupos_ids or subgrupos_ids:
+                                grupos_selecionados = {
+                                    'grupos': grupos_ids,
+                                    'subgrupos': subgrupos_ids
+                                }
                         
                         # Criar associação
                         cp = ColaboradorPerfil.objects.create(
