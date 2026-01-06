@@ -80,8 +80,10 @@
                         {% if t.is_ultimo_registro %}
                             {% if t.status_treinamento == 'OK' %}
                                 <span class="badge bg-success"><i class="bi bi-check-circle"></i> Em dias</span>
-                            {% else %}
+                            {% elif t.status_treinamento == 'PENDENTE' %}
                                 <span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Pendente</span>
+                            {% else %}
+                                <span class="badge bg-secondary"><i class="bi bi-clock"></i> Não iniciado</span>
                             {% endif %}
                         {% else %}
                             <small class="text-muted">Histórico</small>

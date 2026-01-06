@@ -369,9 +369,9 @@ class RegistroTreinamento(models.Model):
     @property
     def status_treinamento(self):
         """
-        Status: OK ou PENDENTE
+        Status: OK, PENDENTE ou NAO_INICIADO
         Se há lista de presença: treinamento aconteceu, compara apenas a data com última revisão
-        Se não há lista: verifica se tem data e se a revisão bate
+        Se não há lista: verifica se tem data (se não tem = NAO_INICIADO)
         """
         # Se há lista de presença, o treinamento aconteceu
         if self.lista_presenca:
@@ -385,14 +385,14 @@ class RegistroTreinamento(models.Model):
                 # Se não tem última revisão do procedimento, considerar OK (treinamento aconteceu)
                 return "OK"
         
-        # Sem lista de presença: verificar se tem dados de treinamento
-        # Treinamentos sem procedimento só verificam se tem data
-        if not self.procedimento:
-            return "OK" if self.data_treinamento else "PENDENTE"
-        
-        # Se não tem data de treinamento, está pendente
+        # Sem lista de presença: verificar se tem data
         if not self.data_treinamento:
-            return "PENDENTE"
+            # Sem data = Não iniciado
+            return "NAO_INICIADO"
+        
+        # Tem data mas sem lista: verificar se é procedimento
+        if not self.procedimento:
+            return "OK" if self.data_treinamento else "NAO_INICIADO"
         
         # Se tem procedimento com numero_revisao, verificar se revisão bate
         if self.procedimento.numero_revisao:
@@ -419,11 +419,21 @@ class RegistroTreinamento(models.Model):
     
     def get_status_class(self):
         """Retorna apenas a classe CSS para uso em template."""
-        return "badge bg-success" if self.status_treinamento == "OK" else "badge bg-danger"
+        if self.status_treinamento == "OK":
+            return "badge bg-success"
+        elif self.status_treinamento == "PENDENTE":
+            return "badge bg-danger"
+        else:  # NAO_INICIADO
+            return "badge bg-secondary"
     
     def get_status_label(self):
         """Retorna apenas o texto do status."""
-        return "Em dias" if self.status_treinamento == "OK" else "Pendente"
+        if self.status_treinamento == "OK":
+            return "Em dias"
+        elif self.status_treinamento == "PENDENTE":
+            return "Pendente"
+        else:  # NAO_INICIADO
+            return "Não iniciado"
     
     def is_ultimo_registro(self):
         """Verifica se é o último registro para este colaborador e procedimento."""

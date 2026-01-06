@@ -13,7 +13,15 @@
         <p><strong>Procedimento:</strong> {{ treinamento.procedimento.codigo }} - {{ treinamento.procedimento.nome }}</p>
         <p><strong>Data do Treinamento:</strong> {{ treinamento.data_treinamento|date:"d/m/Y" }}</p>
         <p><strong>Revisão Treinada:</strong> {{ treinamento.revisao_treinada }}</p>
-        <p><strong>Status:</strong> <span class="badge {% if treinamento.status_treinamento == 'VIGENTE' %}bg-success{% else %}bg-warning{% endif %}">{{ treinamento.status_treinamento }}</span></p>
+        <p><strong>Status:</strong> 
+            {% if treinamento.status_treinamento == 'OK' %}
+                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Em dias</span>
+            {% elif treinamento.status_treinamento == 'PENDENTE' %}
+                <span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Pendente</span>
+            {% else %}
+                <span class="badge bg-secondary"><i class="bi bi-clock"></i> Não iniciado</span>
+            {% endif %}
+        </p>
     </div>
 </div>
 
