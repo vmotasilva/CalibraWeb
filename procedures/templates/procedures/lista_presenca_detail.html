@@ -476,7 +476,13 @@
                                 {% endif %}
                                 {% endif %}
                             </td>
-                            <td>{{ registro.data_treinamento|date:"d/m/Y"|default:"-" }}</td>
+                            <td>
+                                {% if registro.data_treinamento %}
+                                    {{ registro.data_treinamento|date:"d/m/Y" }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if registro.status_treinamento == 'OK' %}
                                 <span class="status-ok"><i class="bi bi-check-circle-fill"></i></span>
