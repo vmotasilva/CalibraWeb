@@ -442,4 +442,4 @@ def dashboard_treinamentos_view(request):
         'treinamentos_por_mes': treinamentos_por_mes,
     }
     
-    return render(request, 'training/dashboard_treinamentos.html', context)
+    return render(request, 'procedures/dashboard_treinamentos.html', context)

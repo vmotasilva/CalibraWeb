@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard de Treinamentos{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-0"><i class="bi bi-graph-up"></i> Dashboard de Treinamentos</h1>
+            <small class="text-muted">Visão geral de estatísticas e conformidade</small>
+        </div>
+        <a href="{% url 'treinamentos_list' %}" class="btn btn-outline-primary">
+            <i class="bi bi-list-check"></i> Ver Matriz Completa
+        </a>
+    </div>
+
+    <!-- KPIs Principais -->
+    <div class="row mb-4">
+        <!-- Total de Treinamentos -->
+        <div class="col-md-3 mb-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <small class="text-muted text-uppercase fw-bold">Total de Treinamentos</small>
+                            <h3 class="mb-0 mt-2">{{ total_treinamentos }}</h3>
+                        </div>
+                        <div class="badge bg-primary rounded-circle p-3">
+                            <i class="bi bi-mortarboard fs-5"></i>
+                        </div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">Registros completos no sistema</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Treinamentos Vigentes -->
+        <div class="col-md-3 mb-3">
+            <div class="card h-100 shadow-sm border-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <small class="text-muted text-uppercase fw-bold">Vigentes</small>
+                            <h3 class="mb-0 mt-2 text-success">{{ treinamentos_vigentes }}</h3>
+                        </div>
+                        <div class="badge bg-success rounded-circle p-3">
+                            <i class="bi bi-check-circle fs-5"></i>
+                        </div>
+                    </div>
+                    <div class="progress mt-2" style="height: 4px;">
+                        <div class="progress-bar bg-success" style="width: {{ taxa_conformidade }}%"></div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">{{ taxa_conformidade }}% de conformidade</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Treinamentos Pendentes -->
+        <div class="col-md-3 mb-3">
+            <div class="card h-100 shadow-sm border-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <small class="text-muted text-uppercase fw-bold">Pendentes</small>
+                            <h3 class="mb-0 mt-2 text-warning">{{ treinamentos_pendentes }}</h3>
+                        </div>
+                        <div class="badge bg-warning rounded-circle p-3">
+                            <i class="bi bi-exclamation-circle fs-5"></i>
+                        </div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">Aguardando realização</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Últimos 30 dias -->
+        <div class="col-md-3 mb-3">
+            <div class="card h-100 shadow-sm border-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <small class="text-muted text-uppercase fw-bold">Últimos 30 dias</small>
+                            <h3 class="mb-0 mt-2 text-info">{{ treinamentos_ultimos_30_dias }}</h3>
+                        </div>
+                        <div class="badge bg-info rounded-circle p-3">
+                            <i class="bi bi-calendar-event fs-5"></i>
+                        </div>
+                    </div>
+                    <small class="text-muted mt-2 d-block">Novos registros</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Segunda linha de KPIs -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase fw-bold">Colaboradores Treinados</small>
+                    <h2 class="mb-0 mt-2">{{ total_colaboradores_treinados }}</h2>
+                    <small class="text-muted">Com pelo menos um treinamento completo</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase fw-bold">Procedimentos Únicos</small>
+                    <h2 class="mb-0 mt-2">{{ total_procedimentos_unicos }}</h2>
+                    <small class="text-muted">Diferentes procedimentos treinados</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase fw-bold">Taxa de Conformidade</small>
+                    <h2 class="mb-0 mt-2">{{ taxa_conformidade }}%</h2>
+                    <small class="text-muted">Treinados / Total necessário</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <!-- Distribuição por Status -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartStatus" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Treinamentos por Mês -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Treinamentos Últimos 6 Meses</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartMeses" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top 10 -->
+    <div class="row">
+        <!-- Top Procedimentos -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-award"></i> Top 10 Procedimentos Mais Treinados</h6>
+                </div>
+                <div class="card-body">
+                    {% if top_procedimentos %}
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nome</th>
+                                    <th class="text-end">Treinamentos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for proc in top_procedimentos %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ proc.procedimento__codigo }}</span>
+                                    </td>
+                                    <td>
+                                        <small>{{ proc.procedimento__nome|truncatewords:5 }}</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>{{ proc.total }}</strong>
+                                        <span class="ms-2">
+                                            <div class="progress" style="width: 50px; height: 4px; display: inline-block;">
+                                                <div class="progress-bar bg-info" style="width: {{ proc.total|add:0|multiply:10 }}%"></div>
+                                            </div>
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">Nenhum procedimento com treinamentos completos</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Colaboradores -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-people"></i> Top 10 Colaboradores Mais Treinados</h6>
+                </div>
+                <div class="card-body">
+                    {% if top_colaboradores %}
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Colaborador</th>
+                                    <th class="text-end">Treinamentos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for colab in top_colaboradores %}
+                                <tr>
+                                    <td>
+                                        <small>{{ colab.colaborador__nome_completo }}</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>{{ colab.total }}</strong>
+                                        <span class="ms-2">
+                                            <span class="badge bg-success">{{ colab.total }}</span>
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">Nenhum colaborador com treinamentos completos</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js para gráficos -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gráfico de Status
+    const ctxStatus = document.getElementById('chartStatus').getContext('2d');
+    const chartStatus = new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+            labels: ['Vigentes', 'Pendentes'],
+            datasets: [{
+                data: [{{ status_distribuicao.vigente }}, {{ status_distribuicao.pendente }}],
+                backgroundColor: ['#28a745', '#ffc107'],
+                borderColor: ['#218838', '#e0a800'],
+                borderWidth: 2,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 14
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Gráfico de Treinamentos por Mês
+    const meses = [
+        {% for item in treinamentos_por_mes %}
+        '{{ item.mes }}'{{ forloop.last|yesno:'' }},
+        {% endfor %}
+    ];
+
+    const valores = [
+        {% for item in treinamentos_por_mes %}
+        {{ item.total }}{{ forloop.last|yesno:'' }},
+        {% endfor %}
+    ];
+
+    const ctxMeses = document.getElementById('chartMeses').getContext('2d');
+    const chartMeses = new Chart(ctxMeses, {
+        type: 'bar',
+        data: {
+            labels: meses,
+            datasets: [{
+                label: 'Treinamentos Realizados',
+                data: valores,
+                backgroundColor: 'rgba(23, 162, 184, 0.6)',
+                borderColor: 'rgba(23, 162, 184, 1)',
+                borderWidth: 2,
+                borderRadius: 4,
+                hoverBackgroundColor: 'rgba(23, 162, 184, 0.8)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'x',
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 13
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+
+<style>
+    .card {
+        border-radius: 0.5rem;
+        border: 1px solid #dee2e6;
+        transition: box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .badge {
+        font-weight: 500;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .progress {
+        background-color: #e9ecef;
+        border-radius: 0.25rem;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
