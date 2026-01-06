@@ -1,0 +1,832 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ perfil.codigo }}{% endblock %}
+{% block header_title %}{{ perfil.codigo }} - {{ perfil.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Informações do Perfil -->
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Informações do Perfil</h5>
+            <div>
+                <a href="{% url 'procedures:editar_perfil' perfil.id %}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+                <a href="{% url 'procedures:perfis_list' %}" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Código:</strong> <span class="text-primary">{{ perfil.codigo }}</span></p>
+                    <p><strong>Nome:</strong> {{ perfil.nome }}</p>
+                    <p><strong>Status:</strong> 
+                        {% if perfil.ativo %}
+                            <span class="badge bg-success">Ativo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inativo</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    {% if perfil.descricao %}
+                    <p><strong>Descrição:</strong></p>
+                    <p>{{ perfil.descricao|linebreaks }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grupos e Subgrupos -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-folder"></i> Grupos de Treinamento ({{ grupos.count }})</h6>
+            <a href="{% url 'procedures:novo_grupo' perfil.id %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-circle"></i> Novo Grupo
+            </a>
+        </div>
+        <div class="card-body">
+            {% if grupos %}
+                {% for grupo in grupos %}
+                <div class="card mb-3">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <span class="badge bg-secondary">{{ grupo.ordem }}</span>
+                            {{ grupo.nome }}
+                        </h6>
+                        <div>
+                            <a href="{% url 'procedures:mover_grupo' grupo.id 'cima' %}" 
+                               class="btn btn-sm btn-outline-secondary" 
+                               title="Mover para cima"
+                               {% if forloop.first %}disabled{% endif %}>
+                                <i class="bi bi-arrow-up"></i>
+                            </a>
+                            <a href="{% url 'procedures:mover_grupo' grupo.id 'baixo' %}" 
+                               class="btn btn-sm btn-outline-secondary" 
+                               title="Mover para baixo"
+                               {% if forloop.last %}disabled{% endif %}>
+                                <i class="bi bi-arrow-down"></i>
+                            </a>
+                            <a href="{% url 'procedures:novo_subgrupo' grupo.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-plus"></i> Subgrupo
+                            </a>
+                            <a href="{% url 'procedures:editar_grupo' grupo.id %}" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'procedures:deletar_grupo' grupo.id %}" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if grupo.descricao %}
+                        <p class="text-muted small mb-2">{{ grupo.descricao }}</p>
+                        {% endif %}
+                        {% if grupo.subgrupos.all %}
+                        <div class="list-group">
+                            {% for subgrupo in grupo.subgrupos.all %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-info">{{ subgrupo.ordem }}</span>
+                                    <strong>{{ subgrupo.nome }}</strong>
+                                    <span class="text-muted small">({{ subgrupo.procedimentos.count }} procedimentos)</span>
+                                    {% if subgrupo.descricao %}
+                                    <br><small class="text-muted">{{ subgrupo.descricao|truncatewords:15 }}</small>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <a href="{% url 'procedures:mover_subgrupo' subgrupo.id 'cima' %}" 
+                                       class="btn btn-sm btn-outline-secondary" 
+                                       title="Mover para cima"
+                                       {% if forloop.first %}disabled{% endif %}>
+                                        <i class="bi bi-arrow-up"></i>
+                                    </a>
+                                    <a href="{% url 'procedures:mover_subgrupo' subgrupo.id 'baixo' %}" 
+                                       class="btn btn-sm btn-outline-secondary" 
+                                       title="Mover para baixo"
+                                       {% if forloop.last %}disabled{% endif %}>
+                                        <i class="bi bi-arrow-down"></i>
+                                    </a>
+                                    <a href="{% url 'procedures:editar_subgrupo' subgrupo.id %}" class="btn btn-sm btn-outline-warning">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'procedures:deletar_subgrupo' subgrupo.id %}" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center small mb-0">Nenhum subgrupo cadastrado</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <p class="text-muted text-center">Nenhum grupo cadastrado. Clique em "Novo Grupo" para começar.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Colaboradores Associados -->
+    <div class="card mt-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-people"></i> Colaboradores Associados ({{ colaboradores.count }})</h6>
+            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalAdicionarColaborador">
+                <i class="bi bi-person-plus"></i> Adicionar Colaborador
+            </button>
+        </div>
+        <div class="card-body">
+            {% if colaboradores %}
+            <!-- Ações em Massa -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selecionarTodosColab()">
+                        <i class="bi bi-check-all"></i> Selecionar Todos
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselecionarTodosColab()">
+                        <i class="bi bi-x"></i> Nenhum
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removerSelecionados()" id="btn-remover-massa" disabled>
+                        <i class="bi bi-trash"></i> Remover <span id="count-selecionados">0</span> Selecionado(s)
+                    </button>
+                </div>
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i> <span id="total-colaboradores">{{ colaboradores.count }}</span> colaborador(es) total
+                </small>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;">
+                                <input type="checkbox" id="checkbox-master" onchange="toggleTodosCheckboxes(this)">
+                            </th>
+                            <th>Colaborador</th>
+                            <th>Matrícula</th>
+                            <th>Grupos/Subgrupos</th>
+                            <th>Data Atribuição</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cp in colaboradores %}
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="checkbox-colaborador" value="{{ cp.id }}" onchange="atualizarContadorSelecionados()">
+                            </td>
+                            <td>
+                                <a href="/rh/colaborador/{{ cp.colaborador.id }}/" class="text-decoration-none">
+                                    <strong>{{ cp.colaborador.nome_completo }}</strong>
+                                </a>
+                            </td>
+                            <td>{{ cp.colaborador.matricula }}</td>
+                            <td>
+                                {% if cp.grupos_selecionados %}
+                                    {% with grupos_count=cp.grupos_selecionados.grupos|length subgrupos_count=cp.grupos_selecionados.subgrupos|length %}
+                                        <small class="text-muted" title="{{ grupos_count }} grupo(s), {{ subgrupos_count }} subgrupo(s)">
+                                            <i class="bi bi-diagram-3"></i> {{ grupos_count }}G / {{ subgrupos_count }}SG
+                                        </small>
+                                    {% endwith %}
+                                {% else %}
+                                    <span class="badge bg-info">Todos os grupos</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ cp.data_atribuicao|date:"d/m/Y" }}</td>
+                            <td>
+                                {% if cp.ativo %}
+                                    <span class="badge bg-success">Ativo</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="editarColaborador({{ cp.id }}, '{{ cp.colaborador.nome_completo|escapejs }}', {{ cp.grupos_selecionados|safe|default:'null' }}, '{{ cp.data_atribuicao|date:'Y-m-d' }}', {{ cp.colaborador.id }})" 
+                                        title="Editar grupos/subgrupos">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        onclick="removerColaborador({{ cp.id }}, '{{ cp.colaborador.nome_completo|escapejs }}')" 
+                                        title="Remover do perfil">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle"></i> Nenhum colaborador associado a este perfil. 
+                Clique em "Adicionar Colaborador" para começar.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Colaboradores -->
+    <div class="modal fade" id="modalAdicionarColaborador" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-people-fill"></i> Adicionar Colaboradores ao Perfil</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{% url 'procedures:adicionar_colaborador_perfil' perfil.id %}" id="form-adicionar-colaboradores">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="row">
+                            <!-- COLUNA ESQUERDA: Seleção de Colaboradores -->
+                            <div class="col-md-7">
+                                <h6 class="mb-3"><i class="bi bi-funnel"></i> Filtrar e Selecionar Colaboradores</h6>
+                                
+                                <!-- Filtros -->
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-6">
+                                        <input type="text" 
+                                               id="filtro-busca" 
+                                               class="form-control form-control-sm" 
+                                               placeholder="🔍 Buscar por nome, matrícula ou CPF..."
+                                               onkeyup="aplicarFiltros()">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select id="filtro-setor" class="form-select form-select-sm" onchange="aplicarFiltros()">
+                                            <option value="">Todos os Setores</option>
+                                            {% for setor in setores %}
+                                                <option value="{{ setor.id }}">{{ setor.nome }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select id="filtro-turno" class="form-select form-select-sm" onchange="aplicarFiltros()">
+                                            <option value="">Todos os Turnos</option>
+                                            <option value="MANHA">Manhã</option>
+                                            <option value="TARDE">Tarde</option>
+                                            <option value="NOITE">Noite</option>
+                                            <option value="ADMINISTRATIVO">Administrativo</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Ações em Massa -->
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="text-muted">
+                                        <span id="count-selecionados">0</span> colaborador(es) selecionado(s)
+                                    </small>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="selecionarTodos()">
+                                            <i class="bi bi-check-all"></i> Todos
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselecionarTodos()">
+                                            <i class="bi bi-x"></i> Nenhum
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Lista de Colaboradores -->
+                                <div id="lista-colaboradores" class="border rounded p-2" style="max-height: 400px; overflow-y: auto;">
+                                    {% for colab in todos_colaboradores %}
+                                    <div class="form-check colaborador-item" 
+                                         data-nome="{{ colab.nome_completo|lower }}"
+                                         data-matricula="{{ colab.matricula|lower }}"
+                                         data-cpf="{{ colab.cpf|default:''|lower }}"
+                                         data-setor="{{ colab.setor.id|default:'' }}"
+                                         data-turno="{{ colab.turno|default:'' }}">
+                                        <input class="form-check-input colaborador-check" 
+                                               type="checkbox" 
+                                               name="colaboradores" 
+                                               value="{{ colab.id }}" 
+                                               id="colab-{{ colab.id }}"
+                                               onchange="atualizarContador()">
+                                        <label class="form-check-label w-100" for="colab-{{ colab.id }}">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <strong>{{ colab.nome_completo }}</strong>
+                                                    <br><small class="text-muted">Mat: {{ colab.matricula }} | Setor: {{ colab.setor.nome|default:"N/A" }} | Turno: {{ colab.turno|default:"N/A" }}</small>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- COLUNA DIREITA: Configuração de Grupos -->
+                            <div class="col-md-5">
+                                <h6 class="mb-3"><i class="bi bi-gear"></i> Grupos e Subgrupos</h6>
+                                <small class="text-muted d-block mb-3">
+                                    Selecione quais grupos/subgrupos serão atribuídos aos colaboradores selecionados
+                                </small>
+                                
+                                <div style="max-height: 400px; overflow-y: auto;">
+                                    {% for grupo in grupos %}
+                                    <div class="card mb-2">
+                                        <div class="card-header bg-light py-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input grupo-check" type="checkbox" 
+                                                       name="grupos" value="{{ grupo.id }}" 
+                                                       id="grupo-{{ grupo.id }}"
+                                                       onchange="toggleSubgrupos({{ grupo.id }})">
+                                                <label class="form-check-label fw-bold" for="grupo-{{ grupo.id }}">
+                                                    {{ grupo.nome }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {% if grupo.subgrupos.all %}
+                                        <div class="card-body py-2" id="subgrupos-{{ grupo.id }}" style="display:none;">
+                                            {% for subgrupo in grupo.subgrupos.all %}
+                                            <div class="form-check ms-3">
+                                                <input class="form-check-input subgrupo-check" type="checkbox" 
+                                                       name="subgrupos" value="{{ subgrupo.id }}" 
+                                                       id="subgrupo-{{ subgrupo.id }}"
+                                                       data-grupo="{{ grupo.id }}">
+                                                <label class="form-check-label" for="subgrupo-{{ subgrupo.id }}">
+                                                    {{ subgrupo.nome }}
+                                                    <small class="text-muted">({{ subgrupo.procedimentos.count }} proc.)</small>
+                                                </label>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+
+                                <!-- Data de Atribuição -->
+                                <div class="mt-3">
+                                    <label class="form-label"><strong>Data de Atribuição</strong></label>
+                                    <input type="date" name="data_atribuicao" class="form-control form-control-sm" value="{{ today|date:'Y-m-d' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-adicionar-colaboradores" disabled>
+                            <i class="bi bi-check-circle"></i> Adicionar <span id="count-adicionar">0</span> Colaborador(es)
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Colaborador -->
+    <div class="modal fade" id="modalEditarColaborador" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <div>
+                        <h5 class="modal-title mb-1"><i class="bi bi-pencil"></i> Editar Associação do Colaborador</h5>
+                        <small id="edit-colaborador-nome-header" class="text-white-50"></small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{% url 'procedures:editar_colaborador_perfil' perfil.id %}" id="form-editar-colaborador">
+                    {% csrf_token %}
+                    <input type="hidden" name="cp_id" id="edit-cp-id">
+                    <div class="modal-body">
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle"></i> Editando colaborador: <strong id="edit-colaborador-nome"></strong>
+                            <a href="#" id="link-perfil-colaborador" class="btn btn-sm btn-outline-primary float-end" target="_blank">
+                                <i class="bi bi-arrow-up-right-square"></i> Ver Perfil do Colaborador
+                            </a>
+                        </div>
+
+                        <div class="row">
+                            <!-- Coluna Esquerda: Grupos e Subgrupos -->
+                            <div class="col-lg-6">
+                                <h6 class="mb-3"><i class="bi bi-diagram-3"></i> Grupos e Subgrupos</h6>
+                                <div class="mb-3">
+                                    {% for grupo in grupos %}
+                                    <div class="card mb-2">
+                                        <div class="card-body py-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" 
+                                                       type="checkbox" 
+                                                       name="grupos" 
+                                                       value="{{ grupo.id }}" 
+                                                       id="edit-grupo-{{ grupo.id }}"
+                                                       onchange="toggleEditSubgrupos({{ grupo.id }})">
+                                                <label class="form-check-label" for="edit-grupo-{{ grupo.id }}">
+                                                    <strong>{{ grupo.nome }}</strong>
+                                                </label>
+                                            </div>
+                                            
+                                            <!-- Subgrupos -->
+                                            <div class="subgrupos-edit ms-4 mt-2" id="edit-subgrupos-{{ grupo.id }}" style="display: none;">
+                                                {% for subgrupo in grupo.subgrupos.all %}
+                                                <div class="form-check form-check-sm">
+                                                    <input class="form-check-input" 
+                                                           type="checkbox" 
+                                                           name="subgrupos" 
+                                                           value="{{ subgrupo.id }}" 
+                                                           id="edit-subgrupo-{{ subgrupo.id }}"
+                                                           data-edit-grupo="{{ grupo.id }}"
+                                                           onchange="atualizarProcedimentosFiltrados()">
+                                                    <label class="form-check-label small" for="edit-subgrupo-{{ subgrupo.id }}">
+                                                        {{ subgrupo.nome }}
+                                                        <span class="text-muted">({{ subgrupo.procedimentos.count }} proc.)</span>
+                                                    </label>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+
+                                <!-- Data de Atribuição -->
+                                <div class="mt-3">
+                                    <label class="form-label"><strong>Data de Atribuição</strong></label>
+                                    <input type="date" name="data_atribuicao" class="form-control" id="edit-data-atribuicao">
+                                </div>
+                            </div>
+
+                            <!-- Coluna Direita: Procedimentos Específicos -->
+                            <div class="col-lg-6">
+                                <h6 class="mb-3"><i class="bi bi-checklist"></i> Procedimentos Específicos</h6>
+                                <div class="alert alert-light border">
+                                    <small class="text-muted">
+                                        <i class="bi bi-info-circle"></i> Selecione os procedimentos que devem se aplicar especificamente a este colaborador.
+                                        Deixe em branco para aplicar todos os procedimentos do(s) grupo(s) selecionado(s).
+                                    </small>
+                                </div>
+                                <div id="lista-procedimentos-edit" class="border rounded p-3" style="max-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                                    <p class="text-muted text-center py-3">
+                                        <i class="bi bi-arrow-left"></i> Selecione os subgrupos ao lado para filtrar procedimentos
+                                    </p>
+                                </div>
+                                <input type="hidden" name="procedimentos_selecionados" id="procedimentos-selecionados-edit" value="">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Salvar Alterações
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Função para aplicar todos os filtros
+    function aplicarFiltros() {
+        const busca = document.getElementById('filtro-busca').value.toLowerCase().trim();
+        const setorId = document.getElementById('filtro-setor').value;
+        const turno = document.getElementById('filtro-turno').value;
+        
+        const items = document.querySelectorAll('.colaborador-item');
+        let visiveis = 0;
+        
+        items.forEach(item => {
+            const nome = item.getAttribute('data-nome') || '';
+            const matricula = item.getAttribute('data-matricula') || '';
+            const cpf = item.getAttribute('data-cpf') || '';
+            const itemSetor = item.getAttribute('data-setor') || '';
+            const itemTurno = item.getAttribute('data-turno') || '';
+            
+            // Aplicar filtros
+            const matchBusca = busca === '' || 
+                             nome.includes(busca) || 
+                             matricula.includes(busca) || 
+                             cpf.includes(busca);
+            
+            const matchSetor = setorId === '' || itemSetor === setorId;
+            const matchTurno = turno === '' || itemTurno === turno;
+            
+            if (matchBusca && matchSetor && matchTurno) {
+                item.style.display = '';
+                visiveis++;
+            } else {
+                item.style.display = 'none';
+                // Desmarcar se estava selecionado
+                const checkbox = item.querySelector('.colaborador-check');
+                if (checkbox && checkbox.checked) {
+                    checkbox.checked = false;
+                }
+            }
+        });
+        
+        atualizarContador();
+    }
+    
+    // Atualizar contador de selecionados
+    function atualizarContador() {
+        const checkboxes = document.querySelectorAll('.colaborador-check:checked');
+        const count = checkboxes.length;
+        
+        document.getElementById('count-selecionados').textContent = count;
+        document.getElementById('count-adicionar').textContent = count;
+        
+        const btnAdicionar = document.getElementById('btn-adicionar-colaboradores');
+        btnAdicionar.disabled = count === 0;
+    }
+    
+    // Selecionar todos os visíveis
+    function selecionarTodos() {
+        const items = document.querySelectorAll('.colaborador-item');
+        items.forEach(item => {
+            if (item.style.display !== 'none') {
+                const checkbox = item.querySelector('.colaborador-check');
+                if (checkbox) checkbox.checked = true;
+            }
+        });
+        atualizarContador();
+    }
+    
+    // Desselecionar todos
+    function deselecionarTodos() {
+        document.querySelectorAll('.colaborador-check').forEach(cb => {
+            cb.checked = false;
+        });
+        atualizarContador();
+    }
+    
+    function toggleSubgrupos(grupoId) {
+        const checkbox = document.getElementById(`grupo-${grupoId}`);
+        const subgruposDiv = document.getElementById(`subgrupos-${grupoId}`);
+        
+        if (checkbox.checked) {
+            subgruposDiv.style.display = 'block';
+            // Marcar todos os subgrupos
+            document.querySelectorAll(`input[data-grupo="${grupoId}"]`).forEach(cb => {
+                cb.checked = true;
+            });
+        } else {
+            subgruposDiv.style.display = 'none';
+            // Desmarcar todos os subgrupos
+            document.querySelectorAll(`input[data-grupo="${grupoId}"]`).forEach(cb => {
+                cb.checked = false;
+            });
+        }
+    }
+
+    // Funções de seleção em massa para colaboradores
+    function toggleTodosCheckboxes(masterCheckbox) {
+        const checkboxes = document.querySelectorAll('.checkbox-colaborador');
+        checkboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+        atualizarContadorSelecionados();
+    }
+
+    function selecionarTodosColab() {
+        document.getElementById('checkbox-master').checked = true;
+        document.querySelectorAll('.checkbox-colaborador').forEach(cb => cb.checked = true);
+        atualizarContadorSelecionados();
+    }
+
+    function deselecionarTodosColab() {
+        document.getElementById('checkbox-master').checked = false;
+        document.querySelectorAll('.checkbox-colaborador').forEach(cb => cb.checked = false);
+        atualizarContadorSelecionados();
+    }
+
+    function atualizarContadorSelecionados() {
+        const selecionados = document.querySelectorAll('.checkbox-colaborador:checked').length;
+        const btnRemover = document.getElementById('btn-remover-massa');
+        const countSpan = document.getElementById('count-selecionados');
+        
+        countSpan.textContent = selecionados;
+        btnRemover.disabled = selecionados === 0;
+        
+        // Atualizar estado do checkbox master
+        const total = document.querySelectorAll('.checkbox-colaborador').length;
+        const master = document.getElementById('checkbox-master');
+        master.checked = selecionados === total && total > 0;
+        master.indeterminate = selecionados > 0 && selecionados < total;
+    }
+
+    function removerSelecionados() {
+        const selecionados = Array.from(document.querySelectorAll('.checkbox-colaborador:checked')).map(cb => cb.value);
+        
+        if (selecionados.length === 0) {
+            alert('Nenhum colaborador selecionado.');
+            return;
+        }
+        
+        if (!confirm(`Deseja realmente remover ${selecionados.length} colaborador(es) do perfil?`)) {
+            return;
+        }
+        
+        fetch(`/procedures/perfis/{{ perfil.id }}/colaboradores/remover-massa/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ ids: selecionados })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao remover colaboradores: ' + (data.message || 'Erro desconhecido'));
+            }
+        })
+        .catch(error => {
+            alert('Erro na requisição: ' + error);
+        });
+    }
+
+    function editarColaborador(cpId, nomeColaborador, gruposSelecionados, dataAtribuicao, colaboradorId) {
+        // Abrir modal de edição
+        const modal = new bootstrap.Modal(document.getElementById('modalEditarColaborador'));
+        
+        // Preencher dados no modal
+        document.getElementById('edit-cp-id').value = cpId;
+        document.getElementById('edit-colaborador-nome').textContent = nomeColaborador;
+        document.getElementById('edit-colaborador-nome-header').textContent = `Colaborador ID: ${colaboradorId}`;
+        document.getElementById('edit-data-atribuicao').value = dataAtribuicao;
+        
+        // Adicionar link para visualizar perfil do colaborador
+        const linkPerfil = document.getElementById('link-perfil-colaborador');
+        linkPerfil.href = `/rh/colaborador/${colaboradorId}/`;
+        
+        // Limpar seleções
+        document.querySelectorAll('#modalEditarColaborador input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+        });
+        document.querySelectorAll('#modalEditarColaborador .subgrupos-edit').forEach(div => {
+            div.style.display = 'none';
+        });
+        
+        // Marcar grupos/subgrupos atuais
+        if (gruposSelecionados) {
+            if (gruposSelecionados.grupos) {
+                gruposSelecionados.grupos.forEach(gId => {
+                    const checkbox = document.getElementById(`edit-grupo-${gId}`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        const subgruposDiv = document.getElementById(`edit-subgrupos-${gId}`);
+                        if (subgruposDiv) subgruposDiv.style.display = 'block';
+                    }
+                });
+            }
+            if (gruposSelecionados.subgrupos) {
+                gruposSelecionados.subgrupos.forEach(sgId => {
+                    const checkbox = document.getElementById(`edit-subgrupo-${sgId}`);
+                    if (checkbox) checkbox.checked = true;
+                });
+            }
+        }
+        
+        // Carregar procedimentos dos subgrupos selecionados
+        atualizarProcedimentosFiltrados();
+        modal.show();
+    }
+
+    function toggleEditSubgrupos(grupoId) {
+        const checkbox = document.getElementById(`edit-grupo-${grupoId}`);
+        const subgruposDiv = document.getElementById(`edit-subgrupos-${grupoId}`);
+        
+        if (checkbox.checked) {
+            subgruposDiv.style.display = 'block';
+            document.querySelectorAll(`input[data-edit-grupo="${grupoId}"]`).forEach(cb => cb.checked = true);
+        } else {
+            subgruposDiv.style.display = 'none';
+            document.querySelectorAll(`input[data-edit-grupo="${grupoId}"]`).forEach(cb => cb.checked = false);
+        }
+    }
+
+    function removerColaborador(cpId, nomeColaborador) {
+        if (confirm(`Deseja realmente remover ${nomeColaborador} do perfil?`)) {
+            fetch(`/procedures/colaborador-perfil/${cpId}/remover/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Erro ao remover colaborador: ' + (data.message || 'Erro desconhecido'));
+                }
+            })
+            .catch(error => {
+                alert('Erro na requisição: ' + error);
+            });
+        }
+    }
+
+    // Dados de procedimentos por subgrupo (carregados do servidor)
+    const procedimentosPorSubgrupo = {
+        {% for subgrupo in perfil.grupos.all|dictsort:"nome" %}
+            {% for sg in subgrupo.subgrupos.all %}
+            {{ sg.id }}: [
+                {% for proc in sg.procedimentos.all %}
+                { id: {{ proc.id }}, codigo: "{{ proc.codigo }}", nome: "{{ proc.nome }}" },
+                {% endfor %}
+            ],
+            {% endfor %}
+        {% endfor %}
+    };
+
+    // Função para atualizar procedimentos filtrados baseado nos subgrupos selecionados
+    function atualizarProcedimentosFiltrados() {
+        const subgruposChecked = Array.from(
+            document.querySelectorAll('#modalEditarColaborador input[name="subgrupos"]:checked')
+        ).map(cb => parseInt(cb.value));
+        
+        const procedimentosDiv = document.getElementById('lista-procedimentos-edit');
+        const inputProcedimentos = document.getElementById('procedimentos-selecionados-edit');
+        
+        if (subgruposChecked.length === 0) {
+            procedimentosDiv.innerHTML = `
+                <p class="text-muted text-center py-3">
+                    <i class="bi bi-arrow-left"></i> Selecione os subgrupos ao lado para filtrar procedimentos
+                </p>
+            `;
+            return;
+        }
+        
+        // Coletar procedimentos dos subgrupos selecionados
+        const procedimentosSet = new Set();
+        subgruposChecked.forEach(sgId => {
+            if (procedimentosPorSubgrupo[sgId]) {
+                procedimentosPorSubgrupo[sgId].forEach(proc => {
+                    procedimentosSet.add(JSON.stringify(proc));
+                });
+            }
+        });
+        
+        // Renderizar procedimentos
+        if (procedimentosSet.size === 0) {
+            procedimentosDiv.innerHTML = `
+                <p class="text-muted text-center py-3">
+                    Nenhum procedimento disponível para os subgrupos selecionados.
+                </p>
+            `;
+            return;
+        }
+        
+        const procedimentos = Array.from(procedimentosSet).map(p => JSON.parse(p));
+        let html = '';
+        
+        procedimentos.forEach((proc, index) => {
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input proc-check-edit" 
+                           type="checkbox" 
+                           name="procedimentos_edit" 
+                           value="${proc.id}" 
+                           id="proc-edit-${proc.id}"
+                           onchange="atualizarProcedimentosSelecionados()">
+                    <label class="form-check-label" for="proc-edit-${proc.id}">
+                        <strong>${proc.codigo}</strong> - ${proc.nome}
+                    </label>
+                </div>
+            `;
+        });
+        
+        procedimentosDiv.innerHTML = html;
+    }
+
+    // Função para atualizar campo oculto com procedimentos selecionados
+    function atualizarProcedimentosSelecionados() {
+        const procedimentosSelecionados = Array.from(
+            document.querySelectorAll('#modalEditarColaborador .proc-check-edit:checked')
+        ).map(cb => cb.value);
+        
+        document.getElementById('procedimentos-selecionados-edit').value = JSON.stringify(procedimentosSelecionados);
+    }
+    </script>
+
+    <!-- Colaboradores com este perfil (SEÇÃO ANTIGA - MANTER POR ENQUANTO) -->
+    {% comment %}
+    {% if colaboradores %}
+    <div class="card mt-3">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-people"></i> Colaboradores com este Perfil ({{ colaboradores.count }})</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for cp in colaboradores %}
+                <div class="col-md-4 mb-2">
+                    <div class="border rounded p-2">
+                        <strong>{{ cp.colaborador.nome }}</strong>
+                        <small class="text-muted d-block">Desde {{ cp.data_atribuicao|date:"d/m/Y" }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endcomment %}
+</div>
+{% endblock %}

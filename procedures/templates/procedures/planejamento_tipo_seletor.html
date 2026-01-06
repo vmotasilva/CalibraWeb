@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Selecione o Tipo de Planejamento{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row mb-5">
+        <div class="col-md-8 offset-md-2">
+            <h1 class="mb-3">
+                <i class="bi bi-calendar-event"></i> 
+                Novo Planejamento de Treinamento
+            </h1>
+            <p class="text-muted lead">Escolha o tipo de planejamento que deseja criar:</p>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="row">
+                {% for tipo in tipos_planejamento %}
+                <div class="col-md-6 mb-4">
+                    <form method="POST" style="height: 100%;">
+                        {% csrf_token %}
+                        <input type="hidden" name="tipo" value="{{ tipo.valor }}">
+                        
+                        <button type="submit" class="btn btn-outline-primary w-100 h-100 text-start p-4" style="border: 2px solid; min-height: 250px; background: white; transition: all 0.3s ease;">
+                            <div class="card-content">
+                                <h5 class="card-title mb-3">
+                                    <i class="bi {{ tipo.icone }} me-2"></i>{{ tipo.titulo }}
+                                </h5>
+                                <p class="card-text text-muted" style="font-size: 14px; line-height: 1.6;">
+                                    {{ tipo.descricao }}
+                                </p>
+                            </div>
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Dica/Orientação -->
+            <div class="alert alert-info mt-5 mb-5">
+                <h6 class="alert-heading">
+                    <i class="bi bi-lightbulb"></i> Dica: Qual tipo escolher?
+                </h6>
+                <ul class="mb-0">
+                    <li><strong>Demanda Existente:</strong> Quando há colaboradores com procedimentos pendentes de treinamento, e você quer carregá-los automaticamente.</li>
+                    <li><strong>Matriz de Habilidades:</strong> Quando quer treinar colaboradores que têm nota 0 ou 1 em uma disciplina específica.</li>
+                    <li><strong>Planejamento Livre:</strong> Quando quer selecionar manualmente quais procedimentos e colaboradores participarão do treinamento.</li>
+                </ul>
+            </div>
+
+            <!-- Voltar -->
+            <div class="text-center mb-5">
+                <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar para Planejamentos
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    button[type="submit"]:hover {
+        background-color: #f0f8ff !important;
+        border-color: #0d6efd !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.15);
+    }
+    
+    .card-content {
+        text-align: center;
+    }
+</style>
+{% endblock %}

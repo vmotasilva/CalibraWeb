@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+{% if action == 'create' %}Nova Lista de Presença{% else %}Editar Lista{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #6c757d;
+        border: none;
+        border-bottom: 3px solid transparent;
+        margin-right: 1rem;
+        padding: 0.75rem 0;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        border-bottom-color: #0d6efd;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+        background-color: transparent;
+    }
+    
+    .tab-content {
+        padding-top: 2rem;
+    }
+    
+    .form-section {
+        margin-bottom: 2rem;
+    }
+    
+    .form-section-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .formset-row {
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: #f8f9fa;
+    }
+    
+    .btn-add-registro {
+        border-style: dashed;
+    }
+    
+    .campo-condicional {
+        display: none;
+    }
+    
+    .table-compact {
+        font-size: 0.9rem;
+    }
+    
+    .table-compact td {
+        padding: 0.5rem;
+    }
+    
+    .badge-count {
+        display: inline-block;
+        min-width: 2rem;
+        padding: 0.4rem 0.6rem;
+        border-radius: 0.25rem;
+        background-color: #e7f1ff;
+        color: #0d6efd;
+        font-weight: 600;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-lg py-4">
+    <!-- Header -->
+    <div class="page-header">
+        <h1 class="h3 mb-2">
+            <i class="bi bi-clipboard-check"></i>
+            {% if action == 'create' %}Nova Lista de Presença{% else %}{{ lista.codigo }}{% endif %}
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'procedures:lista_presenca_list' %}">Listas de Presença</a></li>
+                <li class="breadcrumb-item active">{% if action == 'create' %}Nova{% else %}Editar{% endif %}</li>
+            </ol>
+        </nav>
+    </div>
+
+    <form method="post" id="lista-form">
+        {% csrf_token %}
+        
+        <!-- Abas -->
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#info-sessao" role="tab">
+                    <i class="bi bi-info-circle"></i> Informações da Sessão
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#participantes-tab" role="tab">
+                    <i class="bi bi-people"></i> Participantes & Procedimentos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#registros-tab" role="tab">
+                    <i class="bi bi-list-check"></i> Registros
+                </a>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Aba 1: Informações da Sessão -->
+            <div id="info-sessao" class="tab-pane fade show active">
+                <div class="form-section">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-500">Título da Sessão</label>
+                            {{ form.titulo }}
+                            {% if form.titulo.errors %}<div class="text-danger small mt-1">{{ form.titulo.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-500">Data</label>
+                            {{ form.data_sessao }}
+                            {% if form.data_sessao.errors %}<div class="text-danger small mt-1">{{ form.data_sessao.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-section-title">Instrutor</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nome (Texto Livre)</label>
+                            {{ form.instrutor_nome }}
+                            <small class="text-muted d-block mt-1">Digite como consta no registro</small>
+                            {% if form.instrutor_nome.errors %}<div class="text-danger small mt-1">{{ form.instrutor_nome.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Base de Dados (Opcional)</label>
+                            {{ form.instrutor }}
+                            {% if form.instrutor.errors %}<div class="text-danger small mt-1">{{ form.instrutor.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-section-title">Localização & Horário</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Local</label>
+                            {{ form.local }}
+                            {% if form.local.errors %}<div class="text-danger small mt-1">{{ form.local.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Início</label>
+                            {{ form.hora_inicio }}
+                            {% if form.hora_inicio.errors %}<div class="text-danger small mt-1">{{ form.hora_inicio.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Fim</label>
+                            {{ form.hora_fim }}
+                            {% if form.hora_fim.errors %}<div class="text-danger small mt-1">{{ form.hora_fim.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Carga (h)</label>
+                            {{ form.carga_horaria }}
+                            {% if form.carga_horaria.errors %}<div class="text-danger small mt-1">{{ form.carga_horaria.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label">Observações</label>
+                    {{ form.observacoes }}
+                    {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label">Template de Layout (Opcional)</label>
+                    <small class="text-muted d-block mb-2">
+                        <i class="fas fa-info-circle"></i> Selecione um template Excel para estruturar a lista de presença
+                    </small>
+                    {{ form.template }}
+                    {% if form.template.errors %}<div class="text-danger small mt-1">{{ form.template.errors }}</div>{% endif %}
+                </div>
+            </div>
+
+            <!-- Aba 2: Participantes & Procedimentos -->
+            <div id="participantes-tab" class="tab-pane fade">
+                {% if colaboradores_registrados %}
+                <div class="mb-4">
+                    <h6 class="mb-3"><i class="bi bi-people-fill"></i> Colaboradores</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-compact">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nome</th>
+                                    <th style="width: 15%">Matrícula</th>
+                                    <th style="width: 10%">Tipo</th>
+                                    <th style="width: 10%" class="text-center">Registros</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for colab in colaboradores_registrados %}
+                                <tr>
+                                    <td class="fw-500">{{ colab.nome }}</td>
+                                    <td><small class="text-muted">{{ colab.matricula }}</small></td>
+                                    <td>
+                                        {% if colab.tipo == 'Interno' %}
+                                            <span class="badge bg-primary text-white">Interno</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Externo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center"><span class="badge-count">{{ colab.count }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if procedimentos_registrados %}
+                <div>
+                    <h6 class="mb-3"><i class="bi bi-file-earmark"></i> Procedimentos</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-compact">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 15%">Código</th>
+                                    <th>Nome</th>
+                                    <th style="width: 10%">Rev.</th>
+                                    <th style="width: 10%" class="text-center">Registros</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for proc in procedimentos_registrados %}
+                                <tr>
+                                    <td><code class="text-dark">{{ proc.codigo }}</code></td>
+                                    <td>{{ proc.nome }}</td>
+                                    <td><small class="text-muted">{{ proc.revisao }}</small></td>
+                                    <td class="text-center"><span class="badge-count">{{ proc.count }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if not colaboradores_registrados and not procedimentos_registrados %}
+                <div class="alert alert-light border mb-0">
+                    <small class="text-muted">Nenhum participante ou procedimento registrado ainda.</small>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Aba 3: Registros -->
+            <div id="registros-tab" class="tab-pane fade">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="bi bi-list-check"></i> Adicionar Registros</h6>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-registro">
+                        <i class="bi bi-plus-circle"></i> Novo Registro
+                    </button>
+                </div>
+
+                {{ formset.management_form }}
+                
+                <div id="registros-container">
+                    {% for form in formset %}
+                    <div class="formset-row" data-form-index="{{ forloop.counter0 }}">
+                        {% if form.instance.pk %}{{ form.id }}{% endif %}
+                        
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-3">
+                                <label class="form-label small">Tipo</label>
+                                {{ form.tipo }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Nome Colaborador</label>
+                                {{ form.colaborador_nome }}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">Base de Dados</label>
+                                {{ form.colaborador }}
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Data</label>
+                                {{ form.data_treinamento }}
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label small">Procedimento</label>
+                                {{ form.procedimento }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">Título (se geral)</label>
+                                {{ form.titulo_treinamento }}
+                            </div>
+                        </div>
+
+                        {% if form.instance.pk %}
+                        <div class="mt-2 pt-2 border-top d-flex justify-content-between">
+                            <small class="text-muted">ID: {{ form.instance.pk }}</small>
+                            <label class="form-check-label small">
+                                {{ form.DELETE }}
+                                <span class="text-danger">Deletar</span>
+                            </label>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="d-flex gap-2 justify-content-between mt-4 pt-3 border-top">
+            <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle"></i> {% if action == 'create' %}Criar{% else %}Salvar Alterações{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let formCount = {{ formset.management_form.0.value }};
+    
+    document.getElementById('add-registro').addEventListener('click', function() {
+        const formRegex = new RegExp('__prefix__', 'g');
+        const formRow = document.querySelector('.formset-row').cloneNode(true);
+        
+        formRow.querySelectorAll('input, select, textarea').forEach(field => {
+            field.name = field.name.replace(formRegex, formCount);
+            field.id = field.id.replace(formRegex, formCount);
+            field.value = '';
+        });
+        
+        document.getElementById('registros-container').appendChild(formRow);
+        document.querySelector('input[name="registrotreinamento_set-TOTAL_FORMS"]').value = ++formCount;
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Solicitar Validação - {{ matriz.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow-lg">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h3 class="text-white mb-0">
+                        <i class="fas fa-clipboard-check"></i> Solicitar Validação
+                    </h3>
+                </div>
+                
+                <div class="card-body p-4">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Matriz:</strong> {{ matriz.nome }}
+                        <br>
+                        <small class="text-muted">Você está solicitando validação para essa matriz de habilidades</small>
+                    </div>
+                    
+                    <form method="POST" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Seleção de Validador -->
+                        <div class="mb-4">
+                            <label for="validador_id" class="form-label fw-bold">
+                                <i class="fas fa-user-check"></i> Selecione o Validador
+                            </label>
+                            <select class="form-select form-select-lg" id="validador_id" name="validador_id" required>
+                                <option value="">-- Escolha um validador --</option>
+                                {% for validador in validadores %}
+                                    <option value="{{ validador.id }}">
+                                        {{ validador.nome_completo }}
+                                    </option>
+                                {% empty %}
+                                    <option value="">Nenhum validador disponível</option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">
+                                Por favor, selecione um validador!
+                            </div>
+                        </div>
+                        
+                        <!-- Motivo da Solicitação -->
+                        <div class="mb-4">
+                            <label for="motivo" class="form-label fw-bold">
+                                <i class="fas fa-comment"></i> Motivo da Solicitação (Opcional)
+                            </label>
+                            <textarea class="form-control" id="motivo" name="motivo" rows="4" 
+                                      placeholder="Ex: Precisa validação antes da avaliação de desempenho..."></textarea>
+                            <small class="form-text text-muted">
+                                Deixe uma mensagem explicando por que a validação é necessária
+                            </small>
+                        </div>
+                        
+                        <!-- Resumo das Mudanças -->
+                        <div class="card mb-4" style="background-color: #f8f9fa; border-left: 4px solid #667eea;">
+                            <div class="card-body">
+                                <h6 class="card-title fw-bold">
+                                    <i class="fas fa-chart-bar"></i> Resumo da Matriz
+                                </h6>
+                                <div class="row text-center">
+                                    <div class="col-md-6">
+                                        <div class="stat-box">
+                                            <div style="font-size: 24px; color: #667eea; font-weight: bold;">
+                                                {{ matriz.colaboradores_matriz.count }}
+                                            </div>
+                                            <small class="text-muted">Colaboradores</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="stat-box">
+                                            <div style="font-size: 24px; color: #764ba2; font-weight: bold;">
+                                                {{ matriz.disciplinas_matriz.count }}
+                                            </div>
+                                            <small class="text-muted">Disciplinas</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botões -->
+                        <div class="d-flex gap-2 justify-content-between">
+                            <a href="{% url 'procedures:matriz_avaliacoes' %}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check-circle"></i> Enviar Solicitação
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .stat-box {
+        padding: 15px;
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .form-select-lg {
+        padding: 0.75rem 0.5rem;
+        font-size: 1.1rem;
+    }
+</style>
+
+<script>
+    (function() {
+        'use strict';
+        const form = document.querySelector('.needs-validation');
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    })();
+</script>
+{% endblock %}

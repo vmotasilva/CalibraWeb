@@ -1,0 +1,734 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Gerenciar Templates de Listas de Presença{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary: #4f46e5;
+        --primary-dark: #4338ca;
+        --success: #10b981;
+        --danger: #ef4444;
+        --light: #f9fafb;
+        --border: #e5e7eb;
+        --text-dark: #111827;
+        --text-light: #6b7280;
+    }
+
+    /* Reset & Base */
+    * {
+        box-sizing: border-box;
+    }
+
+    .container-lg {
+        max-width: 1200px;
+    }
+
+    /* Page Header - Clean & Simple */
+    .page-header {
+        margin-bottom: 48px;
+    }
+
+    .page-header h1 {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin: 0 0 8px 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-header > p {
+        font-size: 14px;
+        color: var(--text-light);
+        margin: 0;
+    }
+
+    /* Header Controls */
+    .header-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 24px;
+        gap: 16px;
+    }
+
+    /* Stats Grid - Horizontal & Compact */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 40px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .stat-icon {
+        font-size: 24px;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: rgba(79, 70, 229, 0.1);
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .stat-content h3 {
+        font-size: 12px;
+        color: var(--text-light);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0 0 4px 0;
+    }
+
+    .stat-content .value {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin: 0;
+    }
+
+    /* Section Header */
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 16px;
+    }
+
+    .section-header h2 {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Buttons */
+    .btn-primary, .btn-secondary, .btn-success {
+        padding: 10px 20px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-dark);
+    }
+
+    .btn-secondary {
+        background-color: var(--text-light);
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background-color: #4b5563;
+    }
+
+    .btn-success {
+        background-color: var(--success);
+        color: white;
+    }
+
+    .btn-success:hover {
+        background-color: #059669;
+    }
+
+    /* Form */
+    .new-template-form {
+        background: white;
+        padding: 28px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        margin-bottom: 40px;
+    }
+
+    .new-template-form h3 {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0 0 20px 0;
+        color: var(--text-dark);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        display: block;
+        color: var(--text-dark);
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+        transition: all 0.2s ease;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .form-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    /* Templates Grid */
+    .templates-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+
+    /* Template Card - Clean Design */
+    .template-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 20px;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .template-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .template-header {
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .template-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin: 0;
+    }
+
+    .badge-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .badge-completo {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: #047857;
+    }
+
+    .badge-incompleto {
+        background-color: rgba(245, 158, 11, 0.1);
+        color: #b45309;
+    }
+
+    .template-description {
+        color: var(--text-light);
+        font-size: 13px;
+        line-height: 1.4;
+        margin: 0 0 12px 0;
+    }
+
+    /* Stats Grid Inside Card */
+    .template-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin: 12px 0;
+        padding: 12px;
+        background: var(--light);
+        border-radius: 6px;
+    }
+
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-item-label {
+        font-size: 11px;
+        color: var(--text-light);
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 3px;
+    }
+
+    .stat-item-value {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-dark);
+    }
+
+    /* Progress Bar */
+    .progress-section {
+        margin: 12px 0;
+    }
+
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--text-light);
+        margin-bottom: 6px;
+    }
+
+    .progress-wrapper {
+        width: 100%;
+        height: 6px;
+        background: var(--light);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--success), #06b6d4);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+
+    /* Actions */
+    .template-actions {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+    }
+
+    .btn-action {
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: white;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        text-align: center;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .btn-action i {
+        font-size: 12px;
+    }
+
+    .btn-mapear {
+        background: linear-gradient(135deg, var(--primary), #7c3aed);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .btn-mapear:hover:not(:disabled) {
+        opacity: 0.9;
+    }
+
+    .btn-upload {
+        background: linear-gradient(135deg, var(--success), #06b6d4);
+        color: white;
+        border-color: var(--success);
+    }
+
+    .btn-upload:hover {
+        opacity: 0.9;
+    }
+
+    .btn-deletar {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    .btn-deletar:hover {
+        background: var(--danger);
+        color: white;
+    }
+
+    .btn-action:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 40px;
+        background: var(--light);
+        border-radius: 8px;
+        border: 1px dashed var(--border);
+    }
+
+    .empty-state-icon {
+        font-size: 48px;
+        color: #d1d5db;
+        margin-bottom: 16px;
+    }
+
+    .empty-state-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 8px;
+    }
+
+    .empty-state-text {
+        font-size: 14px;
+        color: var(--text-light);
+        margin-bottom: 24px;
+    }
+
+    /* Alerts */
+    .alert {
+        border-radius: 6px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        border: 1px solid;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .alert-success {
+        background-color: rgba(16, 185, 129, 0.05);
+        color: #047857;
+        border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    .alert-warning {
+        background-color: rgba(245, 158, 11, 0.05);
+        color: #b45309;
+        border-color: rgba(245, 158, 11, 0.2);
+    }
+
+    .alert-danger {
+        background-color: rgba(239, 68, 68, 0.05);
+        color: #b91c1c;
+        border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    /* Modal */
+    .modal-header {
+        border-bottom: 1px solid var(--border);
+        padding: 16px;
+    }
+
+    .modal-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin: 0;
+    }
+
+    .modal-body {
+        padding: 20px 16px;
+        font-size: 14px;
+        color: var(--text-dark);
+    }
+
+    .modal-footer {
+        border-top: 1px solid var(--border);
+        padding: 16px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-lg" style="margin-top: 32px; margin-bottom: 48px;">
+    <!-- Header Simples -->
+    <div class="page-header">
+        <h1><i class="fas fa-file-excel"></i> Templates de Listas de Presença</h1>
+        <p>Gerenciamento centralizado de templates para gerar listas de presença personalizadas</p>
+    </div>
+
+    <!-- Mensagens -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-circle{% else %}times-circle{% endif %}"></i>
+                <span>{{ message }}</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Stats Compactos -->
+    {% if total_templates > 0 %}
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="stat-content">
+                <h3>Total de Templates</h3>
+                <p class="value">{{ total_templates }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-check-square"></i>
+            </div>
+            <div class="stat-content">
+                <h3>Ativos</h3>
+                <p class="value">{{ templates|length }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Seção de Novo Template -->
+    {% if acao == 'novo' %}
+    <div class="new-template-form">
+        <h3><i class="fas fa-plus-circle"></i> Criar Novo Template</h3>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="novo">
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="nome">Nome do Template <span style="color: var(--danger);">*</span></label>
+                        <input type="text" id="nome" name="nome" placeholder="Ex: Template Padrão" required maxlength="255">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="descricao">Descrição</label>
+                        <input type="text" id="descricao" name="descricao" placeholder="Ex: Para treinamentos internos">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-buttons">
+                <button type="submit" class="btn-primary">
+                    <i class="fas fa-check"></i> Criar
+                </button>
+                <a href="{% url 'procedures:gerenciar_templates_presenca' %}" class="btn-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+    {% else %}
+    <div class="section-header">
+        <h2><i class="fas fa-list-ul"></i> Meus Templates</h2>
+        <a href="{% url 'procedures:gerenciar_templates_presenca' %}?acao=novo" class="btn-success">
+            <i class="fas fa-plus"></i> Novo Template
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Templates -->
+    {% if templates %}
+    <div style="background: white; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: linear-gradient(135deg, var(--light) 0%, #f3f4f6 100%); border-bottom: 2px solid var(--border);">
+                    <th style="padding: 14px 16px; text-align: left; font-weight: 700; font-size: 12px; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.5px;">Nome</th>
+                    <th style="padding: 14px 16px; text-align: center; font-weight: 700; font-size: 12px; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">Arquivo</th>
+                    <th style="padding: 14px 16px; text-align: center; font-weight: 700; font-size: 12px; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.5px; width: 120px;">Progresso</th>
+                    <th style="padding: 14px 16px; text-align: center; font-weight: 700; font-size: 12px; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.5px; width: 110px;">Status</th>
+                    <th style="padding: 14px 16px; text-align: right; font-weight: 700; font-size: 12px; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.5px; width: 200px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for template in templates %}
+                <tr style="border-bottom: 1px solid var(--border); transition: all 0.2s ease; background: white;" onmouseover="this.style.background='#fafbfc'; this.style.boxShadow='inset 0 0 10px rgba(79,70,229,0.03)'" onmouseout="this.style.background='white'; this.style.boxShadow='none'">
+                    <!-- Nome & Descrição -->
+                    <td style="padding: 14px 16px; vertical-align: middle;">
+                        <div style="font-weight: 600; font-size: 14px; color: var(--text-dark); margin-bottom: 3px;">{{ template.nome }}</div>
+                        {% if template.descricao %}
+                        <div style="font-size: 12px; color: var(--text-light); line-height: 1.3;">{{ template.descricao|truncatewords:10 }}</div>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Arquivo -->
+                    <td style="padding: 14px 16px; text-align: center; vertical-align: middle;">
+                        {% if template.arquivo_pdf_template %}
+                            <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(16,185,129,0.1); color: #047857; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </span>
+                        {% else %}
+                            <span style="display: inline-flex; align-items: center; gap: 6px; background: rgba(239,68,68,0.1); color: #991b1b; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                                <i class="fas fa-exclamation-triangle"></i> Vazio
+                            </span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Progresso Compacto -->
+                    <td style="padding: 14px 16px; text-align: center; vertical-align: middle;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                            <div style="width: 90px; height: 5px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                                <div style="width: {{ template.progresso_porcentagem }}%; height: 100%; background: {% if template.progresso_porcentagem >= 100 %}var(--success){% elif template.progresso_porcentagem >= 50 %}#f59e0b{% else %}var(--primary){% endif %}; transition: width 0.4s ease;"></div>
+                            </div>
+                            <span style="font-size: 11px; color: var(--text-light); font-weight: 700;">{{ template.progresso_porcentagem }}%</span>
+                        </div>
+                    </td>
+                    
+                    <!-- Status Badge -->
+                    <td style="padding: 14px 16px; text-align: center; vertical-align: middle;">
+                        {% if template.mapeamento_completo %}
+                            <span style="display: inline-flex; align-items: center; gap: 5px; background: rgba(16,185,129,0.15); color: #047857; padding: 5px 10px; border-radius: 5px; font-size: 11px; font-weight: 700; border: 1px solid rgba(16,185,129,0.3);">
+                                <i class="fas fa-check-circle"></i> Completo
+                            </span>
+                        {% else %}
+                            <span style="display: inline-flex; align-items: center; gap: 5px; background: rgba(245,158,11,0.15); color: #92400e; padding: 5px 10px; border-radius: 5px; font-size: 11px; font-weight: 700; border: 1px solid rgba(245,158,11,0.3);">
+                                <i class="fas fa-circle-notch"></i> {{ template.total_campos_mapeados }}/9
+                            </span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Ações Destacadas -->
+                    <td style="padding: 14px 16px; text-align: right; vertical-align: middle;">
+                        <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">
+                            {% if template.arquivo_pdf_template and template.mapeamento_completo %}
+                            <a href="{% url 'procedures:selecionar_template_lista_presenca' %}" class="btn-action btn-gerar" style="padding: 10px 14px; font-size: 12px; background: #10b981; color: white; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; white-space: nowrap;" onmouseover="this.style.background='#059669'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(16,185,129,0.3)'" onmouseout="this.style.background='#10b981'; this.style.transform='translateY(0)'; this.style.boxShadow='none'" title="Gerar lista de presença preenchendo os dados">
+                                <i class="fas fa-file-pdf" style="font-size: 14px;"></i> <span>Gerar PDF</span>
+                            </a>
+                            {% endif %}
+                            
+                            {% if not template.arquivo_pdf_template %}
+                            <a href="{% url 'procedures:upload_template_lista_presenca' %}" class="btn-action btn-upload" style="padding: 10px 14px; font-size: 12px; background: #667eea; color: white; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; white-space: nowrap;" onmouseover="this.style.background='#5568d3'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(102,126,234,0.3)'" onmouseout="this.style.background='#667eea'; this.style.transform='translateY(0)'; this.style.boxShadow='none'" title="Fazer upload de um arquivo PDF do seu computador">
+                                <i class="fas fa-cloud-upload-alt" style="font-size: 14px;"></i> <span>Carregar PDF</span>
+                            </a>
+                            {% else %}
+                            <a href="{% url 'procedures:mapear_template_fields' template.id %}" class="btn-action btn-mapear" style="padding: 10px 14px; font-size: 12px; background: #3b82f6; color: white; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; white-space: nowrap;" onmouseover="this.style.background='#2563eb'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(59,130,246,0.3)'" onmouseout="this.style.background='#3b82f6'; this.style.transform='translateY(0)'; this.style.boxShadow='none'" title="Associar campos do PDF com dados do sistema">
+                                <i class="fas fa-map" style="font-size: 14px;"></i> <span>Mapear</span>
+                            </a>
+                            {% endif %}
+
+                            {% if template.arquivo_pdf_template and not template.mapeamento_completo %}
+                            <a href="{% url 'procedures:mapear_template_fields' template.id %}" style="padding: 10px 14px; font-size: 12px; background: #f59e0b; color: white; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; white-space: nowrap;" onmouseover="this.style.background='#d97706'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(245,158,11,0.3)'" onmouseout="this.style.background='#f59e0b'; this.style.transform='translateY(0)'; this.style.boxShadow='none'" title="⚠️ Mapeamento incompleto - clique para concluir">
+                                <i class="fas fa-exclamation-circle" style="font-size: 14px;"></i> <span>Completar</span>
+                            </a>
+                            {% endif %}
+                            
+                            <button type="button" class="btn-action btn-deletar" onclick="confirmarDelecao({{ template.id }}, '{{ template.nome|escapejs }}')" style="padding: 10px 14px; font-size: 12px; background: #ef4444; color: white; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; white-space: nowrap;" onmouseover="this.style.background='#dc2626'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(239,68,68,0.3)'" onmouseout="this.style.background='#ef4444'; this.style.transform='translateY(0)'; this.style.boxShadow='none'" title="Deletar este template permanentemente">
+                                <i class="fas fa-trash-alt" style="font-size: 14px;"></i> <span>Deletar</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <div class="empty-state-icon">
+            <i class="fas fa-inbox"></i>
+        </div>
+        <div class="empty-state-title">Nenhum template criado</div>
+        <div class="empty-state-text">
+            Comece criando um novo template para mapear suas listas de presença.
+        </div>
+        <a href="{% url 'procedures:gerenciar_templates_presenca' %}?acao=novo" class="btn-primary">
+            <i class="fas fa-plus"></i> Criar Primeiro Template
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalConfirmarDelecao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-trash-alt"></i> Confirmar Deleção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja deletar o template <strong id="nomeTemplateModal"></strong>?</p>
+                <p style="color: var(--text-light); font-size: 13px; margin-bottom: 0;">
+                    <i class="fas fa-exclamation-triangle"></i> Essa ação não pode ser desfeita.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="POST" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="deletar">
+                    <input type="hidden" name="template_id" id="templateIdModal">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Deletar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarDelecao(templateId, templateNome) {
+    document.getElementById('nomeTemplateModal').textContent = templateNome;
+    document.getElementById('templateIdModal').value = templateId;
+    new bootstrap.Modal(document.getElementById('modalConfirmarDelecao')).show();
+}
+</script>
+
+{% endblock %}

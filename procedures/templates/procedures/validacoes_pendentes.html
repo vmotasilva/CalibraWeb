@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Validações Pendentes{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-lg">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="text-white mb-0">
+                            <i class="fas fa-inbox"></i> Validações Pendentes
+                        </h3>
+                        <span class="badge bg-light text-dark" style="font-size: 14px;">
+                            {{ validacoes.count }} solicitação{{ validacoes.count|pluralize }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="card-body p-4">
+                    {% if validacoes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead style="background-color: #f8f9fa; border-bottom: 2px solid #667eea;">
+                                    <tr>
+                                        <th><i class="fas fa-cube"></i> Matriz</th>
+                                        <th><i class="fas fa-user"></i> Solicitante</th>
+                                        <th><i class="fas fa-calendar-alt"></i> Data da Solicitação</th>
+                                        <th><i class="fas fa-comment"></i> Motivo</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for validacao in validacoes %}
+                                        <tr style="border-bottom: 1px solid #e9ecef;">
+                                            <td>
+                                                <strong style="color: #667eea;">{{ validacao.matriz.nome }}</strong>
+                                            </td>
+                                            <td>
+                                                {% if validacao.solicitante %}
+                                                    {{ validacao.solicitante.nome_completo }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    {{ validacao.criado_em|date:"d/m/Y H:i" }}
+                                                </small>
+                                            </td>
+                                            <td>
+                                                {% if validacao.motivo_solicitacao %}
+                                                    <small class="text-muted">
+                                                        {{ validacao.motivo_solicitacao|truncatewords:10 }}
+                                                    </small>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-end">
+                                                <a href="{% url 'procedures:validar_matriz' validacao.id %}" 
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-check-circle"></i> Validar
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-success" role="alert">
+                            <i class="fas fa-check-circle"></i> Nenhuma validação pendente no momento!
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'procedures:matriz_avaliacoes' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

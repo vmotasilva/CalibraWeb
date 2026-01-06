@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Listas de Presença{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-1">
+                <i class="bi bi-clipboard-check"></i> Listas de Presença
+            </h1>
+            <p class="text-muted">Total: <strong>{{ total_listas }}</strong> lista(s) | Registros: <strong>{{ total_registros }}</strong></p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="btn-group" role="group">
+                <a href="{% url 'procedures:lista_presenca_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Nova Lista
+                </a>
+                <a href="{% url 'procedures:lista_presenca_importar' %}" class="btn btn-success">
+                    <i class="bi bi-upload"></i> Importar
+                </a>
+                <a href="{% url 'procedures:gerenciar_templates_presenca' %}" class="btn btn-info">
+                    <i class="bi bi-file-earmark-excel"></i> Templates
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+            <h6 class="mb-0"><i class="bi bi-funnel"></i> Filtros</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <!-- Busca -->
+                <div class="col-md-3">
+                    <label for="busca" class="form-label">Buscar</label>
+                    <input type="text" name="busca" id="busca" class="form-control form-control-sm" 
+                           placeholder="Código, título, local..." value="{{ filtros.busca }}">
+                </div>
+
+                <!-- Data Início -->
+                <div class="col-md-2">
+                    <label for="data_inicio" class="form-label">Data Início</label>
+                    <input type="date" name="data_inicio" id="data_inicio" class="form-control form-control-sm" 
+                           value="{{ filtros.data_inicio }}">
+                </div>
+
+                <!-- Data Fim -->
+                <div class="col-md-2">
+                    <label for="data_fim" class="form-label">Data Fim</label>
+                    <input type="date" name="data_fim" id="data_fim" class="form-control form-control-sm" 
+                           value="{{ filtros.data_fim }}">
+                </div>
+
+                <!-- Instrutor -->
+                <div class="col-md-3">
+                    <label for="instrutor" class="form-label">Instrutor</label>
+                    <select name="instrutor" id="instrutor" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        {% for colab in instrutores %}
+                            <option value="{{ colab.id }}" 
+                                {% if filtros.instrutor|add:"0" == colab.id %}selected{% endif %}>
+                                {{ colab.nome_completo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Botões -->
+                <div class="col-md-2 d-flex gap-2 align-items-end">
+                    <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-sm btn-secondary" title="Limpar filtros">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela -->
+    {% if listas %}
+        <form method="post" id="formExclusaoMassa">
+            {% csrf_token %}
+            
+            <!-- Controles de Seleção -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-body d-flex justify-content-between align-items-center gap-3">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-primary" id="btnSelecionarTodos" title="Selecionar todas as listas">
+                            <i class="bi bi-check-square"></i> Selecionar Todos
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btnDesmarcarTodos" title="Desmarcar todas as listas">
+                            <i class="bi bi-square"></i> Desmarcar Todos
+                        </button>
+                    </div>
+                    
+                    <span id="contagemSelecionados" class="text-muted small">
+                        <i class="bi bi-info-circle"></i> Nenhuma lista selecionada
+                    </span>
+                    
+                    <button type="button" class="btn btn-danger" id="btnExcluirSelecionados" disabled>
+                        <i class="bi bi-trash"></i> Excluir Selecionados
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabela -->
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 3%" class="text-center">
+                                    <input type="checkbox" id="checkAll" class="form-check-input">
+                                </th>
+                                <th style="width: 9%">Código</th>
+                                <th style="width: 24%">Título / Procedimento</th>
+                                <th style="width: 14%">Local</th>
+                                <th style="width: 11%">Data</th>
+                                <th style="width: 11%">Instrutor</th>
+                                <th style="width: 7%" class="text-center">Participantes</th>
+                                <th style="width: 5%" class="text-center" title="Arquivo Assinado">
+                                    <i class="fas fa-file-pdf"></i>
+                                </th>
+                                <th style="width: 7%" class="text-center">Registros</th>
+                                <th style="width: 14%" class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lista in listas %}
+                            <tr id="row-{{ lista.id }}" class="lista-row">
+                                <!-- Checkbox -->
+                                <td class="text-center">
+                                    <input type="checkbox" name="lista_ids" value="{{ lista.id }}" class="form-check-input checkbox-lista">
+                                </td>
+
+                                <!-- Código -->
+                                <td>
+                                    <span class="badge bg-info">{{ lista.codigo }}</span>
+                                </td>
+
+                                <!-- Título -->
+                                <td>
+                                    <strong>{{ lista.procedimento.titulo }}</strong>
+                                {% if lista.procedimento.revision %}
+                                    <br>
+                                    <small class="text-muted">Rev: {{ lista.procedimento.revision }}</small>
+                                {% endif %}
+                            </td>
+
+                            <!-- Local -->
+                            <td>
+                                <i class="bi bi-geo-alt"></i> {{ lista.local|default:"Não especificado" }}
+                            </td>
+
+                            <!-- Data -->
+                            <td>
+                                <i class="bi bi-calendar"></i>
+                                {% if lista.data_sessao %}
+                                    {{ lista.data_sessao|date:"d/m/Y" }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Instrutor -->
+                            <td>
+                                {% if lista.instrutor_nome %}
+                                    {{ lista.instrutor_nome|truncatewords:2 }}
+                                    {% if lista.instrutor %}
+                                        <br><small class="text-muted">(BD)</small>
+                                    {% endif %}
+                                {% elif lista.instrutor %}
+                                    {{ lista.instrutor.nome_completo|truncatewords:2 }}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Participantes -->
+                            <td class="text-center">
+                                <span class="badge bg-cyan">{{ lista.colaboradores_unicos|length }}</span>
+                            </td>
+
+                            <!-- Arquivo Assinado -->
+                            <td class="text-center">
+                                {% if lista.arquivo_assinado %}
+                                    <span class="badge bg-success" title="Arquivo assinado anexado">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-light text-muted" title="Sem arquivo">
+                                        <i class="fas fa-times"></i>
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Registros de Treinamento -->
+                            <td class="text-center">
+                                {% if lista.registros.count %}
+                                    <span class="badge bg-success">{{ lista.registros.count }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">0</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Ações -->
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'procedures:lista_presenca_detail' lista.id %}" 
+                                       class="btn btn-outline-primary" title="Visualizar">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'procedures:lista_presenca_edit' lista.id %}" 
+                                       class="btn btn-outline-warning" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'procedures:lista_presenca_delete' lista.id %}" 
+                                       class="btn btn-outline-danger" title="Excluir"
+                                       onclick="return confirm('Tem certeza que deseja excluir a lista {{ lista.codigo }}?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        </form>
+    {% else %}
+        <!-- Nenhum resultado -->
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle"></i>
+            <strong>Nenhuma lista de presença encontrada.</strong>
+            {% if filtros %}
+                Tente ajustar os filtros acima.
+            {% else %}
+                <a href="{% url 'procedures:lista_presenca_create' %}">Criar nova lista</a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal de Confirmação de Exclusão em Massa -->
+<div class="modal fade" id="modalExclusaoMassa" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Exclusão em Massa
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir <strong id="qtdSelecionados">0</strong> lista(s)?</p>
+                <p class="text-muted">
+                    <small>Esta ação não pode ser desfeita e removerá todos os registros associados.</small>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarExclusao">
+                    <i class="bi bi-trash"></i> Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.checkbox-lista');
+    const checkAll = document.getElementById('checkAll');
+    const btnSelecionarTodos = document.getElementById('btnSelecionarTodos');
+    const btnDesmarcarTodos = document.getElementById('btnDesmarcarTodos');
+    const btnExcluirSelecionados = document.getElementById('btnExcluirSelecionados');
+    const contagemSelecionados = document.getElementById('contagemSelecionados');
+    const formExclusaoMassa = document.getElementById('formExclusaoMassa');
+    const modalExclusaoMassa = new bootstrap.Modal(document.getElementById('modalExclusaoMassa'));
+    const btnConfirmarExclusao = document.getElementById('btnConfirmarExclusao');
+    
+    // Atualizar contagem de selecionados
+    function atualizarContagem() {
+        const selecionados = document.querySelectorAll('.checkbox-lista:checked').length;
+        const total = checkboxes.length;
+        
+        if (selecionados === 0) {
+            contagemSelecionados.innerHTML = '<i class="bi bi-info-circle"></i> Nenhuma lista selecionada';
+            btnExcluirSelecionados.disabled = true;
+            checkAll.indeterminate = false;
+            checkAll.checked = false;
+        } else if (selecionados === total) {
+            contagemSelecionados.innerHTML = `<i class="bi bi-check-circle"></i> <strong>${selecionados}</strong> de ${total} lista(s) selecionada(s)`;
+            btnExcluirSelecionados.disabled = false;
+            checkAll.indeterminate = false;
+            checkAll.checked = true;
+        } else {
+            contagemSelecionados.innerHTML = `<i class="bi bi-dash-circle"></i> <strong>${selecionados}</strong> de ${total} lista(s) selecionada(s)`;
+            btnExcluirSelecionados.disabled = false;
+            checkAll.indeterminate = true;
+        }
+    }
+    
+    // Event listeners para checkboxes
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', atualizarContagem);
+    });
+    
+    // Selecionar Todos
+    btnSelecionarTodos.addEventListener('click', function(e) {
+        e.preventDefault();
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        atualizarContagem();
+    });
+    
+    // Desmarcar Todos
+    btnDesmarcarTodos.addEventListener('click', function(e) {
+        e.preventDefault();
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        atualizarContagem();
+    });
+    
+    // Check All (header checkbox)
+    checkAll.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        atualizarContagem();
+    });
+    
+    // Botão Excluir Selecionados
+    btnExcluirSelecionados.addEventListener('click', function(e) {
+        e.preventDefault();
+        const selecionados = document.querySelectorAll('.checkbox-lista:checked').length;
+        document.getElementById('qtdSelecionados').textContent = selecionados;
+        modalExclusaoMassa.show();
+    });
+    
+    // Confirmar Exclusão
+    btnConfirmarExclusao.addEventListener('click', function() {
+        // Adicionar campo hidden para indicar que é exclusão em massa
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'delete_selected';
+        input.value = '1';
+        formExclusaoMassa.appendChild(input);
+        
+        // Submeter formulário
+        formExclusaoMassa.submit();
+    });
+    
+    // Inicializar contagem
+    atualizarContagem();
+});
+</script>
+{% endblock %}

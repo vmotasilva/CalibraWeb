@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gerar Lista de Presença - {{ planejamento.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'procedures:lista_presenca_list' %}">Listas de Presença</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'procedures:selecionar_template_lista_presenca' %}">Nova Lista</a></li>
+                    <li class="breadcrumb-item active">{{ planejamento.titulo }}</li>
+                </ol>
+            </nav>
+
+            <!-- Card Principal -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-cogs"></i> Personalizar Lista de Presença
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- Informações do Planejamento -->
+                        <div class="alert alert-light border-start border-4 border-primary mb-4">
+                            <h6 class="mb-3 fw-bold">
+                                <i class="fas fa-info-circle"></i> Informações do Planejamento
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Título:</strong> {{ planejamento.titulo }}<br>
+                                    <strong>Instrutor:</strong> 
+                                    {% if planejamento.instrutor %}
+                                        {{ planejamento.instrutor.nome_completo }}
+                                    {% else %}
+                                        <span class="text-muted">Não definido</span>
+                                    {% endif %}<br>
+                                    <strong>Carga Horária:</strong> {{ planejamento.carga_horaria }} horas
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Data Prevista:</strong> {{ planejamento.data_prevista|date:"d/m/Y" }}<br>
+                                    <strong>Local:</strong> {{ planejamento.local }}<br>
+                                    <strong>Procedimentos:</strong> {{ planejamento.procedimentos.count }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Template Selecionado -->
+                        <div class="alert alert-light border-start border-4 border-success mb-4">
+                            <h6 class="mb-3 fw-bold">
+                                <i class="fas fa-file"></i> Template Selecionado
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <strong>Nome:</strong> {{ template.nome }}<br>
+                                    {% if template.descricao %}
+                                    <strong>Descrição:</strong> {{ template.descricao }}<br>
+                                    {% endif %}
+                                    <strong>Formato:</strong> {{ template.get_tipo_arquivo_display }}
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Páginas:</strong> {{ template.num_paginas }}<br>
+                                    <strong>Campos Mapeados:</strong> {{ mapeamentos|length }}<br>
+                                    <a href="{% url 'procedures:mapear_template_fields' template.id %}" 
+                                       class="btn btn-sm btn-outline-primary mt-2">
+                                        <i class="fas fa-edit"></i> Editar Mapeamento
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Personalização -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="fas fa-sliders-h"></i> Personalizar Campos (Opcional)
+                            </h5>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="data_sessao" class="form-label fw-bold">Data da Sessão</label>
+                                        <input type="date" class="form-control" id="data_sessao" 
+                                               name="data_sessao" value="{{ planejamento.data_prevista|date:'Y-m-d' }}">
+                                        <small class="text-muted">Se diferente da data prevista</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="hora_inicio" class="form-label fw-bold">Hora de Início</label>
+                                        <input type="time" class="form-control" id="hora_inicio" name="hora_inicio">
+                                        <small class="text-muted">Ex: 08:00</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="hora_fim" class="form-label fw-bold">Hora de Término</label>
+                                        <input type="time" class="form-control" id="hora_fim" name="hora_fim">
+                                        <small class="text-muted">Ex: 12:00</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="mb-3">
+                                        <label for="local" class="form-label fw-bold">Local</label>
+                                        <input type="text" class="form-control" id="local" name="local" 
+                                               value="{{ planejamento.local }}" placeholder="Sala, Auditório, etc...">
+                                        <small class="text-muted">Se diferente do local registrado</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Campos Mapeados -->
+                        {% if mapeamentos %}
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="fas fa-check"></i> Campos que serão Preenchidos
+                            </h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Campo</th>
+                                            <th>Página</th>
+                                            <th>Localização</th>
+                                            <th>Valor Padrão</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for mapeamento in mapeamentos %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ mapeamento.get_tipo_campo_display }}</strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ mapeamento.pagina }}</span>
+                                            </td>
+                                            <td>
+                                                <code class="text-muted">{{ mapeamento.localizacao_descrita }}</code>
+                                            </td>
+                                            <td>
+                                                {% if mapeamento.valor_padrao %}
+                                                    <code>{{ mapeamento.valor_padrao }}</code>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Atenção:</strong> Este template não possui campos mapeados.
+                            <a href="{% url 'procedures:mapear_template_fields' template.id %}">
+                                Mapear campos agora
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        <!-- Procedimentos -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="fas fa-list-check"></i> Procedimentos que serão Inclusos
+                            </h5>
+                            {% if planejamento.procedimentos.all %}
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Código</th>
+                                            <th>Procedimento</th>
+                                            <th>Grupo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for procedimento in planejamento.procedimentos.all %}
+                                        <tr>
+                                            <td>
+                                                <code>{{ procedimento.codigo }}</code>
+                                            </td>
+                                            <td>
+                                                <strong>{{ procedimento.nome }}</strong>
+                                            </td>
+                                            <td>
+                                                {% for grupo in procedimento.grupos_treinamento.all %}
+                                                    <span class="badge bg-secondary">{{ grupo.nome }}</span>
+                                                {% endfor %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info" role="alert">
+                                Nenhum procedimento incluso neste planejamento.
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Informação sobre geração -->
+                        <div class="alert alert-info" role="alert">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle"></i> Como a Lista Será Gerada
+                            </h6>
+                            <ul class="mb-0">
+                                <li>Os campos mapeados serão preenchidos com os dados do planejamento</li>
+                                <li>Os procedimentos aparecerão em uma tabela de assinaturas (página 2)</li>
+                                <li>O sistema respeitará o layout definido no template</li>
+                                <li>Você poderá fazer ajustes finos após a geração, se necessário</li>
+                            </ul>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="d-flex gap-2 justify-content-between">
+                            <a href="{% url 'procedures:selecionar_template_lista_presenca' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-file-pdf"></i> Gerar Lista de Presença
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Dicas de Uso -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-lightbulb"></i> Dicas de Uso
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Boas Práticas:</h6>
+                            <ul>
+                                <li>Sempre verifique os dados antes de gerar</li>
+                                <li>Mantenha os nomes de campos simples e descritivos</li>
+                                <li>Revise o layout do template antes de usar</li>
+                                <li>Teste com um pequeno grupo primeiro</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Formatos Suportados:</h6>
+                            <ul>
+                                <li><strong>DOCX:</strong> Microsoft Word (recomendado)</li>
+                                <li><strong>PDF:</strong> Portátil (somente leitura)</li>
+                                <li><strong>XLSX:</strong> Planilhas Excel</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

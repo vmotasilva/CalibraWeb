@@ -1,0 +1,65 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block header_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header">
+            <h5>{{ titulo }}</h5>
+            <p class="text-muted mb-0 small">
+                <i class="bi bi-diagram-3"></i> Perfil: <strong>{{ perfil.codigo }}</strong> - {{ perfil.nome }}
+            </p>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label">{{ form.nome.label }} *</label>
+                        {{ form.nome }}
+                        <small class="text-muted">Ex: Treinamentos Técnicos, Segurança, Qualidade</small>
+                        {% if form.nome.errors %}
+                            <div class="text-danger small">{{ form.nome.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ form.ordem.label }} *</label>
+                        {{ form.ordem }}
+                        <small class="text-muted">Define a ordem de exibição</small>
+                        {% if form.ordem.errors %}
+                            <div class="text-danger small">{{ form.ordem.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">{{ form.descricao.label }}</label>
+                    {{ form.descricao }}
+                    <small class="text-muted">Descreva o objetivo ou abrangência deste grupo de treinamento</small>
+                    {% if form.descricao.errors %}
+                        <div class="text-danger small">{{ form.descricao.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-lightbulb"></i>
+                    <strong>Próximo Passo:</strong> Após salvar o grupo, você poderá adicionar subgrupos e associar procedimentos específicos.
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Salvar
+                    </button>
+                    <a href="{% url 'procedures:detalhe_perfil' perfil.id %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

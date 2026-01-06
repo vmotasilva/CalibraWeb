@@ -1,0 +1,194 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Gap Detalhado - {{ colaborador.nome }}{% endblock %}
+{% block header_title %}Análise Detalhada de Gaps{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="card mb-3">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-person-badge"></i> {{ colaborador.nome }}
+            </h5>
+            <a href="{% url 'procedures:dashboard_gaps' %}" class="btn btn-light btn-sm">
+                <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+            </a>
+        </div>
+        <div class="card-body">
+            {% if tem_perfil %}
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Matrícula:</strong> {{ colaborador.matricula|default:"N/A" }}</p>
+                    <p><strong>Setor:</strong> {{ colaborador.setor|default:"N/A" }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Perfil:</strong> 
+                        <a href="{% url 'procedures:detalhe_perfil' perfil.id %}">{{ perfil.nome }}</a>
+                    </p>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                Este colaborador não possui perfil de treinamento atribuído.
+                Atribua um perfil para visualizar os gaps.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if tem_perfil %}
+    <!-- Resumo Estatístico -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="card text-white bg-danger">
+                <div class="card-body">
+                    <h6>Gaps de Habilidades</h6>
+                    <h2>{{ total_habilidades_gap }}</h2>
+                    <small>disciplinas abaixo do nível 2</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h6>Treinamentos Pendentes</h6>
+                    <h2>{{ total_treinamentos_pendentes }}</h2>
+                    <small>procedimentos não realizados</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h6>Treinamentos OK</h6>
+                    <h2>{{ total_treinamentos_ok }}</h2>
+                    <small>procedimentos realizados</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gaps de Habilidades -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-graph-up"></i> Gaps de Habilidades (Top 20)</h6>
+        </div>
+        <div class="card-body">
+            {% if gaps_habilidades %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Matriz</th>
+                            <th>Disciplina</th>
+                            <th class="text-center">Nível Atual</th>
+                            <th class="text-center">Nível Desejado</th>
+                            <th class="text-center">Gap</th>
+                            <th class="text-center">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gap in gaps_habilidades %}
+                        <tr>
+                            <td>{{ gap.matriz.nome }}</td>
+                            <td><strong>{{ gap.disciplina.codigo }}</strong> - {{ gap.disciplina.nome }}</td>
+                            <td class="text-center">
+                                {% if gap.nivel_atual is None %}
+                                    <span class="badge bg-secondary">Não avaliado</span>
+                                {% elif gap.nivel_atual == 0 %}
+                                    <span class="badge bg-secondary">0</span>
+                                {% elif gap.nivel_atual == 1 %}
+                                    <span class="badge bg-warning">1</span>
+                                {% elif gap.nivel_atual == 2 %}
+                                    <span class="badge bg-info">2</span>
+                                {% elif gap.nivel_atual == 3 %}
+                                    <span class="badge bg-success">3</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info">{{ gap.nivel_desejado }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-danger">{{ gap.gap }}</span>
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'procedures:editar_avaliacao' gap.matriz.id colaborador.id gap.disciplina.id %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil"></i> Avaliar
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center">Nenhum gap de habilidade identificado. Parabéns!</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Gaps de Treinamentos -->
+    <div class="card">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-journal-check"></i> Status de Treinamentos por Grupo</h6>
+        </div>
+        <div class="card-body">
+            {% if gaps_treinamentos %}
+            {% regroup gaps_treinamentos by grupo as grupos_list %}
+            {% for grupo_item in grupos_list %}
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <span class="badge bg-secondary">{{ grupo_item.grouper.ordem }}</span>
+                        {{ grupo_item.grouper.nome }}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% regroup grupo_item.list by subgrupo as subgrupos_list %}
+                    {% for subgrupo_item in subgrupos_list %}
+                    <div class="mb-3">
+                        <h6 class="text-info">
+                            <i class="bi bi-folder"></i> {{ subgrupo_item.grouper.nome }}
+                        </h6>
+                        <ul class="list-group">
+                            {% for item in subgrupo_item.list %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ item.procedimento.codigo }}</strong> - {{ item.procedimento.nome }}
+                                    {% if item.registro %}
+                                    <br><small class="text-muted">
+                                        Treinado em {{ item.registro.data_treinamento|date:"d/m/Y" }}
+                                        {% if item.registro.instrutor %} por {{ item.registro.instrutor.nome }}{% endif %}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    {% if item.treinado %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Treinado
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning">
+                                            <i class="bi bi-clock"></i> Pendente
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="text-muted text-center">Nenhum procedimento requerido encontrado para este perfil.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

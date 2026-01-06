@@ -1,0 +1,494 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ disc.codigo }}{% endblock %}
+{% block header_title %}{{ disc.codigo }} - {{ disc.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Informações da Disciplina</h5>
+            <div>
+                <a href="{% url 'procedures:editar_disciplina' disc.id %}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+                <a href="{% url 'procedures:disciplinas_list' %}" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-borderless">
+                        <tr>
+                            <th style="width: 30%">Código:</th>
+                            <td><strong class="text-primary">{{ disc.codigo }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Nome:</th>
+                            <td>{{ disc.nome }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if disc.ativo %}
+                                    <span class="badge bg-success">Ativo</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inativo</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6>Descrição:</h6>
+                    <p>{{ disc.descricao|default:"Sem descrição"|linebreaks }}</p>
+                </div>
+            </div>
+            
+            <hr>
+            
+            <h6>Informações de Registro</h6>
+            <small class="text-muted">
+                Criado em: {{ disc.criado_em|date:"d/m/Y H:i" }}<br>
+                Atualizado em: {{ disc.atualizado_em|date:"d/m/Y H:i" }}
+            </small>
+        </div>
+    </div>
+    
+    <!-- PROCEDIMENTOS ASSOCIADOS -->
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-diagram-2"></i> Procedimentos Associados (1:N)
+            </h5>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#adicionarProcedimentoModal">
+                <i class="bi bi-plus-circle"></i> Adicionar Procedimento
+            </button>
+        </div>
+        <div class="card-body">
+            {% if procedimentos_associados %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 5%">Ordem</th>
+                                <th style="width: 15%">Código</th>
+                                <th style="width: 45%">Nome do Procedimento</th>
+                                <th style="width: 15%">Obrigatório</th>
+                                <th style="width: 20%">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assoc in procedimentos_associados %}
+                                <tr id="proc_{{ assoc.id }}">
+                                    <td>
+                                        <span class="badge bg-info">{{ assoc.ordem }}</span>
+                                    </td>
+                                    <td>
+                                        <strong class="text-primary">{{ assoc.procedimento.codigo }}</strong>
+                                    </td>
+                                    <td>
+                                        {{ assoc.procedimento.nome }}
+                                    </td>
+                                    <td>
+                                        {% if assoc.obrigatorio %}
+                                            <span class="badge bg-success">✓ Sim</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Não</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'procedures:detalhe_procedimento' assoc.procedimento.id %}" 
+                                           class="btn btn-sm btn-outline-primary" 
+                                           title="Ver procedimento">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger" 
+                                                onclick="removerProcedimento({{ assoc.id }}, '{{ assoc.procedimento.codigo }}', '{{ disc.id }}')" 
+                                                title="Remover associação">
+                                            <i class="bi bi-trash"></i> Remover
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    Nenhum procedimento associado ainda. Clique em "Adicionar Procedimento" para associar.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ADICIONAR PROCEDIMENTO(S) -->
+<div class="modal fade" id="adicionarProcedimentoModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle"></i> Adicionar Procedimento(s) a {{ disc.codigo }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- FILTROS -->
+                <div class="card mb-4 bg-light">
+                    <div class="card-header bg-secondary text-white">
+                        <h6 class="mb-0"><i class="bi bi-funnel"></i> Filtros</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Busca -->
+                            <div class="col-md-4">
+                                <label for="busca" class="form-label">
+                                    <i class="bi bi-search"></i> Buscar (Código, Nome)
+                                </label>
+                                <input type="text" 
+                                       id="busca" 
+                                       class="form-control" 
+                                       placeholder="Ex: DEX.002 ou ISO 9001"
+                                       onkeyup="filtrarProcedimentos()">
+                            </div>
+                            
+                            <!-- Matriz -->
+                            <div class="col-md-4">
+                                <label for="matrizFiltro" class="form-label">
+                                    <i class="bi bi-grid"></i> Matriz
+                                </label>
+                                <select id="matrizFiltro" 
+                                        class="form-select" 
+                                        onchange="filtrarProcedimentos()">
+                                    <option value="">-- Todas as Matrizes --</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Subgrupo/Subárea -->
+                            <div class="col-md-4">
+                                <label for="subareaFiltro" class="form-label">
+                                    <i class="bi bi-diagram-3"></i> Subgrupo/Subárea
+                                </label>
+                                <select id="subareaFiltro" 
+                                        class="form-select" 
+                                        onchange="filtrarProcedimentos()">
+                                    <option value="">-- Todos os Subgrupos --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- LISTA DE PROCEDIMENTOS COM CHECKBOX -->
+                <div class="card">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="bi bi-list-check"></i> Procedimentos Disponíveis
+                            <span id="contadorResultados" class="badge bg-white text-info ms-2">0</span>
+                        </h6>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-light" onclick="selecionarTodos()">
+                                <i class="bi bi-check-all"></i> Selecionar Todos
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light" onclick="desselecinarTodos()">
+                                <i class="bi bi-x-circle"></i> Desselecionar Todos
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                        <div id="listaProcedimentos">
+                            <div class="text-center text-muted py-5">
+                                <i class="bi bi-hourglass-split"></i> Carregando procedimentos...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CONFIGURAÇÕES -->
+                <div class="card mt-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h6 class="mb-0"><i class="bi bi-gear"></i> Configurações</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="ordemMultipla" class="form-label">
+                                    <strong>Ordem de Início</strong>
+                                </label>
+                                <input type="number" 
+                                       id="ordemMultipla" 
+                                       class="form-control" 
+                                       value="0" 
+                                       min="0">
+                                <small class="text-muted">Ordem será incrementada automaticamente</small>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label">
+                                    <strong>Obrigatoriedade</strong>
+                                </label>
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="obrigatorioMultiplo" 
+                                           checked>
+                                    <label class="form-check-label" for="obrigatorioMultiplo">
+                                        Todos os selecionados serão obrigatórios
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- INFO SELECIONADOS -->
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="bi bi-info-circle"></i>
+                    <span id="infoSelecionados">Nenhum procedimento selecionado</span>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> Cancelar
+                </button>
+                <form method="POST" action="{% url 'procedures:adicionar_multiplos_procedimentos' disc.id %}" 
+                      id="formAdicionarMultiplos" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" id="procedimentosSelecionados" name="procedimento_ids[]" value="">
+                    <input type="hidden" name="ordem" id="ordemSubmit">
+                    <input type="hidden" name="obrigatorio" id="obrigatorioSubmit">
+                    <button type="submit" class="btn btn-primary" id="btnAdicionarMultiplos" disabled>
+                        <i class="bi bi-check-circle"></i> Adicionar Selecionados
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Estado global
+let procedimentosCarregados = [];
+let procedimentosSelecionados = new Set();
+
+const disciplinaId = {{ disc.id }};
+
+// Função para carregar opções de filtro
+function carregarOpcoesFiltro() {
+    fetch(`/procedures/disciplinas/${disciplinaId}/api/opcoes-filtro/`)
+        .then(response => response.json())
+        .then(data => {
+            // Popular dropdown de matrizes
+            const matrizSelect = document.getElementById('matrizFiltro');
+            data.matrizes.forEach(matriz => {
+                const option = document.createElement('option');
+                option.value = matriz;
+                option.textContent = matriz;
+                matrizSelect.appendChild(option);
+            });
+            
+            // Popular dropdown de subáreas
+            const subareaSelect = document.getElementById('subareaFiltro');
+            data.subareas.forEach(subarea => {
+                const option = document.createElement('option');
+                option.value = subarea;
+                option.textContent = subarea;
+                subareaSelect.appendChild(option);
+            });
+            
+            // Carregar todos os procedimentos inicialmente
+            filtrarProcedimentos();
+        })
+        .catch(error => {
+            console.error('Erro ao carregar opções:', error);
+            document.getElementById('listaProcedimentos').innerHTML = 
+                '<div class="alert alert-danger">Erro ao carregar opções de filtro</div>';
+        });
+}
+
+// Função para filtrar procedimentos
+function filtrarProcedimentos() {
+    const busca = document.getElementById('busca').value;
+    const matriz = document.getElementById('matrizFiltro').value;
+    const subarea = document.getElementById('subareaFiltro').value;
+    
+    // Montar query string
+    const params = new URLSearchParams();
+    if (busca) params.append('busca', busca);
+    if (matriz) params.append('matriz', matriz);
+    if (subarea) params.append('subarea', subarea);
+    
+    fetch(`/procedures/disciplinas/${disciplinaId}/api/filtrar-procedimentos/?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            procedimentosCarregados = data;
+            renderizarLista();
+            atualizarInfo();
+        })
+        .catch(error => {
+            console.error('Erro ao filtrar:', error);
+            document.getElementById('listaProcedimentos').innerHTML = 
+                '<div class="alert alert-danger">Erro ao filtrar procedimentos</div>';
+        });
+}
+
+// Função para renderizar lista de procedimentos
+function renderizarLista() {
+    const container = document.getElementById('listaProcedimentos');
+    const contador = document.getElementById('contadorResultados');
+    
+    if (procedimentosCarregados.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-search"></i> Nenhum procedimento encontrado
+            </div>
+        `;
+        contador.textContent = '0';
+        return;
+    }
+    
+    const html = procedimentosCarregados.map(proc => `
+        <div class="form-check mb-3 p-3 border-bottom" style="background-color: ${procedimentosSelecionados.has(proc.id) ? '#e7f3ff' : '#fff'}">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <input class="form-check-input" 
+                           type="checkbox" 
+                           id="proc_${proc.id}"
+                           value="${proc.id}"
+                           ${procedimentosSelecionados.has(proc.id) ? 'checked' : ''}
+                           onchange="atualizarSelecao(${proc.id})">
+                </div>
+                <div class="col">
+                    <label class="form-check-label cursor-pointer" for="proc_${proc.id}" style="cursor: pointer; font-weight: 500;">
+                        <span class="badge bg-primary">${proc.codigo}</span>
+                        ${proc.nome}
+                    </label>
+                    <br>
+                    <small class="text-muted">
+                        ${proc.matriz ? `<i class="bi bi-grid"></i> ${proc.matriz}` : ''}
+                        ${proc.sub_area ? `<i class="bi bi-diagram-3"></i> ${proc.sub_area}` : ''}
+                    </small>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    container.innerHTML = html;
+    contador.textContent = procedimentosCarregados.length;
+}
+
+// Função para atualizar seleção
+function atualizarSelecao(procId) {
+    if (procedimentosSelecionados.has(procId)) {
+        procedimentosSelecionados.delete(procId);
+    } else {
+        procedimentosSelecionados.add(procId);
+    }
+    renderizarLista();
+    atualizarInfo();
+}
+
+// Função para selecionar todos
+function selecionarTodos() {
+    procedimentosCarregados.forEach(proc => {
+        procedimentosSelecionados.add(proc.id);
+    });
+    renderizarLista();
+    atualizarInfo();
+}
+
+// Função para desselecionar todos
+function desselecinarTodos() {
+    procedimentosSelecionados.clear();
+    renderizarLista();
+    atualizarInfo();
+}
+
+// Função para atualizar info de selecionados
+function atualizarInfo() {
+    const info = document.getElementById('infoSelecionados');
+    const btnAdicionar = document.getElementById('btnAdicionarMultiplos');
+    const inputSelecionados = document.getElementById('procedimentosSelecionados');
+    
+    if (procedimentosSelecionados.size === 0) {
+        info.textContent = 'Nenhum procedimento selecionado';
+        btnAdicionar.disabled = true;
+        inputSelecionados.value = '';
+    } else {
+        const nomes = procedimentosCarregados
+            .filter(p => procedimentosSelecionados.has(p.id))
+            .map(p => p.codigo)
+            .join(', ');
+        
+        info.textContent = `${procedimentosSelecionados.size} procedimento(s) selecionado(s): ${nomes}`;
+        btnAdicionar.disabled = false;
+        
+        // Preparar IDs para submit
+        inputSelecionados.value = Array.from(procedimentosSelecionados).join(',');
+    }
+}
+
+// Função para preparar submit
+document.getElementById('formAdicionarMultiplos').addEventListener('submit', function(e) {
+    const ordem = document.getElementById('ordemMultipla').value;
+    const obrigatorio = document.getElementById('obrigatorioMultiplo').checked;
+    
+    document.getElementById('ordemSubmit').value = ordem;
+    document.getElementById('obrigatorioSubmit').value = obrigatorio ? 'on' : 'off';
+    
+    // Reconstruir os IDs no formato esperado pelo form
+    const procedimentoIds = Array.from(procedimentosSelecionados);
+    
+    // Remover inputs antigos
+    document.querySelectorAll('input[name="procedimento_ids[]"]').forEach(el => el.remove());
+    
+    // Adicionar novos inputs
+    procedimentoIds.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'procedimento_ids[]';
+        input.value = id;
+        this.appendChild(input);
+    });
+});
+
+// Inicializar quando modal abre
+document.getElementById('adicionarProcedimentoModal').addEventListener('show.bs.modal', function() {
+    // Limpar estado
+    procedimentosSelecionados.clear();
+    document.getElementById('busca').value = '';
+    document.getElementById('matrizFiltro').value = '';
+    document.getElementById('subareaFiltro').value = '';
+    document.getElementById('ordemMultipla').value = '0';
+    document.getElementById('obrigatorioMultiplo').checked = true;
+    
+    // Carregar dados
+    carregarOpcoesFiltro();
+});
+
+// Função para remover procedimento
+function removerProcedimento(assocId, procCodigo, disciplinaId) {
+    if (confirm(`Tem certeza que deseja remover o procedimento ${procCodigo} desta disciplina?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{% url 'procedures:remover_procedimento_disciplina' disc.id 0 %}`.replace('/0/', `/${assocId}/`);
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrfmiddlewaretoken';
+        csrfToken.value = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+        
+        form.appendChild(csrfToken);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,254 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Dashboard de Gaps{% endblock %}
+{% block header_title %}Análise de Gaps de Competências e Treinamentos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .progress-custom {
+        height: 25px;
+        font-size: 0.875rem;
+    }
+    .stat-card {
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+    }
+    .gap-badge {
+        font-size: 1.1rem;
+        padding: 8px 12px;
+    }
+    .nivel-circle {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: inline-block;
+        text-align: center;
+        line-height: 24px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Estatísticas Gerais -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card stat-card border-primary">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Total de Colaboradores</h6>
+                    <h2 class="mb-0 text-primary">{{ total_colaboradores }}</h2>
+                    <small class="text-muted">com perfis atribuídos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card border-danger">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Total de Gaps</h6>
+                    <h2 class="mb-0 text-danger">{{ total_gaps }}</h2>
+                    <small class="text-muted">treinamentos pendentes</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card border-success">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Completude Média</h6>
+                    <h2 class="mb-0 text-success">{{ avg_completude }}%</h2>
+                    <small class="text-muted">de treinamentos realizados</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-funnel"></i> Filtros</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Setor</label>
+                    <select name="setor" class="form-select">
+                        <option value="">Todos os setores</option>
+                        {% for s in setores %}
+                        <option value="{{ s }}" {% if setor == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Perfil de Treinamento</label>
+                    <select name="perfil" class="form-select">
+                        <option value="">Todos os perfis</option>
+                        {% for p in perfis %}
+                        <option value="{{ p.id }}" {% if perfil_id == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Colaborador</label>
+                    <select name="colaborador" class="form-select">
+                        <option value="">Todos</option>
+                        {% for c in colaboradores %}
+                        <option value="{{ c.id }}" {% if colaborador_id == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'procedures:dashboard_gaps' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Gaps por Colaborador -->
+    <div class="card">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Análise por Colaborador</h6>
+        </div>
+        <div class="card-body p-0">
+            {% if gaps_data %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Colaborador</th>
+                            <th>Perfil</th>
+                            <th class="text-center">Treinamentos</th>
+                            <th class="text-center">Completude</th>
+                            <th class="text-center">Gap</th>
+                            <th class="text-center">Avaliações</th>
+                            <th class="text-center">Nível Médio</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gap in gaps_data %}
+                        <tr>
+                            <td>
+                                <strong>{{ gap.colaborador.nome }}</strong>
+                                {% if gap.colaborador.setor %}
+                                <br><small class="text-muted">{{ gap.colaborador.setor }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'procedures:gaps_por_perfil' gap.perfil.id %}" class="text-decoration-none">
+                                    {{ gap.perfil.nome }}
+                                </a>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-success">{{ gap.total_treinado }}</span> / 
+                                <span class="badge bg-secondary">{{ gap.total_requerido }}</span>
+                            </td>
+                            <td class="text-center">
+                                <div class="progress progress-custom">
+                                    {% if gap.percentual_completude >= 80 %}
+                                        <div class="progress-bar bg-success" style="width: {{ gap.percentual_completude }}%">
+                                            {{ gap.percentual_completude }}%
+                                        </div>
+                                    {% elif gap.percentual_completude >= 50 %}
+                                        <div class="progress-bar bg-warning" style="width: {{ gap.percentual_completude }}%">
+                                            {{ gap.percentual_completude }}%
+                                        </div>
+                                    {% else %}
+                                        <div class="progress-bar bg-danger" style="width: {{ gap.percentual_completude }}%">
+                                            {{ gap.percentual_completude }}%
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                {% if gap.gap_treinamento > 0 %}
+                                    <span class="badge bg-danger gap-badge">{{ gap.gap_treinamento }}</span>
+                                {% else %}
+                                    <span class="badge bg-success gap-badge">
+                                        <i class="bi bi-check-circle"></i> OK
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-info">{{ gap.total_avaliacoes }}</span>
+                                <br>
+                                <div class="mt-1">
+                                    {% if gap.niveis_count.nivel_0 > 0 %}
+                                        <span class="nivel-circle bg-secondary text-white" title="Nível 0">{{ gap.niveis_count.nivel_0 }}</span>
+                                    {% endif %}
+                                    {% if gap.niveis_count.nivel_1 > 0 %}
+                                        <span class="nivel-circle bg-warning" title="Nível 1">{{ gap.niveis_count.nivel_1 }}</span>
+                                    {% endif %}
+                                    {% if gap.niveis_count.nivel_2 > 0 %}
+                                        <span class="nivel-circle bg-info text-white" title="Nível 2">{{ gap.niveis_count.nivel_2 }}</span>
+                                    {% endif %}
+                                    {% if gap.niveis_count.nivel_3 > 0 %}
+                                        <span class="nivel-circle bg-success text-white" title="Nível 3">{{ gap.niveis_count.nivel_3 }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                {% if gap.nivel_medio >= 2.5 %}
+                                    <span class="badge bg-success">{{ gap.nivel_medio }}</span>
+                                {% elif gap.nivel_medio >= 1.5 %}
+                                    <span class="badge bg-warning">{{ gap.nivel_medio }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ gap.nivel_medio }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'procedures:gap_detalhado' gap.colaborador.id %}" 
+                                   class="btn btn-sm btn-outline-primary" title="Ver detalhes">
+                                    <i class="bi bi-zoom-in"></i> Detalhes
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-info-circle"></i>
+                <p>Nenhum colaborador com perfil atribuído encontrado.</p>
+                <p class="small">Atribua perfis aos colaboradores em <a href="{% url 'procedures:perfis_list' %}">Perfis de Treinamento</a>.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Legenda -->
+    <div class="card mt-3">
+        <div class="card-body">
+            <h6 class="mb-3">Legenda:</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-2"><strong>Completude:</strong></p>
+                    <ul class="small">
+                        <li><span class="badge bg-success">Verde</span> - 80% ou mais completo</li>
+                        <li><span class="badge bg-warning">Amarelo</span> - 50% a 79% completo</li>
+                        <li><span class="badge bg-danger">Vermelho</span> - Menos de 50% completo</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-2"><strong>Níveis de Habilidade:</strong></p>
+                    <ul class="small">
+                        <li><span class="nivel-circle bg-secondary text-white">0</span> Não possui conhecimento</li>
+                        <li><span class="nivel-circle bg-warning">1</span> Conhecimento básico</li>
+                        <li><span class="nivel-circle bg-info text-white">2</span> Conhecimento intermediário</li>
+                        <li><span class="nivel-circle bg-success text-white">3</span> Conhecimento avançado</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

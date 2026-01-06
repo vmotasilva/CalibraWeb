@@ -1,0 +1,164 @@
+<!-- Upload do arquivo Excel template -->
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Upload de Template de Lista de Presença{% endblock %}
+
+{% block extrahead %}
+<style>
+    .upload-container {
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+    
+    .upload-box {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        background-color: #f9f9f9;
+        transition: all 0.3s ease;
+    }
+    
+    .upload-box:hover {
+        border-color: #417690;
+        background-color: #f0f7fc;
+    }
+    
+    .upload-box input[type="file"] {
+        display: none;
+    }
+    
+    .upload-box.dragover {
+        border-color: #417690;
+        background-color: #e8f1f8;
+    }
+    
+    .upload-icon {
+        font-size: 48px;
+        margin-bottom: 10px;
+    }
+    
+    .upload-text {
+        font-size: 16px;
+        color: #333;
+        margin: 10px 0;
+    }
+    
+    .file-info {
+        font-size: 12px;
+        color: #666;
+        margin-top: 10px;
+    }
+    
+    .btn-group {
+        margin-top: 20px;
+    }
+    
+    .current-file {
+        background-color: #e8f5e9;
+        border-left: 4px solid #4caf50;
+        padding: 12px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+    }
+    
+    .current-file strong {
+        color: #2e7d32;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <h1>Upload de Template de Lista de Presença</h1>
+    
+    {% if messages %}
+    <ul class="messagelist">
+        {% for message in messages %}
+        <li class="{% if message.tags %}{{ message.tags }}{% endif %}">
+            {{ message }}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    
+    {% if template and template.arquivo_excel_template %}
+    <div class="current-file">
+        <strong>Arquivo atual:</strong> {{ template.arquivo_excel_template.name|slice:"25:" }}
+        <br><small>Enviado em: {{ template.atualizado_em|date:"d/m/Y H:i" }}</small>
+    </div>
+    {% endif %}
+    
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+        {% csrf_token %}
+        
+        <div class="upload-box" id="upload-box">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">
+                <strong>Clique para selecionar</strong> ou arraste um arquivo .xlsx
+            </div>
+            <input type="file" id="arquivo_excel" name="arquivo_excel" accept=".xlsx" required>
+            <div class="file-info">
+                Formato: .xlsx | Tamanho máximo: 5 MB
+            </div>
+        </div>
+        
+        <div id="selected-file" style="margin-top: 20px; display: none;">
+            <p><strong>Arquivo selecionado:</strong> <span id="file-name"></span></p>
+            <p><strong>Tamanho:</strong> <span id="file-size"></span></p>
+        </div>
+        
+        <div class="btn-group">
+            <button type="submit" class="button default">Fazer Upload</button>
+            <a href="{% url 'admin:procedures_templatelistapresenca_changelist' %}" class="button">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    const uploadBox = document.getElementById('upload-box');
+    const fileInput = document.getElementById('arquivo_excel');
+    const selectedFileDiv = document.getElementById('selected-file');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+    
+    // Click to select
+    uploadBox.addEventListener('click', () => fileInput.click());
+    
+    // Drag and drop
+    uploadBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadBox.classList.add('dragover');
+    });
+    
+    uploadBox.addEventListener('dragleave', () => {
+        uploadBox.classList.remove('dragover');
+    });
+    
+    uploadBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadBox.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            updateFileInfo();
+        }
+    });
+    
+    // Update on change
+    fileInput.addEventListener('change', updateFileInfo);
+    
+    function updateFileInfo() {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            fileName.textContent = file.name;
+            fileSize.textContent = (file.size / 1024).toFixed(2) + ' KB';
+            selectedFileDiv.style.display = 'block';
+        } else {
+            selectedFileDiv.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

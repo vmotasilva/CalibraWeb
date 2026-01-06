@@ -1,0 +1,60 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block header_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header">
+            <h5>{{ titulo }}</h5>
+        </div>
+        <div class="card-body">
+            {% if not perfil %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> 
+                <strong>Código Automático:</strong> O código do perfil será gerado automaticamente (ex: PERF001, PERF002, etc).
+                Após criar o perfil, você poderá adicionar grupos e subgrupos de treinamento.
+            </div>
+            {% endif %}
+            
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label class="form-label">{{ form.nome.label }} *</label>
+                    {{ form.nome }}
+                    {% if form.nome.errors %}
+                        <div class="text-danger small">{{ form.nome.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">{{ form.descricao.label }}</label>
+                    {{ form.descricao }}
+                    <small class="text-muted">Descreva os requisitos, responsabilidades e objetivos deste perfil</small>
+                    {% if form.descricao.errors %}
+                        <div class="text-danger small">{{ form.descricao.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-check mb-3">
+                    {{ form.ativo }}
+                    <label class="form-check-label" for="{{ form.ativo.id_for_label }}">
+                        {{ form.ativo.label }}
+                    </label>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Salvar
+                    </button>
+                    <a href="{% url 'procedures:perfis_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

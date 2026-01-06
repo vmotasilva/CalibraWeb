@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gerar Lista de Presença{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'procedures:lista_presenca_list' %}">Listas de Presença</a></li>
+                    <li class="breadcrumb-item active">Gerar Nova Lista</li>
+                </ol>
+            </nav>
+
+            <!-- Card Principal -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-file-alt"></i> Gerar Lista de Presença com Template
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <!-- Instruções -->
+                    <div class="alert alert-info" role="alert">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-lightbulb"></i> Siga os Passos
+                        </h5>
+                        <ol class="mb-0">
+                            <li>Selecione um <strong>planejamento de treinamento</strong> já criado</li>
+                            <li>Escolha um <strong>template</strong> que já tenha seus campos mapeados</li>
+                            <li>O sistema usará o template para gerar a lista de presença</li>
+                            <li>Os campos serão preenchidos automaticamente com dados do planejamento</li>
+                        </ol>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- Seleção de Planejamento -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="fas fa-graduation-cap"></i> Selecione um Planejamento
+                            </h5>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="50"></th>
+                                            <th>Título</th>
+                                            <th>Instrutor</th>
+                                            <th>Data Prevista</th>
+                                            <th>Status</th>
+                                            <th>Procedimentos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if planejamentos %}
+                                            {% for planejamento in planejamentos %}
+                                            <tr class="planejamento-row" data-id="{{ planejamento.id }}">
+                                                <td>
+                                                    <input type="radio" name="planejamento_id" 
+                                                           value="{{ planejamento.id }}" class="form-check-input"
+                                                           onchange="selecionarPlanejamento({{ planejamento.id }})">
+                                                </td>
+                                                <td>
+                                                    <strong>{{ planejamento.titulo }}</strong>
+                                                    {% if planejamento.descricao %}
+                                                    <br>
+                                                    <small class="text-muted">{{ planejamento.descricao|truncatewords:15 }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if planejamento.instrutor %}
+                                                        {{ planejamento.instrutor.nome_completo }}
+                                                    {% else %}
+                                                        <span class="text-muted">Não definido</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info">
+                                                        {{ planejamento.data_prevista|date:"d/m/Y" }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {% if planejamento.status == 'pendente' %}
+                                                        <span class="badge bg-warning">Pendente</span>
+                                                    {% elif planejamento.status == 'agendado' %}
+                                                        <span class="badge bg-info">Agendado</span>
+                                                    {% elif planejamento.status == 'realizado' %}
+                                                        <span class="badge bg-success">Realizado</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">{{ planejamento.status }}</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary">
+                                                        {{ planejamento.procedimentos.count }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted py-4">
+                                                    <i class="fas fa-inbox"></i><br>
+                                                    Nenhum planejamento de treinamento disponível.
+                                                    <a href="{% url 'procedures:novo_planejamento' %}">Criar um novo planejamento</a>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {% if planejamentos %}
+                        <!-- Seleção de Template -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="fas fa-file"></i> Selecione um Template
+                            </h5>
+                            <div class="row" id="templates-container">
+                                {% if templates %}
+                                    {% for template in templates %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="card template-card cursor-pointer" 
+                                             data-id="{{ template.id }}"
+                                             onclick="selecionarTemplate({{ template.id }})">
+                                            <div class="card-body">
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="radio" 
+                                                           name="template_id" value="{{ template.id }}"
+                                                           id="template_{{ template.id }}">
+                                                    <label class="form-check-label" for="template_{{ template.id }}">
+                                                        <strong>{{ template.nome }}</strong>
+                                                    </label>
+                                                </div>
+
+                                                {% if template.descricao %}
+                                                <p class="card-text text-muted small mb-2">
+                                                    {{ template.descricao }}
+                                                </p>
+                                                {% endif %}
+
+                                                <div class="small">
+                                                    <span class="badge bg-secondary">
+                                                        {{ template.get_tipo_arquivo_display }}
+                                                    </span>
+                                                    <span class="badge bg-info">
+                                                        {{ template.num_paginas }} página(s)
+                                                    </span>
+                                                </div>
+
+                                                <hr class="my-2">
+
+                                                <div class="small text-muted">
+                                                    <strong>Configurado:</strong>
+                                                    <ul class="mb-0">
+                                                        {% if template.tem_cabecalho %}
+                                                        <li><i class="fas fa-check text-success"></i> Com cabeçalho</li>
+                                                        {% endif %}
+                                                        {% if template.tem_listagem_procedimentos %}
+                                                        <li><i class="fas fa-check text-success"></i> Com lista de procedimentos</li>
+                                                        {% endif %}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="col-12">
+                                        <div class="alert alert-warning" role="alert">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            Nenhum template disponível.
+                                            <a href="{% url 'procedures:upload_template_lista_presenca' %}">
+                                                Criar um novo template
+                                            </a>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="d-flex gap-2 justify-content-between">
+                            <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg" id="btn-gerar" disabled>
+                                <i class="fas fa-cogs"></i> Próximo: Personalizar
+                            </button>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS para melhor aparência -->
+<style>
+    .template-card {
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .template-card:hover {
+        border-color: #0d6efd;
+        box-shadow: 0 4px 8px rgba(13, 110, 253, 0.15);
+    }
+
+    .template-card.selected {
+        border-color: #0d6efd;
+        background-color: #f0f7ff;
+    }
+
+    .planejamento-row {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .planejamento-row:hover {
+        background-color: #f8f9fa;
+    }
+
+    .planejamento-row.selected {
+        background-color: #e7f3ff;
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    let planejamentoSelecionado = null;
+    let templateSelecionado = null;
+
+    function selecionarPlanejamento(id) {
+        planejamentoSelecionado = id;
+        
+        // Atualizar visual
+        document.querySelectorAll('.planejamento-row').forEach(row => {
+            row.classList.remove('selected');
+        });
+        document.querySelector(`[data-id="${id}"]`).classList.add('selected');
+        
+        verificarSelecoes();
+    }
+
+    function selecionarTemplate(id) {
+        templateSelecionado = id;
+        
+        // Atualizar visual
+        document.querySelectorAll('.template-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        document.querySelector(`[data-id="${id}"]`).classList.add('selected');
+        
+        // Marcar radio button
+        document.getElementById(`template_${id}`).checked = true;
+        
+        verificarSelecoes();
+    }
+
+    function verificarSelecoes() {
+        const btnGerar = document.getElementById('btn-gerar');
+        if (planejamentoSelecionado && templateSelecionado) {
+            btnGerar.disabled = false;
+        } else {
+            btnGerar.disabled = true;
+        }
+    }
+</script>
+{% endblock %}

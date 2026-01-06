@@ -1,0 +1,587 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ planejamento.titulo }}{% endblock %}
+{% block header_title %}{{ planejamento.titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: none;
+        margin-bottom: 1.5rem;
+    }
+    
+    .card-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        color: white;
+        font-weight: 600;
+    }
+    
+    .item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: white;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .item-row:last-child {
+        border-bottom: none;
+    }
+    
+    .item-row:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Informações Principais -->
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Informações do Planejamento</h5>
+            <div>
+                {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                <a href="{% url 'procedures:editar_planejamento' planejamento.id %}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+                {% endif %}
+                <a href="{% url 'procedures:alterar_status_planejamento' planejamento.id %}" class="btn btn-info btn-sm">
+                    <i class="bi bi-arrow-repeat"></i> Alterar Status
+                </a>
+                <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Título:</strong> {{ planejamento.titulo }}</p>
+                    <p><strong>Status:</strong> 
+                        {% if planejamento.status == 'PLANEJADO' %}
+                            <span class="badge bg-warning">Planejado</span>
+                        {% elif planejamento.status == 'CONFIRMADO' %}
+                            <span class="badge bg-info">Confirmado</span>
+                        {% elif planejamento.status == 'REALIZADO' %}
+                            <span class="badge bg-success">Realizado</span>
+                        {% elif planejamento.status == 'CANCELADO' %}
+                            <span class="badge bg-danger">Cancelado</span>
+                        {% endif %}
+                    </p>
+                    {% if planejamento.descricao %}
+                    <p><strong>Descrição:</strong></p>
+                    <p>{{ planejamento.descricao|linebreaks }}</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Data Prevista:</strong> {{ planejamento.data_prevista|date:"d/m/Y" }}
+                        {% if planejamento.hora_prevista %} às {{ planejamento.hora_prevista }}{% endif %}
+                    </p>
+                    {% if planejamento.data_realizada %}
+                    <p><strong>Data Realizada:</strong> {{ planejamento.data_realizada|date:"d/m/Y" }}</p>
+                    {% endif %}
+                    <p><strong>Instrutor:</strong> {{ planejamento.instrutor.nome|default:"Não definido" }}</p>
+                    {% if planejamento.local %}
+                    <p><strong>Local:</strong> {{ planejamento.local }}</p>
+                    {% endif %}
+                    {% if planejamento.carga_horaria %}
+                    <p><strong>Carga Horária:</strong> {{ planejamento.carga_horaria }} minutos</p>
+                    {% endif %}
+                    {% if planejamento.observacoes %}
+                    <p><strong>Observações:</strong></p>
+                    <p class="small">{{ planejamento.observacoes|linebreaks }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Procedimentos -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                <i class="bi bi-file-text"></i> 
+                Procedimentos ({{ planejamento.procedimentos.count }})
+            </h6>
+            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+            <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#procedimentosModal">
+                <i class="bi bi-plus-circle"></i> Adicionar
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            {% if planejamento.procedimentos.exists %}
+            <div id="procedimentos-list">
+                {% for proc in planejamento.procedimentos.all %}
+                <div class="item-row" data-proc-id="{{ proc.id }}">
+                    <div>
+                        <span class="badge bg-primary">{{ proc.codigo }}</span>
+                        <strong>{{ proc.nome }}</strong>
+                        {% if proc.matriz %}
+                        <span class="text-muted small">| Matriz: {{ proc.matriz }}</span>
+                        {% endif %}
+                        {% if proc.sub_area %}
+                        <span class="text-muted small">| Sub-área: {{ proc.sub_area }}</span>
+                        {% endif %}
+                    </div>
+                    {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                    <button class="btn btn-sm btn-outline-danger remover-proc-btn" data-proc-id="{{ proc.id }}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-4">
+                Nenhum procedimento associado
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ações Rápidas -->
+    {% if planejamento.status == 'CONFIRMADO' %}
+    <div class="alert alert-info d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi bi-info-circle"></i>
+            <strong>Treinamento confirmado!</strong> Quando o treinamento for realizado, você pode gerar automaticamente os registros.
+        </div>
+        <a href="{% url 'procedures:criar_registros_planejamento' planejamento.id %}" class="btn btn-success">
+            <i class="bi bi-check-circle"></i> Marcar como Realizado
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Lista de Participantes -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                <i class="bi bi-people"></i> 
+                Participantes ({{ colaboradores_info|length }})
+            </h6>
+            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+            <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#colaboradoresModal">
+                <i class="bi bi-plus-circle"></i> Adicionar
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if colaboradores_info %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Matrícula</th>
+                            <th>Setor</th>
+                            <th class="text-center">Status Treinamento</th>
+                            <th class="text-center">Data Último Treinamento</th>
+                            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                            <th width="80" class="text-center">Ações</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody id="colaboradores-list">
+                        {% for info in colaboradores_info %}
+                        <tr data-colab-id="{{ info.colaborador.id }}">
+                            <td>{{ info.colaborador.nome }}</td>
+                            <td>{{ info.colaborador.matricula|default:"N/A" }}</td>
+                            <td>{{ info.colaborador.setor|default:"N/A" }}</td>
+                            <td class="text-center">
+                                {% if info.treinado %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Treinado
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="bi bi-clock"></i> Pendente
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if info.registro %}
+                                    {{ info.registro.data_treinamento|date:"d/m/Y" }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-danger remover-colab-btn" data-colab-id="{{ info.colaborador.id }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Resumo -->
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div class="alert alert-success mb-0">
+                        <strong>Treinados:</strong> 
+                        {{ treinados_count }} de {{ total_colaboradores }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="alert alert-warning mb-0">
+                        <strong>Pendentes:</strong>
+                        {{ pendentes_count }}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted text-center">Nenhum participante cadastrado.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ação Destrutiva -->
+    {% if planejamento.status == 'PLANEJADO' or planejamento.status == 'CANCELADO' %}
+    <div class="mt-3 text-end">
+        <a href="{% url 'procedures:deletar_planejamento' planejamento.id %}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-trash"></i> Deletar Planejamento
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Procedimentos -->
+<div class="modal fade" id="procedimentosModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Procedimentos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Matriz</label>
+                        <select class="form-select" id="filtro_matriz_proc">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Sub-área</label>
+                        <select class="form-select" id="filtro_subarea_proc">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Palavra-chave</label>
+                        <input type="text" class="form-control" id="filtro_keyword_proc" placeholder="Buscar...">
+                    </div>
+                </div>
+                <div class="d-grid gap-2 mb-3">
+                    <button type="button" class="btn btn-primary" id="buscarProcedimentosBtn">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                </div>
+                <div style="max-height: 400px; overflow-y: auto;" id="resultados_procedimentos">
+                    <p class="text-muted text-center">Use os filtros e clique em Buscar</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="adicionarProcedimentosSelecionados">
+                    <i class="bi bi-plus-circle"></i> Adicionar Selecionados
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Colaboradores -->
+<div class="modal fade" id="colaboradoresModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Colaboradores</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Setor</label>
+                        <select class="form-select" id="filtro_setor_colab">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Cargo</label>
+                        <select class="form-select" id="filtro_cargo_colab">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Palavra-chave</label>
+                        <input type="text" class="form-control" id="filtro_keyword_colab" placeholder="Nome...">
+                    </div>
+                </div>
+                <div class="d-grid gap-2 mb-3">
+                    <button type="button" class="btn btn-primary" id="buscarColaboradoresBtn">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                </div>
+                <div style="max-height: 400px; overflow-y: auto;" id="resultados_colaboradores">
+                    <p class="text-muted text-center">Use os filtros e clique em Buscar</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="adicionarColaboradoresSelecionados">
+                    <i class="bi bi-plus-circle"></i> Adicionar Selecionados
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const planejamentoId = {{ planejamento.id }};
+    const csrfToken = '{{ csrf_token }}';
+    
+    // Carregar opções de filtros
+    carregarMatrizes();
+    carregarSetores();
+    carregarCargos();
+    
+    // Buscar procedimentos
+    document.getElementById('buscarProcedimentosBtn').addEventListener('click', buscarProcedimentos);
+    
+    // Buscar colaboradores
+    document.getElementById('buscarColaboradoresBtn').addEventListener('click', buscarColaboradores);
+    
+    // Adicionar procedimentos selecionados
+    document.getElementById('adicionarProcedimentosSelecionados').addEventListener('click', function() {
+        const checkboxes = document.querySelectorAll('#resultados_procedimentos input[type="checkbox"]:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.value);
+        
+        if (ids.length === 0) {
+            alert('Selecione pelo menos um procedimento');
+            return;
+        }
+        
+        const formData = new FormData();
+        ids.forEach(id => formData.append('procedimento_ids', id));
+        
+        fetch(`/procedures/planejamentos/${planejamentoId}/procedimentos/adicionar/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken},
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    });
+    
+    // Adicionar colaboradores selecionados
+    document.getElementById('adicionarColaboradoresSelecionados').addEventListener('click', function() {
+        const checkboxes = document.querySelectorAll('#resultados_colaboradores input[type="checkbox"]:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.value);
+        
+        if (ids.length === 0) {
+            alert('Selecione pelo menos um colaborador');
+            return;
+        }
+        
+        const formData = new FormData();
+        ids.forEach(id => formData.append('colaborador_ids', id));
+        
+        fetch(`/procedures/planejamentos/${planejamentoId}/colaboradores/adicionar/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken},
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    });
+    
+    // Remover procedimento
+    document.querySelectorAll('.remover-proc-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('Remover este procedimento?')) return;
+            
+            const procId = this.dataset.procId;
+            fetch(`/procedures/planejamentos/${planejamentoId}/procedimentos/${procId}/remover/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+    });
+    
+    // Remover colaborador
+    document.querySelectorAll('.remover-colab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('Remover este colaborador?')) return;
+            
+            const colabId = this.dataset.colabId;
+            fetch(`/procedures/planejamentos/${planejamentoId}/colaboradores/${colabId}/remover/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+    });
+    
+    function carregarMatrizes() {
+        fetch('/procedures/api/matrizes/')
+            .then(r => r.json())
+            .then(data => {
+                const select = document.getElementById('filtro_matriz_proc');
+                data.matrizes.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.nome;
+                    opt.textContent = m.nome;
+                    select.appendChild(opt);
+                });
+            });
+    }
+    
+    function carregarSetores() {
+        fetch('/rh/api/setores/')
+            .then(r => r.json())
+            .then(data => {
+                const select = document.getElementById('filtro_setor_colab');
+                data.setores.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s;
+                    select.appendChild(opt);
+                });
+            });
+    }
+    
+    function carregarCargos() {
+        fetch('/rh/api/cargos/')
+            .then(r => r.json())
+            .then(data => {
+                const select = document.getElementById('filtro_cargo_colab');
+                data.cargos.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c;
+                    opt.textContent = c;
+                    select.appendChild(opt);
+                });
+            });
+    }
+    
+    function buscarProcedimentos() {
+        const matriz = document.getElementById('filtro_matriz_proc').value;
+        const subarea = document.getElementById('filtro_subarea_proc').value;
+        const keyword = document.getElementById('filtro_keyword_proc').value;
+        
+        const params = new URLSearchParams({matriz, sub_area: subarea, keyword});
+        
+        fetch(`/procedures/api/procedimentos/?${params}`)
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('resultados_procedimentos');
+                if (data.procedimentos.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center">Nenhum resultado</p>';
+                    return;
+                }
+                
+                let html = '<div class="list-group">';
+                data.procedimentos.forEach(p => {
+                    html += `
+                        <label class="list-group-item">
+                            <input type="checkbox" value="${p.id}" class="form-check-input me-2">
+                            <span class="badge bg-primary">${p.codigo}</span>
+                            <strong>${p.nome}</strong>
+                            ${p.matriz ? `<span class="text-muted small">| ${p.matriz}</span>` : ''}
+                            ${p.sub_area ? `<span class="text-muted small">| ${p.sub_area}</span>` : ''}
+                        </label>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            });
+    }
+    
+    function buscarColaboradores() {
+        const setor = document.getElementById('filtro_setor_colab').value;
+        const cargo = document.getElementById('filtro_cargo_colab').value;
+        const keyword = document.getElementById('filtro_keyword_colab').value;
+        
+        const params = new URLSearchParams({setor, cargo, search: keyword});
+        
+        fetch(`/rh/api/colaboradores/?${params}`)
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('resultados_colaboradores');
+                if (data.colaboradores.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center">Nenhum resultado</p>';
+                    return;
+                }
+                
+                let html = '<div class="list-group">';
+                data.colaboradores.forEach(c => {
+                    html += `
+                        <label class="list-group-item">
+                            <input type="checkbox" value="${c.id}" class="form-check-input me-2">
+                            <strong>${c.nome}</strong>
+                            <span class="text-muted small">| Matrícula: ${c.matricula || 'N/A'}</span>
+                            ${c.setor ? `<span class="text-muted small">| ${c.setor}</span>` : ''}
+                        </label>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            });
+    }
+    
+    // Atualizar sub-áreas quando matriz mudar
+    document.getElementById('filtro_matriz_proc').addEventListener('change', function() {
+        const matriz = this.value;
+        fetch(`/procedures/api/subgrupos/?matriz=${matriz}`)
+            .then(r => r.json())
+            .then(data => {
+                const select = document.getElementById('filtro_subarea_proc');
+                select.innerHTML = '<option value="">Todas</option>';
+                data.sub_areas.forEach(sa => {
+                    const opt = document.createElement('option');
+                    opt.value = sa.nome;
+                    opt.textContent = sa.nome;
+                    select.appendChild(opt);
+                });
+            });
+    });
+});
+</script>
+{% endblock %}

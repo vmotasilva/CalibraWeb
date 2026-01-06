@@ -1,0 +1,645 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Novo Planejamento - Matriz de Habilidades{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-10">
+            <h1>
+                <i class="bi bi-grid-3x3-gap"></i> 
+                Novo Planejamento - Matriz de Habilidades
+            </h1>
+            <p class="text-muted">Selecione uma matriz e disciplina para gerar planejamento baseado nas notas dos colaboradores</p>
+        </div>
+        <div class="col-md-2 text-end">
+            <a href="{% url 'procedures:selecionar_tipo_planejamento' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- SEÇÃO 1: INFORMAÇÕES DO TREINAMENTO -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Informações do Treinamento</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.titulo.label }} <span class="text-danger">*</span></label>
+                                {{ form.titulo }}
+                                {% if form.titulo.errors %}<div class="text-danger small mt-1">{{ form.titulo.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.status.label }} <span class="text-danger">*</span></label>
+                                {{ form.status }}
+                                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO 2: SELEÇÃO DE MATRIZ E DISCIPLINA -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Seleção de Matriz e Disciplina</h6>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        Selecione matriz e disciplina para gerar planejamento baseado nas notas dos colaboradores (notas 0 ou 1)
+                    </div>
+                    
+                    <button type="button" id="btn_abrir_modal_matriz" class="btn btn-primary w-100 mb-3">
+                        <i class="bi bi-grid-3x3-gap"></i> Selecionar Matriz e Disciplina
+                    </button>
+                    <small class="form-text">Clique para selecionar a matriz e disciplina (procedimentos e colaboradores serão carregados automaticamente)</small>
+                    
+                    <!-- Informações da seleção -->
+                    <div id="matriz_selecionada_info" class="alert alert-success mt-3" style="display: none;">
+                        <strong>Matriz selecionada:</strong> <span id="matriz_nome_selecionada">-</span><br>
+                        <strong>Disciplina selecionada:</strong> <span id="disciplina_nome_selecionada">-</span><br>
+                        <strong>Procedimentos carregados:</strong> <span id="count_procedimentos_info">0</span><br>
+                        <strong>Colaboradores sugeridos:</strong> <span id="count_colaboradores_info">0</span>
+                    </div>
+                    
+                    <!-- Hidden inputs para armazenar seleção -->
+                    <input type="hidden" id="hidden_matriz_id" value="">
+                    <input type="hidden" id="hidden_disciplina_id" name="disciplina" value="">
+                </div>
+
+                <!-- SEÇÃO 3: DATAS E INSTRUTOR -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Datas e Instrutor</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.data_prevista.label }} <span class="text-danger">*</span></label>
+                                {{ form.data_prevista }}
+                                {% if form.data_prevista.errors %}<div class="text-danger small mt-1">{{ form.data_prevista.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.instrutor.label }}</label>
+                                {{ form.instrutor }}
+                                {% if form.instrutor.errors %}<div class="text-danger small mt-1">{{ form.instrutor.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.carga_horaria.label }}</label>
+                                {{ form.carga_horaria }}
+                                {% if form.carga_horaria.errors %}<div class="text-danger small mt-1">{{ form.carga_horaria.errors }}</div>{% endif %}
+                                <small class="form-text">Em minutos</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.local.label }}</label>
+                                {{ form.local }}
+                                {% if form.local.errors %}<div class="text-danger small mt-1">{{ form.local.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO 4: PROCEDIMENTOS (Carregados automaticamente) -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Procedimentos da Disciplina</h6>
+                    <p class="text-muted small mb-3">Os procedimentos relacionados à disciplina aparecem aqui automaticamente.</p>
+                    
+                    <div class="card" id="procedimento_container" style="display: none;">
+                        <div class="card-body p-0">
+                            <div id="procedimento_list" style="max-height: 400px; overflow-y: auto;">
+                                <!-- Será preenchido via JavaScript ao selecionar matriz/disciplina -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="procedimento_empty" class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        Selecione uma matriz e disciplina para ver os procedimentos.
+                    </div>
+                    
+                    <!-- Hidden container para armazenar IDs dos procedimentos selecionados -->
+                    <div id="procedimento_hidden_container"></div>
+                </div>
+
+                <!-- SEÇÃO 5: COLABORADORES (Sugeridos automaticamente) -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Colaboradores Sugeridos</h6>
+                    <p class="text-muted small mb-3">Os colaboradores com notas 0 ou 1 nesta disciplina aparecem aqui automaticamente.</p>
+                    
+                    <div class="card" id="colaboradores_container" style="display: none;">
+                        <div class="card-body p-0">
+                            <div id="colaboradores_list" style="max-height: 400px; overflow-y: auto;">
+                                <!-- Será preenchido via JavaScript ao selecionar matriz/disciplina -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="colaboradores_empty" class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        Selecione uma matriz e disciplina para ver os colaboradores sugeridos.
+                    </div>
+                    
+                    <!-- Hidden container para armazenar IDs dos colaboradores selecionados -->
+                    <div id="colaboradores_hidden_container"></div>
+                </div>
+
+                <!-- SEÇÃO 6: OBSERVAÇÕES -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Observações</h6>
+                    
+                    <div class="mb-3">
+                        {{ form.observacoes }}
+                        {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors }}</div>{% endif %}
+                    </div>
+                </div>
+
+                <!-- BOTÕES DE AÇÃO -->
+                <div class="form-section mb-4">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-circle"></i> Criar Planejamento
+                    </button>
+                </div>
+
+                <div class="text-center mb-5">
+                    <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Seleção de Matriz e Disciplina -->
+<div class="modal fade" id="modalMatrizDisciplina" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Selecionar Matriz e Disciplina</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Matriz</label>
+                    <select id="modal_select_matriz" class="form-select">
+                        <option value="">-- Selecione uma Matriz --</option>
+                        {% for matriz in matrizes %}
+                            <option value="{{ matriz.id }}">{{ matriz.nome }}</option>
+                        {% empty %}
+                            <option disabled>Nenhuma matriz disponível</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Disciplina</label>
+                    <select id="modal_select_disciplina" class="form-select">
+                        <option value="">-- Selecione uma Disciplina --</option>
+                        {% for disciplina in disciplinas %}
+                            <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                        {% empty %}
+                            <option disabled>Nenhuma disciplina disponível</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div id="modal_sugestoes_container" style="display: none;" class="mb-3">
+                    <div class="alert alert-info">
+                        <strong>Sugestões automaticamente preenchidas:</strong>
+                        <ul class="mb-0">
+                            <li><strong>Procedimentos:</strong> <span id="modal_count_procedimentos">0</span> encontrados</li>
+                            <li><strong>Colaboradores:</strong> <span id="modal_count_colaboradores">0</span> com notas 0 ou 1</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btn_modal_confirmar" class="btn btn-primary">Confirmar Seleção</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-section {
+        background: #f9f9f9;
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 4px solid #0d6efd;
+    }
+    
+    .section-title {
+        color: #0d6efd;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+    }
+    
+    .list-group-item {
+        border: 1px solid #dee2e6;
+        padding: 10px 15px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        background: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .list-group-item .btn-sm {
+        padding: 2px 8px;
+        font-size: 12px;
+    }
+    
+    .checkbox-item {
+        padding: 12px 15px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .checkbox-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .checkbox-item:last-child {
+        border-bottom: none;
+    }
+    
+    .checkbox-item input[type="checkbox"] {
+        margin: 0;
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+    }
+    
+    .checkbox-item label {
+        flex: 1;
+        margin: 0;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .checkbox-item .item-title {
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .checkbox-item .item-meta {
+        font-size: 12px;
+        color: #6c757d;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnAbrirModalMatriz = document.getElementById('btn_abrir_modal_matriz');
+    const btnModalConfirmar = document.getElementById('btn_modal_confirmar');
+    const modalSelectMatriz = document.getElementById('modal_select_matriz');
+    const modalSelectDisciplina = document.getElementById('modal_select_disciplina');
+    const matrizSelecionadaInfo = document.getElementById('matriz_selecionada_info');
+    const hiddenMatrizId = document.getElementById('hidden_matriz_id');
+    const hiddenDisciplinaId = document.getElementById('hidden_disciplina_id');
+    
+    let matrizSelecionada = null;
+    let disciplinaSelecionada = null;
+    
+    // Garantir que origem está definida como MATRIZ
+    if (!document.querySelector('input[name="origem"]')) {
+        const form = document.querySelector('form');
+        const origemInput = document.createElement('input');
+        origemInput.type = 'hidden';
+        origemInput.name = 'origem';
+        origemInput.value = 'MATRIZ';
+        form.appendChild(origemInput);
+    }
+    
+    // Abrir modal
+    if (btnAbrirModalMatriz) {
+        btnAbrirModalMatriz.addEventListener('click', function() {
+            const modal = new bootstrap.Modal(document.getElementById('modalMatrizDisciplina'));
+            modal.show();
+        });
+    }
+    
+    // Atualizar disciplinas quando matriz for selecionada
+    if (modalSelectMatriz) {
+        modalSelectMatriz.addEventListener('change', async function() {
+            const matrizId = this.value;
+            matrizSelecionada = matrizId;
+            modalSelectDisciplina.innerHTML = '<option value="">-- Selecione uma Disciplina --</option>';
+            document.getElementById('modal_sugestoes_container').style.display = 'none';
+            
+            if (matrizId) {
+                try {
+                    const response = await fetch(`/procedures/api/disciplinas-por-matriz/?matriz_id=${matrizId}`);
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        console.error('[ERRO] Ao carregar disciplinas:', data.error);
+                        return;
+                    }
+                    
+                    // Preencher select de disciplinas
+                    modalSelectDisciplina.innerHTML = '<option value="">-- Selecione uma Disciplina --</option>';
+                    data.disciplinas.forEach(disciplina => {
+                        const option = document.createElement('option');
+                        option.value = disciplina.id;
+                        option.textContent = disciplina.nome;
+                        modalSelectDisciplina.appendChild(option);
+                    });
+                    
+                    console.log('[INFO] Disciplinas carregadas:', data.disciplinas.length);
+                } catch (error) {
+                    console.error('[ERRO] Ao carregar disciplinas:', error);
+                }
+            }
+        });
+    }
+    
+    // Confirmar seleção de matriz e disciplina e carregar dados
+    if (btnModalConfirmar) {
+        btnModalConfirmar.addEventListener('click', async function() {
+            const matrizId = modalSelectMatriz.value;
+            const disciplinaId = modalSelectDisciplina.value;
+            
+            if (!matrizId || !disciplinaId) {
+                alert('Por favor, selecione uma matriz e uma disciplina');
+                return;
+            }
+            
+            // Armazenar valores nos hidden inputs
+            hiddenMatrizId.value = matrizId;
+            hiddenDisciplinaId.value = disciplinaId;
+            
+            // Obter nomes para exibição
+            const matrizNome = modalSelectMatriz.options[modalSelectMatriz.selectedIndex].text;
+            const disciplinaNome = modalSelectDisciplina.options[modalSelectDisciplina.selectedIndex].text;
+            
+            // Atualizar informações na tela
+            document.getElementById('matriz_nome_selecionada').textContent = matrizNome;
+            document.getElementById('disciplina_nome_selecionada').textContent = disciplinaNome;
+            matrizSelecionadaInfo.style.display = 'block';
+            
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalMatrizDisciplina'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Carregar procedimentos e colaboradores
+            await carregarDadosMatrizDisciplina(matrizId, disciplinaId);
+        });
+    }
+    
+    // Carregar procedimentos e colaboradores
+    async function carregarDadosMatrizDisciplina(matrizId, disciplinaId) {
+        try {
+            // Carregar procedimentos
+            const procResponse = await fetch(`/procedures/api/procedimentos-por-disciplina/?disciplina_id=${disciplinaId}`);
+            const procData = await procResponse.json();
+            
+            // Carregar colaboradores
+            const colabResponse = await fetch(`/procedures/api/colaboradores-por-matriz/?matriz_id=${matrizId}&disciplina_id=${disciplinaId}`);
+            const colabData = await colabResponse.json();
+            
+            if (procData.error) {
+                console.error('[ERRO] Ao carregar procedimentos:', procData.error);
+                alert('Erro ao carregar procedimentos: ' + procData.error);
+                return;
+            }
+            
+            if (colabData.error) {
+                console.error('[ERRO] Ao carregar colaboradores:', colabData.error);
+                alert('Erro ao carregar colaboradores: ' + colabData.error);
+                return;
+            }
+            
+            // Atualizar contadores
+            document.getElementById('count_procedimentos_info').textContent = procData.total_procedimentos;
+            document.getElementById('count_colaboradores_info').textContent = colabData.total_colaboradores;
+            
+            // Preencher listas
+            preencherProcedimentos(procData.procedimentos);
+            preencherColaboradores(colabData.colaboradores);
+            
+            console.log('[INFO] Dados carregados com sucesso');
+            console.log('[INFO] Procedimentos:', procData.procedimentos.length);
+            console.log('[INFO] Colaboradores:', colabData.colaboradores.length);
+        } catch (error) {
+            console.error('[ERRO] Ao carregar dados:', error);
+            alert('Erro ao carregar dados: ' + error.message);
+        }
+    }
+    
+    // Preencher lista de procedimentos com checkboxes
+    function preencherProcedimentos(procedimentos) {
+        const procedimentoList = document.getElementById('procedimento_list');
+        procedimentoList.innerHTML = '';
+        
+        if (procedimentos.length === 0) {
+            document.getElementById('procedimento_container').style.display = 'none';
+            document.getElementById('procedimento_empty').style.display = 'block';
+            return;
+        }
+        
+        procedimentos.forEach(proc => {
+            const div = document.createElement('div');
+            div.className = 'checkbox-item';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `proc_${proc.id}`;
+            checkbox.value = proc.id;
+            checkbox.className = 'form-check-input';
+            checkbox.checked = true;
+            checkbox.dataset.type = 'procedimento';
+            
+            const label = document.createElement('label');
+            label.htmlFor = `proc_${proc.id}`;
+            label.innerHTML = `
+                <div class="item-title">${proc.nome || 'Sem título'}</div>
+                <div class="item-meta">
+                    <i class="bi bi-code-square"></i> ${proc.codigo}
+                </div>
+            `;
+            
+            div.appendChild(checkbox);
+            div.appendChild(label);
+            procedimentoList.appendChild(div);
+        });
+        
+        document.getElementById('procedimento_container').style.display = 'block';
+        document.getElementById('procedimento_empty').style.display = 'none';
+        updateProcedimentosHidden();
+        addCheckboxListeners();
+    }
+    
+    // Preencher lista de colaboradores com checkboxes
+    function preencherColaboradores(colaboradores) {
+        const colaboradoresList = document.getElementById('colaboradores_list');
+        colaboradoresList.innerHTML = '';
+        
+        if (colaboradores.length === 0) {
+            document.getElementById('colaboradores_container').style.display = 'none';
+            document.getElementById('colaboradores_empty').style.display = 'block';
+            return;
+        }
+        
+        colaboradores.forEach(colab => {
+            const div = document.createElement('div');
+            div.className = 'checkbox-item';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `colab_${colab.id}`;
+            checkbox.value = colab.id;
+            checkbox.className = 'form-check-input';
+            checkbox.checked = true;
+            checkbox.dataset.type = 'colaborador';
+            
+            const label = document.createElement('label');
+            label.htmlFor = `colab_${colab.id}`;
+            
+            let descricaoNota = '';
+            if (colab.nota_descricao) {
+                descricaoNota = ` | <strong>${colab.nota_descricao}</strong>`;
+            } else if (colab.status) {
+                descricaoNota = ` | <strong>${colab.status}</strong>`;
+            }
+            
+            label.innerHTML = `
+                <div class="item-title">${colab.nome}</div>
+                <div class="item-meta">
+                    <i class="bi bi-card-text"></i> Mat: ${colab.matricula} | 
+                    <i class="bi bi-building"></i> ${colab.setor || 'Sem setor'}
+                    ${descricaoNota}
+                </div>
+            `;
+            
+            div.appendChild(checkbox);
+            div.appendChild(label);
+            colaboradoresList.appendChild(div);
+        });
+        
+        document.getElementById('colaboradores_container').style.display = 'block';
+        document.getElementById('colaboradores_empty').style.display = 'none';
+        updateColaboradoresHidden();
+        addCheckboxListeners();
+    }
+    
+    // Atualizar hidden inputs quando procedimentos são alterados
+    function updateProcedimentosHidden() {
+        const procedimentoContainer = document.getElementById('procedimento_hidden_container');
+        procedimentoContainer.innerHTML = '';
+        
+        const checkboxes = document.querySelectorAll('input[type="checkbox"][data-type="procedimento"]:checked');
+        checkboxes.forEach(checkbox => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'procedimentos';
+            input.value = checkbox.value;
+            procedimentoContainer.appendChild(input);
+        });
+    }
+    
+    // Atualizar hidden inputs quando colaboradores são alterados
+    function updateColaboradoresHidden() {
+        const colaboradorContainer = document.getElementById('colaboradores_hidden_container');
+        colaboradorContainer.innerHTML = '';
+        
+        const checkboxes = document.querySelectorAll('input[type="checkbox"][data-type="colaborador"]:checked');
+        checkboxes.forEach(checkbox => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'colaboradores';
+            input.value = checkbox.value;
+            colaboradorContainer.appendChild(input);
+        });
+    }
+    
+    // Adicionar listeners aos checkboxes
+    function addCheckboxListeners() {
+        const checkboxes = document.querySelectorAll('input[type="checkbox"][data-type]');
+        checkboxes.forEach(checkbox => {
+            checkbox.removeEventListener('change', handleCheckboxChange);
+            checkbox.addEventListener('change', handleCheckboxChange);
+        });
+    }
+    
+    function handleCheckboxChange() {
+        if (this.dataset.type === 'procedimento') {
+            updateProcedimentosHidden();
+        } else if (this.dataset.type === 'colaborador') {
+            updateColaboradoresHidden();
+        }
+    }
+    
+    // Validar formulário antes de submeter
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const colaboradores = document.querySelectorAll('input[type="hidden"][name="colaboradores"]');
+            
+            console.log('[DEBUG] Colaboradores selecionados:', colaboradores.length);
+            
+            if (colaboradores.length === 0) {
+                e.preventDefault();
+                alert('Por favor, selecione pelo menos um colaborador antes de submeter o formulário.');
+            }
+        });
+    }
+});
+</script>
+
+<!-- Select2 JavaScript para busca no campo de instrutor -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar Select2 para o campo de instrutor
+        $('.select2-search').select2({
+            allowClear: true,
+            placeholder: 'Selecione um instrutor...',
+            language: {
+                noResults: function() {
+                    return 'Nenhum resultado encontrado';
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

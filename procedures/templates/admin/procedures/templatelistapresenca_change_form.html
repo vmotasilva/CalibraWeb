@@ -1,0 +1,134 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block title %}{{ block.super }} - Template de Lista de Presença{% endblock %}
+
+{% block extra_css %}
+<style>
+    .action-buttons {
+        background-color: #f0f7fc;
+        border: 1px solid #417690;
+        border-radius: 4px;
+        padding: 12px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .action-buttons a, .action-buttons button {
+        padding: 8px 16px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-upload {
+        background-color: #4caf50;
+        color: white;
+    }
+    
+    .btn-upload:hover {
+        background-color: #45a049;
+    }
+    
+    .btn-mapear {
+        background-color: #2196F3;
+        color: white;
+    }
+    
+    .btn-mapear:hover {
+        background-color: #0b7dda;
+    }
+    
+    .btn-disabled {
+        background-color: #ccc;
+        color: #666;
+        cursor: not-allowed;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        margin-left: 10px;
+    }
+    
+    .badge-completo {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+    }
+    
+    .badge-incompleto {
+        background-color: #fff3e0;
+        color: #e65100;
+    }
+    
+    .info-box {
+        background-color: #e3f2fd;
+        border-left: 4px solid #2196F3;
+        padding: 12px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+    }
+    
+    .info-box strong {
+        color: #1976d2;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    {% if object %}
+    <div class="action-buttons">
+        <strong style="align-self: center;">Ações Rápidas:</strong>
+        
+        <a href="{% url 'procedures:upload_excel_template' pk=object.pk %}" 
+           class="action-button btn-upload">
+            📁 Upload do Excel
+        </a>
+        
+        {% if object.arquivo_excel_template %}
+        <a href="{% url 'procedures:mapear_campos_template' pk=object.pk %}" 
+           class="action-button btn-mapear">
+            🎯 Mapear Campos
+        </a>
+        {% else %}
+        <button disabled class="action-button btn-disabled" title="Faça upload de um arquivo Excel primeiro">
+            🎯 Mapear Campos (Desabilitado)
+        </button>
+        {% endif %}
+    </div>
+    
+    {% if object.arquivo_excel_template %}
+    <div class="info-box">
+        <strong>📊 Arquivo Atual:</strong> {{ object.arquivo_excel_template.name }}
+        {% if object.mapeamento_completo %}
+        <span class="status-badge badge-completo">✓ Mapeamento Completo</span>
+        {% else %}
+        <span class="status-badge badge-incompleto">⚠ Mapeamento Incompleto</span>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% if object.mapeamentos.all %}
+    <div class="info-box">
+        <strong>📋 Campos Mapeados:</strong> {{ object.mapeamentos.count }} de 9 campos obrigatórios
+        <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+            {% for mapeamento in object.mapeamentos.all %}
+            <li>{{ mapeamento.get_tipo_campo_display }}: <code>{{ mapeamento.localizacao }}</code></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    {% endif %}
+    
+    {{ block.super }}
+</div>
+{% endblock %}

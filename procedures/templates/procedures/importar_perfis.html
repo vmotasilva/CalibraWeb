@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Importar Perfis{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'procedures:perfis_list' %}">Perfis</a></li>
+                    <li class="breadcrumb-item active">Importar Perfis</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-file-earmark-excel"></i> Importação Simples - Apenas Perfis
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading"><i class="bi bi-info-circle"></i> Importação Simplificada</h5>
+                        <p>Esta opção importa apenas os perfis de treinamento (código, nome e descrição).</p>
+                        <p class="mb-0">
+                            <strong>Para importação completa</strong> (com grupos, subgrupos, procedimentos e colaboradores), 
+                            use a <a href="{% url 'procedures:importar_estrutura' %}" class="alert-link">Importação Completa</a>.
+                        </p>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="arquivo" class="form-label fw-bold">
+                                <i class="bi bi-upload"></i> Arquivo Excel (Aba: "Perfis"):
+                            </label>
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="arquivo" 
+                                   name="arquivo" 
+                                   accept=".xlsx,.xls" 
+                                   required>
+                            <small class="text-muted">Colunas necessárias: Código Perfil, Nome Perfil, Descrição</small>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-cloud-upload"></i> Importar Perfis
+                            </button>
+                            <a href="{% url 'procedures:importar_estrutura' %}" class="btn btn-outline-success">
+                                <i class="bi bi-box-seam"></i> Ou usar Importação Completa
+                            </a>
+                            <a href="{% url 'procedures:perfis_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Voltar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

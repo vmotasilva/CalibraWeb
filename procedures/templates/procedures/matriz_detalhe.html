@@ -1,0 +1,456 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ matriz.codigo }}{% endblock %}
+{% block header_title %}{{ matriz.codigo }} - {{ matriz.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card mb-3">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Matriz de Habilidades</h5>
+            <div>
+                <a href="{% url 'procedures:editar_matriz' matriz.id %}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+                <a href="{% url 'procedures:matrizes_list' %}" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Código:</strong> <span class="badge bg-primary">{{ matriz.codigo }}</span></p>
+                    <p><strong>Nome:</strong> {{ matriz.nome }}</p>
+                    <p><strong>Status:</strong> 
+                        {% if matriz.ativo %}
+                            <span class="badge bg-success">Ativo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inativo</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Criado em:</strong> {{ matriz.criado_em|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Atualizado em:</strong> {{ matriz.atualizado_em|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Total de Disciplinas:</strong> <span class="badge bg-info">{{ disciplinas.count }}</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-book"></i> Disciplinas da Matriz</h6>
+            <a href="{% url 'procedures:nova_disciplina' %}?matriz={{ matriz.id }}" class="btn btn-sm btn-success">
+                <i class="bi bi-plus-circle"></i> Adicionar Disciplina
+            </a>
+        </div>
+        <div class="card-body">
+            {% if disciplinas %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Código</th>
+                            <th>Nome</th>
+                            <th>Prioridade</th>
+                            <th>Obrigatoriedade Legal</th>
+                            <th>Descrição</th>
+                            <th>Status</th>
+                            <th style="width: 100px">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for disc in disciplinas %}
+                        <tr>
+                            <td><strong>{{ disc.codigo }}</strong></td>
+                            <td>{{ disc.nome }}</td>
+                            <td>
+                                {% if disc.prioridade %}
+                                    <span class="badge bg-info">{{ disc.prioridade }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ disc.obrigatoriedade_legal|default:"-" }}</td>
+                            <td>{{ disc.descricao|truncatewords:10|default:"-" }}</td>
+                            <td>
+                                {% if disc.ativo %}
+                                    <span class="badge bg-success">Ativo</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'procedures:editar_disciplina' disc.id %}" class="btn btn-sm btn-warning" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle"></i>
+                Nenhuma disciplina cadastrada ainda. 
+                <a href="{% url 'procedures:nova_disciplina' %}?matriz={{ matriz.id }}" class="alert-link">Clique aqui para adicionar a primeira disciplina</a>.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Seção de Colaboradores Associados -->
+    <div class="card mt-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-people"></i> Colaboradores Associados para Avaliação</h6>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalAssociarColaboradores" onclick="abrirModalAssociacoes({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
+                    <i class="bi bi-plus-circle"></i> Adicionar Colaboradores
+                </button>
+                {% if matriz.colaboradores.all %}
+                <a href="{% url 'procedures:avaliar_matriz' matriz.id %}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-check-square"></i> Avaliar Colaboradores
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+            {% if matriz.colaboradores.all %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Matrícula</th>
+                            <th>Nome do Colaborador</th>
+                            <th>Setor</th>
+                            <th>Data de Atribuição</th>
+                            <th style="width: 80px">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assoc in matriz.colaboradores.all %}
+                        <tr>
+                            <td><strong>{{ assoc.colaborador.matricula }}</strong></td>
+                            <td>
+                                <a href="/rh/colaborador/{{ assoc.colaborador.id }}/" class="text-decoration-none">
+                                    {{ assoc.colaborador.nome_completo }}
+                                </a>
+                            </td>
+                            <td>{{ assoc.colaborador.setor|default:"-" }}</td>
+                            <td>{{ assoc.data_atribuicao|date:"d/m/Y" }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="removerColaboradorMatriz({{ assoc.id }}, '{{ assoc.colaborador.nome_completo }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle"></i>
+                Nenhum colaborador associado ainda. 
+                <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#modalAssociarColaboradores" onclick="abrirModalAssociacoes({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
+                    Clique aqui para adicionar colaboradores
+                </button>.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Associar Colaboradores -->
+<div class="modal fade" id="modalAssociarColaboradores" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <div>
+                    <h5 class="modal-title mb-1"><i class="bi bi-people-fill"></i> Associar Colaboradores</h5>
+                    <small id="modal-matriz-info" class="text-white-50"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="" id="form-associar-colaboradores">
+                {% csrf_token %}
+                <input type="hidden" name="matriz_id" id="matriz-id">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Use os filtros abaixo para buscar colaboradores e selecione os que devem ser avaliados. <strong>Nota:</strong> Use o botão de remover na tabela abaixo para desassociar colaboradores.
+                    </div>
+                    
+                    <!-- Filtros de Busca -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Filtros de Busca</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Nome ou Matrícula</label>
+                                    <input type="text" class="form-control" id="filtro-termo" placeholder="Digite nome ou matrícula...">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Setor</label>
+                                    <select class="form-select" id="filtro-setor">
+                                        <option value="">-- Todos --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Líder</label>
+                                    <select class="form-select" id="filtro-lider">
+                                        <option value="">-- Todos --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Supervisor</label>
+                                    <select class="form-select" id="filtro-supervisor">
+                                        <option value="">-- Todos --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Turno</label>
+                                    <select class="form-select" id="filtro-turno">
+                                        <option value="">-- Todos --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button type="button" class="btn btn-primary w-100" onclick="buscarColaboradores()">
+                                        <i class="bi bi-search"></i> Buscar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de colaboradores -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label mb-0"><strong>Colaboradores encontrados:</strong></label>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selecionarTodos()">
+                                <i class="bi bi-check-all"></i> Selecionar Todos
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="desseleccionarTodos()">
+                                <i class="bi bi-x-circle"></i> Desselecionar Todos
+                            </button>
+                        </div>
+                    </div>
+                    <div id="lista-colaboradores" style="max-height: 350px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px;">
+                        <p class="text-muted text-center py-3">Use os filtros acima para buscar colaboradores</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Salvar Associações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Dados dos colaboradores
+let colaboradoresData = [];
+let opcoesSetores = [];
+let opcoesLideres = [];
+let opcoesSupervisores = [];
+let opçõesTurnos = [];
+
+// Função para inicializar os selects de filtro
+function inicializarFiltros() {
+    fetch(`/procedures/api/filtros-colaboradores/`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        opcoesSetores = data.setores || [];
+        opcoesLideres = data.lideres || [];
+        opcoesSupervisores = data.supervisores || [];
+        opçõesTurnos = data.turnos || [];
+        
+        // Preencher selects
+        preencherSelect('filtro-setor', opcoesSetores, 'id', 'nome');
+        preencherSelect('filtro-lider', opcoesLideres, 'id', 'nome_completo');
+        preencherSelect('filtro-supervisor', opcoesSupervisores, 'id', 'nome_completo');
+        preencherSelect('filtro-turno', opçõesTurnos, 'valor', 'label');
+    })
+    .catch(error => console.error('Erro ao carregar filtros:', error));
+}
+
+// Função para preencher selects
+function preencherSelect(selectId, opcoes, valueKey, labelKey) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    
+    const atual = select.innerHTML;
+    let html = atual; // Manter a opção "-- Todos --"
+    
+    opcoes.forEach(opcao => {
+        html += `<option value="${opcao[valueKey]}">${opcao[labelKey]}</option>`;
+    });
+    
+    select.innerHTML = html;
+}
+
+// Função para abrir modal
+function abrirModalAssociacoes(matrizId, matrizCodigo, matrizNome) {
+    document.getElementById('matriz-id').value = matrizId;
+    document.getElementById('modal-matriz-info').textContent = `${matrizCodigo} - ${matrizNome}`;
+    inicializarFiltros();
+}
+
+// Função para buscar colaboradores
+function buscarColaboradores() {
+    const termo = document.getElementById('filtro-termo').value;
+    const setor = document.getElementById('filtro-setor').value;
+    const lider = document.getElementById('filtro-lider').value;
+    const supervisor = document.getElementById('filtro-supervisor').value;
+    const turno = document.getElementById('filtro-turno').value;
+    const matrizId = document.getElementById('matriz-id').value;
+    
+    // Validar se pelo menos um filtro foi preenchido
+    if (!termo && !setor && !lider && !supervisor && !turno) {
+        alert('Por favor, preencha pelo menos um filtro de busca');
+        return;
+    }
+    
+    // Construir query string
+    let params = new URLSearchParams();
+    if (termo) params.append('termo', termo);
+    if (setor) params.append('setor', setor);
+    if (lider) params.append('lider', lider);
+    if (supervisor) params.append('supervisor', supervisor);
+    if (turno) params.append('turno', turno);
+    
+    document.getElementById('lista-colaboradores').innerHTML = '<p class="text-center py-3">Carregando...</p>';
+    
+    fetch(`/procedures/matriz/${matrizId}/colaboradores/?${params}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        colaboradoresData = data.colaboradores;
+        renderizarColaboradores();
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        document.getElementById('lista-colaboradores').innerHTML = '<p class="text-danger text-center py-3">Erro ao carregar colaboradores. Tente novamente.</p>';
+    });
+}
+
+// Função para renderizar lista de colaboradores
+function renderizarColaboradores() {
+    const container = document.getElementById('lista-colaboradores');
+    
+    if (colaboradoresData.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center py-3">Nenhum colaborador encontrado com os filtros aplicados</p>';
+        return;
+    }
+    
+    let html = '';
+    colaboradoresData.forEach(colab => {
+        html += `
+            <div class="form-check mb-2 pb-2 border-bottom">
+                <input class="form-check-input colab-checkbox" 
+                       type="checkbox" 
+                       name="colaboradores" 
+                       value="${colab.id}" 
+                       id="colab-${colab.id}"
+                       ${colab.associado ? 'checked' : ''}>
+                <label class="form-check-label w-100" for="colab-${colab.id}" style="cursor: pointer;">
+                    <div>
+                        <strong>${colab.nome}</strong>
+                        <small class="text-muted d-block">Matrícula: ${colab.matricula} | Setor: ${colab.setor || '-'}</small>
+                    </div>
+                </label>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Função para selecionar todos os colaboradores
+function selecionarTodos() {
+    const checkboxes = document.querySelectorAll('.colab-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+// Função para desselecionar todos os colaboradores
+function desseleccionarTodos() {
+    const checkboxes = document.querySelectorAll('.colab-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+// Tratamento do formulário
+document.getElementById('form-associar-colaboradores').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const matrizId = document.getElementById('matriz-id').value;
+    const colaboradoresChecked = Array.from(
+        document.querySelectorAll('.colab-checkbox:checked')
+    ).map(cb => parseInt(cb.value));
+    
+    fetch(`/procedures/matriz/${matrizId}/colaboradores/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ colaboradores: colaboradoresChecked })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Colaboradores associados com sucesso!');
+            bootstrap.Modal.getInstance(document.getElementById('modalAssociarColaboradores')).hide();
+            // Recarregar a página para atualizar a listagem
+            location.reload();
+        } else {
+            alert('Erro ao associar colaboradores: ' + (data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        alert('Erro na requisição: ' + error);
+    });
+});
+
+// Função para remover colaborador da matriz
+function removerColaboradorMatriz(assocId, nomeColaborador) {
+    if (!confirm(`Deseja remover ${nomeColaborador} desta matriz?`)) {
+        return;
+    }
+    
+    fetch(`/procedures/colaborador-matriz/${assocId}/remover/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Colaborador removido com sucesso!');
+            location.reload();
+        } else {
+            alert('Erro ao remover colaborador: ' + (data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        alert('Erro na requisição: ' + error);
+    });
+}
+</script>
+{% endblock %}

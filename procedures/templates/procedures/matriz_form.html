@@ -1,0 +1,49 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block header_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">{{ titulo }}</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label class="form-label">{{ form.nome.label }} *</label>
+                    {{ form.nome }}
+                    {% if form.nome.errors %}
+                        <div class="text-danger small">{{ form.nome.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">O código da matriz será gerado automaticamente (MAT001, MAT002, etc.)</div>
+                </div>
+                
+                <div class="form-check mb-3">
+                    {{ form.ativo }}
+                    <label class="form-check-label" for="{{ form.ativo.id_for_label }}">
+                        {{ form.ativo.label }}
+                    </label>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Próximo passo:</strong> Após salvar a matriz, você poderá cadastrar as disciplinas vinculadas a ela.
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Salvar
+                    </button>
+                    <a href="{% url 'procedures:matrizes_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

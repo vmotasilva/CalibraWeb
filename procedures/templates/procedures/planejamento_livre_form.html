@@ -1,0 +1,880 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Novo Planejamento - Planejamento Livre{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-10">
+            <h1>
+                <i class="bi bi-pencil-square"></i> 
+                Novo Planejamento - Planejamento Livre
+            </h1>
+            <p class="text-muted">Escolha manualmente os procedimentos e colaboradores para o treinamento</p>
+        </div>
+        <div class="col-md-2 text-end">
+            <a href="{% url 'procedures:selecionar_tipo_planejamento' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- SEÇÃO 1: INFORMAÇÕES DO TREINAMENTO -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Informações do Treinamento</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.titulo.label }} <span class="text-danger">*</span></label>
+                                {{ form.titulo }}
+                                {% if form.titulo.errors %}<div class="text-danger small mt-1">{{ form.titulo.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.status.label }} <span class="text-danger">*</span></label>
+                                {{ form.status }}
+                                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO 2: DATAS E INSTRUTOR -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Datas e Instrutor</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.data_prevista.label }} <span class="text-danger">*</span></label>
+                                {{ form.data_prevista }}
+                                {% if form.data_prevista.errors %}<div class="text-danger small mt-1">{{ form.data_prevista.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.instrutor.label }}</label>
+                                {{ form.instrutor }}
+                                {% if form.instrutor.errors %}<div class="text-danger small mt-1">{{ form.instrutor.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.carga_horaria.label }}</label>
+                                {{ form.carga_horaria }}
+                                {% if form.carga_horaria.errors %}<div class="text-danger small mt-1">{{ form.carga_horaria.errors }}</div>{% endif %}
+                                <small class="form-text">Em minutos</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">{{ form.local.label }}</label>
+                                {{ form.local }}
+                                {% if form.local.errors %}<div class="text-danger small mt-1">{{ form.local.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO 3: PROCEDIMENTOS -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Procedimentos</h6>
+                    <p class="text-muted small mb-3">Selecione os procedimentos que serão abordados neste treinamento.</p>
+                    
+                    <div class="list-group mb-3" id="procedimento_list" style="display: none; max-height: 400px; overflow-y: auto;">
+                        <!-- Será preenchido via JavaScript -->
+                    </div>
+                    
+                    <div id="procedimento_empty" class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        Nenhum procedimento selecionado. 
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#procedimentoModal">
+                            <i class="bi bi-plus-circle"></i> Adicionar Procedimento
+                        </button>
+                    </div>
+
+                    <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#procedimentoModal">
+                        <i class="bi bi-plus-circle"></i> Adicionar Procedimento
+                    </button>
+                    
+                    <!-- Hidden container para armazenar IDs dos procedimentos selecionados -->
+                    <div id="procedimento_hidden_container"></div>
+                </div>
+
+                <!-- SEÇÃO 4: COLABORADORES -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Colaboradores</h6>
+                    <p class="text-muted small mb-3">Selecione os colaboradores que participarão do treinamento.</p>
+                    
+                    <div class="list-group mb-3" id="colaboradores_list" style="display: none; max-height: 400px; overflow-y: auto;">
+                        <!-- Será preenchido via JavaScript -->
+                    </div>
+                    
+                    <div id="colaboradores_empty" class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        Nenhum colaborador selecionado. 
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#colaboradoresModal">
+                            <i class="bi bi-plus-circle"></i> Adicionar Colaborador
+                        </button>
+                    </div>
+
+                    <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#colaboradoresModal">
+                        <i class="bi bi-plus-circle"></i> Adicionar Colaborador
+                    </button>
+                    
+                    <!-- Hidden container para armazenar IDs dos colaboradores selecionados -->
+                    <div id="colaboradores_hidden_container"></div>
+                </div>
+
+                <!-- SEÇÃO 5: OBSERVAÇÕES -->
+                <div class="form-section mb-4">
+                    <h6 class="section-title mb-3">Observações</h6>
+                    
+                    <div class="mb-3">
+                        {{ form.observacoes }}
+                        {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors }}</div>{% endif %}
+                    </div>
+                </div>
+
+                <!-- BOTÕES DE AÇÃO -->
+                <div class="form-section mb-4">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-circle"></i> Criar Planejamento
+                    </button>
+                </div>
+
+                <div class="text-center mb-5">
+                    <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Procedimentos -->
+<div class="modal fade" id="procedimentoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Selecionar Procedimentos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small">Grupo</label>
+                        <select id="procedimento_filtro_grupo" class="form-select form-select-sm">
+                            <option value="">Todos os grupos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Sub-área</label>
+                        <select id="procedimento_filtro_subgrupo" class="form-select form-select-sm">
+                            <option value="">Todos os sub-grupos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Busca -->
+                <div class="mb-3">
+                    <label class="form-label small">Pesquisar por código ou nome</label>
+                    <input type="text" id="procedimento_search" class="form-control form-control-sm" placeholder="Ex: PC001 ou Procedimento...">
+                </div>
+
+                <!-- Lista de procedimentos -->
+                <div id="procedimento_modal_list" style="max-height: 500px; overflow-y: auto;">
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-hourglass-split"></i> Carregando procedimentos...
+                    </div>
+                </div>
+
+                <!-- Botões de ação -->
+                <div class="mt-3 pt-3 border-top d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn_selecionar_filtrados">
+                        <i class="bi bi-check-all"></i> Selecionar Filtrados
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_limpar_selecao">
+                        <i class="bi bi-x"></i> Limpar Seleção
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success ms-auto" id="btn_confirmar_procedimentos" data-bs-dismiss="modal">
+                        <i class="bi bi-check-circle"></i> Adicionar Procedimentos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Colaboradores -->
+<div class="modal fade" id="colaboradoresModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Selecionar Colaboradores</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small">Turno</label>
+                        <select id="colaborador_filtro_turno" class="form-select form-select-sm">
+                            <option value="">Todos os turnos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Setor</label>
+                        <select id="colaborador_filtro_setor" class="form-select form-select-sm">
+                            <option value="">Todos os setores</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small">Líder</label>
+                        <select id="colaborador_filtro_lider" class="form-select form-select-sm">
+                            <option value="">Todos os líderes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Supervisor</label>
+                        <select id="colaborador_filtro_supervisor" class="form-select form-select-sm">
+                            <option value="">Todos os supervisores</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Busca -->
+                <div class="mb-3">
+                    <label class="form-label small">Pesquisar por nome ou matrícula</label>
+                    <input type="text" id="colaborador_search" class="form-control form-control-sm" placeholder="Ex: João Silva ou MAT001...">
+                </div>
+
+                <!-- Lista de colaboradores -->
+                <div id="colaborador_modal_list" style="max-height: 500px; overflow-y: auto;">
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-hourglass-split"></i> Carregando colaboradores...
+                    </div>
+                </div>
+
+                <!-- Botões de ação -->
+                <div class="mt-3 pt-3 border-top d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn_selecionar_colaboradores_filtrados">
+                        <i class="bi bi-check-all"></i> Selecionar Filtrados
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_limpar_colaboradores">
+                        <i class="bi bi-x"></i> Limpar Seleção
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success ms-auto" id="btn_confirmar_colaboradores" data-bs-dismiss="modal">
+                        <i class="bi bi-check-circle"></i> Adicionar Colaboradores
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-section {
+        background: #f9f9f9;
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 4px solid #0d6efd;
+    }
+    
+    .section-title {
+        color: #0d6efd;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+    }
+    
+    .list-group-item {
+        border: 1px solid #dee2e6;
+        padding: 10px 15px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        background: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .list-group-item .btn-sm {
+        padding: 2px 8px;
+        font-size: 12px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const origemField = document.querySelector('input[name="origem"]');
+    
+    // Garantir que origem está definida como LIVRE
+    if (origemField) {
+        origemField.value = 'LIVRE';
+    } else {
+        // Criar input hidden para origem se não existir
+        const form = document.querySelector('form');
+        const origemInput = document.createElement('input');
+        origemInput.type = 'hidden';
+        origemInput.name = 'origem';
+        origemInput.value = 'LIVRE';
+        form.appendChild(origemInput);
+    }
+    
+    // ============================================
+    // MODAL PROCEDIMENTOS - CARREGAMENTO E FILTROS
+    // ============================================
+    const procedimentoModal = document.getElementById('procedimentoModal');
+    const filtroGrupo = document.getElementById('procedimento_filtro_grupo');
+    const filtroSubgrupo = document.getElementById('procedimento_filtro_subgrupo');
+    const searchInput = document.getElementById('procedimento_search');
+    const listaProcedimentos = document.getElementById('procedimento_modal_list');
+    
+    let todosProcedimentos = [];
+    let todosGrupos = new Set();
+    let mapeamentoGrupoSubgrupo = {}; // Map de grupo => [subgrupos]
+    let procedimentosSelecionados = new Set(); // Rastreia IDs dos procedimentos selecionados
+    
+    // Carregar procedimentos quando o modal é aberto
+    if (procedimentoModal) {
+        procedimentoModal.addEventListener('show.bs.modal', function() {
+            // Sempre carregar (não verificar se já foi carregado antes)
+            carregarProcedimentos();
+        });
+    }
+    
+    function carregarProcedimentos() {
+        fetch('/procedures/api/procedimentos/buscar/')
+            .then(response => response.json())
+            .then(data => {
+                todosProcedimentos = data.procedimentos || [];
+                
+                // Coletar grupos únicos e criar mapa grupo => subgrupos
+                todosProcedimentos.forEach(proc => {
+                    if (proc.grupo_nome && proc.grupo_nome !== '-') {
+                        todosGrupos.add(proc.grupo_nome);
+                        
+                        // Inicializar array de subgrupos para este grupo se não existe
+                        if (!mapeamentoGrupoSubgrupo[proc.grupo_nome]) {
+                            mapeamentoGrupoSubgrupo[proc.grupo_nome] = new Set();
+                        }
+                        
+                        // Adicionar subgrupo ao grupo
+                        if (proc.subgrupo_nome && proc.subgrupo_nome !== '-') {
+                            mapeamentoGrupoSubgrupo[proc.grupo_nome].add(proc.subgrupo_nome);
+                        }
+                    }
+                });
+                
+                // Popular select de grupos
+                populaSelectFiltro(filtroGrupo, Array.from(todosGrupos).sort());
+                
+                // Renderizar lista inicial
+                renderizarProcedimentos(todosProcedimentos);
+            })
+            .catch(error => {
+                console.error('Erro ao carregar procedimentos:', error);
+                listaProcedimentos.innerHTML = '<div class="alert alert-danger">Erro ao carregar procedimentos</div>';
+            });
+    }
+    
+    function populaSelectFiltro(selectElement, opcoes) {
+        opcoes.forEach(opcao => {
+            const option = document.createElement('option');
+            option.value = opcao;
+            option.textContent = opcao;
+            selectElement.appendChild(option);
+        });
+    }
+    
+    // Event listener para grupo - quando muda, atualiza os subgrupos
+    if (filtroGrupo) {
+        filtroGrupo.addEventListener('change', function() {
+            const grupoSelecionado = this.value;
+            
+            // Limpar e recarregar subgrupos
+            limparSelectExcetoPrimeira(filtroSubgrupo);
+            
+            if (grupoSelecionado) {
+                // Buscar subgrupos do grupo selecionado
+                const subgruprosDoGrupo = Array.from(mapeamentoGrupoSubgrupo[grupoSelecionado] || []).sort();
+                populaSelectFiltro(filtroSubgrupo, subgruprosDoGrupo);
+            }
+            
+            // Resetar filtro de subgrupo
+            filtroSubgrupo.value = '';
+            
+            // Aplicar filtros
+            aplicarFiltros();
+        });
+    }
+    
+    if (filtroSubgrupo) {
+        filtroSubgrupo.addEventListener('change', aplicarFiltros);
+    }
+    if (searchInput) {
+        searchInput.addEventListener('input', aplicarFiltros);
+    }
+    
+    // Event listeners para botões de ação
+    const btnSelecionarFiltrados = document.getElementById('btn_selecionar_filtrados');
+    const btnLimparSelecao = document.getElementById('btn_limpar_selecao');
+    const btnConfirmarProcedimentos = document.getElementById('btn_confirmar_procedimentos');
+    
+    if (btnSelecionarFiltrados) {
+        btnSelecionarFiltrados.addEventListener('click', function() {
+            // Selecionar todos os checkboxes visíveis
+            document.querySelectorAll('.procedimento-checkbox').forEach(checkbox => {
+                const procId = parseInt(checkbox.value);
+                checkbox.checked = true;
+                procedimentosSelecionados.add(procId);
+            });
+            atualizarProcedimentosSelecionados();
+        });
+    }
+    
+    if (btnLimparSelecao) {
+        btnLimparSelecao.addEventListener('click', function() {
+            // Desselecionar todos os checkboxes
+            document.querySelectorAll('.procedimento-checkbox').forEach(checkbox => {
+                const procId = parseInt(checkbox.value);
+                checkbox.checked = false;
+                procedimentosSelecionados.delete(procId);
+            });
+            atualizarProcedimentosSelecionados();
+        });
+    }
+    
+    if (btnConfirmarProcedimentos) {
+        btnConfirmarProcedimentos.addEventListener('click', function() {
+            // Garantir que os inputs hidden foram atualizados ANTES do modal fechar
+            atualizarProcedimentosSelecionados();
+            
+            // Depois de 100ms (deixar o DOM ser atualizado), deixar o modal fechar
+            // Na verdade, o data-bs-dismiss vai fechar automaticamente
+        });
+    }
+    
+    function limparSelectExcetoPrimeira(selectElement) {
+        // Manter apenas a primeira opção (vazia)
+        while (selectElement.options.length > 1) {
+            selectElement.remove(1);
+        }
+    }
+    
+    function aplicarFiltros() {
+        let procedimentosFiltrados = todosProcedimentos;
+        
+        const grupoSelecionado = filtroGrupo.value;
+        const subgrupoSelecionado = filtroSubgrupo.value;
+        const busca = searchInput.value.toLowerCase();
+        
+        procedimentosFiltrados = procedimentosFiltrados.filter(proc => {
+            const matchGrupo = !grupoSelecionado || proc.grupo_nome === grupoSelecionado;
+            const matchSubgrupo = !subgrupoSelecionado || proc.subgrupo_nome === subgrupoSelecionado;
+            const matchBusca = !busca || 
+                               proc.codigo.toLowerCase().includes(busca) || 
+                               proc.nome.toLowerCase().includes(busca);
+            
+            return matchGrupo && matchSubgrupo && matchBusca;
+        });
+        
+        renderizarProcedimentos(procedimentosFiltrados);
+    }
+    
+    function renderizarProcedimentos(procedimentos) {
+        if (procedimentos.length === 0) {
+            listaProcedimentos.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle"></i> Nenhum procedimento encontrado</div>';
+            return;
+        }
+        
+        let html = '';
+        procedimentos.forEach(proc => {
+            const isSelected = procedimentosSelecionados.has(proc.id);
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input procedimento-checkbox" type="checkbox" id="proc_${proc.id}" value="${proc.id}" ${isSelected ? 'checked' : ''}>
+                    <label class="form-check-label" for="proc_${proc.id}">
+                        <strong>${proc.codigo}</strong> - ${proc.nome}
+                        <br>
+                        <small class="text-muted">${proc.grupo_nome} ${proc.subgrupo_nome !== '-' ? '/ ' + proc.subgrupo_nome : ''}</small>
+                    </label>
+                </div>
+            `;
+        });
+        
+        listaProcedimentos.innerHTML = html;
+        
+        // Adicionar event listeners aos checkboxes
+        document.querySelectorAll('.procedimento-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const procId = parseInt(this.value);
+                if (this.checked) {
+                    procedimentosSelecionados.add(procId);
+                } else {
+                    procedimentosSelecionados.delete(procId);
+                }
+                atualizarProcedimentosSelecionados();
+            });
+        });
+    }
+    
+    function atualizarProcedimentosSelecionados() {
+        const container = document.getElementById('procedimento_hidden_container');
+        const lista = document.getElementById('procedimento_list');
+        
+        // Limpar container anterior
+        container.innerHTML = '';
+        
+        if (procedimentosSelecionados.size === 0) {
+            document.getElementById('procedimento_empty').style.display = 'block';
+            lista.style.display = 'none';
+            return;
+        }
+        
+        document.getElementById('procedimento_empty').style.display = 'none';
+        lista.style.display = 'block';
+        
+        let html = '';
+        
+        // Iterar sobre os procedimentos selecionados
+        procedimentosSelecionados.forEach(procId => {
+            const proc = todosProcedimentos.find(p => p.id === procId);
+            if (proc) {
+                html += `
+                    <div class="list-group-item">
+                        <div>
+                            <strong>${proc.codigo}</strong> - ${proc.nome}
+                            <br>
+                            <small class="text-muted">${proc.grupo_nome} ${proc.subgrupo_nome !== '-' ? '/ ' + proc.subgrupo_nome : ''}</small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="removerProcedimento(${proc.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+            }
+        });
+        
+        lista.innerHTML = html;
+        
+        // Adicionar inputs hidden
+        procedimentosSelecionados.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'procedimentos';
+            input.value = id;
+            container.appendChild(input);
+        });
+    }
+    
+    window.removerProcedimento = function(procedimentoId) {
+        procedimentosSelecionados.delete(procedimentoId);
+        const checkbox = document.getElementById(`proc_${procedimentoId}`);
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+        atualizarProcedimentosSelecionados();
+    };
+    
+    // ============================================
+    // MODAL COLABORADORES - CARREGAMENTO E FILTROS
+    // ============================================
+    const colaboradorModal = document.getElementById('colaboradoresModal');
+    const filtroTurno = document.getElementById('colaborador_filtro_turno');
+    const filtroSetor = document.getElementById('colaborador_filtro_setor');
+    const filtroLider = document.getElementById('colaborador_filtro_lider');
+    const filtroSupervisor = document.getElementById('colaborador_filtro_supervisor');
+    const searchColaborador = document.getElementById('colaborador_search');
+    const listaColaboradores = document.getElementById('colaborador_modal_list');
+    
+    let todosColaboradores = [];
+    let colaboradoresSelecionados = new Set(); // Rastreia IDs dos colaboradores selecionados
+    
+    // Carregar colaboradores quando o modal é aberto
+    if (colaboradorModal) {
+        colaboradorModal.addEventListener('show.bs.modal', function() {
+            // Sempre carregar (não verificar se já foi carregado antes)
+            // Isso garante que os dados estejam sempre atualizados
+            carregarColaboradores();
+        });
+    }
+    
+    function carregarColaboradores() {
+        fetch('/procedures/api/colaboradores/buscar/')
+            .then(response => response.json())
+            .then(data => {
+                todosColaboradores = data.colaboradores || [];
+                const filtros = data.filtros || {};
+                
+                // Popular selects de filtro
+                if (filtros.turnos) {
+                    filtros.turnos.forEach(turno => {
+                        const option = document.createElement('option');
+                        option.value = turno;
+                        option.textContent = turno;
+                        filtroTurno.appendChild(option);
+                    });
+                }
+                
+                if (filtros.setores) {
+                    filtros.setores.forEach(setor => {
+                        const option = document.createElement('option');
+                        option.value = setor.id;
+                        option.textContent = setor.nome;
+                        filtroSetor.appendChild(option);
+                    });
+                }
+                
+                if (filtros.lideres) {
+                    filtros.lideres.forEach(lider => {
+                        const option = document.createElement('option');
+                        option.value = lider.id;
+                        option.textContent = lider.nome;
+                        filtroLider.appendChild(option);
+                    });
+                }
+                
+                if (filtros.supervisores) {
+                    filtros.supervisores.forEach(supervisor => {
+                        const option = document.createElement('option');
+                        option.value = supervisor.id;
+                        option.textContent = supervisor.nome;
+                        filtroSupervisor.appendChild(option);
+                    });
+                }
+                
+                // Renderizar lista inicial
+                renderizarColaboradores(todosColaboradores);
+            })
+            .catch(error => {
+                console.error('Erro ao carregar colaboradores:', error);
+                listaColaboradores.innerHTML = '<div class="alert alert-danger">Erro ao carregar colaboradores</div>';
+            });
+    }
+    
+    // Event listeners para filtros de colaboradores
+    if (filtroTurno) {
+        filtroTurno.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (filtroSetor) {
+        filtroSetor.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (filtroLider) {
+        filtroLider.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (filtroSupervisor) {
+        filtroSupervisor.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (searchColaborador) {
+        searchColaborador.addEventListener('input', aplicarFiltrosColaboradores);
+    }
+    
+    function aplicarFiltrosColaboradores() {
+        let colaboradoresFiltrados = todosColaboradores;
+        
+        const turnoSelecionado = filtroTurno.value;
+        const setorSelecionado = filtroSetor.value;
+        const liderSelecionado = filtroLider.value;
+        const supervisorSelecionado = filtroSupervisor.value;
+        const busca = searchColaborador.value.toLowerCase();
+        
+        colaboradoresFiltrados = colaboradoresFiltrados.filter(colab => {
+            const matchTurno = !turnoSelecionado || colab.turno === turnoSelecionado;
+            const matchSetor = !setorSelecionado || colab.setor_id == setorSelecionado;
+            const matchLider = !liderSelecionado || colab.lider_id == liderSelecionado;
+            const matchSupervisor = !supervisorSelecionado || colab.supervisor_id == supervisorSelecionado;
+            const matchBusca = !busca || 
+                               colab.nome.toLowerCase().includes(busca) || 
+                               colab.matricula.toLowerCase().includes(busca);
+            
+            return matchTurno && matchSetor && matchLider && matchSupervisor && matchBusca;
+        });
+        
+        renderizarColaboradores(colaboradoresFiltrados);
+    }
+    
+    function renderizarColaboradores(colaboradores) {
+        if (colaboradores.length === 0) {
+            listaColaboradores.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle"></i> Nenhum colaborador encontrado</div>';
+            return;
+        }
+        
+        let html = '';
+        colaboradores.forEach(colab => {
+            const isSelected = colaboradoresSelecionados.has(colab.id);
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input colaborador-checkbox" type="checkbox" id="colab_${colab.id}" value="${colab.id}" ${isSelected ? 'checked' : ''}>
+                    <label class="form-check-label" for="colab_${colab.id}">
+                        <strong>${colab.nome}</strong> (${colab.matricula})
+                        <br>
+                        <small class="text-muted">${colab.cargo} • ${colab.turno} • ${colab.setor}</small>
+                    </label>
+                </div>
+            `;
+        });
+        
+        listaColaboradores.innerHTML = html;
+        
+        // Adicionar event listeners aos checkboxes
+        document.querySelectorAll('.colaborador-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const colabId = parseInt(this.value);
+                if (this.checked) {
+                    colaboradoresSelecionados.add(colabId);
+                } else {
+                    colaboradoresSelecionados.delete(colabId);
+                }
+                atualizarColaboradoresSelecionados();
+            });
+        });
+    }
+    
+    function atualizarColaboradoresSelecionados() {
+        const container = document.getElementById('colaboradores_hidden_container');
+        const lista = document.getElementById('colaboradores_list');
+        
+        // Limpar container anterior
+        container.innerHTML = '';
+        
+        if (colaboradoresSelecionados.size === 0) {
+            document.getElementById('colaboradores_empty').style.display = 'block';
+            lista.style.display = 'none';
+            return;
+        }
+        
+        document.getElementById('colaboradores_empty').style.display = 'none';
+        lista.style.display = 'block';
+        
+        let html = '';
+        
+        // Iterar sobre os colaboradores selecionados
+        colaboradoresSelecionados.forEach(colabId => {
+            const colab = todosColaboradores.find(c => c.id === colabId);
+            if (colab) {
+                html += `
+                    <div class="list-group-item">
+                        <div>
+                            <strong>${colab.nome}</strong> (${colab.matricula})
+                            <br>
+                            <small class="text-muted">${colab.cargo} • ${colab.turno} • ${colab.setor}</small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="removerColaborador(${colab.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+            }
+        });
+        
+        lista.innerHTML = html;
+        
+        // Adicionar inputs hidden
+        colaboradoresSelecionados.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'colaboradores';
+            input.value = id;
+            container.appendChild(input);
+        });
+    }
+    
+    window.removerColaborador = function(colaboradorId) {
+        colaboradoresSelecionados.delete(colaboradorId);
+        const checkbox = document.getElementById(`colab_${colaboradorId}`);
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+        atualizarColaboradoresSelecionados();
+    };
+    
+    // Event listeners para botões de colaboradores
+    const btnSelecionarColaboradoresFiltrados = document.getElementById('btn_selecionar_colaboradores_filtrados');
+    const btnLimparColaboradores = document.getElementById('btn_limpar_colaboradores');
+    const btnConfirmarColaboradores = document.getElementById('btn_confirmar_colaboradores');
+    
+    if (btnSelecionarColaboradoresFiltrados) {
+        btnSelecionarColaboradoresFiltrados.addEventListener('click', function() {
+            // Selecionar todos os checkboxes visíveis
+            document.querySelectorAll('.colaborador-checkbox').forEach(checkbox => {
+                const colabId = parseInt(checkbox.value);
+                checkbox.checked = true;
+                colaboradoresSelecionados.add(colabId);
+            });
+            atualizarColaboradoresSelecionados();
+        });
+    }
+    
+    if (btnLimparColaboradores) {
+        btnLimparColaboradores.addEventListener('click', function() {
+            // Desselecionar todos os checkboxes
+            document.querySelectorAll('.colaborador-checkbox').forEach(checkbox => {
+                const colabId = parseInt(checkbox.value);
+                checkbox.checked = false;
+                colaboradoresSelecionados.delete(colabId);
+            });
+            atualizarColaboradoresSelecionados();
+        });
+    }
+    
+    if (btnConfirmarColaboradores) {
+        btnConfirmarColaboradores.addEventListener('click', function() {
+            // Garantir que os inputs hidden foram atualizados ANTES do modal fechar
+            atualizarColaboradoresSelecionados();
+            
+            // Depois de 100ms (deixar o DOM ser atualizado), deixar o modal fechar
+            // Na verdade, o data-bs-dismiss vai fechar automaticamente
+        });
+    }
+});
+</script>
+
+<!-- Select2 JavaScript para busca no campo de instrutor -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar Select2 para o campo de instrutor
+        $('.select2-search').select2({
+            allowClear: true,
+            placeholder: 'Selecione um instrutor...',
+            language: {
+                noResults: function() {
+                    return 'Nenhum resultado encontrado';
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

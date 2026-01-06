@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Validar Matriz - {{ matriz.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-lg">
+                <div class="card-header" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    <h3 class="text-white mb-0">
+                        <i class="fas fa-check-double"></i> Validar Matriz: {{ matriz.nome }}
+                    </h3>
+                </div>
+                
+                <div class="card-body p-4">
+                    <!-- Info da Solicitação -->
+                    <div class="alert alert-info mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Solicitado por:</strong> 
+                                {% if solicitacao.solicitante %}
+                                    {{ solicitacao.solicitante.nome_completo }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Data:</strong> {{ solicitacao.criado_em|date:"d/m/Y H:i" }}
+                            </div>
+                        </div>
+                        {% if solicitacao.motivo_solicitacao %}
+                            <hr class="my-2">
+                            <strong>Motivo:</strong> {{ solicitacao.motivo_solicitacao }}
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Resumo de Avaliações -->
+                    <div class="card mb-4" style="background-color: #f8f9fa; border-left: 4px solid #28a745;">
+                        <div class="card-body">
+                            <h6 class="card-title fw-bold">
+                                <i class="fas fa-chart-pie"></i> Resumo de Avaliações
+                            </h6>
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <div class="stat-box">
+                                        <div style="font-size: 32px; color: #28a745; font-weight: bold;">
+                                            {{ total_avaliacoes }}
+                                        </div>
+                                        <small class="text-muted">Total de Avaliações</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="stat-box">
+                                        <div style="font-size: 32px; color: #20c997; font-weight: bold;">
+                                            {{ colaboradores_data|length }}
+                                        </div>
+                                        <small class="text-muted">Colaboradores</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="stat-box">
+                                        <div style="font-size: 32px; color: #0dcaf0; font-weight: bold;">
+                                            {{ matriz.disciplinas_matriz.count }}
+                                        </div>
+                                        <small class="text-muted">Disciplinas</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Listagem de Colaboradores e Avaliações -->
+                    <div class="card mb-4">
+                        <div class="card-header" style="background-color: #f8f9fa;">
+                            <h6 class="mb-0">
+                                <i class="fas fa-list-check"></i> Avaliações por Colaborador
+                            </h6>
+                        </div>
+                        <div class="card-body p-0">
+                            {% for colab_data in colaboradores_data %}
+                                <div class="p-3 border-bottom">
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col">
+                                            <strong style="color: #667eea;">
+                                                {{ colab_data.colaborador.nome_completo }}
+                                            </strong>
+                                            <span class="badge bg-secondary ms-2">
+                                                {{ colab_data.avaliacoes|length }} avaliação{{ colab_data.avaliacoes|length|pluralize }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Disciplinas desse Colaborador -->
+                                    <div class="row ms-2">
+                                        {% for av in colab_data.avaliacoes %}
+                                            <div class="col-md-6 mb-2">
+                                                <small class="text-muted">
+                                                    <strong>{{ av.disciplina.nome }}</strong> 
+                                                    ({{ av.disciplina.codigo }})
+                                                </small>
+                                                <br>
+                                                <!-- Farol Badge -->
+                                                {% if av.nivel == -1 %}
+                                                    <span style="display: inline-block; width: 24px; height: 24px; border-radius: 50%; background-color: #e9ecef; border: 2px solid #adb5bd; color: #6c757d; text-align: center; line-height: 20px; font-size: 12px; font-weight: bold;" title="N/A">N/A</span>
+                                                {% elif av.nivel == 0 %}
+                                                    <span style="display: inline-block; width: 24px; height: 24px; border-radius: 50%; background-color: #dc3545; color: white; text-align: center; line-height: 20px; font-size: 12px; font-weight: bold;" title="Há Intenção">0</span>
+                                                {% elif av.nivel == 1 %}
+                                                    <span style="display: inline-block; width: 24px; height: 24px; border-radius: 50%; background-color: #ffc107; color: white; text-align: center; line-height: 20px; font-size: 12px; font-weight: bold;" title="Em Treinamento">1</span>
+                                                {% elif av.nivel == 2 %}
+                                                    <span style="display: inline-block; width: 24px; height: 24px; border-radius: 50%; background-color: #28a745; color: white; text-align: center; line-height: 20px; font-size: 12px; font-weight: bold;" title="Treinado">2</span>
+                                                {% elif av.nivel == 3 %}
+                                                    <span style="display: inline-block; width: 24px; height: 24px; border-radius: 50%; background-color: #0dcaf0; color: white; text-align: center; line-height: 20px; font-size: 12px; font-weight: bold;" title="LOFT">3</span>
+                                                {% else %}
+                                                    <span style="display: inline-block; width: 24px; height: 24px; border-radius: 50%; background-color: white; border: 2px dashed #0d6efd; color: #0d6efd; text-align: center; line-height: 18px; font-weight: bold;" title="Pendente">+</span>
+                                                {% endif %}
+                                                
+                                                {% if av.avaliador %}
+                                                    <small class="text-muted ms-2">
+                                                        por {{ av.avaliador.nome_completo|truncatewords:2 }}
+                                                    </small>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Formulário de Ação -->
+                    <form method="POST" class="mt-4">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-check-circle"></i> Decisão
+                            </label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="acao" id="validar" 
+                                           value="validar" checked required>
+                                    <label class="form-check-label" for="validar">
+                                        <i class="fas fa-thumbs-up" style="color: #28a745;"></i>
+                                        <strong>Validar</strong> - Aprovar todas as avaliações
+                                    </label>
+                                </div>
+                                <br>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="acao" id="rejeitar" 
+                                           value="rejeitar" required>
+                                    <label class="form-check-label" for="rejeitar">
+                                        <i class="fas fa-thumbs-down" style="color: #dc3545;"></i>
+                                        <strong>Rejeitar</strong> - Solicitar revisão
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="motivo" class="form-label fw-bold">
+                                <i class="fas fa-comment"></i> Comentário
+                            </label>
+                            <textarea class="form-control" id="motivo" name="motivo" rows="3" 
+                                      placeholder="Deixe um comentário sobre sua decisão..."></textarea>
+                        </div>
+                        
+                        <div class="d-flex gap-2 justify-content-between">
+                            <a href="{% url 'procedures:validacoes_pendentes' %}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-check"></i> Processar Validação
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .stat-box {
+        padding: 20px;
+        border-radius: 8px;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Upload de Lista Assinada - {{ lista.codigo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'procedures:lista_presenca_list' %}">Listas de Presença</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'procedures:lista_presenca_detail' lista.id %}">{{ lista.codigo }}</a></li>
+                    <li class="breadcrumb-item active">Upload de Arquivo Assinado</li>
+                </ol>
+            </nav>
+
+            <!-- Card Principal -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-file-upload"></i> Upload de Lista Assinada
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <!-- Informações da Lista -->
+                    <div class="alert alert-light border-start border-4 border-primary mb-4">
+                        <h6 class="mb-3 fw-bold">
+                            <i class="fas fa-file-alt"></i> Informações da Lista
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Código:</strong> {{ lista.codigo }}<br>
+                                <strong>Título:</strong> {{ lista.titulo }}<br>
+                                <strong>Data da Sessão:</strong> {{ lista.data_sessao|date:"d/m/Y" }}
+                            </div>
+                            <div class="col-md-6">
+                                {% if lista.instrutor %}
+                                <strong>Instrutor:</strong> {{ lista.instrutor.nome_completo }}<br>
+                                {% endif %}
+                                <strong>Local:</strong> {{ lista.local }}<br>
+                                <strong>Carga Horária:</strong> {{ lista.carga_horaria }}h
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informações sobre Evidência -->
+                    <div class="alert alert-info" role="alert">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-shield-alt"></i> Evidência Documental
+                        </h5>
+                        <p class="mb-2">
+                            Este upload serve como <strong>evidência documental</strong> de que o treinamento foi realizado.
+                            A lista assinada pelos participantes comprova a participação e presença no treinamento.
+                        </p>
+                        <hr>
+                        <p class="mb-0">
+                            <strong>Documentos aceitos:</strong> PDF, PNG, JPG, JPEG, TIFF (máximo 50 MB)
+                        </p>
+                    </div>
+
+                    <!-- Status Atual -->
+                    {% if lista.arquivo_assinado %}
+                    <div class="alert alert-success mb-4">
+                        <i class="fas fa-check-circle"></i>
+                        <strong>Arquivo já existe:</strong> {{ lista.arquivo_assinado.name }}<br>
+                        <small>Enviado em: {{ lista.data_upload_assinado|date:"d/m/Y H:i" }}</small>
+                    </div>
+                    {% endif %}
+
+                    <!-- Formulário -->
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="form-group mb-4">
+                            <label for="arquivo_assinado" class="form-label fw-bold">
+                                Selecione o Arquivo <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="arquivo_assinado" name="arquivo_assinado" 
+                                       accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" required>
+                                <label class="input-group-text" for="arquivo_assinado">
+                                    <i class="fas fa-folder-open"></i>
+                                </label>
+                            </div>
+                            <small class="form-text text-muted d-block mt-2">
+                                Envie a foto ou PDF da lista de presença assinada pelos participantes.
+                            </small>
+
+                            <!-- Preview de arquivo selecionado -->
+                            <div id="file-preview" class="alert alert-info d-none mt-2" role="alert">
+                                <strong>Arquivo selecionado:</strong>
+                                <span id="file-name"></span>
+                                <span id="file-size" class="ms-2 text-muted"></span>
+                            </div>
+                        </div>
+
+                        <!-- Dicas -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    <i class="fas fa-lightbulb"></i> Dicas para Melhor Qualidade
+                                </h6>
+                                <ul class="mb-0 small">
+                                    <li>Tire uma foto bem clara e legível da lista assinada</li>
+                                    <li>Evite sombras e reflexos que prejudiquem a legibilidade</li>
+                                    <li>Se usar PDF, escaneie em alta resolução (300 DPI)</li>
+                                    <li>Certifique-se de que todas as assinaturas estão visíveis</li>
+                                    <li>Inclua as colunas de assinatura e data completas</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-flex gap-2 justify-content-between">
+                            <a href="{% url 'procedures:lista_presenca_detail' lista.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-cloud-upload-alt"></i> Enviar Como Evidência
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Informações Adicionais -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i> Informações de Conformidade
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        A lista de presença assinada é a <strong>evidência documental mais importante</strong> para:
+                    </p>
+                    <ul>
+                        <li><strong>Comprovar realização</strong> do treinamento aos órgãos fiscalizadores</li>
+                        <li><strong>Validar participação</strong> de cada colaborador no treinamento</li>
+                        <li><strong>Respaldar registros</strong> no sistema com documentação física</li>
+                        <li><strong>Facilitar auditorias</strong> internas e externas sobre treinamentos</li>
+                        <li><strong>Manter rastreabilidade</strong> completa da formação dos funcionários</li>
+                    </ul>
+                    <p class="mb-0 text-muted small">
+                        Mantenha estes arquivos arquivados e acessíveis para futuras consultas.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS adicional -->
+<style>
+    .input-group-text {
+        cursor: pointer;
+    }
+</style>
+
+<script>
+    // Mostrar preview do arquivo selecionado
+    document.getElementById('arquivo_assinado').addEventListener('change', function(e) {
+        const preview = document.getElementById('file-preview');
+        const fileName = document.getElementById('file-name');
+        const fileSize = document.getElementById('file-size');
+
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            fileName.textContent = file.name;
+            fileSize.textContent = '(' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
+            preview.classList.remove('d-none');
+
+            // Validar tipo de arquivo
+            const validTypes = [
+                'application/pdf',
+                'image/png',
+                'image/jpeg',
+                'image/tiff',
+            ];
+            const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.tif'];
+            const ext = '.' + file.name.split('.').pop().toLowerCase();
+
+            if (!validExtensions.includes(ext)) {
+                alert('Tipo de arquivo não suportado. Use PDF, PNG, JPG ou TIFF');
+                this.value = '';
+                preview.classList.add('d-none');
+                return;
+            }
+
+            // Validar tamanho (50MB)
+            if (file.size > 50 * 1024 * 1024) {
+                alert('Arquivo muito grande. Máximo 50 MB');
+                this.value = '';
+                preview.classList.add('d-none');
+                return;
+            }
+        } else {
+            preview.classList.add('d-none');
+        }
+    });
+</script>
+{% endblock %}

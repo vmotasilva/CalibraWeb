@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Confirmar Exclusão{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Confirmar Exclusão</h5>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Tem certeza que deseja excluir esta lista de presença?</p>
+                    
+                    <div class="alert alert-warning">
+                        <strong>Lista:</strong> {{ lista.codigo }}<br>
+                        <strong>Título:</strong> {{ lista.titulo }}<br>
+                        <strong>Data:</strong> {{ lista.data_sessao|date:"d/m/Y" }}<br>
+                        <strong>Registros:</strong> {{ lista.registros.count }}
+                    </div>
+                    
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-circle"></i>
+                        <strong>Atenção:</strong> Todos os registros de treinamento vinculados a esta lista também serão excluídos. Esta ação não pode ser desfeita!
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'procedures:lista_presenca_detail' lista.pk %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Sim, Excluir
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
