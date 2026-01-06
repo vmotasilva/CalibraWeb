@@ -35,8 +35,11 @@ from shared.views import (
 
 # Health check view for Railway
 def health_check(request):
-    """Simple health check endpoint for Railway infrastructure"""
-    return JsonResponse({"status": "ok"}, status=200)
+    """Ultra-simple health check endpoint for Railway infrastructure"""
+    try:
+        return JsonResponse({"status": "ok"}, status=200)
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 
 # Favicon view
