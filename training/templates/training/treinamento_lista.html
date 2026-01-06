@@ -8,7 +8,7 @@
     </div>
     <form method="get" class="row g-2 mb-3">
         <div class="col-md-3">
-            <input type="text" name="q" value="{% if busca and busca != 'None' %}{{ busca }}{% endif %}" placeholder="Colaborador, código ou título" class="form-control" />
+            <input type="text" name="q" value="{{ busca }}" placeholder="Colaborador, código ou título" class="form-control" />
         </div>
         <div class="col-md-3">
             <input type="text" id="colaborador_busca" placeholder="Buscar colaborador..." class="form-control" list="colaboradores_list" />

@@ -244,6 +244,16 @@ def treinamentos_list_view(request):
     procedimento_id = request.GET.get('procedimento', '').strip()
     busca = request.GET.get('q', '').strip()
     
+    # Limpar valores inválidos
+    if busca == 'None' or not busca:
+        busca = ''
+    if status == 'None' or not status:
+        status = ''
+    if colaborador_id == 'None' or not colaborador_id:
+        colaborador_id = ''
+    if procedimento_id == 'None' or not procedimento_id:
+        procedimento_id = ''
+    
     # Filtro por colaborador - converter para int se fornecido
     if colaborador_id and colaborador_id.isdigit():
         qs = qs.filter(colaborador_id=int(colaborador_id))
@@ -253,7 +263,7 @@ def treinamentos_list_view(request):
         qs = qs.filter(procedimento_id=int(procedimento_id))
     
     # Filtro de busca por texto
-    if busca and busca != 'None':
+    if busca:
         qs = qs.filter(
             Q(colaborador__nome_completo__icontains=busca) |
             Q(procedimento__codigo__icontains=busca) |
@@ -261,7 +271,7 @@ def treinamentos_list_view(request):
         )
     
     # Filtro por status - filtrando em Python (é uma property, não field direto)
-    if status and status != 'None':
+    if status:
         all_records = list(qs)
         qs = [t for t in all_records if t.status_treinamento == status]
     
