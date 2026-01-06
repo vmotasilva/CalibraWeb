@@ -370,9 +370,22 @@ class RegistroTreinamento(models.Model):
     def status_treinamento(self):
         """
         Status: OK ou PENDENTE
-        Para procedimentos: verifica revisão
-        Para outros tipos: verifica apenas se tem data
+        Se há lista de presença: treinamento aconteceu, compara apenas a data com última revisão
+        Se não há lista: verifica se tem data e se a revisão bate
         """
+        # Se há lista de presença, o treinamento aconteceu
+        if self.lista_presenca:
+            # Comparar data_treinamento com última revisão do procedimento
+            if self.procedimento and self.procedimento.ultima_revisao:
+                if self.data_treinamento and self.data_treinamento >= self.procedimento.ultima_revisao:
+                    return "OK"  # Treinamento ocorreu após a última revisão
+                else:
+                    return "PENDENTE"  # Treinamento é anterior à última revisão
+            else:
+                # Se não tem última revisão do procedimento, considerar OK (treinamento aconteceu)
+                return "OK"
+        
+        # Sem lista de presença: verificar se tem dados de treinamento
         # Treinamentos sem procedimento só verificam se tem data
         if not self.procedimento:
             return "OK" if self.data_treinamento else "PENDENTE"
@@ -381,11 +394,12 @@ class RegistroTreinamento(models.Model):
         if not self.data_treinamento:
             return "PENDENTE"
         
-        # Se tem data de treinamento mas a revisão treinada não é a atual, está pendente
-        if str(self.revisao_treinada).strip() != str(self.procedimento.numero_revisao).strip():
-            return "PENDENTE"
+        # Se tem procedimento com numero_revisao, verificar se revisão bate
+        if self.procedimento.numero_revisao:
+            if str(self.revisao_treinada).strip() != str(self.procedimento.numero_revisao).strip():
+                return "PENDENTE"
         
-        # Se tem data de treinamento e é a revisão correta, verificar se foi após a última revisão do documento
+        # Verificar se foi após a última revisão do documento
         if self.procedimento.ultima_revisao:
             if self.data_treinamento >= self.procedimento.ultima_revisao:
                 return "OK"
