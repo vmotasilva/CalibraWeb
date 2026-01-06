@@ -223,8 +223,8 @@ class TemplateListaPresencaAdmin(admin.ModelAdmin):
     def get_urls(self):
         """Adiciona URLs customizadas para mapeamento de placeholders"""
         from django.urls import path
-        # Importação direta do módulo para evitar circular import
-        from procedures.views.template_mapeamento_views import mapear_placeholders_view
+        # Importação relativa do módulo views
+        from .views.template_mapeamento_views import mapear_placeholders_view
         
         urls = super().get_urls()
         custom_urls = [
