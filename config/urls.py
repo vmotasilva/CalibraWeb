@@ -213,6 +213,9 @@ urlpatterns = [
     path("rh/ocorrencia/<int:occ_id>/editar/", editar_ocorrencia_view, name="editar_ocorrencia"),
     path("rh/ocorrencia/<int:occ_id>/deletar/", deletar_ocorrencia_view, name="deletar_ocorrencia"),
     
+    # 8. Training app URLs (Dashboard)
+    path("training/", include("training.urls")),
+    
     # 7. Procedures app URLs (Procedimentos, Treinamentos, Fornecedores, Cotações)
     path("procedures/", include("procedures.urls")),
     
