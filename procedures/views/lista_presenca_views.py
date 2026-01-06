@@ -1338,11 +1338,67 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             resultados['erros'] += 1
             resultados['mensagens_erro'].append(f"Linha {index + 2}: {str(e)}")
     
-    # OTIMIZAÇÃO: Criar todos de uma vez com bulk_create (muito mais rápido!)
-    print(f"[IMPORT] Criando {len(registros_para_criar)} registros em batch...")
+    # OTIMIZAÇÃO: Usar update_or_create para evitar duplicatas
+    # Isso é mais lento que bulk_create mas não falha com duplicatas
+    print(f"[IMPORT] Processando {len(registros_para_criar)} registros...")
     if registros_para_criar:
-        RegistroTreinamento.objects.bulk_create(registros_para_criar, batch_size=1000)
-        resultados['criados'] = len(registros_para_criar)
+        for reg in registros_para_criar:
+            try:
+                if reg.procedimento:
+                    # Com procedimento - usar constraint (colaborador, procedimento)
+                    RegistroTreinamento.objects.update_or_create(
+                        colaborador=reg.colaborador,
+                        procedimento=reg.procedimento,
+                        defaults={
+                            'tipo': reg.tipo,
+                            'titulo_treinamento': reg.titulo_treinamento,
+                            'lista_presenca': reg.lista_presenca,
+                            'data_treinamento': reg.data_treinamento,
+                            'revisao_treinada': reg.revisao_treinada,
+                            'observacoes': reg.observacoes,
+                            'categoria_comunicacao': reg.categoria_comunicacao,
+                            'metodologia_treinamento': reg.metodologia_treinamento,
+                            'area_conhecimento': reg.area_conhecimento,
+                            'facilitador_fornecedor': reg.facilitador_fornecedor,
+                            'carga_horaria': reg.carga_horaria,
+                            'custo_treinamento': reg.custo_treinamento,
+                            'data_final_treinamento': reg.data_final_treinamento,
+                            'mes_referencia': reg.mes_referencia,
+                            'necessita_avaliacao_eficacia': reg.necessita_avaliacao_eficacia,
+                            'data_limite_avaliacao_eficacia': reg.data_limite_avaliacao_eficacia,
+                            'colaborador_nome': reg.colaborador_nome,
+                        }
+                    )
+                    resultados['criados'] += 1
+                else:
+                    # Sem procedimento - criar direto (sem constraint de duplicata)
+                    RegistroTreinamento.objects.create(
+                        colaborador=reg.colaborador,
+                        colaborador_nome=reg.colaborador_nome,
+                        procedimento=reg.procedimento,
+                        tipo=reg.tipo,
+                        titulo_treinamento=reg.titulo_treinamento,
+                        lista_presenca=reg.lista_presenca,
+                        data_treinamento=reg.data_treinamento,
+                        revisao_treinada=reg.revisao_treinada,
+                        observacoes=reg.observacoes,
+                        categoria_comunicacao=reg.categoria_comunicacao,
+                        metodologia_treinamento=reg.metodologia_treinamento,
+                        area_conhecimento=reg.area_conhecimento,
+                        facilitador_fornecedor=reg.facilitador_fornecedor,
+                        carga_horaria=reg.carga_horaria,
+                        custo_treinamento=reg.custo_treinamento,
+                        data_final_treinamento=reg.data_final_treinamento,
+                        mes_referencia=reg.mes_referencia,
+                        necessita_avaliacao_eficacia=reg.necessita_avaliacao_eficacia,
+                        data_limite_avaliacao_eficacia=reg.data_limite_avaliacao_eficacia
+                    )
+                    resultados['criados'] += 1
+            except Exception as e:
+                resultados['erros'] += 1
+                resultados['mensagens_erro'].append(f"Erro ao criar/atualizar registro: {str(e)}")
+                print(f"[IMPORT] Erro: {str(e)}")
+
     
     # OTIMIZAÇÃO: Atualizar registros em batch
     print(f"[IMPORT] Atualizando {len(registros_para_atualizar)} registros...")
