@@ -408,6 +408,22 @@ class RegistroTreinamento(models.Model):
         
         # Se não tem data de revisão do documento mas treinou na revisão atual, considerar OK
         return "OK"
+    
+    def get_status_badge(self):
+        """Retorna o HTML do badge de status para usar no template."""
+        status = self.status_treinamento
+        if status == "OK":
+            return '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Em dias</span>'
+        else:
+            return '<span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Pendente</span>'
+    
+    def get_status_class(self):
+        """Retorna apenas a classe CSS para uso em template."""
+        return "badge bg-success" if self.status_treinamento == "OK" else "badge bg-danger"
+    
+    def get_status_label(self):
+        """Retorna apenas o texto do status."""
+        return "Em dias" if self.status_treinamento == "OK" else "Pendente"
 
     class Meta:
         verbose_name_plural = "Matriz de Treinamentos"
