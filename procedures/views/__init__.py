@@ -34,7 +34,8 @@ from .views import (
     novo_orcamento_view,
     editar_orcamento_view,
 )
-
+# Importa o módulo de template mapeamento para que fique acessível
+from . import template_mapeamento_views
 __all__ = [
     # Procedimentos
     'procedimentos_list_view',
