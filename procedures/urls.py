@@ -95,6 +95,7 @@ urlpatterns = [
     path('perfis/novo/', perfis_views.novo_perfil_view, name='novo_perfil'),
     path('perfis/<int:perfil_id>/editar/', perfis_views.editar_perfil_view, name='editar_perfil'),
     path('perfis/<int:perfil_id>/', perfis_views.detalhe_perfil_view, name='detalhe_perfil'),
+    path('perfil/<int:perfil_id>/reatribuir-todos-subgrupos/', perfis_views.reatribuir_todos_subgrupos_view, name='reatribuir_todos_subgrupos'),
     
     # Importação em massa
     path('perfis/importar/', perfis_views.importar_perfis_view, name='importar_perfis'),

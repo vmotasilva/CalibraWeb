@@ -155,6 +155,9 @@
                     <button type="button" class="btn btn-sm btn-danger" onclick="removerSelecionados()" id="btn-remover-massa" disabled>
                         <i class="bi bi-trash"></i> Remover <span id="count-selecionados">0</span> Selecionado(s)
                     </button>
+                    <button type="button" class="btn btn-sm btn-info" onclick="reatribuirTodosSubgrupos()" title="Reatribuir TODOS os subgrupos para todos os colaboradores">
+                        <i class="bi bi-arrow-clockwise"></i> Reatribuir Todos os Subgrupos
+                    </button>
                 </div>
                 <small class="text-muted">
                     <i class="bi bi-info-circle"></i> <span id="total-colaboradores">{{ colaboradores.count }}</span> colaborador(es) total
@@ -803,6 +806,36 @@
         ).map(cb => cb.value);
         
         document.getElementById('procedimentos-selecionados-edit').value = JSON.stringify(procedimentosSelecionados);
+    }
+
+    // Função para reatribuir TODOS os subgrupos para TODOS os colaboradores
+    function reatribuirTodosSubgrupos() {
+        if (!confirm('Isso irá reatribuir TODOS os subgrupos para TODOS os colaboradores deste perfil. Deseja continuar?')) {
+            return;
+        }
+
+        const perfil_id = {{ perfil.id }};
+        
+        fetch(`/procedures/perfil/${perfil_id}/reatribuir-todos-subgrupos/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(`✅ ${data.message}`);
+                location.reload();
+            } else {
+                alert('❌ Erro: ' + (data.message || 'Erro desconhecido'));
+            }
+        })
+        .catch(error => {
+            alert('❌ Erro na requisição: ' + error);
+        });
     }
     </script>
 

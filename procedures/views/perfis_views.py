@@ -1251,3 +1251,57 @@ def exportar_erros_importacao_view(request):
     request.session.pop('erros_importacao', None)
     
     return response
+
+# ==================== MANUTENÇÃO E CORREÇÃO ====================
+
+@login_required
+@require_http_methods(["POST"])
+def reatribuir_todos_subgrupos_view(request, perfil_id):
+    """Reatribui TODOS os subgrupos para TODOS os colaboradores do perfil"""
+    from django.http import JsonResponse
+    import json
+    
+    perfil = get_object_or_404(PerfilTreinamento, id=perfil_id)
+    
+    # Buscar todos os subgrupos do perfil
+    todos_subgrupos = SubGrupoTreinamento.objects.filter(
+        grupo__perfil=perfil
+    ).values_list('id', flat=True)
+    
+    todos_grupos = GrupoTreinamento.objects.filter(
+        perfil=perfil
+    ).values_list('id', flat=True)
+    
+    # Criar estrutura de seleção com TODOS os grupos e subgrupos
+    grupos_selecionados = {
+        'grupos': list(todos_grupos),
+        'subgrupos': list(todos_subgrupos)
+    }
+    
+    # Atualizar TODOS os colaboradores do perfil
+    colaboradores = ColaboradorPerfil.objects.filter(
+        perfil=perfil,
+        ativo=True
+    )
+    
+    total_atualizados = 0
+    total_procedimentos_criados = 0
+    
+    for cp in colaboradores:
+        # Atualizar com todos os subgrupos
+        cp.grupos_selecionados = grupos_selecionados
+        cp.save()
+        
+        # Recalcular procedimentos necessários
+        procedimentos = cp.get_procedimentos_necessarios()
+        
+        # Criar demandas faltantes
+        resultado = criar_demandas_treinamento(cp, procedimentos)
+        total_procedimentos_criados += resultado['criados']
+        total_atualizados += 1
+    
+    return JsonResponse({
+        'success': True,
+        'message': f'✅ {total_atualizados} colaborador(es) reatribuído(s) com todos os {todos_subgrupos.count()} subgrupos. '
+                   f'{total_procedimentos_criados} novas demanda(s) de treinamento criada(s).'
+    })
