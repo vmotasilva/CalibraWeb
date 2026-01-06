@@ -72,11 +72,21 @@
             </thead>
             <tbody>
                 {% for t in treinamentos %}
-                <tr>
+                <tr {% if not t.is_ultimo_registro %}style="opacity: 0.6; background-color: #f5f5f5;"{% endif %}>
                     <td>{{ t.colaborador.nome_completo }}</td>
                     <td>{{ t.procedimento.codigo }}</td>
                     <td>{{ t.data_treinamento|date:"d/m/Y" }}</td>
-                    <td><span class="badge {% if t.status_treinamento == 'VIGENTE' %}bg-success{% else %}bg-warning{% endif %}">{{ t.status_treinamento }}</span></td>
+                    <td>
+                        {% if t.is_ultimo_registro %}
+                            {% if t.status_treinamento == 'OK' %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Em dias</span>
+                            {% else %}
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Pendente</span>
+                            {% endif %}
+                        {% else %}
+                            <small class="text-muted">Histórico</small>
+                        {% endif %}
+                    </td>
                     <td>
                         <a href="{% url 'procedures:editar_treinamento' t.id %}" class="btn btn-sm btn-warning">Editar</a>
                     </td>

@@ -424,6 +424,19 @@ class RegistroTreinamento(models.Model):
     def get_status_label(self):
         """Retorna apenas o texto do status."""
         return "Em dias" if self.status_treinamento == "OK" else "Pendente"
+    
+    def is_ultimo_registro(self):
+        """Verifica se é o último registro para este colaborador e procedimento."""
+        if not self.procedimento or not self.colaborador:
+            return True  # Se não tem ambos, considerar como último
+        
+        # Encontrar o registro mais recente para esta combinação
+        ultimo = RegistroTreinamento.objects.filter(
+            colaborador=self.colaborador,
+            procedimento=self.procedimento
+        ).order_by('-data_treinamento', '-id').first()
+        
+        return self.id == ultimo.id if ultimo else False
 
     class Meta:
         verbose_name_plural = "Matriz de Treinamentos"
