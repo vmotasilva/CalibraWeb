@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Max
 from django.http import HttpResponse
 import pandas as pd
 from io import BytesIO
@@ -278,7 +278,7 @@ def novo_grupo_view(request, perfil_id):
     else:
         # Definir próxima ordem automaticamente
         max_ordem = perfil.grupos.aggregate(
-            max_ordem=Count('ordem')
+            max_ordem=Max('ordem')
         )['max_ordem'] or 0
         form = GrupoTreinamentoForm(initial={'ordem': max_ordem + 1})
     
@@ -358,7 +358,7 @@ def novo_subgrupo_view(request, grupo_id):
     else:
         # Definir próxima ordem automaticamente
         max_ordem = grupo.subgrupos.aggregate(
-            max_ordem=Count('ordem')
+            max_ordem=Max('ordem')
         )['max_ordem'] or 0
         form = SubGrupoTreinamentoForm(initial={'ordem': max_ordem + 1})
     
