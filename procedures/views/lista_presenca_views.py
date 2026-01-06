@@ -1285,6 +1285,7 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             if existe:
                 if sobrescrever:
                     # Adicionar à lista de atualização
+                    data_registro = lista.data_sessao if lista else data_treinamento
                     registros_para_atualizar.append({
                         'colaborador': colaborador,
                         'procedimento': procedimento,
@@ -1293,6 +1294,7 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                         'dados': {
                             'tipo': tipo,
                             'lista_presenca': lista,
+                            'data_treinamento': data_registro,  # Usar data da lista
                             'revisao_treinada': revisao_treinada,
                             'observacoes': observacoes,
                             'categoria_comunicacao': categoria_comunicacao,
@@ -1312,6 +1314,9 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                     resultados['mensagens_erro'].append(f"Linha {index + 2}: Registro já existe (colaborador + procedimento duplicado)")
             else:
                 # Adicionar à lista de criação
+                # Usar data da lista de presença como data_treinamento
+                data_registro = lista.data_sessao if lista else data_treinamento
+                
                 registros_para_criar.append(RegistroTreinamento(
                     colaborador=colaborador,
                     colaborador_nome=colaborador.nome_completo if colaborador else '',
@@ -1319,7 +1324,7 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                     tipo=tipo,
                     titulo_treinamento=titulo_treinamento,
                     lista_presenca=lista,
-                    data_treinamento=data_treinamento,
+                    data_treinamento=data_registro,  # Usar data da lista
                     revisao_treinada=revisao_treinada,
                     observacoes=observacoes,
                     categoria_comunicacao=categoria_comunicacao,

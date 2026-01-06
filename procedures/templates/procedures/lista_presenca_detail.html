@@ -477,7 +477,9 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if registro.data_treinamento %}
+                                {% if registro.lista_presenca.data_sessao %}
+                                    {{ registro.lista_presenca.data_sessao|date:"d/m/Y" }}
+                                {% elif registro.data_treinamento %}
                                     {{ registro.data_treinamento|date:"d/m/Y" }}
                                 {% else %}
                                     <span class="text-muted">-</span>
