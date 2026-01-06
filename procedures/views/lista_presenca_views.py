@@ -1925,3 +1925,25 @@ def gerenciar_templates_presenca_view(request):
         'total_templates': templates.count(),
     }
     return render(request, 'procedures/gerenciar_templates_presenca.html', context)
+
+
+@login_required
+def api_procedimentos_json_view(request):
+    """API para carregar lista de procedimentos em JSON."""
+    from django.http import JsonResponse
+    
+    procedimentos = Procedimento.objects.values('id', 'codigo', 'nome').order_by('codigo')
+    return JsonResponse(list(procedimentos), safe=False)
+
+
+@login_required
+def api_colaboradores_json_view(request):
+    """API para carregar lista de colaboradores em JSON."""
+    from django.http import JsonResponse
+    
+    colaboradores = Colaborador.objects.values('id', 'nome_completo').order_by('nome_completo')
+    return JsonResponse([
+        {'id': c['id'], 'nome': c['nome_completo']}
+        for c in colaboradores
+    ], safe=False)
+

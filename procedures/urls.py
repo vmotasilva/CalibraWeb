@@ -16,6 +16,8 @@ urlpatterns = [
     # API ENDPOINTS
     # ==========================
     path('api/procedimentos/', views.api_procedimentos_list, name='api_procedimentos_list'),
+    path('api/procedimentos-json/', lista_presenca_views.api_procedimentos_json_view, name='api_procedimentos_json'),
+    path('api/colaboradores-json/', lista_presenca_views.api_colaboradores_json_view, name='api_colaboradores_json'),
     path('api/filtros-colaboradores/', habilidades_views.filtros_colaboradores_api, name='filtros_colaboradores_api'),
     
     # ==========================

@@ -202,9 +202,42 @@
 
             <!-- Aba 2: Participantes & Procedimentos -->
             <div id="participantes-tab" class="tab-pane fade">
+                <!-- Formulário para Adicionar Rápido -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Adicionar Colaborador & Procedimento</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label small">Colaborador (Digite o nome)</label>
+                                <input type="text" id="quick-colaborador" class="form-control form-control-sm" 
+                                       placeholder="Ex: LUIS ROGERIO" list="colaboradores-list" autocomplete="off">
+                                <datalist id="colaboradores-list"></datalist>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Procedimento</label>
+                                <select id="quick-procedimento" class="form-select form-select-sm">
+                                    <option value="">-- Selecione um procedimento --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Data (Opcional)</label>
+                                <input type="date" id="quick-data" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="button" id="btn-quick-add" class="btn btn-sm btn-primary w-100">
+                                    <i class="bi bi-plus"></i> Adicionar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de Colaboradores -->
                 {% if colaboradores_registrados %}
                 <div class="mb-4">
-                    <h6 class="mb-3"><i class="bi bi-people-fill"></i> Colaboradores</h6>
+                    <h6 class="mb-3"><i class="bi bi-people-fill"></i> Colaboradores ({{ colaboradores_registrados|length }})</h6>
                     <div class="table-responsive">
                         <table class="table table-sm table-compact">
                             <thead class="table-light">
@@ -234,11 +267,16 @@
                         </table>
                     </div>
                 </div>
+                {% else %}
+                <div class="alert alert-info mb-4">
+                    <i class="bi bi-info-circle"></i> Nenhum colaborador registrado ainda. Use o formulário acima para adicionar.
+                </div>
                 {% endif %}
 
+                <!-- Lista de Procedimentos -->
                 {% if procedimentos_registrados %}
                 <div>
-                    <h6 class="mb-3"><i class="bi bi-file-earmark"></i> Procedimentos</h6>
+                    <h6 class="mb-3"><i class="bi bi-file-earmark"></i> Procedimentos ({{ procedimentos_registrados|length }})</h6>
                     <div class="table-responsive">
                         <table class="table table-sm table-compact">
                             <thead class="table-light">
@@ -262,11 +300,9 @@
                         </table>
                     </div>
                 </div>
-                {% endif %}
-
-                {% if not colaboradores_registrados and not procedimentos_registrados %}
-                <div class="alert alert-light border mb-0">
-                    <small class="text-muted">Nenhum participante ou procedimento registrado ainda.</small>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Nenhum procedimento registrado ainda. Use o formulário acima para adicionar.
                 </div>
                 {% endif %}
             </div>
@@ -348,9 +384,98 @@
 document.addEventListener('DOMContentLoaded', function() {
     let formCount = {{ formset.management_form.0.value }};
     
+    // Carregar lista de colaboradores
+    fetch('{% url "procedures:api_colaboradores_json" %}')
+        .then(r => r.json())
+        .then(data => {
+            const datalist = document.getElementById('colaboradores-list');
+            datalist.innerHTML = '';
+            data.forEach(colab => {
+                const option = document.createElement('option');
+                option.value = colab.nome;
+                option.dataset.id = colab.id;
+                datalist.appendChild(option);
+            });
+        })
+        .catch(e => console.log('Colaboradores não carregados:', e));
+    
+    // Carregar lista de procedimentos
+    fetch('{% url "procedures:api_procedimentos_json" %}')
+        .then(r => r.json())
+        .then(data => {
+            const select = document.getElementById('quick-procedimento');
+            data.forEach(proc => {
+                const option = document.createElement('option');
+                option.value = proc.id;
+                option.textContent = `${proc.codigo} - ${proc.nome}`;
+                select.appendChild(option);
+            });
+        })
+        .catch(e => console.log('Procedimentos não carregados:', e));
+    
+    // Adicionar registro rápido
+    document.getElementById('btn-quick-add').addEventListener('click', function() {
+        const nomeColab = document.getElementById('quick-colaborador').value.trim();
+        const procId = document.getElementById('quick-procedimento').value;
+        const data = document.getElementById('quick-data').value;
+        
+        if (!nomeColab) {
+            alert('⚠️ Digite o nome do colaborador');
+            return;
+        }
+        if (!procId) {
+            alert('⚠️ Selecione um procedimento');
+            return;
+        }
+        
+        // Criar novo formulário
+        const formRegex = new RegExp('__prefix__', 'g');
+        const templateRow = document.querySelector('.formset-row');
+        const formRow = templateRow.cloneNode(true);
+        
+        formRow.querySelectorAll('input, select, textarea').forEach(field => {
+            field.name = field.name.replace(formRegex, formCount);
+            field.id = field.id.replace(formRegex, formCount);
+            field.value = '';
+        });
+        
+        // Preencher campos
+        formRow.querySelector(`select[name="registrotreinamento_set-${formCount}-tipo"]`).value = 'Treinamento em Procedimento';
+        formRow.querySelector(`input[name="registrotreinamento_set-${formCount}-colaborador_nome"]`).value = nomeColab;
+        formRow.querySelector(`select[name="registrotreinamento_set-${formCount}-procedimento"]`).value = procId;
+        if (data) {
+            formRow.querySelector(`input[name="registrotreinamento_set-${formCount}-data_treinamento"]`).value = data;
+        }
+        
+        document.getElementById('registros-container').appendChild(formRow);
+        document.querySelector('input[name="registrotreinamento_set-TOTAL_FORMS"]').value = ++formCount;
+        
+        // Limpar campos
+        document.getElementById('quick-colaborador').value = '';
+        document.getElementById('quick-procedimento').value = '';
+        document.getElementById('quick-data').value = '';
+        
+        // Scroll para o novo registro
+        formRow.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        
+        // Feedback
+        setTimeout(() => {
+            alert('✅ Registro adicionado! Clique em "Salvar Alterações" para confirmar.');
+        }, 300);
+    });
+    
+    // Adicionar ao pressionar Enter no campo de data
+    document.getElementById('quick-data').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('btn-quick-add').click();
+        }
+    });
+    
+    // Adicionar registro manualmente
     document.getElementById('add-registro').addEventListener('click', function() {
         const formRegex = new RegExp('__prefix__', 'g');
-        const formRow = document.querySelector('.formset-row').cloneNode(true);
+        const templateRow = document.querySelector('.formset-row');
+        const formRow = templateRow.cloneNode(true);
         
         formRow.querySelectorAll('input, select, textarea').forEach(field => {
             field.name = field.name.replace(formRegex, formCount);
@@ -360,6 +485,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         document.getElementById('registros-container').appendChild(formRow);
         document.querySelector('input[name="registrotreinamento_set-TOTAL_FORMS"]').value = ++formCount;
+        
+        // Scroll e focus
+        formRow.scrollIntoView({ behavior: 'smooth' });
+        formRow.querySelector('select').focus();
     });
 });
 </script>
