@@ -123,8 +123,8 @@ urlpatterns = [
     path("favicon.ico", favicon_view, name="favicon"),
     
     # 1. Health check for Railway
-    path("healthz", health_check, name="health_check"),
-    path("health", health_check, name="health"),
+    path("healthz/", health_check, name="health_check"),
+    path("health/", health_check, name="health"),
 
     # Página inicial personalizada (agora padrão)
     path("", home_view, name="home"),
