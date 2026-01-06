@@ -35,9 +35,6 @@ from .views import (
     editar_orcamento_view,
 )
 
-# Import template_mapeamento_views module so admin can use it
-from . import template_mapeamento_views
-
 __all__ = [
     # Procedimentos
     'procedimentos_list_view',
