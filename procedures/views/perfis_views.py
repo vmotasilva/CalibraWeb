@@ -862,130 +862,130 @@ def importar_estrutura_completa_view(request):
             }
             erros = []
             
-            with transaction.atomic():
-                # 1. IMPORTAR PERFIS
-                if 'Perfis' in excel_file.sheet_names:
-                    df_perfis = pd.read_excel(excel_file, sheet_name='Perfis')
-                    for _, row in df_perfis.iterrows():
-                        try:
-                            perfil, created = PerfilTreinamento.objects.update_or_create(
-                                codigo=str(row['Código Perfil']).strip(),
-                                defaults={
-                                    'nome': str(row['Nome Perfil']).strip(),
-                                    'descricao': str(row.get('Descrição', '')).strip() if pd.notna(row.get('Descrição')) else '',
-                                    'ativo': True
-                                }
-                            )
-                            if created:
-                                stats['perfis'] += 1
+            # 1. IMPORTAR PERFIS
+            if 'Perfis' in excel_file.sheet_names:
+                df_perfis = pd.read_excel(excel_file, sheet_name='Perfis')
+                for _, row in df_perfis.iterrows():
+                    try:
+                        perfil, created = PerfilTreinamento.objects.update_or_create(
+                            codigo=str(row['Código Perfil']).strip(),
+                            defaults={
+                                'nome': str(row['Nome Perfil']).strip(),
+                                'descricao': str(row.get('Descrição', '')).strip() if pd.notna(row.get('Descrição')) else '',
+                                'ativo': True
+                            }
+                        )
+                        if created:
+                            stats['perfis'] += 1
+                        else:
+                            stats['perfis_atualizados'] += 1
+                    except Exception as e:
+                        erros.append(f"Perfil - Linha {_ + 2}: {str(e)}")
+            
+            # 2. IMPORTAR GRUPOS
+            if 'Grupos' in excel_file.sheet_names:
+                df_grupos = pd.read_excel(excel_file, sheet_name='Grupos')
+                for _, row in df_grupos.iterrows():
+                    try:
+                        perfil = PerfilTreinamento.objects.get(codigo=str(row['Código Perfil']).strip())
+                        grupo, created = GrupoTreinamento.objects.update_or_create(
+                            perfil=perfil,
+                            nome=str(row['Nome Grupo']).strip(),
+                            defaults={
+                                'descricao': str(row.get('Descrição', '')).strip() if pd.notna(row.get('Descrição')) else '',
+                                'ordem': int(row.get('Ordem', 1))
+                            }
+                        )
+                        if created:
+                            stats['grupos'] += 1
+                        else:
+                            stats['grupos_atualizados'] += 1
+                    except Exception as e:
+                        erros.append(f"Grupo - Linha {_ + 2}: {str(e)}")
+            
+            # 3. IMPORTAR SUBGRUPOS
+            if 'Subgrupos' in excel_file.sheet_names:
+                df_subgrupos = pd.read_excel(excel_file, sheet_name='Subgrupos')
+                for _, row in df_subgrupos.iterrows():
+                    try:
+                        perfil = PerfilTreinamento.objects.get(codigo=str(row['Código Perfil']).strip())
+                        grupo = GrupoTreinamento.objects.get(
+                            perfil=perfil,
+                            nome=str(row['Nome Grupo']).strip()
+                        )
+                        subgrupo, created = SubGrupoTreinamento.objects.update_or_create(
+                            grupo=grupo,
+                            nome=str(row['Nome Subgrupo']).strip(),
+                            defaults={
+                                'descricao': str(row.get('Descrição', '')).strip() if pd.notna(row.get('Descrição')) else '',
+                                'ordem': int(row.get('Ordem', 1))
+                            }
+                        )
+                        if created:
+                            stats['subgrupos'] += 1
+                        else:
+                            stats['subgrupos_atualizados'] += 1
+                    except Exception as e:
+                        erros.append(f"Subgrupo - Linha {_ + 2}: {str(e)}")
+            
+            # 4. VINCULAR PROCEDIMENTOS A SUBGRUPOS
+            if 'Procedimentos' in excel_file.sheet_names:
+                df_procedimentos = pd.read_excel(excel_file, sheet_name='Procedimentos')
+                for _, row in df_procedimentos.iterrows():
+                    try:
+                        codigo_perfil = str(row['Código Perfil']).strip()
+                        nome_grupo = str(row['Nome Grupo']).strip()
+                        nome_subgrupo = str(row['Nome Subgrupo']).strip()
+                        codigo_proc = str(row['Código Procedimento']).strip()
+                        
+                        perfil = PerfilTreinamento.objects.get(codigo=codigo_perfil)
+                        grupo = GrupoTreinamento.objects.get(
+                            perfil=perfil,
+                            nome=nome_grupo
+                        )
+                        subgrupo = SubGrupoTreinamento.objects.get(
+                            grupo=grupo,
+                            nome=nome_subgrupo
+                        )
+                        
+                        # Buscar procedimento pelo código
+                        procedimento = Procedimento.objects.filter(codigo=codigo_proc).first()
+                        
+                        if procedimento:
+                            if not subgrupo.procedimentos.filter(id=procedimento.id).exists():
+                                subgrupo.procedimentos.add(procedimento)
+                                stats['vinculos_procedimentos'] += 1
                             else:
-                                stats['perfis_atualizados'] += 1
-                        except Exception as e:
-                            erros.append(f"Perfil - Linha {_ + 2}: {str(e)}")
-                
-                # 2. IMPORTAR GRUPOS
-                if 'Grupos' in excel_file.sheet_names:
-                    df_grupos = pd.read_excel(excel_file, sheet_name='Grupos')
-                    for _, row in df_grupos.iterrows():
-                        try:
-                            perfil = PerfilTreinamento.objects.get(codigo=str(row['Código Perfil']).strip())
-                            grupo, created = GrupoTreinamento.objects.update_or_create(
-                                perfil=perfil,
-                                nome=str(row['Nome Grupo']).strip(),
-                                defaults={
-                                    'descricao': str(row.get('Descrição', '')).strip() if pd.notna(row.get('Descrição')) else '',
-                                    'ordem': int(row.get('Ordem', 1))
-                                }
-                            )
-                            if created:
-                                stats['grupos'] += 1
-                            else:
-                                stats['grupos_atualizados'] += 1
-                        except Exception as e:
-                            erros.append(f"Grupo - Linha {_ + 2}: {str(e)}")
-                
-                # 3. IMPORTAR SUBGRUPOS
-                if 'Subgrupos' in excel_file.sheet_names:
-                    df_subgrupos = pd.read_excel(excel_file, sheet_name='Subgrupos')
-                    for _, row in df_subgrupos.iterrows():
-                        try:
-                            perfil = PerfilTreinamento.objects.get(codigo=str(row['Código Perfil']).strip())
-                            grupo = GrupoTreinamento.objects.get(
-                                perfil=perfil,
-                                nome=str(row['Nome Grupo']).strip()
-                            )
-                            subgrupo, created = SubGrupoTreinamento.objects.update_or_create(
-                                grupo=grupo,
-                                nome=str(row['Nome Subgrupo']).strip(),
-                                defaults={
-                                    'descricao': str(row.get('Descrição', '')).strip() if pd.notna(row.get('Descrição')) else '',
-                                    'ordem': int(row.get('Ordem', 1))
-                                }
-                            )
-                            if created:
-                                stats['subgrupos'] += 1
-                            else:
-                                stats['subgrupos_atualizados'] += 1
-                        except Exception as e:
-                            erros.append(f"Subgrupo - Linha {_ + 2}: {str(e)}")
-                
-                # 4. VINCULAR PROCEDIMENTOS A SUBGRUPOS
-                if 'Procedimentos' in excel_file.sheet_names:
-                    df_procedimentos = pd.read_excel(excel_file, sheet_name='Procedimentos')
-                    for _, row in df_procedimentos.iterrows():
-                        try:
-                            codigo_perfil = str(row['Código Perfil']).strip()
-                            nome_grupo = str(row['Nome Grupo']).strip()
-                            nome_subgrupo = str(row['Nome Subgrupo']).strip()
-                            codigo_proc = str(row['Código Procedimento']).strip()
+                                stats['vinculos_ja_existentes'] += 1
+                        else:
+                            erros.append(f"Procedimento {codigo_proc} não encontrado na linha {_ + 2}")
                             
-                            perfil = PerfilTreinamento.objects.get(codigo=codigo_perfil)
-                            grupo = GrupoTreinamento.objects.get(
-                                perfil=perfil,
-                                nome=nome_grupo
-                            )
-                            subgrupo = SubGrupoTreinamento.objects.get(
-                                grupo=grupo,
-                                nome=nome_subgrupo
-                            )
-                            
-                            # Buscar procedimento pelo código
-                            procedimento = Procedimento.objects.filter(codigo=codigo_proc).first()
-                            
-                            if procedimento:
-                                if not subgrupo.procedimentos.filter(id=procedimento.id).exists():
-                                    subgrupo.procedimentos.add(procedimento)
-                                    stats['vinculos_procedimentos'] += 1
-                                else:
-                                    stats['vinculos_ja_existentes'] += 1
-                            else:
-                                erros.append(f"Procedimento {codigo_proc} não encontrado na linha {_ + 2}")
-                                
-                        except PerfilTreinamento.DoesNotExist:
-                            erros.append(f"Vínculo Procedimento - Linha {_ + 2}: Perfil '{row.get('Código Perfil')}' não encontrado")
-                        except GrupoTreinamento.DoesNotExist:
-                            erros.append(f"Vínculo Procedimento - Linha {_ + 2}: Grupo '{row.get('Nome Grupo')}' não encontrado no perfil '{row.get('Código Perfil')}'")
-                        except SubGrupoTreinamento.DoesNotExist:
-                            erros.append(f"Vínculo Procedimento - Linha {_ + 2}: Subgrupo '{row.get('Nome Subgrupo')}' não encontrado no grupo '{row.get('Nome Grupo')}'")
-                        except Exception as e:
-                            erros.append(f"Vínculo Procedimento - Linha {_ + 2}: {str(e)}")
+                    except PerfilTreinamento.DoesNotExist:
+                        erros.append(f"Vínculo Procedimento - Linha {_ + 2}: Perfil '{row.get('Código Perfil')}' não encontrado")
+                    except GrupoTreinamento.DoesNotExist:
+                        erros.append(f"Vínculo Procedimento - Linha {_ + 2}: Grupo '{row.get('Nome Grupo')}' não encontrado no perfil '{row.get('Código Perfil')}'")
+                    except SubGrupoTreinamento.DoesNotExist:
+                        erros.append(f"Vínculo Procedimento - Linha {_ + 2}: Subgrupo '{row.get('Nome Subgrupo')}' não encontrado no grupo '{row.get('Nome Grupo')}'")
+                    except Exception as e:
+                        erros.append(f"Vínculo Procedimento - Linha {_ + 2}: {str(e)}")
+            
+            # 5. ASSOCIAR COLABORADORES A PERFIS (com transaction por linha para permitir continuar com erros)
+            if 'Colaboradores' in excel_file.sheet_names:
+                df_colaboradores = pd.read_excel(excel_file, sheet_name='Colaboradores', dtype={'Matrícula': str})
+                from rh.models import Colaborador
                 
-                # 5. ASSOCIAR COLABORADORES A PERFIS
-                if 'Colaboradores' in excel_file.sheet_names:
-                    df_colaboradores = pd.read_excel(excel_file, sheet_name='Colaboradores', dtype={'Matrícula': str})
-                    from rh.models import Colaborador
-                    
-                    # Pré-carregar colaboradores e perfis para evitar N+1 queries
-                    colaboradores_dict = {c.matricula: c for c in Colaborador.objects.all()}
-                    perfis_dict = {p.codigo: p for p in PerfilTreinamento.objects.all()}
-                    
-                    # Pré-verificar associações existentes
-                    colaboradores_perfis_existentes = set(
-                        ColaboradorPerfil.objects.values_list('colaborador_id', 'perfil_id')
-                    )
-                    
-                    for _, row in df_colaboradores.iterrows():
-                        try:
+                # Pré-carregar colaboradores e perfis para evitar N+1 queries
+                colaboradores_dict = {c.matricula: c for c in Colaborador.objects.all()}
+                perfis_dict = {p.codigo: p for p in PerfilTreinamento.objects.all()}
+                
+                # Pré-verificar associações existentes
+                colaboradores_perfis_existentes = set(
+                    ColaboradorPerfil.objects.values_list('colaborador_id', 'perfil_id')
+                )
+                
+                for _, row in df_colaboradores.iterrows():
+                    try:
+                        with transaction.atomic():
                             codigo_perfil = str(row['Código Perfil']).strip()
                             if codigo_perfil not in perfis_dict:
                                 erros.append(f"Colaborador - Linha {_ + 2}: Perfil '{codigo_perfil}' não encontrado")
@@ -1058,8 +1058,8 @@ def importar_estrutura_completa_view(request):
                             
                             stats['colaboradores'] += 1
                                     
-                        except Exception as e:
-                            erros.append(f"Colaborador - Linha {_ + 2}: {str(e)}")
+                    except Exception as e:
+                        erros.append(f"Colaborador - Linha {_ + 2}: {str(e)}")
             
             # Mensagens de resultado
             mensagem_parts = []
