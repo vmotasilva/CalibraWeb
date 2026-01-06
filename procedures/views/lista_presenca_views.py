@@ -960,7 +960,7 @@ def atualizar_demandas_apos_importacao():
 
 
 def processar_importacao(df, criar_listas, sobrescrever, usuario):
-    """Processa DataFrame com dados de importação - estrutura completa com 28 colunas."""
+    """Processa DataFrame com dados de importação - estrutura completa com 28 colunas com OTIMIZAÇÕES."""
     resultados = {
         'criados': 0,
         'atualizados': 0,
@@ -969,8 +969,29 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
         'mensagens_erro': []
     }
     
+    # OTIMIZAÇÃO: Cache em memória para evitar queries repetidas
+    cache_colaboradores = {}
+    cache_procedimentos = {}
+    cache_listas = {}
+    
+    # Pré-carregar TODOS os colaboradores e procedimentos que serão usados
+    print("[IMPORT] Pré-carregando dados do banco...")
+    todos_colaboradores = {c.matricula: c for c in Colaborador.objects.all()}
+    todos_procedimentos = {p.codigo: p for p in Procedimento.objects.all()}
+    todas_listas = {l.data_sessao: l for l in ListaPresenca.objects.all()}
+    
+    # Pré-carregar registros existentes para verificação duplicada mais rápida
+    registros_existentes = {}
+    for reg in RegistroTreinamento.objects.all().values('colaborador_id', 'procedimento_id', 'titulo_treinamento', 'data_treinamento'):
+        chave = (reg['colaborador_id'], reg['procedimento_id'], reg['titulo_treinamento'], reg['data_treinamento'])
+        registros_existentes[chave] = True
+    
     # Dicionário para agrupar por sessão
     sessoes = {}
+    
+    # OTIMIZAÇÃO: Batch para criar múltiplos registros de uma vez
+    registros_para_criar = []
+    registros_para_atualizar = []
     
     for index, row in df.iterrows():
         try:
@@ -982,16 +1003,13 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                 
             matricula_str = str(row['matricula']).strip()
             
-            try:
-                colaborador = Colaborador.objects.get(matricula=matricula_str)
-            except Colaborador.DoesNotExist:
+            # OTIMIZAÇÃO: Usar cache em vez de query
+            if matricula_str not in todos_colaboradores:
                 resultados['erros'] += 1
                 resultados['mensagens_erro'].append(f"Linha {index + 2}: Colaborador com matrícula '{matricula_str}' não encontrado no sistema")
                 continue
-            except Exception as e:
-                resultados['erros'] += 1
-                resultados['mensagens_erro'].append(f"Linha {index + 2}: Erro ao buscar colaborador - {str(e)}")
-                continue
+            
+            colaborador = todos_colaboradores[matricula_str]
             
             # Determinar tipo de treinamento
             tipo = row.get('tipo', 'PROCEDIMENTO')
@@ -1008,12 +1026,13 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             procedimento = None
             if tipo == 'PROCEDIMENTO':
                 if 'codigo_documento' in row and pd.notna(row['codigo_documento']):
-                    try:
-                        procedimento = Procedimento.objects.get(codigo=str(row['codigo_documento']).strip())
-                    except Procedimento.DoesNotExist:
+                    codigo_proc = str(row['codigo_documento']).strip()
+                    # OTIMIZAÇÃO: Usar cache em vez de query
+                    if codigo_proc not in todos_procedimentos:
                         resultados['erros'] += 1
                         resultados['mensagens_erro'].append(f"Linha {index + 2}: Procedimento {row['codigo_documento']} não encontrado")
                         continue
+                    procedimento = todos_procedimentos[codigo_proc]
                 else:
                     resultados['erros'] += 1
                     resultados['mensagens_erro'].append(f"Linha {index + 2}: Tipo PROCEDIMENTO requer codigo_documento")
@@ -1193,11 +1212,9 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                 # Buscar ou criar lista pela data
                 titulo_lista = titulo_treinamento or (f"{procedimento.codigo} - {procedimento.nome}" if procedimento else f"Treinamento - {data_treinamento.strftime('%d/%m/%Y')}")
                 
-                # Tentar encontrar uma lista existente para essa data
-                lista_existente = ListaPresenca.objects.filter(data_sessao=data_treinamento).first()
-                
-                if lista_existente:
-                    lista = lista_existente
+                # OTIMIZAÇÃO: Usar cache em vez de query
+                if data_treinamento in todas_listas:
+                    lista = todas_listas[data_treinamento]
                 else:
                     # Criar nova lista de presença
                     lista = ListaPresenca.objects.create(
@@ -1211,94 +1228,108 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                         local='',
                         criado_por=usuario
                     )
+                    # OTIMIZAÇÃO: Adicionar à cache para próximas iterações
+                    todas_listas[data_treinamento] = lista
                     resultados['listas_criadas'] += 1
                 
                 sessoes[chave_sessao] = lista
             else:
                 lista = sessoes[chave_sessao]
             
+            # OTIMIZAÇÃO: Acumular registros para criar em batch
             # Verificar se já existe registro
-            # Usar colaborador + procedimento como chave única (conforme constraint do modelo)
             if procedimento:
-                # Se há procedimento, usar colaborador + procedimento como chave
-                registro_existente = RegistroTreinamento.objects.filter(
-                    colaborador=colaborador,
-                    procedimento=procedimento
-                ).first()
+                chave_existencia = (colaborador.id, procedimento.id, None, None)
             else:
-                # Se não há procedimento, buscar por colaborador + titulo_treinamento + data
-                registro_existente = RegistroTreinamento.objects.filter(
-                    colaborador=colaborador,
-                    titulo_treinamento=titulo_treinamento,
-                    data_treinamento=data_treinamento
-                ).first()
+                chave_existencia = (colaborador.id, None, titulo_treinamento, data_treinamento)
             
-            if registro_existente:
+            if chave_existencia in registros_existentes:
                 if sobrescrever:
-                    # Atualizar registro existente
-                    registro_existente.tipo = tipo
-                    registro_existente.lista_presenca = lista
-                    registro_existente.titulo_treinamento = titulo_treinamento
-                    registro_existente.revisao_treinada = revisao_treinada
-                    registro_existente.observacoes = observacoes
-                    registro_existente.categoria_comunicacao = categoria_comunicacao
-                    registro_existente.metodologia_treinamento = metodologia_treinamento
-                    registro_existente.area_conhecimento = area_conhecimento
-                    registro_existente.facilitador_fornecedor = facilitador_fornecedor
-                    registro_existente.carga_horaria = carga_horaria
-                    registro_existente.custo_treinamento = custo_treinamento
-                    registro_existente.data_final_treinamento = data_final_treinamento
-                    registro_existente.data_treinamento = data_treinamento
-                    registro_existente.mes_referencia = mes_referencia
-                    registro_existente.necessita_avaliacao_eficacia = necessita_avaliacao
-                    registro_existente.data_limite_avaliacao_eficacia = data_limite_avaliacao
-                    registro_existente.save()
-                    resultados['atualizados'] += 1
+                    # Adicionar à lista de atualização
+                    registros_para_atualizar.append({
+                        'colaborador': colaborador,
+                        'procedimento': procedimento,
+                        'titulo_treinamento': titulo_treinamento,
+                        'data_treinamento': data_treinamento,
+                        'dados': {
+                            'tipo': tipo,
+                            'lista_presenca': lista,
+                            'revisao_treinada': revisao_treinada,
+                            'observacoes': observacoes,
+                            'categoria_comunicacao': categoria_comunicacao,
+                            'metodologia_treinamento': metodologia_treinamento,
+                            'area_conhecimento': area_conhecimento,
+                            'facilitador_fornecedor': facilitador_fornecedor,
+                            'carga_horaria': carga_horaria,
+                            'custo_treinamento': custo_treinamento,
+                            'data_final_treinamento': data_final_treinamento,
+                            'mes_referencia': mes_referencia,
+                            'necessita_avaliacao_eficacia': necessita_avaliacao,
+                            'data_limite_avaliacao_eficacia': data_limite_avaliacao
+                        }
+                    })
                 else:
                     resultados['erros'] += 1
                     resultados['mensagens_erro'].append(f"Linha {index + 2}: Registro já existe (colaborador + procedimento duplicado)")
             else:
-                # Criar novo registro com tratamento de erro
-                try:
-                    novo_registro = RegistroTreinamento.objects.create(
-                        colaborador=colaborador,  # ForeignKey - associação obrigatória
-                        colaborador_nome=colaborador.nome_completo if colaborador else '',  # Salvar nome livre também
-                        procedimento=procedimento,
-                        tipo=tipo,
-                        titulo_treinamento=titulo_treinamento,
-                        lista_presenca=lista,
-                        data_treinamento=data_treinamento,
-                        revisao_treinada=revisao_treinada,
-                        observacoes=observacoes,
-                        categoria_comunicacao=categoria_comunicacao,
-                        metodologia_treinamento=metodologia_treinamento,
-                        area_conhecimento=area_conhecimento,
-                        facilitador_fornecedor=facilitador_fornecedor,
-                        carga_horaria=carga_horaria,
-                        custo_treinamento=custo_treinamento,
-                        data_final_treinamento=data_final_treinamento,
-                        mes_referencia=mes_referencia,
-                        necessita_avaliacao_eficacia=necessita_avaliacao,
-                        data_limite_avaliacao_eficacia=data_limite_avaliacao
-                    )
-                    # Verificar se o registro foi criado corretamente
-                    if novo_registro.id:
-                        resultados['criados'] += 1
-                    else:
-                        resultados['erros'] += 1
-                        resultados['mensagens_erro'].append(f"Linha {index + 2}: Falha ao criar registro de treinamento")
-                except Exception as e:
-                    resultados['erros'] += 1
-                    resultados['mensagens_erro'].append(f"Linha {index + 2}: Erro ao criar registro - {str(e)}")
+                # Adicionar à lista de criação
+                registros_para_criar.append(RegistroTreinamento(
+                    colaborador=colaborador,
+                    colaborador_nome=colaborador.nome_completo if colaborador else '',
+                    procedimento=procedimento,
+                    tipo=tipo,
+                    titulo_treinamento=titulo_treinamento,
+                    lista_presenca=lista,
+                    data_treinamento=data_treinamento,
+                    revisao_treinada=revisao_treinada,
+                    observacoes=observacoes,
+                    categoria_comunicacao=categoria_comunicacao,
+                    metodologia_treinamento=metodologia_treinamento,
+                    area_conhecimento=area_conhecimento,
+                    facilitador_fornecedor=facilitador_fornecedor,
+                    carga_horaria=carga_horaria,
+                    custo_treinamento=custo_treinamento,
+                    data_final_treinamento=data_final_treinamento,
+                    mes_referencia=mes_referencia,
+                    necessita_avaliacao_eficacia=necessita_avaliacao,
+                    data_limite_avaliacao_eficacia=data_limite_avaliacao
+                ))
                 
         except Exception as e:
             resultados['erros'] += 1
             resultados['mensagens_erro'].append(f"Linha {index + 2}: {str(e)}")
     
+    # OTIMIZAÇÃO: Criar todos de uma vez com bulk_create (muito mais rápido!)
+    print(f"[IMPORT] Criando {len(registros_para_criar)} registros em batch...")
+    if registros_para_criar:
+        RegistroTreinamento.objects.bulk_create(registros_para_criar, batch_size=1000)
+        resultados['criados'] = len(registros_para_criar)
+    
+    # OTIMIZAÇÃO: Atualizar registros em batch
+    print(f"[IMPORT] Atualizando {len(registros_para_atualizar)} registros...")
+    if registros_para_atualizar:
+        for item in registros_para_atualizar:
+            try:
+                reg = RegistroTreinamento.objects.get(
+                    colaborador=item['colaborador'],
+                    procedimento=item['procedimento'] if item['procedimento'] else None,
+                    titulo_treinamento=item['titulo_treinamento'] if not item['procedimento'] else None,
+                    data_treinamento=item['data_treinamento'] if not item['procedimento'] else None
+                )
+                for chave, valor in item['dados'].items():
+                    setattr(reg, chave, valor)
+                reg.save()
+                resultados['atualizados'] += 1
+            except Exception as e:
+                resultados['erros'] += 1
+                resultados['mensagens_erro'].append(f"Erro ao atualizar registro: {str(e)}")
+    
     # Atualizar demandas após importação bem-sucedida
     if resultados['criados'] > 0 or resultados['atualizados'] > 0:
+        print(f"[IMPORT] Atualizando demandas...")
         atualizar_demandas_apos_importacao()
     
+    print(f"[IMPORT] Concluído! Criados: {resultados['criados']}, Atualizados: {resultados['atualizados']}, Erros: {resultados['erros']}")
     return resultados
 
 # ============================================================================
