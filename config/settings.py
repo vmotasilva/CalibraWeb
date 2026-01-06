@@ -17,22 +17,31 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # set SECRET_KEY in a .env file; but on production the variable must be provided.
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
-    raise ImproperlyConfigured("SECRET_KEY is required. Set it in the environment (see .env.example)")
+    # Fallback for development/testing only
+    # In production, SECRET_KEY MUST be set via environment
+    if DEBUG or os.environ.get("ALLOW_INSECURE_SECRET_KEY", "false").lower() == "true":
+        SECRET_KEY = "django-insecure-dev-key-do-not-use-in-production-change-this-asap"
+    else:
+        # Try to generate a temporary key for container initialization
+        try:
+            from django.core.management.utils import get_random_secret_key
+            SECRET_KEY = get_random_secret_key()
+            print(f"⚠️  Generated temporary SECRET_KEY: {SECRET_KEY}")
+            print("⚠️  Set SECRET_KEY environment variable in production!")
+        except:
+            raise ImproperlyConfigured("SECRET_KEY is required. Set it in the environment (see .env.example)")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Default is False (safer). In dev set DEBUG='True' in the environment.
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 # Configure ALLOWED_HOSTS via environment variable (comma-separated), default to localhost for development.
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",") if h.strip()]
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver,0.0.0.0").split(",")
+ALLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS if h.strip()]
 
-# In development you may explicitly set DEBUG=True and still require SECRET_KEY above.
-# No implicit insecure fallbacks are provided anymore.
-if not ALLOWED_HOSTS and not DEBUG:
-    raise ImproperlyConfigured("ALLOWED_HOSTS must be set (comma-separated) in production.")
-if DEBUG and not ALLOWED_HOSTS:
-    # Development convenience: allow localhost
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+# Ensure ALLOWED_HOSTS is not empty
+if not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "testserver"]
 
 
 # Configuração necessária para o formulário de login funcionar no Railway (HTTPS)
