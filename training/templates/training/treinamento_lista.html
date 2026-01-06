@@ -14,7 +14,7 @@
             <select name="colaborador" class="form-select">
                 <option value="">Colaborador</option>
                 {% for c in colaboradores %}
-                    <option value="{{ c.id }}" {% if colaborador_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.nome_completo }}</option>
+                    <option value="{{ c.id }}" {% if colaborador_id|add:"0"|stringformat:"d" == c.id %}selected{% endif %}>{{ c.nome_completo }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -22,7 +22,7 @@
             <select name="procedimento" class="form-select">
                 <option value="">Procedimento</option>
                 {% for p in procedimentos %}
-                    <option value="{{ p.id }}" {% if procedimento_id == p.id|stringformat:'s' %}selected{% endif %}>{{ p.codigo }} - {{ p.titulo|truncatechars:40 }}</option>
+                    <option value="{{ p.id }}" {% if procedimento_id|add:"0"|stringformat:"d" == p.id %}selected{% endif %}>{{ p.codigo }} - {{ p.titulo|default:p.nome|truncatechars:40 }}</option>
                 {% endfor %}
             </select>
         </div>

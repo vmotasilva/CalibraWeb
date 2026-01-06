@@ -239,39 +239,31 @@ def treinamentos_list_view(request):
     colaboradores = Colaborador.objects.order_by('nome_completo').distinct()
     procedimentos = Procedimento.objects.order_by('codigo').distinct()
     
-    status = request.GET.get('status')
-    colaborador_id = request.GET.get('colaborador')
-    procedimento_id = request.GET.get('procedimento')
-    busca = request.GET.get('q')
-
-    # Filtro por colaborador
-    if colaborador_id:
-        qs = qs.filter(colaborador_id=colaborador_id)
+    status = request.GET.get('status', '').strip()
+    colaborador_id = request.GET.get('colaborador', '').strip()
+    procedimento_id = request.GET.get('procedimento', '').strip()
+    busca = request.GET.get('q', '').strip()
     
-    # Filtro por procedimento
-    if procedimento_id:
-        qs = qs.filter(procedimento_id=procedimento_id)
+    # Filtro por colaborador - converter para int se fornecido
+    if colaborador_id and colaborador_id.isdigit():
+        qs = qs.filter(colaborador_id=int(colaborador_id))
     
-    # Filtro por status - filtrando em Python após QuerySet ser materializado se necessário
-    if status:
-        all_records = list(qs)
-        qs = [t for t in all_records if t.status_treinamento == status]
+    # Filtro por procedimento - converter para int se fornecido
+    if procedimento_id and procedimento_id.isdigit():
+        qs = qs.filter(procedimento_id=int(procedimento_id))
     
-    # Filtro de busca por texto (antes de filtro de status se ainda for QuerySet)
-    if busca and not status:
+    # Filtro de busca por texto
+    if busca and busca != 'None':
         qs = qs.filter(
             Q(colaborador__nome_completo__icontains=busca) |
             Q(procedimento__codigo__icontains=busca) |
             Q(procedimento__nome__icontains=busca)
         )
-    elif busca and isinstance(qs, list):
-        # Se já virou lista (por causa do status), filtra em Python
-        qs = [
-            t for t in qs 
-            if (busca.lower() in t.colaborador.nome_completo.lower() or
-                busca.lower() in t.procedimento.codigo.lower() or
-                busca.lower() in t.procedimento.nome.lower())
-        ]
+    
+    # Filtro por status - filtrando em Python (é uma property, não field direto)
+    if status and status != 'None':
+        all_records = list(qs)
+        qs = [t for t in all_records if t.status_treinamento == status]
     
     # Ordenar resultados
     if isinstance(qs, list):
