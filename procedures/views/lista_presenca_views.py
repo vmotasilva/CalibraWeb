@@ -585,9 +585,9 @@ def lista_presenca_importar_view(request):
             sobrescrever = form.cleaned_data['sobrescrever_existentes']
             
             try:
-                # Ler arquivo Excel - especificar colunas de data para conversão correta
-                data_columns = ['data_inicio_treinamento', 'data_final_treinamento', 'data_limite_avaliacao_eficacia']
-                df = pd.read_excel(arquivo, parse_dates=data_columns)
+                # Ler arquivo Excel - sem fazer parsing de datas (deixar como string)
+                # Vamos fazer o parsing no loop para ter melhor controle
+                df = pd.read_excel(arquivo)
                 
                 # Validar se o arquivo tem dados
                 if df.empty:
@@ -1036,12 +1036,47 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                 resultados['mensagens_erro'].append(f"Linha {index + 2}: data_inicio_treinamento ausente")
                 continue
             
-            data_treinamento = pd.to_datetime(row['data_inicio_treinamento']).date()
+            try:
+                # Converter para data, tratando diferentes formatos
+                valor_data = row['data_inicio_treinamento']
+                if isinstance(valor_data, str):
+                    # Se for string, tentar parsing com múltiplos formatos
+                    try:
+                        data_treinamento = pd.to_datetime(valor_data, format='%d/%m/%Y').date()
+                    except:
+                        try:
+                            data_treinamento = pd.to_datetime(valor_data, format='%Y-%m-%d').date()
+                        except:
+                            data_treinamento = pd.to_datetime(valor_data).date()
+                else:
+                    # Se for timestamp/datetime, converter diretamente
+                    data_treinamento = pd.to_datetime(valor_data).date()
+                    
+                # Validar se data é válida
+                if data_treinamento is None or (isinstance(data_treinamento, float) and pd.isna(data_treinamento)):
+                    raise ValueError("Data nula após conversão")
+            except Exception as e:
+                resultados['erros'] += 1
+                resultados['mensagens_erro'].append(f"Linha {index + 2}: Erro ao converter data_inicio_treinamento ({str(e)}). Valor: {row['data_inicio_treinamento']}")
+                continue
             
             # Converter data final (opcional)
             data_final_treinamento = None
             if 'data_final_treinamento' in row and pd.notna(row['data_final_treinamento']):
-                data_final_treinamento = pd.to_datetime(row['data_final_treinamento']).date()
+                try:
+                    valor_data = row['data_final_treinamento']
+                    if isinstance(valor_data, str):
+                        try:
+                            data_final_treinamento = pd.to_datetime(valor_data, format='%d/%m/%Y').date()
+                        except:
+                            try:
+                                data_final_treinamento = pd.to_datetime(valor_data, format='%Y-%m-%d').date()
+                            except:
+                                data_final_treinamento = pd.to_datetime(valor_data).date()
+                    else:
+                        data_final_treinamento = pd.to_datetime(valor_data).date()
+                except:
+                    pass  # Ignorar erros em data final (opcional)
             
             # Buscar facilitador/fornecedor (opcional)
             facilitador_fornecedor = row.get('facilitador_fornecedor', '')
@@ -1130,9 +1165,19 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             data_limite_avaliacao = None
             if 'data_limite_avaliacao_eficacia' in row and pd.notna(row['data_limite_avaliacao_eficacia']):
                 try:
-                    data_limite_avaliacao = pd.to_datetime(row['data_limite_avaliacao_eficacia']).date()
+                    valor_data = row['data_limite_avaliacao_eficacia']
+                    if isinstance(valor_data, str):
+                        try:
+                            data_limite_avaliacao = pd.to_datetime(valor_data, format='%d/%m/%Y').date()
+                        except:
+                            try:
+                                data_limite_avaliacao = pd.to_datetime(valor_data, format='%Y-%m-%d').date()
+                            except:
+                                data_limite_avaliacao = pd.to_datetime(valor_data).date()
+                    else:
+                        data_limite_avaliacao = pd.to_datetime(valor_data).date()
                 except:
-                    pass
+                    pass  # Ignorar erros em data limite
             
             # Descrição/observações
             observacoes = row.get('observacao', '')
