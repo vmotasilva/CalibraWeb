@@ -346,3 +346,100 @@ def editar_treinamento_view(request, treinamento_id):
     return render(request, "training/treinamento_form.html", {
         "form": form
     })
+
+# ==============================================================================
+# DASHBOARD DE TREINAMENTOS
+# ==============================================================================
+
+@login_required
+def dashboard_treinamentos_view(request):
+    """Dashboard completo de treinamentos com estatísticas e gráficos"""
+    from django.db.models import Count, Q
+    from datetime import timedelta, date
+    
+    # Estatísticas gerais
+    total_treinamentos = RegistroTreinamento.objects.count()
+    
+    treinamentos_vigentes = RegistroTreinamento.objects.filter(
+        data_treinamento__isnull=False
+    ).count()
+    
+    treinamentos_pendentes = RegistroTreinamento.objects.filter(
+        data_treinamento__isnull=True
+    ).count()
+    
+    # Colaboradores com treinamentos
+    total_colaboradores_treinados = RegistroTreinamento.objects.filter(
+        data_treinamento__isnull=False
+    ).values('colaborador').distinct().count()
+    
+    # Procedimentos únicos treinados
+    total_procedimentos_unicos = RegistroTreinamento.objects.filter(
+        data_treinamento__isnull=False
+    ).values('procedimento').distinct().count()
+    
+    # Treinamentos nos últimos 30 dias
+    data_30_dias_atras = date.today() - timedelta(days=30)
+    treinamentos_ultimos_30_dias = RegistroTreinamento.objects.filter(
+        data_treinamento__gte=data_30_dias_atras,
+        data_treinamento__isnull=False
+    ).count()
+    
+    # Top 10 procedimentos mais treinados
+    top_procedimentos = RegistroTreinamento.objects.filter(
+        data_treinamento__isnull=False
+    ).values('procedimento__codigo', 'procedimento__nome').annotate(
+        total=Count('id')
+    ).order_by('-total')[:10]
+    
+    # Top 10 colaboradores com mais treinamentos
+    top_colaboradores = RegistroTreinamento.objects.filter(
+        data_treinamento__isnull=False
+    ).values('colaborador__nome_completo').annotate(
+        total=Count('id')
+    ).order_by('-total')[:10]
+    
+    # Distribuição de status
+    status_distribuicao = {
+        'vigente': treinamentos_vigentes,
+        'pendente': treinamentos_pendentes
+    }
+    
+    # Taxa de conformidade (treinados vs total)
+    if total_treinamentos > 0:
+        taxa_conformidade = round((treinamentos_vigentes / total_treinamentos) * 100, 1)
+    else:
+        taxa_conformidade = 0
+    
+    # Treinamentos por mês (últimos 6 meses)
+    treinamentos_por_mes = []
+    for i in range(5, -1, -1):
+        data_inicio = date.today() - timedelta(days=30 * (i + 1))
+        data_fim = date.today() - timedelta(days=30 * i)
+        
+        count = RegistroTreinamento.objects.filter(
+            data_treinamento__gte=data_inicio,
+            data_treinamento__lt=data_fim,
+            data_treinamento__isnull=False
+        ).count()
+        
+        treinamentos_por_mes.append({
+            'mes': data_inicio.strftime('%b/%y'),
+            'total': count
+        })
+    
+    context = {
+        'total_treinamentos': total_treinamentos,
+        'treinamentos_vigentes': treinamentos_vigentes,
+        'treinamentos_pendentes': treinamentos_pendentes,
+        'total_colaboradores_treinados': total_colaboradores_treinados,
+        'total_procedimentos_unicos': total_procedimentos_unicos,
+        'treinamentos_ultimos_30_dias': treinamentos_ultimos_30_dias,
+        'taxa_conformidade': taxa_conformidade,
+        'top_procedimentos': top_procedimentos,
+        'top_colaboradores': top_colaboradores,
+        'status_distribuicao': status_distribuicao,
+        'treinamentos_por_mes': treinamentos_por_mes,
+    }
+    
+    return render(request, 'training/dashboard_treinamentos.html', context)

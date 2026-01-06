@@ -4,7 +4,6 @@ from . import views
 app_name = 'training'
 
 urlpatterns = [
-    # Training URLs
-    # path('', views.procedimentos_list_view, name='dashboard'),
-    # Mais URLs serão adicionadas na Fase 3
-]
+    # Dashboard
+    path('dashboard/', views.dashboard_treinamentos_view, name='dashboard_treinamentos'),
+    
