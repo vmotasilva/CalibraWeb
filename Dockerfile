@@ -45,11 +45,14 @@ RUN pip install --upgrade pip && \
 # Copy application code
 COPY . .
 
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
+
 EXPOSE 8000
 
 # Healthcheck using curl
 HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/healthz || exit 1
 
-# Run entrypoint.py with Python
-CMD ["python", "entrypoint.py"]
+# Use shell script as entrypoint
+CMD ["/bin/sh", "entrypoint.sh"]
