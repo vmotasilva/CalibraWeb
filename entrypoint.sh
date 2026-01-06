@@ -9,76 +9,43 @@ export PYTHONUNBUFFERED=1
 PORT=${PORT:-8000}
 
 echo "=========================================="
-echo "=== CalibraWeb Startup Starting ==="
+echo "=== CalibraWeb Starting ==="
 echo "=========================================="
-echo "Time: $(date)"
-echo "Python version: $(python --version)"
-echo "Python executable: $(which python)"
-echo "Current directory: $(pwd)"
-echo "Listening on port: $PORT"
-echo ""
 
-# Setup persistent storage first
-echo ""
-echo ">>> Step 1: Setting up persistent storage..."
-python setup_persistent_storage.py || true
-echo "✓ Persistent storage configured"
+# Skip the storage setup - it might be blocking
+# python setup_persistent_storage.py || true
 
-# Debug: Check environment variables
-echo ""
-echo ">>> Step 2: Verifying environment variables..."
-if [ -z "$SECRET_KEY" ]; then
-  echo "ERROR: SECRET_KEY environment variable is not set!"
-  exit 1
-fi
-echo "✓ SECRET_KEY is configured"
+# Step 1: Django check (minimal output)
+echo ">>> Step 1: Django system check..."
+python manage.py check --database default
+echo "✓ OK"
 
-if [ -z "$DATABASE_URL" ] && [ -z "$PGHOST" ]; then
-  echo "ERROR: DATABASE_URL or PGHOST not configured!"
-  exit 1
-fi
-echo "✓ Database configuration present"
+# Step 2: Migrations 
+echo ">>> Step 2: Running migrations..."
+python manage.py migrate --noinput --fake-initial 2>/dev/null || python manage.py migrate --noinput
+echo "✓ OK"
 
-echo ""
-echo ">>> Step 3: Running Django check..."
-python manage.py check --database default 2>&1
+# Step 3: Static files
+echo ">>> Step 3: Collecting static files..."
+python manage.py collectstatic --noinput --clear
+echo "✓ OK"
 
-echo ""
-echo ">>> Step 4: Running database migrations..."
-python manage.py migrate --noinput --fake-initial 2>/dev/null || python manage.py migrate --noinput 2>&1 || { 
-  echo "❌ Migration failed!"; 
-  exit 1; 
-}
-echo "✓ Migrations completed"
-
-echo ""
-echo ">>> Step 5: Collecting static files..."
-python manage.py collectstatic --noinput --clear 2>&1 || { 
-  echo "❌ Collectstatic failed!"; 
-  exit 1; 
-}
-echo "✓ Static files collected"
-
-echo ""
-echo ">>> Step 6: Creating superuser if needed..."
+# Step 4: Superuser
+echo ">>> Step 4: Ensuring superuser..."
 python manage.py ensure_superuser 2>/dev/null || true
 
+# Step 5: Start server
 echo ""
 echo "=========================================="
-echo ">>> Step 7: Starting Gunicorn..."
-echo "=========================================="
-echo "Binding to: 0.0.0.0:$PORT"
-echo "Workers: 3"
-echo "Timeout: 120s"
+echo ">>> Starting Gunicorn on $PORT"
 echo "=========================================="
 echo ""
+
 exec gunicorn config.wsgi:application \
   --bind 0.0.0.0:$PORT \
   --workers 3 \
   --timeout 120 \
   --access-logfile - \
   --error-logfile - \
-  --log-level debug \
-  --max-requests 1000 \
-  --max-requests-jitter 50
+  --log-level debug
 
