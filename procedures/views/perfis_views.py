@@ -978,11 +978,6 @@ def importar_estrutura_completa_view(request):
                 colaboradores_dict = {c.matricula: c for c in Colaborador.objects.all()}
                 perfis_dict = {p.codigo: p for p in PerfilTreinamento.objects.all()}
                 
-                # Pré-verificar associações existentes
-                colaboradores_perfis_existentes = set(
-                    ColaboradorPerfil.objects.values_list('colaborador_id', 'perfil_id')
-                )
-                
                 for _, row in df_colaboradores.iterrows():
                     try:
                         with transaction.atomic():
@@ -1006,11 +1001,7 @@ def importar_estrutura_completa_view(request):
                             
                             colaborador = colaboradores_dict[matricula]
                             
-                            # Verificar se já existe
-                            if (colaborador.id, perfil.id) in colaboradores_perfis_existentes:
-                                stats['colaboradores_ja_associados'] += 1
-                                continue
-                            
+                            # Usar get_or_create para evitar duplicatas
                             # Processar grupos/subgrupos selecionados se fornecidos
                             grupos_selecionados = None
                             if pd.notna(row.get('Grupos')) or pd.notna(row.get('Subgrupos')):
@@ -1043,20 +1034,24 @@ def importar_estrutura_completa_view(request):
                                         'subgrupos': subgrupos_ids
                                     }
                             
-                            # Criar associação
-                            cp = ColaboradorPerfil.objects.create(
+                            # Criar ou atualizar associação (evita erro de duplicate key)
+                            cp, created = ColaboradorPerfil.objects.get_or_create(
                                 colaborador=colaborador,
                                 perfil=perfil,
-                                grupos_selecionados=grupos_selecionados,
-                                data_atribuicao=datetime.now().date(),
-                                ativo=True
+                                defaults={
+                                    'grupos_selecionados': grupos_selecionados,
+                                    'data_atribuicao': datetime.now().date(),
+                                    'ativo': True
+                                }
                             )
                             
-                            # Criar demandas de treinamento
-                            procedimentos = cp.get_procedimentos_necessarios()
-                            criar_demandas_treinamento(cp, procedimentos)
-                            
-                            stats['colaboradores'] += 1
+                            if created:
+                                # Criar demandas de treinamento apenas se for novo
+                                procedimentos = cp.get_procedimentos_necessarios()
+                                criar_demandas_treinamento(cp, procedimentos)
+                                stats['colaboradores'] += 1
+                            else:
+                                stats['colaboradores_ja_associados'] += 1
                                     
                     except Exception as e:
                         erros.append(f"Colaborador - Linha {_ + 2}: {str(e)}")
