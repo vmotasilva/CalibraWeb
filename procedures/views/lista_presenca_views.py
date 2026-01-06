@@ -1042,6 +1042,8 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             titulo_treinamento = row.get('titulo_treinamento', '')
             if pd.isna(titulo_treinamento):
                 titulo_treinamento = ''
+            # VALIDAÇÃO: Limitar a 200 caracteres (conforme modelo)
+            titulo_treinamento = str(titulo_treinamento)[:200]
             
             # Se não tem procedimento, título é obrigatório
             if not procedimento and not titulo_treinamento:
@@ -1101,6 +1103,8 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             facilitador_fornecedor = row.get('facilitador_fornecedor', '')
             if pd.isna(facilitador_fornecedor):
                 facilitador_fornecedor = ''
+            # VALIDAÇÃO: Limitar a 200 caracteres (conforme modelo)
+            facilitador_fornecedor = str(facilitador_fornecedor)[:200]
             
             # Obter revisão treinada
             revisao_treinada = ''
@@ -1108,15 +1112,21 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                 revisao_treinada = str(row.get('numero_revisao', procedimento.numero_revisao or ''))
             if pd.isna(revisao_treinada) or not revisao_treinada:
                 revisao_treinada = '01'
+            # VALIDAÇÃO: Limitar revisao_treinada a 10 caracteres (conforme modelo)
+            revisao_treinada = str(revisao_treinada)[:10]
             
             # Processar campos adicionais
             categoria_comunicacao = row.get('categoria_comunicacao', '')
             if pd.isna(categoria_comunicacao):
                 categoria_comunicacao = ''
+            # VALIDAÇÃO: Limitar a 100 caracteres
+            categoria_comunicacao = str(categoria_comunicacao)[:100]
                 
             metodologia_treinamento = row.get('metodologia_treinamento', '')
             if pd.isna(metodologia_treinamento):
                 metodologia_treinamento = ''
+            # VALIDAÇÃO: Limitar a 100 caracteres
+            metodologia_treinamento = str(metodologia_treinamento)[:100]
             
             # Área de conhecimento - priorizar do procedimento
             area_conhecimento = ''
@@ -1124,11 +1134,25 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                 area_conhecimento = procedimento.area_conhecimento
             elif 'area_conhecimento' in row and pd.notna(row['area_conhecimento']):
                 area_conhecimento = str(row['area_conhecimento'])
+            # VALIDAÇÃO: Limitar a 200 caracteres
+            area_conhecimento = str(area_conhecimento)[:200]
             
-            # Carga horária
+            # Carga horária - VALIDAÇÃO: Limitar a 10 caracteres (hh:mm format)
             carga_horaria = row.get('carga_horaria', '')
             if pd.isna(carga_horaria):
                 carga_horaria = ''
+            else:
+                carga_horaria = str(carga_horaria).strip()
+                # Se tiver valor, validar que é formato hh:mm
+                if carga_horaria and ':' not in carga_horaria:
+                    # Se for número puro (4 horas), converter para hh:00
+                    try:
+                        horas = int(float(carga_horaria))
+                        carga_horaria = f"{horas:02d}:00"
+                    except:
+                        carga_horaria = ''
+            # Limitar a 10 caracteres
+            carga_horaria = carga_horaria[:10]
             
             # NOVIDADE: Campos da Lista de Presença (hora e carga da sessão)
             hora_inicio_sessao = None
@@ -1173,6 +1197,8 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             mes_referencia = row.get('mes', '')
             if pd.isna(mes_referencia):
                 mes_referencia = ''
+            # VALIDAÇÃO: Limitar a 100 caracteres
+            mes_referencia = str(mes_referencia)[:100]
             
             # Necessita avaliação de eficácia
             necessita_avaliacao = False
