@@ -25,14 +25,14 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PORT=8000
 
 WORKDIR /app
 
 # Install only runtime dependencies (no build tools)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    bash \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -45,14 +45,11 @@ RUN pip install --upgrade pip && \
 # Copy application code
 COPY . .
 
-# Copy entrypoint script
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
-
 EXPOSE 8000
 
-# Healthcheck that tries to connect to port 8000
+# Healthcheck using curl
 HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/healthz || exit 1
 
-ENTRYPOINT ["python", "entrypoint.py"]
+# Run entrypoint.py with Python
+CMD ["python", "entrypoint.py"]
