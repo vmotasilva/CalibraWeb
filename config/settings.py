@@ -75,6 +75,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "shared.middleware_initialization.lazy_initialization_middleware",  # Lazy init on first request
     "shared.middleware.ModuleAccessMiddleware",  # Controle de acesso por módulo
 ]
 
