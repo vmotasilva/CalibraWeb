@@ -215,13 +215,13 @@
                                     <span class="badge bg-secondary" id="colaboradores-count">0</span>
                                 </label>
                                 <input type="text" id="search-colaborador" class="form-control form-control-sm mb-2" 
-                                       placeholder="Buscar colaborador...">
+                                       placeholder="Digite para buscar...">
                                 <div id="colaboradores-list" class="border rounded p-2" style="height: 200px; overflow-y: auto; background-color: #f8f9fa;">
-                                    <div class="text-muted small p-2">Carregando...</div>
+                                    <div class="text-muted small p-2">Comece a digitar para buscar...</div>
                                 </div>
                                 <small class="text-muted d-block mt-2">
-                                    <a href="#" id="selecionar-todos-colab" class="text-decoration-none">Selecionar todos</a> | 
-                                    <a href="#" id="desselecionar-todos-colab" class="text-decoration-none">Desselecionar</a>
+                                    <a href="#" id="selecionar-todos-colab" class="text-decoration-none">Selecionar resultado</a> | 
+                                    <a href="#" id="desselecionar-todos-colab" class="text-decoration-none">Limpar</a>
                                 </small>
                             </div>
 
@@ -231,13 +231,13 @@
                                     <span class="badge bg-secondary" id="procedimentos-count">0</span>
                                 </label>
                                 <input type="text" id="search-procedimento" class="form-control form-control-sm mb-2" 
-                                       placeholder="Buscar procedimento...">
+                                       placeholder="Digite código ou nome...">
                                 <div id="procedimentos-list" class="border rounded p-2" style="height: 200px; overflow-y: auto; background-color: #f8f9fa;">
-                                    <div class="text-muted small p-2">Carregando...</div>
+                                    <div class="text-muted small p-2">Comece a digitar para buscar...</div>
                                 </div>
                                 <small class="text-muted d-block mt-2">
-                                    <a href="#" id="selecionar-todos-proc" class="text-decoration-none">Selecionar todos</a> | 
-                                    <a href="#" id="desselecionar-todos-proc" class="text-decoration-none">Desselecionar</a>
+                                    <a href="#" id="selecionar-todos-proc" class="text-decoration-none">Selecionar resultado</a> | 
+                                    <a href="#" id="desselecionar-todos-proc" class="text-decoration-none">Limpar</a>
                                 </small>
                             </div>
 
@@ -248,7 +248,7 @@
                                     <i class="bi bi-plus-circle"></i> Adicionar em Massa
                                 </button>
                                 <small class="text-muted d-block mt-2">
-                                    Cria registros para<br>todas as combinações
+                                    Cria para todas<br>as combinações
                                 </small>
                             </div>
                         </div>
@@ -404,116 +404,138 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let formCount = {{ formset.management_form.0.value }};
-    let todasColaboradores = [];
-    let todosProcedimentos = [];
-    let colaboradoresSelecionados = new Set();
-    let procedimentosSelecionados = new Set();
+    let colaboradoresSelecionados = new Map();
+    let procedimentosSelecionados = new Map();
+    let ultimaBuscaColab = '';
+    let ultimaBuscaProc = '';
     
-    // Carregar lista de colaboradores
-    fetch('{% url "procedures:api_colaboradores_json" %}')
-        .then(r => r.json())
-        .then(data => {
-            todasColaboradores = data;
-            renderizarColaboradores(data);
-        })
-        .catch(e => console.log('Colaboradores não carregados:', e));
+    // ===== BUSCA DE COLABORADORES =====
+    const inputColab = document.getElementById('search-colaborador');
+    const listColab = document.getElementById('colaboradores-list');
     
-    // Carregar lista de procedimentos
-    fetch('{% url "procedures:api_procedimentos_json" %}')
-        .then(r => r.json())
-        .then(data => {
-            todosProcedimentos = data;
-            renderizarProcedimentos(data);
-        })
-        .catch(e => console.log('Procedimentos não carregados:', e));
+    inputColab.addEventListener('input', debounce(function() {
+        const termo = this.value.trim();
+        
+        if (termo.length < 2) {
+            listColab.innerHTML = '<div class="text-muted small p-2">Digite pelo menos 2 caracteres...</div>';
+            return;
+        }
+        
+        if (termo === ultimaBuscaColab) return; // Evitar requisição duplicada
+        ultimaBuscaColab = termo;
+        
+        listColab.innerHTML = '<div class="text-muted small p-2"><i class="spinner-border spinner-border-sm me-2"></i>Buscando...</div>';
+        
+        fetch(`{% url "procedures:api_colaboradores_busca" %}?q=${encodeURIComponent(termo)}`)
+            .then(r => r.json())
+            .then(data => renderizarColaboradores(data))
+            .catch(e => {
+                listColab.innerHTML = '<div class="text-danger small p-2">Erro ao buscar</div>';
+                console.error(e);
+            });
+    }, 400));
     
-    // Renderizar colaboradores com checkboxes
+    // ===== BUSCA DE PROCEDIMENTOS =====
+    const inputProc = document.getElementById('search-procedimento');
+    const listProc = document.getElementById('procedimentos-list');
+    
+    inputProc.addEventListener('input', debounce(function() {
+        const termo = this.value.trim();
+        
+        if (termo.length < 1) {
+            listProc.innerHTML = '<div class="text-muted small p-2">Digite código ou nome...</div>';
+            return;
+        }
+        
+        if (termo === ultimaBuscaProc) return;
+        ultimaBuscaProc = termo;
+        
+        listProc.innerHTML = '<div class="text-muted small p-2"><i class="spinner-border spinner-border-sm me-2"></i>Buscando...</div>';
+        
+        fetch(`{% url "procedures:api_procedimentos_busca" %}?q=${encodeURIComponent(termo)}`)
+            .then(r => r.json())
+            .then(data => renderizarProcedimentos(data))
+            .catch(e => {
+                listProc.innerHTML = '<div class="text-danger small p-2">Erro ao buscar</div>';
+                console.error(e);
+            });
+    }, 400));
+    
+    // ===== RENDERIZAR COLABORADORES =====
     function renderizarColaboradores(colaboradores) {
-        const container = document.getElementById('colaboradores-list');
-        container.innerHTML = colaboradores.map(c => `
+        if (colaboradores.length === 0) {
+            listColab.innerHTML = '<div class="text-muted small p-2">Nenhum resultado</div>';
+            return;
+        }
+        
+        listColab.innerHTML = colaboradores.map(c => `
             <div class="form-check">
-                <input class="form-check-input colab-checkbox" type="checkbox" value="${c.id}" id="colab_${c.id}" data-nome="${c.nome}">
+                <input class="form-check-input colab-checkbox" type="checkbox" value="${c.id}" 
+                       id="colab_${c.id}" data-nome="${c.nome_completo}">
                 <label class="form-check-label small" for="colab_${c.id}">
-                    ${c.nome}
+                    ${c.nome_completo}
                 </label>
             </div>
         `).join('');
         
-        // Adicionar listeners
         document.querySelectorAll('.colab-checkbox').forEach(cb => {
+            cb.checked = colaboradoresSelecionados.has(cb.value);
             cb.addEventListener('change', function() {
                 if (this.checked) {
-                    colaboradoresSelecionados.add({id: this.value, nome: this.dataset.nome});
+                    colaboradoresSelecionados.set(this.value, this.dataset.nome);
                 } else {
-                    colaboradoresSelecionados.delete([...colaboradoresSelecionados].find(c => c.id === this.value));
+                    colaboradoresSelecionados.delete(this.value);
                 }
                 atualizarContadores();
             });
         });
-        atualizarContadores();
     }
     
-    // Renderizar procedimentos com checkboxes
+    // ===== RENDERIZAR PROCEDIMENTOS =====
     function renderizarProcedimentos(procedimentos) {
-        const container = document.getElementById('procedimentos-list');
-        container.innerHTML = procedimentos.map(p => `
+        if (procedimentos.length === 0) {
+            listProc.innerHTML = '<div class="text-muted small p-2">Nenhum resultado</div>';
+            return;
+        }
+        
+        listProc.innerHTML = procedimentos.map(p => `
             <div class="form-check">
-                <input class="form-check-input proc-checkbox" type="checkbox" value="${p.id}" id="proc_${p.id}" data-codigo="${p.codigo}" data-nome="${p.nome}">
+                <input class="form-check-input proc-checkbox" type="checkbox" value="${p.id}" 
+                       id="proc_${p.id}" data-codigo="${p.codigo}" data-nome="${p.nome}">
                 <label class="form-check-label small" for="proc_${p.id}">
                     <code>${p.codigo}</code> ${p.nome}
                 </label>
             </div>
         `).join('');
         
-        // Adicionar listeners
         document.querySelectorAll('.proc-checkbox').forEach(cb => {
+            cb.checked = procedimentosSelecionados.has(cb.value);
             cb.addEventListener('change', function() {
                 if (this.checked) {
-                    procedimentosSelecionados.add({
-                        id: this.value, 
+                    procedimentosSelecionados.set(this.value, {
                         codigo: this.dataset.codigo,
                         nome: this.dataset.nome
                     });
                 } else {
-                    procedimentosSelecionados.delete([...procedimentosSelecionados].find(p => p.id === this.value));
+                    procedimentosSelecionados.delete(this.value);
                 }
                 atualizarContadores();
             });
         });
-        atualizarContadores();
     }
     
-    // Atualizar contadores
+    // ===== ATUALIZAR CONTADORES =====
     function atualizarContadores() {
         document.getElementById('colaboradores-count').textContent = colaboradoresSelecionados.size;
         document.getElementById('procedimentos-count').textContent = procedimentosSelecionados.size;
     }
     
-    // Buscar colaboradores
-    document.getElementById('search-colaborador').addEventListener('input', function() {
-        const termo = this.value.toLowerCase();
-        const filtrados = todasColaboradores.filter(c => 
-            c.nome.toLowerCase().includes(termo)
-        );
-        renderizarColaboradores(filtrados);
-    });
-    
-    // Buscar procedimentos
-    document.getElementById('search-procedimento').addEventListener('input', function() {
-        const termo = this.value.toLowerCase();
-        const filtrados = todosProcedimentos.filter(p => 
-            p.codigo.toLowerCase().includes(termo) || 
-            p.nome.toLowerCase().includes(termo)
-        );
-        renderizarProcedimentos(filtrados);
-    });
-    
-    // Selecionar/Desselecionar todos colaboradores
+    // ===== SELECIONAR/DESSELECIONAR TODOS =====
     document.getElementById('selecionar-todos-colab').addEventListener('click', function(e) {
         e.preventDefault();
         document.querySelectorAll('.colab-checkbox').forEach(cb => {
             cb.checked = true;
-            colaboradoresSelecionados.add({id: cb.value, nome: cb.dataset.nome});
+            colaboradoresSelecionados.set(cb.value, cb.dataset.nome);
         });
         atualizarContadores();
     });
@@ -522,16 +544,16 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         document.querySelectorAll('.colab-checkbox').forEach(cb => cb.checked = false);
         colaboradoresSelecionados.clear();
+        listColab.innerHTML = '<div class="text-muted small p-2">Digite para buscar...</div>';
+        document.getElementById('search-colaborador').value = '';
         atualizarContadores();
     });
     
-    // Selecionar/Desselecionar todos procedimentos
     document.getElementById('selecionar-todos-proc').addEventListener('click', function(e) {
         e.preventDefault();
         document.querySelectorAll('.proc-checkbox').forEach(cb => {
             cb.checked = true;
-            procedimentosSelecionados.add({
-                id: cb.value, 
+            procedimentosSelecionados.set(cb.value, {
                 codigo: cb.dataset.codigo,
                 nome: cb.dataset.nome
             });
@@ -543,10 +565,12 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         document.querySelectorAll('.proc-checkbox').forEach(cb => cb.checked = false);
         procedimentosSelecionados.clear();
+        listProc.innerHTML = '<div class="text-muted small p-2">Digite para buscar...</div>';
+        document.getElementById('search-procedimento').value = '';
         atualizarContadores();
     });
     
-    // Adicionar em massa
+    // ===== ADICIONAR EM MASSA =====
     document.getElementById('btn-add-massa').addEventListener('click', function() {
         if (colaboradoresSelecionados.size === 0) {
             alert('⚠️ Selecione pelo menos um colaborador');
@@ -558,19 +582,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const data = document.getElementById('quick-data-massa').value;
-        const colaboradores = Array.from(colaboradoresSelecionados);
-        const procedimentos = Array.from(procedimentosSelecionados);
+        const total = colaboradoresSelecionados.size * procedimentosSelecionados.size;
         
-        const total = colaboradores.length * procedimentos.length;
-        if (!confirm(`✓ Adicionar ${total} registros?\n\n${colaboradores.length} colaboradores × ${procedimentos.length} procedimentos`)) {
+        if (!confirm(`✓ Adicionar ${total} registros?\n\n${colaboradoresSelecionados.size} colaboradores × ${procedimentosSelecionados.size} procedimentos`)) {
             return;
         }
         
         let adicionados = 0;
         
-        // Criar registro para cada combinação
-        colaboradores.forEach(colab => {
-            procedimentos.forEach(proc => {
+        colaboradoresSelecionados.forEach((nomeColab, idColab) => {
+            procedimentosSelecionados.forEach((proc, idProc) => {
                 const formRegex = new RegExp('__prefix__', 'g');
                 const templateRow = document.querySelector('.formset-row');
                 const formRow = templateRow.cloneNode(true);
@@ -581,10 +602,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     field.value = '';
                 });
                 
-                // Preencher campos
                 formRow.querySelector(`select[name="registrotreinamento_set-${formCount}-tipo"]`).value = 'Treinamento em Procedimento';
-                formRow.querySelector(`input[name="registrotreinamento_set-${formCount}-colaborador_nome"]`).value = colab.nome;
-                formRow.querySelector(`select[name="registrotreinamento_set-${formCount}-procedimento"]`).value = proc.id;
+                formRow.querySelector(`input[name="registrotreinamento_set-${formCount}-colaborador_nome"]`).value = nomeColab;
+                formRow.querySelector(`select[name="registrotreinamento_set-${formCount}-procedimento"]`).value = idProc;
                 if (data) {
                     formRow.querySelector(`input[name="registrotreinamento_set-${formCount}-data_treinamento"]`).value = data;
                 }
@@ -595,22 +615,26 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
         
-        // Limpar seleção
-        document.querySelectorAll('.colab-checkbox, .proc-checkbox').forEach(cb => cb.checked = false);
+        // Limpar
         colaboradoresSelecionados.clear();
         procedimentosSelecionados.clear();
         document.getElementById('quick-data-massa').value = '';
+        document.getElementById('search-colaborador').value = '';
+        document.getElementById('search-procedimento').value = '';
+        listColab.innerHTML = '<div class="text-muted small p-2">Digite para buscar...</div>';
+        listProc.innerHTML = '<div class="text-muted small p-2">Digite para buscar...</div>';
         atualizarContadores();
         
-        // Feedback
         alert(`✅ ${adicionados} registros adicionados!\n\nClique em "Salvar Alterações" para confirmar.`);
         
-        // Scroll para os novos registros
-        document.getElementById('registros-tab').scrollIntoView({ behavior: 'smooth' });
+        // Ir para aba de registros
         document.querySelector('.nav-link[data-bs-target="#registros-tab"]').click();
+        setTimeout(() => {
+            document.getElementById('registros-tab').scrollIntoView({ behavior: 'smooth' });
+        }, 100);
     });
     
-    // Adicionar registro manualmente
+    // ===== ADICIONAR REGISTRO MANUAL =====
     document.getElementById('add-registro').addEventListener('click', function() {
         const formRegex = new RegExp('__prefix__', 'g');
         const templateRow = document.querySelector('.formset-row');
@@ -625,10 +649,22 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('registros-container').appendChild(formRow);
         document.querySelector('input[name="registrotreinamento_set-TOTAL_FORMS"]').value = ++formCount;
         
-        // Scroll e focus
         formRow.scrollIntoView({ behavior: 'smooth' });
         formRow.querySelector('select').focus();
     });
+    
+    // ===== DEBOUNCE FUNCTION =====
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func.apply(this, args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
 });
 </script>
 {% endblock %}

@@ -1947,3 +1947,41 @@ def api_colaboradores_json_view(request):
         for c in colaboradores
     ], safe=False)
 
+
+@login_required
+def api_colaboradores_busca_view(request):
+    """API para buscar colaboradores com filtro."""
+    from django.http import JsonResponse
+    from django.db.models import Q
+    
+    termo = request.GET.get('q', '').strip()
+    
+    if len(termo) < 2:
+        return JsonResponse([], safe=False)
+    
+    colaboradores = Colaborador.objects.filter(
+        Q(nome_completo__icontains=termo) | 
+        Q(matricula__icontains=termo)
+    ).values('id', 'nome_completo').order_by('nome_completo')[:20]  # Limitar a 20 resultados
+    
+    return JsonResponse(list(colaboradores), safe=False)
+
+
+@login_required
+def api_procedimentos_busca_view(request):
+    """API para buscar procedimentos com filtro."""
+    from django.http import JsonResponse
+    from django.db.models import Q
+    
+    termo = request.GET.get('q', '').strip()
+    
+    if len(termo) < 1:
+        return JsonResponse([], safe=False)
+    
+    procedimentos = Procedimento.objects.filter(
+        Q(codigo__icontains=termo) | 
+        Q(nome__icontains=termo)
+    ).values('id', 'codigo', 'nome').order_by('codigo')[:20]  # Limitar a 20 resultados
+    
+    return JsonResponse(list(procedimentos), safe=False)
+
