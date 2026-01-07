@@ -70,8 +70,8 @@ DATABASE_URL=postgres://user:password@hostname:5432/calibraweb
 REDIS_URL=redis://:password@hostname:6379/0
 
 # CELERY (if using background tasks)
-CELERY_BROKER_URL=${REDIS_URL}
-CELERY_RESULT_BACKEND=${REDIS_URL}
+CELERY_BROKER_URL=redis://:password@hostname:6379/0
+CELERY_RESULT_BACKEND=redis://:password@hostname:6379/0
 
 # EMAIL CONFIGURATION
 EMAIL_HOST=smtp.gmail.com
