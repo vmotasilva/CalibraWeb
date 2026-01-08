@@ -125,11 +125,6 @@ urlpatterns = [
     # 0. Favicon
     path("favicon.ico", favicon_view, name="favicon"),
     
-    # 1. Health check for Railway (support both with/without trailing slash)
-    path("healthz", health_check, name="health_check"),
-    path("healthz/", health_check, name="health_check_slash"),
-    path("health/", health_check, name="health"),
-
     # Página inicial personalizada (agora padrão)
     path("", home_view, name="home"),
     path("home/", home_view, name="home_page"),

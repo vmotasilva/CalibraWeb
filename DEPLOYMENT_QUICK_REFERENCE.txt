@@ -1,0 +1,43 @@
+# CELERY BEAT DEPLOYMENT - REFERENCIA RAPIDA
+
+## URLs A COPIAR DO RAILWAY
+
+### 1. Do serviço PostgreSQL:
+   DATABASE_URL = [Cole aqui]
+   POSTGRES_URL = [Cole aqui]
+
+### 2. Do serviço Redis:
+   REDIS_URL = [Cole aqui]
+   CELERY_BROKER_URL = [Cole aqui]
+   CELERY_RESULT_BACKEND = [Cole aqui]
+
+### 3. Do web-app:
+   SECRET_KEY = [Cole aqui]
+
+## VARIÁVEIS NO RAILWAY (Variables)
+
+DJANGO_SETTINGS_MODULE=config.settings
+DEBUG=False
+SECRET_KEY=[do web-app]
+ALLOWED_HOSTS=*
+DATABASE_URL=[do PostgreSQL]
+POSTGRES_URL=[do PostgreSQL]
+REDIS_URL=[do Redis]
+CELERY_BROKER_URL=[do Redis]
+CELERY_RESULT_BACKEND=[do Redis]
+CELERY_TIMEZONE=America/Sao_Paulo
+CELERY_ENABLE_UTC=True
+
+## VERIFICACAO FINAL
+
+1. Logs contem: "Starting Celery Beat Scheduler..."
+2. Logs contem: "beat: Entering tick loop"
+3. Django Admin mostra 6 tarefas em /admin/django_celery_beat/
+4. Nenhum erro de ConnectionError ou ModuleNotFoundError
+
+## DOCUMENTAÇÃO
+
+Se tiver problemas, consulte:
+- README_CELERY_BEAT.md
+- RAILWAY_STEP_BY_STEP.md  
+- RAILWAY_VARIABLES_EXAMPLE.md

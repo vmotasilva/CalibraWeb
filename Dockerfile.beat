@@ -19,21 +19,19 @@ COPY requirements-prod.txt .
 RUN pip install --upgrade pip && \
     pip wheel --no-cache-dir --wheel-dir /wheels -r requirements-prod.txt
 
-# Runtime stage - lean production image
+# Runtime stage - lean production image for Celery Beat
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PORT=8000
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
 # Install only runtime dependencies (no build tools)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy wheels from builder and install
@@ -46,9 +44,12 @@ RUN pip install --upgrade pip && \
 COPY . .
 
 # Make entrypoint executable
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint-beat.py
 
-EXPOSE 8000
+# Celery Beat does NOT need HTTP ports
+# No EXPOSE directive needed (background scheduler)
 
-# Use shell script as entrypoint
-CMD ["/bin/sh", "entrypoint.sh"]
+# No HEALTHCHECK needed (not an HTTP service)
+
+# Use Python script as entrypoint for Celery Beat scheduler
+CMD ["python", "entrypoint-beat.py"]

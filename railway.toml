@@ -5,9 +5,6 @@ builder = "dockerfile"
 [deploy]
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
-healthcheckPath = "/healthz"
-healthcheckTimeout = 10000
-healthcheckInterval = 10
 
 # Persistent storage for media files (PDFs, certificates, etc)
 [deploy.volumes]

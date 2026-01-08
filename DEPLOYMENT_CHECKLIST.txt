@@ -1,0 +1,280 @@
+# CELERY BEAT DEPLOYMENT - QUICK CHECKLIST
+
+Imprima este documento e marque cada item conforme progride!
+
+---
+
+## ✅ PRÉ-REQUISITOS
+
+- [ ] Você tem acesso ao projeto Railway CalibraWeb
+- [ ] Você tem credenciais do GitHub
+- [ ] Você sabe onde está a senha do Redis
+- [ ] Você sabe onde está a senha do PostgreSQL
+
+---
+
+## ✅ FASE 1: CLEANUP (5 minutos)
+
+- [ ] Acesse https://railway.app
+- [ ] Vá para projeto CalibraWeb
+- [ ] Encontre o serviço que está FAILED (não é o web-app)
+- [ ] Clique nele → Settings → Delete Service
+- [ ] Confirme a deleção
+
+```
+Status: ☐ Completo
+Tempo: __ minutos
+```
+
+---
+
+## ✅ FASE 2: CRIAR NOVO SERVIÇO (5 minutos)
+
+- [ ] Clique em "+ Create"
+- [ ] Selecione "GitHub"
+- [ ] Selecione "vmotasilva/CalibraWeb"
+- [ ] Branch: "main"
+- [ ] Clique em "Deploy"
+- [ ] Aguarde o build iniciar
+
+```
+Status: ☐ Completo
+Tempo: __ minutos
+```
+
+---
+
+## ✅ FASE 3: CONFIGURAR DOCKERFILE (2 minutos)
+
+- [ ] Clique em "Settings"
+- [ ] Procure por "Dockerfile"
+- [ ] Limpe o campo
+- [ ] Digite: `Dockerfile.beat`
+- [ ] Clique em "Save"
+- [ ] Aguarde novo build
+
+```
+Status: ☐ Completo
+Tempo: __ minutos
+```
+
+---
+
+## ✅ FASE 4: OBTER URLS (5 minutos)
+
+### Copiar DATABASE_URL do PostgreSQL
+
+- [ ] Clique no serviço "PostgreSQL"
+- [ ] Clique em "Connect"
+- [ ] Procure por "DATABASE_URL" ou "PostgreSQL"
+- [ ] Clique no ícone de copiar (📋)
+
+**URL Copiada**: 
+```
+postgresql://postgres:_______________@railway.railway.internal:5432/___
+```
+
+### Copiar REDIS_URL do Redis
+
+- [ ] Clique no serviço "Redis"
+- [ ] Clique em "Connect"
+- [ ] Procure por "REDIS_URL" ou "Redis"
+- [ ] Clique no ícone de copiar (📋)
+
+**URL Copiada**:
+```
+redis://default:_______________@redis.railway.internal:6379
+```
+
+### Copiar SECRET_KEY do Web-App
+
+- [ ] Clique no serviço "CalibraWeb" (web-app)
+- [ ] Clique em "Variables"
+- [ ] Procure por "SECRET_KEY"
+- [ ] Clique no ícone de copiar (📋)
+
+**SECRET_KEY Copiada**:
+```
+django-insecure-_______________
+```
+
+```
+Status: ☐ Completo
+Tempo: __ minutos
+```
+
+---
+
+## ✅ FASE 5: CONFIGURAR VARIÁVEIS (10 minutos)
+
+- [ ] Clique no serviço "celery-beat"
+- [ ] Clique em "Variables"
+- [ ] Clique em "+ New Variable" para cada item:
+
+| # | Nome | Valor | ☑ |
+|---|------|-------|---|
+| 1 | DJANGO_SETTINGS_MODULE | config.settings | ☐ |
+| 2 | DEBUG | False | ☐ |
+| 3 | SECRET_KEY | [Cole aqui] | ☐ |
+| 4 | ALLOWED_HOSTS | * | ☐ |
+| 5 | DATABASE_URL | [Cole aqui] | ☐ |
+| 6 | POSTGRES_URL | [Cole aqui] | ☐ |
+| 7 | REDIS_URL | [Cole aqui] | ☐ |
+| 8 | CELERY_BROKER_URL | [Cole aqui] | ☐ |
+| 9 | CELERY_RESULT_BACKEND | [Cole aqui] | ☐ |
+| 10 | CELERY_TIMEZONE | America/Sao_Paulo | ☐ |
+| 11 | CELERY_ENABLE_UTC | True | ☐ |
+
+- [ ] Clique em "Save" ou "Apply" quando terminar
+- [ ] Aguarde novo deploy automático
+
+```
+Status: ☐ Completo
+Tempo: __ minutos
+```
+
+---
+
+## ✅ FASE 6: VERIFICAR DEPLOY (5 minutos)
+
+- [ ] Clique em "Logs"
+- [ ] Aguarde até ver uma das mensagens abaixo:
+
+**SUCESSO** (procure por):
+```
+[CELERY_BEAT_ENTRYPOINT] ✓ Celery version: 5.3.1
+[CELERY_BEAT_ENTRYPOINT] Starting Celery Beat Scheduler...
+beat: Entering tick loop
+```
+
+**ERRO** (procure por):
+```
+ModuleNotFoundError: No module named '${REDIS_URL}'
+    ↓
+Significa que você copiou "${REDIS_URL}" em vez da URL real
+    ↓
+Vá para Variables → CELERY_BROKER_URL → Cole a URL real do Redis
+```
+
+- [ ] Confirme que vê "Entering tick loop"
+
+```
+Status: ☐ Completo
+Tempo: __ minutos
+```
+
+---
+
+## ✅ FASE 7: TESTE FINAL (3 minutos)
+
+- [ ] Acesse seu web app: https://seu-site.railway.app/admin/
+- [ ] Faça login
+- [ ] Vá para `/admin/django_celery_beat/periodictask/`
+- [ ] Você deve ver 6 tarefas agendadas:
+  - [ ] relatorio-diario-vencidos
+  - [ ] relatorio-semanal-estatisticas
+  - [ ] alerta-critico-vencidos
+  - [ ] warm-instrumentos-cache
+  - [ ] warm-statistics-cache
+  - [ ] warm-categories-cache
+
+- [ ] Clique em uma tarefa e confirme que está ativa
+- [ ] Volte para Railway e confirme status UP
+
+```
+Status: ☐ Completo
+Tempo: __ minutos
+```
+
+---
+
+## 🎯 RESULTADO FINAL
+
+Se completou todos os itens acima:
+
+```
+┌─────────────────────────────────────┐
+│      ✅ SUCESSO!                    │
+├─────────────────────────────────────┤
+│ Celery Beat está rodando no Railway │
+│                                     │
+│ Tarefas agendadas:                  │
+│ ✓ Relatório diário - 08:00 AM       │
+│ ✓ Relatório semanal - Seg 09:00 AM  │
+│ ✓ Alertas críticos - A cada 4h      │
+│ ✓ Cache warming - A cada 25-55 min  │
+└─────────────────────────────────────┘
+```
+
+---
+
+## ⏰ TEMPO TOTAL
+
+| Fase | Tempo | Completo |
+|------|-------|----------|
+| 1. Cleanup | 5 min | ☐ |
+| 2. Criar Serviço | 5 min | ☐ |
+| 3. Dockerfile | 2 min | ☐ |
+| 4. URLs | 5 min | ☐ |
+| 5. Variáveis | 10 min | ☐ |
+| 6. Deploy | 5 min | ☐ |
+| 7. Teste | 3 min | ☐ |
+| **TOTAL** | **35 min** | ☐ |
+
+---
+
+## 🆘 TROUBLESHOOTING RÁPIDO
+
+### Problema: "ModuleNotFoundError: No module named '${REDIS_URL}'"
+
+☐ Clique em Variables  
+☐ Procure por CELERY_BROKER_URL  
+☐ Se começa com `${`, está errado  
+☐ Cole a URL REAL do Redis (redis://default:PASSWORD@...)  
+☐ Salve e faça novo deploy  
+
+### Problema: Build falha com erro de syntax
+
+☐ Verifique se você tem os arquivos:
+  - [ ] Dockerfile.beat (criado)
+  - [ ] entrypoint-beat.py (criado)
+  
+☐ Verifique se estão na raiz do projeto  
+☐ Faça commit e push no GitHub  
+☐ Force redeploy no Railway  
+
+### Problema: Tarefas não aparecem em /admin/django_celery_beat/
+
+☐ Confirme que Celery Beat iniciou ("Entering tick loop")  
+☐ Confirme que DATABASE_URL está correto  
+☐ Acesse admin do web-app (não do celery-beat)  
+☐ Verifique se há Celery Workers rodando  
+
+---
+
+## 📞 SUPORTE
+
+Leia estes arquivos em ordem de prioridade:
+
+1. ⭐ [CELERY_BEAT_FIX_QUICK.md](CELERY_BEAT_FIX_QUICK.md)
+2. ⭐ [RAILWAY_STEP_BY_STEP.md](RAILWAY_STEP_BY_STEP.md)
+3. ⭐ [RAILWAY_VARIABLES_EXAMPLE.md](RAILWAY_VARIABLES_EXAMPLE.md)
+4. 📖 [CELERY_BEAT_RAILWAY_DEPLOYMENT.md](CELERY_BEAT_RAILWAY_DEPLOYMENT.md)
+
+---
+
+## DATA E HORA
+
+**Data de Inicio**: ____________  
+**Data de Conclusão**: ____________  
+**Observações**:
+
+```
+_____________________________________________________________
+_____________________________________________________________
+_____________________________________________________________
+```
+
+---
+
+**Boa sorte! 🚀**
