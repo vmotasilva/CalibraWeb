@@ -17,25 +17,38 @@ logger = logging.getLogger(__name__)
 @shared_task(name='rh.atualizar_status_ferias')
 def atualizar_status_ferias():
     """
-    Atualiza automaticamente o status das férias de "Em Andamento" para "Concluído"
-    quando a data de término já passou.
+    Atualiza automaticamente o status das férias baseado nas datas.
     
-    Esta task é executada periodicamente pelo Celery Beat.
+    Lógica:
+    - Se data_inicio > hoje: PLANEJADO
+    - Se data_inicio <= hoje <= data_fim: EM_ANDAMENTO
+    - Se hoje > data_fim: CONCLUIDO
+    
+    Esta task é executada periodicamente pelo Celery Beat (a cada 5 minutos).
     """
     hoje = date.today()
     atualizadas = 0
     erros = 0
     
     try:
-        # Buscar todas as férias em andamento
-        ferias_em_andamento = Ferias.objects.filter(status="EM_ANDAMENTO")
+        # Buscar todas as férias (não apenas em andamento)
+        todas_ferias = Ferias.objects.all()
         
-        for ferias in ferias_em_andamento:
+        for ferias in todas_ferias:
             try:
-                # Verificar se a data de término já passou
-                if ferias.data_fim < hoje:
-                    # Atualizar status para concluído
-                    ferias.status = "CONCLUIDO"
+                novo_status = None
+                
+                # Determinar novo status baseado na data
+                if ferias.data_inicio > hoje:
+                    novo_status = "PLANEJADO"
+                elif ferias.data_inicio <= hoje <= ferias.data_fim:
+                    novo_status = "EM_ANDAMENTO"
+                elif hoje > ferias.data_fim:
+                    novo_status = "CONCLUIDO"
+                
+                # Atualizar se o status mudou
+                if novo_status and ferias.status != novo_status:
+                    ferias.status = novo_status
                     ferias.save(update_fields=['status'])
                     
                     # Atualizar o campo em_ferias do colaborador
@@ -53,8 +66,8 @@ def atualizar_status_ferias():
                     
                     atualizadas += 1
                     logger.info(
-                        f"Férias atualizado para CONCLUÍDO: {colaborador.nome_completo} "
-                        f"({ferias.data_inicio} a {ferias.data_fim})"
+                        f"Férias atualizado: {colaborador.nome_completo} "
+                        f"({ferias.data_inicio} a {ferias.data_fim}) → {novo_status}"
                     )
                     
             except Exception as e:
@@ -64,15 +77,17 @@ def atualizar_status_ferias():
                     exc_info=True
                 )
         
-        logger.info(
-            f"Atualização de status de férias concluída: "
-            f"{atualizadas} atualizados, {erros} erros"
-        )
+        if atualizadas > 0 or erros > 0:
+            logger.info(
+                f"Atualização de status de férias: "
+                f"{atualizadas} atualizados, {erros} erros, total processado: {todas_ferias.count()}"
+            )
         
         return {
             'status': 'success',
             'atualizados': atualizadas,
             'erros': erros,
+            'total_processado': todas_ferias.count(),
             'timestamp': str(timezone.now())
         }
         

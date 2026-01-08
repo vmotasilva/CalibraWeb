@@ -54,18 +54,18 @@ CELERY_BEAT_SCHEDULE = {
     # RH TASKS - Atualização automática de férias
     # ====================================================================
     
-    # Atualizar status de férias - A cada hora
+    # Atualizar status de férias - A cada 5 minutos
     'atualizar-status-ferias': {
         'task': 'rh.atualizar_status_ferias',
-        'schedule': crontab(minute=0),  # A cada hora
-        'options': {'queue': 'default', 'expires': 3600}
+        'schedule': crontab(minute='*/5'),  # A cada 5 minutos
+        'options': {'queue': 'default', 'expires': 300}
     },
     
-    # Sincronizar status em_ferias - A cada 6 horas
+    # Sincronizar status em_ferias - A cada 15 minutos
     'sincronizar-em-ferias': {
         'task': 'rh.sincronizar_em_ferias',
-        'schedule': crontab(minute=30, hour='*/6'),  # A cada 6 horas
-        'options': {'queue': 'default', 'expires': 3600}
+        'schedule': crontab(minute='*/15'),  # A cada 15 minutos
+        'options': {'queue': 'default', 'expires': 900}
     },
     
     # ====================================================================
