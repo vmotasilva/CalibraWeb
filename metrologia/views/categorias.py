@@ -636,33 +636,33 @@ def categoria_bulk_update_frequencia_view(request, categoria_id):
     aplicar_instrumentos = request.POST.get('aplicar_instrumentos') == 'on'
     if aplicar_instrumentos:
         from dateutil.relativedelta import relativedelta
+        from metrologia.models import HistoricoCalibracao
         
         instrumentos = Instrumento.objects.filter(categoria=categoria, ativo=True)
         atualizados = 0
         
         for instrumento in instrumentos:
-            # Só atualizar se o instrumento não tem frequência específica definida
-            if not instrumento.frequencia_meses:
-                instrumento.frequencia_meses = nova_frequencia
-                
-                # Recalcular próxima calibração baseado na última
-                from metrologia.models import HistoricoCalibracao
-                ultimo_historico = HistoricoCalibracao.objects.filter(
-                    instrumento=instrumento
-                ).order_by('-data_calibracao').first()
-                
-                if ultimo_historico:
-                    instrumento.data_proxima_calibracao = (
-                        ultimo_historico.data_calibracao + relativedelta(months=nova_frequencia)
-                    )
-                
-                instrumento.save()
-                atualizados += 1
+            # Atualizar a frequência do instrumento
+            frequencia_anterior = instrumento.frequencia_meses
+            instrumento.frequencia_meses = nova_frequencia
+            
+            # Recalcular próxima calibração baseado na última
+            ultimo_historico = HistoricoCalibracao.objects.filter(
+                instrumento=instrumento
+            ).order_by('-data_calibracao').first()
+            
+            if ultimo_historico:
+                instrumento.data_proxima_calibracao = (
+                    ultimo_historico.data_calibracao + relativedelta(months=nova_frequencia)
+                )
+            
+            instrumento.save(update_fields=['frequencia_meses', 'data_proxima_calibracao'])
+            atualizados += 1
         
         if atualizados > 0:
-            mensagem += f' {atualizados} instrumento(s) tiveram suas frequências atualizadas.'
+            mensagem += f' {atualizados} instrumento(s) tiveram suas frequências atualizadas com recálculo de próximas datas.'
         else:
-            mensagem += ' Nenhum instrumento foi atualizado (todos possuem frequência específica).'
+            mensagem += ' Nenhum instrumento ativo encontrado para atualizar.'
     
     messages.success(request, mensagem)
     return redirect('metrologia:categoria_update', categoria_id=categoria_id)
