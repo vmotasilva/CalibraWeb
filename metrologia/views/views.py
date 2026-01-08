@@ -233,6 +233,7 @@ def imp_historico_view(request):
                     job.refresh_from_db()
                     try:
                         # Recalcula datas nos instrumentos afetados
+                        from dateutil.relativedelta import relativedelta
                         afetados = HistoricoCalibracao.objects.filter(
                             criado_em__gte=job.created_at
                         ).values_list("instrumento_id", flat=True).distinct()
@@ -242,7 +243,17 @@ def imp_historico_view(request):
                                 ultima = HistoricoCalibracao.objects.filter(instrumento=inst).order_by("-data_calibracao").first()
                                 if ultima:
                                     inst.data_ultima_calibracao = ultima.data_calibracao
-                                    inst.data_proxima_calibracao = ultima.proxima_calibracao
+                                    # Recalcular próxima calibração baseado na frequência do instrumento
+                                    meses = None
+                                    if inst.frequencia_meses:
+                                        meses = inst.frequencia_meses
+                                    elif inst.categoria and inst.categoria.frequencia_calibracao_meses:
+                                        meses = inst.categoria.frequencia_calibracao_meses
+                                    
+                                    if meses:
+                                        inst.data_proxima_calibracao = ultima.data_calibracao + relativedelta(months=meses)
+                                    else:
+                                        inst.data_proxima_calibracao = ultima.proxima_calibracao if hasattr(ultima, 'proxima_calibracao') else None
                                 else:
                                     inst.data_ultima_calibracao = None
                                     inst.data_proxima_calibracao = None

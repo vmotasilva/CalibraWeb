@@ -2449,13 +2449,22 @@ def atualizar_datas_calibracao_view(request, instrumento_id):
         # Atualizar data da última calibração
         instrumento.data_ultima_calibracao = ultimo_historico.data_calibracao
         
-        # Recalcular próxima calibração baseado na frequência
-        if instrumento.categoria and instrumento.categoria.frequencia_calibracao_meses:
+        # Recalcular próxima calibração baseado na frequência do instrumento
+        # Prioridade: 1) frequencia_meses do instrumento, 2) frequência da categoria, 3) proxima_calibracao do histórico
+        meses = None
+        
+        if instrumento.frequencia_meses:
+            # Usar frequência específica do instrumento
+            meses = instrumento.frequencia_meses
+        elif instrumento.categoria and instrumento.categoria.frequencia_calibracao_meses:
+            # Usar frequência padrão da categoria
             meses = instrumento.categoria.frequencia_calibracao_meses
+        
+        if meses:
             instrumento.data_proxima_calibracao = ultimo_historico.data_calibracao + relativedelta(months=meses)
         else:
             # Se não tiver frequência configurada, usar o valor do histórico se existir
-            instrumento.data_proxima_calibracao = ultimo_historico.proxima_calibracao
+            instrumento.data_proxima_calibracao = ultimo_historico.proxima_calibracao if hasattr(ultimo_historico, 'proxima_calibracao') else None
         
         instrumento.save(update_fields=['data_ultima_calibracao', 'data_proxima_calibracao'])
         
