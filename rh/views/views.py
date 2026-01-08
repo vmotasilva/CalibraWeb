@@ -28,14 +28,6 @@ from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
 
 # Imports dos helpers
 from qms.views_helpers import get_all_subordinates, get_colaborador_for_user
-
-
-def limpar_cache_rh(user_id):
-    """Limpa cache de todas as páginas RH para um usuário."""
-    for page in range(1, 50):  # Limpar até 50 páginas
-        for em_ferias in ['0', '1']:
-            cache_key = f"rh_dashboard_{user_id}_{page}_{em_ferias}"
-            cache.delete(cache_key)
 def can_user_access_colaborador(request_user, target_colaborador):
     """
     Verifica se o usuário logado pode acessar as informações de um colaborador.
@@ -111,17 +103,6 @@ def get_colaboradores_acessiveis(request_user):
 @login_required
 def modulo_rh_view(request):
     """Dashboard principal do módulo de RH com filtros avançados."""
-    # Cache key baseado na página e filtros
-    page_num = request.GET.get('page', '1')
-    em_ferias = request.GET.get('em_ferias', '0')
-    cache_key = f"rh_dashboard_{request.user.id}_{page_num}_{em_ferias}"
-    
-    # Tentar pegar do cache
-    from django.core.cache import cache
-    cached_data = cache.get(cache_key)
-    if cached_data:
-        return render(request, "rh/dashboard.html", cached_data)
-    
     colab = None
     try:
         colab = get_colaborador_for_user(request.user)
@@ -278,10 +259,6 @@ def modulo_rh_view(request):
         "can_see_salary": can_see_salary,
         "can_edit": True,
     }
-    
-    # Cache por 5 minutos
-    from django.core.cache import cache
-    cache.set(cache_key, ctx, 300)  # 300 segundos = 5 minutos
     
     return render(request, "rh/dashboard.html", ctx)
 
@@ -533,8 +510,6 @@ def editar_colaborador_view(request, colab_id):
         form = ColaboradorForm(request.POST, instance=alvo)
         if form.is_valid():
             form.save()
-            # Limpar cache do RH para este usuário
-            limpar_cache_rh(request.user.id)
             messages.success(request, "Colaborador atualizado com sucesso!")
             return redirect("detalhe_colaborador", colab_id=alvo.id)
         else:
@@ -889,88 +864,102 @@ def gestao_ferias_view(request):
         messages.error(request, "Você não tem permissão para acessar a gestão de férias.")
         return redirect("modulo_rh")
     
-    # Obter todas as férias ou apenas das que o usuário pode acessar
-    if request.user.is_superuser or request.user.is_staff:
-        ferias_qs = Ferias.objects.all().select_related('colaborador').order_by('-data_inicio')
-        colaboradores_acessiveis = None
-    else:
-        colaboradores_acessiveis = get_colaboradores_acessiveis(request.user)
-        ferias_qs = Ferias.objects.filter(
-            colaborador__in=colaboradores_acessiveis
-        ).select_related('colaborador').order_by('-data_inicio')
-    
-    # Filtros
-    status = request.GET.get('status', '')
-    aprovada = request.GET.get('aprovada', '')
-    colaborador_id = request.GET.get('colaborador_id', '')
-    
-    if status:
-        ferias_qs = ferias_qs.filter(status=status)
-    
-    if aprovada:
-        if aprovada == '1':
-            ferias_qs = ferias_qs.filter(aprovada=True)
-        elif aprovada == '0':
-            ferias_qs = ferias_qs.filter(aprovada=False)
-    
-    if colaborador_id:
-        ferias_qs = ferias_qs.filter(colaborador_id=colaborador_id)
-    
-    # Paginação
-    paginator = Paginator(ferias_qs, 25)
-    page = request.GET.get('page')
     try:
-        if page:
-            ferias_page = paginator.page(int(page))
+        # Obter todas as férias ou apenas das que o usuário pode acessar
+        if request.user.is_superuser or request.user.is_staff:
+            ferias_qs = Ferias.objects.all().select_related('colaborador').order_by('-data_inicio')
         else:
+            try:
+                colaboradores_acessiveis = get_colaboradores_acessiveis(request.user)
+                ferias_qs = Ferias.objects.filter(
+                    colaborador__in=colaboradores_acessiveis
+                ).select_related('colaborador').order_by('-data_inicio')
+            except Exception as e:
+                logger.error(f"Erro ao obter colaboradores acessíveis: {e}")
+                ferias_qs = Ferias.objects.none()
+        
+        # Filtros
+        status = request.GET.get('status', '').strip()
+        aprovada = request.GET.get('aprovada', '').strip()
+        colaborador_id = request.GET.get('colaborador_id', '').strip()
+        
+        if status:
+            ferias_qs = ferias_qs.filter(status=status)
+        
+        if aprovada:
+            if aprovada == '1':
+                ferias_qs = ferias_qs.filter(aprovada=True)
+            elif aprovada == '0':
+                ferias_qs = ferias_qs.filter(aprovada=False)
+        
+        if colaborador_id:
+            try:
+                ferias_qs = ferias_qs.filter(colaborador_id=int(colaborador_id))
+            except (ValueError, TypeError):
+                pass
+        
+        # Paginação
+        paginator = Paginator(ferias_qs, 25)
+        page = request.GET.get('page', '1').strip()
+        try:
+            page_num = int(page) if page else 1
+            ferias_page = paginator.page(page_num)
+        except Exception as e:
+            logger.error(f"Erro ao paginar férias: {e}")
             ferias_page = paginator.page(1)
+        
+        # Estatísticas
+        hoje = date.today()
+        total_ferias = paginator.count
+        
+        # KPIs
+        ferias_em_andamento = Ferias.objects.filter(
+            aprovada=True,
+            data_inicio__lte=hoje,
+            data_fim__gte=hoje
+        ).count()
+        
+        ferias_vencidas = Ferias.objects.filter(
+            aprovada=True,
+            data_fim__lt=hoje,
+            status__in=['PLANEJADO', 'EM_ANDAMENTO']
+        ).count()
+        
+        ferias_pendentes_aprovacao = Ferias.objects.filter(
+            aprovada=False
+        ).count()
+        
+        # Colaboradores para filtro
+        if request.user.is_superuser or request.user.is_staff:
+            colaboradores = Colaborador.objects.all().order_by('nome_completo')
+        else:
+            try:
+                colaboradores_acessiveis = get_colaboradores_acessiveis(request.user)
+                colaboradores = colaboradores_acessiveis.order_by('nome_completo')
+            except Exception:
+                colaboradores = Colaborador.objects.none()
+        
+        ctx = {
+            "ferias_page": ferias_page,
+            "ferias": ferias_page.object_list,
+            "status_choices": Ferias.STATUS_CHOICES,
+            "colaboradores": colaboradores,
+            "total_ferias": total_ferias,
+            "ferias_em_andamento": ferias_em_andamento,
+            "ferias_vencidas": ferias_vencidas,
+            "ferias_pendentes_aprovacao": ferias_pendentes_aprovacao,
+            "colaborador_logado": usuario_logado,
+            "status_filtro": status,
+            "aprovada_filtro": aprovada,
+            "colaborador_filtro": colaborador_id,
+        }
+        
+        return render(request, "rh/gestao_ferias.html", ctx)
+        
     except Exception as e:
-        logger.error(f"Erro ao paginar férias: {e}")
-        ferias_page = paginator.page(1)
-    
-    # Estatísticas
-    hoje = date.today()
-    total_ferias = paginator.count
-    
-    # KPIs
-    ferias_em_andamento = Ferias.objects.filter(
-        aprovada=True,
-        data_inicio__lte=hoje,
-        data_fim__gte=hoje
-    ).count()
-    
-    ferias_vencidas = Ferias.objects.filter(
-        aprovada=True,
-        data_fim__lt=hoje,
-        status__in=['PLANEJADO', 'EM_ANDAMENTO']
-    ).count()
-    
-    ferias_pendentes_aprovacao = Ferias.objects.filter(
-        aprovada=False
-    ).count()
-    
-    # Colaboradores para filtro
-    if request.user.is_superuser or request.user.is_staff:
-        colaboradores = Colaborador.objects.all().order_by('nome_completo')
-    else:
-        colaboradores = colaboradores_acessiveis.order_by('nome_completo') if colaboradores_acessiveis else Colaborador.objects.none()
-    
-    ctx = {
-        "ferias_page": ferias_page,
-        "ferias": ferias_page.object_list,
-        "status_choices": Ferias.STATUS_CHOICES,
-        "colaboradores": colaboradores,
-        "total_ferias": total_ferias,
-        "ferias_em_andamento": ferias_em_andamento,
-        "ferias_vencidas": ferias_vencidas,
-        "ferias_pendentes_aprovacao": ferias_pendentes_aprovacao,
-        "colaborador_logado": usuario_logado,
-        "status_filtro": status,
-        "aprovada_filtro": aprovada,
-        "colaborador_filtro": colaborador_id,
-    }
-    
-    return render(request, "rh/gestao_ferias.html", ctx)
+        logger.error(f"Erro fatal na gestão de férias: {e}", exc_info=True)
+        messages.error(request, f"Erro ao carregar gestão de férias: {str(e)}")
+        return redirect("modulo_rh")
 
 
 # ==================== API ENDPOINTS ====================
