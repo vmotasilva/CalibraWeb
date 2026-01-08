@@ -1,23 +1,13 @@
 [build]
 builder = "dockerfile"
+# Use .dockerignore to exclude unnecessary files
 
-# Web service (Django + Gunicorn)
+# Main web service (Django + Gunicorn)
 [deploy]
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
+restartPolicyMaxRetries = 5
 
-# Persistent storage for media files (PDFs, certificates, etc)
+# Persistent storage for media files
 [deploy.volumes]
 media = "/data/media"
 
-# Worker service (Celery Worker)
-[[services]]
-name = "worker"
-startCommand = "bash start-worker.sh"
-restartPolicyType = "on_failure"
-
-# Beat service (Celery Beat)  
-[[services]]
-name = "beat"
-startCommand = "bash start-beat.sh"
-restartPolicyType = "on_failure"
