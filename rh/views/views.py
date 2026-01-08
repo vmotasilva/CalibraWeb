@@ -12,6 +12,7 @@ from django.views.decorators.cache import cache_page
 from django.db.models import Q, Prefetch
 from django.http import HttpResponseRedirect
 from django.core.paginator import Paginator
+from django.core.cache import cache
 import logging
 import json
 
@@ -29,6 +30,12 @@ from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
 from qms.views_helpers import get_all_subordinates, get_colaborador_for_user
 
 
+def limpar_cache_rh(user_id):
+    """Limpa cache de todas as páginas RH para um usuário."""
+    for page in range(1, 50):  # Limpar até 50 páginas
+        for em_ferias in ['0', '1']:
+            cache_key = f"rh_dashboard_{user_id}_{page}_{em_ferias}"
+            cache.delete(cache_key)
 def can_user_access_colaborador(request_user, target_colaborador):
     """
     Verifica se o usuário logado pode acessar as informações de um colaborador.
@@ -104,6 +111,17 @@ def get_colaboradores_acessiveis(request_user):
 @login_required
 def modulo_rh_view(request):
     """Dashboard principal do módulo de RH com filtros avançados."""
+    # Cache key baseado na página e filtros
+    page_num = request.GET.get('page', '1')
+    em_ferias = request.GET.get('em_ferias', '0')
+    cache_key = f"rh_dashboard_{request.user.id}_{page_num}_{em_ferias}"
+    
+    # Tentar pegar do cache
+    from django.core.cache import cache
+    cached_data = cache.get(cache_key)
+    if cached_data:
+        return render(request, "rh/dashboard.html", cached_data)
+    
     colab = None
     try:
         colab = get_colaborador_for_user(request.user)
@@ -214,8 +232,20 @@ def modulo_rh_view(request):
     # Re-fazer o queryset com prefetch otimizado
     funcionarios_visiveis = funcionarios_visiveis.prefetch_related(prefetch_ferias)
     
-    # Calcular estatísticas de treinamento de forma otimizada
-    for f in funcionarios_visiveis:
+    # Aplicar paginação ANTES de calcular estatísticas (lazy evaluation)
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    
+    paginator = Paginator(funcionarios_visiveis, 25)  # 25 por página
+    page = request.GET.get('page')
+    try:
+        funcionarios_page = paginator.page(page)
+    except PageNotAnInteger:
+        funcionarios_page = paginator.page(1)
+    except EmptyPage:
+        funcionarios_page = paginator.page(paginator.num_pages)
+    
+    # Calcular estatísticas APENAS para a página atual
+    for f in funcionarios_page.object_list:
         # Usar cache de treinamentos prefetched (lista em memória)
         treinamentos_dict = {rt.procedimento_id: rt for rt in f.treinamentos.all()}
         
@@ -237,18 +267,6 @@ def modulo_rh_view(request):
         f.trein_pendentes = pend
         f.trein_ultima_data = last
 
-    # Aplicar paginação para melhor performance
-    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-    
-    paginator = Paginator(list(funcionarios_visiveis), 25)  # 25 por página
-    page = request.GET.get('page')
-    try:
-        funcionarios_page = paginator.page(page)
-    except PageNotAnInteger:
-        funcionarios_page = paginator.page(1)
-    except EmptyPage:
-        funcionarios_page = paginator.page(paginator.num_pages)
-
     ctx = {
         "funcionarios": funcionarios_page,
         "lideres_filtro": lideres_filtro,
@@ -260,6 +278,11 @@ def modulo_rh_view(request):
         "can_see_salary": can_see_salary,
         "can_edit": True,
     }
+    
+    # Cache por 5 minutos
+    from django.core.cache import cache
+    cache.set(cache_key, ctx, 300)  # 300 segundos = 5 minutos
+    
     return render(request, "rh/dashboard.html", ctx)
 
 
@@ -510,6 +533,8 @@ def editar_colaborador_view(request, colab_id):
         form = ColaboradorForm(request.POST, instance=alvo)
         if form.is_valid():
             form.save()
+            # Limpar cache do RH para todos os usuários
+            cache.delete_pattern("rh_dashboard_*")
             messages.success(request, "Colaborador atualizado com sucesso!")
             return redirect("detalhe_colaborador", colab_id=alvo.id)
         else:
