@@ -191,7 +191,7 @@
                     <hr class="my-2">
 
                     <!-- Atualizar Tratativa -->
-                    <div class="mb-0">
+                    <div class="mb-3">
                         <form method="post" action="{% url 'metrologia:categoria_bulk_update_tratativa' categoria.id %}" class="w-100">
                             {% csrf_token %}
                             <label class="form-label small fw-bold mb-2">
@@ -212,6 +212,35 @@
                                     Aplicar a todos os {{ total_instrumentos }} instrumento(s)
                                 </label>
                             </div>
+                        </form>
+                    </div>
+
+                    <hr class="my-2">
+
+                    <!-- Atualizar Frequência -->
+                    <div class="mb-0">
+                        <form method="post" action="{% url 'metrologia:categoria_bulk_update_frequencia' categoria.id %}" class="w-100">
+                            {% csrf_token %}
+                            <label class="form-label small fw-bold mb-2">
+                                <i class="bi bi-hourglass-split"></i> Atualizar Frequência
+                            </label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="number" name="frequencia_calibracao_meses" class="form-control" 
+                                       value="{{ categoria.frequencia_calibracao_meses|default:'' }}" placeholder="Meses" 
+                                       min="1" max="120" required>
+                                <button type="submit" class="btn btn-primary" title="Atualizar frequência">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-check form-check-sm">
+                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input" id="aplFrequencia">
+                                <label class="form-check-label" for="aplFrequencia">
+                                    Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                                </label>
+                            </div>
+                            <small class="form-text text-muted d-block mt-1">
+                                ℹ️ Só atualiza instrumentos sem frequência específica. Recalcula próximas datas automaticamente.
+                            </small>
                         </form>
                     </div>
                 </div>
