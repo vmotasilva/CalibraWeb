@@ -6,6 +6,8 @@ app_name = 'rh'
 urlpatterns = [
     # Dashboard e gestão
     path('gestao-ferias/', views.gestao_ferias_view, name='gestao_ferias'),
+    path('<int:colab_id>/ferias/<int:ferias_id>/editar/', views.editar_ferias_view, name='editar_ferias'),
+    path('<int:colab_id>/ferias/<int:ferias_id>/excluir/', views.excluir_ferias_view, name='excluir_ferias'),
     
     # API Endpoints
     path('api/colaboradores/', views.api_colaboradores, name='api_colaboradores'),

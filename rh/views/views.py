@@ -533,8 +533,8 @@ def editar_colaborador_view(request, colab_id):
         form = ColaboradorForm(request.POST, instance=alvo)
         if form.is_valid():
             form.save()
-            # Limpar cache do RH para todos os usuários
-            cache.delete_pattern("rh_dashboard_*")
+            # Limpar cache do RH para este usuário
+            limpar_cache_rh(request.user.id)
             messages.success(request, "Colaborador atualizado com sucesso!")
             return redirect("detalhe_colaborador", colab_id=alvo.id)
         else:
@@ -920,8 +920,12 @@ def gestao_ferias_view(request):
     paginator = Paginator(ferias_qs, 25)
     page = request.GET.get('page')
     try:
-        ferias_page = paginator.page(page)
-    except Exception:
+        if page:
+            ferias_page = paginator.page(int(page))
+        else:
+            ferias_page = paginator.page(1)
+    except Exception as e:
+        logger.error(f"Erro ao paginar férias: {e}")
         ferias_page = paginator.page(1)
     
     # Estatísticas
