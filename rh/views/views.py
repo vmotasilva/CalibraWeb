@@ -197,6 +197,18 @@ def modulo_rh_view(request):
     # Estatísticas de Treinamento por colaborador (apenas perfis ativos)
     from procedures.models import ColaboradorPerfil
     from django.db.models import Prefetch
+    from rh.models import Ferias
+    from datetime import date
+    
+    # Pré-carregar férias ativas
+    prefetch_ferias = Prefetch(
+        'ferias_set',
+        queryset=Ferias.objects.filter(
+            aprovada=True,
+            data_inicio__lte=date.today(),
+            data_fim__gte=date.today()
+        ).order_by('-data_inicio')
+    )
     
     # Pré-carregar perfis ativos com todas as relações necessárias (evita N+1)
     prefetch_perfis = Prefetch(
@@ -209,7 +221,7 @@ def modulo_rh_view(request):
     )
     
     # Re-fazer o queryset com prefetch otimizado
-    funcionarios_visiveis = funcionarios_visiveis.prefetch_related(prefetch_perfis)
+    funcionarios_visiveis = funcionarios_visiveis.prefetch_related(prefetch_perfis, prefetch_ferias)
     
     for f in funcionarios_visiveis:
         vig = 0

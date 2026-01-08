@@ -3,12 +3,10 @@ RH Module Tasks (Celery)
 Tarefas assíncronas para recursos humanos
 """
 
-# Tasks serão migradas da qms/tasks.py durante a Fase 3
-# - Processamento de importações de colaboradores
-# - Notificações de ocorrências
-# - Cálculo de férias
+# Import tasks para serem descobertas pelo Celery
+from .ferias_tasks import atualizar_status_ferias, sincronizar_em_ferias
 
-
-def placeholder():
-    """Placeholder para tasks de RH"""
-    pass
+__all__ = [
+    'atualizar_status_ferias',
+    'sincronizar_em_ferias',
+]

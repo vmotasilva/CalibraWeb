@@ -51,6 +51,24 @@ CELERY_BEAT_SCHEDULE = {
     },
     
     # ====================================================================
+    # RH TASKS - Atualização automática de férias
+    # ====================================================================
+    
+    # Atualizar status de férias - A cada hora
+    'atualizar-status-ferias': {
+        'task': 'rh.atualizar_status_ferias',
+        'schedule': crontab(minute=0),  # A cada hora
+        'options': {'queue': 'default', 'expires': 3600}
+    },
+    
+    # Sincronizar status em_ferias - A cada 6 horas
+    'sincronizar-em-ferias': {
+        'task': 'rh.sincronizar_em_ferias',
+        'schedule': crontab(minute=30, hour='*/6'),  # A cada 6 horas
+        'options': {'queue': 'default', 'expires': 3600}
+    },
+    
+    # ====================================================================
     # CACHE WARMING TASKS - Fase 6 Task #3
     # ====================================================================
     
@@ -92,4 +110,6 @@ CELERY_ROUTES = {
     'qms.tasks.warm_instrumentos_cache': {'queue': 'cache'},
     'qms.tasks.warm_statistics_cache': {'queue': 'cache'},
     'qms.tasks.warm_categories_cache': {'queue': 'cache'},
+    'rh.atualizar_status_ferias': {'queue': 'default'},
+    'rh.sincronizar_em_ferias': {'queue': 'default'},
 }
