@@ -44,8 +44,9 @@ RUN pip install --upgrade pip && \
 # Copy application code
 COPY . .
 
-# Make entrypoint executable
-RUN chmod +x entrypoint.sh
+# Make entrypoints executable
+RUN chmod +x entrypoint.sh && \
+    chmod +x entrypoint-beat-debug.sh
 
 EXPOSE 8000
 

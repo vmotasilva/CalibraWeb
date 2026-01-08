@@ -211,8 +211,40 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = "en-us"  # Você pode mudar para 'pt-br' se quiser
 
 TIME_ZONE = os.getenv("TIME_ZONE", "UTC")
-# Celery / Redis configuration (optional; defaults if not provided)
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+
+# Celery / Redis configuration - Build URL robustly
+def _build_redis_url():
+    """Build Redis URL from Railway environment variables or fallback to defaults."""
+    
+    # First try: Direct REDIS_URL (Railway provides this)
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url and "${" not in redis_url and "%24%7B" not in redis_url:
+        return redis_url
+    
+    # Second try: Build from individual components (Railway Railway Redis)
+    redis_host = os.getenv("REDIS_HOST", "")
+    redis_port = os.getenv("REDIS_PORT", "")
+    redis_password = os.getenv("REDIS_PASSWORD", "")
+    
+    if redis_host and redis_port:
+        try:
+            redis_port = int(redis_port)  # Ensure it's a number
+            if redis_password:
+                return f"redis://default:{redis_password}@{redis_host}:{redis_port}/0"
+            else:
+                return f"redis://{redis_host}:{redis_port}/0"
+        except (ValueError, TypeError):
+            pass  # Fall through to default
+    
+    # Third try: CELERY_BROKER_URL (if explicitly set)
+    celery_broker = os.getenv("CELERY_BROKER_URL")
+    if celery_broker and "${" not in celery_broker and "%24%7B" not in celery_broker:
+        return celery_broker
+    
+    # Default: Local Redis
+    return "redis://localhost:6379/0"
+
+CELERY_BROKER_URL = _build_redis_url()
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
 
 USE_I18N = True
