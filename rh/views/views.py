@@ -227,15 +227,39 @@ def modulo_rh_view(request):
     
     # Calcular estatísticas APENAS para a página atual
     for f in funcionarios_page.object_list:
-        # Usar cache de treinamentos prefetched (lista em memória)
-        treinamentos_dict = {rt.procedimento_id: rt for rt in f.treinamentos.all()}
-        
         vig = 0
         pend = 0
         last = None
         
-        # Contar status dos treinamentos conhecidos (sem loops aninhados)
-        for procedimento_id, rt in treinamentos_dict.items():
+        # Buscar perfis ativos associados ao colaborador
+        perfis_ativos = ColaboradorPerfil.objects.filter(
+            colaborador=f, ativo=True
+        ).select_related('perfil').prefetch_related(
+            'perfil__grupos__subgrupos__procedimentos'
+        )
+        
+        # Coletar todos os procedimentos dos perfis associados
+        procedimentos_ids = set()
+        for cp in perfis_ativos:
+            for grupo in cp.perfil.grupos.all():
+                for subgrupo in grupo.subgrupos.all():
+                    for proc in subgrupo.procedimentos.all():
+                        procedimentos_ids.add(proc.id)
+        
+        # Se não tem perfis associados, não conta nada
+        if not procedimentos_ids:
+            f.trein_vigentes = 0
+            f.trein_pendentes = 0
+            f.trein_ultima_data = None
+            continue
+        
+        # Buscar apenas os treinamentos dos procedimentos dos perfis associados
+        treinamentos_dos_perfis = f.treinamentos.filter(
+            procedimento_id__in=procedimentos_ids
+        )
+        
+        # Contar status dos treinamentos dos perfis
+        for rt in treinamentos_dos_perfis:
             status = rt.status_treinamento
             if status in ("VIGENTE", "OK"):
                 vig += 1
