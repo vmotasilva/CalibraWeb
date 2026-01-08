@@ -43,9 +43,9 @@
             </h1>
         </div>
         <div class="col-md-4 text-end">
-            <a href="{% url 'rh:criar_ferias' %}" class="btn btn-success me-2">
+            <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#modalSelecionarColaborador">
                 <i class="fas fa-plus"></i> Registrar Férias
-            </a>
+            </button>
             <a href="{% url 'modulo_rh' %}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Voltar ao RH
             </a>
@@ -341,7 +341,102 @@
     </div>
 </div>
 
+<!-- Modal para Seleção de Colaborador -->
+<div class="modal fade" id="modalSelecionarColaborador" tabindex="-1" aria-labelledby="modalSelecionarColaboradorLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalSelecionarColaboradorLabel">
+                    <i class="fas fa-search"></i> Selecionar Colaborador
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="filtroNomeMatricula" class="form-label">Nome ou Matrícula</label>
+                        <input type="text" class="form-control" id="filtroNomeMatricula" placeholder="Buscar por nome ou matrícula...">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="filtroSetor" class="form-label">Setor</label>
+                        <select class="form-select" id="filtroSetor">
+                            <option value="">Todos os Setores</option>
+                            {% for colab in colaboradores %}
+                                {% if colab.setor %}
+                                    <option value="{{ colab.setor.id }}">{{ colab.setor.nome }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="filtroStatus" class="form-label">Status</label>
+                        <select class="form-select" id="filtroStatus">
+                            <option value="">Todos</option>
+                            <option value="ativo">Ativo</option>
+                            <option value="inativo">Inativo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Listagem de Colaboradores -->
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover table-sm">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Nome</th>
+                                <th>Matrícula</th>
+                                <th>Setor</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaColaboradores">
+                            {% for colab in colaboradores %}
+                                <tr class="colaborador-row" data-id="{{ colab.id }}" data-nome="{{ colab.nome_completo }}" data-setor-id="{{ colab.setor.id|default:'' }}" data-status="{% if colab.is_active %}ativo{% else %}inativo{% endif %}">
+                                    <td>{{ colab.nome_completo }}</td>
+                                    <td>{{ colab.matricula }}</td>
+                                    <td>{{ colab.setor.nome|default:"—" }}</td>
+                                    <td>
+                                        {% if colab.is_active %}
+                                            <span class="badge bg-success">Ativo</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inativo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="selecionarColaborador({{ colab.id }}, '{{ colab.nome_completo }}')">
+                                            <i class="fas fa-check"></i> Selecionar
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">
+                                        Nenhum colaborador encontrado
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="text-muted small mt-2">
+                    <i class="fas fa-info-circle"></i> Total: <span id="totalColaboradores">{{ colaboradores.count }}</span> colaboradores
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// Função para confirmar exclusão
 function confirmarExclusaoFerias(feriasId, nomeColaborador, colab_id) {
     document.getElementById('nomeColaborador').textContent = nomeColaborador;
     document.getElementById('formExcluirFerias').action = 
@@ -349,6 +444,56 @@ function confirmarExclusaoFerias(feriasId, nomeColaborador, colab_id) {
     
     const modal = new bootstrap.Modal(document.getElementById('modalExcluir'));
     modal.show();
+}
+
+// Função para selecionar colaborador e redirecionar
+function selecionarColaborador(colab_id, nome) {
+    window.location.href = `{% url 'rh:criar_ferias_colab' colab_id=0 %}`.replace('/0/', `/${colab_id}/`);
+}
+
+// Filtros em tempo real
+document.getElementById('filtroNomeMatricula').addEventListener('keyup', filtrarColaboradores);
+document.getElementById('filtroSetor').addEventListener('change', filtrarColaboradores);
+document.getElementById('filtroStatus').addEventListener('change', filtrarColaboradores);
+
+function filtrarColaboradores() {
+    const nome = document.getElementById('filtroNomeMatricula').value.toLowerCase();
+    const setor = document.getElementById('filtroSetor').value;
+    const status = document.getElementById('filtroStatus').value;
+    
+    const linhas = document.querySelectorAll('.colaborador-row');
+    let visivel = 0;
+    
+    linhas.forEach(linha => {
+        const nomeLinha = linha.dataset.nome.toLowerCase();
+        const setorLinha = linha.dataset.setorId;
+        const statusLinha = linha.dataset.status;
+        
+        const filtroNome = nomeLinha.includes(nome) || linha.textContent.toLowerCase().includes(nome);
+        const filtroSetorOk = !setor || setorLinha === setor;
+        const filtroStatusOk = !status || statusLinha === status;
+        
+        if (filtroNome && filtroSetorOk && filtroStatusOk) {
+            linha.style.display = '';
+            visivel++;
+        } else {
+            linha.style.display = 'none';
+        }
+    });
+    
+    // Atualizar contador
+    const emptyRow = document.querySelector('#tabelaColaboradores tr:last-child');
+    if (visivel === 0) {
+        if (!emptyRow || !emptyRow.textContent.includes('Nenhum')) {
+            const tbody = document.getElementById('tabelaColaboradores');
+            const row = tbody.querySelector('tr[colspan="5"]');
+            if (row) {
+                row.style.display = '';
+            }
+        }
+    }
+    
+    document.getElementById('totalColaboradores').textContent = visivel;
 }
 </script>
 {% endblock %}
