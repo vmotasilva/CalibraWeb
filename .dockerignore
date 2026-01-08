@@ -3,15 +3,11 @@
 .gitignore
 .gitattributes
 
-# Python
-__pycache__
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
+# Python venv (CRITICAL - can be 200+ MB each!)
+.venv/
 venv/
 ENV/
+env/
 build/
 develop-eggs/
 dist/

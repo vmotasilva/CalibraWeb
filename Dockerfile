@@ -30,10 +30,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install only runtime dependencies (no build tools)
+# Install only runtime dependencies (no build tools, no curl since no healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy wheels from builder and install
