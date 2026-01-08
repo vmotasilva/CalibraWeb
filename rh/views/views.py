@@ -200,7 +200,7 @@ def modulo_rh_view(request):
     
     # Pré-carregar perfis ativos com todas as relações necessárias (evita N+1)
     prefetch_perfis = Prefetch(
-        'colaboradorperfil_set',
+        'perfis_treinamento',
         queryset=ColaboradorPerfil.objects.filter(ativo=True).select_related(
             'perfil'
         ).prefetch_related(
@@ -220,7 +220,7 @@ def modulo_rh_view(request):
         treinamentos_dict = {rt.procedimento_id: rt for rt in f.treinamentos.all()}
         
         # Buscar procedimentos dos perfis ativos (já estão em cache via Prefetch)
-        for cp in f.colaboradorperfil_set.all():
+        for cp in f.perfis_treinamento.all():
             for grupo in cp.perfil.grupos.all():
                 for subgrupo in grupo.subgrupos.all():
                     for proc in subgrupo.procedimentos.all():
