@@ -7,6 +7,18 @@ echo "=========================================="
 echo "CELERY BEAT - Validation & Debug"
 echo "=========================================="
 
+# CRITICAL: Unset broken template variables that might be in the environment
+# This prevents Celery from using CELERY_BROKER_URL/CELERY_RESULT_BACKEND with unresolved templates
+if [[ "$CELERY_BROKER_URL" == *"\${"* ]] || [[ "$CELERY_BROKER_URL" == *"%24%7B"* ]]; then
+    echo "⚠️  Removing broken CELERY_BROKER_URL from environment"
+    unset CELERY_BROKER_URL
+fi
+
+if [[ "$CELERY_RESULT_BACKEND" == *"\${"* ]] || [[ "$CELERY_RESULT_BACKEND" == *"%24%7B"* ]]; then
+    echo "⚠️  Removing broken CELERY_RESULT_BACKEND from environment"
+    unset CELERY_RESULT_BACKEND
+fi
+
 # Print environment
 echo ""
 echo "Environment Variables:"
