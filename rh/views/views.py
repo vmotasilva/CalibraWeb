@@ -234,17 +234,47 @@ def modulo_rh_view(request):
         # Buscar perfis ativos associados ao colaborador
         perfis_ativos = ColaboradorPerfil.objects.filter(
             colaborador=f, ativo=True
-        ).select_related('perfil').prefetch_related(
-            'perfil__grupos__subgrupos__procedimentos'
         )
         
-        # Coletar todos os procedimentos dos perfis associados
+        # Coletar procedimentos apenas dos grupos/subgrupos selecionados
         procedimentos_ids = set()
+        
         for cp in perfis_ativos:
-            for grupo in cp.perfil.grupos.all():
-                for subgrupo in grupo.subgrupos.all():
-                    for proc in subgrupo.procedimentos.all():
-                        procedimentos_ids.add(proc.id)
+            # Se não tem seleção específica, pegar todos do perfil
+            if not cp.grupos_selecionados:
+                # Todos os procedimentos do perfil
+                procs = cp.perfil.grupos.all().prefetch_related(
+                    'subgrupos__procedimentos'
+                )
+                for grupo in procs:
+                    for subgrupo in grupo.subgrupos.all():
+                        for proc in subgrupo.procedimentos.all():
+                            procedimentos_ids.add(proc.id)
+            else:
+                # Filtrar por grupos/subgrupos selecionados
+                grupos_selecionados = cp.grupos_selecionados.get('grupos', [])
+                subgrupos_selecionados = cp.grupos_selecionados.get('subgrupos', [])
+                
+                # Se há subgrupos selecionados, usar apenas eles
+                if subgrupos_selecionados:
+                    procs = cp.perfil.grupos.all().prefetch_related(
+                        'subgrupos__procedimentos'
+                    )
+                    for grupo in procs:
+                        for subgrupo in grupo.subgrupos.all():
+                            if subgrupo.id in subgrupos_selecionados:
+                                for proc in subgrupo.procedimentos.all():
+                                    procedimentos_ids.add(proc.id)
+                # Se há grupos selecionados, usar todos os subgrupos desses grupos
+                elif grupos_selecionados:
+                    procs = cp.perfil.grupos.all().prefetch_related(
+                        'subgrupos__procedimentos'
+                    )
+                    for grupo in procs:
+                        if grupo.id in grupos_selecionados:
+                            for subgrupo in grupo.subgrupos.all():
+                                for proc in subgrupo.procedimentos.all():
+                                    procedimentos_ids.add(proc.id)
         
         # Se não tem perfis associados, não conta nada
         if not procedimentos_ids:
@@ -253,7 +283,7 @@ def modulo_rh_view(request):
             f.trein_ultima_data = None
             continue
         
-        # Buscar apenas os treinamentos dos procedimentos dos perfis associados
+        # Buscar apenas os treinamentos dos procedimentos dos perfis/grupos/subgrupos associados
         treinamentos_dos_perfis = f.treinamentos.filter(
             procedimento_id__in=procedimentos_ids
         )
