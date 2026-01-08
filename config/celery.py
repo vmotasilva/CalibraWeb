@@ -43,11 +43,20 @@ except Exception as e:
     print(f"❌ Error loading Django settings: {e}")
     sys.exit(1)
 
+# CRITICAL: Override broker_url and result_backend to use our _build_redis_url() function
+# This prevents Celery from using broken CELERY_BROKER_URL from beat service environment
+import django.conf
+if hasattr(django.conf.settings, 'CELERY_BROKER_URL'):
+    app.conf.broker_url = django.conf.settings.CELERY_BROKER_URL
+if hasattr(django.conf.settings, 'CELERY_RESULT_BACKEND'):
+    app.conf.result_backend = django.conf.settings.CELERY_RESULT_BACKEND
+
 # Validate broker connection
 broker_url = getattr(app.conf, 'broker_url', 'NOT SET')
 if "${" in str(broker_url) or "%24%7B" in str(broker_url):
-    print(f"⚠️  WARNING: CELERY_BROKER_URL contains unresolved templates: {broker_url}")
-    print(f"   This may fail when trying to connect to Redis")
+    print(f"❌ CRITICAL: CELERY_BROKER_URL still has unresolved templates: {broker_url}")
+    print(f"   You MUST delete CELERY_BROKER_URL and CELERY_RESULT_BACKEND from beat service!")
+    print(f"   Keep only: REDIS_URL={os.getenv('REDIS_URL', 'NOT SET')[:30]}...")
 else:
     print(f"✅ CELERY_BROKER_URL configured: {broker_url[:30]}..." if len(str(broker_url)) > 30 else f"✅ CELERY_BROKER_URL: {broker_url}")
 
