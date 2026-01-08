@@ -537,8 +537,7 @@ function updateEtiquetasLink(){
     const pad = (document.getElementById('etq_pad')?.value || 5);
     const extras = `orient=${encodeURIComponent(orient)}&cols=${encodeURIComponent(cols)}&rows=${encodeURIComponent(rows)}&margin_mm=${encodeURIComponent(margin)}&pad_mm=${encodeURIComponent(pad)}`;
     const finalQs = qs ? (qs + '&' + extras) : extras;
-    // TODO: Implementar export_etiquetas
-    btnEtiquetas.href = '#'; // '{% url 'export_etiquetas' %}' + (finalQs ? ('?' + finalQs) : '');
+    btnEtiquetas.href = '{% url 'metrologia:export_etiquetas' %}' + (finalQs ? ('?' + finalQs) : '');
 }
 
 function renderEtiquetasSummary(){

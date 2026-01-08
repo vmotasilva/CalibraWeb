@@ -87,4 +87,5 @@ urlpatterns = [
 
     # API ENDPOINTS
     path('api/instrumentos-vencendo/', views.api_instrumentos_vencendo, name='api_instrumentos_vencendo'),
+    path('export/etiquetas/', views.export_etiquetas_view, name='export_etiquetas'),
 ]

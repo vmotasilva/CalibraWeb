@@ -514,11 +514,13 @@ def export_etiquetas_view(request):
             hist_qs = HistoricoCalibracao.objects.filter(instrumento=inst)
             last_hist = hist_qs.order_by('-data_calibracao').first()
             if last_hist:
-                if not last_calib_date:
+                if not last_calib_date and hasattr(last_hist, 'data_calibracao'):
                     last_calib_date = last_hist.data_calibracao
-                last_cert_num = last_hist.numero_certificado or ''
-        except Exception:
-            pass
+                if hasattr(last_hist, 'numero_certificado'):
+                    last_cert_num = last_hist.numero_certificado or ''
+        except Exception as e:
+            import logging
+            logging.exception(f"Erro ao buscar histórico de calibração para {inst.tag}: {e}")
         
         calib_str = last_calib_date.strftime('%d/%m/%Y') if last_calib_date else ''
         prox_str = inst.data_proxima_calibracao.strftime('%m/%Y') if getattr(inst, 'data_proxima_calibracao', None) else ''
