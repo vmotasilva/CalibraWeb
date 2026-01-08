@@ -404,7 +404,7 @@ def detalhe_colaborador_view(request, colab_id):
                     matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos'][subgrupo.id]['total'] += 1
                     
                     # Verificar se está pendente
-                    if not treinamento or treinamento.status_treinamento != 'OK':
+                    if not treinamento or treinamento.status_treinamento not in ('OK', 'VIGENTE'):
                         total_pendentes += 1
                         matriz_treinamentos[perfil.codigo]['pendentes'] += 1
                         matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['pendentes'] += 1
