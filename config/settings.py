@@ -245,7 +245,8 @@ def _build_redis_url():
     return "redis://localhost:6379/0"
 
 CELERY_BROKER_URL = _build_redis_url()
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+# Also build result backend from scratch (ignore broken CELERY_RESULT_BACKEND env var)
+CELERY_RESULT_BACKEND = _build_redis_url()
 
 USE_I18N = True
 
