@@ -46,6 +46,9 @@
             <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#modalSelecionarColaborador">
                 <i class="fas fa-plus"></i> Registrar Férias
             </button>
+            <a href="{% url 'rh:atualizar_status_ferias' %}" class="btn btn-warning me-2" title="Atualizar status de férias em massa">
+                <i class="fas fa-sync"></i> Atualizar Status
+            </a>
             <a href="{% url 'modulo_rh' %}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Voltar ao RH
             </a>

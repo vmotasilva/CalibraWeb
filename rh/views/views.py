@@ -1151,3 +1151,56 @@ def criar_ferias_view(request, colab_id=None):
         "edicao": False,
         "titulo": "Registrar Novas Férias"
     })
+
+
+@login_required
+def atualizar_status_ferias_view(request):
+    """View para atualizar status de férias em massa."""
+    # Verificar permissão - apenas staff/superuser/RH
+    permitido = False
+    if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    else:
+        try:
+            usuario_logado = get_colaborador_for_user(request.user)
+            if usuario_logado:
+                setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
+                if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
+                    permitido = True
+        except Exception:
+            pass
+    
+    if not permitido:
+        messages.error(request, "Você não tem permissão para executar essa ação.")
+        return redirect("rh:gestao_ferias")
+    
+    try:
+        # Importar a task e executar de forma síncrona
+        from rh.tasks import atualizar_status_ferias
+        
+        result = atualizar_status_ferias()
+        
+        if result.get("success"):
+            em_andamento = result.get("em_andamento", 0)
+            concluidas = result.get("concluidas", 0)
+            desatualizar = result.get("desatualizar", 0)
+            total = result.get("total", 0)
+            
+            message = f"✅ Atualização concluída! "
+            if em_andamento > 0:
+                message += f"{em_andamento} para EM_ANDAMENTO, "
+            if concluidas > 0:
+                message += f"{concluidas} para CONCLUIDO, "
+            if desatualizar > 0:
+                message += f"{desatualizar} colaboradores desatualizados"
+            
+            messages.success(request, message)
+        else:
+            error = result.get("error", "Erro desconhecido")
+            messages.error(request, f"Erro ao atualizar: {error}")
+            
+    except Exception as e:
+        logger.error(f"Erro ao atualizar status de férias: {e}", exc_info=True)
+        messages.error(request, f"Erro ao executar atualização: {str(e)}")
+    
+    return redirect("rh:gestao_ferias")
