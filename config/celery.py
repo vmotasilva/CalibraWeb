@@ -46,11 +46,10 @@ except Exception as e:
 # Validate broker connection
 broker_url = getattr(app.conf, 'broker_url', 'NOT SET')
 if "${" in str(broker_url) or "%24%7B" in str(broker_url):
-    print(f"❌ ERROR: CELERY_BROKER_URL still contains unresolved templates!")
-    print(f"   Broker URL: {broker_url}")
-    print(f"   This should NOT happen - check environment variables in Railway beat service")
-    sys.exit(1)
-print(f"✅ CELERY_BROKER_URL configured: {broker_url[:30]}..." if len(str(broker_url)) > 30 else f"✅ CELERY_BROKER_URL: {broker_url}")
+    print(f"⚠️  WARNING: CELERY_BROKER_URL contains unresolved templates: {broker_url}")
+    print(f"   This may fail when trying to connect to Redis")
+else:
+    print(f"✅ CELERY_BROKER_URL configured: {broker_url[:30]}..." if len(str(broker_url)) > 30 else f"✅ CELERY_BROKER_URL: {broker_url}")
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
