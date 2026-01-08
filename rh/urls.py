@@ -6,6 +6,8 @@ app_name = 'rh'
 urlpatterns = [
     # Dashboard e gestão
     path('gestao-ferias/', views.gestao_ferias_view, name='gestao_ferias'),
+    path('gestao-ferias/criar/', views.criar_ferias_view, name='criar_ferias'),
+    path('gestao-ferias/criar/<int:colab_id>/', views.criar_ferias_view, name='criar_ferias_colab'),
     path('<int:colab_id>/ferias/<int:ferias_id>/editar/', views.editar_ferias_view, name='editar_ferias'),
     path('<int:colab_id>/ferias/<int:ferias_id>/excluir/', views.excluir_ferias_view, name='excluir_ferias'),
     

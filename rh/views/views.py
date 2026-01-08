@@ -1108,3 +1108,46 @@ def api_supervisores(request):
     }
     
     return JsonResponse(data)
+
+
+@login_required
+def criar_ferias_view(request, colab_id=None):
+    """Criar um novo período de férias para um colaborador."""
+    # Se colab_id foi fornecido, usar esse colaborador
+    if colab_id:
+        colaborador = get_object_or_404(Colaborador, id=colab_id)
+        
+        # Verificar permissão de acesso ao colaborador
+        if not can_user_access_colaborador(request.user, colaborador):
+            messages.error(request, "Acesso Negado. Você não tem permissão para registrar férias deste colaborador.")
+            return redirect("modulo_rh")
+    else:
+        # Se não fornecido, usar o colaborador logado (se houver)
+        try:
+            colaborador = get_colaborador_for_user(request.user)
+            if not colaborador:
+                messages.error(request, "Você não está associado a um colaborador.")
+                return redirect("modulo_rh")
+        except Exception:
+            messages.error(request, "Erro ao obter seu perfil.")
+            return redirect("modulo_rh")
+    
+    if request.method == "POST":
+        form = FeriasForm(request.POST)
+        if form.is_valid():
+            ferias = form.save(commit=False)
+            ferias.colaborador = colaborador
+            ferias.save()
+            messages.success(request, "Registro de férias criado com sucesso!")
+            return redirect('rh:gestao_ferias')
+        else:
+            messages.error(request, "Verifique os dados do formulário.")
+    else:
+        form = FeriasForm()
+    
+    return render(request, 'rh/ferias_form.html', {
+        "form": form,
+        "colaborador": colaborador,
+        "edicao": False,
+        "titulo": "Registrar Novas Férias"
+    })
