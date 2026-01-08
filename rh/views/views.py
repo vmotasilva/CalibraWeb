@@ -195,26 +195,37 @@ def modulo_rh_view(request):
         funcionarios_visiveis = funcionarios_base
 
     # Estatísticas de Treinamento por colaborador (apenas perfis ativos)
-    from procedures.models import ColaboradorPerfil, SubGrupoTreinamento
+    from procedures.models import ColaboradorPerfil
+    from django.db.models import Prefetch
+    
+    # Pré-carregar perfis ativos com todas as relações necessárias (evita N+1)
+    prefetch_perfis = Prefetch(
+        'colaboradorperfil_set',
+        queryset=ColaboradorPerfil.objects.filter(ativo=True).select_related(
+            'perfil'
+        ).prefetch_related(
+            'perfil__grupos__subgrupos__procedimentos'
+        )
+    )
+    
+    # Re-fazer o queryset com prefetch otimizado
+    funcionarios_visiveis = funcionarios_visiveis.prefetch_related(prefetch_perfis)
     
     for f in funcionarios_visiveis:
         vig = 0
         pend = 0
         last = None
         
-        # Buscar procedimentos dos perfis ativos do colaborador
-        perfis_ativos = ColaboradorPerfil.objects.filter(
-            colaborador=f, ativo=True
-        ).select_related('perfil').prefetch_related(
-            'perfil__grupos__subgrupos__procedimentos'
-        )
+        # Usar cache de treinamentos prefetched (lista em memória)
+        treinamentos_dict = {rt.procedimento_id: rt for rt in f.treinamentos.all()}
         
-        for cp in perfis_ativos:
+        # Buscar procedimentos dos perfis ativos (já estão em cache via Prefetch)
+        for cp in f.colaboradorperfil_set.all():
             for grupo in cp.perfil.grupos.all():
                 for subgrupo in grupo.subgrupos.all():
                     for proc in subgrupo.procedimentos.all():
-                        # Buscar registro de treinamento para este procedimento
-                        rt = f.treinamentos.filter(procedimento=proc).first()
+                        # Buscar no dicionário em memória (sem query)
+                        rt = treinamentos_dict.get(proc.id)
                         if rt:
                             status = rt.status_treinamento
                             # Suporta ambos modelos: "VIGENTE"/"OK" (vigentes) ou "PENDENTE"/"NAO_INICIADO" (pendentes)
