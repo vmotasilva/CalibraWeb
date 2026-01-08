@@ -8,7 +8,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
-from django.db.models import Q
+from django.views.decorators.cache import cache_page
+from django.db.models import Q, Prefetch
 from django.http import HttpResponseRedirect
 from django.core.paginator import Paginator
 import logging
@@ -210,50 +211,46 @@ def modulo_rh_view(request):
         ).order_by('-data_inicio')
     )
     
-    # Pré-carregar perfis ativos com todas as relações necessárias (evita N+1)
-    prefetch_perfis = Prefetch(
-        'perfis_treinamento',
-        queryset=ColaboradorPerfil.objects.filter(ativo=True).select_related(
-            'perfil'
-        ).prefetch_related(
-            'perfil__grupos__subgrupos__procedimentos'
-        )
-    )
-    
     # Re-fazer o queryset com prefetch otimizado
-    funcionarios_visiveis = funcionarios_visiveis.prefetch_related(prefetch_perfis, prefetch_ferias)
+    funcionarios_visiveis = funcionarios_visiveis.prefetch_related(prefetch_ferias)
     
+    # Calcular estatísticas de treinamento de forma otimizada
     for f in funcionarios_visiveis:
+        # Usar cache de treinamentos prefetched (lista em memória)
+        treinamentos_dict = {rt.procedimento_id: rt for rt in f.treinamentos.all()}
+        
         vig = 0
         pend = 0
         last = None
         
-        # Usar cache de treinamentos prefetched (lista em memória)
-        treinamentos_dict = {rt.procedimento_id: rt for rt in f.treinamentos.all()}
-        
-        # Buscar procedimentos dos perfis ativos (já estão em cache via Prefetch)
-        for cp in f.perfis_treinamento.all():
-            for grupo in cp.perfil.grupos.all():
-                for subgrupo in grupo.subgrupos.all():
-                    for proc in subgrupo.procedimentos.all():
-                        # Buscar no dicionário em memória (sem query)
-                        rt = treinamentos_dict.get(proc.id)
-                        if rt:
-                            status = rt.status_treinamento
-                            # Suporta ambos modelos: "VIGENTE"/"OK" (vigentes) ou "PENDENTE"/"NAO_INICIADO" (pendentes)
-                            if status in ("VIGENTE", "OK"):
-                                vig += 1
-                            else:
-                                pend += 1
-                            if rt.data_treinamento and (last is None or rt.data_treinamento > last):
-                                last = rt.data_treinamento
+        # Contar status dos treinamentos conhecidos (sem loops aninhados)
+        for procedimento_id, rt in treinamentos_dict.items():
+            status = rt.status_treinamento
+            if status in ("VIGENTE", "OK"):
+                vig += 1
+            else:
+                pend += 1
+            if rt.data_treinamento and (last is None or rt.data_treinamento > last):
+                last = rt.data_treinamento
         
         f.trein_vigentes = vig
         f.trein_pendentes = pend
         f.trein_ultima_data = last
 
+    # Aplicar paginação para melhor performance
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    
+    paginator = Paginator(list(funcionarios_visiveis), 25)  # 25 por página
+    page = request.GET.get('page')
+    try:
+        funcionarios_page = paginator.page(page)
+    except PageNotAnInteger:
+        funcionarios_page = paginator.page(1)
+    except EmptyPage:
+        funcionarios_page = paginator.page(paginator.num_pages)
+
     ctx = {
-        "funcionarios": funcionarios_visiveis,
+        "funcionarios": funcionarios_page,
         "lideres_filtro": lideres_filtro,
         "setores_filtro": setores_filtro,
         "supervisores_filtro": supervisores_filtro,

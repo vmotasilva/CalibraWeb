@@ -115,6 +115,12 @@ class Colaborador(models.Model):
     class Meta:
         verbose_name = "Colaborador"
         verbose_name_plural = "Colaboradores (RH)"
+        indexes = [
+            models.Index(fields=['setor', 'is_active']),
+            models.Index(fields=['lider', '-matricula']),
+            models.Index(fields=['em_ferias', 'setor']),
+            models.Index(fields=['is_active', '-criado_em']),
+        ]
 
 
 class Ferias(models.Model):
@@ -179,6 +185,11 @@ class Ferias(models.Model):
         verbose_name = "Férias"
         verbose_name_plural = "Período de Férias"
         ordering = ["-data_inicio"]
+        indexes = [
+            models.Index(fields=['colaborador', 'data_inicio', 'data_fim']),
+            models.Index(fields=['status', '-data_inicio']),
+            models.Index(fields=['aprovada', 'data_inicio', 'data_fim']),
+        ]
 
 
 class Ocorrencia(models.Model):
