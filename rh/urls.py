@@ -7,6 +7,7 @@ urlpatterns = [
     # Dashboard e gestão
     path('gestao-ferias/', views.gestao_ferias_view, name='gestao_ferias'),
     path('gestao-ferias/atualizar-status/', views.atualizar_status_ferias_view, name='atualizar_status_ferias'),
+    path('gestao-ferias/importar/', views.importar_ferias_view, name='importar_ferias'),
     path('gestao-ferias/criar/', views.criar_ferias_view, name='criar_ferias'),
     path('gestao-ferias/criar/<int:colab_id>/', views.criar_ferias_view, name='criar_ferias_colab'),
     path('<int:colab_id>/ferias/<int:ferias_id>/editar/', views.editar_ferias_view, name='editar_ferias'),

@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Importar Férias - Calibra QMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-zone {
+        border: 2px dashed #007bff;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        background-color: rgba(0, 123, 255, 0.05);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .import-zone:hover {
+        border-color: #0056b3;
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+    
+    .import-zone.dragover {
+        border-color: #0056b3;
+        background-color: rgba(0, 123, 255, 0.15);
+    }
+    
+    .import-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #007bff;
+    }
+    
+    .template-section {
+        margin-top: 2rem;
+    }
+    
+    .template-table {
+        font-size: 0.9rem;
+    }
+    
+    .field-required {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    
+    .field-optional {
+        color: #6c757d;
+    }
+    
+    .example-data {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        overflow-x: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex align-items-center gap-3">
+                <h1 class="h3 m-0">
+                    <i class="fas fa-file-import text-primary"></i>
+                    Importar Férias em Massa
+                </h1>
+                <a href="{% url 'rh:gestao_ferias' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+            <p class="text-muted mt-2">Importe férias dos colaboradores a partir de um arquivo CSV ou Excel</p>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="row">
+        <!-- Upload Area -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-cloud-upload-alt"></i> Upload de Arquivo
+                    </h5>
+                    
+                    <form method="post" enctype="multipart/form-data" id="importForm">
+                        {% csrf_token %}
+                        
+                        <!-- Drag & Drop Zone -->
+                        <div class="import-zone mb-3" id="dropZone">
+                            <div class="import-icon">
+                                <i class="fas fa-file-csv"></i>
+                            </div>
+                            <p class="mb-1">
+                                <strong>Arraste seu arquivo aqui</strong><br>
+                                ou clique para selecionar
+                            </p>
+                            <small class="text-muted">Formatos aceitos: CSV, XLSX, XLS</small>
+                            <input type="file" 
+                                   name="arquivo_importacao" 
+                                   id="arquivoImportacao" 
+                                   accept=".csv,.xlsx,.xls" 
+                                   class="d-none"
+                                   required>
+                        </div>
+                        
+                        <!-- File Info -->
+                        <div id="fileInfo" class="alert alert-info d-none" role="alert">
+                            <strong id="fileName"></strong>
+                            <button type="button" class="btn-close btn-sm" id="clearFile"></button>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn btn-primary w-100" id="submitBtn" disabled>
+                            <i class="fas fa-upload"></i> Importar Férias
+                        </button>
+                    </form>
+                    
+                    <!-- Info -->
+                    <div class="alert alert-info mt-3" role="alert">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Dica:</strong> Seu arquivo deve conter as seguintes colunas
+                        (use exatamente os nomes mostrados).
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Template Info -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-table"></i> Formato do Arquivo
+                    </h5>
+                    
+                    <!-- Colunas -->
+                    <div class="mb-3">
+                        <strong>Colunas Obrigatórias:</strong>
+                        <table class="table table-sm table-borderless template-table mt-2">
+                            <tbody>
+                                <tr>
+                                    <td><span class="field-required">*</span></td>
+                                    <td><strong>Matrícula</strong></td>
+                                    <td><small class="text-muted">ex: 23, 339</small></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="field-required">*</span></td>
+                                    <td><strong>Data Início</strong></td>
+                                    <td><small class="text-muted">formato: DD/MM/YYYY</small></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="field-required">*</span></td>
+                                    <td><strong>Data Fim</strong></td>
+                                    <td><small class="text-muted">formato: DD/MM/YYYY</small></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Colunas Opcionais -->
+                    <div class="mb-3">
+                        <strong>Colunas Opcionais:</strong>
+                        <table class="table table-sm table-borderless template-table mt-2">
+                            <tbody>
+                                <tr>
+                                    <td><span class="field-optional">○</span></td>
+                                    <td><strong>Dias Solicitados</strong></td>
+                                    <td><small class="text-muted">número inteiro (auto calculado se omitido)</small></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="field-optional">○</span></td>
+                                    <td><strong>Aprovada</strong></td>
+                                    <td><small class="text-muted">Sim/Não ou True/False ou 1/0</small></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="field-optional">○</span></td>
+                                    <td><strong>Descrição</strong></td>
+                                    <td><small class="text-muted">texto livre</small></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Exemplo -->
+                    <div class="template-section">
+                        <strong>Exemplo de dados:</strong>
+                        <div class="example-data">
+Matrícula | Data Início | Data Fim | Dias Solicitados | Aprovada | Descrição
+23        | 01/01/2026  | 31/01/2026 | 30              | Sim      | Férias planejadas
+339       | 29/12/2025  | 27/01/2026 | 30              | Sim      | 
+223       | 29/12/2025  | 07/01/2026 | 10              | Não      | Aguardando aprovação
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download Template -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-download"></i> Template de Exemplo
+                    </h5>
+                    <p class="text-muted">Clique em um dos botões abaixo para baixar um template de exemplo:</p>
+                    
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-success" id="downloadCSV">
+                            <i class="fas fa-file-csv"></i> Baixar Template CSV
+                        </button>
+                        <button type="button" class="btn btn-outline-success" id="downloadExcel">
+                            <i class="fas fa-file-excel"></i> Baixar Template Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('arquivoImportacao');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const clearFileBtn = document.getElementById('clearFile');
+    const submitBtn = document.getElementById('submitBtn');
+    const importForm = document.getElementById('importForm');
+    
+    // Click to select file
+    dropZone.addEventListener('click', () => fileInput.click());
+    
+    // Drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            updateFileInfo();
+        }
+    });
+    
+    // File input change
+    fileInput.addEventListener('change', updateFileInfo);
+    
+    // Update file info
+    function updateFileInfo() {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            fileName.textContent = file.name + ' (' + (file.size / 1024).toFixed(2) + ' KB)';
+            fileInfo.classList.remove('d-none');
+            submitBtn.disabled = false;
+        }
+    }
+    
+    // Clear file
+    clearFileBtn.addEventListener('click', () => {
+        fileInput.value = '';
+        fileInfo.classList.add('d-none');
+        submitBtn.disabled = true;
+    });
+    
+    // Form submission
+    importForm.addEventListener('submit', function(e) {
+        if (!fileInput.files.length) {
+            e.preventDefault();
+            alert('Selecione um arquivo para importar');
+        }
+    });
+    
+    // Download templates
+    document.getElementById('downloadCSV').addEventListener('click', downloadCSVTemplate);
+    document.getElementById('downloadExcel').addEventListener('click', downloadExcelTemplate);
+    
+    function downloadCSVTemplate() {
+        const csv = `Matrícula,Data Início,Data Fim,Dias Solicitados,Aprovada,Descrição
+23,01/01/2026,31/01/2026,30,Sim,Férias planejadas
+339,29/12/2025,27/01/2026,30,Sim,
+223,29/12/2025,07/01/2026,10,Não,Aguardando aprovação`;
+        
+        downloadFile(csv, 'template_ferias.csv', 'text/csv');
+    }
+    
+    function downloadExcelTemplate() {
+        // Create a simple HTML table that can be saved as Excel
+        const html = `<table>
+            <tr>
+                <th>Matrícula</th>
+                <th>Data Início</th>
+                <th>Data Fim</th>
+                <th>Dias Solicitados</th>
+                <th>Aprovada</th>
+                <th>Descrição</th>
+            </tr>
+            <tr>
+                <td>23</td>
+                <td>01/01/2026</td>
+                <td>31/01/2026</td>
+                <td>30</td>
+                <td>Sim</td>
+                <td>Férias planejadas</td>
+            </tr>
+            <tr>
+                <td>339</td>
+                <td>29/12/2025</td>
+                <td>27/01/2026</td>
+                <td>30</td>
+                <td>Sim</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>223</td>
+                <td>29/12/2025</td>
+                <td>07/01/2026</td>
+                <td>10</td>
+                <td>Não</td>
+                <td>Aguardando aprovação</td>
+            </tr>
+        </table>`;
+        
+        downloadFile(html, 'template_ferias.xls', 'application/vnd.ms-excel');
+    }
+    
+    function downloadFile(content, fileName, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    }
+});
+</script>
+{% endblock %}

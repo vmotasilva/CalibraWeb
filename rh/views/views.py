@@ -1214,3 +1214,182 @@ def atualizar_status_ferias_view(request):
         messages.error(request, f"Erro ao executar atualização: {str(e)}")
     
     return redirect("rh:gestao_ferias")
+
+
+def importar_ferias_view(request):
+    """
+    View para importação em massa de férias via arquivo CSV/Excel
+    """
+    if not request.user.is_authenticated:
+        messages.error(request, "Você deve estar autenticado para acessar esta página.")
+        return redirect("login")
+    
+    # Verificar permissão
+    permitido = False
+    if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    else:
+        try:
+            usuario_logado = get_colaborador_for_user(request.user)
+            if usuario_logado:
+                setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
+                if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
+                    permitido = True
+        except Exception:
+            pass
+    
+    if not permitido:
+        messages.error(request, "Você não tem permissão para executar essa ação.")
+        return redirect("rh:gestao_ferias")
+    
+    if request.method == "POST":
+        arquivo = request.FILES.get("arquivo_importacao")
+        
+        if not arquivo:
+            messages.error(request, "Nenhum arquivo foi enviado.")
+            return redirect("rh:importar_ferias")
+        
+        try:
+            import csv
+            from io import StringIO
+            import pandas as pd
+            from rh.models import Ferias, Colaborador
+            from datetime import datetime
+            
+            logger.info(f"🔄 Iniciando importação de férias do arquivo: {arquivo.name}")
+            
+            # Detectar tipo de arquivo
+            arquivo_nome = arquivo.name.lower()
+            registros_criados = 0
+            registros_atualizados = 0
+            registros_erro = 0
+            erros_detalhes = []
+            
+            try:
+                # Tentar ler como Excel ou CSV
+                if arquivo_nome.endswith(('.xlsx', '.xls')):
+                    df = pd.read_excel(arquivo)
+                else:
+                    # Ler como CSV
+                    conteudo = arquivo.read().decode('utf-8')
+                    df = pd.read_csv(StringIO(conteudo))
+                
+                # Remover espaços em branco das colunas
+                df.columns = df.columns.str.strip()
+                
+                logger.info(f"📊 Arquivo contém {len(df)} linhas")
+                
+                # Processar cada linha
+                for idx, row in df.iterrows():
+                    try:
+                        # Obter dados obrigatórios
+                        matricula = str(row.get("Matrícula", "") or row.get("matricula", "") or "").strip()
+                        data_inicio = row.get("Data Início", "") or row.get("data_inicio", "")
+                        data_fim = row.get("Data Fim", "") or row.get("data_fim", "")
+                        dias_solicitados = row.get("Dias Solicitados", "") or row.get("dias_solicitados", "")
+                        
+                        if not matricula or not data_inicio or not data_fim:
+                            registros_erro += 1
+                            erros_detalhes.append(f"Linha {idx + 2}: Matrícula, Data Início e Data Fim são obrigatórios")
+                            continue
+                        
+                        # Buscar colaborador
+                        try:
+                            colaborador = Colaborador.objects.get(matricula=matricula)
+                        except Colaborador.DoesNotExist:
+                            registros_erro += 1
+                            erros_detalhes.append(f"Linha {idx + 2}: Colaborador com matrícula '{matricula}' não encontrado")
+                            continue
+                        
+                        # Converter datas
+                        try:
+                            if isinstance(data_inicio, str):
+                                data_inicio = datetime.strptime(data_inicio, "%d/%m/%Y").date()
+                            elif hasattr(data_inicio, 'date'):
+                                data_inicio = data_inicio.date()
+                            
+                            if isinstance(data_fim, str):
+                                data_fim = datetime.strptime(data_fim, "%d/%m/%Y").date()
+                            elif hasattr(data_fim, 'date'):
+                                data_fim = data_fim.date()
+                        except ValueError as e:
+                            registros_erro += 1
+                            erros_detalhes.append(f"Linha {idx + 2}: Erro ao converter datas - {str(e)}")
+                            continue
+                        
+                        # Converter dias solicitados
+                        try:
+                            dias_solicitados = int(dias_solicitados) if dias_solicitados else (data_fim - data_inicio).days + 1
+                        except (ValueError, TypeError):
+                            dias_solicitados = (data_fim - data_inicio).days + 1
+                        
+                        # Dados opcionais
+                        aprovada = row.get("Aprovada", "") or row.get("aprovada", "")
+                        if isinstance(aprovada, str):
+                            aprovada = aprovada.lower() in ["sim", "yes", "true", "1", "s"]
+                        else:
+                            aprovada = bool(aprovada)
+                        
+                        descricao = row.get("Descrição", "") or row.get("descricao", "")
+                        descricao = str(descricao) if descricao else ""
+                        
+                        # Buscar ou criar registro de férias
+                        ferias, criado = Ferias.objects.get_or_create(
+                            colaborador=colaborador,
+                            data_inicio=data_inicio,
+                            data_fim=data_fim,
+                            defaults={
+                                "dias_solicitados": dias_solicitados,
+                                "aprovada": aprovada,
+                                "descricao": descricao,
+                                "status": "PLANEJADO"
+                            }
+                        )
+                        
+                        if criado:
+                            registros_criados += 1
+                            logger.info(f"✅ Férias criadas: {colaborador.nome_completo} ({data_inicio} a {data_fim})")
+                        else:
+                            # Atualizar registro existente
+                            ferias.dias_solicitados = dias_solicitados
+                            ferias.aprovada = aprovada
+                            ferias.descricao = descricao
+                            ferias.save()
+                            registros_atualizados += 1
+                            logger.info(f"🔄 Férias atualizadas: {colaborador.nome_completo} ({data_inicio} a {data_fim})")
+                        
+                    except Exception as e:
+                        registros_erro += 1
+                        erros_detalhes.append(f"Linha {idx + 2}: {str(e)}")
+                        logger.error(f"❌ Erro ao processar linha {idx + 2}: {str(e)}", exc_info=True)
+                
+                # Exibir resultado
+                mensagem = f"✅ Importação concluída! {registros_criados} criados, {registros_atualizados} atualizados"
+                if registros_erro > 0:
+                    mensagem += f", {registros_erro} erros"
+                    messages.warning(request, mensagem)
+                    for erro in erros_detalhes[:5]:  # Mostrar apenas os 5 primeiros erros
+                        messages.info(request, erro)
+                    if len(erros_detalhes) > 5:
+                        messages.info(request, f"... e mais {len(erros_detalhes) - 5} erros")
+                else:
+                    messages.success(request, mensagem)
+                
+                logger.info(f"📊 Importação finalizada: {registros_criados} criados, {registros_atualizados} atualizados, {registros_erro} erros")
+                
+            except Exception as e:
+                logger.error(f"❌ Erro ao processar arquivo: {str(e)}", exc_info=True)
+                messages.error(request, f"Erro ao processar arquivo: {str(e)}")
+        
+        except Exception as e:
+            logger.error(f"❌ Erro geral na importação: {str(e)}", exc_info=True)
+            messages.error(request, f"Erro na importação: {str(e)}")
+        
+        return redirect("rh:gestao_ferias")
+    
+    # GET - Mostrar formulário de importação
+    context = {
+        "titulo": "Importar Férias em Massa",
+        "descricao": "Importe férias dos colaboradores a partir de um arquivo CSV ou Excel"
+    }
+    return render(request, "rh/importar_ferias.html", context)
