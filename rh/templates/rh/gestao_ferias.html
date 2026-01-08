@@ -247,17 +247,17 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <div class="btn-group" role="group">
-                                                <a href="{% url 'editar_ferias' colab_id=ferias.colaborador.id ferias_id=ferias.id %}" 
-                                                   class="btn btn-sm btn-outline-primary"
+                                            <div class="d-flex gap-2">
+                                                <a href="{% url 'rh:editar_ferias' colab_id=ferias.colaborador.id ferias_id=ferias.id %}" 
+                                                   class="btn btn-sm btn-primary"
                                                    title="Editar férias">
-                                                    <i class="fas fa-edit"></i>
+                                                    <i class="fas fa-edit"></i> Editar
                                                 </a>
                                                 <button type="button" 
-                                                        class="btn btn-sm btn-outline-danger"
+                                                        class="btn btn-sm btn-danger"
                                                         onclick="confirmarExclusaoFerias({{ ferias.id }}, '{{ ferias.colaborador.nome_completo }}', {{ ferias.colaborador.id }})"
                                                         title="Excluir férias">
-                                                    <i class="fas fa-trash"></i>
+                                                    <i class="fas fa-trash"></i> Excluir
                                                 </button>
                                             </div>
                                         </td>
