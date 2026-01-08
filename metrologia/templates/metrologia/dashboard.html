@@ -63,6 +63,9 @@
             <a id="btnExport" href="#" class="btn btn-outline-success btn-sm shadow-sm" title="Exportar Excel">
                 <i class="bi bi-download"></i> Exportar
             </a>
+            <button class="btn btn-outline-info btn-sm shadow-sm" title="Atualizar todas as datas de calibração" onclick="atualizarTodasDatas()">
+                <i class="bi bi-arrow-clockwise"></i> Atualizar Datas
+            </button>
             <button class="btn btn-outline-primary btn-sm shadow-sm" title="Exportar Etiquetas PDF" data-bs-toggle="modal" data-bs-target="#etqModal">
                 🏷️ Etiquetas
             </button>
@@ -635,5 +638,41 @@ renderEtiquetasSummary = function(){
         box.appendChild(note);
     }
 }
+
+// Atualizar todas as datas de calibração em massa
+function atualizarTodasDatas() {
+    if (!confirm('Deseja atualizar todas as datas de próximas calibrações com base nos históricos mais recentes?\n\nIsso pode levar alguns minutos...')) {
+        return;
+    }
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Atualizando...';
+    
+    fetch('{% url "metrologia:atualizar_todas_datas_calibracao" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`✅ Sucesso!\n\n${data.message}`);
+            location.reload();
+        } else {
+            alert(`❌ Erro:\n\n${data.message}`);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    })
+    .catch(error => {
+        alert(`❌ Erro na requisição:\n\n${error.message}`);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    });
+}
+
 </script>
 {% endblock %}

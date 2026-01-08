@@ -2520,5 +2520,73 @@ def solicitacao_list(request):
     return render(request, 'qms/solicitacao_list.html', context)
 
 
+@login_required
+@require_POST
+def atualizar_todas_datas_calibracao_view(request):
+    """Atualiza em massa as datas de próximas calibrações de todos os instrumentos."""
+    from dateutil.relativedelta import relativedelta
+    
+    try:
+        atualizado_count = 0
+        erro_count = 0
+        
+        # Buscar todos os instrumentos
+        instrumentos = Instrumento.objects.filter(ativo=True)
+        
+        for instrumento in instrumentos:
+            try:
+                # Buscar o histórico mais recente
+                ultimo_historico = HistoricoCalibracao.objects.filter(
+                    instrumento=instrumento
+                ).order_by('-data_calibracao').first()
+                
+                if not ultimo_historico:
+                    continue
+                
+                # Atualizar data da última calibração
+                instrumento.data_ultima_calibracao = ultimo_historico.data_calibracao
+                
+                # Recalcular próxima calibração baseado na frequência do instrumento
+                meses = None
+                
+                if instrumento.frequencia_meses:
+                    meses = instrumento.frequencia_meses
+                elif instrumento.categoria and instrumento.categoria.frequencia_calibracao_meses:
+                    meses = instrumento.categoria.frequencia_calibracao_meses
+                
+                if meses:
+                    instrumento.data_proxima_calibracao = ultimo_historico.data_calibracao + relativedelta(months=meses)
+                else:
+                    instrumento.data_proxima_calibracao = ultimo_historico.proxima_calibracao if hasattr(ultimo_historico, 'proxima_calibracao') else None
+                
+                instrumento.save(update_fields=['data_ultima_calibracao', 'data_proxima_calibracao'])
+                atualizado_count += 1
+                
+            except Exception as e:
+                logger.error(f"Erro ao atualizar instrumento {instrumento.id}: {str(e)}")
+                erro_count += 1
+        
+        message = f'Datas de calibração atualizadas para {atualizado_count} instrumentos.'
+        if erro_count > 0:
+            message += f' {erro_count} erros encontrados.'
+        
+        logger.info(f"Atualização em massa concluída: {atualizado_count} sucesso, {erro_count} erros")
+        
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'atualizado': atualizado_count,
+            'erros': erro_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao atualizar datas em massa: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao atualizar datas: {str(e)}'
+        }, status=400)
+
+
+
 
 
