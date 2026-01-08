@@ -200,7 +200,9 @@ def modulo_rh_view(request):
         pend = 0
         last = None
         for rt in getattr(f, 'treinamentos').all():
-            if rt.status_treinamento == "VIGENTE":
+            status = rt.status_treinamento
+            # Suporta ambos modelos: "VIGENTE"/"OK" (vigentes) ou "PENDENTE"/"NAO_INICIADO" (pendentes)
+            if status in ("VIGENTE", "OK"):
                 vig += 1
             else:
                 pend += 1
