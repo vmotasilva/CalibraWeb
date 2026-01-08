@@ -839,6 +839,111 @@ def excluir_ferias_view(request, colab_id, ferias_id):
     return redirect('detalhe_colaborador', colab_id=colaborador.id)
 
 
+@login_required
+def gestao_ferias_view(request):
+    """Dashboard de gestão de férias com listagem completa."""
+    usuario_logado = None
+    try:
+        usuario_logado = get_colaborador_for_user(request.user)
+    except Exception:
+        pass
+    
+    # Verificar permissão de acesso ao módulo
+    permitido = False
+    if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    elif usuario_logado:
+        setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
+        if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
+            permitido = True
+        if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
+           HierarquiaSetor.objects.filter(diretor=usuario_logado).exists():
+            permitido = True
+    
+    if not permitido:
+        messages.error(request, "Você não tem permissão para acessar a gestão de férias.")
+        return redirect("modulo_rh")
+    
+    # Obter todas as férias ou apenas das que o usuário pode acessar
+    if request.user.is_superuser or request.user.is_staff:
+        ferias_qs = Ferias.objects.all().select_related('colaborador').order_by('-data_inicio')
+        colaboradores_acessiveis = None
+    else:
+        colaboradores_acessiveis = get_colaboradores_acessiveis(request.user)
+        ferias_qs = Ferias.objects.filter(
+            colaborador__in=colaboradores_acessiveis
+        ).select_related('colaborador').order_by('-data_inicio')
+    
+    # Filtros
+    status = request.GET.get('status', '')
+    aprovada = request.GET.get('aprovada', '')
+    colaborador_id = request.GET.get('colaborador_id', '')
+    
+    if status:
+        ferias_qs = ferias_qs.filter(status=status)
+    
+    if aprovada:
+        if aprovada == '1':
+            ferias_qs = ferias_qs.filter(aprovada=True)
+        elif aprovada == '0':
+            ferias_qs = ferias_qs.filter(aprovada=False)
+    
+    if colaborador_id:
+        ferias_qs = ferias_qs.filter(colaborador_id=colaborador_id)
+    
+    # Paginação
+    paginator = Paginator(ferias_qs, 25)
+    page = request.GET.get('page')
+    try:
+        ferias_page = paginator.page(page)
+    except Exception:
+        ferias_page = paginator.page(1)
+    
+    # Estatísticas
+    hoje = date.today()
+    total_ferias = paginator.count
+    
+    # KPIs
+    ferias_em_andamento = Ferias.objects.filter(
+        aprovada=True,
+        data_inicio__lte=hoje,
+        data_fim__gte=hoje
+    ).count()
+    
+    ferias_vencidas = Ferias.objects.filter(
+        aprovada=True,
+        data_fim__lt=hoje,
+        status__in=['PLANEJADO', 'EM_ANDAMENTO']
+    ).count()
+    
+    ferias_pendentes_aprovacao = Ferias.objects.filter(
+        aprovada=False
+    ).count()
+    
+    # Colaboradores para filtro
+    if request.user.is_superuser or request.user.is_staff:
+        colaboradores = Colaborador.objects.all().order_by('nome_completo')
+    else:
+        colaboradores = colaboradores_acessiveis.order_by('nome_completo') if colaboradores_acessiveis else Colaborador.objects.none()
+    
+    ctx = {
+        "ferias_page": ferias_page,
+        "ferias": ferias_page.object_list,
+        "status_choices": Ferias.STATUS_CHOICES,
+        "colaboradores": colaboradores,
+        "total_ferias": total_ferias,
+        "ferias_em_andamento": ferias_em_andamento,
+        "ferias_vencidas": ferias_vencidas,
+        "ferias_pendentes_aprovacao": ferias_pendentes_aprovacao,
+        "colaborador_logado": usuario_logado,
+        "status_filtro": status,
+        "aprovada_filtro": aprovada,
+        "colaborador_filtro": colaborador_id,
+    }
+    
+    return render(request, "rh/gestao_ferias.html", ctx)
+
+
 # ==================== API ENDPOINTS ====================
 
 from django.http import JsonResponse

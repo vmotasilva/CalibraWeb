@@ -4,6 +4,9 @@ from rh.views import views
 app_name = 'rh'
 
 urlpatterns = [
+    # Dashboard e gestão
+    path('gestao-ferias/', views.gestao_ferias_view, name='gestao_ferias'),
+    
     # API Endpoints
     path('api/colaboradores/', views.api_colaboradores, name='api_colaboradores'),
     path('api/setores/', views.api_setores, name='api_setores'),
