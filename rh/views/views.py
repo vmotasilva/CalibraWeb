@@ -194,20 +194,37 @@ def modulo_rh_view(request):
     else:
         funcionarios_visiveis = funcionarios_base
 
-    # Estatísticas de Treinamento por colaborador
+    # Estatísticas de Treinamento por colaborador (apenas perfis ativos)
+    from procedures.models import ColaboradorPerfil, SubGrupoTreinamento
+    
     for f in funcionarios_visiveis:
         vig = 0
         pend = 0
         last = None
-        for rt in getattr(f, 'treinamentos').all():
-            status = rt.status_treinamento
-            # Suporta ambos modelos: "VIGENTE"/"OK" (vigentes) ou "PENDENTE"/"NAO_INICIADO" (pendentes)
-            if status in ("VIGENTE", "OK"):
-                vig += 1
-            else:
-                pend += 1
-            if rt.data_treinamento and (last is None or rt.data_treinamento > last):
-                last = rt.data_treinamento
+        
+        # Buscar procedimentos dos perfis ativos do colaborador
+        perfis_ativos = ColaboradorPerfil.objects.filter(
+            colaborador=f, ativo=True
+        ).select_related('perfil').prefetch_related(
+            'perfil__grupos__subgrupos__procedimentos'
+        )
+        
+        for cp in perfis_ativos:
+            for grupo in cp.perfil.grupos.all():
+                for subgrupo in grupo.subgrupos.all():
+                    for proc in subgrupo.procedimentos.all():
+                        # Buscar registro de treinamento para este procedimento
+                        rt = f.treinamentos.filter(procedimento=proc).first()
+                        if rt:
+                            status = rt.status_treinamento
+                            # Suporta ambos modelos: "VIGENTE"/"OK" (vigentes) ou "PENDENTE"/"NAO_INICIADO" (pendentes)
+                            if status in ("VIGENTE", "OK"):
+                                vig += 1
+                            else:
+                                pend += 1
+                            if rt.data_treinamento and (last is None or rt.data_treinamento > last):
+                                last = rt.data_treinamento
+        
         f.trein_vigentes = vig
         f.trein_pendentes = pend
         f.trein_ultima_data = last
@@ -293,8 +310,6 @@ def detalhe_colaborador_view(request, colab_id):
     ocorrencias = alvo.ocorrencias.all().order_by("-data_ocorrencia") if can_view_occ else []
     
     # Organizar treinamentos em cascata: Perfil > Grupo > Subgrupo > Procedimento
-    from procedures.models import ColaboradorPerfil, SubGrupoTreinamento
-    
     matriz_treinamentos = {}
     total_pendentes = 0
     total_treinamentos = 0
