@@ -1175,10 +1175,12 @@ def atualizar_status_ferias_view(request):
         return redirect("rh:gestao_ferias")
     
     try:
-        # Importar a task e executar de forma síncrona
-        from rh.tasks import atualizar_status_ferias
+        # Importar a lógica da task do módulo correto e executar de forma síncrona
+        from rh.tasks.ferias_tasks import atualizar_status_ferias_logic
         
-        result = atualizar_status_ferias()
+        logger.info("🔄 Iniciando atualização de status de férias...")
+        result = atualizar_status_ferias_logic()
+        logger.info(f"📊 Resultado da atualização: {result}")
         
         if result.get("success"):
             em_andamento = result.get("em_andamento", 0)
@@ -1186,21 +1188,29 @@ def atualizar_status_ferias_view(request):
             desatualizar = result.get("desatualizar", 0)
             total = result.get("total", 0)
             
-            message = f"✅ Atualização concluída! "
+            message = "✅ Atualização concluída!"
+            details = []
             if em_andamento > 0:
-                message += f"{em_andamento} para EM_ANDAMENTO, "
+                details.append(f"{em_andamento} para EM_ANDAMENTO")
             if concluidas > 0:
-                message += f"{concluidas} para CONCLUIDO, "
+                details.append(f"{concluidas} para CONCLUIDO")
             if desatualizar > 0:
-                message += f"{desatualizar} colaboradores desatualizados"
+                details.append(f"{desatualizar} colaboradores desatualizados")
+            
+            if details:
+                message += " " + ", ".join(details)
+            else:
+                message += " (Nenhum registro necessitava de atualização)"
             
             messages.success(request, message)
+            logger.info(f"✅ Mensagem enviada ao usuário: {message}")
         else:
-            error = result.get("error", "Erro desconhecido")
+            error = result.get("error", "Erro desconhecido na atualização")
+            logger.error(f"❌ Erro na atualização: {error}")
             messages.error(request, f"Erro ao atualizar: {error}")
             
     except Exception as e:
-        logger.error(f"Erro ao atualizar status de férias: {e}", exc_info=True)
+        logger.error(f"❌ Exceção ao atualizar status de férias: {e}", exc_info=True)
         messages.error(request, f"Erro ao executar atualização: {str(e)}")
     
     return redirect("rh:gestao_ferias")

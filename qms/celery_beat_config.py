@@ -56,7 +56,7 @@ CELERY_BEAT_SCHEDULE = {
     
     # Atualizar status de férias - A cada 5 minutos
     'atualizar-status-ferias': {
-        'task': 'rh.tasks.atualizar_status_ferias',
+        'task': 'rh.tasks.ferias_tasks.atualizar_status_ferias',
         'schedule': crontab(minute='*/5'),  # A cada 5 minutos
         'options': {'queue': 'default', 'expires': 300}
     },

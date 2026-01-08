@@ -14,17 +14,11 @@ from rh.models import Ferias, Colaborador
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='rh.atualizar_status_ferias')
-def atualizar_status_ferias():
+def atualizar_status_ferias_logic():
     """
-    Atualiza automaticamente o status das férias baseado nas datas.
+    Lógica para atualizar status de férias (pode ser chamada de forma síncrona ou assíncrona).
     
-    Lógica:
-    - Se data_inicio > hoje: PLANEJADO
-    - Se data_inicio <= hoje <= data_fim: EM_ANDAMENTO
-    - Se hoje > data_fim: CONCLUIDO
-    
-    Esta task é executada periodicamente pelo Celery Beat (a cada 5 minutos).
+    Retorna dict com resultado da operação.
     """
     hoje = date.today()
     atualizadas = 0
@@ -66,38 +60,66 @@ def atualizar_status_ferias():
                     
                     atualizadas += 1
                     logger.info(
-                        f"Férias atualizado: {colaborador.nome_completo} "
+                        f"✅ Férias atualizado: {colaborador.nome_completo} "
                         f"({ferias.data_inicio} a {ferias.data_fim}) → {novo_status}"
                     )
                     
             except Exception as e:
                 erros += 1
                 logger.error(
-                    f"Erro ao atualizar férias {ferias.id}: {str(e)}",
+                    f"❌ Erro ao atualizar férias {ferias.id}: {str(e)}",
                     exc_info=True
                 )
         
+        total_processado = todas_ferias.count()
         if atualizadas > 0 or erros > 0:
             logger.info(
-                f"Atualização de status de férias: "
-                f"{atualizadas} atualizados, {erros} erros, total processado: {todas_ferias.count()}"
+                f"📊 Atualização de status de férias: "
+                f"{atualizadas} atualizados, {erros} erros, total processado: {total_processado}"
             )
         
         return {
+            'success': True,
             'status': 'success',
             'atualizados': atualizadas,
+            'concluidas': atualizadas,  # Para compatibilidade
+            'em_andamento': atualizadas,  # Para compatibilidade
+            'desatualizar': 0,
+            'total': atualizadas,
             'erros': erros,
-            'total_processado': todas_ferias.count(),
+            'total_processado': total_processado,
             'timestamp': str(timezone.now())
         }
         
     except Exception as e:
-        logger.error(f"Erro na task atualizar_status_ferias: {str(e)}", exc_info=True)
+        logger.error(f"❌ Erro na atualização de status de férias: {str(e)}", exc_info=True)
         return {
+            'success': False,
             'status': 'error',
-            'mensagem': str(e),
+            'error': str(e),
+            'atualizados': 0,
+            'concluidas': 0,
+            'em_andamento': 0,
+            'desatualizar': 0,
+            'total': 0,
+            'erros': 1,
             'timestamp': str(timezone.now())
         }
+
+
+@shared_task(name='rh.atualizar_status_ferias')
+def atualizar_status_ferias():
+    """
+    Atualiza automaticamente o status das férias baseado nas datas.
+    
+    Lógica:
+    - Se data_inicio > hoje: PLANEJADO
+    - Se data_inicio <= hoje <= data_fim: EM_ANDAMENTO
+    - Se hoje > data_fim: CONCLUIDO
+    
+    Esta task é executada periodicamente pelo Celery Beat (a cada 5 minutos).
+    """
+    return atualizar_status_ferias_logic()
 
 
 @shared_task(name='rh.sincronizar_em_ferias')
