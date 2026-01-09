@@ -215,7 +215,7 @@ def modulo_rh_view(request):
     # Aplicar paginação ANTES de calcular estatísticas (lazy evaluation)
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
     
-    paginator = Paginator(funcionarios_visiveis, 25)  # 25 por página
+    paginator = Paginator(funcionarios_visiveis, 100)  # 100 por página
     page = request.GET.get('page')
     try:
         funcionarios_page = paginator.page(page)
