@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .badge-vencido { background-color: #dc3545 !important; }
+    .badge-avencer { background-color: #ffc107 !important; color: #000 !important; }
+    .badge-vigente { background-color: #28a745 !important; }
+    .badge-aprovado { background-color: #17a2b8 !important; }
+    .badge-reprovado { background-color: #dc3545 !important; }
+    .status-column { width: 120px; }
+    .resultado-column { width: 140px; }
+    .tipo-column { width: 100px; }
+    .historicos-table { font-size: 0.9rem; }
+    .filter-card { background-color: #f8f9fa; border-left: 4px solid #0d6efd; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2">
+            <i class="bi bi-clock-history"></i> Históricos de Calibração
+        </h1>
+        <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" name="q" class="form-control form-control-sm" 
+                           placeholder="Instrumento, Código, Certificado..." value="{{ search_query }}">
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="vigentes" {% if status_filter == 'vigentes' %}selected{% endif %}>Vigentes</option>
+                        <option value="avencer" {% if status_filter == 'avencer' %}selected{% endif %}>A Vencer (30 dias)</option>
+                        <option value="vencidas" {% if status_filter == 'vencidas' %}selected{% endif %}>Vencidas</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Resultado</label>
+                    <select name="resultado" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="APROVADO_SEM_CORRECAO" {% if resultado_filter == 'APROVADO_SEM_CORRECAO' %}selected{% endif %}>Aprovado</option>
+                        <option value="APROVADO_COM_CORRECAO" {% if resultado_filter == 'APROVADO_COM_CORRECAO' %}selected{% endif %}>Aprv. c/ Correção</option>
+                        <option value="REPROVADO" {% if resultado_filter == 'REPROVADO' %}selected{% endif %}>Reprovado</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Tipo</label>
+                    <select name="tipo" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="EXTERNA" {% if tipo_filter == 'EXTERNA' %}selected{% endif %}>Externa</option>
+                        <option value="INTERNA" {% if tipo_filter == 'INTERNA' %}selected{% endif %}>Interna</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Categoria</label>
+                    <select name="categoria" class="form-select form-select-sm">
+                        <option value="">Todas</option>
+                        {% for categoria in categorias %}
+                        <option value="{{ categoria.id }}" {% if categoria_filter|stringformat:"s" == categoria.id|stringformat:"s" %}selected{% endif %}>
+                            {{ categoria.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                </div>
+
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <a href="{% url 'qms:listar_historicos_calibracao' %}" class="btn btn-secondary btn-sm w-100">
+                        <i class="bi bi-arrow-clockwise"></i> Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resultados -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h6 class="mb-0">
+                        <i class="bi bi-list-check"></i> 
+                        Total: <strong>{{ total_count }}</strong> históricos
+                    </h6>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            {% if historicos %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 historicos-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 100px;">Instrumento</th>
+                            <th style="width: 100px;">Categoria</th>
+                            <th style="width: 100px;">Data Calibração</th>
+                            <th style="width: 120px;">Próxima Calibração</th>
+                            <th class="status-column">Status</th>
+                            <th class="resultado-column">Resultado</th>
+                            <th class="tipo-column">Tipo</th>
+                            <th style="width: 100px;">Certificado</th>
+                            <th style="width: 80px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for historico in historicos %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'visualizar_instrumento' historico.instrumento.id %}" 
+                                   class="text-decoration-none fw-bold">
+                                    {{ historico.instrumento.tag }}
+                                </a>
+                                <div class="small text-muted">{{ historico.instrumento.descricao|truncatewords:5 }}</div>
+                            </td>
+                            <td>
+                                {% if historico.instrumento.categoria %}
+                                <span class="badge bg-info">{{ historico.instrumento.categoria.nome }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ historico.data_calibracao|date:"d/m/Y" }}
+                            </td>
+                            <td>
+                                {% if historico.proxima_calibracao %}
+                                    {% if historico.proxima_calibracao < hoje %}
+                                        <span class="badge badge-vencido">Vencido</span>
+                                    {% else %}
+                                        <span class="badge badge-vigente">Vigente</span>
+                                    {% endif %}
+                                    <div class="small">{{ historico.proxima_calibracao|date:"d/m/Y" }}</div>
+                                {% else %}
+                                    <span class="text-muted small">Não definida</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if historico.proxima_calibracao %}
+                                    {% if historico.proxima_calibracao < hoje %}
+                                        <span class="badge badge-vencido">Vencido</span>
+                                    {% else %}
+                                        <span class="badge badge-vigente">Vigente</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if historico.resultado == "APROVADO_SEM_CORRECAO" %}
+                                <span class="badge bg-success">Aprovado</span>
+                                {% elif historico.resultado == "APROVADO_COM_CORRECAO" %}
+                                <span class="badge bg-warning text-dark">Aprv. c/ Corr.</span>
+                                {% elif historico.resultado == "REPROVADO" %}
+                                <span class="badge bg-danger">Reprovado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if historico.tipo_calibracao == "EXTERNA" %}
+                                <span class="badge bg-primary">Externa</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Interna</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if historico.certificado %}
+                                <a href="{{ historico.certificado.url }}" target="_blank" 
+                                   class="btn btn-sm btn-outline-primary" title="Download">
+                                    <i class="bi bi-file-pdf"></i>
+                                </a>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'visualizar_historico_calibracao' historico.id %}" 
+                                       class="btn btn-outline-secondary" title="Detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            {% if page_obj.has_other_pages %}
+            <div class="card-footer bg-light">
+                <nav aria-label="Paginação">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if resultado_filter %}&resultado={{ resultado_filter }}{% endif %}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}">
+                                Primeira
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if resultado_filter %}&resultado={{ resultado_filter }}{% endif %}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}">
+                                Anterior
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if resultado_filter %}&resultado={{ resultado_filter }}{% endif %}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}">
+                                Próxima
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if resultado_filter %}&resultado={{ resultado_filter }}{% endif %}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}">
+                                Última
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="alert alert-info m-3">
+                <i class="bi bi-info-circle"></i> Nenhum histórico de calibração encontrado com os filtros aplicados.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

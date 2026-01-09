@@ -2587,6 +2587,103 @@ def atualizar_todas_datas_calibracao_view(request):
         }, status=400)
 
 
+# ==============================================================================
+# LISTAGEM DE HISTÓRICOS DE CALIBRAÇÃO
+# ==============================================================================
+
+@login_required
+def listar_historicos_calibracao_view(request):
+    """Lista todos os históricos de calibração com filtros e paginação."""
+    from django.core.paginator import Paginator
+    
+    # Base query - ordenado por data de calibração decrescente
+    historicos = HistoricoCalibracao.objects.all().select_related(
+        'instrumento', 'instrumento__categoria', 'instrumento__setor', 'atendimento'
+    ).order_by('-data_calibracao')
+    
+    # Aplicar filtros
+    search_query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', '')
+    resultado_filter = request.GET.get('resultado', '')
+    tipo_filter = request.GET.get('tipo', '')
+    instrumento_filter = request.GET.get('instrumento', '')
+    categoria_filter = request.GET.get('categoria', '')
+    
+    # Filtro de busca por instrumento, código ou número de certificado
+    if search_query:
+        historicos = historicos.filter(
+            Q(instrumento__tag__icontains=search_query) |
+            Q(instrumento__descricao__icontains=search_query) |
+            Q(instrumento__codigo__icontains=search_query) |
+            Q(numero_certificado__icontains=search_query) |
+            Q(fornecedor__icontains=search_query)
+        )
+    
+    # Filtro por status de vencimento
+    if status_filter == 'vencidas':
+        today = date.today()
+        historicos = historicos.filter(proxima_calibracao__lt=today)
+    elif status_filter == 'avencer':
+        today = date.today()
+        thirty_days = today + timedelta(days=30)
+        historicos = historicos.filter(
+            proxima_calibracao__gte=today,
+            proxima_calibracao__lte=thirty_days
+        )
+    elif status_filter == 'vigentes':
+        today = date.today()
+        historicos = historicos.filter(proxima_calibracao__gte=today)
+    
+    # Filtro por resultado
+    if resultado_filter:
+        historicos = historicos.filter(resultado=resultado_filter)
+    
+    # Filtro por tipo de calibração
+    if tipo_filter:
+        historicos = historicos.filter(tipo_calibracao=tipo_filter)
+    
+    # Filtro por instrumento
+    if instrumento_filter:
+        historicos = historicos.filter(instrumento__id=instrumento_filter)
+    
+    # Filtro por categoria
+    if categoria_filter:
+        historicos = historicos.filter(instrumento__categoria__id=categoria_filter)
+    
+    # Paginação
+    page = request.GET.get('page', 1)
+    paginator = Paginator(historicos, 50)  # 50 históricos por página
+    
+    try:
+        page_obj = paginator.page(page)
+    except Exception as e:
+        page_obj = paginator.page(1)
+    
+    # Dados para os filtros
+    categorias = CategoriaInstrumento.objects.all().order_by('nome')
+    instrumentos = Instrumento.objects.filter(ativo=True).order_by('tag')
+    
+    # Data de hoje para comparações no template
+    hoje = date.today()
+    
+    context = {
+        'page_obj': page_obj,
+        'historicos': page_obj.object_list,
+        'total_count': paginator.count,
+        'categorias': categorias,
+        'instrumentos': instrumentos,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'resultado_filter': resultado_filter,
+        'tipo_filter': tipo_filter,
+        'instrumento_filter': instrumento_filter,
+        'categoria_filter': categoria_filter,
+        'hoje': hoje,
+    }
+    
+    return render(request, 'qms/historicos_calibracao_list.html', context)
+
+
 
 
 
