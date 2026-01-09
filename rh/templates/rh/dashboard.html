@@ -540,7 +540,20 @@ function toggleSidebar() {
 // Restaura filtros do localStorage
 function restoreFiltros() {
     try {
+        // Limpar localStorage antigo com padrão "Ativo" checado
         const raw = localStorage.getItem('rh_filtros_v1');
+        if (raw) {
+            const estado = JSON.parse(raw);
+            // Se o estado contém APENAS "ATIVO" checado e nenhuma busca, limpar para mostrar todos
+            if (estado && estado.filtros && estado.filtros.status && 
+                estado.filtros.status.length === 1 && 
+                estado.filtros.status[0] === 'ATIVO' &&
+                (!estado.search || estado.search === '')) {
+                // Esse é o estado padrão antigo, ignorar
+                return;
+            }
+        }
+        
         if (!raw) return;
         const estado = JSON.parse(raw);
         if (estado && typeof estado === 'object') {

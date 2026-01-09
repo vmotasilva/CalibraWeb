@@ -115,8 +115,10 @@ def modulo_rh_view(request):
     can_view_all = False
 
     # Verificar se é superusuário (mesmo sem Colaborador associado)
+    # SUPERUSERS SEMPRE VÊM TODOS SEM LIMITAÇÕES
     if request.user.is_superuser:
         can_view_all = True
+        can_see_salary = True  # Também ver salários
     elif colab:
         # Verificar se está em setor administrativo (RH, DP, QUALIDADE)
         setor_nome = (colab.setor.nome.upper() if colab.setor else "")
@@ -128,10 +130,17 @@ def modulo_rh_view(request):
             or HierarquiaSetor.objects.filter(gerente=colab).exists()
         ):
             can_view_all = True
+        
+        # Permissão para ver salário
+        if ("GERENTE" in str(colab.cargo).upper() or
+            HierarquiaSetor.objects.filter(gerente=colab).exists() or
+            "DIRETOR" in str(colab.cargo).upper() or
+            HierarquiaSetor.objects.filter(diretor=colab).exists()):
+            can_see_salary = True
 
     # Definir IDs permitidos baseado em permissão
     if can_view_all:
-        # Ver todos os colaboradores
+        # Ver TODOS os colaboradores - sem filtro de is_active
         ids_permitidos = set(Colaborador.objects.all().values_list("id", flat=True))
     elif colab:
         # Ver apenas subordinados diretos e a si mesmo
@@ -150,16 +159,6 @@ def modulo_rh_view(request):
     else:
         # Usuário não tem colaborador associado
         ids_permitidos = set()
-
-    # Permissão para ver salário
-    if request.user.is_superuser:
-        can_see_salary = True
-    elif colab:
-        if ("GERENTE" in str(colab.cargo).upper() or
-            HierarquiaSetor.objects.filter(gerente=colab).exists() or
-            "DIRETOR" in str(colab.cargo).upper() or
-            HierarquiaSetor.objects.filter(diretor=colab).exists()):
-            can_see_salary = True
 
     # QuerySet base com filtros de visibilidade
     funcionarios_base = Colaborador.objects.filter(
