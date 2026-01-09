@@ -2666,12 +2666,25 @@ def listar_historicos_calibracao_view(request):
     # Data de hoje para comparações no template
     hoje = date.today()
     
+    # Preparar dados dos instrumentos em JSON para o modal
+    import json
+    instrumentos_json = json.dumps([
+        {
+            'id': inst.id,
+            'tag': inst.tag,
+            'descricao': inst.descricao,
+            'categoria': inst.categoria.nome if inst.categoria else 'Sem categoria',
+        }
+        for inst in instrumentos
+    ])
+    
     context = {
         'page_obj': page_obj,
         'historicos': page_obj.object_list,
         'total_count': paginator.count,
         'categorias': categorias,
         'instrumentos': instrumentos,
+        'instrumentos_json': instrumentos_json,
         'search_query': search_query,
         'status_filter': status_filter,
         'resultado_filter': resultado_filter,
@@ -2684,6 +2697,37 @@ def listar_historicos_calibracao_view(request):
     return render(request, 'qms/historicos_calibracao_list.html', context)
 
 
-
-
+@login_required
+def novo_historico_calibracao_from_listagem_view(request, instrumento_id):
+    """Cria novo histórico de calibração a partir da listagem, redirecionando para edição."""
+    from datetime import date
+    
+    try:
+        # Validar que o instrumento existe e está ativo
+        instrumento = get_object_or_404(Instrumento, id=instrumento_id, ativo=True)
+        logger.info(f"Criar novo histórico: instrumento_id={instrumento_id}, user={request.user}")
+        
+        # Criar histórico vazio com valores padrão
+        historico = HistoricoCalibracao.objects.create(
+            instrumento=instrumento,
+            data_calibracao=date.today(),
+            data_aprovacao=date.today(),
+            numero_certificado="S/N",
+            tipo_calibracao="EXTERNA",
+            resultado="APROVADO_SEM_CORRECAO"
+        )
+        
+        logger.info(f"✓ Novo histórico {historico.id} criado para {instrumento.tag}")
+        messages.success(request, f"✓ Novo registro criado para {instrumento.tag}! Preencha os dados.")
+        
+        # Redirecionar para a tela de edição
+        return redirect('editar_historico_calibracao', historico_id=historico.id)
+        
+    except Instrumento.DoesNotExist:
+        messages.error(request, 'Instrumento não encontrado ou inativo.')
+        return redirect('qms:listar_historicos_calibracao')
+    except Exception as e:
+        logger.error(f"❌ Erro ao criar histórico: {e}", exc_info=True)
+        messages.error(request, f'Erro ao criar registro: {str(e)}')
+        return redirect('qms:listar_historicos_calibracao')
 

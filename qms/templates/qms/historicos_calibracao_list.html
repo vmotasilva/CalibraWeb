@@ -22,9 +22,14 @@
         <h1 class="h2">
             <i class="bi bi-clock-history"></i> Históricos de Calibração
         </h1>
-        <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Voltar
-        </a>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#novoRegistroModal">
+                <i class="bi bi-plus-circle"></i> Novo Registro
+            </button>
+            <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
     </div>
 
     <!-- Filtros -->
@@ -255,5 +260,105 @@
         </div>
     </div>
 </div>
+
+<!-- Modal para Seleção de Instrumento -->
+<div class="modal fade" id="novoRegistroModal" tabindex="-1" aria-labelledby="novoRegistroModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="novoRegistroModalLabel">
+                    <i class="bi bi-plus-circle"></i> Novo Registro de Calibração
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="instrumentoBusca" class="form-label">Selecione um Instrumento</label>
+                    <input type="text" class="form-control" id="instrumentoBusca" placeholder="Buscar por tag, descrição ou categoria...">
+                    <div class="form-text">Digite para filtrar os instrumentos</div>
+                </div>
+                
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <div id="instrumentosLista" class="list-group">
+                        <!-- Carregado dinamicamente via JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('novoRegistroModal');
+    const inputBusca = document.getElementById('instrumentoBusca');
+    const listaInstrumentos = document.getElementById('instrumentosLista');
+    let todosInstrumentos = [];
+
+    // Carregar instrumentos quando o modal é aberto
+    modal.addEventListener('show.bs.modal', function() {
+        if (todosInstrumentos.length === 0) {
+            carregarInstrumentos();
+        }
+        inputBusca.focus();
+        inputBusca.value = '';
+    });
+
+    function carregarInstrumentos() {
+        // Dados dos instrumentos são passados do template Django
+        const instrumentosData = {{ instrumentos_json|safe }};
+        todosInstrumentos = instrumentosData;
+        renderizarInstrumentos(todosInstrumentos);
+    }
+
+    function renderizarInstrumentos(instrumentos) {
+        listaInstrumentos.innerHTML = '';
+        
+        if (instrumentos.length === 0) {
+            listaInstrumentos.innerHTML = '<div class="alert alert-info mb-0">Nenhum instrumento encontrado.</div>';
+            return;
+        }
+
+        instrumentos.forEach(inst => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'list-group-item list-group-item-action';
+            item.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="fw-bold">${inst.tag}</div>
+                        <div class="text-muted small">${inst.descricao}</div>
+                        <div>
+                            <span class="badge bg-info">${inst.categoria}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            item.addEventListener('click', function() {
+                selecionarInstrumento(inst.id);
+            });
+            listaInstrumentos.appendChild(item);
+        });
+    }
+
+    inputBusca.addEventListener('keyup', function() {
+        const termoBusca = this.value.toLowerCase();
+        const instrumentosFiltrados = todosInstrumentos.filter(inst => 
+            inst.tag.toLowerCase().includes(termoBusca) ||
+            inst.descricao.toLowerCase().includes(termoBusca) ||
+            inst.categoria.toLowerCase().includes(termoBusca)
+        );
+        renderizarInstrumentos(instrumentosFiltrados);
+    });
+
+    function selecionarInstrumento(instrumentoId) {
+        // Redirecionar para a view que cria o novo registro
+        window.location.href = `/qms/metrologia/novo-registro/${instrumentoId}/`;
+    }
+});
+</script>
 
 {% endblock %}

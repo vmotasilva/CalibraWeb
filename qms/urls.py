@@ -10,6 +10,7 @@ urlpatterns = [
     path("metrologia/instrumentos/", views.listar_instrumentos_view, name="listar_instrumentos"),
     path("metrologia/instrumentos/exportar/", views.exportar_instrumentos_view, name="exportar_instrumentos"),
     path("metrologia/historicos/", views.listar_historicos_calibracao_view, name="listar_historicos_calibracao"),
+    path("metrologia/novo-registro/<int:instrumento_id>/", views.novo_historico_calibracao_from_listagem_view, name="novo_historico_from_listagem"),
     path("metrologia/estatisticas/", views.estatisticas_calibracao_view, name="estatisticas_calibracao"),
     path("metrologia/estatisticas/exportar/", views.exportar_estatisticas_view, name="exportar_estatisticas"),
     path("metrologia/vencidos/", views.relatorio_vencidos_view, name="relatorio_vencidos"),
