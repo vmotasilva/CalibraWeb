@@ -339,6 +339,15 @@ class ResultadoFaixaCalibracao(models.Model):
         choices=RESULTADO_CHOICES,
         default='APROVADO_SEM_CORRECAO',
     )
+    
+    # Tabela de correção para resultados "APROVADO_COM_CORRECAO"
+    tabela_correcao = models.JSONField(
+        default=list,
+        blank=True,
+        null=True,
+        verbose_name="Tabela de Correção",
+        help_text="Tabela com valores de correção a aplicar nas medições quando resultado é APROVADO_COM_CORRECAO"
+    )
 
     def save(self, *args, **kwargs):
         """Auto-calculate EMA, EME and resultado."""

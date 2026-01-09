@@ -1672,6 +1672,18 @@ def editar_historico_calibracao_view(request, historico_id):
                 if form.is_valid():
                     # Não atribuir o valor de resultado do formulário, deixar o save() calcular
                     resultado = form.save(commit=False)
+                    
+                    # Processar tabela de correção se existir
+                    tabela_correcao_json = request.POST.get(f'tabela_correcao_{resultado_id}')
+                    if tabela_correcao_json:
+                        import json
+                        try:
+                            tabela_correcao = json.loads(tabela_correcao_json)
+                            resultado.tabela_correcao = tabela_correcao if tabela_correcao else None
+                            print(f"[DEBUG] Tabela de correção processada: {tabela_correcao}")
+                        except json.JSONDecodeError as e:
+                            print(f"[ERROR] Erro ao decodificar JSON da tabela: {e}")
+                    
                     # O método save() do modelo será chamado, que recalcula resultado automaticamente
                     resultado.save()
                     messages.success(request, 'Resultado da faixa atualizado com sucesso.')

@@ -321,6 +321,60 @@
                                                                     </div>
                                                                     <small class="text-muted">O resultado é calculado automaticamente com base no erro, incerteza e tolerância</small>
                                                                 </div>
+
+                                                                <!-- TABELA DE CORREÇÃO - Visível apenas para APROVADO_COM_CORRECAO -->
+                                                                {% if rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                                <div class="mb-3 p-3 bg-light border border-warning rounded">
+                                                                    <label class="form-label fw-bold text-warning">
+                                                                        <i class="bi bi-table"></i> Tabela de Correção (Para Approved com Correção)
+                                                                    </label>
+                                                                    <small class="text-muted d-block mb-2">
+                                                                        Defina a tabela de correção a aplicar nas medições. Adicione faixas de valores e suas respectivas correções.
+                                                                    </small>
+                                                                    
+                                                                    <div class="table-responsive mb-2">
+                                                                        <table class="table table-sm table-bordered mb-0">
+                                                                            <thead class="table-warning">
+                                                                                <tr>
+                                                                                    <th>Valor Min</th>
+                                                                                    <th>Valor Max</th>
+                                                                                    <th>Correção</th>
+                                                                                    <th width="50">Ação</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody id="correcao_tbody_{{ rf.id }}">
+                                                                                {% if rf.tabela_correcao %}
+                                                                                    {% for linha in rf.tabela_correcao %}
+                                                                                    <tr>
+                                                                                        <td>
+                                                                                            <input type="number" step="0.0001" class="form-control form-control-sm valor_min" value="{{ linha.valor_min }}" placeholder="Min">
+                                                                                        </td>
+                                                                                        <td>
+                                                                                            <input type="number" step="0.0001" class="form-control form-control-sm valor_max" value="{{ linha.valor_max }}" placeholder="Max">
+                                                                                        </td>
+                                                                                        <td>
+                                                                                            <input type="number" step="0.0001" class="form-control form-control-sm correcao_valor" value="{{ linha.correcao }}" placeholder="0.0000">
+                                                                                        </td>
+                                                                                        <td class="text-center">
+                                                                                            <button type="button" class="btn btn-sm btn-outline-danger remove-correcao-row">
+                                                                                                <i class="bi bi-trash"></i>
+                                                                                            </button>
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                    {% endfor %}
+                                                                                {% endif %}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                    
+                                                                    <button type="button" class="btn btn-sm btn-outline-warning add-correcao-row" data-result-id="{{ rf.id }}">
+                                                                        <i class="bi bi-plus-circle"></i> Adicionar Linha
+                                                                    </button>
+                                                                    
+                                                                    <!-- Campo hidden para armazenar JSON -->
+                                                                    <input type="hidden" name="tabela_correcao_{{ rf.id }}" id="tabela_correcao_{{ rf.id }}" value='{{ rf.tabela_correcao|safe }}'>
+                                                                </div>
+                                                                {% endif %}
                                                             </div>
                                                             <div class="modal-footer">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -1532,6 +1586,108 @@
             // Inicializar cálculos
             atualizarCalculos();
         });
+    });
+
+    // Gerenciar tabela de correção
+    document.addEventListener('shown.bs.modal', function(e) {
+        const modal = e.target;
+        if (!modal.id.startsWith('editResultModal')) return;
+        
+        const resultado = modal.querySelector('input[id^="resultado_hidden_"]')?.value;
+        const tabelaCorrecaoDiv = modal.querySelector('.bg-light.border.border-warning.rounded');
+        
+        if (!tabelaCorrecaoDiv) return;
+        
+        // Quando há mudanças nos inputs de erro/incerteza, sincronizar a tabela JSON
+        function sincronizarTabelaJSON(resultIdStr) {
+            const tbodyId = 'correcao_tbody_' + resultIdStr;
+            const tbody = modal.querySelector('#' + tbodyId);
+            const hiddenField = modal.querySelector('#tabela_correcao_' + resultIdStr);
+            
+            if (!tbody || !hiddenField) return;
+            
+            const linhas = [];
+            tbody.querySelectorAll('tr').forEach(row => {
+                const minVal = row.querySelector('.valor_min')?.value;
+                const maxVal = row.querySelector('.valor_max')?.value;
+                const correcao = row.querySelector('.correcao_valor')?.value;
+                
+                if (minVal !== '' && maxVal !== '' && correcao !== '') {
+                    linhas.push({
+                        valor_min: parseFloat(minVal),
+                        valor_max: parseFloat(maxVal),
+                        correcao: parseFloat(correcao)
+                    });
+                }
+            });
+            
+            hiddenField.value = JSON.stringify(linhas);
+            console.log('Tabela JSON sincronizada:', linhas);
+        }
+        
+        // Extrair ID do resultado do modal
+        const modalId = modal.id;
+        const resultIdMatch = modalId.match(/editResultModal(\d+)/);
+        const resultId = resultIdMatch ? resultIdMatch[1] : null;
+        
+        if (!resultId) return;
+        
+        // Adicionar evento para adicionar linhas
+        const addBtns = modal.querySelectorAll('.add-correcao-row');
+        addBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tbody = modal.querySelector('#correcao_tbody_' + resultId);
+                
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>
+                        <input type="number" step="0.0001" class="form-control form-control-sm valor_min" placeholder="Min">
+                    </td>
+                    <td>
+                        <input type="number" step="0.0001" class="form-control form-control-sm valor_max" placeholder="Max">
+                    </td>
+                    <td>
+                        <input type="number" step="0.0001" class="form-control form-control-sm correcao_valor" placeholder="0.0000">
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-correcao-row">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(newRow);
+                
+                // Adicionar evento ao novo botão de remover
+                const removeBtn = newRow.querySelector('.remove-correcao-row');
+                removeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    newRow.remove();
+                    sincronizarTabelaJSON(resultId);
+                });
+                
+                sincronizarTabelaJSON(resultId);
+            });
+        });
+        
+        // Adicionar evento para remover linhas existentes
+        const removeBtns = modal.querySelectorAll('.remove-correcao-row');
+        removeBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                btn.closest('tr').remove();
+                sincronizarTabelaJSON(resultId);
+            });
+        });
+        
+        // Adicionar listeners aos inputs existentes para sincronizar JSON
+        const tbody = modal.querySelector('#correcao_tbody_' + resultId);
+        if (tbody) {
+            tbody.addEventListener('input', function() {
+                sincronizarTabelaJSON(resultId);
+            });
+        }
     });
 </script>
 {% endblock %}
