@@ -203,6 +203,51 @@
                                        class="btn btn-outline-secondary" title="Detalhes">
                                         <i class="bi bi-eye"></i>
                                     </a>
+                                    <a href="{% url 'editar_historico_calibracao' historico.id %}" 
+                                       class="btn btn-outline-primary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger" title="Excluir"
+                                            data-bs-toggle="modal" data-bs-target="#deleteModal{{ historico.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Modal de Confirmação de Exclusão -->
+                                <div class="modal fade" id="deleteModal{{ historico.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ historico.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title" id="deleteModalLabel{{ historico.id }}">
+                                                    <i class="bi bi-exclamation-triangle"></i> Confirmar Exclusão
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Tem certeza que deseja excluir este registro de calibração?</p>
+                                                <div class="alert alert-warning" role="alert">
+                                                    <strong>Instrumento:</strong> {{ historico.instrumento.tag }} - {{ historico.instrumento.descricao }}<br>
+                                                    <strong>Data:</strong> {{ historico.data_calibracao|date:"d/m/Y" }}<br>
+                                                    <strong>Status:</strong> 
+                                                    {% if historico.proxima_calibracao < hoje %}
+                                                        <span class="badge bg-danger">Vencido</span>
+                                                    {% else %}
+                                                        <span class="badge bg-success">Vigente</span>
+                                                    {% endif %}
+                                                </div>
+                                                <p class="text-muted small"><i class="bi bi-info-circle"></i> Esta ação não poderá ser desfeita.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <form method="post" action="{% url 'remover_historico' historico.id %}" style="display: inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="bi bi-trash"></i> Excluir
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
