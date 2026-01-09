@@ -162,7 +162,7 @@
                     <div class="filter-content">
                         <div class="d-flex flex-column gap-1">
                             <div class="form-check">
-                                <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo">
                                 <label class="form-check-label small" for="st_ativo">Ativo</label>
                             </div>
                             <div class="form-check">
@@ -499,7 +499,7 @@ function filtrar() {
 function limparFiltros() {
     document.getElementById('searchInput').value = '';
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
-        cb.checked = (cb.id === 'st_ativo');
+        cb.checked = false;
     });
     filtrar();
 }
