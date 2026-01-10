@@ -12,6 +12,9 @@
                 <a href="{% url 'procedures:editar_matriz' matriz.id %}" class="btn btn-warning btn-sm">
                     <i class="bi bi-pencil"></i> Editar
                 </a>
+                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalDeleteMatriz" onclick="abrirModalDeleteMatriz({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
+                    <i class="bi bi-trash"></i> Deletar Matriz
+                </button>
                 <a href="{% url 'procedures:matrizes_list' %}" class="btn btn-light btn-sm">
                     <i class="bi bi-arrow-left"></i> Voltar
                 </a>
@@ -86,6 +89,9 @@
                                 <a href="{% url 'procedures:editar_disciplina' disc.id %}" class="btn btn-sm btn-warning" title="Editar">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="abrirModalDeleteDisciplina({{ disc.id }}, '{{ disc.codigo }}', '{{ disc.nome }}')" title="Deletar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -452,5 +458,149 @@ function removerColaboradorMatriz(assocId, nomeColaborador) {
         alert('Erro na requisição: ' + error);
     });
 }
+
+// Função para abrir modal de delete da matriz
+function abrirModalDeleteMatriz(matrizId, codigo, nome) {
+    document.getElementById('delete-matriz-id').value = matrizId;
+    document.getElementById('delete-matriz-nome').textContent = `${codigo} - ${nome}`;
+    const modal = new bootstrap.Modal(document.getElementById('modalDeleteMatriz'));
+    modal.show();
+}
+
+// Função para abrir modal de delete de disciplina
+function abrirModalDeleteDisciplina(disciplinaId, codigo, nome) {
+    document.getElementById('delete-disciplina-id').value = disciplinaId;
+    document.getElementById('delete-disciplina-nome').textContent = `${codigo} - ${nome}`;
+    const modal = new bootstrap.Modal(document.getElementById('modalDeleteDisciplina'));
+    modal.show();
+}
+
+// Confirmar delete da matriz
+function confirmarDeleteMatriz() {
+    const matrizId = document.getElementById('delete-matriz-id').value;
+    
+    fetch(`/procedures/matrizes/${matrizId}/deletar/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Matriz e todas as disciplinas associadas foram deletadas com sucesso!');
+            window.location.href = '/procedures/matrizes/';
+        } else {
+            alert('Erro ao deletar matriz: ' + (data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        alert('Erro na requisição: ' + error);
+    });
+}
+
+// Confirmar delete da disciplina
+function confirmarDeleteDisciplina() {
+    const disciplinaId = document.getElementById('delete-disciplina-id').value;
+    
+    fetch(`/procedures/disciplinas/${disciplinaId}/deletar/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Disciplina deletada com sucesso!');
+            location.reload();
+        } else {
+            alert('Erro ao deletar disciplina: ' + (data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        alert('Erro na requisição: ' + error);
+    });
+}
 </script>
+
+<!-- Modal Delete Matriz -->
+<div class="modal fade" id="modalDeleteMatriz" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Deletar Matriz
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-circle"></i> <strong>ATENÇÃO!</strong>
+                </div>
+                <p>Você está prestes a deletar a matriz:</p>
+                <p class="fw-bold text-danger">
+                    <i class="bi bi-folder"></i> <span id="delete-matriz-nome"></span>
+                </p>
+                <hr>
+                <p class="text-danger">
+                    <strong>Esta ação é irreversível e irá:</strong>
+                </p>
+                <ul class="text-danger">
+                    <li>Deletar a matriz e TODAS as suas disciplinas associadas</li>
+                    <li>Remover todas as avaliações relacionadas</li>
+                    <li>Desassociar todos os colaboradores da matriz</li>
+                </ul>
+                <input type="hidden" id="delete-matriz-id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="confirmarDeleteMatriz()">
+                    <i class="bi bi-trash"></i> Deletar Matriz
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Delete Disciplina -->
+<div class="modal fade" id="modalDeleteDisciplina" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Deletar Disciplina
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-circle"></i> <strong>ATENÇÃO!</strong>
+                </div>
+                <p>Você está prestes a deletar a disciplina:</p>
+                <p class="fw-bold text-danger">
+                    <i class="bi bi-book"></i> <span id="delete-disciplina-nome"></span>
+                </p>
+                <hr>
+                <p class="text-danger">
+                    <strong>Esta ação é irreversível e irá:</strong>
+                </p>
+                <ul class="text-danger">
+                    <li>Deletar a disciplina</li>
+                    <li>Remover todas as avaliações relacionadas</li>
+                </ul>
+                <input type="hidden" id="delete-disciplina-id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="confirmarDeleteDisciplina()">
+                    <i class="bi bi-trash"></i> Deletar Disciplina
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}

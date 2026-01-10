@@ -794,3 +794,52 @@ def salvar_avaliacao_api(request):
             'success': False,
             'message': f'Erro ao salvar: {str(e)}'
         }, status=500)
+
+
+# ==============================================================================
+# DELETE OPERATIONS
+# ==============================================================================
+
+@login_required
+@require_http_methods(["POST"])
+def deletar_matriz_view(request, matriz_id):
+    """Deleta uma matriz de habilidade e todas as disciplinas/avaliações associadas."""
+    try:
+        matriz = get_object_or_404(MatrizHabilidade, id=matriz_id)
+        
+        # Deletar todas as disciplinas associadas (e suas avaliações em cascata)
+        matriz.disciplinas_matriz.all().delete()
+        
+        # Deletar a matriz
+        matriz.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Matriz e todas as disciplinas associadas foram deletadas com sucesso!'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+def deletar_disciplina_view(request, disciplina_id):
+    """Deleta uma disciplina de habilidade e todas as avaliações associadas."""
+    try:
+        disciplina = get_object_or_404(DisciplinaHabilidade, id=disciplina_id)
+        
+        # Deletar a disciplina (avaliações serão deletadas em cascata)
+        disciplina.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Disciplina deletada com sucesso!'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=400)
