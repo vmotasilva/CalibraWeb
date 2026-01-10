@@ -35,6 +35,17 @@ from .views import (
     editar_orcamento_view,
 )
 
+from . import (
+    habilidades_views,
+    perfis_views,
+    avaliacoes_views,
+    planejamento_views,
+    gap_analysis_views,
+    lista_presenca_views,
+    validacao_views,
+    template_mapeamento_views,
+)
+
 __all__ = [
     # Procedimentos
     'procedimentos_list_view',
@@ -66,6 +77,13 @@ __all__ = [
     # Orçamentos
     'novo_orcamento_view',
     'editar_orcamento_view',
-    # Template Mapeamento
+    # Submódulos de views
+    'habilidades_views',
+    'perfis_views',
+    'avaliacoes_views',
+    'planejamento_views',
+    'gap_analysis_views',
+    'lista_presenca_views',
+    'validacao_views',
     'template_mapeamento_views',
 ]
