@@ -1092,11 +1092,11 @@
                     let badgeClass = 'bg-secondary';
                     let badgeText = 'Preencha Erro e Incerteza';
                     
-                    if (emeNum > emaNum * 3) {
+                    if (emeNum > tolerancia) {
                         resultado = 'REPROVADO';
                         badgeClass = 'bg-danger';
                         badgeText = '✗ Reprovado';
-                        console.log('Resultado: REPROVADO (EME > EMA×3)');
+                        console.log('Resultado: REPROVADO (EME > Tolerância)');
                     } else if (emeNum <= emaNum) {
                         resultado = 'APROVADO_SEM_CORRECAO';
                         badgeClass = 'bg-success';
@@ -1106,7 +1106,7 @@
                         resultado = 'APROVADO_COM_CORRECAO';
                         badgeClass = 'bg-warning text-dark';
                         badgeText = '⚠ Aprovado com Correção';
-                        console.log('Resultado: APROVADO_COM_CORRECAO (EMA < EME ≤ EMA×3)');
+                        console.log('Resultado: APROVADO_COM_CORRECAO (EMA < EME ≤ Tolerância)');
                     }
                     
                     // Atualizar exibição do resultado
