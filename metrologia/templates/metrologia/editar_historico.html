@@ -1689,6 +1689,82 @@
             });
         }
     });
+
+    // ===== AUTOSAVE DOS CAMPOS DO FORMULÁRIO =====
+    // Salva automaticamente os dados do histórico a cada alteração (com debounce)
+    let autoSaveTimeout;
+    const formFields = [
+        'id_data_calibracao',
+        'id_proxima_calibracao',
+        'id_numero_certificado',
+        'id_tipo_calibracao',
+        'id_responsavel',
+        'id_fornecedor',
+        'id_tem_selo_rbc',
+        'id_observacoes',
+        'id_resultado'
+    ];
+
+    function salvarAutomaticamente() {
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(() => {
+            const form = document.querySelector('form[action*="editar_historico"]');
+            if (!form) return;
+
+            // Coletar dados do formulário
+            const formData = new FormData(form);
+            formData.set('action', 'update_history');
+
+            // Mostrar aviso de salvamento
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-info alert-dismissible fade show';
+            alertDiv.style.position = 'fixed';
+            alertDiv.style.bottom = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando dados...';
+            document.body.appendChild(alertDiv);
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                    alertDiv.innerHTML = '<i class="bi bi-check-circle"></i> Dados salvos automaticamente!';
+                    setTimeout(() => alertDiv.remove(), 3000);
+                } else {
+                    alertDiv.className = 'alert alert-warning alert-dismissible fade show';
+                    alertDiv.innerHTML = '<i class="bi bi-exclamation-circle"></i> Erro ao salvar. Tente novamente.';
+                    setTimeout(() => alertDiv.remove(), 5000);
+                }
+            })
+            .catch(err => {
+                alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                alertDiv.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Erro na requisição.';
+                setTimeout(() => alertDiv.remove(), 5000);
+            });
+        }, 1000); // Aguarda 1 segundo após a última alteração
+    }
+
+    // Adicionar listeners a todos os campos do formulário
+    formFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('change', salvarAutomaticamente);
+            field.addEventListener('blur', salvarAutomaticamente);
+        }
+    });
+
+    // Salvar também quando texto é digitado (com debounce maior)
+    const textFields = document.querySelectorAll('input[type="text"], textarea, select');
+    textFields.forEach(field => {
+        field.addEventListener('input', salvarAutomaticamente);
+    });
 </script>
 {% endblock %}
 
