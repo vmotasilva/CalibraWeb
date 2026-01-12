@@ -965,6 +965,7 @@ def baixar_template_importacao_view(request, formato='csv'):
         exemplo_dados = [
             ['MAT001', 'Operação', 'DISC001', 'Segurança', 'MAT001', 'João Silva', '2', 'Necessita aprimoramento'],
             ['MAT001', 'Operação', 'DISC002', 'Qualidade', 'MAT002', 'Maria Santos', '3', 'Em dia com treinamentos'],
+            ['MAT002', 'Manutenção', 'DISC003', 'Manutenção Preventiva', 'MAT003', 'Pedro Costa', 'N/A', 'Não se aplica para esta disciplina'],
         ]
         
         for row_idx, row_data in enumerate(exemplo_dados, start=2):

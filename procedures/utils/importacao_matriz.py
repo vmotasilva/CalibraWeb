@@ -235,13 +235,19 @@ class ImportadorMatrizHabilidade:
             # Processar nível de competência se fornecido
             if nivel_str:
                 try:
-                    nivel = int(nivel_str)
+                    # Mapear "n/a", "N/A" para -1
+                    nivel_str_lower = nivel_str.lower().strip()
+                    if nivel_str_lower in ['n/a', 'na', '-1']:
+                        nivel = -1
+                    else:
+                        nivel = int(nivel_str)
+                    
                     # Validar nível
                     niveis_validos = [-1, 0, 1, 2, 3]
                     if nivel not in niveis_validos:
                         self.adicionar_aviso(
                             linha_num,
-                            f"Nível de competência inválido: {nivel}. Valores válidos: {niveis_validos}"
+                            f"Nível de competência inválido: {nivel}. Valores válidos: {niveis_validos} ou 'N/A'"
                         )
                         return False
                     
@@ -268,7 +274,7 @@ class ImportadorMatrizHabilidade:
                 except ValueError:
                     self.adicionar_aviso(
                         linha_num,
-                        f"Nível de competência não é um número válido: {nivel_str}"
+                        f"Nível de competência não é um número válido: {nivel_str}. Use: -1, 0, 1, 2, 3 ou 'N/A'"
                     )
                     return False
             
@@ -324,7 +330,7 @@ def gerar_template_csv() -> str:
     template = """Matriz Código|Matriz Nome|Disciplina Código|Disciplina Nome|Colaborador Matrícula|Colaborador Nome|Nível de Competência|Observações
 MAT001|Operação|DISC001|Segurança|MAT001|João Silva|2|Necessita aprimoramento
 MAT001|Operação|DISC002|Qualidade|MAT002|Maria Santos|3|Em dia com treinamentos
-MAT002|Manutenção|DISC003|Manutenção Preventiva|MAT003|Pedro Costa|2|Experiência em campo"""
+MAT002|Manutenção|DISC003|Manutenção Preventiva|MAT003|Pedro Costa|N/A|Não se aplica para esta disciplina"""
     return template
 
 
@@ -338,8 +344,8 @@ Colunas esperadas no Excel (primeira linha é cabeçalho):
 4. Disciplina Nome - Nome da disciplina (ex: Segurança)
 5. Colaborador Matrícula - Matrícula do colaborador
 6. Colaborador Nome - Nome completo do colaborador
-7. Nível de Competência - Nível de competência (-1, 0, 1, 2, 3)
-    -1: N/A - Não se Aplica
+7. Nível de Competência - Nível de competência (-1, 0, 1, 2, 3, ou "N/A")
+    -1 ou N/A: Não se Aplica
     0: Há Intenção de Treinar
     1: Colaborador em Treinamento
     2: Treinado
