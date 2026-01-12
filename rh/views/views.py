@@ -183,21 +183,32 @@ def modulo_rh_view(request):
         prefetch_ferias
     ).order_by("nome_completo")
 
-    # Extrair opções de filtro em queries paralelas (sem repetir funcionarios_base.count())
-    # Usar valores já em memória para criar opções de filtro
-    setores_ids = set(funcionarios_base.exclude(setor__isnull=True).values_list("setor", flat=True))
-    lideres_ids = set(funcionarios_base.exclude(lider__isnull=True).values_list("lider", flat=True))
-    supervisores_ids = set(funcionarios_base.exclude(supervisor__isnull=True).values_list("supervisor", flat=True))
-    gerentes_ids = set(funcionarios_base.exclude(gerente__isnull=True).values_list("gerente", flat=True))
+    # Extrair opções de filtro usando dados já carregados em memória
+    # EVITAR: .exclude().values_list() - reavalia o queryset inteiro!
+    setores_ids = set()
+    lideres_ids = set()
+    supervisores_ids = set()
+    gerentes_ids = set()
     
-    # Fazer queries apenas uma vez com todos os IDs
+    # Uma única iteração para extrair todos os IDs
+    for f in funcionarios_base:
+        if f.setor_id:
+            setores_ids.add(f.setor_id)
+        if f.lider_id:
+            lideres_ids.add(f.lider_id)
+        if f.supervisor_id:
+            supervisores_ids.add(f.supervisor_id)
+        if f.gerente_id:
+            gerentes_ids.add(f.gerente_id)
+    
+    # Fazer queries bulk apenas uma vez com todos os IDs
     setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by("nome") if setores_ids else []
     lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by("nome_completo") if lideres_ids else []
     supervisores_filtro = Colaborador.objects.filter(id__in=supervisores_ids).order_by("nome_completo") if supervisores_ids else []
     gerentes_filtro = Colaborador.objects.filter(id__in=gerentes_ids).order_by("nome_completo") if gerentes_ids else []
 
-    # Turnos únicos - sem repetições
-    turnos_unicos = sorted(set(funcionarios_base.values_list("turno", flat=True).distinct()))
+    # Turnos únicos - extrair de dados já em memória, não fazer query
+    turnos_unicos = sorted(set(f.turno for f in funcionarios_base if f.turno))
     turnos_map = dict(Colaborador._meta.get_field('turno').choices)
     turnos_filtro = [(turno, turnos_map.get(turno, turno)) for turno in turnos_unicos if turno]
 
