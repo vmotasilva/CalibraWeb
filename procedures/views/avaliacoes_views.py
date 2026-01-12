@@ -349,3 +349,125 @@ def avaliacao_rapida_view(request):
     
     from django.http import JsonResponse
     return JsonResponse({'success': False, 'error': 'Método não permitido'})
+
+
+# ==================== GERENCIAMENTO DE COLABORADORES ====================
+
+@login_required
+def desassociar_colaboradores_view(request, matriz_id):
+    """
+    Desassocia um ou mais colaboradores da matriz
+    """
+    import json
+    from django.http import JsonResponse
+    
+    if request.method != 'POST':
+        return JsonResponse({'sucesso': False, 'erro': 'Apenas POST permitido'})
+    
+    try:
+        matriz = get_object_or_404(MatrizHabilidade, id=matriz_id)
+        dados = json.loads(request.body)
+        colaboradores_ids = dados.get('colaboradores', [])
+        
+        if not colaboradores_ids:
+            return JsonResponse({'sucesso': False, 'erro': 'Nenhum colaborador informado'})
+        
+        # Importar modelo
+        from procedures.models import ColaboradorMatrizHabilidade
+        
+        # Desassociar
+        quantidade = ColaboradorMatrizHabilidade.objects.filter(
+            matriz=matriz,
+            colaborador_id__in=colaboradores_ids
+        ).delete()[0]
+        
+        return JsonResponse({
+            'sucesso': True,
+            'quantidade': quantidade,
+            'mensagem': f'{quantidade} colaborador(es) desassociado(s)'
+        })
+    
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)})
+
+
+@login_required
+def colaboradores_disponiveis_view(request, matriz_id):
+    """
+    Retorna lista de colaboradores não associados à matriz
+    """
+    from django.http import JsonResponse
+    
+    try:
+        matriz = get_object_or_404(MatrizHabilidade, id=matriz_id)
+        
+        # Importar modelo
+        from procedures.models import ColaboradorMatrizHabilidade
+        
+        # Buscar IDs dos colaboradores já associados
+        associados = ColaboradorMatrizHabilidade.objects.filter(
+            matriz=matriz
+        ).values_list('colaborador_id', flat=True)
+        
+        # Buscar colaboradores disponíveis
+        disponiveis = Colaborador.objects.filter(
+            is_active=True
+        ).exclude(
+            id__in=associados
+        ).values('id', 'nome_completo', 'matricula').order_by('nome_completo')[:100]
+        
+        return JsonResponse({
+            'colaboradores': list(disponiveis)
+        })
+    
+    except Exception as e:
+        from django.http import JsonResponse
+        return JsonResponse({'erro': str(e)})
+
+
+@login_required
+def associar_colaborador_view(request, matriz_id):
+    """
+    Associa um novo colaborador à matriz
+    """
+    import json
+    from django.http import JsonResponse
+    
+    if request.method != 'POST':
+        return JsonResponse({'sucesso': False, 'erro': 'Apenas POST permitido'})
+    
+    try:
+        matriz = get_object_or_404(MatrizHabilidade, id=matriz_id)
+        dados = json.loads(request.body)
+        colaborador_id = dados.get('colaborador_id')
+        
+        if not colaborador_id:
+            return JsonResponse({'sucesso': False, 'erro': 'Colaborador não informado'})
+        
+        # Verificar se colaborador existe
+        colaborador = get_object_or_404(Colaborador, id=colaborador_id)
+        
+        # Importar modelo
+        from procedures.models import ColaboradorMatrizHabilidade
+        
+        # Criar associação
+        assoc, created = ColaboradorMatrizHabilidade.objects.get_or_create(
+            matriz=matriz,
+            colaborador=colaborador,
+            defaults={'ativo': True}
+        )
+        
+        if created:
+            return JsonResponse({
+                'sucesso': True,
+                'mensagem': f'{colaborador.nome_completo} associado com sucesso!'
+            })
+        else:
+            return JsonResponse({
+                'sucesso': False,
+                'erro': f'{colaborador.nome_completo} já está associado a esta matriz'
+            })
+    
+    except Exception as e:
+        from django.http import JsonResponse
+        return JsonResponse({'sucesso': False, 'erro': str(e)})

@@ -154,6 +154,11 @@ urlpatterns = [
     path('avaliacoes/rapida/', avaliacoes_views.avaliacao_rapida_view, name='avaliacao_rapida'),
     path('avaliacoes/salvar/', habilidades_views.salvar_avaliacao_api, name='salvar_avaliacao_api'),
     
+    # Gerenciamento de Colaboradores na Matriz
+    path('matrizes/<int:matriz_id>/desassociar-colaboradores/', avaliacoes_views.desassociar_colaboradores_view, name='desassociar_colaboradores'),
+    path('matrizes/<int:matriz_id>/associar-colaborador/', avaliacoes_views.associar_colaborador_view, name='associar_colaborador'),
+    path('matrizes/<int:matriz_id>/colaboradores-disponiveis/', avaliacoes_views.colaboradores_disponiveis_view, name='colaboradores_disponiveis'),
+    
     # ==========================
     # VALIDAÇÃO DE MATRIZ
     # ==========================
