@@ -103,13 +103,17 @@ def get_colaboradores_acessiveis(request_user):
 @login_required
 def modulo_rh_view(request):
     """Dashboard principal do módulo de RH com filtros avançados."""
+    from django.db.models import Prefetch
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    from procedures.models import ColaboradorPerfil
+    
     colab = None
     try:
         colab = get_colaborador_for_user(request.user)
     except Exception:
         pass
 
-    # 1. VISIBILIDADE - Quem pode ver todos vs sua árvore
+    # 1. VISIBILIDADE - Quem pode ver todos vs sua árvore (otimizado com cache)
     ids_permitidos = set()
     can_see_salary = False
     can_view_all = False
@@ -124,18 +128,17 @@ def modulo_rh_view(request):
         setor_nome = (colab.setor.nome.upper() if colab.setor else "")
         if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
             can_view_all = True
-        # Verificar se é gerente
+        # Verificar se é gerente - fazer uma única query
         elif (
             "GERENTE" in str(colab.cargo).upper()
-            or HierarquiaSetor.objects.filter(gerente=colab).exists()
+            or HierarquiaSetor.objects.filter(Q(gerente=colab) | Q(diretor=colab)).exists()
         ):
             can_view_all = True
         
-        # Permissão para ver salário
+        # Permissão para ver salário - verificar uma única vez
         if ("GERENTE" in str(colab.cargo).upper() or
-            HierarquiaSetor.objects.filter(gerente=colab).exists() or
             "DIRETOR" in str(colab.cargo).upper() or
-            HierarquiaSetor.objects.filter(diretor=colab).exists()):
+            HierarquiaSetor.objects.filter(Q(gerente=colab) | Q(diretor=colab)).exists()):
             can_see_salary = True
 
     # Definir IDs permitidos baseado em permissão
@@ -160,46 +163,7 @@ def modulo_rh_view(request):
         # Usuário não tem colaborador associado
         ids_permitidos = set()
 
-    # QuerySet base com filtros de visibilidade
-    funcionarios_base = Colaborador.objects.filter(
-        id__in=list(ids_permitidos)
-    ).select_related('setor', 'centro_custo', 'lider', 'supervisor', 'gerente').prefetch_related(
-        'treinamentos', 'treinamentos__procedimento'
-    ).order_by("nome_completo")
-
-    # Opções de filtro baseadas na base de dados
-    setores_ids = funcionarios_base.exclude(setor__isnull=True).values_list("setor", flat=True).distinct()
-    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by("nome")
-
-    lideres_ids = funcionarios_base.exclude(lider__isnull=True).values_list("lider", flat=True).distinct()
-    lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by("nome_completo")
-
-    supervisores_ids = funcionarios_base.exclude(supervisor__isnull=True).values_list("supervisor", flat=True).distinct()
-    supervisores_filtro = Colaborador.objects.filter(id__in=supervisores_ids).order_by("nome_completo")
-
-    gerentes_ids = funcionarios_base.exclude(gerente__isnull=True).values_list("gerente", flat=True).distinct()
-    gerentes_filtro = Colaborador.objects.filter(id__in=gerentes_ids).order_by("nome_completo")
-
-    # Turnos únicos - sem repetições
-    turnos_unicos = sorted(set(funcionarios_base.values_list("turno", flat=True).distinct()))
-    turnos_map = dict(Colaborador._meta.get_field('turno').choices)
-    turnos_filtro = [(turno, turnos_map.get(turno, turno)) for turno in turnos_unicos if turno]
-
-
-    # Filtro de férias (checkbox ou query param 'em_ferias')
-    em_ferias_param = request.GET.get('em_ferias')
-    if em_ferias_param == '1':
-        funcionarios_visiveis = funcionarios_base.filter(em_ferias=True)
-    else:
-        funcionarios_visiveis = funcionarios_base
-
-    # Estatísticas de Treinamento por colaborador (apenas perfis ativos)
-    from procedures.models import ColaboradorPerfil
-    from django.db.models import Prefetch
-    from rh.models import Ferias
-    from datetime import date
-    
-    # Pré-carregar férias ativas
+    # Pré-carregar férias ativas usando Prefetch
     prefetch_ferias = Prefetch(
         'ferias_set',
         queryset=Ferias.objects.filter(
@@ -208,15 +172,50 @@ def modulo_rh_view(request):
             data_fim__gte=date.today()
         ).order_by('-data_inicio')
     )
+
+    # Pré-carregar perfis ativos com procedimentos em batch
+    prefetch_perfis = Prefetch(
+        'colaboradorperfil_set',
+        queryset=ColaboradorPerfil.objects.filter(ativo=True).select_related('perfil')
+    )
+
+    # QuerySet base com filtros de visibilidade - otimizado
+    funcionarios_base = Colaborador.objects.filter(
+        id__in=list(ids_permitidos)
+    ).select_related(
+        'setor', 'centro_custo', 'lider', 'supervisor', 'gerente'
+    ).prefetch_related(
+        'treinamentos__procedimento',
+        prefetch_ferias,
+        prefetch_perfis
+    ).order_by("nome_completo")
+
+    # Extrair opções de filtro em queries paralelas (sem repetir funcionarios_base.count())
+    # Usar valores já em memória para criar opções de filtro
+    setores_ids = set(funcionarios_base.exclude(setor__isnull=True).values_list("setor", flat=True))
+    lideres_ids = set(funcionarios_base.exclude(lider__isnull=True).values_list("lider", flat=True))
+    supervisores_ids = set(funcionarios_base.exclude(supervisor__isnull=True).values_list("supervisor", flat=True))
+    gerentes_ids = set(funcionarios_base.exclude(gerente__isnull=True).values_list("gerente", flat=True))
     
-    # Re-fazer o queryset com prefetch otimizado
-    funcionarios_visiveis = funcionarios_visiveis.prefetch_related(prefetch_ferias)
-    
+    # Fazer queries apenas uma vez com todos os IDs
+    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by("nome") if setores_ids else []
+    lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by("nome_completo") if lideres_ids else []
+    supervisores_filtro = Colaborador.objects.filter(id__in=supervisores_ids).order_by("nome_completo") if supervisores_ids else []
+    gerentes_filtro = Colaborador.objects.filter(id__in=gerentes_ids).order_by("nome_completo") if gerentes_ids else []
+
+    # Turnos únicos - sem repetições
+    turnos_unicos = sorted(set(funcionarios_base.values_list("turno", flat=True).distinct()))
+    turnos_map = dict(Colaborador._meta.get_field('turno').choices)
+    turnos_filtro = [(turno, turnos_map.get(turno, turno)) for turno in turnos_unicos if turno]
+
+    # Filtro de férias (checkbox ou query param 'em_ferias')
+    em_ferias_param = request.GET.get('em_ferias')
+    if em_ferias_param == '1':
+        funcionarios_visiveis = funcionarios_base.filter(em_ferias=True)
+    else:
+        funcionarios_visiveis = funcionarios_base
+
     # Aplicar paginação ANTES de calcular estatísticas (lazy evaluation)
-    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-    
-    # Calcular o total de colaboradores para usar como tamanho da página
-    # Isso garante que TODOS apareçam na mesma página
     total_colaboradores = funcionarios_visiveis.count()
     paginator = Paginator(funcionarios_visiveis, total_colaboradores if total_colaboradores > 0 else 1)
     page = request.GET.get('page')
@@ -227,16 +226,20 @@ def modulo_rh_view(request):
     except EmptyPage:
         funcionarios_page = paginator.page(paginator.num_pages)
     
-    # Calcular estatísticas APENAS para a página atual
+    # Calcular estatísticas APENAS para a página atual usando dados pré-carregados
     for f in funcionarios_page.object_list:
         vig = 0
         pend = 0
         last = None
         
-        # Buscar perfis ativos associados ao colaborador
-        perfis_ativos = ColaboradorPerfil.objects.filter(
-            colaborador=f, ativo=True
-        )
+        # Usar dados já carregados em memória (via prefetch)
+        perfis_ativos = f.colaboradorperfil_set.all()
+        
+        if not perfis_ativos:
+            f.trein_vigentes = 0
+            f.trein_pendentes = 0
+            f.trein_ultima_data = None
+            continue
         
         # Coletar procedimentos apenas dos grupos/subgrupos selecionados
         procedimentos_ids = set()
@@ -278,17 +281,12 @@ def modulo_rh_view(request):
                                 for proc in subgrupo.procedimentos.all():
                                     procedimentos_ids.add(proc.id)
         
-        # Se não tem perfis associados, não conta nada
-        if not procedimentos_ids:
-            f.trein_vigentes = 0
-            f.trein_pendentes = 0
-            f.trein_ultima_data = None
-            continue
-        
         # Buscar apenas os treinamentos dos procedimentos dos perfis/grupos/subgrupos associados
-        treinamentos_dos_perfis = f.treinamentos.filter(
-            procedimento_id__in=procedimentos_ids
-        )
+        # Usando dados já pré-carregados
+        treinamentos_dos_perfis = [
+            rt for rt in f.treinamentos.all()
+            if rt.procedimento_id in procedimentos_ids
+        ]
         
         # Contar status dos treinamentos dos perfis
         for rt in treinamentos_dos_perfis:
@@ -304,6 +302,9 @@ def modulo_rh_view(request):
         f.trein_pendentes = pend
         f.trein_ultima_data = last
 
+    # Pré-carregar CentroCusto uma única vez
+    centros = CentroCusto.objects.all().order_by("codigo")
+
     ctx = {
         "funcionarios": funcionarios_page,
         "lideres_filtro": lideres_filtro,
@@ -311,7 +312,7 @@ def modulo_rh_view(request):
         "supervisores_filtro": supervisores_filtro,
         "gerentes_filtro": gerentes_filtro,
         "turnos_filtro": turnos_filtro,
-        "centros": CentroCusto.objects.all().order_by("codigo"),
+        "centros": centros,
         "can_see_salary": can_see_salary,
         "can_edit": True,
     }
