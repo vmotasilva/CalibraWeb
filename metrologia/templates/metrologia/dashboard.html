@@ -161,6 +161,7 @@
                         <i class="bi bi-chevron-down"></i>
                     </div>
                     <div class="filter-content">
+                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('situacao')">Selecionar Todos</button>
                         <div class="d-flex flex-column gap-1">
                             <div class="form-check">
                                 <input class="form-check-input filter-checkbox" type="checkbox" value="VENCIDO" data-category="situacao">
@@ -197,6 +198,7 @@
                         <i class="bi bi-chevron-down"></i>
                     </div>
                     <div class="filter-content">
+                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('status')">Selecionar Todos</button>
                         <div class="d-flex flex-column gap-1">
                             <div class="form-check">
                                 <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
@@ -217,6 +219,7 @@
                         <i class="bi bi-chevron-down"></i>
                     </div>
                     <div class="filter-content">
+                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('categoria')">Selecionar Todos</button>
                         <div class="d-flex flex-column gap-1 ps-1">
                             {% for cat in categorias_filtro %}
                             <div class="form-check">
@@ -235,6 +238,7 @@
                         <i class="bi bi-chevron-down"></i>
                     </div>
                     <div class="filter-content">
+                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('setor')">Selecionar Todos</button>
                         <div class="d-flex flex-column gap-1 ps-1">
                             {% for setor in setores_filtro %}
                             <div class="form-check">
@@ -268,6 +272,7 @@
                             <th class="py-3">Categoria</th>
                             <th class="py-3">Setor</th>
                             <th class="py-3">Próxima Calibração</th>
+                            <th class="py-3">Últ. Calibração</th>
                             <th class="text-end pe-4 py-3">Ações</th>
                         </tr>
                     </thead>
@@ -325,6 +330,24 @@
                                 {% endif %}
                             </td>
 
+                            <td class="py-2">
+                                {% with historico=i.historicos.all|first %}
+                                    {% if historico %}
+                                        {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                            <span class="badge bg-success">✓ Aprovado</span>
+                                        {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
+                                            <span class="badge bg-warning text-dark">⚠ Aprv. c/ Corr.</span>
+                                        {% elif historico.resultado == 'REPROVADO' %}
+                                            <span class="badge bg-danger">✗ Reprovado</span>
+                                        {% else %}
+                                            <span class="text-muted small">-</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted small">-</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+
                             <td class="text-end pe-4 py-2">
                                 <a href="{% url 'visualizar_instrumento' i.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill detail-link" style="font-size: 0.75rem;">
                                     Detalhes
@@ -332,7 +355,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" class="text-center py-5 text-muted">Nenhum instrumento cadastrado.</td></tr>
+                        <tr><td colspan="8" class="text-center py-5 text-muted">Nenhum instrumento cadastrado.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -671,6 +694,21 @@ function atualizarTodasDatas() {
         alert(`❌ Erro na requisição:\n\n${error.message}`);
         btn.disabled = false;
         btn.innerHTML = originalText;
+    });
+}
+
+// Função para selecionar todos os itens de uma categoria de filtro
+function selectAllInCategory(category) {
+    const checkboxes = document.querySelectorAll(`.filter-checkbox[data-category="${category}"]`);
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(cb => {
+        cb.checked = !allChecked;
+    });
+    
+    // Trigger change event to update filters
+    checkboxes.forEach(cb => {
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
     });
 }
 
