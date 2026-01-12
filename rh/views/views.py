@@ -173,12 +173,6 @@ def modulo_rh_view(request):
         ).order_by('-data_inicio')
     )
 
-    # Pré-carregar perfis ativos com procedimentos em batch
-    prefetch_perfis = Prefetch(
-        'perfis_treinamento',
-        queryset=ColaboradorPerfil.objects.filter(ativo=True).select_related('perfil')
-    )
-
     # QuerySet base com filtros de visibilidade - otimizado
     funcionarios_base = Colaborador.objects.filter(
         id__in=list(ids_permitidos)
@@ -186,8 +180,7 @@ def modulo_rh_view(request):
         'setor', 'centro_custo', 'lider', 'supervisor', 'gerente'
     ).prefetch_related(
         'treinamentos__procedimento',
-        prefetch_ferias,
-        prefetch_perfis
+        prefetch_ferias
     ).order_by("nome_completo")
 
     # Extrair opções de filtro em queries paralelas (sem repetir funcionarios_base.count())
@@ -228,68 +221,15 @@ def modulo_rh_view(request):
     
     # Calcular estatísticas APENAS para a página atual usando dados pré-carregados
     for f in funcionarios_page.object_list:
+        # Cálculo simples: contar todos os treinamentos vigentes/pendentes
+        # Sem iteração em perfis/grupos que gera N+1 queries
+        treinamentos = f.treinamentos.all()
+        
         vig = 0
         pend = 0
         last = None
         
-        # Usar dados já carregados em memória (via prefetch)
-        perfis_ativos = f.perfis_treinamento.all()
-        
-        if not perfis_ativos:
-            f.trein_vigentes = 0
-            f.trein_pendentes = 0
-            f.trein_ultima_data = None
-            continue
-        
-        # Coletar procedimentos apenas dos grupos/subgrupos selecionados
-        procedimentos_ids = set()
-        
-        for cp in perfis_ativos:
-            # Se não tem seleção específica, pegar todos do perfil
-            if not cp.grupos_selecionados:
-                # Todos os procedimentos do perfil
-                procs = cp.perfil.grupos.all().prefetch_related(
-                    'subgrupos__procedimentos'
-                )
-                for grupo in procs:
-                    for subgrupo in grupo.subgrupos.all():
-                        for proc in subgrupo.procedimentos.all():
-                            procedimentos_ids.add(proc.id)
-            else:
-                # Filtrar por grupos/subgrupos selecionados
-                grupos_selecionados = cp.grupos_selecionados.get('grupos', [])
-                subgrupos_selecionados = cp.grupos_selecionados.get('subgrupos', [])
-                
-                # Se há subgrupos selecionados, usar apenas eles
-                if subgrupos_selecionados:
-                    procs = cp.perfil.grupos.all().prefetch_related(
-                        'subgrupos__procedimentos'
-                    )
-                    for grupo in procs:
-                        for subgrupo in grupo.subgrupos.all():
-                            if subgrupo.id in subgrupos_selecionados:
-                                for proc in subgrupo.procedimentos.all():
-                                    procedimentos_ids.add(proc.id)
-                # Se há grupos selecionados, usar todos os subgrupos desses grupos
-                elif grupos_selecionados:
-                    procs = cp.perfil.grupos.all().prefetch_related(
-                        'subgrupos__procedimentos'
-                    )
-                    for grupo in procs:
-                        if grupo.id in grupos_selecionados:
-                            for subgrupo in grupo.subgrupos.all():
-                                for proc in subgrupo.procedimentos.all():
-                                    procedimentos_ids.add(proc.id)
-        
-        # Buscar apenas os treinamentos dos procedimentos dos perfis/grupos/subgrupos associados
-        # Usando dados já pré-carregados
-        treinamentos_dos_perfis = [
-            rt for rt in f.treinamentos.all()
-            if rt.procedimento_id in procedimentos_ids
-        ]
-        
-        # Contar status dos treinamentos dos perfis
-        for rt in treinamentos_dos_perfis:
+        for rt in treinamentos:
             status = rt.status_treinamento
             if status in ("VIGENTE", "OK"):
                 vig += 1
