@@ -19,9 +19,27 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">Matrizes de Habilidades</h4>
-        <a href="{% url 'procedures:nova_matriz' %}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Nova Matriz
-        </a>
+        <div class="d-flex gap-2">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-warning dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-download"></i> Exportar
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'csv' %}">
+                        <i class="bi bi-filetype-csv"></i> Exportar como CSV
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'excel' %}">
+                        <i class="bi bi-file-earmark-excel"></i> Exportar como Excel
+                    </a></li>
+                </ul>
+            </div>
+            <a href="{% url 'procedures:importacao_matriz' %}" class="btn btn-success">
+                <i class="bi bi-cloud-upload"></i> Importação em Massa
+            </a>
+            <a href="{% url 'procedures:nova_matriz' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Nova Matriz
+            </a>
+        </div>
     </div>
 
     <div class="filters-card">

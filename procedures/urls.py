@@ -94,6 +94,14 @@ urlpatterns = [
     path('matriz/<int:matriz_id>/colaboradores/', habilidades_views.matriz_colaboradores_api, name='matriz_colaboradores_api'),
     path('colaborador-matriz/<int:assoc_id>/remover/', habilidades_views.remover_colaborador_matriz, name='remover_colaborador_matriz'),
     
+    # Importação em massa de matrizes
+    path('matrizes/importacao/', habilidades_views.importacao_matriz_view, name='importacao_matriz'),
+    path('matrizes/importacao/resultado/', habilidades_views.importacao_matriz_resultado_view, name='importacao_matriz_resultado'),
+    path('matrizes/importacao/download-template/<str:formato>/', habilidades_views.baixar_template_importacao_view, name='baixar_template_importacao'),
+    
+    # Exportação de matrizes
+    path('matrizes/exportar/<str:formato>/', habilidades_views.exportar_matrizes_view, name='exportar_matrizes'),
+    
     # ==========================
     # PERFIS DE TREINAMENTO
     # ==========================

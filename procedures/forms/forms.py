@@ -469,3 +469,48 @@ class PlanejamentoTreinamentoForm(forms.ModelForm):
         self.fields['procedimentos'].help_text = 'Selecione os procedimentos para este planejamento'
         self.fields['disciplina'].help_text = 'Selecione a disciplina (obrigatório para origem "Matriz de Habilidades")'
 
+
+# ==============================================================================
+# IMPORTAÇÃO EM MASSA
+# ==============================================================================
+
+class ImportacaoMatrizHabilidadeForm(forms.Form):
+    """Formulário para importar matrizes, disciplinas e colaboradores em massa."""
+    
+    FORMATO_CHOICES = [
+        ('csv', 'CSV (Arquivo de Texto)'),
+        ('excel', 'Excel (XLSX)'),
+    ]
+    
+    arquivo = forms.FileField(
+        label='Arquivo para Importação',
+        help_text='Selecione um arquivo CSV ou Excel (.xlsx)',
+        required=True,
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.csv,.xlsx,.xls',
+            'id': 'id_arquivo_importacao'
+        })
+    )
+    
+    formato = forms.ChoiceField(
+        label='Formato do Arquivo',
+        choices=FORMATO_CHOICES,
+        initial='csv',
+        widget=forms.RadioSelect(attrs={
+            'class': 'form-check-input',
+        })
+    )
+    
+    atualizar_existentes = forms.BooleanField(
+        label='Atualizar registros existentes',
+        required=False,
+        initial=True,
+        help_text='Se marcado, matrizes e disciplinas duplicadas serão atualizadas. Caso contrário, serão ignoradas.',
+        widget=forms.CheckboxInput(attrs={
+            'class': 'form-check-input'
+        })
+    )
+    
+    class Meta:
+        fields = ['arquivo', 'formato', 'atualizar_existentes']

@@ -843,3 +843,190 @@ def deletar_disciplina_view(request, disciplina_id):
             'success': False,
             'message': str(e)
         }, status=400)
+
+# ==============================================================================
+# IMPORTAÇÃO EM MASSA
+# ==============================================================================
+
+@login_required
+def importacao_matriz_view(request):
+    """Tela para importação em massa de matrizes, disciplinas e colaboradores."""
+    from procedures.forms.forms import ImportacaoMatrizHabilidadeForm
+    from procedures.utils.importacao_matriz import gerar_template_csv, gerar_template_excel
+    
+    if request.method == 'POST':
+        form = ImportacaoMatrizHabilidadeForm(request.POST, request.FILES)
+        if form.is_valid():
+            return processar_importacao_matriz(request, form)
+    else:
+        form = ImportacaoMatrizHabilidadeForm()
+    
+    ctx = {
+        'form': form,
+        'template_csv': gerar_template_csv(),
+        'template_excel': gerar_template_excel(),
+    }
+    return render(request, 'procedures/matriz_importacao.html', ctx)
+
+
+def processar_importacao_matriz(request, form):
+    """Processa o arquivo de importação."""
+    from procedures.utils.importacao_matriz import ImportadorMatrizHabilidade, validar_arquivo_importacao
+    
+    try:
+        arquivo = request.FILES.get('arquivo')
+        formato = form.cleaned_data.get('formato')
+        
+        # Validar arquivo
+        valido, erro = validar_arquivo_importacao(arquivo)
+        if not valido:
+            messages.error(request, f"Erro na validação: {erro}")
+            return redirect('procedures:importacao_matriz')
+        
+        # Processar importação
+        importador = ImportadorMatrizHabilidade()
+        
+        if formato == 'csv':
+            sucesso = importador.processar_csv(arquivo)
+        else:  # excel
+            sucesso = importador.processar_excel(arquivo)
+        
+        # Gerar resumo
+        resumo = importador.obter_resumo()
+        
+        # Armazenar na sessão para exibição
+        request.session['importacao_resumo'] = resumo
+        request.session['importacao_sucesso'] = sucesso
+        
+        return redirect('procedures:importacao_matriz_resultado')
+    
+    except Exception as e:
+        messages.error(request, f"Erro ao processar arquivo: {str(e)}")
+        return redirect('procedures:importacao_matriz')
+
+
+@login_required
+def importacao_matriz_resultado_view(request):
+    """Exibe resultado da importação."""
+    resumo = request.session.pop('importacao_resumo', {})
+    sucesso = request.session.pop('importacao_sucesso', False)
+    
+    if not resumo:
+        return redirect('procedures:importacao_matriz')
+    
+    ctx = {
+        'resumo': resumo,
+        'sucesso': sucesso,
+        'total_erros': len(resumo.get('erros', [])),
+        'total_avisos': len(resumo.get('avisos', [])),
+    }
+    return render(request, 'procedures/matriz_importacao_resultado.html', ctx)
+
+
+@login_required
+def baixar_template_importacao_view(request, formato='csv'):
+    """Download de template para importação."""
+    from django.http import HttpResponse
+    from procedures.utils.importacao_matriz import gerar_template_csv
+    
+    if formato == 'csv':
+        conteudo = gerar_template_csv()
+        response = HttpResponse(conteudo, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="template_matrizes.csv"'
+        return response
+    
+    elif formato == 'excel':
+        import openpyxl
+        from io import BytesIO
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Matrizes"
+        
+        # Headers
+        headers = [
+            'Matriz Código',
+            'Matriz Nome',
+            'Disciplina Código',
+            'Disciplina Nome',
+            'Colaborador Matrícula',
+            'Colaborador Nome',
+            'Nível de Competência',
+            'Observações'
+        ]
+        
+        for col_idx, header in enumerate(headers, start=1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.value = header
+            cell.font = openpyxl.styles.Font(bold=True, color="FFFFFF")
+            cell.fill = openpyxl.styles.PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        
+        # Dados de exemplo
+        exemplo_dados = [
+            ['MAT001', 'Operação', 'DISC001', 'Segurança', 'MAT001', 'João Silva', '2', 'Necessita aprimoramento'],
+            ['MAT001', 'Operação', 'DISC002', 'Qualidade', 'MAT002', 'Maria Santos', '3', 'Em dia com treinamentos'],
+        ]
+        
+        for row_idx, row_data in enumerate(exemplo_dados, start=2):
+            for col_idx, value in enumerate(row_data, start=1):
+                ws.cell(row=row_idx, column=col_idx).value = value
+        
+        # Ajustar largura das colunas
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value or '')) > max_length:
+                        max_length = len(str(cell.value or ''))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+        
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="template_matrizes.xlsx"'
+        return response
+    
+    else:
+        return redirect('procedures:importacao_matriz')
+
+
+# ==============================================================================
+# EXPORTAÇÃO DE MATRIZES
+# ==============================================================================
+
+@login_required
+@require_http_methods(["GET"])
+def exportar_matrizes_view(request, formato='csv'):
+    """
+    Exporta todas as matrizes, disciplinas e colaboradores em CSV ou Excel.
+    """
+    from django.http import HttpResponse
+    from procedures.utils.exportacao_matriz import ExportadorMatrizHabilidade
+    
+    try:
+        exportador = ExportadorMatrizHabilidade()
+        
+        if formato == 'csv':
+            output, filename = exportador.exportar_csv()
+            response = HttpResponse(output.getvalue(), content_type='text/csv; charset=utf-8')
+        elif formato == 'excel':
+            output, filename = exportador.exportar_excel()
+            response = HttpResponse(output, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        else:
+            return redirect('procedures:matrizes_list')
+        
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    
+    except Exception as e:
+        messages.error(request, f"Erro ao exportar matrizes: {str(e)}")
+        return redirect('procedures:matrizes_list')
