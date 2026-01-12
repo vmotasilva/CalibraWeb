@@ -175,7 +175,7 @@ def modulo_rh_view(request):
 
     # Pré-carregar perfis ativos com procedimentos em batch
     prefetch_perfis = Prefetch(
-        'colaboradorperfil_set',
+        'perfis_treinamento',
         queryset=ColaboradorPerfil.objects.filter(ativo=True).select_related('perfil')
     )
 
@@ -233,7 +233,7 @@ def modulo_rh_view(request):
         last = None
         
         # Usar dados já carregados em memória (via prefetch)
-        perfis_ativos = f.colaboradorperfil_set.all()
+        perfis_ativos = f.perfis_treinamento.all()
         
         if not perfis_ativos:
             f.trein_vigentes = 0
