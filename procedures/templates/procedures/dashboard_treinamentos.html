@@ -307,13 +307,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Gráfico de Treinamentos por Mês
     const meses = [
         {% for item in treinamentos_por_mes %}
-        '{{ item.mes }}'{{ forloop.last|yesno:'' }},
+        '{{ item.mes }}'{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
     const valores = [
         {% for item in treinamentos_por_mes %}
-        {{ item.total }}{{ forloop.last|yesno:'' }},
+        {{ item.total }}{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
@@ -361,19 +361,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Gráfico por Líder - Stacked Bar
     const lideres = [
         {% for item in treinamentos_por_lider %}
-        '{{ item.nome }}'{{ forloop.last|yesno:'' }},
+        '{{ item.nome }}'{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
     const vigentes_lider = [
         {% for item in treinamentos_por_lider %}
-        {{ item.vigentes }}{{ forloop.last|yesno:'' }},
+        {{ item.vigentes }}{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
     const pendentes_lider = [
         {% for item in treinamentos_por_lider %}
-        {{ item.pendentes }}{{ forloop.last|yesno:'' }},
+        {{ item.pendentes }}{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
@@ -434,19 +434,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Gráfico por Setor e Turno - Stacked Bar
     const setores_turnos = [
         {% for item in treinamentos_por_setor_turno %}
-        '{{ item.nome }}'{{ forloop.last|yesno:'' }},
+        '{{ item.nome }}'{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
     const vigentes_setor = [
         {% for item in treinamentos_por_setor_turno %}
-        {{ item.vigentes }}{{ forloop.last|yesno:'' }},
+        {{ item.vigentes }}{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
     const pendentes_setor = [
         {% for item in treinamentos_por_setor_turno %}
-        {{ item.pendentes }}{{ forloop.last|yesno:'' }},
+        {{ item.pendentes }}{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
