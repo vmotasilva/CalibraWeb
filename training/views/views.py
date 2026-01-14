@@ -368,8 +368,8 @@ def dashboard_treinamentos_view(request):
         # - contém o colaborador (via colaboradores M2M - related_name from Colaborador.pacotes_treinamento)
         pacote_colaborador_exists = Exists(
             PacoteTreinamento.objects.filter(
-                procedimentos=OuterRef('procedimento_id'),
-                colaboradores=OuterRef('colaborador_id')
+                procedimentos__id=OuterRef('procedimento_id'),
+                colaboradores__id=OuterRef('colaborador_id')
             )
         )
         return RegistroTreinamento.objects.filter(
@@ -642,8 +642,8 @@ def dashboard_treinamentos_filtered_view(request):
     # Base query - validar que colaborador está associado ao pacote do procedimento
     pacote_colaborador_exists = Exists(
         PacoteTreinamento.objects.filter(
-            procedimentos=OuterRef('procedimento_id'),
-            colaboradores=OuterRef('colaborador_id')
+            procedimentos__id=OuterRef('procedimento_id'),
+            colaboradores__id=OuterRef('colaborador_id')
         )
     )
     
