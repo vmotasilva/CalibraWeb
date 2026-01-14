@@ -5,6 +5,80 @@
 
 {% block content %}
 <style>
+    .dashboard-wrapper {
+        display: flex;
+        gap: 1rem;
+        min-height: calc(100vh - 100px);
+    }
+
+    .sidebar {
+        width: 280px;
+        background: white;
+        border-right: 1px solid #dee2e6;
+        padding: 1rem;
+        overflow-y: auto;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .sidebar.collapsed {
+        width: 0;
+        padding: 0;
+        overflow: hidden;
+        border: none;
+    }
+
+    .main-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+
+    .toggle-sidebar-btn {
+        position: fixed;
+        left: 10px;
+        top: 70px;
+        z-index: 1000;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 0.25rem;
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .toggle-sidebar-btn:hover {
+        background: #0056b3;
+    }
+
+    .filter-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .filter-group label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #495057;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .filter-group select {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-clear-filters {
+        width: 100%;
+        margin-top: 1rem;
+        font-size: 0.85rem;
+    }
+
     .kpi-container-single {
         display: flex;
         flex-wrap: nowrap;
@@ -25,6 +99,15 @@
         .kpi-card {
             flex: 1 1 calc(50% - 0.25rem);
         }
+        .dashboard-wrapper {
+            flex-direction: column;
+        }
+        .sidebar {
+            width: 100%;
+        }
+        .toggle-sidebar-btn {
+            display: none;
+        }
     }
     
     @media (min-width: 577px) and (max-width: 767px) {
@@ -38,339 +121,462 @@
             flex: 1 1 calc(25% - 0.375rem);
         }
     }
+
+    .table-container {
+        margin-top: 2rem;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        overflow: hidden;
+    }
+
+    .table-container h5 {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        margin: 0;
+    }
+
+    .table-container table {
+        margin: 0;
+    }
+
+    .table-container table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
 </style>
-<div class="container-fluid py-2">
-    <!-- Cabeçalho -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h2 mb-0"><i class="bi bi-graph-up"></i> Dashboard de Treinamentos</h1>
-            <small class="text-muted">Visão geral de estatísticas e conformidade</small>
+
+<button class="toggle-sidebar-btn" id="toggleSidebarBtn">
+    <i class="bi bi-funnel"></i> Filtros
+</button>
+
+<div class="dashboard-wrapper">
+    <!-- Sidebar com Filtros -->
+    <div class="sidebar" id="filterSidebar">
+        <h6 class="mb-3"><i class="bi bi-sliders"></i> Filtros</h6>
+
+        <div class="filter-group">
+            <label for="filterSetor">Setor</label>
+            <select id="filterSetor" class="form-select form-select-sm">
+                <option value="">Todos os setores</option>
+                {% for setor in setores %}
+                <option value="{{ setor.id }}">{{ setor.nome }}</option>
+                {% endfor %}
+            </select>
         </div>
 
+        <div class="filter-group">
+            <label for="filterTurno">Turno</label>
+            <select id="filterTurno" class="form-select form-select-sm">
+                <option value="">Todos os turnos</option>
+                {% for turno in turnos %}
+                <option value="{{ turno.value }}">{{ turno.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label for="filterLider">Líder</label>
+            <select id="filterLider" class="form-select form-select-sm">
+                <option value="">Todos os líderes</option>
+                {% for lider in lideres %}
+                <option value="{{ lider.id }}">{{ lider.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label for="filterSupervisor">Supervisor</label>
+            <select id="filterSupervisor" class="form-select form-select-sm">
+                <option value="">Todos os supervisores</option>
+                {% for supervisor in supervisores %}
+                <option value="{{ supervisor.id }}">{{ supervisor.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label for="filterGerente">Gerente</label>
+            <select id="filterGerente" class="form-select form-select-sm">
+                <option value="">Todos os gerentes</option>
+                {% for gerente in gerentes %}
+                <option value="{{ gerente.id }}">{{ gerente.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button class="btn btn-sm btn-outline-secondary btn-clear-filters" id="clearFiltersBtn">
+            <i class="bi bi-x-circle"></i> Limpar Filtros
+        </button>
     </div>
 
-    <!-- KPIs Principais - Todos lado a lado em uma linha -->
-    <div class="kpi-container-single">
-        <!-- Total de Treinamentos -->
-        <div class="kpi-card">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body" style="padding: 0.5rem;">
-                    <div class="d-flex justify-content-between align-items-start gap-1">
-                        <div style="min-width: 0;">
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Total</small>
-                            <div class="h6 mb-0 mt-0" style="font-size: 1rem;">{{ total_treinamentos }}</div>
-                        </div>
-                        <div class="badge bg-primary rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                            <i class="bi bi-mortarboard" style="font-size: 0.6rem;"></i>
+    <!-- Conteúdo Principal -->
+    <div class="main-content">
+        <div class="container-fluid py-2">
+            <!-- Cabeçalho -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h2 mb-0"><i class="bi bi-graph-up"></i> Dashboard de Treinamentos</h1>
+                    <small class="text-muted">Visão geral de estatísticas e conformidade</small>
+                </div>
+            </div>
+
+            <!-- KPIs Principais -->
+            <div class="kpi-container-single">
+                <!-- Total de Treinamentos -->
+                <div class="kpi-card">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body" style="padding: 0.5rem;">
+                            <div class="d-flex justify-content-between align-items-start gap-1">
+                                <div style="min-width: 0;">
+                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Total</small>
+                                    <div class="h6 mb-0 mt-0 kpi-total" style="font-size: 1rem;">{{ total_treinamentos }}</div>
+                                </div>
+                                <div class="badge bg-primary rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                                    <i class="bi bi-mortarboard" style="font-size: 0.6rem;"></i>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Registros cadastrados</small>
                         </div>
                     </div>
-                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Registros cadastrados</small>
                 </div>
-            </div>
-        </div>
 
-        <!-- Treinamentos Vigentes -->
-        <div class="kpi-card">
-            <div class="card h-100 shadow-sm border-success">
-                <div class="card-body" style="padding: 0.5rem;">
-                    <div class="d-flex justify-content-between align-items-start gap-1">
-                        <div style="min-width: 0;">
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Vigentes</small>
-                            <div class="h6 mb-0 mt-0 text-success" style="font-size: 1rem;">{{ treinamentos_vigentes }}</div>
-                        </div>
-                        <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                            <i class="bi bi-check-circle" style="font-size: 0.6rem;"></i>
-                        </div>
-                    </div>
-                    <div class="progress" style="height: 1px; margin-top: 0.25rem;">
-                        <div class="progress-bar bg-success" style="width: {{ taxa_conformidade }}%"></div>
-                    </div>
-                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Concluídos</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Treinamentos Pendentes -->
-        <div class="kpi-card">
-            <div class="card h-100 shadow-sm border-warning">
-                <div class="card-body" style="padding: 0.5rem;">
-                    <div class="d-flex justify-content-between align-items-start gap-1">
-                        <div style="min-width: 0;">
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Pendentes</small>
-                            <div class="h6 mb-0 mt-0 text-warning" style="font-size: 1rem;">{{ treinamentos_pendentes }}</div>
-                        </div>
-                        <div class="badge bg-warning rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                            <i class="bi bi-exclamation-circle" style="font-size: 0.6rem;"></i>
+                <!-- Treinamentos Vigentes -->
+                <div class="kpi-card">
+                    <div class="card h-100 shadow-sm border-success">
+                        <div class="card-body" style="padding: 0.5rem;">
+                            <div class="d-flex justify-content-between align-items-start gap-1">
+                                <div style="min-width: 0;">
+                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Vigentes</small>
+                                    <div class="h6 mb-0 mt-0 text-success kpi-vigentes" style="font-size: 1rem;">{{ treinamentos_vigentes }}</div>
+                                </div>
+                                <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                                    <i class="bi bi-check-circle" style="font-size: 0.6rem;"></i>
+                                </div>
+                            </div>
+                            <div class="progress" style="height: 1px; margin-top: 0.25rem;">
+                                <div class="progress-bar bg-success kpi-conformidade" style="width: {{ taxa_conformidade }}%"></div>
+                            </div>
+                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Concluídos</small>
                         </div>
                     </div>
-                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Não realizados</small>
                 </div>
-            </div>
-        </div>
 
-        <!-- Últimos 30 dias -->
-        <div class="kpi-card">
-            <div class="card h-100 shadow-sm border-info">
-                <div class="card-body" style="padding: 0.5rem;">
-                    <div class="d-flex justify-content-between align-items-start gap-1">
-                        <div style="min-width: 0;">
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Últ. 30</small>
-                            <div class="h6 mb-0 mt-0 text-info" style="font-size: 1rem;">{{ treinamentos_ultimos_30_dias }}</div>
-                        </div>
-                        <div class="badge bg-info rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                            <i class="bi bi-calendar-event" style="font-size: 0.6rem;"></i>
+                <!-- Treinamentos Pendentes -->
+                <div class="kpi-card">
+                    <div class="card h-100 shadow-sm border-warning">
+                        <div class="card-body" style="padding: 0.5rem;">
+                            <div class="d-flex justify-content-between align-items-start gap-1">
+                                <div style="min-width: 0;">
+                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Pendentes</small>
+                                    <div class="h6 mb-0 mt-0 text-warning kpi-pendentes" style="font-size: 1rem;">{{ treinamentos_pendentes }}</div>
+                                </div>
+                                <div class="badge bg-warning rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                                    <i class="bi bi-exclamation-circle" style="font-size: 0.6rem;"></i>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Não realizados</small>
                         </div>
                     </div>
-                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Últimos 30 dias</small>
                 </div>
-            </div>
-        </div>
-    </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Gráficos - 4 lado a lado -->
-    <div class="row mb-4 g-2">
-        <!-- Distribuição por Status -->
-        <div class="col-lg-3 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
-                </div>
-                <div class="card-body" style="padding: 0.75rem;">
-                    <canvas id="chartStatus" height="200"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Treinamentos por Mês -->
-        <div class="col-lg-3 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Treinamentos Últimos 6 Meses</h6>
-                </div>
-                <div class="card-body" style="padding: 0.75rem;">
-                    <canvas id="chartMeses" height="200"></canvas>
+                <!-- Últimos 30 dias -->
+                <div class="kpi-card">
+                    <div class="card h-100 shadow-sm border-info">
+                        <div class="card-body" style="padding: 0.5rem;">
+                            <div class="d-flex justify-content-between align-items-start gap-1">
+                                <div style="min-width: 0;">
+                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Últ. 30</small>
+                                    <div class="h6 mb-0 mt-0 text-info" style="font-size: 1rem;">{{ treinamentos_ultimos_30_dias }}</div>
+                                </div>
+                                <div class="badge bg-info rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                                    <i class="bi bi-calendar-event" style="font-size: 0.6rem;"></i>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Últimos 30 dias</small>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Gráfico por Setor e Turno -->
-        <div class="col-lg-3 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Treinamentos por Setor e Turno</h6>
+            <!-- Gráficos -->
+            <div class="row mb-4 g-2">
+                <!-- Distribuição por Status -->
+                <div class="col-lg-4 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
+                        </div>
+                        <div class="card-body" style="padding: 0.75rem;">
+                            <canvas id="chartStatus" height="200"></canvas>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body" style="padding: 0.75rem;">
-                    <canvas id="chartSetorTurno" height="200"></canvas>
+
+                <!-- Treinamentos por Mês -->
+                <div class="col-lg-4 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Últimos 6 Meses</h6>
+                        </div>
+                        <div class="card-body" style="padding: 0.75rem;">
+                            <canvas id="chartMeses" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfico por Setor e Turno -->
+                <div class="col-lg-4 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Setor e Turno</h6>
+                        </div>
+                        <div class="card-body" style="padding: 0.75rem;">
+                            <canvas id="chartSetorTurno" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela de Dados -->
+            <div class="table-container">
+                <h5><i class="bi bi-table"></i> Registros de Treinamento</h5>
+                <div style="overflow-x: auto;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Colaborador</th>
+                                <th>Procedimento</th>
+                                <th>Descrição</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaDados">
+                            {% for registro in dados_tabela %}
+                            <tr>
+                                <td>{{ registro.colaborador }}</td>
+                                <td><span class="badge bg-secondary">{{ registro.procedimento }}</span></td>
+                                <td><small>{{ registro.procedimento_nome }}</small></td>
+                                <td>{{ registro.data }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted">Nenhum registro encontrado</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Chart.js para gráficos -->
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Gráfico de Status
-    const ctxStatus = document.getElementById('chartStatus').getContext('2d');
-    const chartStatus = new Chart(ctxStatus, {
-        type: 'doughnut',
-        data: {
-            labels: ['Vigentes', 'Pendentes'],
-            datasets: [{
-                data: [{{ status_distribuicao.vigente }}, {{ status_distribuicao.pendente }}],
-                backgroundColor: ['#28a745', '#f87171'],
-                borderColor: ['#218838', '#dc2626'],
-                borderWidth: 2,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            layout: {
-                padding: {
-                    left: 10,
-                    right: 10,
-                    top: 10,
-                    bottom: 10
-                }
+    let chartsInstances = {
+        status: null,
+        meses: null,
+        setorTurno: null
+    };
+
+    let dadosOriginais = {
+        treinamentos_por_mes: {{ treinamentos_por_mes|safe }},
+        treinamentos_por_setor_turno: {{ treinamentos_por_setor_turno|safe }}
+    };
+
+    function initCharts(data = null) {
+        // Usar dados filtrados ou originais
+        const statusDist = data ? data.status_distribuicao : {{ status_distribuicao|safe }};
+        const mesesData = data ? data.treinamentos_por_mes : dadosOriginais.treinamentos_por_mes;
+        const setorData = data ? [] : dadosOriginais.treinamentos_por_setor_turno;
+
+        // Destruir gráficos anteriores
+        Object.values(chartsInstances).forEach(chart => {
+            if (chart) chart.destroy();
+        });
+
+        // Gráfico de Status
+        const ctxStatus = document.getElementById('chartStatus').getContext('2d');
+        chartsInstances.status = new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['Vigentes', 'Pendentes'],
+                datasets: [{
+                    data: [statusDist.vigente || 0, statusDist.pendente || 0],
+                    backgroundColor: ['#28a745', '#f87171'],
+                    borderColor: ['#218838', '#dc2626'],
+                    borderWidth: 2,
+                    hoverOffset: 4
+                }]
             },
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 15,
-                        font: {
-                            size: 14
-                        }
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                layout: {
+                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 15, font: { size: 14 } }
                     }
                 }
             }
-        }
-    });
+        });
 
-    // Gráfico de Treinamentos por Mês
-    const meses = [
-        {% for item in treinamentos_por_mes %}
-        '{{ item.mes }}'{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
+        // Gráfico de Meses
+        const meses = mesesData.map(m => m.mes);
+        const valores = mesesData.map(m => m.total);
 
-    const valores = [
-        {% for item in treinamentos_por_mes %}
-        {{ item.total }}{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-
-    const ctxMeses = document.getElementById('chartMeses').getContext('2d');
-    const chartMeses = new Chart(ctxMeses, {
-        type: 'bar',
-        data: {
-            labels: meses,
-            datasets: [{
-                label: 'Treinamentos Realizados',
-                data: valores,
-                backgroundColor: 'rgba(23, 162, 184, 0.6)',
-                borderColor: 'rgba(23, 162, 184, 1)',
-                borderWidth: 2,
-                borderRadius: 4,
-                hoverBackgroundColor: 'rgba(23, 162, 184, 0.8)'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            indexAxis: 'x',
-            layout: {
-                padding: {
-                    left: 10,
-                    right: 10,
-                    top: 10,
-                    bottom: 10
-                }
+        const ctxMeses = document.getElementById('chartMeses').getContext('2d');
+        chartsInstances.meses = new Chart(ctxMeses, {
+            type: 'bar',
+            data: {
+                labels: meses,
+                datasets: [{
+                    label: 'Treinamentos',
+                    data: valores,
+                    backgroundColor: 'rgba(23, 162, 184, 0.6)',
+                    borderColor: 'rgba(23, 162, 184, 1)',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    hoverBackgroundColor: 'rgba(23, 162, 184, 0.8)'
+                }]
             },
-            plugins: {
-                legend: {
-                    display: true,
-                    labels: {
-                        padding: 15,
-                        font: {
-                            size: 13
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        font: {
-                            size: 11
-                        }
-                    }
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                layout: {
+                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
                 },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1,
-                        font: {
-                            size: 10
-                        }
-                    }
+                plugins: {
+                    legend: { display: true, labels: { padding: 15, font: { size: 13 } } }
+                },
+                scales: {
+                    x: { ticks: { font: { size: 11 } } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } }
                 }
             }
-        }
-    });
+        });
 
-    // Gráfico por Setor e Turno - Stacked Bar
-    const setores_turnos = [
-        {% for item in treinamentos_por_setor_turno %}
-        '{{ item.nome }}'{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
+        // Gráfico de Setor e Turno
+        const setorLabels = setorData.map(s => s.nome);
+        const setorVigentes = setorData.map(s => s.vigentes);
+        const setorPendentes = setorData.map(s => s.pendentes);
 
-    const vigentes_setor = [
-        {% for item in treinamentos_por_setor_turno %}
-        {{ item.vigentes }}{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-
-    const pendentes_setor = [
-        {% for item in treinamentos_por_setor_turno %}
-        {{ item.pendentes }}{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-
-    console.log('Setores/Turnos:', setores_turnos);
-    console.log('Vigentes Setor:', vigentes_setor);
-    console.log('Pendentes Setor:', pendentes_setor);
-
-    const ctxSetorTurno = document.getElementById('chartSetorTurno').getContext('2d');
-    const chartSetorTurno = new Chart(ctxSetorTurno, {
-        type: 'bar',
-        data: {
-            labels: setores_turnos,
-            datasets: [
-                {
-                    label: 'Vigentes',
-                    data: vigentes_setor,
-                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
-                    borderColor: 'rgba(40, 167, 69, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Pendentes',
-                    data: pendentes_setor,
-                    backgroundColor: 'rgba(248, 113, 113, 0.7)',
-                    borderColor: 'rgba(248, 113, 113, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            indexAxis: 'y',
-            layout: {
-                padding: {
-                    left: 10,
-                    right: 10,
-                    top: 10,
-                    bottom: 10
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        padding: 15,
-                        font: {
-                            size: 12
-                        }
+        const ctxSetorTurno = document.getElementById('chartSetorTurno').getContext('2d');
+        chartsInstances.setorTurno = new Chart(ctxSetorTurno, {
+            type: 'bar',
+            data: {
+                labels: setorLabels,
+                datasets: [
+                    {
+                        label: 'Vigentes',
+                        data: setorVigentes,
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Pendentes',
+                        data: setorPendentes,
+                        backgroundColor: 'rgba(248, 113, 113, 0.7)',
+                        borderColor: 'rgba(248, 113, 113, 1)',
+                        borderWidth: 1
                     }
-                }
+                ]
             },
-            scales: {
-                x: {
-                    stacked: true,
-                    beginAtZero: true
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                indexAxis: 'y',
+                layout: {
+                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
                 },
-                y: {
-                    stacked: true,
-                    ticks: {
-                        font: {
-                            size: 11
-                        }
-                    }
+                plugins: {
+                    legend: { display: true, position: 'top', labels: { padding: 15, font: { size: 12 } } }
+                },
+                scales: {
+                    x: { stacked: true, beginAtZero: true },
+                    y: { stacked: true, ticks: { font: { size: 11 } } }
                 }
             }
+        });
+    }
+
+    function aplicarFiltros() {
+        const turno = document.getElementById('filterTurno').value;
+        const setor = document.getElementById('filterSetor').value;
+        const lider = document.getElementById('filterLider').value;
+        const supervisor = document.getElementById('filterSupervisor').value;
+        const gerente = document.getElementById('filterGerente').value;
+
+        const params = new URLSearchParams();
+        if (turno) params.append('turno', turno);
+        if (setor) params.append('setor', setor);
+        if (lider) params.append('lider', lider);
+        if (supervisor) params.append('supervisor', supervisor);
+        if (gerente) params.append('gerente', gerente);
+
+        const url = '{% url "training:dashboard_filtered" %}?' + params.toString();
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                document.querySelector('.kpi-total').textContent = data.total_treinamentos;
+                document.querySelector('.kpi-vigentes').textContent = data.treinamentos_vigentes;
+                document.querySelector('.kpi-pendentes').textContent = data.treinamentos_pendentes;
+                document.querySelector('.kpi-conformidade').style.width = data.taxa_conformidade + '%';
+
+                initCharts(data);
+                atualizarTabela(data.dados_tabela);
+            })
+            .catch(error => console.error('Erro ao filtrar:', error));
+    }
+
+    function atualizarTabela(dados) {
+        const tbody = document.getElementById('tabelaDados');
+        tbody.innerHTML = '';
+
+        if (dados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum registro encontrado</td></tr>';
+            return;
         }
+
+        dados.forEach(reg => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${reg.colaborador}</td>
+                <td><span class="badge bg-secondary">${reg.procedimento}</span></td>
+                <td><small>${reg.procedimento_nome}</small></td>
+                <td>${reg.data}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Event Listeners
+    document.getElementById('toggleSidebarBtn').addEventListener('click', function() {
+        document.getElementById('filterSidebar').classList.toggle('collapsed');
     });
-});
+
+    document.getElementById('filterSetor').addEventListener('change', aplicarFiltros);
+    document.getElementById('filterTurno').addEventListener('change', aplicarFiltros);
+    document.getElementById('filterLider').addEventListener('change', aplicarFiltros);
+    document.getElementById('filterSupervisor').addEventListener('change', aplicarFiltros);
+    document.getElementById('filterGerente').addEventListener('change', aplicarFiltros);
+
+    document.getElementById('clearFiltersBtn').addEventListener('click', function() {
+        document.getElementById('filterSetor').value = '';
+        document.getElementById('filterTurno').value = '';
+        document.getElementById('filterLider').value = '';
+        document.getElementById('filterSupervisor').value = '';
+        document.getElementById('filterGerente').value = '';
+        aplicarFiltros();
+    });
+
+    // Inicializar gráficos ao carregar
+    document.addEventListener('DOMContentLoaded', initCharts);
 </script>
 
 <style>
@@ -392,10 +598,6 @@ document.addEventListener('DOMContentLoaded', function() {
     .progress {
         background-color: #e9ecef;
         border-radius: 0.25rem;
-    }
-
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
     }
 </style>
 {% endblock %}

@@ -542,4 +542,168 @@ def dashboard_treinamentos_view(request):
         'treinamentos_por_setor_turno': treinamentos_por_setor_turno,
     }
     
+    # Adicionar dados de filtros dinâmicos
+    from organization.models import Setor
+    from core.models import TURNOS_CHOICES
+    
+    # Setores
+    setores = Setor.objects.filter(
+        colaborador__is_active=True
+    ).distinct().order_by('nome').values_list('id', 'nome')
+    context['setores'] = [{'id': s[0], 'nome': s[1]} for s in setores]
+    
+    # Turnos
+    context['turnos'] = [{'value': t[0], 'label': t[1]} for t in TURNOS_CHOICES]
+    
+    # Líderes
+    lideres = Colaborador.objects.filter(
+        liderados__isnull=False,
+        liderados__is_active=True,
+        is_active=True
+    ).distinct().order_by('nome_completo').values_list('id', 'nome_completo')
+    context['lideres'] = [{'id': l[0], 'nome': l[1]} for l in lideres]
+    
+    # Supervisores
+    supervisores = Colaborador.objects.filter(
+        supervisionados__isnull=False,
+        supervisionados__is_active=True,
+        is_active=True
+    ).distinct().order_by('nome_completo').values_list('id', 'nome_completo')
+    context['supervisores'] = [{'id': s[0], 'nome': s[1]} for s in supervisores]
+    
+    # Gerentes
+    gerentes = Colaborador.objects.filter(
+        gerenciados__isnull=False,
+        gerenciados__is_active=True,
+        is_active=True
+    ).distinct().order_by('nome_completo').values_list('id', 'nome_completo')
+    context['gerentes'] = [{'id': g[0], 'nome': g[1]} for g in gerentes]
+    
+    # Tabela de dados inicial (primeiros 50 registros)
+    context['dados_tabela'] = list(
+        RegistroTreinamento.objects.select_related(
+            'colaborador', 'procedimento'
+        ).order_by('-data_treinamento', '-id')[:50].values(
+            'id', 'colaborador__nome_completo', 'procedimento__codigo',
+            'procedimento__nome', 'data_treinamento'
+        )
+    )
+    
+    # Processar dados da tabela para o template
+    dados_processados = []
+    for registro in context['dados_tabela']:
+        dados_processados.append({
+            'id': registro['id'],
+            'colaborador': registro['colaborador__nome_completo'],
+            'procedimento': registro['procedimento__codigo'],
+            'procedimento_nome': registro['procedimento__nome'][:40],
+            'data': registro['data_treinamento'].strftime('%d/%m/%Y') if registro['data_treinamento'] else 'Pendente'
+        })
+    context['dados_tabela'] = dados_processados
+    
     return render(request, 'procedures/dashboard_treinamentos.html', context)
+
+
+@login_required
+def dashboard_treinamentos_filtered_view(request):
+    """API para retornar dados filtrados do dashboard"""
+    import json
+    from django.http import JsonResponse
+    from django.db.models import Count, Q
+    from datetime import timedelta, date
+    
+    # Pegar filtros da query string
+    turno = request.GET.get('turno', '').strip()
+    setor_id = request.GET.get('setor', '').strip()
+    lider_id = request.GET.get('lider', '').strip()
+    supervisor_id = request.GET.get('supervisor', '').strip()
+    gerente_id = request.GET.get('gerente', '').strip()
+    
+    # Construir query base
+    query = Q()
+    
+    if turno:
+        query &= Q(colaborador__turno=turno)
+    if setor_id:
+        try:
+            query &= Q(colaborador__setor_id=int(setor_id))
+        except:
+            pass
+    if lider_id:
+        try:
+            query &= Q(colaborador__lider_id=int(lider_id))
+        except:
+            pass
+    if supervisor_id:
+        try:
+            query &= Q(colaborador__supervisor_id=int(supervisor_id))
+        except:
+            pass
+    if gerente_id:
+        try:
+            query &= Q(colaborador__gerente_id=int(gerente_id))
+        except:
+            pass
+    
+    # Contar registros
+    treinamentos = RegistroTreinamento.objects.filter(query)
+    total_treinamentos = treinamentos.count()
+    treinamentos_vigentes = treinamentos.filter(data_treinamento__isnull=False).count()
+    treinamentos_pendentes = treinamentos.filter(data_treinamento__isnull=True).count()
+    
+    # Taxa de conformidade
+    if total_treinamentos > 0:
+        taxa_conformidade = round((treinamentos_vigentes / total_treinamentos) * 100, 1)
+    else:
+        taxa_conformidade = 0
+    
+    # Distribuição de status
+    status_distribuicao = {
+        'vigente': treinamentos_vigentes,
+        'pendente': treinamentos_pendentes
+    }
+    
+    # Gráfico por mês
+    treinamentos_por_mes = []
+    for i in range(5, -1, -1):
+        data_inicio = date.today() - timedelta(days=30 * (i + 1))
+        data_fim = date.today() - timedelta(days=30 * i)
+        
+        count = treinamentos.filter(
+            data_treinamento__gte=data_inicio,
+            data_treinamento__lt=data_fim,
+            data_treinamento__isnull=False
+        ).count()
+        
+        treinamentos_por_mes.append({
+            'mes': data_inicio.strftime('%b/%y'),
+            'total': count
+        })
+    
+    # Dados da tabela: últimos treinamentos
+    dados_tabela = list(treinamentos.select_related(
+        'colaborador', 'procedimento'
+    ).order_by('-data_treinamento', '-id')[:50].values(
+        'id', 'colaborador__nome_completo', 'procedimento__codigo',
+        'procedimento__nome', 'data_treinamento'
+    ))
+    
+    dados_tabela_list = []
+    for registro in dados_tabela:
+        dados_tabela_list.append({
+            'id': registro['id'],
+            'colaborador': registro['colaborador__nome_completo'],
+            'procedimento': registro['procedimento__codigo'],
+            'procedimento_nome': registro['procedimento__nome'][:40],
+            'data': registro['data_treinamento'].strftime('%d/%m/%Y') if registro['data_treinamento'] else 'Pendente'
+        })
+    
+    return JsonResponse({
+        'total_treinamentos': total_treinamentos,
+        'treinamentos_vigentes': treinamentos_vigentes,
+        'treinamentos_pendentes': treinamentos_pendentes,
+        'taxa_conformidade': taxa_conformidade,
+        'status_distribuicao': status_distribuicao,
+        'treinamentos_por_mes': treinamentos_por_mes,
+        'dados_tabela': dados_tabela_list
+    })
