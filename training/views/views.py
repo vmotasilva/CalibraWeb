@@ -363,17 +363,22 @@ def dashboard_treinamentos_view(request):
     # Colaborador deve estar em pacotes_treinamento que contém o procedimento
     def get_valid_registros():
         """Retorna apenas registros onde o colaborador está associado ao pacote do procedimento"""
-        # Subquery para verificar se o colaborador está associado a um pacote que contém o procedimento
+        from training.models import PacoteTreinamento
+        
+        # Subquery para verificar se existe um PacoteTreinamento que:
+        # - contém o procedimento (via procedimentos M2M)
+        # - contém o colaborador (via colaboradores M2M - related_name from Colaborador.pacotes_treinamento)
         pacote_colaborador_exists = Exists(
-            RegistroTreinamento.objects.filter(
-                pk=OuterRef('pk'),
-                procedimento__pacotes__colaboradores=OuterRef('colaborador_id')
+            PacoteTreinamento.objects.filter(
+                procedimentos=OuterRef('procedimento_id'),
+                colaboradores=OuterRef('colaborador_id')
             )
         )
         return RegistroTreinamento.objects.filter(
             colaborador__isnull=False,
-            procedimento__isnull=False
-        ).filter(pacote_colaborador_exists).distinct()
+            procedimento__isnull=False,
+            pacote_colaborador_exists
+        ).distinct()
     
     # Estatísticas gerais - apenas registros válidos
     valid_registros = get_valid_registros()
@@ -626,8 +631,9 @@ def dashboard_treinamentos_filtered_view(request):
     """API para retornar dados filtrados do dashboard"""
     import json
     from django.http import JsonResponse
-    from django.db.models import Count, Q, OuterRef
+    from django.db.models import Count, Q, Exists, OuterRef
     from datetime import timedelta, date
+    from training.models import PacoteTreinamento
     
     # Pegar filtros da query string
     turno = request.GET.get('turno', '').strip()
@@ -636,38 +642,45 @@ def dashboard_treinamentos_filtered_view(request):
     supervisor_id = request.GET.get('supervisor', '').strip()
     gerente_id = request.GET.get('gerente', '').strip()
     
-    # Base query - apenas registros onde colaborador está associado ao pacote do procedimento
-    query = Q(
+    # Base query - validar que colaborador está associado ao pacote do procedimento
+    pacote_colaborador_exists = Exists(
+        PacoteTreinamento.objects.filter(
+            procedimentos=OuterRef('procedimento_id'),
+            colaboradores=OuterRef('colaborador_id')
+        )
+    )
+    
+    base_query = Q(
         colaborador__isnull=False,
         procedimento__isnull=False,
-        procedimento__pacotes__colaboradores=OuterRef('colaborador')
+        pacote_colaborador_exists
     )
     
     if turno:
-        query &= Q(colaborador__turno=turno)
+        base_query &= Q(colaborador__turno=turno)
     if setor_id:
         try:
-            query &= Q(colaborador__setor_id=int(setor_id))
+            base_query &= Q(colaborador__setor_id=int(setor_id))
         except:
             pass
     if lider_id:
         try:
-            query &= Q(colaborador__lider_id=int(lider_id))
+            base_query &= Q(colaborador__lider_id=int(lider_id))
         except:
             pass
     if supervisor_id:
         try:
-            query &= Q(colaborador__supervisor_id=int(supervisor_id))
+            base_query &= Q(colaborador__supervisor_id=int(supervisor_id))
         except:
             pass
     if gerente_id:
         try:
-            query &= Q(colaborador__gerente_id=int(gerente_id))
+            base_query &= Q(colaborador__gerente_id=int(gerente_id))
         except:
             pass
     
     # Contar registros
-    treinamentos = RegistroTreinamento.objects.filter(query).distinct()
+    treinamentos = RegistroTreinamento.objects.filter(base_query).distinct()
     total_treinamentos = treinamentos.count()
     treinamentos_vigentes = treinamentos.filter(data_treinamento__isnull=False).count()
     treinamentos_pendentes = treinamentos.filter(data_treinamento__isnull=True).count()
