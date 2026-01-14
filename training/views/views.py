@@ -608,7 +608,7 @@ def dashboard_treinamentos_view(request):
     registros_query = valid_registros.select_related(
         'colaborador', 'procedimento'
     ).order_by('-data_treinamento', '-id').values(
-        'id', 'colaborador__nome_completo', 'procedimento__codigo',
+        'id', 'colaborador__id', 'colaborador__nome_completo', 'procedimento__codigo',
         'procedimento__nome', 'data_treinamento'
     )
     
@@ -622,6 +622,7 @@ def dashboard_treinamentos_view(request):
     for registro in page_obj.object_list:
         dados_processados.append({
             'id': registro['id'],
+            'colaborador_id': registro['colaborador__id'],
             'colaborador': registro['colaborador__nome_completo'],
             'procedimento': registro['procedimento__codigo'],
             'procedimento_nome': registro['procedimento__nome'][:40],
