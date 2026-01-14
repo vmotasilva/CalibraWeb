@@ -4,6 +4,36 @@
 {% block title %}Dashboard de Treinamentos{% endblock %}
 
 {% block content %}
+<style>
+    .kpi-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .kpi-card {
+        min-width: 0;
+    }
+    
+    @media (max-width: 576px) {
+        .kpi-container {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (min-width: 768px) and (max-width: 991px) {
+        .kpi-container {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+    
+    @media (min-width: 992px) {
+        .kpi-container {
+            grid-template-columns: repeat(7, 1fr);
+        }
+    }
+</style>
 <div class="container-fluid py-4">
     <!-- Cabeçalho -->
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -14,112 +44,112 @@
 
     </div>
 
-    <!-- KPIs Principais - Todos lado a lado -->
-    <div class="row mb-1 g-1">
+    <!-- KPIs Principais - Grid responsivo -->
+    <div class="kpi-container">
         <!-- Total de Treinamentos -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
+        <div class="kpi-card">
             <div class="card h-100 shadow-sm">
-                <div class="card-body p-1">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Total</small>
-                            <h5 class="mb-0 mt-0" style="font-size: 1.1rem;">{{ total_treinamentos }}</h5>
+                <div class="card-body" style="padding: 0.5rem;">
+                    <div class="d-flex justify-content-between align-items-start gap-1">
+                        <div style="min-width: 0;">
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Total</small>
+                            <div class="h6 mb-0 mt-0" style="font-size: 1rem;">{{ total_treinamentos }}</div>
                         </div>
-                        <div class="badge bg-primary rounded-circle" style="padding: 0.3rem 0.4rem; font-size: 0.7rem;">
-                            <i class="bi bi-mortarboard" style="font-size: 0.7rem;"></i>
+                        <div class="badge bg-primary rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                            <i class="bi bi-mortarboard" style="font-size: 0.6rem;"></i>
                         </div>
                     </div>
-                    <small class="text-muted mt-0 d-block" style="font-size: 0.6rem;">Completos</small>
+                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Completos</small>
                 </div>
             </div>
         </div>
 
         <!-- Treinamentos Vigentes -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
+        <div class="kpi-card">
             <div class="card h-100 shadow-sm border-success">
-                <div class="card-body p-1">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Vigentes</small>
-                            <h5 class="mb-0 mt-0 text-success" style="font-size: 1.1rem;">{{ treinamentos_vigentes }}</h5>
+                <div class="card-body" style="padding: 0.5rem;">
+                    <div class="d-flex justify-content-between align-items-start gap-1">
+                        <div style="min-width: 0;">
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Vigentes</small>
+                            <div class="h6 mb-0 mt-0 text-success" style="font-size: 1rem;">{{ treinamentos_vigentes }}</div>
                         </div>
-                        <div class="badge bg-success rounded-circle" style="padding: 0.3rem 0.4rem; font-size: 0.7rem;">
-                            <i class="bi bi-check-circle" style="font-size: 0.7rem;"></i>
+                        <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                            <i class="bi bi-check-circle" style="font-size: 0.6rem;"></i>
                         </div>
                     </div>
-                    <div class="progress mt-0" style="height: 1px;">
+                    <div class="progress" style="height: 1px; margin-top: 0.25rem;">
                         <div class="progress-bar bg-success" style="width: {{ taxa_conformidade }}%"></div>
                     </div>
-                    <small class="text-muted mt-0 d-block" style="font-size: 0.6rem;">{{ taxa_conformidade }}%</small>
+                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">{{ taxa_conformidade }}%</small>
                 </div>
             </div>
         </div>
 
         <!-- Treinamentos Pendentes -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
+        <div class="kpi-card">
             <div class="card h-100 shadow-sm border-warning">
-                <div class="card-body p-1">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Pendentes</small>
-                            <h5 class="mb-0 mt-0 text-warning" style="font-size: 1.1rem;">{{ treinamentos_pendentes }}</h5>
+                <div class="card-body" style="padding: 0.5rem;">
+                    <div class="d-flex justify-content-between align-items-start gap-1">
+                        <div style="min-width: 0;">
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Pendentes</small>
+                            <div class="h6 mb-0 mt-0 text-warning" style="font-size: 1rem;">{{ treinamentos_pendentes }}</div>
                         </div>
-                        <div class="badge bg-warning rounded-circle" style="padding: 0.3rem 0.4rem; font-size: 0.7rem;">
-                            <i class="bi bi-exclamation-circle" style="font-size: 0.7rem;"></i>
+                        <div class="badge bg-warning rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                            <i class="bi bi-exclamation-circle" style="font-size: 0.6rem;"></i>
                         </div>
                     </div>
-                    <small class="text-muted mt-0 d-block" style="font-size: 0.6rem;">Aguardando</small>
+                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Aguardando</small>
                 </div>
             </div>
         </div>
 
         <!-- Últimos 30 dias -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
+        <div class="kpi-card">
             <div class="card h-100 shadow-sm border-info">
-                <div class="card-body p-1">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Últimos 30</small>
-                            <h5 class="mb-0 mt-0 text-info" style="font-size: 1.1rem;">{{ treinamentos_ultimos_30_dias }}</h5>
+                <div class="card-body" style="padding: 0.5rem;">
+                    <div class="d-flex justify-content-between align-items-start gap-1">
+                        <div style="min-width: 0;">
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Últ. 30</small>
+                            <div class="h6 mb-0 mt-0 text-info" style="font-size: 1rem;">{{ treinamentos_ultimos_30_dias }}</div>
                         </div>
-                        <div class="badge bg-info rounded-circle" style="padding: 0.3rem 0.4rem; font-size: 0.7rem;">
-                            <i class="bi bi-calendar-event" style="font-size: 0.7rem;"></i>
+                        <div class="badge bg-info rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                            <i class="bi bi-calendar-event" style="font-size: 0.6rem;"></i>
                         </div>
                     </div>
-                    <small class="text-muted mt-0 d-block" style="font-size: 0.6rem;">Novos</small>
+                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Novos</small>
                 </div>
             </div>
         </div>
 
         <!-- Colaboradores Treinados -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
+        <div class="kpi-card">
             <div class="card shadow-sm">
-                <div class="card-body p-1">
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Colaboradores</small>
-                    <h5 class="mb-0 mt-0" style="font-size: 1.1rem;">{{ total_colaboradores_treinados }}</h5>
-                    <small class="text-muted" style="font-size: 0.6rem;">Treinados</small>
+                <div class="card-body" style="padding: 0.5rem;">
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Colabs</small>
+                    <div class="h6 mb-0 mt-0" style="font-size: 1rem;">{{ total_colaboradores_treinados }}</div>
+                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Treinados</small>
                 </div>
             </div>
         </div>
 
         <!-- Procedimentos Únicos -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
+        <div class="kpi-card">
             <div class="card shadow-sm">
-                <div class="card-body p-1">
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Procedimentos</small>
-                    <h5 class="mb-0 mt-0" style="font-size: 1.1rem;">{{ total_procedimentos_unicos }}</h5>
-                    <small class="text-muted" style="font-size: 0.6rem;">Únicos</small>
+                <div class="card-body" style="padding: 0.5rem;">
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Proced.</small>
+                    <div class="h6 mb-0 mt-0" style="font-size: 1rem;">{{ total_procedimentos_unicos }}</div>
+                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Únicos</small>
                 </div>
             </div>
         </div>
 
         <!-- Taxa de Conformidade -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
+        <div class="kpi-card">
             <div class="card shadow-sm">
-                <div class="card-body p-1">
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Conformidade</small>
-                    <h5 class="mb-0 mt-0" style="font-size: 1.1rem;">{{ taxa_conformidade }}%</h5>
-                    <small class="text-muted" style="font-size: 0.6rem;">Taxa geral</small>
+                <div class="card-body" style="padding: 0.5rem;">
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Conform.</small>
+                    <div class="h6 mb-0 mt-0" style="font-size: 1rem;">{{ taxa_conformidade }}%</div>
+                    <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Taxa</small>
                 </div>
             </div>
         </div>
