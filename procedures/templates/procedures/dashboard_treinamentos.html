@@ -366,7 +366,7 @@
                         <tbody id="tabelaDados">
                             {% for registro in dados_tabela %}
                             <tr>
-                                <td><a href="{% url 'rh:colaborador_detalhe' registro.colaborador_id %}" class="text-decoration-none">{{ registro.colaborador }}</a></td>
+                                <td><a href="{% url 'detalhe_colaborador' registro.colaborador_id %}" class="text-decoration-none">{{ registro.colaborador }}</a></td>
                                 <td><span class="badge bg-secondary">{{ registro.procedimento }}</span></td>
                                 <td><small>{{ registro.procedimento_nome }}</small></td>
                                 <td>{{ registro.data }}</td>
