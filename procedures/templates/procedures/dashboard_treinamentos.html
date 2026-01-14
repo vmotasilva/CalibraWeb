@@ -139,7 +139,7 @@
                     <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
                 </div>
                 <div class="card-body" style="padding: 0.75rem;">
-                    <canvas id="chartStatus" height="140"></canvas>
+                    <canvas id="chartStatus" height="200"></canvas>
                 </div>
             </div>
         </div>
@@ -151,7 +151,7 @@
                     <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Treinamentos Últimos 6 Meses</h6>
                 </div>
                 <div class="card-body" style="padding: 0.75rem;">
-                    <canvas id="chartMeses" height="140"></canvas>
+                    <canvas id="chartMeses" height="200"></canvas>
                 </div>
             </div>
         </div>
@@ -163,7 +163,7 @@
                     <h6 class="mb-0"><i class="bi bi-person-badge"></i> Treinamentos por Líder</h6>
                 </div>
                 <div class="card-body" style="padding: 0.75rem;">
-                    <canvas id="chartLider" height="140"></canvas>
+                    <canvas id="chartLider" height="200"></canvas>
                 </div>
             </div>
         </div>
@@ -175,7 +175,7 @@
                     <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Treinamentos por Setor e Turno</h6>
                 </div>
                 <div class="card-body" style="padding: 0.75rem;">
-                    <canvas id="chartSetorTurno" height="140"></canvas>
+                    <canvas id="chartSetorTurno" height="200"></canvas>
                 </div>
             </div>
         </div>
@@ -319,6 +319,14 @@ document.addEventListener('DOMContentLoaded', function() {
         options: {
             responsive: true,
             maintainAspectRatio: true,
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 10,
+                    top: 10,
+                    bottom: 10
+                }
+            },
             plugins: {
                 legend: {
                     position: 'bottom',
@@ -365,6 +373,14 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: true,
             indexAxis: 'x',
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 10,
+                    top: 10,
+                    bottom: 10
+                }
+            },
             plugins: {
                 legend: {
                     display: true,
@@ -377,10 +393,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             },
             scales: {
+                x: {
+                    ticks: {
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        stepSize: 1
+                        stepSize: 1,
+                        font: {
+                            size: 10
+                        }
                     }
                 }
             }
@@ -436,6 +462,14 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: true,
             indexAxis: 'y',
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 10,
+                    top: 10,
+                    bottom: 10
+                }
+            },
             plugins: {
                 legend: {
                     display: true,
@@ -454,7 +488,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     beginAtZero: true
                 },
                 y: {
-                    stacked: true
+                    stacked: true,
+                    ticks: {
+                        font: {
+                            size: 11
+                        }
+                    }
                 }
             }
         }
@@ -509,6 +548,14 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: true,
             indexAxis: 'y',
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 10,
+                    top: 10,
+                    bottom: 10
+                }
+            },
             plugins: {
                 legend: {
                     display: true,
@@ -527,7 +574,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     beginAtZero: true
                 },
                 y: {
-                    stacked: true
+                    stacked: true,
+                    ticks: {
+                        font: {
+                            size: 11
+                        }
+                    }
                 }
             }
         }
