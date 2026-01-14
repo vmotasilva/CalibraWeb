@@ -454,8 +454,19 @@ def dashboard_treinamentos_view(request):
         # Incluir se tem qualquer registro
         total = vigentes + pendentes
         if total > 0:
+            # Abreviar nome: pegar primeiras iniciais
+            parts = lider.nome_completo.split()
+            if len(parts) > 1:
+                nome_abrev = ' '.join([p[0] + '.' if i < len(parts)-1 else p for i, p in enumerate(parts)])
+                if len(nome_abrev) > 30:
+                    nome_abrev = ' '.join([p[0] + '.' for p in parts[:-1]]) + ' ' + parts[-1]
+                if len(nome_abrev) > 30:
+                    nome_abrev = nome_abrev[:27] + '...'
+            else:
+                nome_abrev = lider.nome_completo[:30]
+            
             treinamentos_por_lider.append({
-                'nome': lider.nome_completo[:25],
+                'nome': nome_abrev,
                 'vigentes': vigentes,
                 'pendentes': pendentes
             })
@@ -502,8 +513,13 @@ def dashboard_treinamentos_view(request):
                 turno_dict = dict(TURNOS_CHOICES)
                 turno_label = turno_dict.get(turno, turno)
                 
+                # Abreviar nome do setor se necessário
+                setor_nome = setor.nome
+                if len(setor_nome) > 20:
+                    setor_nome = setor_nome[:17] + '...'
+                
                 treinamentos_por_setor_turno.append({
-                    'nome': f'{setor.nome} - {turno_label}'[:40],
+                    'nome': f'{setor_nome} - {turno_label}'[:40],
                     'vigentes': vigentes,
                     'pendentes': pendentes
                 })
