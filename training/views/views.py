@@ -359,36 +359,44 @@ def dashboard_treinamentos_view(request):
     from datetime import timedelta, date
     from core.models import TURNOS_CHOICES
     
-    # Estatísticas gerais
-    total_treinamentos = RegistroTreinamento.objects.count()
+    # Estatísticas gerais - apenas registros com colaborador vinculado
+    total_treinamentos = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False
+    ).count()
     
     treinamentos_vigentes = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False,
         data_treinamento__isnull=False
     ).count()
     
     treinamentos_pendentes = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False,
         data_treinamento__isnull=True
     ).count()
     
     # Colaboradores com treinamentos
     total_colaboradores_treinados = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False,
         data_treinamento__isnull=False
     ).values('colaborador').distinct().count()
     
     # Procedimentos únicos treinados
     total_procedimentos_unicos = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False,
         data_treinamento__isnull=False
     ).values('procedimento').distinct().count()
     
     # Treinamentos nos últimos 30 dias
     data_30_dias_atras = date.today() - timedelta(days=30)
     treinamentos_ultimos_30_dias = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False,
         data_treinamento__gte=data_30_dias_atras,
         data_treinamento__isnull=False
     ).count()
     
     # Top 10 procedimentos mais treinados
     top_procedimentos = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False,
         data_treinamento__isnull=False
     ).values('procedimento__codigo', 'procedimento__nome').annotate(
         total=Count('id')
@@ -396,6 +404,7 @@ def dashboard_treinamentos_view(request):
     
     # Top 10 colaboradores com mais treinamentos
     top_colaboradores = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False,
         data_treinamento__isnull=False
     ).values('colaborador__nome_completo').annotate(
         total=Count('id')
@@ -579,9 +588,11 @@ def dashboard_treinamentos_view(request):
     ).distinct().order_by('nome_completo').values_list('id', 'nome_completo')
     context['gerentes'] = [{'id': g[0], 'nome': g[1]} for g in gerentes]
     
-    # Tabela de dados inicial (primeiros 50 registros)
+    # Tabela de dados inicial (primeiros 50 registros com colaborador)
     context['dados_tabela'] = list(
-        RegistroTreinamento.objects.select_related(
+        RegistroTreinamento.objects.filter(
+            colaborador__isnull=False
+        ).select_related(
             'colaborador', 'procedimento'
         ).order_by('-data_treinamento', '-id')[:50].values(
             'id', 'colaborador__nome_completo', 'procedimento__codigo',
@@ -619,8 +630,8 @@ def dashboard_treinamentos_filtered_view(request):
     supervisor_id = request.GET.get('supervisor', '').strip()
     gerente_id = request.GET.get('gerente', '').strip()
     
-    # Construir query base
-    query = Q()
+    # Construir query base - sempre filtrar por colaborador__isnull=False
+    query = Q(colaborador__isnull=False)
     
     if turno:
         query &= Q(colaborador__turno=turno)
