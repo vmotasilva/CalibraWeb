@@ -454,15 +454,12 @@ def dashboard_treinamentos_view(request):
         # Incluir se tem qualquer registro
         total = vigentes + pendentes
         if total > 0:
-            # Abreviar nome: primeira inicial + última inicial (ex: "E. S.")
+            # Abreviar nome: primeira palavra + última palavra (ex: "EDUARDO SILVA")
             parts = lider.nome_completo.split()
             if len(parts) > 1:
-                nome_abrev = f"{parts[0][0]}. {parts[-1][0]}."
+                nome_abrev = f"{parts[0]} {parts[-1]}"
             else:
                 nome_abrev = lider.nome_completo[:30]
-            
-            if len(nome_abrev) > 30:
-                nome_abrev = nome_abrev[:27] + '...'
             
             treinamentos_por_lider.append({
                 'nome': nome_abrev,
