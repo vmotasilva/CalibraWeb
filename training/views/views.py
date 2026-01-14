@@ -359,23 +359,13 @@ def dashboard_treinamentos_view(request):
     from datetime import timedelta, date
     from core.models import TURNOS_CHOICES
     
-    # Base query: apenas registros com colaborador vinculado que está associado ao pacote do procedimento
-    # Colaborador deve estar em pacotes_treinamento que contém o procedimento
+    # Base query: apenas registros com colaborador e procedimento vinculados
     def get_valid_registros():
-        """Retorna apenas registros onde o colaborador está associado ao pacote do procedimento"""
-        # Subquery para verificar se existe um PacoteTreinamento que:
-        # - contém o procedimento (via procedimentos M2M)
-        # - contém o colaborador (via colaboradores M2M - related_name from Colaborador.pacotes_treinamento)
-        pacote_colaborador_exists = Exists(
-            PacoteTreinamento.objects.filter(
-                procedimentos__id=OuterRef('procedimento_id'),
-                colaboradores__id=OuterRef('colaborador_id')
-            )
-        )
+        """Retorna apenas registros com colaborador e procedimento não nulos"""
         return RegistroTreinamento.objects.filter(
             colaborador__isnull=False,
             procedimento__isnull=False
-        ).filter(pacote_colaborador_exists).distinct()
+        ).distinct()
     
     # Estatísticas gerais - apenas registros válidos
     valid_registros = get_valid_registros()
@@ -639,18 +629,11 @@ def dashboard_treinamentos_filtered_view(request):
     supervisor_id = request.GET.get('supervisor', '').strip()
     gerente_id = request.GET.get('gerente', '').strip()
     
-    # Base query - validar que colaborador está associado ao pacote do procedimento
-    pacote_colaborador_exists = Exists(
-        PacoteTreinamento.objects.filter(
-            procedimentos__id=OuterRef('procedimento_id'),
-            colaboradores__id=OuterRef('colaborador_id')
-        )
-    )
-    
+    # Base query - apenas registros com colaborador e procedimento não nulos
     base_query = Q(
         colaborador__isnull=False,
         procedimento__isnull=False
-    ) & pacote_colaborador_exists
+    )
     
     if turno:
         base_query &= Q(colaborador__turno=turno)
