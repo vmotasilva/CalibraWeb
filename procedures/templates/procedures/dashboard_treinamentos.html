@@ -7,9 +7,10 @@
 <style>
     .kpi-container {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        grid-template-columns: repeat(7, 1fr);
         gap: 0.5rem;
         margin-bottom: 0.5rem;
+        width: 100%;
     }
     
     .kpi-card {
@@ -31,12 +32,6 @@
     @media (min-width: 768px) and (max-width: 991px) {
         .kpi-container {
             grid-template-columns: repeat(4, 1fr);
-        }
-    }
-    
-    @media (min-width: 992px) {
-        .kpi-container {
-            grid-template-columns: repeat(7, 1fr);
         }
     }
 </style>
@@ -129,7 +124,7 @@
 
         <!-- Colaboradores Treinados -->
         <div class="kpi-card">
-            <div class="card shadow-sm">
+            <div class="card h-100 shadow-sm">
                 <div class="card-body" style="padding: 0.5rem;">
                     <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Colaboradores</small>
                     <div class="h6 mb-0 mt-0" style="font-size: 1rem;">{{ total_colaboradores_treinados }}</div>
@@ -140,7 +135,7 @@
 
         <!-- Procedimentos Únicos -->
         <div class="kpi-card">
-            <div class="card shadow-sm">
+            <div class="card h-100 shadow-sm">
                 <div class="card-body" style="padding: 0.5rem;">
                     <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Procedimentos</small>
                     <div class="h6 mb-0 mt-0" style="font-size: 1rem;">{{ total_procedimentos_unicos }}</div>
@@ -151,7 +146,7 @@
 
         <!-- Taxa de Conformidade -->
         <div class="kpi-card">
-            <div class="card shadow-sm">
+            <div class="card h-100 shadow-sm">
                 <div class="card-body" style="padding: 0.5rem;">
                     <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Conformidade</small>
                     <div class="h6 mb-0 mt-0" style="font-size: 1rem;">{{ taxa_conformidade }}%</div>
