@@ -17,7 +17,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Imports dos models
-from procedures.models import Procedimento, RegistroTreinamento
+from procedures.models import Procedimento, RegistroTreinamento, PacoteTreinamento
 from rh.models import Colaborador
 
 # Imports dos forms
@@ -363,8 +363,6 @@ def dashboard_treinamentos_view(request):
     # Colaborador deve estar em pacotes_treinamento que contém o procedimento
     def get_valid_registros():
         """Retorna apenas registros onde o colaborador está associado ao pacote do procedimento"""
-        from training.models import PacoteTreinamento
-        
         # Subquery para verificar se existe um PacoteTreinamento que:
         # - contém o procedimento (via procedimentos M2M)
         # - contém o colaborador (via colaboradores M2M - related_name from Colaborador.pacotes_treinamento)
