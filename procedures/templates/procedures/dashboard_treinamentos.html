@@ -15,111 +15,111 @@
     </div>
 
     <!-- KPIs Principais - Todos lado a lado -->
-    <div class="row mb-2 g-2">
+    <div class="row mb-1 g-1">
         <!-- Total de Treinamentos -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-2">
+        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
             <div class="card h-100 shadow-sm">
-                <div class="card-body p-2">
+                <div class="card-body p-1">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Total</small>
-                            <h4 class="mb-0 mt-1">{{ total_treinamentos }}</h4>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Total</small>
+                            <h5 class="mb-0 mt-0" style="font-size: 1.1rem;">{{ total_treinamentos }}</h5>
                         </div>
-                        <div class="badge bg-primary rounded-circle p-2">
-                            <i class="bi bi-mortarboard" style="font-size: 0.9rem;"></i>
+                        <div class="badge bg-primary rounded-circle" style="padding: 0.3rem 0.4rem; font-size: 0.7rem;">
+                            <i class="bi bi-mortarboard" style="font-size: 0.7rem;"></i>
                         </div>
                     </div>
-                    <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">Completos</small>
+                    <small class="text-muted mt-0 d-block" style="font-size: 0.6rem;">Completos</small>
                 </div>
             </div>
         </div>
 
         <!-- Treinamentos Vigentes -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-2">
+        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
             <div class="card h-100 shadow-sm border-success">
-                <div class="card-body p-2">
+                <div class="card-body p-1">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Vigentes</small>
-                            <h4 class="mb-0 mt-1 text-success">{{ treinamentos_vigentes }}</h4>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Vigentes</small>
+                            <h5 class="mb-0 mt-0 text-success" style="font-size: 1.1rem;">{{ treinamentos_vigentes }}</h5>
                         </div>
-                        <div class="badge bg-success rounded-circle p-2">
-                            <i class="bi bi-check-circle" style="font-size: 0.9rem;"></i>
+                        <div class="badge bg-success rounded-circle" style="padding: 0.3rem 0.4rem; font-size: 0.7rem;">
+                            <i class="bi bi-check-circle" style="font-size: 0.7rem;"></i>
                         </div>
                     </div>
-                    <div class="progress mt-1" style="height: 2px;">
+                    <div class="progress mt-0" style="height: 1px;">
                         <div class="progress-bar bg-success" style="width: {{ taxa_conformidade }}%"></div>
                     </div>
-                    <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">{{ taxa_conformidade }}%</small>
+                    <small class="text-muted mt-0 d-block" style="font-size: 0.6rem;">{{ taxa_conformidade }}%</small>
                 </div>
             </div>
         </div>
 
         <!-- Treinamentos Pendentes -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-2">
+        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
             <div class="card h-100 shadow-sm border-warning">
-                <div class="card-body p-2">
+                <div class="card-body p-1">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Pendentes</small>
-                            <h4 class="mb-0 mt-1 text-warning">{{ treinamentos_pendentes }}</h4>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Pendentes</small>
+                            <h5 class="mb-0 mt-0 text-warning" style="font-size: 1.1rem;">{{ treinamentos_pendentes }}</h5>
                         </div>
-                        <div class="badge bg-warning rounded-circle p-2">
-                            <i class="bi bi-exclamation-circle" style="font-size: 0.9rem;"></i>
+                        <div class="badge bg-warning rounded-circle" style="padding: 0.3rem 0.4rem; font-size: 0.7rem;">
+                            <i class="bi bi-exclamation-circle" style="font-size: 0.7rem;"></i>
                         </div>
                     </div>
-                    <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">Aguardando</small>
+                    <small class="text-muted mt-0 d-block" style="font-size: 0.6rem;">Aguardando</small>
                 </div>
             </div>
         </div>
 
         <!-- Últimos 30 dias -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-2">
+        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
             <div class="card h-100 shadow-sm border-info">
-                <div class="card-body p-2">
+                <div class="card-body p-1">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Últimos 30</small>
-                            <h4 class="mb-0 mt-1 text-info">{{ treinamentos_ultimos_30_dias }}</h4>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Últimos 30</small>
+                            <h5 class="mb-0 mt-0 text-info" style="font-size: 1.1rem;">{{ treinamentos_ultimos_30_dias }}</h5>
                         </div>
-                        <div class="badge bg-info rounded-circle p-2">
-                            <i class="bi bi-calendar-event" style="font-size: 0.9rem;"></i>
+                        <div class="badge bg-info rounded-circle" style="padding: 0.3rem 0.4rem; font-size: 0.7rem;">
+                            <i class="bi bi-calendar-event" style="font-size: 0.7rem;"></i>
                         </div>
                     </div>
-                    <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">Novos</small>
+                    <small class="text-muted mt-0 d-block" style="font-size: 0.6rem;">Novos</small>
                 </div>
             </div>
         </div>
 
         <!-- Colaboradores Treinados -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-2">
+        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
             <div class="card shadow-sm">
-                <div class="card-body p-2">
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Colaboradores</small>
-                    <h4 class="mb-0 mt-1">{{ total_colaboradores_treinados }}</h4>
-                    <small class="text-muted" style="font-size: 0.65rem;">Treinados</small>
+                <div class="card-body p-1">
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Colaboradores</small>
+                    <h5 class="mb-0 mt-0" style="font-size: 1.1rem;">{{ total_colaboradores_treinados }}</h5>
+                    <small class="text-muted" style="font-size: 0.6rem;">Treinados</small>
                 </div>
             </div>
         </div>
 
         <!-- Procedimentos Únicos -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-2">
+        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
             <div class="card shadow-sm">
-                <div class="card-body p-2">
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Procedimentos</small>
-                    <h4 class="mb-0 mt-1">{{ total_procedimentos_unicos }}</h4>
-                    <small class="text-muted" style="font-size: 0.65rem;">Únicos</small>
+                <div class="card-body p-1">
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Procedimentos</small>
+                    <h5 class="mb-0 mt-0" style="font-size: 1.1rem;">{{ total_procedimentos_unicos }}</h5>
+                    <small class="text-muted" style="font-size: 0.6rem;">Únicos</small>
                 </div>
             </div>
         </div>
 
         <!-- Taxa de Conformidade -->
-        <div class="col-sm-6 col-md-4 col-lg-2 mb-2">
+        <div class="col-sm-6 col-md-4 col-lg-2 mb-1">
             <div class="card shadow-sm">
-                <div class="card-body p-2">
-                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Conformidade</small>
-                    <h4 class="mb-0 mt-1">{{ taxa_conformidade }}%</h4>
-                    <small class="text-muted" style="font-size: 0.65rem;">Taxa geral</small>
+                <div class="card-body p-1">
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.65rem;">Conformidade</small>
+                    <h5 class="mb-0 mt-0" style="font-size: 1.1rem;">{{ taxa_conformidade }}%</h5>
+                    <small class="text-muted" style="font-size: 0.6rem;">Taxa geral</small>
                 </div>
             </div>
         </div>
@@ -133,8 +133,8 @@
                 <div class="card-header bg-light">
                     <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
                 </div>
-                <div class="card-body">
-                    <canvas id="chartStatus" height="180"></canvas>
+                <div class="card-body" style="padding: 0.75rem;">
+                    <canvas id="chartStatus" height="140"></canvas>
                 </div>
             </div>
         </div>
@@ -145,8 +145,8 @@
                 <div class="card-header bg-light">
                     <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Treinamentos Últimos 6 Meses</h6>
                 </div>
-                <div class="card-body">
-                    <canvas id="chartMeses" height="180"></canvas>
+                <div class="card-body" style="padding: 0.75rem;">
+                    <canvas id="chartMeses" height="140"></canvas>
                 </div>
             </div>
         </div>
@@ -249,8 +249,8 @@
                 <div class="card-header bg-light">
                     <h6 class="mb-0"><i class="bi bi-person-badge"></i> Treinamentos por Líder</h6>
                 </div>
-                <div class="card-body">
-                    <canvas id="chartLider" height="220"></canvas>
+                <div class="card-body" style="padding: 0.75rem;">
+                    <canvas id="chartLider" height="170"></canvas>
                 </div>
             </div>
         </div>
@@ -261,8 +261,8 @@
                 <div class="card-header bg-light">
                     <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Treinamentos por Setor e Turno</h6>
                 </div>
-                <div class="card-body">
-                    <canvas id="chartSetorTurno" height="220"></canvas>
+                <div class="card-body" style="padding: 0.75rem;">
+                    <canvas id="chartSetorTurno" height="170"></canvas>
                 </div>
             </div>
         </div>
