@@ -376,9 +376,8 @@ def dashboard_treinamentos_view(request):
         )
         return RegistroTreinamento.objects.filter(
             colaborador__isnull=False,
-            procedimento__isnull=False,
-            pacote_colaborador_exists
-        ).distinct()
+            procedimento__isnull=False
+        ).filter(pacote_colaborador_exists).distinct()
     
     # Estatísticas gerais - apenas registros válidos
     valid_registros = get_valid_registros()
