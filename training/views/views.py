@@ -355,20 +355,25 @@ def editar_treinamento_view(request, treinamento_id):
 @login_required
 def dashboard_treinamentos_view(request):
     """Dashboard completo de treinamentos com estatísticas e gráficos"""
-    from django.db.models import Count, Q
+    from django.db.models import Count, Q, Exists, OuterRef
     from datetime import timedelta, date
     from core.models import TURNOS_CHOICES
-    from django.db.models import Exists, OuterRef
     
     # Base query: apenas registros com colaborador vinculado que está associado ao pacote do procedimento
     # Colaborador deve estar em pacotes_treinamento que contém o procedimento
     def get_valid_registros():
         """Retorna apenas registros onde o colaborador está associado ao pacote do procedimento"""
+        # Subquery para verificar se o colaborador está associado a um pacote que contém o procedimento
+        pacote_colaborador_exists = Exists(
+            RegistroTreinamento.objects.filter(
+                pk=OuterRef('pk'),
+                procedimento__pacotes__colaboradores=OuterRef('colaborador_id')
+            )
+        )
         return RegistroTreinamento.objects.filter(
             colaborador__isnull=False,
-            procedimento__isnull=False,
-            procedimento__pacotes__colaboradores=OuterRef('colaborador')
-        ).distinct()
+            procedimento__isnull=False
+        ).filter(pacote_colaborador_exists).distinct()
     
     # Estatísticas gerais - apenas registros válidos
     valid_registros = get_valid_registros()
