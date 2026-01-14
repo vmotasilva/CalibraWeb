@@ -352,6 +352,7 @@ def editar_treinamento_view(request, treinamento_id):
 # ==============================================================================
 
 @login_required
+@login_required
 def dashboard_treinamentos_view(request):
     """Dashboard completo de treinamentos com estatísticas e gráficos"""
     from django.db.models import Count, Q

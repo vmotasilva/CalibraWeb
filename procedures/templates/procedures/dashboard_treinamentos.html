@@ -11,9 +11,7 @@
             <h1 class="h2 mb-0"><i class="bi bi-graph-up"></i> Dashboard de Treinamentos</h1>
             <small class="text-muted">Visão geral de estatísticas e conformidade</small>
         </div>
-        <a href="{% url 'treinamentos_list' %}" class="btn btn-outline-primary">
-            <i class="bi bi-list-check"></i> Ver Matriz Completa
-        </a>
+
     </div>
 
     <!-- KPIs Principais -->
@@ -186,7 +184,7 @@
                                         <strong>{{ proc.total }}</strong>
                                         <span class="ms-2">
                                             <div class="progress" style="width: 50px; height: 4px; display: inline-block;">
-                                                <div class="progress-bar bg-info" style="width: {{ proc.total|add:0|multiply:10 }}%"></div>
+                                                <div class="progress-bar bg-info" style="width: {% widthratio proc.total 20 100 %}%"></div>
                                             </div>
                                         </span>
                                     </td>

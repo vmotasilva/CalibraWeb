@@ -197,6 +197,7 @@ urlpatterns = [
     path('api/colaboradores/buscar/', api_colaboradores_buscar_view, name='api_colaboradores_buscar'),
     path('api/matrizes/', planejamento_views.api_matrizes_list_view, name='api_matrizes_list'),
     path('api/matrizes-bd/', planejamento_views.api_matrizes_bd_view, name='api_matrizes_bd'),
+    path('api/areas/', planejamento_views.api_areas_list_view, name='api_areas_list'),
     path('api/subgrupos/', planejamento_views.api_subgrupos_list_view, name='api_sub_areas_list'),  # Retorna sub-áreas dos procedimentos
     path('api/disciplinas-por-matriz/', api_disciplinas_por_matriz_view, name='api_disciplinas_por_matriz_novo'),
     path('api/procedimentos-por-disciplina/', api_procedimentos_por_disciplina_view, name='api_procedimentos_por_disciplina'),
@@ -217,6 +218,7 @@ urlpatterns = [
     # ==========================
     path('listas-presenca/', lista_presenca_views.lista_presenca_list_view, name='lista_presenca_list'),
     path('listas-presenca/nova/', lista_presenca_views.lista_presenca_create_view, name='lista_presenca_create'),
+    path('listas-presenca/exportar/', lista_presenca_views.lista_presenca_export_view, name='lista_presenca_export'),
     path('listas-presenca/<int:pk>/', lista_presenca_views.lista_presenca_detail_view, name='lista_presenca_detail'),
     path('listas-presenca/<int:pk>/editar/', lista_presenca_views.lista_presenca_edit_view, name='lista_presenca_edit'),
     path('listas-presenca/<int:pk>/deletar/', lista_presenca_views.lista_presenca_delete_view, name='lista_presenca_delete'),

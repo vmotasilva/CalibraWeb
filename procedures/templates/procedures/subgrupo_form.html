@@ -104,13 +104,14 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            <div class="row mb-3">
-                                <div class="col-md-7">
-                                    <input type="text" class="form-control" id="filtro-busca" placeholder="Buscar por código ou nome...">
+                            <!-- Linha 1: Busca e Classificação -->
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control form-control-sm" id="filtro-busca" placeholder="Buscar por código ou nome...">
                                 </div>
-                                <div class="col-md-3">
-                                    <select class="form-select" id="filtro-classificacao">
-                                        <option value="">Todas</option>
+                                <div class="col-md-6">
+                                    <select class="form-select form-select-sm" id="filtro-classificacao">
+                                        <option value="">Todas classificações</option>
                                         <option value="PR">Procedimento</option>
                                         <option value="IT">Instrução de Trabalho</option>
                                         <option value="PO">Padrão Operacional</option>
@@ -118,9 +119,23 @@
                                         <option value="FO">Formulário</option>
                                     </select>
                                 </div>
-                                <div class="col-md-2">
-                                    <button type="button" class="btn btn-primary w-100" onclick="buscarProcedimentos()">
-                                        <i class="bi bi-search"></i>
+                            </div>
+
+                            <!-- Linha 2: Matriz e Área -->
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <select class="form-select form-select-sm" id="filtro-matriz">
+                                        <option value="">Todas matrizes</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <select class="form-select form-select-sm" id="filtro-area">
+                                        <option value="">Todas áreas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" class="btn btn-sm btn-primary w-100" onclick="buscarProcedimentos()">
+                                        <i class="bi bi-search"></i> Buscar
                                     </button>
                                 </div>
                             </div>
@@ -139,22 +154,66 @@
             const csrfToken = '{{ csrf_token }}';
             let procedimentosAtuais = [{% for p in subgrupo.procedimentos.all %}{{ p.id }},{% endfor %}];
             
+            // Carregar opções de filtro ao abrir o modal
+            function inicializarFiltros() {
+                carregarMatrizes();
+                carregarAreas();
+            }
+            
+            // Carregar matrizes disponíveis
+            function carregarMatrizes() {
+                fetch('/procedures/api/matrizes/')
+                    .then(r => r.json())
+                    .then(data => {
+                        const select = document.getElementById('filtro-matriz');
+                        select.innerHTML = '<option value="">Todas matrizes</option>';
+                        data.matrizes.forEach(matriz => {
+                            const option = document.createElement('option');
+                            option.value = matriz;
+                            option.textContent = matriz;
+                            select.appendChild(option);
+                        });
+                    })
+                    .catch(err => console.error('Erro ao carregar matrizes:', err));
+            }
+            
+            // Carregar áreas disponíveis
+            function carregarAreas() {
+                fetch('/procedures/api/areas/')
+                    .then(r => r.json())
+                    .then(data => {
+                        const select = document.getElementById('filtro-area');
+                        select.innerHTML = '<option value="">Todas áreas</option>';
+                        data.areas.forEach(area => {
+                            const option = document.createElement('option');
+                            option.value = area;
+                            option.textContent = area;
+                            select.appendChild(option);
+                        });
+                    })
+                    .catch(err => console.error('Erro ao carregar áreas:', err));
+            }
+            
             function buscarProcedimentos() {
                 const busca = document.getElementById('filtro-busca').value;
                 const classificacao = document.getElementById('filtro-classificacao').value;
+                const matriz = document.getElementById('filtro-matriz').value;
+                const area = document.getElementById('filtro-area').value;
                 const resultados = document.getElementById('resultados-busca');
                 
                 resultados.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></div>';
                 
-                let url = `/procedures/api/procedimentos/?page_size=50`;
+                let url = `/procedures/api/procedimentos/?page_size=100`;
                 if (busca) url += `&q=${encodeURIComponent(busca)}`;
                 if (classificacao) url += `&classificacao=${classificacao}`;
+                if (matriz) url += `&matriz=${encodeURIComponent(matriz)}`;
+                if (area) url += `&sub_area=${encodeURIComponent(area)}`;
                 
                 fetch(url)
                     .then(r => r.json())
                     .then(data => {
                         if (data.items.length === 0) {
-                            resultados.innerHTML = '<div class="alert alert-warning">Nenhum procedimento encontrado.</div>';
+                            resultados.innerHTML = '<div class="alert alert-warning">Nenhum procedimento encontrado com os filtros especificados.</div>';
                             return;
                         }
                         
@@ -163,11 +222,18 @@
                             const jaAdicionado = procedimentosAtuais.includes(proc.id);
                             const div = document.createElement('div');
                             div.className = 'border-bottom p-2';
+                            
+                            // Criar informações adicionais
+                            let infoExtra = '';
+                            if (proc.matriz) infoExtra += `<span class="badge bg-info me-1">${proc.matriz}</span>`;
+                            if (proc.sub_area) infoExtra += `<span class="badge bg-secondary me-1">${proc.sub_area}</span>`;
+                            if (proc.classificacao) infoExtra += `<span class="badge bg-light text-dark">${proc.classificacao}</span>`;
+                            
                             div.innerHTML = `
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
                                         <strong>${proc.codigo}</strong> - ${proc.nome}
-                                        <br><small class="text-muted">${proc.classificacao}</small>
+                                        <br><small class="text-muted">${infoExtra}</small>
                                     </div>
                                     <button type="button" 
                                             class="btn btn-sm ${jaAdicionado ? 'btn-success' : 'btn-primary'}" 
@@ -182,7 +248,8 @@
                         });
                     })
                     .catch(err => {
-                        resultados.innerHTML = '<div class="alert alert-danger">Erro ao buscar procedimentos.</div>';
+                        console.error('Erro:', err);
+                        resultados.innerHTML = '<div class="alert alert-danger">Erro ao buscar procedimentos. Verifique o console.</div>';
                     });
             }
             
@@ -255,6 +322,16 @@
             document.getElementById('filtro-busca').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     buscarProcedimentos();
+                }
+            });
+            
+            // Inicializar filtros quando o modal abre
+            document.addEventListener('DOMContentLoaded', function() {
+                const modalProcedimentos = document.getElementById('modalProcedimentos');
+                if (modalProcedimentos) {
+                    modalProcedimentos.addEventListener('shown.bs.modal', function() {
+                        inicializarFiltros();
+                    });
                 }
             });
             </script>

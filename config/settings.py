@@ -12,6 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 
+# SECURITY WARNING: don't run with debug turned on in production!
+# Default is False (safer). In dev set DEBUG='True' in the environment.
+DEBUG = os.environ.get("DEBUG", "False") == "True"
+
 # SECURITY WARNING: keep the secret key used in production secret!
 # Read SECRET_KEY from environment in all environments. For local dev you may
 # set SECRET_KEY in a .env file; but on production the variable must be provided.
@@ -30,10 +34,6 @@ if not SECRET_KEY:
             print("⚠️  Set SECRET_KEY environment variable in production!")
         except:
             raise ImproperlyConfigured("SECRET_KEY is required. Set it in the environment (see .env.example)")
-
-# SECURITY WARNING: don't run with debug turned on in production!
-# Default is False (safer). In dev set DEBUG='True' in the environment.
-DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 # Configure ALLOWED_HOSTS via environment variable (comma-separated), default to localhost for development.
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver,0.0.0.0").split(",")

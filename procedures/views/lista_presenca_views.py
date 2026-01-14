@@ -1985,3 +1985,119 @@ def api_procedimentos_busca_view(request):
     
     return JsonResponse(list(procedimentos), safe=False)
 
+
+@login_required
+def lista_presenca_export_view(request):
+    """Exporta todas as listas de presença (com filtros aplicados) para Excel."""
+    from datetime import datetime
+    from django.db.models import Q
+    
+    # Aplicar os mesmos filtros da listagem
+    listas = ListaPresenca.objects.all()
+    
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+    instrutor_id = request.GET.get('instrutor')
+    busca = request.GET.get('busca')
+    
+    if data_inicio:
+        listas = listas.filter(data_sessao__gte=data_inicio)
+    if data_fim:
+        listas = listas.filter(data_sessao__lte=data_fim)
+    if instrutor_id:
+        listas = listas.filter(instrutor_id=instrutor_id)
+    if busca:
+        listas = listas.filter(
+            Q(codigo__icontains=busca) |
+            Q(titulo__icontains=busca) |
+            Q(local__icontains=busca) |
+            Q(instrutor_nome__icontains=busca)
+        )
+    
+    listas = listas.order_by('-data_sessao', '-codigo')
+    
+    # Criar workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Listas de Presença"
+    
+    # Definir estilos
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    
+    # Adicionar cabeçalho
+    headers = ['Código', 'Título', 'Data Sessão', 'Instrutor', 'Local', 'Carga Horária', 'Participantes', 'Registros', 'Observações']
+    ws.append(headers)
+    
+    # Formatar cabeçalho
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center_alignment
+        cell.border = border
+    
+    # Definir largura das colunas
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 12
+    ws.column_dimensions['D'].width = 20
+    ws.column_dimensions['E'].width = 20
+    ws.column_dimensions['F'].width = 12
+    ws.column_dimensions['G'].width = 12
+    ws.column_dimensions['H'].width = 12
+    ws.column_dimensions['I'].width = 30
+    
+    # Adicionar dados
+    for lista in listas:
+        # Contar participantes únicos e registros
+        participantes_unicos = lista.registrotreinamento_set.values('colaborador_id').distinct().count()
+        registros_count = lista.registrotreinamento_set.count()
+        
+        # Instrutor (preferir nome do BD, depois texto livre)
+        instrutor_nome = lista.instrutor.nome_completo if lista.instrutor else lista.instrutor_nome or '—'
+        
+        row = [
+            lista.codigo,
+            lista.titulo,
+            lista.data_sessao.strftime('%d/%m/%Y') if lista.data_sessao else '—',
+            instrutor_nome,
+            lista.local or '—',
+            str(lista.carga_horaria) if lista.carga_horaria else '—',
+            participantes_unicos,
+            registros_count,
+            lista.observacoes or '—'
+        ]
+        ws.append(row)
+        
+        # Formatar linha
+        for cell in ws[ws.max_row]:
+            cell.border = border
+            cell.alignment = Alignment(vertical='top', wrap_text=True)
+    
+    # Adicionar linha de resumo
+    ws.append([''] * 9)  # Linha vazia
+    ws.append([f'Total de Listas: {listas.count()}'] + [''] * 8)
+    
+    # Freezar primeira linha (cabeçalho)
+    ws.freeze_panes = 'A2'
+    
+    # Gerar nome do arquivo
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f'listas_presenca_{timestamp}.xlsx'
+    
+    # Preparar resposta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    # Salvar workbook na resposta
+    wb.save(response)
+    return response

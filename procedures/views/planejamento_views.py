@@ -987,3 +987,18 @@ def api_colaboradores_por_disciplina_view(request):
         return JsonResponse(data)
     except Disciplina.DoesNotExist:
         return JsonResponse({'colaboradores': [], 'error': 'Disciplina não encontrada'})
+
+@login_required
+def api_areas_list_view(request):
+    """Endpoint JSON que retorna lista de áreas/sub-áreas únicas"""
+    areas = Procedimento.objects.exclude(
+        sub_area__isnull=True
+    ).exclude(
+        sub_area=''
+    ).values_list('sub_area', flat=True).distinct().order_by('sub_area')
+    
+    data = {
+        'areas': list(areas)
+    }
+    
+    return JsonResponse(data)

@@ -21,7 +21,10 @@
                 <a href="{% url 'procedures:lista_presenca_importar' %}" class="btn btn-success">
                     <i class="bi bi-upload"></i> Importar
                 </a>
-                <a href="{% url 'procedures:gerenciar_templates_presenca' %}" class="btn btn-info">
+                <a href="{% url 'procedures:lista_presenca_export' %}" class="btn btn-info" title="Exportar para Excel">
+                    <i class="bi bi-download"></i> Exportar
+                </a>
+                <a href="{% url 'procedures:gerenciar_templates_presenca' %}" class="btn btn-secondary">
                     <i class="bi bi-file-earmark-excel"></i> Templates
                 </a>
             </div>
