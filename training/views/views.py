@@ -358,53 +358,56 @@ def dashboard_treinamentos_view(request):
     from django.db.models import Count, Q
     from datetime import timedelta, date
     from core.models import TURNOS_CHOICES
+    from django.db.models import Exists, OuterRef
     
-    # Estatísticas gerais - apenas registros com colaborador vinculado
-    total_treinamentos = RegistroTreinamento.objects.filter(
-        colaborador__isnull=False
-    ).count()
+    # Base query: apenas registros com colaborador vinculado que está associado ao pacote do procedimento
+    # Colaborador deve estar em pacotes_treinamento que contém o procedimento
+    def get_valid_registros():
+        """Retorna apenas registros onde o colaborador está associado ao pacote do procedimento"""
+        return RegistroTreinamento.objects.filter(
+            colaborador__isnull=False,
+            procedimento__isnull=False,
+            procedimento__pacotes__colaboradores=OuterRef('colaborador')
+        ).distinct()
     
-    treinamentos_vigentes = RegistroTreinamento.objects.filter(
-        colaborador__isnull=False,
+    # Estatísticas gerais - apenas registros válidos
+    valid_registros = get_valid_registros()
+    total_treinamentos = valid_registros.count()
+    
+    treinamentos_vigentes = valid_registros.filter(
         data_treinamento__isnull=False
     ).count()
     
-    treinamentos_pendentes = RegistroTreinamento.objects.filter(
-        colaborador__isnull=False,
+    treinamentos_pendentes = valid_registros.filter(
         data_treinamento__isnull=True
     ).count()
     
     # Colaboradores com treinamentos
-    total_colaboradores_treinados = RegistroTreinamento.objects.filter(
-        colaborador__isnull=False,
+    total_colaboradores_treinados = valid_registros.filter(
         data_treinamento__isnull=False
     ).values('colaborador').distinct().count()
     
     # Procedimentos únicos treinados
-    total_procedimentos_unicos = RegistroTreinamento.objects.filter(
-        colaborador__isnull=False,
+    total_procedimentos_unicos = valid_registros.filter(
         data_treinamento__isnull=False
     ).values('procedimento').distinct().count()
     
     # Treinamentos nos últimos 30 dias
     data_30_dias_atras = date.today() - timedelta(days=30)
-    treinamentos_ultimos_30_dias = RegistroTreinamento.objects.filter(
-        colaborador__isnull=False,
+    treinamentos_ultimos_30_dias = valid_registros.filter(
         data_treinamento__gte=data_30_dias_atras,
         data_treinamento__isnull=False
     ).count()
     
     # Top 10 procedimentos mais treinados
-    top_procedimentos = RegistroTreinamento.objects.filter(
-        colaborador__isnull=False,
+    top_procedimentos = valid_registros.filter(
         data_treinamento__isnull=False
     ).values('procedimento__codigo', 'procedimento__nome').annotate(
         total=Count('id')
     ).order_by('-total')[:10]
     
     # Top 10 colaboradores com mais treinamentos
-    top_colaboradores = RegistroTreinamento.objects.filter(
-        colaborador__isnull=False,
+    top_colaboradores = valid_registros.filter(
         data_treinamento__isnull=False
     ).values('colaborador__nome_completo').annotate(
         total=Count('id')
@@ -588,11 +591,9 @@ def dashboard_treinamentos_view(request):
     ).distinct().order_by('nome_completo').values_list('id', 'nome_completo')
     context['gerentes'] = [{'id': g[0], 'nome': g[1]} for g in gerentes]
     
-    # Tabela de dados inicial (primeiros 50 registros com colaborador)
+    # Tabela de dados inicial (primeiros 50 registros com colaborador válido)
     context['dados_tabela'] = list(
-        RegistroTreinamento.objects.filter(
-            colaborador__isnull=False
-        ).select_related(
+        valid_registros.select_related(
             'colaborador', 'procedimento'
         ).order_by('-data_treinamento', '-id')[:50].values(
             'id', 'colaborador__nome_completo', 'procedimento__codigo',
@@ -620,7 +621,7 @@ def dashboard_treinamentos_filtered_view(request):
     """API para retornar dados filtrados do dashboard"""
     import json
     from django.http import JsonResponse
-    from django.db.models import Count, Q
+    from django.db.models import Count, Q, OuterRef
     from datetime import timedelta, date
     
     # Pegar filtros da query string
@@ -630,8 +631,12 @@ def dashboard_treinamentos_filtered_view(request):
     supervisor_id = request.GET.get('supervisor', '').strip()
     gerente_id = request.GET.get('gerente', '').strip()
     
-    # Construir query base - sempre filtrar por colaborador__isnull=False
-    query = Q(colaborador__isnull=False)
+    # Base query - apenas registros onde colaborador está associado ao pacote do procedimento
+    query = Q(
+        colaborador__isnull=False,
+        procedimento__isnull=False,
+        procedimento__pacotes__colaboradores=OuterRef('colaborador')
+    )
     
     if turno:
         query &= Q(colaborador__turno=turno)
@@ -657,7 +662,7 @@ def dashboard_treinamentos_filtered_view(request):
             pass
     
     # Contar registros
-    treinamentos = RegistroTreinamento.objects.filter(query)
+    treinamentos = RegistroTreinamento.objects.filter(query).distinct()
     total_treinamentos = treinamentos.count()
     treinamentos_vigentes = treinamentos.filter(data_treinamento__isnull=False).count()
     treinamentos_pendentes = treinamentos.filter(data_treinamento__isnull=True).count()
