@@ -377,6 +377,10 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endfor %}
     ];
 
+    console.log('Líderes:', lideres);
+    console.log('Vigentes Líder:', vigentes_lider);
+    console.log('Pendentes Líder:', pendentes_lider);
+
     const ctxLider = document.getElementById('chartLider').getContext('2d');
     const chartLider = new Chart(ctxLider, {
         type: 'bar',
@@ -445,6 +449,10 @@ document.addEventListener('DOMContentLoaded', function() {
         {{ item.pendentes }}{{ forloop.last|yesno:'' }},
         {% endfor %}
     ];
+
+    console.log('Setores/Turnos:', setores_turnos);
+    console.log('Vigentes Setor:', vigentes_setor);
+    console.log('Pendentes Setor:', pendentes_setor);
 
     const ctxSetorTurno = document.getElementById('chartSetorTurno').getContext('2d');
     const chartSetorTurno = new Chart(ctxSetorTurno, {
