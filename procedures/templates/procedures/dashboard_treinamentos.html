@@ -308,7 +308,7 @@
                             <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
                         </div>
                         <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartStatus" height="200"></canvas>
+                            <canvas id="chartStatus" height="250"></canvas>
                         </div>
                     </div>
                 </div>
@@ -320,7 +320,7 @@
                             <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Últimos 6 Meses</h6>
                         </div>
                         <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartMeses" height="200"></canvas>
+                            <canvas id="chartMeses" height="250"></canvas>
                         </div>
                     </div>
                 </div>
@@ -332,7 +332,7 @@
                             <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Setor e Turno</h6>
                         </div>
                         <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartSetorTurno" height="200"></canvas>
+                            <canvas id="chartSetorTurno" height="250"></canvas>
                         </div>
                     </div>
                 </div>
@@ -381,12 +381,15 @@
 
     let dadosOriginais = {
         treinamentos_por_mes: {{ treinamentos_por_mes|safe }},
-        treinamentos_por_setor_turno: {{ treinamentos_por_setor_turno|safe }}
+        treinamentos_por_setor_turno: {{ treinamentos_por_setor_turno|safe }},
+        status_distribuicao: {{ status_distribuicao|safe }}
     };
+
+    console.log('Dados Originais:', dadosOriginais);
 
     function initCharts(data = null) {
         // Usar dados filtrados ou originais
-        const statusDist = data ? data.status_distribuicao : {{ status_distribuicao|safe }};
+        const statusDist = data ? data.status_distribuicao : dadosOriginais.status_distribuicao;
         const mesesData = data ? data.treinamentos_por_mes : dadosOriginais.treinamentos_por_mes;
         const setorData = data ? [] : dadosOriginais.treinamentos_por_setor_turno;
 
@@ -576,7 +579,12 @@
     });
 
     // Inicializar gráficos ao carregar
-    document.addEventListener('DOMContentLoaded', initCharts);
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            console.log('Inicializando gráficos com dados:', dadosOriginais);
+            initCharts();
+        }, 500);
+    });
 </script>
 
 <style>
