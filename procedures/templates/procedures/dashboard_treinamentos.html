@@ -240,6 +240,33 @@
             </div>
         </div>
     </div>
+
+    <!-- Novos Gráficos: Por Líder e Por Setor/Turno -->
+    <div class="row mb-4 mt-4">
+        <!-- Gráfico por Líder -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-person-badge"></i> Treinamentos por Líder</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartLider" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico por Setor e Turno -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Treinamentos por Setor e Turno</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartSetorTurno" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Chart.js para gráficos -->
@@ -326,6 +353,144 @@ document.addEventListener('DOMContentLoaded', function() {
                     ticks: {
                         stepSize: 1
                     }
+                }
+            }
+        }
+    });
+
+    // Gráfico por Líder - Stacked Bar
+    const lideres = [
+        {% for item in treinamentos_por_lider %}
+        '{{ item.nome }}'{{ forloop.last|yesno:'' }},
+        {% endfor %}
+    ];
+
+    const vigentes_lider = [
+        {% for item in treinamentos_por_lider %}
+        {{ item.vigentes }}{{ forloop.last|yesno:'' }},
+        {% endfor %}
+    ];
+
+    const pendentes_lider = [
+        {% for item in treinamentos_por_lider %}
+        {{ item.pendentes }}{{ forloop.last|yesno:'' }},
+        {% endfor %}
+    ];
+
+    const ctxLider = document.getElementById('chartLider').getContext('2d');
+    const chartLider = new Chart(ctxLider, {
+        type: 'bar',
+        data: {
+            labels: lideres,
+            datasets: [
+                {
+                    label: 'Vigentes',
+                    data: vigentes_lider,
+                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Pendentes',
+                    data: pendentes_lider,
+                    backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                    borderColor: 'rgba(255, 193, 7, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    beginAtZero: true
+                },
+                y: {
+                    stacked: true
+                }
+            }
+        }
+    });
+
+    // Gráfico por Setor e Turno - Stacked Bar
+    const setores_turnos = [
+        {% for item in treinamentos_por_setor_turno %}
+        '{{ item.nome }}'{{ forloop.last|yesno:'' }},
+        {% endfor %}
+    ];
+
+    const vigentes_setor = [
+        {% for item in treinamentos_por_setor_turno %}
+        {{ item.vigentes }}{{ forloop.last|yesno:'' }},
+        {% endfor %}
+    ];
+
+    const pendentes_setor = [
+        {% for item in treinamentos_por_setor_turno %}
+        {{ item.pendentes }}{{ forloop.last|yesno:'' }},
+        {% endfor %}
+    ];
+
+    const ctxSetorTurno = document.getElementById('chartSetorTurno').getContext('2d');
+    const chartSetorTurno = new Chart(ctxSetorTurno, {
+        type: 'bar',
+        data: {
+            labels: setores_turnos,
+            datasets: [
+                {
+                    label: 'Vigentes',
+                    data: vigentes_setor,
+                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Pendentes',
+                    data: pendentes_setor,
+                    backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                    borderColor: 'rgba(255, 193, 7, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    beginAtZero: true
+                },
+                y: {
+                    stacked: true
                 }
             }
         }

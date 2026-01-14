@@ -357,6 +357,7 @@ def dashboard_treinamentos_view(request):
     """Dashboard completo de treinamentos com estatísticas e gráficos"""
     from django.db.models import Count, Q
     from datetime import timedelta, date
+    import json
     
     # Estatísticas gerais
     total_treinamentos = RegistroTreinamento.objects.count()
@@ -429,6 +430,73 @@ def dashboard_treinamentos_view(request):
             'total': count
         })
     
+    # Gráfico por Líder: mostrando vigentes e pendentes
+    treinamentos_por_lider = []
+    lideres = Colaborador.objects.filter(liderados__isnull=False, liderados__is_active=True).distinct()
+    for lider in lideres.order_by('nome_completo'):
+        liderados_ids = lider.liderados.filter(is_active=True).values_list('id', flat=True)
+        vigentes = RegistroTreinamento.objects.filter(
+            colaborador_id__in=liderados_ids,
+            data_treinamento__isnull=False
+        ).count()
+        pendentes = RegistroTreinamento.objects.filter(
+            colaborador_id__in=liderados_ids,
+            data_treinamento__isnull=True
+        ).count()
+        
+        if vigentes > 0 or pendentes > 0:
+            treinamentos_por_lider.append({
+                'nome': lider.nome_completo[:20],
+                'vigentes': vigentes,
+                'pendentes': pendentes
+            })
+    
+    # Ordenar por total descendente
+    treinamentos_por_lider.sort(key=lambda x: x['vigentes'] + x['pendentes'], reverse=True)
+    treinamentos_por_lider = treinamentos_por_lider[:10]  # Top 10
+    
+    # Gráfico por Setor e Turno: mostrando vigentes e pendentes
+    treinamentos_por_setor_turno = []
+    setores = Colaborador.objects.filter(setor__isnull=False).values_list('setor', flat=True).distinct()
+    
+    for setor_id in setores:
+        from organization.models import Setor
+        try:
+            setor = Setor.objects.get(id=setor_id)
+            # Turnos disponíveis para este setor
+            turnos_unicos = Colaborador.objects.filter(setor_id=setor_id).values_list('turno', flat=True).distinct()
+            
+            for turno in turnos_unicos:
+                colaboradores_ids = Colaborador.objects.filter(
+                    setor_id=setor_id,
+                    turno=turno,
+                    is_active=True
+                ).values_list('id', flat=True)
+                
+                vigentes = RegistroTreinamento.objects.filter(
+                    colaborador_id__in=colaboradores_ids,
+                    data_treinamento__isnull=False
+                ).count()
+                pendentes = RegistroTreinamento.objects.filter(
+                    colaborador_id__in=colaboradores_ids,
+                    data_treinamento__isnull=True
+                ).count()
+                
+                if vigentes > 0 or pendentes > 0:
+                    # Mapear turno para label legível
+                    turno_label = dict(Colaborador.TURNOS_CHOICES).get(turno, turno)
+                    treinamentos_por_setor_turno.append({
+                        'nome': f'{setor.nome} - {turno_label}'[:35],
+                        'vigentes': vigentes,
+                        'pendentes': pendentes
+                    })
+        except:
+            pass
+    
+    # Ordenar por total descendente
+    treinamentos_por_setor_turno.sort(key=lambda x: x['vigentes'] + x['pendentes'], reverse=True)
+    treinamentos_por_setor_turno = treinamentos_por_setor_turno[:10]  # Top 10
+    
     context = {
         'total_treinamentos': total_treinamentos,
         'treinamentos_vigentes': treinamentos_vigentes,
@@ -441,6 +509,8 @@ def dashboard_treinamentos_view(request):
         'top_colaboradores': top_colaboradores,
         'status_distribuicao': status_distribuicao,
         'treinamentos_por_mes': treinamentos_por_mes,
+        'treinamentos_por_lider': treinamentos_por_lider,
+        'treinamentos_por_setor_turno': treinamentos_por_setor_turno,
     }
     
     return render(request, 'procedures/dashboard_treinamentos.html', context)
