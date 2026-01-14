@@ -15,111 +15,111 @@
     </div>
 
     <!-- KPIs Principais -->
-    <div class="row mb-4">
+    <div class="row mb-2">
         <!-- Total de Treinamentos -->
-        <div class="col-md-3 mb-3">
+        <div class="col-md-3 mb-2">
             <div class="card h-100 shadow-sm">
-                <div class="card-body">
+                <div class="card-body p-2">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <small class="text-muted text-uppercase fw-bold">Total de Treinamentos</small>
-                            <h3 class="mb-0 mt-2">{{ total_treinamentos }}</h3>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Total de Treinamentos</small>
+                            <h4 class="mb-0 mt-1">{{ total_treinamentos }}</h4>
                         </div>
-                        <div class="badge bg-primary rounded-circle p-3">
-                            <i class="bi bi-mortarboard fs-5"></i>
+                        <div class="badge bg-primary rounded-circle p-2">
+                            <i class="bi bi-mortarboard" style="font-size: 0.9rem;"></i>
                         </div>
                     </div>
-                    <small class="text-muted mt-2 d-block">Registros completos no sistema</small>
+                    <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">Registros completos</small>
                 </div>
             </div>
         </div>
 
         <!-- Treinamentos Vigentes -->
-        <div class="col-md-3 mb-3">
+        <div class="col-md-3 mb-2">
             <div class="card h-100 shadow-sm border-success">
-                <div class="card-body">
+                <div class="card-body p-2">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <small class="text-muted text-uppercase fw-bold">Vigentes</small>
-                            <h3 class="mb-0 mt-2 text-success">{{ treinamentos_vigentes }}</h3>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Vigentes</small>
+                            <h4 class="mb-0 mt-1 text-success">{{ treinamentos_vigentes }}</h4>
                         </div>
-                        <div class="badge bg-success rounded-circle p-3">
-                            <i class="bi bi-check-circle fs-5"></i>
+                        <div class="badge bg-success rounded-circle p-2">
+                            <i class="bi bi-check-circle" style="font-size: 0.9rem;"></i>
                         </div>
                     </div>
-                    <div class="progress mt-2" style="height: 4px;">
+                    <div class="progress mt-1" style="height: 3px;">
                         <div class="progress-bar bg-success" style="width: {{ taxa_conformidade }}%"></div>
                     </div>
-                    <small class="text-muted mt-2 d-block">{{ taxa_conformidade }}% de conformidade</small>
+                    <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">{{ taxa_conformidade }}% conformidade</small>
                 </div>
             </div>
         </div>
 
         <!-- Treinamentos Pendentes -->
-        <div class="col-md-3 mb-3">
+        <div class="col-md-3 mb-2">
             <div class="card h-100 shadow-sm border-warning">
-                <div class="card-body">
+                <div class="card-body p-2">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <small class="text-muted text-uppercase fw-bold">Pendentes</small>
-                            <h3 class="mb-0 mt-2 text-warning">{{ treinamentos_pendentes }}</h3>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Pendentes</small>
+                            <h4 class="mb-0 mt-1 text-warning">{{ treinamentos_pendentes }}</h4>
                         </div>
-                        <div class="badge bg-warning rounded-circle p-3">
-                            <i class="bi bi-exclamation-circle fs-5"></i>
+                        <div class="badge bg-warning rounded-circle p-2">
+                            <i class="bi bi-exclamation-circle" style="font-size: 0.9rem;"></i>
                         </div>
                     </div>
-                    <small class="text-muted mt-2 d-block">Aguardando realização</small>
+                    <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">Aguardando realização</small>
                 </div>
             </div>
         </div>
 
         <!-- Últimos 30 dias -->
-        <div class="col-md-3 mb-3">
+        <div class="col-md-3 mb-2">
             <div class="card h-100 shadow-sm border-info">
-                <div class="card-body">
+                <div class="card-body p-2">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <small class="text-muted text-uppercase fw-bold">Últimos 30 dias</small>
-                            <h3 class="mb-0 mt-2 text-info">{{ treinamentos_ultimos_30_dias }}</h3>
+                            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Últimos 30 dias</small>
+                            <h4 class="mb-0 mt-1 text-info">{{ treinamentos_ultimos_30_dias }}</h4>
                         </div>
-                        <div class="badge bg-info rounded-circle p-3">
-                            <i class="bi bi-calendar-event fs-5"></i>
+                        <div class="badge bg-info rounded-circle p-2">
+                            <i class="bi bi-calendar-event" style="font-size: 0.9rem;"></i>
                         </div>
                     </div>
-                    <small class="text-muted mt-2 d-block">Novos registros</small>
+                    <small class="text-muted mt-1 d-block" style="font-size: 0.65rem;">Novos registros</small>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Segunda linha de KPIs -->
-    <div class="row mb-4">
-        <div class="col-md-4 mb-3">
+    <div class="row mb-2">
+        <div class="col-md-4 mb-2">
             <div class="card shadow-sm">
-                <div class="card-body">
-                    <small class="text-muted text-uppercase fw-bold">Colaboradores Treinados</small>
-                    <h2 class="mb-0 mt-2">{{ total_colaboradores_treinados }}</h2>
-                    <small class="text-muted">Com pelo menos um treinamento completo</small>
+                <div class="card-body p-2">
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Colaboradores Treinados</small>
+                    <h4 class="mb-0 mt-1">{{ total_colaboradores_treinados }}</h4>
+                    <small class="text-muted" style="font-size: 0.65rem;">Com pelo menos um treinamento</small>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4 mb-3">
+        <div class="col-md-4 mb-2">
             <div class="card shadow-sm">
-                <div class="card-body">
-                    <small class="text-muted text-uppercase fw-bold">Procedimentos Únicos</small>
-                    <h2 class="mb-0 mt-2">{{ total_procedimentos_unicos }}</h2>
-                    <small class="text-muted">Diferentes procedimentos treinados</small>
+                <div class="card-body p-2">
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Procedimentos Únicos</small>
+                    <h4 class="mb-0 mt-1">{{ total_procedimentos_unicos }}</h4>
+                    <small class="text-muted" style="font-size: 0.65rem;">Diferentes procedimentos</small>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4 mb-3">
+        <div class="col-md-4 mb-2">
             <div class="card shadow-sm">
-                <div class="card-body">
-                    <small class="text-muted text-uppercase fw-bold">Taxa de Conformidade</small>
-                    <h2 class="mb-0 mt-2">{{ taxa_conformidade }}%</h2>
-                    <small class="text-muted">Treinados / Total necessário</small>
+                <div class="card-body p-2">
+                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Taxa de Conformidade</small>
+                    <h4 class="mb-0 mt-1">{{ taxa_conformidade }}%</h4>
+                    <small class="text-muted" style="font-size: 0.65rem;">Treinados / Total</small>
                 </div>
             </div>
         </div>
