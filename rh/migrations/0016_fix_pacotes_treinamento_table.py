@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.RunSQL(
             sql="""
             CREATE TABLE IF NOT EXISTS rh_colaborador_pacotes_treinamento (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 colaborador_id INTEGER NOT NULL REFERENCES rh_colaborador(id),
                 pacotetreinamento_id INTEGER NOT NULL REFERENCES procedures_pacotetreinamento(id),
                 UNIQUE(colaborador_id, pacotetreinamento_id)
