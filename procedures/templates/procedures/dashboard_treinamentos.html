@@ -156,7 +156,17 @@
             </div>
         </div>
 
-
+        <!-- Gráfico por Setor e Turno -->
+        <div class="col-lg-3 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Treinamentos por Setor e Turno</h6>
+                </div>
+                <div class="card-body" style="padding: 0.75rem;">
+                    <canvas id="chartSetorTurno" height="200"></canvas>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -268,6 +278,92 @@ document.addEventListener('DOMContentLoaded', function() {
                         stepSize: 1,
                         font: {
                             size: 10
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Gráfico por Setor e Turno - Stacked Bar
+    const setores_turnos = [
+        {% for item in treinamentos_por_setor_turno %}
+        '{{ item.nome }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const vigentes_setor = [
+        {% for item in treinamentos_por_setor_turno %}
+        {{ item.vigentes }}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const pendentes_setor = [
+        {% for item in treinamentos_por_setor_turno %}
+        {{ item.pendentes }}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    console.log('Setores/Turnos:', setores_turnos);
+    console.log('Vigentes Setor:', vigentes_setor);
+    console.log('Pendentes Setor:', pendentes_setor);
+
+    const ctxSetorTurno = document.getElementById('chartSetorTurno').getContext('2d');
+    const chartSetorTurno = new Chart(ctxSetorTurno, {
+        type: 'bar',
+        data: {
+            labels: setores_turnos,
+            datasets: [
+                {
+                    label: 'Vigentes',
+                    data: vigentes_setor,
+                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                    borderColor: 'rgba(40, 167, 69, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Pendentes',
+                    data: pendentes_setor,
+                    backgroundColor: 'rgba(248, 113, 113, 0.7)',
+                    borderColor: 'rgba(248, 113, 113, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'y',
+            layout: {
+                padding: {
+                    left: 10,
+                    right: 10,
+                    top: 10,
+                    bottom: 10
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    beginAtZero: true
+                },
+                y: {
+                    stacked: true,
+                    ticks: {
+                        font: {
+                            size: 11
                         }
                     }
                 }
