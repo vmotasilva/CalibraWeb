@@ -745,6 +745,7 @@ def editar_colaborador_perfil_view(request, perfil_id):
     """Edita os grupos/subgrupos de um colaborador no perfil"""
     from rh.models import Colaborador
     from datetime import date
+    import json
     
     if request.method != 'POST':
         return redirect('procedures:detalhe_perfil', perfil_id=perfil_id)
@@ -758,6 +759,7 @@ def editar_colaborador_perfil_view(request, perfil_id):
         grupos_ids = request.POST.getlist('grupos')
         subgrupos_ids = request.POST.getlist('subgrupos')
         data_atribuicao = request.POST.get('data_atribuicao', date.today())
+        subgrupos_ativos_json = request.POST.get('subgrupos_ativos', '{}')
         
         # Atualizar grupos selecionados
         grupos_selecionados = {
@@ -768,6 +770,33 @@ def editar_colaborador_perfil_view(request, perfil_id):
         cp.grupos_selecionados = grupos_selecionados if grupos_ids or subgrupos_ids else None
         cp.data_atribuicao = data_atribuicao
         cp.save()
+        
+        # Processar status de ativo/inativo dos subgrupos
+        try:
+            subgrupos_ativos = json.loads(subgrupos_ativos_json)
+        except:
+            subgrupos_ativos = {}
+        
+        # Sincronizar status ativo/inativo com registros de treinamento
+        if subgrupos_ativos:
+            from procedures.models import RegistroTreinamento
+            from procedures.models import SubGrupoTreinamento
+            
+            # Para cada subgrupo, atualizar o status ativo dos registros associados
+            for subgrupo_id, is_ativo in subgrupos_ativos.items():
+                try:
+                    subgrupo = SubGrupoTreinamento.objects.get(id=int(subgrupo_id))
+                    # Obter todos os procedimentos deste subgrupo
+                    procedimentos_subgrupo = subgrupo.procedimentos.all()
+                    # Atualizar todos os registros de treinamento deste colaborador 
+                    # que pertencem aos procedimentos deste subgrupo
+                    registros = RegistroTreinamento.objects.filter(
+                        colaborador=cp.colaborador,
+                        procedimento__in=procedimentos_subgrupo
+                    )
+                    registros.update(ativo=bool(is_ativo))
+                except (SubGrupoTreinamento.DoesNotExist, ValueError):
+                    pass
         
         # Recalcular procedimentos necessários
         procedimentos = cp.get_procedimentos_necessarios()

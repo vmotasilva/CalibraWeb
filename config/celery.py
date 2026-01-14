@@ -38,9 +38,9 @@ _debug_env()
 # the configuration object to child processes.
 try:
     app.config_from_object("django.conf:settings", namespace="CELERY")
-    print("✅ Django settings loaded for Celery")
+    print("[OK] Django settings loaded for Celery")
 except Exception as e:
-    print(f"❌ Error loading Django settings: {e}")
+    print(f"[ERROR] Error loading Django settings: {e}")
     sys.exit(1)
 
 # CRITICAL: Override broker_url and result_backend to use our _build_redis_url() function
@@ -54,11 +54,11 @@ if hasattr(django.conf.settings, 'CELERY_RESULT_BACKEND'):
 # Validate broker connection
 broker_url = getattr(app.conf, 'broker_url', 'NOT SET')
 if "${" in str(broker_url) or "%24%7B" in str(broker_url):
-    print(f"❌ CRITICAL: CELERY_BROKER_URL still has unresolved templates: {broker_url}")
+    print(f"[ERROR] CRITICAL: CELERY_BROKER_URL still has unresolved templates: {broker_url}")
     print(f"   You MUST delete CELERY_BROKER_URL and CELERY_RESULT_BACKEND from beat service!")
     print(f"   Keep only: REDIS_URL={os.getenv('REDIS_URL', 'NOT SET')[:30]}...")
 else:
-    print(f"✅ CELERY_BROKER_URL configured: {broker_url[:30]}..." if len(str(broker_url)) > 30 else f"✅ CELERY_BROKER_URL: {broker_url}")
+    print(f"[OK] CELERY_BROKER_URL configured: {broker_url[:30]}..." if len(str(broker_url)) > 30 else f"[OK] CELERY_BROKER_URL: {broker_url}")
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
@@ -74,12 +74,12 @@ try:
     app.conf.beat_schedule = CELERY_BEAT_SCHEDULE
     app.conf.task_queues = CELERY_QUEUES
     app.conf.task_routes = CELERY_ROUTES
-    print(f"✅ Celery Beat scheduled with {len(CELERY_BEAT_SCHEDULE)} tasks")
+    print(f"[OK] Celery Beat scheduled with {len(CELERY_BEAT_SCHEDULE)} tasks")
 except ImportError as e:
     # If qms app is not available, continue without Beat configuration
-    print(f"⚠️  Celery Beat config not available: {e}")
+    print(f"[WARNING] Celery Beat config not available: {e}")
 except Exception as e:
-    print(f"❌ Error loading Celery Beat config: {e}")
+    print(f"[ERROR] Error loading Celery Beat config: {e}")
 
 
 @app.task(bind=True)

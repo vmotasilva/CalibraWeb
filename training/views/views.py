@@ -234,6 +234,7 @@ def detalhe_procedimento_view(request, procedimento_id):
 def treinamentos_list_view(request):
     """Lista de treinamentos realizados com filtros avançados."""
     from django.db.models import Q
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
     
     qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
     colaboradores = Colaborador.objects.order_by('nome_completo').distinct()
@@ -270,16 +271,24 @@ def treinamentos_list_view(request):
             Q(procedimento__nome__icontains=busca)
         )
     
+    # Ordenar resultados antes de filtrar por status
+    qs = qs.order_by('-data_treinamento')
+    
     # Filtro por status - filtrando em Python (é uma property, não field direto)
     if status:
         all_records = list(qs)
         qs = [t for t in all_records if t.status_treinamento == status]
     
-    # Ordenar resultados
-    if isinstance(qs, list):
-        treinamentos = sorted(qs, key=lambda x: x.data_treinamento, reverse=True)[:100]
-    else:
-        treinamentos = qs.order_by('-data_treinamento')[:100]
+    # Paginar resultados (15 por página)
+    paginator = Paginator(qs, 15)
+    page = request.GET.get('page')
+    
+    try:
+        treinamentos = paginator.page(page)
+    except PageNotAnInteger:
+        treinamentos = paginator.page(1)
+    except EmptyPage:
+        treinamentos = paginator.page(paginator.num_pages)
     
     return render(request, "training/treinamento_lista.html", {
         "treinamentos": treinamentos,
@@ -359,15 +368,17 @@ def dashboard_treinamentos_view(request):
     from datetime import timedelta, date
     from core.models import TURNOS_CHOICES
     
-    # Base query: apenas registros com colaborador e procedimento vinculados
+    # Base query: apenas registros com colaborador e procedimento vinculados E ATIVOS
     def get_valid_registros():
-        """Retorna apenas registros com colaborador e procedimento não nulos"""
+        """Retorna apenas registros com colaborador ATIVO, procedimento não nulos E ativo=True"""
         return RegistroTreinamento.objects.filter(
             colaborador__isnull=False,
-            procedimento__isnull=False
+            colaborador__is_active=True,
+            procedimento__isnull=False,
+            ativo=True
         ).distinct()
     
-    # Estatísticas gerais - apenas registros válidos
+    # Estatísticas gerais - apenas registros válidos E ativos
     valid_registros = get_valid_registros()
     total_treinamentos = valid_registros.count()
     
@@ -431,7 +442,8 @@ def dashboard_treinamentos_view(request):
         count = RegistroTreinamento.objects.filter(
             data_treinamento__gte=data_inicio,
             data_treinamento__lt=data_fim,
-            data_treinamento__isnull=False
+            data_treinamento__isnull=False,
+            ativo=True
         ).count()
         
         treinamentos_por_mes.append({
@@ -450,14 +462,16 @@ def dashboard_treinamentos_view(request):
         # Pegar todos os liderados ativos deste líder
         liderados_ids = lider.liderados.filter(is_active=True).values_list('id', flat=True)
         
-        # Contar registros de treinamento
+        # Contar registros de treinamento ATIVOS
         vigentes = RegistroTreinamento.objects.filter(
             colaborador_id__in=liderados_ids,
-            data_treinamento__isnull=False
+            data_treinamento__isnull=False,
+            ativo=True
         ).count()
         pendentes = RegistroTreinamento.objects.filter(
             colaborador_id__in=liderados_ids,
-            data_treinamento__isnull=True
+            data_treinamento__isnull=True,
+            ativo=True
         ).count()
         
         # Incluir se tem qualquer registro
@@ -504,11 +518,13 @@ def dashboard_treinamentos_view(request):
             # Contar registros de treinamento
             vigentes = RegistroTreinamento.objects.filter(
                 colaborador_id__in=colaboradores_ids,
-                data_treinamento__isnull=False
+                data_treinamento__isnull=False,
+                ativo=True
             ).count()
             pendentes = RegistroTreinamento.objects.filter(
                 colaborador_id__in=colaboradores_ids,
-                data_treinamento__isnull=True
+                data_treinamento__isnull=True,
+                ativo=True
             ).count()
             
             # Incluir se tem qualquer registro
@@ -588,19 +604,22 @@ def dashboard_treinamentos_view(request):
     ).distinct().order_by('nome_completo').values_list('id', 'nome_completo')
     context['gerentes'] = [{'id': g[0], 'nome': g[1]} for g in gerentes]
     
-    # Tabela de dados inicial (primeiros 50 registros com colaborador válido)
-    context['dados_tabela'] = list(
-        valid_registros.select_related(
-            'colaborador', 'procedimento'
-        ).order_by('-data_treinamento', '-id')[:50].values(
-            'id', 'colaborador__nome_completo', 'procedimento__codigo',
-            'procedimento__nome', 'data_treinamento'
-        )
+    # Tabela de dados com paginação
+    registros_query = valid_registros.select_related(
+        'colaborador', 'procedimento'
+    ).order_by('-data_treinamento', '-id').values(
+        'id', 'colaborador__nome_completo', 'procedimento__codigo',
+        'procedimento__nome', 'data_treinamento'
     )
+    
+    # Paginar com 15 registros por página
+    page_number = request.GET.get('page', '1')
+    paginator = Paginator(registros_query, 15)
+    page_obj = paginator.get_page(page_number)
     
     # Processar dados da tabela para o template
     dados_processados = []
-    for registro in context['dados_tabela']:
+    for registro in page_obj.object_list:
         dados_processados.append({
             'id': registro['id'],
             'colaborador': registro['colaborador__nome_completo'],
@@ -608,7 +627,10 @@ def dashboard_treinamentos_view(request):
             'procedimento_nome': registro['procedimento__nome'][:40],
             'data': registro['data_treinamento'].strftime('%d/%m/%Y') if registro['data_treinamento'] else 'Pendente'
         })
+    
     context['dados_tabela'] = dados_processados
+    context['page_obj'] = page_obj
+    context['paginator'] = paginator
     
     return render(request, 'procedures/dashboard_treinamentos.html', context)
 
@@ -620,7 +642,6 @@ def dashboard_treinamentos_filtered_view(request):
     from django.http import JsonResponse
     from django.db.models import Count, Q, Exists, OuterRef
     from datetime import timedelta, date
-    from training.models import PacoteTreinamento
     
     # Pegar filtros da query string
     turno = request.GET.get('turno', '').strip()
@@ -629,10 +650,12 @@ def dashboard_treinamentos_filtered_view(request):
     supervisor_id = request.GET.get('supervisor', '').strip()
     gerente_id = request.GET.get('gerente', '').strip()
     
-    # Base query - apenas registros com colaborador e procedimento não nulos
+    # Base query - apenas registros com colaborador ATIVO, procedimento não nulos E ativo=True
     base_query = Q(
         colaborador__isnull=False,
-        procedimento__isnull=False
+        colaborador__is_active=True,
+        procedimento__isnull=False,
+        ativo=True
     )
     
     if turno:
@@ -693,6 +716,97 @@ def dashboard_treinamentos_filtered_view(request):
             'total': count
         })
     
+    # Gráfico por Líder (considerando filtros aplicados)
+    treinamentos_por_lider = []
+    líderes_q = Colaborador.objects.filter(
+        liderados__isnull=False,
+        liderados__is_active=True
+    ).distinct().order_by('nome_completo')
+    
+    for lider in líderes_q:
+        liderados_ids = lider.liderados.filter(is_active=True).values_list('id', flat=True)
+        
+        vigentes = RegistroTreinamento.objects.filter(
+            colaborador_id__in=liderados_ids,
+            data_treinamento__isnull=False,
+            ativo=True
+        ).filter(base_query).count()
+        
+        pendentes = RegistroTreinamento.objects.filter(
+            colaborador_id__in=liderados_ids,
+            data_treinamento__isnull=True,
+            ativo=True
+        ).filter(base_query).count()
+        
+        total = vigentes + pendentes
+        if total > 0:
+            parts = lider.nome_completo.split()
+            if len(parts) > 1:
+                nome_abrev = f"{parts[0]} {parts[-1]}"
+            else:
+                nome_abrev = lider.nome_completo[:30]
+            
+            treinamentos_por_lider.append({
+                'nome': nome_abrev,
+                'vigentes': vigentes,
+                'pendentes': pendentes
+            })
+    
+    treinamentos_por_lider.sort(key=lambda x: x['vigentes'] + x['pendentes'], reverse=True)
+    treinamentos_por_lider = treinamentos_por_lider[:10]
+    
+    # Gráfico por Setor e Turno (considerando filtros aplicados)
+    treinamentos_por_setor_turno = []
+    from organization.models import Setor
+    from core.models import TURNOS_CHOICES
+    
+    combinacoes = Colaborador.objects.filter(
+        setor__isnull=False,
+        is_active=True
+    ).values_list('setor_id', 'turno').distinct()
+    
+    for setor_id, turno_val in combinacoes:
+        try:
+            setor = Setor.objects.get(id=setor_id)
+            
+            colaboradores_ids = Colaborador.objects.filter(
+                setor_id=setor_id,
+                turno=turno_val,
+                is_active=True
+            ).values_list('id', flat=True)
+            
+            vigentes = RegistroTreinamento.objects.filter(
+                colaborador_id__in=colaboradores_ids,
+                data_treinamento__isnull=False,
+                ativo=True
+            ).filter(base_query).count()
+            
+            pendentes = RegistroTreinamento.objects.filter(
+                colaborador_id__in=colaboradores_ids,
+                data_treinamento__isnull=True,
+                ativo=True
+            ).filter(base_query).count()
+            
+            total = vigentes + pendentes
+            if total > 0:
+                turno_dict = dict(TURNOS_CHOICES)
+                turno_label = turno_dict.get(turno_val, turno_val)
+                
+                setor_nome = setor.nome
+                if len(setor_nome) > 20:
+                    setor_nome = setor_nome[:17] + '...'
+                
+                treinamentos_por_setor_turno.append({
+                    'nome': f'{setor_nome} - {turno_label}'[:40],
+                    'vigentes': vigentes,
+                    'pendentes': pendentes
+                })
+        except:
+            pass
+    
+    treinamentos_por_setor_turno.sort(key=lambda x: x['vigentes'] + x['pendentes'], reverse=True)
+    treinamentos_por_setor_turno = treinamentos_por_setor_turno[:10]
+    
     # Dados da tabela: últimos treinamentos
     dados_tabela = list(treinamentos.select_related(
         'colaborador', 'procedimento'
@@ -718,5 +832,7 @@ def dashboard_treinamentos_filtered_view(request):
         'taxa_conformidade': taxa_conformidade,
         'status_distribuicao': status_distribuicao,
         'treinamentos_por_mes': treinamentos_por_mes,
+        'treinamentos_por_lider': treinamentos_por_lider,
+        'treinamentos_por_setor_turno': treinamentos_por_setor_turno,
         'dados_tabela': dados_tabela_list
     })

@@ -71,7 +71,7 @@ class RegistroTreinamentoInlineForm(forms.ModelForm):
         fields = [
             'tipo', 'colaborador_nome', 'colaborador', 'participante_externo', 
             'procedimento', 'titulo_treinamento', 'descricao',
-            'data_treinamento', 'observacoes'
+            'data_treinamento', 'ativo', 'observacoes'
         ]
         widgets = {
             'tipo': forms.Select(attrs={'class': 'form-select tipo-registro-select'}),
@@ -85,6 +85,7 @@ class RegistroTreinamentoInlineForm(forms.ModelForm):
             'titulo_treinamento': forms.TextInput(attrs={'class': 'form-control campo-titulo', 'style': 'display:none;'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control campo-descricao', 'rows': 2, 'style': 'display:none;'}),
             'data_treinamento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'observacoes': forms.TextInput(attrs={'class': 'form-control'}),
         }
     

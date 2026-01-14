@@ -212,7 +212,7 @@
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-outline-primary" 
-                                        onclick="editarColaborador({{ cp.id }}, '{{ cp.colaborador.nome_completo|escapejs }}', {{ cp.grupos_selecionados|safe|default:'null' }}, '{{ cp.data_atribuicao|date:'Y-m-d' }}', {{ cp.colaborador.id }})" 
+                                        onclick="editarColaborador({{ cp.id }}, '{{ cp.colaborador.nome_completo|escapejs }}', {{ cp.grupos_selecionados|safe|default:'null' }}, '{{ cp.data_atribuicao|date:'Y-m-d' }}', {{ cp.colaborador.id }}, JSON.parse('{{ cp.get_subgrupos_status|escapejs }}'))" 
                                         title="Editar grupos/subgrupos">
                                     <i class="bi bi-pencil"></i>
                                 </button>
@@ -428,7 +428,7 @@
                                             <!-- Subgrupos -->
                                             <div class="subgrupos-edit ms-4 mt-2" id="edit-subgrupos-{{ grupo.id }}" style="display: none;">
                                                 {% for subgrupo in grupo.subgrupos.all %}
-                                                <div class="form-check form-check-sm">
+                                                <div class="form-check form-check-sm mb-2">
                                                     <input class="form-check-input" 
                                                            type="checkbox" 
                                                            name="subgrupos" 
@@ -464,18 +464,27 @@
                                         Deixe em branco para aplicar todos os procedimentos do(s) grupo(s) selecionado(s).
                                     </small>
                                 </div>
+                                <div class="mb-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selecionarTodosProcedimentosEdit()">
+                                        <i class="bi bi-check-all"></i> Selecionar Todos
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limparProcedimentosEdit()">
+                                        <i class="bi bi-x-circle"></i> Limpar
+                                    </button>
+                                </div>
                                 <div id="lista-procedimentos-edit" class="border rounded p-3" style="max-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
                                     <p class="text-muted text-center py-3">
                                         <i class="bi bi-arrow-left"></i> Selecione os subgrupos ao lado para filtrar procedimentos
                                     </p>
                                 </div>
                                 <input type="hidden" name="procedimentos_selecionados" id="procedimentos-selecionados-edit" value="">
+                                <input type="hidden" name="subgrupos_ativos" id="subgrupos-ativos-edit" value="">
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" onclick="prepararSubmissaoModalEdicao(event)">
                             <i class="bi bi-check-circle"></i> Salvar Alterações
                         </button>
                     </div>
@@ -644,7 +653,7 @@
         });
     }
 
-    function editarColaborador(cpId, nomeColaborador, gruposSelecionados, dataAtribuicao, colaboradorId) {
+    function editarColaborador(cpId, nomeColaborador, gruposSelecionados, dataAtribuicao, colaboradorId, subgruposStatus) {
         // Abrir modal de edição
         const modal = new bootstrap.Modal(document.getElementById('modalEditarColaborador'));
         
@@ -681,7 +690,14 @@
             if (gruposSelecionados.subgrupos) {
                 gruposSelecionados.subgrupos.forEach(sgId => {
                     const checkbox = document.getElementById(`edit-subgrupo-${sgId}`);
-                    if (checkbox) checkbox.checked = true;
+                    if (checkbox) {
+                        // Estado do checkbox = ativo (1) ou inativo (0) baseado no status anterior
+                        if (subgruposStatus && subgruposStatus[sgId] == 0) {
+                            checkbox.checked = false; // Inativo
+                        } else {
+                            checkbox.checked = true;  // Ativo (padrão)
+                        }
+                    }
                 });
             }
         }
@@ -689,6 +705,22 @@
         // Carregar procedimentos dos subgrupos selecionados
         atualizarProcedimentosFiltrados();
         modal.show();
+    }
+
+    function prepararSubmissaoModalEdicao(event) {
+        // Capturar estado ativo/inativo dos subgrupos
+        // Checked = ativo, Unchecked = inativo
+        const subgruposAtivos = {};
+        document.querySelectorAll('#modalEditarColaborador input[name="subgrupos"]').forEach(checkbox => {
+            if (checkbox.checked) {
+                subgruposAtivos[checkbox.value] = 1; // Ativo
+            } else {
+                subgruposAtivos[checkbox.value] = 0; // Inativo
+            }
+        });
+        
+        // Armazenar em um campo hidden JSON
+        document.getElementById('subgrupos-ativos-edit').value = JSON.stringify(subgruposAtivos);
     }
 
     function toggleEditSubgrupos(grupoId) {
@@ -724,6 +756,22 @@
                 alert('Erro na requisição: ' + error);
             });
         }
+    }
+
+    // Selecionar todos os procedimentos no modal de edição
+    function selecionarTodosProcedimentosEdit() {
+        document.querySelectorAll('#lista-procedimentos-edit .proc-check-edit').forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        atualizarProcedimentosSelecionados();
+    }
+
+    // Limpar todos os procedimentos no modal de edição
+    function limparProcedimentosEdit() {
+        document.querySelectorAll('#lista-procedimentos-edit .proc-check-edit').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        atualizarProcedimentosSelecionados();
     }
 
     // Dados de procedimentos por subgrupo (carregados do servidor)

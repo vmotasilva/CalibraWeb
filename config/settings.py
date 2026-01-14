@@ -14,7 +14,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Default is False (safer). In dev set DEBUG='True' in the environment.
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+# For localhost development, force DEBUG=True to enable CSRF cookie
+IS_LOCAL_ENV = any(h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1") for h in ['localhost', '127.0.0.1'])
+DEBUG = (os.environ.get("DEBUG", "False") == "True") or IS_LOCAL_ENV
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # Read SECRET_KEY from environment in all environments. For local dev you may
@@ -44,10 +46,12 @@ if not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "testserver"]
 
 
-# Configuração necessária para o formulário de login funcionar no Railway (HTTPS)
-CSRF_TRUSTED_ORIGINS = os.environ.get(
-    "CSRF_TRUSTED_ORIGINS", "https://*.railway.app"
+# Configuração necessária para o formulário de login funcionar no Railway (HTTPS) e em desenvolvimento
+csrf_origins = os.environ.get(
+    "CSRF_TRUSTED_ORIGINS", 
+    "https://*.railway.app,http://localhost:8000,http://127.0.0.1:8000,http://localhost:18000,http://127.0.0.1:18000"
 ).split(",")
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins if origin.strip()]
 
 
 # Application definition
@@ -309,23 +313,35 @@ LOGIN_URL = "login"  # Avisa que sua URL se chama apenas 'login' e não 'account
 LOGIN_REDIRECT_URL = "/"  # Redireciona para dashboard após login bem-sucedido
 LOGOUT_REDIRECT_URL = "login"  # Para onde vai depois de sair
 
-# --- Production security settings ---
-if not DEBUG:
-    # Protect cookies — useful on HTTPS deploys
+# --- Security settings ---
+# Detectar se está em ambiente local (localhost/127.0.0.1)
+IS_LOCAL = any(host in ALLOWED_HOSTS for host in ['localhost', '127.0.0.1', '0.0.0.0', 'testserver'])
+
+if not DEBUG and not IS_LOCAL:
+    # Production security settings (HTTPS only)
     SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
     CSRF_COOKIE_SECURE = True
+    CSRF_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_SAMESITE = 'Lax'
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", 31536000))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
-    # Railway já gerencia SSL/HTTPS no proxy, então não precisamos forçar redirect aqui
     SECURE_SSL_REDIRECT = False
     X_FRAME_OPTIONS = "DENY"
 else:
-    # Development settings - allow iframes for PDF preview
-    X_FRAME_OPTIONS = "SAMEORIGIN"
+    # Development/Local settings - allow HTTP
+    SESSION_COOKIE_SECURE = False
+    SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access in development
+    SESSION_COOKIE_SAMESITE = 'Lax'  # Lax for development to allow cross-origin
+    CSRF_COOKIE_SECURE = False
+    CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access in development
+    CSRF_COOKIE_SAMESITE = 'Lax'  # Lax for development to allow form submissions
+    X_FRAME_OPTIONS = "SAMEORIGIN"  # allow iframes for PDF preview
 
 # ==============================================================================
 # EMAIL CONFIGURATION - Fase 5: Export and Scheduled Reports
@@ -390,10 +406,19 @@ LOGGING = {
 # CACHE CONFIGURATION - Fase 6 Task #3
 # ============================================================================
 
-from config.cache_settings import CACHES, SESSION_ENGINE
+from config.cache_settings import CACHES
 
 # Redis cache backends (multiple caches for different purposes)
 CACHES = CACHES
 
-# Use Redis for sessions (faster than database)
-SESSION_ENGINE = SESSION_ENGINE
+# ============================================================================
+# SESSION CONFIGURATION
+# ============================================================================
+
+# In DEBUG mode: Always use database sessions (no Redis dependency)
+# In production: Use database sessions for reliability
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_CACHE_ALIAS = 'default'
+
+# Store CSRF token in session instead of cookie for better security and compatibility
+CSRF_USE_SESSIONS = True

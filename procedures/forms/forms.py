@@ -71,11 +71,19 @@ class ProcedimentoForm(forms.ModelForm):
 class RegistroTreinamentoForm(forms.ModelForm):
     """Formulário para registrar treinamentos de colaboradores."""
     
+    # Campo explícito para o checkbox funcionar corretamente
+    ativo = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label="Ativo",
+        help_text="Define se o treinamento está ativo ou inativo"
+    )
+    
     class Meta:
         model = RegistroTreinamento
         fields = [
             'colaborador', 'procedimento', 'revisao_treinada', 'data_treinamento',
-            'validade_treinamento', 'observacoes'
+            'validade_treinamento', 'ativo', 'observacoes'
         ]
         widgets = {
             'colaborador': forms.Select(attrs={'class': 'form-select'}),

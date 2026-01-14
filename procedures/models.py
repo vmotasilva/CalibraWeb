@@ -327,6 +327,11 @@ class RegistroTreinamento(models.Model):
         null=True, blank=True,
         verbose_name="Resultado da Avaliação"
     )
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name="Ativo",
+        help_text="Define se o grupo/sub-grupo se aplica ao colaborador"
+    )
     
     def clean(self):
         """Validação customizada."""
@@ -763,6 +768,35 @@ class ColaboradorPerfil(models.Model):
                 procedimentos = Procedimento.objects.none()
         
         return procedimentos
+
+    def get_subgrupos_status(self):
+        """Retorna um dicionário com o status ativo/inativo de cada subgrupo para este colaborador.
+        Formato: {'subgrupo_id': 1, 'subgrupo_id2': 0, ...}"""
+        import json
+        from procedures.models import RegistroTreinamento
+        
+        resultado = {}
+        
+        if self.grupos_selecionados and self.grupos_selecionados.get('subgrupos'):
+            for subgrupo_id in self.grupos_selecionados['subgrupos']:
+                # Verificar se há registros ativos para este subgrupo
+                subgrupo = SubGrupoTreinamento.objects.get(id=subgrupo_id)
+                procedimentos = subgrupo.procedimentos.all()
+                
+                # Verificar se todos os registros deste subgrupo estão ativos
+                registros = RegistroTreinamento.objects.filter(
+                    colaborador=self.colaborador,
+                    procedimento__in=procedimentos
+                )
+                
+                if registros.exists():
+                    # Se há registros, usar o status do primeiro (devem ser todos iguais)
+                    resultado[str(subgrupo_id)] = int(registros.first().ativo)
+                else:
+                    # Se não há registros, considerar ativo por padrão
+                    resultado[str(subgrupo_id)] = 1
+        
+        return json.dumps(resultado)
 
     class Meta:
         verbose_name = "Colaborador-Perfil"

@@ -323,14 +323,17 @@ def detalhe_procedimento_view(request, procedimento_id):
 @login_required
 def treinamentos_list_view(request):
     """Lista de treinamentos realizados com filtros."""
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    
     qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
     colaboradores = Colaborador.objects.order_by('nome_completo')
     procedimentos = Procedimento.objects.order_by('codigo')
     
-    status = request.GET.get('status')
-    colaborador_id = request.GET.get('colaborador')
-    procedimento_id = request.GET.get('procedimento')
-    busca = request.GET.get('q')
+    status = request.GET.get('status', '')
+    colaborador_id = request.GET.get('colaborador', '')
+    procedimento_id = request.GET.get('procedimento', '')
+    busca = request.GET.get('q', '')
+    ativo = request.GET.get('ativo', '')
 
     # Filtro de status - nota: status_treinamento é uma property
     if status:
@@ -340,6 +343,8 @@ def treinamentos_list_view(request):
         qs = qs.filter(colaborador_id=colaborador_id)
     if procedimento_id:
         qs = qs.filter(procedimento_id=procedimento_id)
+    if ativo:
+        qs = qs.filter(ativo=ativo == '1')
     if busca:
         qs = qs.filter(
             Q(colaborador__nome_completo__icontains=busca) |
@@ -347,7 +352,22 @@ def treinamentos_list_view(request):
             Q(procedimento__nome__icontains=busca)
         )
     
-    treinamentos = qs.order_by('-data_treinamento')[:100]
+    # Ordenar
+    qs = qs.order_by('-data_treinamento') if isinstance(qs, list) else qs.order_by('-data_treinamento')
+    
+    # Contar total de registros
+    total_registros = len(qs) if isinstance(qs, list) else qs.count()
+    
+    # Paginar resultados (20 por página)
+    paginator = Paginator(qs, 20)
+    page = request.GET.get('page')
+    
+    try:
+        treinamentos = paginator.page(page)
+    except PageNotAnInteger:
+        treinamentos = paginator.page(1)
+    except EmptyPage:
+        treinamentos = paginator.page(paginator.num_pages)
     
     return render(request, "procedures/treinamento_lista.html", {
         "treinamentos": treinamentos,
@@ -357,6 +377,8 @@ def treinamentos_list_view(request):
         "colaborador_id": colaborador_id,
         "procedimento_id": procedimento_id,
         "busca": busca,
+        "ativo": ativo,
+        "total_registros": total_registros,
     })
 
 
@@ -375,14 +397,18 @@ def novo_treinamento_view(request):
     if request.method == "POST":
         form = RegistroTreinamentoForm(request.POST)
         if form.is_valid():
-            treinamento = form.save()
-            messages.success(request, "Treinamento registrado com sucesso.")
-            return redirect("treinamentos_list")
+            try:
+                treinamento = form.save()
+                messages.success(request, "Treinamento registrado com sucesso.")
+                return redirect("treinamentos_list")
+            except Exception as e:
+                messages.error(request, f"Erro ao salvar: {str(e)}")
     else:
         form = RegistroTreinamentoForm()
     
     return render(request, "procedures/treinamento_form.html", {
-        "form": form
+        "form": form,
+        "titulo": "Novo Treinamento"
     })
 
 
@@ -393,14 +419,20 @@ def editar_treinamento_view(request, treinamento_id):
     if request.method == "POST":
         form = RegistroTreinamentoForm(request.POST, instance=treinamento)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Treinamento atualizado.")
-            return redirect("treinamentos_list")
+            try:
+                form.save()
+                messages.success(request, "Treinamento atualizado com sucesso.")
+                return redirect("treinamentos_list")
+            except Exception as e:
+                messages.error(request, f"Erro ao salvar: {str(e)}")
+        else:
+            messages.error(request, "Formulário contém erros. Verifique os campos.")
     else:
         form = RegistroTreinamentoForm(instance=treinamento)
     
     return render(request, "procedures/treinamento_form.html", {
-        "form": form
+        "form": form,
+        "titulo": f"Editar Treinamento - {treinamento.colaborador.nome_completo if treinamento.colaborador else 'Externo'}"
     })
 
 

@@ -2,14 +2,15 @@
 # Cache Configuration - Development/Production agnostic
 
 import os
-from django.conf import settings
 
 # ============================================================================
 # CACHE BACKEND - Auto-detect based on Redis availability
 # ============================================================================
 
-# Use Redis if REDIS_URL is provided, otherwise use in-memory cache
-USE_REDIS = bool(os.getenv('REDIS_URL')) or os.getenv('DEBUG') == 'False'
+# In development: Always use in-memory cache (faster, no Redis dependency)
+# In production: Use Redis only if REDIS_URL is explicitly provided
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
+USE_REDIS = bool(os.getenv('REDIS_URL')) and not DEBUG
 
 if USE_REDIS:
     # Production: Redis Cache
@@ -168,18 +169,6 @@ CACHE_INVALIDATION_MAP = {
         'estatisticas_setor',
     ],
 }
-
-# ============================================================================
-# SESSION & SECURITY
-# ============================================================================
-
-# Use cache for sessions if Redis available, otherwise use database
-if USE_REDIS:
-    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-    SESSION_CACHE_ALIAS = 'sessions'
-else:
-    # Fallback to database sessions for development
-    SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # ============================================================================
 # CACHE WARMING (Background Tasks)

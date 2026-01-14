@@ -80,11 +80,12 @@ class PacoteTreinamentoAdmin(admin.ModelAdmin):
 
 
 class RegistroTreinamentoAdmin(admin.ModelAdmin):
-    list_display = ['colaborador', 'procedimento', 'data_treinamento']
+    list_display = ['colaborador', 'procedimento', 'data_treinamento', 'ativo']
     search_fields = ['colaborador__nome_completo', 'procedimento__nome']
-    list_filter = ['data_treinamento']
+    list_filter = ['data_treinamento', 'ativo']
     list_select_related = ['colaborador', 'procedimento', 'revisor_qualidade']
     ordering = ['-data_treinamento']
+    fields = ['colaborador', 'procedimento', 'revisor_qualidade', 'revisao_treinada', 'data_treinamento', 'validade_treinamento', 'ativo', 'observacoes']
 
 
 class DisciplinaAdmin(admin.ModelAdmin):

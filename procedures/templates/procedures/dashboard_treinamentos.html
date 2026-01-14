@@ -336,6 +336,18 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Gráfico por Líder -->
+                <div class="col-lg-4 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-people"></i> Líderes</h6>
+                        </div>
+                        <div class="card-body" style="padding: 0.75rem;">
+                            <canvas id="chartLider" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Tabela de Dados -->
@@ -365,6 +377,69 @@
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Paginação -->
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-between align-items-center p-3 bg-light border-top" style="border-top: 1px solid #dee2e6;">
+                    <div>
+                        <small class="text-muted">
+                            Mostrando <strong>{{ page_obj.start_index }}</strong> até <strong>{{ page_obj.end_index }}</strong> 
+                            de <strong>{{ page_obj.paginator.count }}</strong> registros
+                        </small>
+                    </div>
+                    
+                    <nav aria-label="Paginação">
+                        <ul class="pagination pagination-sm mb-0">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1" aria-label="Primeira página">
+                                    <i class="bi bi-chevron-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Página anterior">
+                                    <i class="bi bi-chevron-left"></i> Anterior
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="bi bi-chevron-double-left"></i></span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="bi bi-chevron-left"></i> Anterior</span>
+                            </li>
+                            {% endif %}
+                            
+                            <!-- Números de página -->
+                            <li class="page-item disabled">
+                                <span class="page-link">
+                                    Página <strong>{{ page_obj.number }}</strong> de <strong>{{ page_obj.paginator.num_pages }}</strong>
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Próxima página">
+                                    Próxima <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Última página">
+                                    <i class="bi bi-chevron-double-right"></i>
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Próxima <i class="bi bi-chevron-right"></i></span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="bi bi-chevron-double-right"></i></span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -376,12 +451,14 @@
     let chartsInstances = {
         status: null,
         meses: null,
-        setorTurno: null
+        setorTurno: null,
+        lider: null
     };
 
     let dadosOriginais = {
         treinamentos_por_mes: {{ treinamentos_por_mes|safe }},
         treinamentos_por_setor_turno: {{ treinamentos_por_setor_turno|safe }},
+        treinamentos_por_lider: {{ treinamentos_por_lider|safe }},
         status_distribuicao: {{ status_distribuicao|safe }}
     };
 
@@ -391,7 +468,8 @@
         // Usar dados filtrados ou originais
         const statusDist = data ? data.status_distribuicao : dadosOriginais.status_distribuicao;
         const mesesData = data ? data.treinamentos_por_mes : dadosOriginais.treinamentos_por_mes;
-        const setorData = data ? [] : dadosOriginais.treinamentos_por_setor_turno;
+        const setorData = data ? data.treinamentos_por_setor_turno : dadosOriginais.treinamentos_por_setor_turno;
+        const liderData = data ? data.treinamentos_por_lider : dadosOriginais.treinamentos_por_lider;
 
         // Destruir gráficos anteriores
         Object.values(chartsInstances).forEach(chart => {
@@ -483,6 +561,50 @@
                     {
                         label: 'Pendentes',
                         data: setorPendentes,
+                        backgroundColor: 'rgba(248, 113, 113, 0.7)',
+                        borderColor: 'rgba(248, 113, 113, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                indexAxis: 'y',
+                layout: {
+                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
+                },
+                plugins: {
+                    legend: { display: true, position: 'top', labels: { padding: 15, font: { size: 12 } } }
+                },
+                scales: {
+                    x: { stacked: true, beginAtZero: true },
+                    y: { stacked: true, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+
+        // Gráfico de Líderes
+        const liderLabels = liderData.map(l => l.nome);
+        const liderVigentes = liderData.map(l => l.vigentes);
+        const liderPendentes = liderData.map(l => l.pendentes);
+
+        const ctxLider = document.getElementById('chartLider').getContext('2d');
+        chartsInstances.lider = new Chart(ctxLider, {
+            type: 'bar',
+            data: {
+                labels: liderLabels,
+                datasets: [
+                    {
+                        label: 'Vigentes',
+                        data: liderVigentes,
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Pendentes',
+                        data: liderPendentes,
                         backgroundColor: 'rgba(248, 113, 113, 0.7)',
                         borderColor: 'rgba(248, 113, 113, 1)',
                         borderWidth: 1
