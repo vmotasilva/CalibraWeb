@@ -651,9 +651,8 @@ def dashboard_treinamentos_filtered_view(request):
     
     base_query = Q(
         colaborador__isnull=False,
-        procedimento__isnull=False,
-        pacote_colaborador_exists
-    )
+        procedimento__isnull=False
+    ) & pacote_colaborador_exists
     
     if turno:
         base_query &= Q(colaborador__turno=turno)
