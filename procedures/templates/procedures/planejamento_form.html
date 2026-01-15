@@ -440,16 +440,23 @@
                                     {% if form.data_prevista.errors %}<div class="text-danger small mt-1">{{ form.data_prevista.errors }}</div>{% endif %}
                                 </div>
                                 <div>
+                                    <label class="form-label">{{ form.horario_previsto.label }}</label>
+                                    {{ form.horario_previsto }}
+                                    {% if form.horario_previsto.errors %}<div class="text-danger small mt-1">{{ form.horario_previsto.errors }}</div>{% endif %}
+                                </div>
+                                <div>
                                     <label class="form-label">{{ form.data_realizada.label }}</label>
                                     {{ form.data_realizada }}
                                     {% if form.data_realizada.errors %}<div class="text-danger small mt-1">{{ form.data_realizada.errors }}</div>{% endif %}
                                 </div>
+                            </div>
+                            
+                            <div class="row-3col">
                                 <div>
                                     <label class="form-label">{{ form.instrutor.label }}</label>
                                     {{ form.instrutor }}
                                     {% if form.instrutor.errors %}<div class="text-danger small mt-1">{{ form.instrutor.errors }}</div>{% endif %}
                                 </div>
-                            </div>
                         </div>
                         
                         <!-- SEÇÃO 3: CARGA HORÁRIA -->

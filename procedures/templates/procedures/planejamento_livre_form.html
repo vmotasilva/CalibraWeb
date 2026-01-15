@@ -74,12 +74,21 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
+                                <label class="form-label">{{ form.horario_previsto.label }}</label>
+                                {{ form.horario_previsto }}
+                                {% if form.horario_previsto.errors %}<div class="text-danger small mt-1">{{ form.horario_previsto.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
                                 <label class="form-label">{{ form.instrutor.label }}</label>
                                 {{ form.instrutor }}
                                 {% if form.instrutor.errors %}<div class="text-danger small mt-1">{{ form.instrutor.errors }}</div>{% endif %}
                             </div>
                         </div>
-                    </div>
 
                     <div class="row">
                         <div class="col-md-6">

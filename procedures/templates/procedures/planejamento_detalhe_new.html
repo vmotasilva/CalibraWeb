@@ -78,7 +78,7 @@
                 </div>
                 <div class="col-md-6">
                     <p><strong>Data Prevista:</strong> {{ planejamento.data_prevista|date:"d/m/Y" }}
-                        {% if planejamento.hora_prevista %} às {{ planejamento.hora_prevista }}{% endif %}
+                        {% if planejamento.horario_previsto %} às {{ planejamento.horario_previsto|time:"H:i" }}{% endif %}
                     </p>
                     {% if planejamento.data_realizada %}
                     <p><strong>Data Realizada:</strong> {{ planejamento.data_realizada|date:"d/m/Y" }}</p>
