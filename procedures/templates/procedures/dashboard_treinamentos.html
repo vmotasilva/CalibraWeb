@@ -311,78 +311,171 @@
                 </div>
             </div>
 
-            <!-- Gráfico de Distribuição de Status (Linha Isolada) -->
-            <div class="row mb-4 g-2">
-                <div class="col-lg-12 mb-3">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="bi bi-bar-chart-line"></i> Distribuição de Status</h6>
-                        </div>
-                        <div class="card-body" style="padding: 0.5rem;">
-                            <canvas id="chartStatus" height="40"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Demais Gráficos -->
-            <div class="row mb-4 g-2">
-                <!-- Treinamentos por Mês -->
-                <div class="col-lg-3 mb-3">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Últimos 6 Meses</h6>
-                        </div>
-                        <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartMeses" height="200"></canvas>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gráfico por Setor e Turno -->
-                <div class="col-lg-3 mb-3">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Setor e Turno</h6>
-                        </div>
-                        <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartSetorTurno" height="200"></canvas>
-                        </div>
-                    </div>
+            <!-- Abas de Análise -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light p-0">
+                    <ul class="nav nav-tabs" id="myTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="conformidade-tab" data-bs-toggle="tab" data-bs-target="#conformidade" type="button" role="tab" aria-controls="conformidade" aria-selected="true">
+                                <i class="bi bi-percent"></i> Conformidade
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="ultimos-tab" data-bs-toggle="tab" data-bs-target="#ultimos" type="button" role="tab" aria-controls="ultimos" aria-selected="false">
+                                <i class="bi bi-graph-up"></i> Últimos Treinamentos
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="demanda-tab" data-bs-toggle="tab" data-bs-target="#demanda" type="button" role="tab" aria-controls="demanda" aria-selected="false">
+                                <i class="bi bi-bar-chart"></i> Demanda
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="planejamento-tab" data-bs-toggle="tab" data-bs-target="#planejamento" type="button" role="tab" aria-controls="planejamento" aria-selected="false">
+                                <i class="bi bi-calendar2-week"></i> Planejamento
+                            </button>
+                        </li>
+                    </ul>
                 </div>
 
-                <!-- Gráfico por Líder -->
-                <div class="col-lg-3 mb-3">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="bi bi-people"></i> Líderes</h6>
-                        </div>
-                        <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartLider" height="200"></canvas>
+                <div class="tab-content" id="myTabsContent">
+                    <!-- ABA 1: CONFORMIDADE -->
+                    <div class="tab-pane fade show active" id="conformidade" role="tabpanel" aria-labelledby="conformidade-tab">
+                        <div class="card-body">
+                            <!-- Card de Conformidade -->
+                            <div class="row mb-3">
+                                <div class="col-lg-3 mb-3">
+                                    <div class="card h-100 shadow-sm border-success">
+                                        <div class="card-body" style="padding: 0.75rem;">
+                                            <div class="d-flex justify-content-between align-items-start gap-1">
+                                                <div style="min-width: 0;">
+                                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Conformidade</small>
+                                                    <div class="h5 mb-0 mt-1 text-success" style="font-size: 1.5rem;">{{ taxa_conformidade|floatformat:0 }}%</div>
+                                                </div>
+                                                <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.4rem; font-size: 0.8rem;">
+                                                    <i class="bi bi-check-circle" style="font-size: 0.8rem;"></i>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.5rem;">Vigentes / Total</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Gráfico de Distribuição de Status -->
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <div class="card shadow-sm">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0"><i class="bi bi-bar-chart-line"></i> Distribuição de Status</h6>
+                                        </div>
+                                        <div class="card-body" style="padding: 0.75rem;">
+                                            <canvas id="chartStatus" height="80"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Planejamento por Setor e Turno -->
-                <div class="col-lg-3 mb-3">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="bi bi-calendar-event"></i> Planejados Setor/Turno</h6>
-                        </div>
-                        <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartPlanejamentoSetorTurno" height="200"></canvas>
+                    <!-- ABA 2: ÚLTIMOS TREINAMENTOS REALIZADOS -->
+                    <div class="tab-pane fade" id="ultimos" role="tabpanel" aria-labelledby="ultimos-tab">
+                        <div class="card-body">
+                            <!-- Card de Conformidade (duplicado para esta aba) -->
+                            <div class="row mb-3">
+                                <div class="col-lg-3 mb-3">
+                                    <div class="card h-100 shadow-sm border-success">
+                                        <div class="card-body" style="padding: 0.75rem;">
+                                            <div class="d-flex justify-content-between align-items-start gap-1">
+                                                <div style="min-width: 0;">
+                                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Conformidade</small>
+                                                    <div class="h5 mb-0 mt-1 text-success" style="font-size: 1.5rem;">{{ taxa_conformidade|floatformat:0 }}%</div>
+                                                </div>
+                                                <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.4rem; font-size: 0.8rem;">
+                                                    <i class="bi bi-check-circle" style="font-size: 0.8rem;"></i>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.5rem;">Vigentes / Total</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Gráfico Últimos 6 Meses -->
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <div class="card shadow-sm h-100">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Últimos 6 Meses</h6>
+                                        </div>
+                                        <div class="card-body" style="padding: 0.75rem;">
+                                            <canvas id="chartMeses" height="250"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Planejamento por Instrutor -->
-                <div class="col-lg-3 mb-3">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="bi bi-person-check"></i> Planejados Instrutor</h6>
+                    <!-- ABA 3: DEMANDA -->
+                    <div class="tab-pane fade" id="demanda" role="tabpanel" aria-labelledby="demanda-tab">
+                        <div class="card-body">
+                            <div class="row mb-4 g-2">
+                                <!-- Gráfico por Setor e Turno -->
+                                <div class="col-lg-6 mb-3">
+                                    <div class="card shadow-sm h-100">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Setor e Turno</h6>
+                                        </div>
+                                        <div class="card-body" style="padding: 0.75rem;">
+                                            <canvas id="chartSetorTurno" height="300"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Gráfico por Líder -->
+                                <div class="col-lg-6 mb-3">
+                                    <div class="card shadow-sm h-100">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0"><i class="bi bi-people"></i> Líderes</h6>
+                                        </div>
+                                        <div class="card-body" style="padding: 0.75rem;">
+                                            <canvas id="chartLider" height="300"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartPlanejamentoInstrutor" height="200"></canvas>
+                    </div>
+
+                    <!-- ABA 4: PLANEJAMENTO -->
+                    <div class="tab-pane fade" id="planejamento" role="tabpanel" aria-labelledby="planejamento-tab">
+                        <div class="card-body">
+                            <div class="row mb-4 g-2">
+                                <!-- Planejamento por Setor e Turno -->
+                                <div class="col-lg-6 mb-3">
+                                    <div class="card shadow-sm h-100">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0"><i class="bi bi-calendar-event"></i> Planejados Setor/Turno</h6>
+                                        </div>
+                                        <div class="card-body" style="padding: 0.75rem;">
+                                            <canvas id="chartPlanejamentoSetorTurno" height="300"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Planejamento por Instrutor -->
+                                <div class="col-lg-6 mb-3">
+                                    <div class="card shadow-sm h-100">
+                                        <div class="card-header bg-light">
+                                            <h6 class="mb-0"><i class="bi bi-person-check"></i> Planejados Instrutor</h6>
+                                        </div>
+                                        <div class="card-body" style="padding: 0.75rem;">
+                                            <canvas id="chartPlanejamentoInstrutor" height="300"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
