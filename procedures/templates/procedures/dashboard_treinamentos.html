@@ -221,8 +221,18 @@
                 </div>
             </div>
 
-            <!-- KPIs Principais -->
-            <div class="kpi-container-single">
+            <!-- KPIs Principais - Accordion Recolhível -->
+            <div class="accordion mb-4" id="kpiAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingKpi">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseKpi" aria-expanded="false" aria-controls="collapseKpi">
+                            <i class="bi bi-speedometer2"></i> <strong>Resumo de Indicadores</strong>
+                            <span class="badge bg-primary ms-2">5 KPIs</span>
+                        </button>
+                    </h2>
+                    <div id="collapseKpi" class="accordion-collapse collapse" aria-labelledby="headingKpi" data-bs-parent="#kpiAccordion">
+                        <div class="accordion-body p-3">
+                            <div class="kpi-container-single">
                 <!-- Total de Treinamentos -->
                 <div class="kpi-card">
                     <div class="card h-100 shadow-sm">
@@ -312,6 +322,10 @@
                                 </div>
                             </div>
                             <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Últimos 30 dias</small>
+                        </div>
+                    </div>
+                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
