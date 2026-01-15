@@ -187,10 +187,10 @@
                             {% for lider in lideres_filtro %}
                             <div class="form-check">
                                 <input class="form-check-input filter-checkbox" type="checkbox" value="{{ lider.id }}" data-category="lider" id="lid_{{ lider.id }}">
-                                <label class="form-check-label small text-truncate" for="lid_{{ lider.id }}" title="{{ lider.nome_completo }}">
-                                    {{ lider.nome_completo|title }}
+                                <label class="form-check-label small text-truncate" for="lid_{{ lider.id }}" title="{{ lider.nome_completo }} (#{{ lider.id }})">
+                                    {{ lider.nome_completo|title }} <span class="badge bg-info bg-opacity-10 text-info border" style="font-size: 0.65rem; padding: 2px 4px;">#{{ lider.id }}</span>
                                 </label>
-                                <a href="{% url 'detalhe_colaborador' lider.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil">
+                                <a href="{% url 'detalhe_colaborador' lider.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil de {{ lider.nome_completo }} (ID: {{ lider.id }})">
                                     <i class="bi bi-box-arrow-up-right"></i>
                                 </a>
                             </div>
@@ -209,10 +209,10 @@
                             {% for super in supervisores_filtro %}
                             <div class="form-check">
                                 <input class="form-check-input filter-checkbox" type="checkbox" value="{{ super.id }}" data-category="supervisor" id="sup_{{ super.id }}">
-                                <label class="form-check-label small text-truncate" for="sup_{{ super.id }}" title="{{ super.nome_completo }}">
-                                    {{ super.nome_completo|title }}
+                                <label class="form-check-label small text-truncate" for="sup_{{ super.id }}" title="{{ super.nome_completo }} (#{{ super.id }})">
+                                    {{ super.nome_completo|title }} <span class="badge bg-info bg-opacity-10 text-info border" style="font-size: 0.65rem; padding: 2px 4px;">#{{ super.id }}</span>
                                 </label>
-                                <a href="{% url 'detalhe_colaborador' super.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil">
+                                <a href="{% url 'detalhe_colaborador' super.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil de {{ super.nome_completo }} (ID: {{ super.id }})">
                                     <i class="bi bi-box-arrow-up-right"></i>
                                 </a>
                             </div>
@@ -231,10 +231,10 @@
                             {% for gerente in gerentes_filtro %}
                             <div class="form-check">
                                 <input class="form-check-input filter-checkbox" type="checkbox" value="{{ gerente.id }}" data-category="gerente" id="ger_{{ gerente.id }}">
-                                <label class="form-check-label small text-truncate" for="ger_{{ gerente.id }}" title="{{ gerente.nome_completo }}">
-                                    {{ gerente.nome_completo|title }}
+                                <label class="form-check-label small text-truncate" for="ger_{{ gerente.id }}" title="{{ gerente.nome_completo }} (#{{ gerente.id }})">
+                                    {{ gerente.nome_completo|title }} <span class="badge bg-info bg-opacity-10 text-info border" style="font-size: 0.65rem; padding: 2px 4px;">#{{ gerente.id }}</span>
                                 </label>
-                                <a href="{% url 'detalhe_colaborador' gerente.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil">
+                                <a href="{% url 'detalhe_colaborador' gerente.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil de {{ gerente.nome_completo }} (ID: {{ gerente.id }})">
                                     <i class="bi bi-box-arrow-up-right"></i>
                                 </a>
                             </div>
@@ -344,7 +344,7 @@
                                     <div>
                                         <div class="fw-bold text-dark small text-uppercase">{{ f.nome_completo }}</div>
                                         <div class="text-muted d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
-                                            <i class="bi bi-person-vcard me-1"></i> {{ f.matricula }} 
+                                            <i class="bi bi-person-vcard me-1"></i> {{ f.matricula }} <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#{{ f.id }}</span> 
                                             {% if not f.is_active %}
                                                 <span class="badge bg-danger ms-2 py-0" style="font-size: 0.6rem;">DESLIGADO</span>
                                             {% elif f.em_ferias %}
