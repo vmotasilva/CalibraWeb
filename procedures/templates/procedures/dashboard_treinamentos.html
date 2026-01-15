@@ -232,57 +232,42 @@
 
     /* Tab Content Responsive */
     .tab-content {
-        display: flex;
-        flex-direction: column;
+        display: none;
+    }
+
+    /* Dashboard Grid Layout */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto auto;
+        gap: 0.5rem;
+        height: 100%;
+        flex: 1;
         overflow: hidden;
     }
 
-    .tab-pane {
-        min-height: 0;
-        overflow: hidden;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .tab-pane > .card-body {
-        flex: 1;
+    .grid-item {
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        padding: 0;
+        background: white;
+        border-radius: 0.25rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     }
 
-    .tab-pane .row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0;
-        flex: 1;
-        min-height: 0;
+    .grid-item.full-width {
+        grid-column: 1 / -1;
     }
 
-    .tab-pane .col-lg-12 {
-        flex: 1 1 100%;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .tab-pane .card {
-        width: 100%;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        border: none;
-        box-shadow: none;
-    }
-
-    .tab-pane .card-header {
+    .grid-item-header {
         padding: 0.5rem 0.75rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
         font-size: 0.9rem;
+        font-weight: 600;
     }
 
-    .tab-pane .card > .card-body {
+    .grid-item-body {
         flex: 1;
         display: flex;
         align-items: center;
@@ -291,11 +276,40 @@
         padding: 0.5rem;
     }
 
-    .tab-pane canvas {
+    .grid-item canvas {
         max-width: 100%;
         max-height: 100%;
         width: 100% !important;
         height: 100% !important;
+    }
+
+    /* Demanda Toggle */
+    .demanda-toggle {
+        padding: 0.5rem 0.75rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .demanda-toggle button {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.85rem;
+        border: 1px solid #dee2e6;
+        background: white;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .demanda-toggle button.active {
+        background: #007bff;
+        color: white;
+        border-color: #0056b3;
+    }
+
+    .demanda-toggle button:hover {
+        border-color: #007bff;
     }
 
     /* Sub-tab content styling */
@@ -518,39 +532,78 @@
     <!-- Conteúdo Principal -->
     <div class="main-content">
         <div class="container-fluid" style="flex: 1; display: flex; flex-direction: column; padding: 0; margin: 0;">
-            <!-- Tabs Card -->
-            <div class="card shadow-sm" style="display: flex; flex-direction: column; height: 100%; overflow: hidden; margin: 0;">
-                <div class="card-header bg-light p-0">
-                    <ul class="nav nav-tabs" id="myTabs" role="tablist" style="font-size: 0.9rem;">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active py-2 px-3" id="conformidade-tab" data-bs-toggle="tab" data-bs-target="#conformidade" type="button" role="tab" aria-controls="conformidade" aria-selected="true">
-                                <i class="bi bi-percent"></i> Conformidade
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link py-2 px-3" id="ultimos-tab" data-bs-toggle="tab" data-bs-target="#ultimos" type="button" role="tab" aria-controls="ultimos" aria-selected="false">
-                                <i class="bi bi-graph-up"></i> Últimos Treinamentos
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link py-2 px-3" id="demanda-tab" data-bs-toggle="tab" data-bs-target="#demanda" type="button" role="tab" aria-controls="demanda" aria-selected="false">
-                                <i class="bi bi-bar-chart"></i> Demanda
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link py-2 px-3" id="planejamento-tab" data-bs-toggle="tab" data-bs-target="#planejamento" type="button" role="tab" aria-controls="planejamento" aria-selected="false">
-                                <i class="bi bi-calendar2-week"></i> Planejamento
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link py-2 px-3" id="registros-tab" data-bs-toggle="tab" data-bs-target="#registros" type="button" role="tab" aria-controls="registros" aria-selected="false">
-                                <i class="bi bi-table"></i> Registros
-                            </button>
-                        </li>
-                    </ul>
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid">
+                <!-- LINHA 1: Visão Geral (50/50) -->
+                
+                <!-- Gráfico Pizza: Conformidade -->
+                <div class="grid-item">
+                    <div class="grid-item-header">
+                        <i class="bi bi-pie-chart"></i> Distribuição de Status
+                    </div>
+                    <div class="grid-item-body">
+                        <canvas id="chartStatus"></canvas>
+                    </div>
                 </div>
 
-                <div class="tab-content flex-grow-1" id="myTabsContent" style="overflow: hidden; display: flex; flex-direction: column;">
+                <!-- Gráfico Barras: Últimos 6 Meses -->
+                <div class="grid-item">
+                    <div class="grid-item-header">
+                        <i class="bi bi-bar-chart"></i> Últimos 6 Meses
+                    </div>
+                    <div class="grid-item-body">
+                        <canvas id="chartMeses"></canvas>
+                    </div>
+                </div>
+
+                <!-- LINHA 2: Demanda (Full Width com Toggle) -->
+                <div class="grid-item full-width">
+                    <div class="demanda-toggle">
+                        <strong style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="bi bi-bar-chart"></i> Demanda por:
+                        </strong>
+                        <button class="demanda-btn active" data-target="demanda-setor">
+                            <i class="bi bi-diagram-3"></i> Setor e Turno
+                        </button>
+                        <button class="demanda-btn" data-target="demanda-lider">
+                            <i class="bi bi-people"></i> Líderes
+                        </button>
+                    </div>
+                    <div class="grid-item-body" style="position: relative;">
+                        <div id="demanda-setor-container" class="demanda-chart-container" style="width: 100%; height: 100%;">
+                            <canvas id="chartSetorTurno"></canvas>
+                        </div>
+                        <div id="demanda-lider-container" class="demanda-chart-container" style="width: 100%; height: 100%; display: none;">
+                            <canvas id="chartLider"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LINHA 3: Planejamento (Full Width com Toggle) -->
+                <div class="grid-item full-width">
+                    <div class="demanda-toggle">
+                        <strong style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="bi bi-calendar2-week"></i> Planejamento:
+                        </strong>
+                        <button class="planejamento-btn active" data-target="planejamento-setor">
+                            <i class="bi bi-calendar-event"></i> Setor/Turno
+                        </button>
+                        <button class="planejamento-btn" data-target="planejamento-instrutor">
+                            <i class="bi bi-person-check"></i> Instrutor
+                        </button>
+                    </div>
+                    <div class="grid-item-body" style="position: relative;">
+                        <div id="planejamento-setor-container" class="planejamento-chart-container" style="width: 100%; height: 100%;">
+                            <canvas id="chartPlanejamentoSetorTurno"></canvas>
+                        </div>
+                        <div id="planejamento-instrutor-container" class="planejamento-chart-container" style="width: 100%; height: 100%; display: none;">
+                            <canvas id="chartPlanejamentoInstrutor"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
                             <!-- ABA 1: CONFORMIDADE -->
                             <div class="tab-pane fade show active" id="conformidade" role="tabpanel" aria-labelledby="conformidade-tab" style="overflow-y: auto;">
                                 <div class="card-body pt-1" style="flex: 1; display: flex; flex-direction: column;">
@@ -1104,6 +1157,49 @@
             }
         });
     }
+
+    // Controle dos Toggles - Demanda e Planejamento
+    document.querySelectorAll('.demanda-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const target = this.getAttribute('data-target');
+            
+            // Atualizar classe ativa
+            document.querySelectorAll('.demanda-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Mostrar/Esconder containers
+            document.getElementById(target + '-container').style.display = '';
+            Array.from(document.querySelectorAll('[id^="demanda-"][id$="-container"]')).forEach(el => {
+                if (el.id !== target + '-container') el.style.display = 'none';
+            });
+            
+            // Trigger resize para gráficos
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        });
+    });
+
+    document.querySelectorAll('.planejamento-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const target = this.getAttribute('data-target');
+            
+            // Atualizar classe ativa
+            document.querySelectorAll('.planejamento-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Mostrar/Esconder containers
+            document.getElementById(target + '-container').style.display = '';
+            Array.from(document.querySelectorAll('[id^="planejamento-"][id$="-container"]')).forEach(el => {
+                if (el.id !== target + '-container') el.style.display = 'none';
+            });
+            
+            // Trigger resize para gráficos
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        });
+    });
 
     function aplicarFiltros() {
         const turno = document.getElementById('filterTurno').value;
