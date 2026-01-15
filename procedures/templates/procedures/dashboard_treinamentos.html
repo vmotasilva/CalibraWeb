@@ -61,6 +61,32 @@
         font-size: 0.75rem;
     }
 
+    .dashboard-top-section {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-start;
+        padding: 0.5rem;
+        min-height: 0;
+        flex: 1;
+    }
+
+    .dashboard-title-box {
+        background: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.25rem;
+        border: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+        min-width: fit-content;
+        height: fit-content;
+    }
+
+    .dashboard-title-box h1 {
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
     .main-content {
         flex: 1;
         overflow-y: auto;
@@ -213,12 +239,6 @@
     <i class="bi bi-speedometer2"></i>
 </button>
 
-<!-- Dashboard Header with Title -->
-<div class="dashboard-header">
-    <h1><i class="bi bi-graph-up"></i> Dashboard de Treinamentos</h1>
-    <small class="text-muted">Visão geral de estatísticas e conformidade</small>
-</div>
-
 <div class="dashboard-wrapper">
     <!-- Sidebar com Filtros -->
     <div class="sidebar" id="filterSidebar">
@@ -279,12 +299,19 @@
         </button>
     </div>
 
-    <!-- Sidebar com KPIs -->
-    <div class="kpi-sidebar collapsed" id="kpiSidebar">
-        <h6 class="mb-3"><i class="bi bi-speedometer2"></i> Indicadores</h6>
-        <div class="kpi-container-single" id="kpiSidebarContainer">
+    <!-- Conteúdo Principal -->
+    <div class="main-content">
+        <!-- Dashboard Top Section with Title, KPIs and Tabs -->
+        <div class="dashboard-top-section">
+            <!-- Title Box -->
+            <div class="dashboard-title-box">
+                <h1><i class="bi bi-graph-up"></i> Dashboard</h1>
+            </div>
+
+            <!-- KPIs Inline -->
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <!-- Total de Treinamentos -->
-                <div class="kpi-card">
+                <div class="kpi-card" style="flex: 0 0 auto; width: 120px;">
                     <div class="card h-100 shadow-sm">
                         <div class="card-body" style="padding: 0.5rem;">
                             <div class="d-flex justify-content-between align-items-start gap-1">
@@ -296,13 +323,12 @@
                                     <i class="bi bi-mortarboard" style="font-size: 0.6rem;"></i>
                                 </div>
                             </div>
-                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Registros cadastrados</small>
                         </div>
                     </div>
                 </div>
 
                 <!-- Treinamentos Vigentes -->
-                <div class="kpi-card">
+                <div class="kpi-card" style="flex: 0 0 auto; width: 120px;">
                     <div class="card h-100 shadow-sm border-success">
                         <div class="card-body" style="padding: 0.5rem;">
                             <div class="d-flex justify-content-between align-items-start gap-1">
@@ -317,13 +343,12 @@
                             <div class="progress" style="height: 1px; margin-top: 0.25rem;">
                                 <div class="progress-bar bg-success kpi-conformidade" style="width: {{ taxa_conformidade }}%"></div>
                             </div>
-                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Concluídos</small>
                         </div>
                     </div>
                 </div>
 
                 <!-- Treinamentos Pendentes -->
-                <div class="kpi-card">
+                <div class="kpi-card" style="flex: 0 0 auto; width: 120px;">
                     <div class="card h-100 shadow-sm border-danger">
                         <div class="card-body" style="padding: 0.5rem;">
                             <div class="d-flex justify-content-between align-items-start gap-1">
@@ -335,13 +360,12 @@
                                     <i class="bi bi-exclamation-circle" style="font-size: 0.6rem;"></i>
                                 </div>
                             </div>
-                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Não realizados</small>
                         </div>
                     </div>
                 </div>
 
                 <!-- Conformidade (%) -->
-                <div class="kpi-card">
+                <div class="kpi-card" style="flex: 0 0 auto; width: 120px;">
                     <div class="card h-100 shadow-sm border-success">
                         <div class="card-body" style="padding: 0.5rem;">
                             <div class="d-flex justify-content-between align-items-start gap-1">
@@ -353,13 +377,12 @@
                                     <i class="bi bi-percent" style="font-size: 0.6rem;"></i>
                                 </div>
                             </div>
-                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Vigentes / Total</small>
                         </div>
                     </div>
                 </div>
 
                 <!-- Últimos 30 dias -->
-                <div class="kpi-card">
+                <div class="kpi-card" style="flex: 0 0 auto; width: 120px;">
                     <div class="card h-100 shadow-sm border-info">
                         <div class="card-body" style="padding: 0.5rem;">
                             <div class="d-flex justify-content-between align-items-start gap-1">
@@ -371,20 +394,13 @@
                                     <i class="bi bi-calendar-event" style="font-size: 0.6rem;"></i>
                                 </div>
                             </div>
-                            <small class="text-muted d-block" style="font-size: 0.55rem; margin-top: 0.25rem;">Últimos 30 dias</small>
                         </div>
                     </div>
                 </div>
-        </div>
-    </div>
+            </div>
 
-    <!-- Conteúdo Principal -->
-    <div class="main-content">
-        <div class="container-fluid py-0" style="flex: 1; display: flex; flex-direction: column;">
-
-            <!-- Tabs Layout -->
-            <div class="row g-2" style="align-items: stretch; flex: 1; margin-bottom: 0;">
-                <div class="col-lg-12">
+            <!-- Tabs Card - Flex grow to fill remaining space -->
+            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
                     <div class="card shadow-sm" style="display: flex; flex-direction: column; height: 100%; max-height: calc(100vh - 280px);">
                         <div class="card-header bg-light p-0">
                             <ul class="nav nav-tabs" id="myTabs" role="tablist" style="font-size: 0.9rem;">
@@ -627,9 +643,10 @@
                             </div>
                         </div>
                     </div>
-                </div>
             </div>
         </div>
+    </div>
+</div>
     </div>
 </div>
 
