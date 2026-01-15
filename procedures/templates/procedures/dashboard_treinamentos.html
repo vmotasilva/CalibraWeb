@@ -318,8 +318,8 @@
                         <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="bi bi-bar-chart-line"></i> Distribuição de Status</h6>
                         </div>
-                        <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartStatus" height="80"></canvas>
+                        <div class="card-body" style="padding: 0.5rem;">
+                            <canvas id="chartStatus" height="40"></canvas>
                         </div>
                     </div>
                 </div>
@@ -526,14 +526,14 @@
                         data: [statusDist.vigente || 0],
                         backgroundColor: '#28a745',
                         borderColor: '#218838',
-                        borderWidth: 1
+                        borderWidth: 0
                     },
                     {
                         label: 'Pendentes',
                         data: [statusDist.pendente || 0],
                         backgroundColor: '#f87171',
                         borderColor: '#dc2626',
-                        borderWidth: 1
+                        borderWidth: 0
                     }
                 ]
             },
@@ -542,17 +542,17 @@
                 responsive: true,
                 maintainAspectRatio: true,
                 layout: {
-                    padding: { left: 10, right: 10, top: 5, bottom: 5 }
+                    padding: { left: 5, right: 5, top: 2, bottom: 2 }
                 },
                 plugins: {
                     legend: {
                         position: 'top',
-                        labels: { padding: 10, font: { size: 12 } }
+                        labels: { padding: 5, font: { size: 10 } }
                     }
                 },
                 scales: {
-                    x: { stacked: true, beginAtZero: true, ticks: { font: { size: 11 } } },
-                    y: { stacked: true, ticks: { font: { size: 11 } } }
+                    x: { stacked: true, beginAtZero: true, ticks: { font: { size: 8 } } },
+                    y: { stacked: true, ticks: { font: { size: 8 } } }
                 }
             }
         });
