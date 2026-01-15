@@ -354,6 +354,7 @@ def detalhe_colaborador_view(request, colab_id):
     matriz_treinamentos = {}
     total_pendentes = 0
     total_treinamentos = 0
+    procedimentos_contabilizados = set()  # Rastrear procedimentos já contados globalmente
     
     # Buscar perfis atribuídos ao colaborador
     perfis_colab = ColaboradorPerfil.objects.filter(
@@ -405,18 +406,23 @@ def detalhe_colaborador_view(request, colab_id):
                 for proc in subgrupo.procedimentos.all().order_by('codigo'):
                     treinamento = alvo.treinamentos.filter(procedimento=proc).first()
                     
-                    # Contabilizar
-                    total_treinamentos += 1
-                    matriz_treinamentos[perfil.codigo]['total'] += 1
-                    matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['total'] += 1
-                    matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos'][subgrupo.id]['total'] += 1
+                    # Verificar se este procedimento já foi contabilizado (em outro perfil)
+                    eh_duplicada = proc.id in procedimentos_contabilizados
                     
-                    # Verificar se está pendente
-                    if not treinamento or treinamento.status_treinamento not in ('OK', 'VIGENTE'):
-                        total_pendentes += 1
-                        matriz_treinamentos[perfil.codigo]['pendentes'] += 1
-                        matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['pendentes'] += 1
-                        matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos'][subgrupo.id]['pendentes'] += 1
+                    # Contabilizar apenas na primeira vez que aparecer
+                    if not eh_duplicada:
+                        total_treinamentos += 1
+                        procedimentos_contabilizados.add(proc.id)
+                        matriz_treinamentos[perfil.codigo]['total'] += 1
+                        matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['total'] += 1
+                        matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos'][subgrupo.id]['total'] += 1
+                        
+                        # Verificar se está pendente
+                        if not treinamento or treinamento.status_treinamento not in ('OK', 'VIGENTE'):
+                            total_pendentes += 1
+                            matriz_treinamentos[perfil.codigo]['pendentes'] += 1
+                            matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['pendentes'] += 1
+                            matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos'][subgrupo.id]['pendentes'] += 1
                     
                     matriz_treinamentos[perfil.codigo]['grupos'][grupo.id]['subgrupos'][subgrupo.id]['procedimentos'].append({
                         'procedimento': proc,
