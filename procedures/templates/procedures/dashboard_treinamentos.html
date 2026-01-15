@@ -237,135 +237,132 @@
 
     /* Dashboard Grid Layout - Unified View */
     .dashboard-grid {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        grid-auto-rows: minmax(400px, auto) !important;
-        gap: 0.75rem !important;
-        padding: 0.75rem !important;
-        height: 100% !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-auto-rows: 420px;
+        gap: 1rem;
+        padding: 1rem;
+        height: 100%;
+        width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
     }
 
     /* Grid Items - Forçar dimensões */
     .grid-item {
-        display: flex !important;
-        flex-direction: column !important;
-        background: white !important;
-        border-radius: 0.25rem !important;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
-        overflow: hidden !important;
-        min-height: 400px !important;
-        width: 100% !important;
-        min-width: 0 !important;
-        box-sizing: border-box !important;
+        display: flex;
+        flex-direction: column;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        min-height: 420px;
+        height: 100%;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .grid-item.full-width {
-        grid-column: 1 / -1 !important;
-        width: 100% !important;
+        grid-column: 1 / -1;
     }
 
     .grid-item-header {
-        padding: 0.75rem 1rem !important;
-        background: #f8f9fa !important;
-        border-bottom: 1px solid #dee2e6 !important;
-        font-size: 0.95rem !important;
-        font-weight: 600 !important;
-        color: #333 !important;
-        flex-shrink: 0 !important;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #333;
+        flex-shrink: 0;
     }
 
     .grid-item-header i {
-        margin-right: 0.5rem !important;
+        margin-right: 0.5rem;
     }
 
     .grid-item-body {
-        flex: 1 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        overflow: hidden !important;
-        padding: 0.5rem !important;
-        position: relative !important;
-        height: 100% !important;
-        width: 100% !important;
-        min-height: 0 !important;
-        min-width: 0 !important;
-        box-sizing: border-box !important;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        padding: 1rem;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 300px;
+        box-sizing: border-box;
     }
 
     .grid-item canvas {
         width: 100% !important;
         height: 100% !important;
-        max-width: 100% !important;
-        max-height: 100% !important;
+        max-width: 100%;
+        max-height: 100%;
         display: block !important;
     }
 
     /* Chart Container - Posicionamento absoluto */
     .chart-container {
-        position: relative !important;
-        width: 100% !important;
-        height: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        min-height: 0 !important;
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 0;
     }
 
     /* Demanda/Planejamento Toggle */
     .chart-toggle {
-        padding: 0.75rem 1rem !important;
-        background: #f8f9fa !important;
-        border-bottom: 1px solid #dee2e6 !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.75rem !important;
-        flex-shrink: 0 !important;
-        min-height: 50px !important;
+        padding: 0.75rem 1rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-shrink: 0;
     }
 
     .chart-toggle strong {
-        font-size: 0.9rem !important;
-        color: #333 !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 0.5rem !important;
+        font-size: 0.9rem;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .chart-toggle button {
-        padding: 0.35rem 0.75rem !important;
-        font-size: 0.85rem !important;
-        border: 1px solid #dee2e6 !important;
-        background: white !important;
-        color: #333 !important;
-        border-radius: 0.25rem !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease !important;
-        white-space: nowrap !important;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.85rem;
+        border: 1px solid #dee2e6;
+        background: white;
+        color: #333;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
     }
 
     .chart-toggle button:hover {
-        border-color: #007bff !important;
-        background: #f0f7ff !important;
+        border-color: #007bff;
+        background: #f0f7ff;
     }
 
     .chart-toggle button.active {
-        background: #007bff !important;
-        color: white !important;
-        border-color: #0056b3 !important;
+        background: #007bff;
+        color: white;
+        border-color: #0056b3;
     }
 
     /* Containers para gráficos com altura forçada */
     [id$="-container"] {
-        width: 100% !important;
-        height: 100% !important;
-        min-height: 300px !important;
-        position: relative !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        width: 100%;
+        height: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     /* Canvas dos gráficos - Exibição garantida */
@@ -373,27 +370,39 @@
         display: block !important;
         width: 100% !important;
         height: 100% !important;
-        max-width: 100% !important;
-        max-height: 100% !important;
+        max-width: 100%;
+        max-height: 100%;
     }
 
     /* Responsive Design */
     @media (max-width: 1024px) {
         .dashboard-grid {
             grid-template-columns: 1fr;
-            grid-auto-rows: minmax(250px, 1fr);
+            grid-auto-rows: 400px;
+            gap: 0.75rem;
+            padding: 0.75rem;
         }
     }
 
     @media (max-width: 768px) {
         .dashboard-grid {
+            grid-template-columns: 1fr;
+            grid-auto-rows: 350px;
             gap: 0.5rem;
             padding: 0.5rem;
         }
 
+        .grid-item {
+            min-height: 350px;
+        }
+
         .grid-item-header {
-            padding: 0.5rem 0.75rem;
-            font-size: 0.85rem;
+            padding: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .grid-item-body {
+            padding: 0.75rem;
         }
 
         .chart-toggle {
