@@ -299,96 +299,88 @@
                 </div>
             </div>
 
+            <!-- Seletor de Período de Planejamento -->
+            <div class="mb-3 d-flex justify-content-end">
+                <div style="width: 200px;">
+                    <label for="periodoGraph" class="form-label mb-2 small fw-bold">Período Planejamento:</label>
+                    <select id="periodoGraph" class="form-select form-select-sm">
+                        <option value="3" {% if periodo_planejamento == 3 %}selected{% endif %}>Últimos 3 meses</option>
+                        <option value="6" {% if periodo_planejamento == 6 %}selected{% endif %}>Últimos 6 meses</option>
+                        <option value="12" {% if periodo_planejamento == 12 %}selected{% endif %}>Últimos 12 meses</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- Gráficos -->
             <div class="row mb-4 g-2">
                 <!-- Distribuição por Status -->
-                <div class="col-lg-4 mb-3">
+                <div class="col-lg-3 mb-3">
                     <div class="card shadow-sm h-100">
                         <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
                         </div>
                         <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartStatus" height="250"></canvas>
+                            <canvas id="chartStatus" height="200"></canvas>
                         </div>
                     </div>
                 </div>
 
                 <!-- Treinamentos por Mês -->
-                <div class="col-lg-4 mb-3">
+                <div class="col-lg-3 mb-3">
                     <div class="card shadow-sm h-100">
                         <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Últimos 6 Meses</h6>
                         </div>
                         <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartMeses" height="250"></canvas>
+                            <canvas id="chartMeses" height="200"></canvas>
                         </div>
                     </div>
                 </div>
 
                 <!-- Gráfico por Setor e Turno -->
-                <div class="col-lg-4 mb-3">
+                <div class="col-lg-3 mb-3">
                     <div class="card shadow-sm h-100">
                         <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Setor e Turno</h6>
                         </div>
                         <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartSetorTurno" height="250"></canvas>
+                            <canvas id="chartSetorTurno" height="200"></canvas>
                         </div>
                     </div>
                 </div>
 
                 <!-- Gráfico por Líder -->
-                <div class="col-lg-4 mb-3">
+                <div class="col-lg-3 mb-3">
                     <div class="card shadow-sm h-100">
                         <div class="card-header bg-light">
                             <h6 class="mb-0"><i class="bi bi-people"></i> Líderes</h6>
                         </div>
                         <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartLider" height="250"></canvas>
+                            <canvas id="chartLider" height="200"></canvas>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Seção de Planejamento de Treinamentos -->
-            <div class="row mb-3 mt-4">
-                <div class="col-12">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0"><i class="bi bi-calendar2-week"></i> Planejamento de Treinamentos</h5>
-                        <div style="width: 200px;">
-                            <label for="periodoGraph" class="form-label mb-2 small fw-bold">Período:</label>
-                            <select id="periodoGraph" class="form-select form-select-sm">
-                                <option value="3" {% if periodo_planejamento == 3 %}selected{% endif %}>Últimos 3 meses</option>
-                                <option value="6" {% if periodo_planejamento == 6 %}selected{% endif %}>Últimos 6 meses</option>
-                                <option value="12" {% if periodo_planejamento == 12 %}selected{% endif %}>Últimos 12 meses</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Gráficos de Planejamento -->
-            <div class="row mb-4 g-2">
                 <!-- Planejamento por Setor e Turno -->
-                <div class="col-lg-6 mb-3">
+                <div class="col-lg-3 mb-3">
                     <div class="card shadow-sm h-100">
                         <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Planejados por Setor e Turno</h6>
+                            <h6 class="mb-0"><i class="bi bi-calendar-event"></i> Planejados Setor/Turno</h6>
                         </div>
                         <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartPlanejamentoSetorTurno" height="300"></canvas>
+                            <canvas id="chartPlanejamentoSetorTurno" height="200"></canvas>
                         </div>
                     </div>
                 </div>
 
                 <!-- Planejamento por Instrutor -->
-                <div class="col-lg-6 mb-3">
+                <div class="col-lg-3 mb-3">
                     <div class="card shadow-sm h-100">
                         <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="bi bi-person-check"></i> Planejados por Instrutor</h6>
+                            <h6 class="mb-0"><i class="bi bi-person-check"></i> Planejados Instrutor</h6>
                         </div>
                         <div class="card-body" style="padding: 0.75rem;">
-                            <canvas id="chartPlanejamentoInstrutor" height="300"></canvas>
+                            <canvas id="chartPlanejamentoInstrutor" height="200"></canvas>
                         </div>
                     </div>
                 </div>
@@ -755,14 +747,14 @@
                 responsive: true,
                 maintainAspectRatio: true,
                 layout: {
-                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
+                    padding: { left: 5, right: 5, top: 5, bottom: 5 }
                 },
                 plugins: {
-                    legend: { display: true, position: 'top', labels: { padding: 15, font: { size: 12 } } }
+                    legend: { display: true, position: 'top', labels: { padding: 8, font: { size: 10 } } }
                 },
                 scales: {
-                    x: { stacked: true, beginAtZero: true, ticks: { font: { size: 11 } } },
-                    y: { stacked: true, ticks: { font: { size: 11 } } }
+                    x: { stacked: true, beginAtZero: true, ticks: { font: { size: 9 } } },
+                    y: { stacked: true, ticks: { font: { size: 9 } } }
                 }
             }
         });
@@ -818,11 +810,11 @@
                     padding: { left: 10, right: 10, top: 10, bottom: 10 }
                 },
                 plugins: {
-                    legend: { display: true, position: 'top', labels: { padding: 15, font: { size: 12 } } }
+                    legend: { display: true, position: 'top', labels: { padding: 8, font: { size: 10 } } }
                 },
                 scales: {
-                    x: { stacked: true, beginAtZero: true, ticks: { font: { size: 11 } } },
-                    y: { stacked: true, ticks: { font: { size: 11 } } }
+                    x: { stacked: true, beginAtZero: true, ticks: { font: { size: 9 } } },
+                    y: { stacked: true, ticks: { font: { size: 9 } } }
                 }
             }
         });
