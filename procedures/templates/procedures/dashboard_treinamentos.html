@@ -19,6 +19,7 @@
         overflow-y: auto;
         transition: all 0.3s ease;
         position: relative;
+        max-height: calc(100vh - 100px);
     }
 
     .sidebar.collapsed {
@@ -36,6 +37,7 @@
         overflow-y: auto;
         transition: all 0.3s ease;
         position: relative;
+        max-height: calc(100vh - 100px);
     }
 
     .kpi-sidebar.collapsed {
@@ -213,6 +215,9 @@
         border-radius: 0.5rem;
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         overflow: hidden;
+        max-height: calc(100vh - 300px);
+        display: flex;
+        flex-direction: column;
     }
 
     .table-container h5 {
@@ -220,10 +225,25 @@
         background: #f8f9fa;
         border-bottom: 1px solid #dee2e6;
         margin: 0;
+        flex-shrink: 0;
     }
 
     .table-container table {
         margin: 0;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .table-container table tbody {
+        display: block;
+        max-height: calc(100vh - 380px);
+        overflow-y: auto;
+        width: 100%;
+    }
+
+    .table-container table thead {
+        display: block;
+        width: 100%;
     }
 
     .table-container table tbody tr:hover {
