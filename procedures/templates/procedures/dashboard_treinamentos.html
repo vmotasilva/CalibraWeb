@@ -19,7 +19,7 @@
         overflow-y: auto;
         transition: all 0.3s ease;
         position: relative;
-        max-height: calc(100vh - 100px);
+        max-height: calc(100vh - 120px);
     }
 
     .sidebar.collapsed {
@@ -37,7 +37,7 @@
         overflow-y: auto;
         transition: all 0.3s ease;
         position: relative;
-        max-height: calc(100vh - 100px);
+        max-height: calc(100vh - 120px);
     }
 
     .kpi-sidebar.collapsed {
@@ -210,22 +210,23 @@
     }
 
     .table-container {
-        margin-top: 2rem;
+        margin-top: 1rem;
         background: white;
         border-radius: 0.5rem;
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         overflow: hidden;
-        max-height: calc(100vh - 300px);
+        max-height: calc(100vh - 200px);
         display: flex;
         flex-direction: column;
     }
 
     .table-container h5 {
-        padding: 1rem;
+        padding: 0.75rem;
         background: #f8f9fa;
         border-bottom: 1px solid #dee2e6;
         margin: 0;
         flex-shrink: 0;
+        font-size: 0.9rem;
     }
 
     .table-container table {
@@ -236,7 +237,7 @@
 
     .table-container table tbody {
         display: block;
-        max-height: calc(100vh - 380px);
+        max-height: calc(100vh - 260px);
         overflow-y: auto;
         width: 100%;
     }
