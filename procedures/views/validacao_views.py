@@ -69,11 +69,15 @@ def validacoes_pendentes_view(request):
     """
     Mostra validações pendentes para o usuário atual
     """
-    try:
-        colaborador = request.user.colaborador
-    except:
-        messages.error(request, 'Usuário não tem perfil de colaborador!')
-        return redirect('home')
+    # Permitir superusers mesmo sem perfil de colaborador
+    if not request.user.is_superuser:
+        try:
+            colaborador = request.user.colaborador
+        except:
+            messages.error(request, 'Usuário não tem perfil de colaborador!')
+            return redirect('home')
+    else:
+        colaborador = None
     
     validacoes = SolicitacaoValidacaoMatriz.objects.filter(
         validador=colaborador,
@@ -95,14 +99,15 @@ def validar_matriz_view(request, solicitacao_id):
     solicitacao = get_object_or_404(SolicitacaoValidacaoMatriz, id=solicitacao_id)
     matriz = solicitacao.matriz
     
-    # Verificar permissão
-    try:
-        if request.user.colaborador != solicitacao.validador:
-            messages.error(request, 'Você não tem permissão para validar esta matriz!')
-            return redirect('procedures:validacoes_pendentes')
-    except:
-        messages.error(request, 'Usuário não tem perfil de colaborador!')
-        return redirect('home')
+    # Verificar permissão (superusers pode validar qualquer coisa)
+    if not request.user.is_superuser:
+        try:
+            if request.user.colaborador != solicitacao.validador:
+                messages.error(request, 'Você não tem permissão para validar esta matriz!')
+                return redirect('procedures:validacoes_pendentes')
+        except:
+            messages.error(request, 'Usuário não tem perfil de colaborador!')
+            return redirect('home')
     
     if request.method == 'POST':
         acao = request.POST.get('acao')
@@ -177,11 +182,15 @@ def validacao_rapida_view(request, matriz_id):
     """
     matriz = get_object_or_404(MatrizHabilidade, id=matriz_id)
     
-    try:
-        validador = request.user.colaborador
-    except:
-        messages.error(request, 'Usuário não tem perfil de colaborador!')
-        return redirect('home')
+    # Permitir superusers mesmo sem perfil de colaborador
+    if not request.user.is_superuser:
+        try:
+            validador = request.user.colaborador
+        except:
+            messages.error(request, 'Usuário não tem perfil de colaborador!')
+            return redirect('home')
+    else:
+        validador = None
     
     if request.method == 'POST':
         motivo = request.POST.get('motivo', 'Validação rápida')
