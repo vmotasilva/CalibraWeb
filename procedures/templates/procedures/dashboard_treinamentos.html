@@ -229,6 +229,45 @@
     .table-container table tbody tr:hover {
         background-color: #f8f9fa;
     }
+
+    /* Tab Content Responsive */
+    .tab-content {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    .tab-pane {
+        min-height: 0;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .tab-pane .card-body {
+        padding: 0.5rem;
+        overflow-y: auto;
+    }
+
+    /* Responsive Card Grid */
+    .tab-pane .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .tab-pane .col-lg-12 {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    .tab-pane .card {
+        width: 100%;
+        max-height: 100%;
+    }
+
+    .tab-pane .card-body {
+        max-height: calc(100vh - 280px);
+    }
 </style>
 
 <button class="toggle-sidebar-btn" id="toggleSidebarBtn" title="Filtros">
@@ -241,7 +280,7 @@
 
 <div class="dashboard-wrapper">
     <!-- Sidebar com Filtros -->
-    <div class="sidebar" id="filterSidebar">
+    <div class="sidebar collapsed" id="filterSidebar">
         <h6 class="mb-3"><i class="bi bi-sliders"></i> Filtros</h6>
 
         <div class="filter-group">
@@ -300,7 +339,7 @@
     </div>
 
     <!-- Sidebar com Título e KPIs -->
-    <div class="kpi-sidebar collapsed" id="kpiSidebar">
+    <div class="kpi-sidebar" id="kpiSidebar">
         <h5 class="mb-3"><i class="bi bi-graph-up"></i> Dashboard</h5>
         
         <!-- KPIs Verticais -->
@@ -430,10 +469,10 @@
                     </ul>
                 </div>
 
-                <div class="tab-content flex-grow-1" id="myTabsContent" style="overflow-y: auto;">
+                <div class="tab-content flex-grow-1" id="myTabsContent" style="overflow: hidden; display: flex; flex-direction: column;">
                             <!-- ABA 1: CONFORMIDADE -->
-                            <div class="tab-pane fade show active" id="conformidade" role="tabpanel" aria-labelledby="conformidade-tab">
-                                <div class="card-body pt-3">
+                            <div class="tab-pane fade show active" id="conformidade" role="tabpanel" aria-labelledby="conformidade-tab" style="overflow-y: auto;">
+                                <div class="card-body pt-1">
                                     <!-- Gráfico de Distribuição de Status -->
                                     <div class="row">
                                         <div class="col-lg-12">
@@ -451,8 +490,8 @@
                             </div>
 
                             <!-- ABA 2: ÚLTIMOS TREINAMENTOS REALIZADOS -->
-                            <div class="tab-pane fade" id="ultimos" role="tabpanel" aria-labelledby="ultimos-tab">
-                                <div class="card-body pt-3">
+                            <div class="tab-pane fade" id="ultimos" role="tabpanel" aria-labelledby="ultimos-tab" style="overflow-y: auto;">
+                                <div class="card-body pt-1">
                                     <!-- Gráfico Últimos 6 Meses -->
                                     <div class="row">
                                         <div class="col-lg-12">
@@ -470,8 +509,8 @@
                             </div>
 
                             <!-- ABA 3: DEMANDA -->
-                            <div class="tab-pane fade" id="demanda" role="tabpanel" aria-labelledby="demanda-tab">
-                                <div class="card-body pt-3">
+                            <div class="tab-pane fade" id="demanda" role="tabpanel" aria-labelledby="demanda-tab" style="overflow-y: auto;">
+                                <div class="card-body pt-1">
                                     <!-- Sub-abas Demanda -->
                                     <ul class="nav nav-tabs" style="font-size: 0.9rem; margin-bottom: 1rem;">
                                         <li class="nav-item">
@@ -510,8 +549,8 @@
                             </div>
 
                             <!-- ABA 4: PLANEJAMENTO -->
-                            <div class="tab-pane fade" id="planejamento" role="tabpanel" aria-labelledby="planejamento-tab">
-                                <div class="card-body pt-3">
+                            <div class="tab-pane fade" id="planejamento" role="tabpanel" aria-labelledby="planejamento-tab" style="overflow-y: auto;">
+                                <div class="card-body pt-1">
                                     <!-- Sub-abas Planejamento -->
                                     <ul class="nav nav-tabs" style="font-size: 0.9rem; margin-bottom: 1rem;">
                                         <li class="nav-item">
@@ -550,8 +589,8 @@
                             </div>
 
                             <!-- ABA 5: REGISTROS DE TREINAMENTO -->
-                            <div class="tab-pane fade" id="registros" role="tabpanel" aria-labelledby="registros-tab">
-                                <div class="card-body pt-3" style="display: flex; flex-direction: column; height: 100%;">
+                            <div class="tab-pane fade" id="registros" role="tabpanel" aria-labelledby="registros-tab" style="overflow-y: auto">
+                                <div class="card-body pt-1" style="display: flex; flex-direction: column; height: 100%;">
                                     <div style="overflow-x: auto; flex-grow: 1; display: flex; flex-direction: column;">
                                         <table class="table table-sm table-hover mb-0">
                                             <thead class="table-light">
