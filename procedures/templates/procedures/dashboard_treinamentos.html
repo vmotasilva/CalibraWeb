@@ -317,10 +317,10 @@
                 </div>
             </div>
 
-            <!-- Layout com 2 colunas: Abas e Tabela -->
+            <!-- Layout com abas -->
             <div class="row g-3" style="align-items: stretch;">
-                <!-- Coluna 1: Abas de Análise -->
-                <div class="col-lg-6">
+                <!-- Card com Abas -->
+                <div class="col-lg-12">
                     <div class="card shadow-sm h-100" style="display: flex; flex-direction: column;">
                         <div class="card-header bg-light p-0">
                             <ul class="nav nav-tabs" id="myTabs" role="tablist" style="font-size: 0.9rem;">
@@ -342,6 +342,11 @@
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link py-2 px-3" id="planejamento-tab" data-bs-toggle="tab" data-bs-target="#planejamento" type="button" role="tab" aria-controls="planejamento" aria-selected="false">
                                         <i class="bi bi-calendar2-week"></i> Planejamento
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link py-2 px-3" id="registros-tab" data-bs-toggle="tab" data-bs-target="#registros" type="button" role="tab" aria-controls="registros" aria-selected="false">
+                                        <i class="bi bi-table"></i> Registros
                                     </button>
                                 </li>
                             </ul>
@@ -465,103 +470,98 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Coluna 2: Tabela de Dados -->
-                <div class="col-lg-6">
-                    <div class="card shadow-sm h-100" style="display: flex; flex-direction: column;">
-                        <div class="card-header bg-light">
-                            <h5 class="mb-0"><i class="bi bi-table"></i> Registros de Treinamento</h5>
-                        </div>
-                        <div class="card-body" style="overflow-y: auto; flex-grow: 1;">
-                            <div style="overflow-x: auto;">
-                                <table class="table table-sm table-hover mb-0">
-                                    <thead class="table-light">
+                            <!-- ABA 5: REGISTROS DE TREINAMENTO -->
+                            <div class="tab-pane fade" id="registros" role="tabpanel" aria-labelledby="registros-tab">
+                                <div class="card-body pt-3" style="display: flex; flex-direction: column; height: 100%;">
+                                    <div style="overflow-x: auto; flex-grow: 1; display: flex; flex-direction: column;">
+                                        <table class="table table-sm table-hover mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Colaborador</th>
+                                                    <th>Procedimento</th>
+                                                    <th>Descrição</th>
+                                                    <th>Data</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tabelaDados">
+                                        {% for registro in dados_tabela %}
                                         <tr>
-                                            <th>Colaborador</th>
-                                            <th>Procedimento</th>
-                                            <th>Descrição</th>
-                                            <th>Data</th>
+                                            <td><a href="{% url 'detalhe_colaborador' registro.colaborador_id %}" class="text-decoration-none">{{ registro.colaborador }}</a></td>
+                                            <td><span class="badge bg-secondary">{{ registro.procedimento }}</span></td>
+                                            <td><small>{{ registro.procedimento_nome }}</small></td>
+                                            <td>{{ registro.data }}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody id="tabelaDados">
-                            {% for registro in dados_tabela %}
-                            <tr>
-                                <td><a href="{% url 'detalhe_colaborador' registro.colaborador_id %}" class="text-decoration-none">{{ registro.colaborador }}</a></td>
-                                <td><span class="badge bg-secondary">{{ registro.procedimento }}</span></td>
-                                <td><small>{{ registro.procedimento_nome }}</small></td>
-                                <td>{{ registro.data }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="text-center text-muted">Nenhum registro encontrado</td></tr>
-                            {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        
-                        <!-- Paginação -->
-                        {% if page_obj.has_other_pages %}
-                        <div class="card-footer bg-light border-top p-2" style="border-top: 1px solid #dee2e6;">
-                            <div class="d-flex justify-content-between align-items-center" style="font-size: 0.85rem;">
-                                <div>
-                                    <small class="text-muted">
-                                        {{ page_obj.start_index }}-{{ page_obj.end_index }}/{{ page_obj.paginator.count }}
-                                    </small>
+                                        {% empty %}
+                                        <tr><td colspan="4" class="text-center text-muted">Nenhum registro encontrado</td></tr>
+                                        {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    <!-- Paginação -->
+                                    {% if page_obj.has_other_pages %}
+                                    <div style="border-top: 1px solid #dee2e6; padding: 0.5rem; margin-top: auto;">
+                                        <div class="d-flex justify-content-between align-items-center" style="font-size: 0.85rem;">
+                                            <div>
+                                                <small class="text-muted">
+                                                    {{ page_obj.start_index }}-{{ page_obj.end_index }}/{{ page_obj.paginator.count }}
+                                                </small>
+                                            </div>
+                                            
+                                            <nav aria-label="Paginação">
+                                                <ul class="pagination pagination-sm mb-0">
+                                                    {% if page_obj.has_previous %}
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?page=1" aria-label="Primeira página">
+                                                            <i class="bi bi-chevron-double-left"></i>
+                                                        </a>
+                                                    </li>
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Página anterior">
+                                                            <i class="bi bi-chevron-left"></i>
+                                                        </a>
+                                                    </li>
+                                                    {% else %}
+                                                    <li class="page-item disabled">
+                                                        <span class="page-link"><i class="bi bi-chevron-double-left"></i></span>
+                                                    </li>
+                                                    <li class="page-item disabled">
+                                                        <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+                                                    </li>
+                                                    {% endif %}
+                                                    
+                                                    <li class="page-item disabled">
+                                                        <span class="page-link" style="font-size: 0.75rem;">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+                                                    </li>
+                                                    
+                                                    {% if page_obj.has_next %}
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Próxima página">
+                                                            <i class="bi bi-chevron-right"></i>
+                                                        </a>
+                                                    </li>
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Última página">
+                                                            <i class="bi bi-chevron-double-right"></i>
+                                                        </a>
+                                                    </li>
+                                                    {% else %}
+                                                    <li class="page-item disabled">
+                                                        <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+                                                    </li>
+                                                    <li class="page-item disabled">
+                                                        <span class="page-link"><i class="bi bi-chevron-double-right"></i></span>
+                                                    </li>
+                                                    {% endif %}
+                                                </ul>
+                                            </nav>
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
-                                
-                                <nav aria-label="Paginação">
-                                    <ul class="pagination pagination-sm mb-0">
-                                        {% if page_obj.has_previous %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page=1" aria-label="Primeira página">
-                                                <i class="bi bi-chevron-double-left"></i>
-                                            </a>
-                                        </li>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Página anterior">
-                                                <i class="bi bi-chevron-left"></i>
-                                            </a>
-                                        </li>
-                                        {% else %}
-                                        <li class="page-item disabled">
-                                            <span class="page-link"><i class="bi bi-chevron-double-left"></i></span>
-                                        </li>
-                                        <li class="page-item disabled">
-                                            <span class="page-link"><i class="bi bi-chevron-left"></i></span>
-                                        </li>
-                                        {% endif %}
-                                        
-                                        <li class="page-item disabled">
-                                            <span class="page-link" style="font-size: 0.75rem;">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
-                                        </li>
-                                        
-                                        {% if page_obj.has_next %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Próxima página">
-                                                <i class="bi bi-chevron-right"></i>
-                                            </a>
-                                        </li>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Última página">
-                                                <i class="bi bi-chevron-double-right"></i>
-                                            </a>
-                                        </li>
-                                        {% else %}
-                                        <li class="page-item disabled">
-                                            <span class="page-link"><i class="bi bi-chevron-right"></i></span>
-                                        </li>
-                                        <li class="page-item disabled">
-                                            <span class="page-link"><i class="bi bi-chevron-double-right"></i></span>
-                                        </li>
-                                        {% endif %}
-                                    </ul>
-                                </nav>
                             </div>
                         </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -977,13 +977,6 @@
         document.getElementById('filterSupervisor').value = '';
         document.getElementById('filterGerente').value = '';
         aplicarFiltros();
-    });
-
-    // Event Listener para o seletor de período de planejamento
-    document.getElementById('periodoGraph').addEventListener('change', function() {
-        const periodo = this.value;
-        const url = window.location.pathname + '?periodo_planejamento=' + periodo;
-        window.location.href = url;
     });
 
     // Inicializar gráficos ao carregar
