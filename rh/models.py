@@ -49,6 +49,28 @@ class Colaborador(models.Model):
         verbose_name="Salário (R$)",
     )
     em_ferias = models.BooleanField(default=False, verbose_name="Está de Férias?")
+    afastado = models.BooleanField(
+        default=False, 
+        verbose_name="Colaborador Afastado?",
+        help_text="Marque se colaborador está afastado (INSS, Licença, etc.)"
+    )
+    tipo_afastamento = models.CharField(
+        max_length=100, 
+        null=True, 
+        blank=True,
+        verbose_name="Tipo de Afastamento",
+        help_text="Ex: INSS, LICENÇA_MATERNIDADE, LICENÇA_PATERNIDADE, FÉRIAS, OUTRO"
+    )
+    data_inicio_afastamento = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Data Início do Afastamento"
+    )
+    data_fim_afastamento = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Data Fim do Afastamento"
+    )
     lider = models.ForeignKey(
         "self",
         on_delete=models.SET_NULL,

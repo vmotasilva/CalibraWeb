@@ -7,11 +7,35 @@ from qms.admin import admin_site
 
 
 class ColaboradorAdmin(admin.ModelAdmin):
-    list_display = ['matricula', 'nome_completo', 'cargo', 'setor', 'turno', 'is_active']
+    list_display = ['matricula', 'nome_completo', 'cargo', 'setor', 'turno', 'is_active', 'afastado']
     search_fields = ['matricula', 'nome_completo', 'cpf']
-    list_filter = ['setor', 'turno', 'is_active']
+    list_filter = ['setor', 'turno', 'is_active', 'afastado']
     list_select_related = ['setor']  # FK optimization
     ordering = ['matricula']
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('matricula', 'cpf', 'nome_completo', 'cargo', 'grupo')
+        }),
+        ('Organização', {
+            'fields': ('setor', 'centro_custo', 'turno')
+        }),
+        ('Hierarquia', {
+            'fields': ('lider', 'supervisor', 'gerente')
+        }),
+        ('Remuneração', {
+            'fields': ('salario',)
+        }),
+        ('Status', {
+            'fields': ('is_active', 'em_ferias')
+        }),
+        ('Afastamento', {
+            'fields': ('afastado', 'tipo_afastamento', 'data_inicio_afastamento', 'data_fim_afastamento'),
+            'description': 'Marque quando colaborador está afastado (INSS, Licença, etc.)'
+        }),
+        ('Treinamentos', {
+            'fields': ('pacotes_treinamento',)
+        }),
+    )
 
 
 class FeriasAdmin(admin.ModelAdmin):

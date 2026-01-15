@@ -226,6 +226,41 @@
                                 <small class="text-muted d-block mt-2">Marque se colaborador está em férias</small>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch form-check-lg">
+                                {{ form.afastado }}
+                                <label class="form-check-label fw-bold" for="{{ form.afastado.id_for_label }}">
+                                    <i class="bi bi-exclamation-circle"></i> Afastado
+                                </label>
+                                <small class="text-muted d-block mt-2">Marque se colaborador está afastado (INSS, Licença, etc.)</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Campos de Afastamento (aparecem quando afastado está marcado) -->
+                    <div id="afastamento-fields" class="row g-3 mt-3" style="display: none; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Tipo de Afastamento</label>
+                            {{ form.tipo_afastamento }}
+                            <small class="text-muted d-block mt-1">Ex: INSS, LICENÇA_MATERNIDADE, LICENÇA_PATERNIDADE, etc.</small>
+                            {% if form.tipo_afastamento.errors %}
+                                <div class="invalid-feedback d-block">{{ form.tipo_afastamento.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Data Início</label>
+                            {{ form.data_inicio_afastamento }}
+                            {% if form.data_inicio_afastamento.errors %}
+                                <div class="invalid-feedback d-block">{{ form.data_inicio_afastamento.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Data Fim</label>
+                            {{ form.data_fim_afastamento }}
+                            {% if form.data_fim_afastamento.errors %}
+                                <div class="invalid-feedback d-block">{{ form.data_fim_afastamento.errors }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -361,5 +396,27 @@
         }
     }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const afastadoCheckbox = document.getElementById('{{ form.afastado.id_for_label }}');
+    const afastamentoFields = document.getElementById('afastamento-fields');
+    
+    // Função para mostrar/ocultar campos de afastamento
+    function toggleAfastamentoFields() {
+        if (afastadoCheckbox.checked) {
+            afastamentoFields.style.display = 'grid';
+        } else {
+            afastamentoFields.style.display = 'none';
+        }
+    }
+    
+    // Executar ao carregar a página
+    toggleAfastamentoFields();
+    
+    // Adicionar listener para mudanças
+    afastadoCheckbox.addEventListener('change', toggleAfastamentoFields);
+});
+</script>
 
 {% endblock %}
