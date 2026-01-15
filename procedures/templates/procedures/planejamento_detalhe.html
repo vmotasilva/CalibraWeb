@@ -773,8 +773,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (filtros.setores) {
                     filtros.setores.forEach(setor => {
                         const option = document.createElement('option');
-                        option.value = setor;
-                        option.textContent = setor;
+                        option.value = setor.id;
+                        option.textContent = setor.nome;
                         filtroSetor.appendChild(option);
                     });
                 }
@@ -782,8 +782,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (filtros.lideres) {
                     filtros.lideres.forEach(lider => {
                         const option = document.createElement('option');
-                        option.value = lider;
-                        option.textContent = lider;
+                        option.value = lider.id;
+                        option.textContent = lider.nome;
                         filtroLider.appendChild(option);
                     });
                 }
@@ -791,8 +791,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (filtros.supervisores) {
                     filtros.supervisores.forEach(supervisor => {
                         const option = document.createElement('option');
-                        option.value = supervisor;
-                        option.textContent = supervisor;
+                        option.value = supervisor.id;
+                        option.textContent = supervisor.nome;
                         filtroSupervisor.appendChild(option);
                     });
                 }
@@ -890,9 +890,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         colaboradoresFiltrados = colaboradoresFiltrados.filter(colab => {
             const matchTurno = !turnoSelecionado || colab.turno === turnoSelecionado;
-            const matchSetor = !setorSelecionado || colab.setor === setorSelecionado;
-            const matchLider = !liderSelecionado || colab.lider === liderSelecionado;
-            const matchSupervisor = !supervisorSelecionado || colab.supervisor === supervisorSelecionado;
+            const matchSetor = !setorSelecionado || (colab.setor_id && colab.setor_id === parseInt(setorSelecionado));
+            const matchLider = !liderSelecionado || (colab.lider_id && colab.lider_id === parseInt(liderSelecionado));
+            const matchSupervisor = !supervisorSelecionado || (colab.supervisor_id && colab.supervisor_id === parseInt(supervisorSelecionado));
             const matchBusca = !busca || 
                                colab.nome.toLowerCase().includes(busca) || 
                                (colab.matricula && colab.matricula.toLowerCase().includes(busca));
