@@ -440,42 +440,66 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Adicionar Colaboradores</h5>
+                <h5 class="modal-title">Selecionar Colaboradores</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <!-- Filtros -->
                 <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Setor</label>
-                        <select class="form-select" id="filtro_setor_colab">
-                            <option value="">Todos</option>
+                    <div class="col-md-6">
+                        <label class="form-label small">Turno</label>
+                        <select id="colaborador_filtro_turno" class="form-select form-select-sm">
+                            <option value="">Todos os turnos</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Cargo</label>
-                        <select class="form-select" id="filtro_cargo_colab">
-                            <option value="">Todos</option>
+                    <div class="col-md-6">
+                        <label class="form-label small">Setor</label>
+                        <select id="colaborador_filtro_setor" class="form-select form-select-sm">
+                            <option value="">Todos os setores</option>
                         </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Palavra-chave</label>
-                        <input type="text" class="form-control" id="filtro_keyword_colab" placeholder="Nome...">
                     </div>
                 </div>
-                <div class="d-grid gap-2 mb-3">
-                    <button type="button" class="btn btn-primary" id="buscarColaboradoresBtn">
-                        <i class="bi bi-search"></i> Buscar
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small">Líder</label>
+                        <select id="colaborador_filtro_lider" class="form-select form-select-sm">
+                            <option value="">Todos os líderes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Supervisor</label>
+                        <select id="colaborador_filtro_supervisor" class="form-select form-select-sm">
+                            <option value="">Todos os supervisores</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Busca -->
+                <div class="mb-3">
+                    <label class="form-label small">Pesquisar por nome ou matrícula</label>
+                    <input type="text" id="colaborador_search" class="form-control form-control-sm" placeholder="Ex: João Silva ou MAT001...">
+                </div>
+
+                <!-- Lista de colaboradores -->
+                <div id="colaborador_modal_list" style="max-height: 500px; overflow-y: auto;">
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-hourglass-split"></i> Carregando colaboradores...
+                    </div>
+                </div>
+
+                <!-- Botões de ação -->
+                <div class="mt-3 pt-3 border-top d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn_selecionar_colaboradores_filtrados">
+                        <i class="bi bi-check-all"></i> Selecionar Filtrados
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_limpar_colaboradores">
+                        <i class="bi bi-x"></i> Limpar Seleção
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success ms-auto" id="btn_confirmar_colaboradores" data-bs-dismiss="modal">
+                        <i class="bi bi-check-circle"></i> Adicionar Colaboradores
                     </button>
                 </div>
-                <div style="max-height: 400px; overflow-y: auto;" id="resultados_colaboradores">
-                    <p class="text-muted text-center">Use os filtros e clique em Buscar</p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary" id="adicionarColaboradoresSelecionados">
-                    <i class="bi bi-plus-circle"></i> Adicionar Selecionados
-                </button>
             </div>
         </div>
     </div>
@@ -706,37 +730,214 @@ document.addEventListener('DOMContentLoaded', function() {
         // Apenas para interface visual se necessário
     }
     
-    // Carregar opções de filtros
-    carregarSetores();
-    carregarCargos();
     
-    // Adicionar colaboradores selecionados
-    document.getElementById('adicionarColaboradoresSelecionados').addEventListener('click', function() {
-        const checkboxes = document.querySelectorAll('#resultados_colaboradores input[type="checkbox"]:checked');
-        const ids = Array.from(checkboxes).map(cb => cb.value);
+    // ============================================
+    // MODAL COLABORADORES - CARREGAMENTO E FILTROS
+    // ============================================
+    const colaboradorModal = document.getElementById('colaboradoresModal');
+    const filtroTurno = document.getElementById('colaborador_filtro_turno');
+    const filtroSetor = document.getElementById('colaborador_filtro_setor');
+    const filtroLider = document.getElementById('colaborador_filtro_lider');
+    const filtroSupervisor = document.getElementById('colaborador_filtro_supervisor');
+    const searchColaborador = document.getElementById('colaborador_search');
+    const listaColaboradores = document.getElementById('colaborador_modal_list');
+    
+    let todosColaboradores = [];
+    let colaboradoresSelecionados = new Set(); // Rastreia IDs dos colaboradores selecionados
+    
+    // Carregar colaboradores quando o modal é aberto
+    if (colaboradorModal) {
+        colaboradorModal.addEventListener('show.bs.modal', function() {
+            // Sempre carregar
+            carregarColaboradores();
+        });
+    }
+    
+    function carregarColaboradores() {
+        fetch('/procedures/api/colaboradores/buscar/')
+            .then(response => response.json())
+            .then(data => {
+                todosColaboradores = data.colaboradores || [];
+                const filtros = data.filtros || {};
+                
+                // Popular selects de filtro
+                if (filtros.turnos) {
+                    filtros.turnos.forEach(turno => {
+                        const option = document.createElement('option');
+                        option.value = turno;
+                        option.textContent = turno;
+                        filtroTurno.appendChild(option);
+                    });
+                }
+                
+                if (filtros.setores) {
+                    filtros.setores.forEach(setor => {
+                        const option = document.createElement('option');
+                        option.value = setor;
+                        option.textContent = setor;
+                        filtroSetor.appendChild(option);
+                    });
+                }
+                
+                if (filtros.lideres) {
+                    filtros.lideres.forEach(lider => {
+                        const option = document.createElement('option');
+                        option.value = lider;
+                        option.textContent = lider;
+                        filtroLider.appendChild(option);
+                    });
+                }
+                
+                if (filtros.supervisores) {
+                    filtros.supervisores.forEach(supervisor => {
+                        const option = document.createElement('option');
+                        option.value = supervisor;
+                        option.textContent = supervisor;
+                        filtroSupervisor.appendChild(option);
+                    });
+                }
+                
+                // Renderizar lista inicial
+                renderizarColaboradores(todosColaboradores);
+            })
+            .catch(error => {
+                console.error('Erro ao carregar colaboradores:', error);
+                listaColaboradores.innerHTML = '<div class="alert alert-danger">Erro ao carregar colaboradores</div>';
+            });
+    }
+    
+    // Event listeners para filtros
+    if (filtroTurno) {
+        filtroTurno.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (filtroSetor) {
+        filtroSetor.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (filtroLider) {
+        filtroLider.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (filtroSupervisor) {
+        filtroSupervisor.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (searchColaborador) {
+        searchColaborador.addEventListener('input', aplicarFiltrosColaboradores);
+    }
+    
+    // Event listeners para botões de ação
+    const btnSelecionarColaboradoresFiltrados = document.getElementById('btn_selecionar_colaboradores_filtrados');
+    const btnLimparColaboradores = document.getElementById('btn_limpar_colaboradores');
+    const btnConfirmarColaboradores = document.getElementById('btn_confirmar_colaboradores');
+    
+    if (btnSelecionarColaboradoresFiltrados) {
+        btnSelecionarColaboradoresFiltrados.addEventListener('click', function() {
+            // Selecionar todos os checkboxes visíveis
+            document.querySelectorAll('.colaborador-checkbox').forEach(checkbox => {
+                const colabId = parseInt(checkbox.value);
+                checkbox.checked = true;
+                colaboradoresSelecionados.add(colabId);
+            });
+        });
+    }
+    
+    if (btnLimparColaboradores) {
+        btnLimparColaboradores.addEventListener('click', function() {
+            // Desselecionar todos os checkboxes
+            document.querySelectorAll('.colaborador-checkbox').forEach(checkbox => {
+                const colabId = parseInt(checkbox.value);
+                checkbox.checked = false;
+                colaboradoresSelecionados.delete(colabId);
+            });
+        });
+    }
+    
+    if (btnConfirmarColaboradores) {
+        btnConfirmarColaboradores.addEventListener('click', function() {
+            // Adicionar os colaboradores selecionados
+            const ids = Array.from(colaboradoresSelecionados);
+            
+            if (ids.length === 0) {
+                alert('Selecione pelo menos um colaborador');
+                return;
+            }
+            
+            const formData = new FormData();
+            ids.forEach(id => formData.append('colaborador_ids', id));
+            
+            fetch(`/procedures/planejamentos/${planejamentoId}/colaboradores/adicionar/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken},
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+    }
+    
+    function aplicarFiltrosColaboradores() {
+        let colaboradoresFiltrados = todosColaboradores;
         
-        if (ids.length === 0) {
-            alert('Selecione pelo menos um colaborador');
+        const turnoSelecionado = filtroTurno.value;
+        const setorSelecionado = filtroSetor.value;
+        const liderSelecionado = filtroLider.value;
+        const supervisorSelecionado = filtroSupervisor.value;
+        const busca = searchColaborador.value.toLowerCase();
+        
+        colaboradoresFiltrados = colaboradoresFiltrados.filter(colab => {
+            const matchTurno = !turnoSelecionado || colab.turno === turnoSelecionado;
+            const matchSetor = !setorSelecionado || colab.setor === setorSelecionado;
+            const matchLider = !liderSelecionado || colab.lider === liderSelecionado;
+            const matchSupervisor = !supervisorSelecionado || colab.supervisor === supervisorSelecionado;
+            const matchBusca = !busca || 
+                               colab.nome.toLowerCase().includes(busca) || 
+                               (colab.matricula && colab.matricula.toLowerCase().includes(busca));
+            
+            return matchTurno && matchSetor && matchLider && matchSupervisor && matchBusca;
+        });
+        
+        renderizarColaboradores(colaboradoresFiltrados);
+    }
+    
+    function renderizarColaboradores(colaboradores) {
+        if (colaboradores.length === 0) {
+            listaColaboradores.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle"></i> Nenhum colaborador encontrado</div>';
             return;
         }
         
-        const formData = new FormData();
-        ids.forEach(id => formData.append('colaborador_ids', id));
-        
-        fetch(`/procedures/planejamentos/${planejamentoId}/colaboradores/adicionar/`, {
-            method: 'POST',
-            headers: {'X-CSRFToken': csrfToken},
-            body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.message);
-            }
+        let html = '';
+        colaboradores.forEach(colab => {
+            const isSelected = colaboradoresSelecionados.has(colab.id);
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input colaborador-checkbox" type="checkbox" id="colab_${colab.id}" value="${colab.id}" ${isSelected ? 'checked' : ''}>
+                    <label class="form-check-label" for="colab_${colab.id}">
+                        <strong>${colab.nome}</strong> (${colab.matricula || 'S/M'})
+                        <br>
+                        <small class="text-muted">${colab.cargo || '-'} • ${colab.setor || '-'} • ${colab.turno || '-'}</small>
+                    </label>
+                </div>
+            `;
         });
-    });
+        
+        listaColaboradores.innerHTML = html;
+        
+        // Adicionar event listeners aos checkboxes
+        document.querySelectorAll('.colaborador-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const colabId = parseInt(this.value);
+                if (this.checked) {
+                    colaboradoresSelecionados.add(colabId);
+                } else {
+                    colaboradoresSelecionados.delete(colabId);
+                }
+            });
+        });
+    }
     
     // Remover procedimento
     document.querySelectorAll('.remover-proc-btn').forEach(btn => {
@@ -777,112 +978,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert(data.message);
                 }
             });
-        });
-    });
-    
-    function carregarMatrizes() {
-        fetch('/procedures/api/matrizes/')
-            .then(r => r.json())
-            .then(data => {
-                const select = document.getElementById('filtro_matriz_proc');
-                data.matrizes.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m.nome;
-                    opt.textContent = m.nome;
-                    select.appendChild(opt);
-                });
-            });
-    }
-    
-    function carregarSetores() {
-        fetch('/rh/api/setores/')
-            .then(r => r.json())
-            .then(data => {
-                const select = document.getElementById('filtro_setor_colab');
-                data.setores.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s;
-                    opt.textContent = s;
-                    select.appendChild(opt);
-                });
-            });
-    }
-    
-    function carregarCargos() {
-        fetch('/rh/api/cargos/')
-            .then(r => r.json())
-            .then(data => {
-                const select = document.getElementById('filtro_cargo_colab');
-                data.cargos.forEach(c => {
-                    const opt = document.createElement('option');
-                    opt.value = c;
-                    opt.textContent = c;
-                    select.appendChild(opt);
-                });
-            });
-    }
-    
-    
-    function buscarColaboradores() {
-        const setor = document.getElementById('filtro_setor_colab').value;
-        const cargo = document.getElementById('filtro_cargo_colab').value;
-        const keyword = document.getElementById('filtro_keyword_colab').value;
-        
-        const params = new URLSearchParams({setor, cargo, search: keyword});
-        
-        fetch(`/rh/api/colaboradores/?${params}`)
-            .then(r => r.json())
-            .then(data => {
-                const container = document.getElementById('resultados_colaboradores');
-                if (data.colaboradores.length === 0) {
-                    container.innerHTML = '<p class="text-muted text-center">Nenhum resultado</p>';
-                    return;
-                }
-                
-                let html = '<div class="list-group">';
-                data.colaboradores.forEach(c => {
-                    html += `
-                        <label class="list-group-item">
-                            <input type="checkbox" value="${c.id}" class="form-check-input me-2">
-                            <strong>${c.nome_completo || c.nome || 'Sem nome'}</strong>
-                            <span class="text-muted small">| Matrícula: ${c.matricula || 'N/A'}</span>
-                            ${c.setor ? `<span class="text-muted small">| ${c.setor}</span>` : ''}
-                        </label>
-                    `;
-                });
-                html += '</div>';
-                container.innerHTML = html;
-            });
-    }
-    
-    // Buscar colaboradores
-    document.getElementById('buscarColaboradoresBtn').addEventListener('click', buscarColaboradores);
-    
-    // Adicionar colaboradores selecionados
-    document.getElementById('adicionarColaboradoresSelecionados').addEventListener('click', function() {
-        const checkboxes = document.querySelectorAll('#resultados_colaboradores input[type="checkbox"]:checked');
-        const ids = Array.from(checkboxes).map(cb => cb.value);
-        
-        if (ids.length === 0) {
-            alert('Selecione pelo menos um colaborador');
-            return;
-        }
-        
-        const formData = new FormData();
-        ids.forEach(id => formData.append('colaborador_ids', id));
-        
-        fetch(`/procedures/planejamentos/${planejamentoId}/colaboradores/adicionar/`, {
-            method: 'POST',
-            headers: {'X-CSRFToken': csrfToken},
-            body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.message);
-            }
         });
     });
 });
