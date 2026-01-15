@@ -234,7 +234,12 @@ def modulo_rh_view(request):
     for f in funcionarios_page.object_list:
         # Cálculo simples: contar todos os treinamentos vigentes/pendentes
         # Sem iteração em perfis/grupos que gera N+1 queries
-        treinamentos = f.treinamentos.all()
+        # IMPORTANTE: Apenas contar treinamentos de colaboradores ATIVOS
+        if f.is_active:
+            treinamentos = f.treinamentos.all()
+        else:
+            # Colaborador desligado não deve ter treinamentos contados
+            treinamentos = []
         
         vig = 0
         pend = 0
