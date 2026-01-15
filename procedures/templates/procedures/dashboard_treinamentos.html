@@ -28,6 +28,39 @@
         border: none;
     }
 
+    .kpi-sidebar {
+        width: 220px;
+        background: white;
+        border-right: 1px solid #dee2e6;
+        padding: 1rem;
+        overflow-y: auto;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .kpi-sidebar.collapsed {
+        width: 0;
+        padding: 0;
+        overflow: hidden;
+        border: none;
+    }
+
+    .dashboard-header {
+        background: white;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #dee2e6;
+        z-index: 990;
+    }
+
+    .dashboard-header h1 {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    .dashboard-header small {
+        font-size: 0.75rem;
+    }
+
     .main-content {
         flex: 1;
         overflow-y: auto;
@@ -53,6 +86,25 @@
 
     .toggle-sidebar-btn:hover {
         background: #0056b3;
+    }
+
+    .toggle-kpi-btn {
+        position: fixed;
+        left: 10px;
+        top: 105px;
+        z-index: 1000;
+        background: #17a2b8;
+        color: white;
+        border: none;
+        border-radius: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .toggle-kpi-btn:hover {
+        background: #138496;
     }
 
     .filter-group {
@@ -153,9 +205,19 @@
     }
 </style>
 
-<button class="toggle-sidebar-btn" id="toggleSidebarBtn">
-    <i class="bi bi-funnel"></i> Filtros
+<button class="toggle-sidebar-btn" id="toggleSidebarBtn" title="Filtros">
+    <i class="bi bi-funnel"></i>
 </button>
+
+<button class="toggle-kpi-btn" id="toggleKpiBtn" title="Indicadores">
+    <i class="bi bi-speedometer2"></i>
+</button>
+
+<!-- Dashboard Header with Title -->
+<div class="dashboard-header">
+    <h1><i class="bi bi-graph-up"></i> Dashboard de Treinamentos</h1>
+    <small class="text-muted">Visão geral de estatísticas e conformidade</small>
+</div>
 
 <div class="dashboard-wrapper">
     <!-- Sidebar com Filtros -->
@@ -217,32 +279,10 @@
         </button>
     </div>
 
-    <!-- Conteúdo Principal -->
-    <div class="main-content">
-        <div class="container-fluid py-0" style="flex: 1; display: flex; flex-direction: column;">
-            <!-- Cabeçalho -->
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div>
-                    <h1 class="h5 mb-0"><i class="bi bi-graph-up"></i> Dashboard de Treinamentos</h1>
-                    <small class="text-muted" style="font-size: 0.8rem;">Visão geral de estatísticas e conformidade</small>
-                </div>
-            </div>
-
-            <!-- KPIs + Abas Layout -->
-            <div class="row g-2" style="align-items: stretch; flex: 1; margin-bottom: 0;">
-                <!-- Card Resumo de Indicadores -->
-                <div class="col-lg-4">
-                    <div class="accordion" id="kpiAccordion">
-                        <div class="accordion-item">
-                            <h2 class="accordion-header" id="headingKpi">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseKpi" aria-expanded="false" aria-controls="collapseKpi">
-                                    <i class="bi bi-speedometer2"></i> <strong>Resumo</strong>
-                                    <span class="badge bg-primary ms-2">5 KPIs</span>
-                                </button>
-                            </h2>
-                            <div id="collapseKpi" class="accordion-collapse collapse" aria-labelledby="headingKpi" data-bs-parent="#kpiAccordion">
-                                <div class="accordion-body p-3">
-                                    <div class="kpi-container-single">
+    <!-- Sidebar com KPIs -->
+    <div class="kpi-sidebar collapsed" id="kpiSidebar">
+        <h6 class="mb-3"><i class="bi bi-speedometer2"></i> Indicadores</h6>
+        <div class="kpi-container-single" id="kpiSidebarContainer">
                 <!-- Total de Treinamentos -->
                 <div class="kpi-card">
                     <div class="card h-100 shadow-sm">
@@ -335,15 +375,16 @@
                         </div>
                     </div>
                 </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        </div>
+    </div>
 
-                <!-- Card com Abas -->
-                <div class="col-lg-8">
+    <!-- Conteúdo Principal -->
+    <div class="main-content">
+        <div class="container-fluid py-0" style="flex: 1; display: flex; flex-direction: column;">
+
+            <!-- Tabs Layout -->
+            <div class="row g-2" style="align-items: stretch; flex: 1; margin-bottom: 0;">
+                <div class="col-lg-12">
                     <div class="card shadow-sm" style="display: flex; flex-direction: column; height: 100%; max-height: calc(100vh - 280px);">
                         <div class="card-header bg-light p-0">
                             <ul class="nav nav-tabs" id="myTabs" role="tablist" style="font-size: 0.9rem;">
@@ -985,6 +1026,10 @@
     // Event Listeners
     document.getElementById('toggleSidebarBtn').addEventListener('click', function() {
         document.getElementById('filterSidebar').classList.toggle('collapsed');
+    });
+
+    document.getElementById('toggleKpiBtn').addEventListener('click', function() {
+        document.getElementById('kpiSidebar').classList.toggle('collapsed');
     });
 
     document.getElementById('filterSetor').addEventListener('change', aplicarFiltros);
