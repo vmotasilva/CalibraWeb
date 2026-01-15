@@ -105,7 +105,7 @@ class DisciplinaProcedimentoAdmin(admin.ModelAdmin):
 
 
 class PlanejamentoTreinamentoAdmin(admin.ModelAdmin):
-    list_display = ['titulo', 'origem', 'data_prevista', 'status']
+    list_display = ['titulo', 'origem', 'data_prevista', 'horario_previsto', 'status']
     search_fields = ['titulo', 'observacoes']
     list_filter = ['origem', 'status', 'data_prevista']
     list_select_related = ['disciplina', 'instrutor']
@@ -122,7 +122,7 @@ class PlanejamentoTreinamentoAdmin(admin.ModelAdmin):
             'fields': ('colaboradores', 'instrutor')
         }),
         ('Execução', {
-            'fields': ('data_prevista', 'data_realizada', 'carga_horaria', 'local')
+            'fields': ('data_prevista', 'horario_previsto', 'data_realizada', 'carga_horaria', 'local')
         }),
         ('Status e Observações', {
             'fields': ('status', 'observacoes')

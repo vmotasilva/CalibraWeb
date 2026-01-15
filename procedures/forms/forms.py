@@ -416,7 +416,7 @@ class PlanejamentoTreinamentoForm(forms.ModelForm):
         model = PlanejamentoTreinamento
         fields = [
             'titulo', 'procedimentos', 'disciplina', 'colaboradores', 'instrutor',
-            'data_prevista', 'data_realizada', 'carga_horaria',
+            'data_prevista', 'horario_previsto', 'data_realizada', 'carga_horaria',
             'local', 'status', 'observacoes'
         ]
         widgets = {
@@ -439,6 +439,10 @@ class PlanejamentoTreinamentoForm(forms.ModelForm):
             'data_prevista': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date'
+            }),
+            'horario_previsto': forms.TimeInput(attrs={
+                'class': 'form-control',
+                'type': 'time'
             }),
             'data_realizada': forms.DateInput(attrs={
                 'class': 'form-control',
