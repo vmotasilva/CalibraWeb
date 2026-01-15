@@ -170,6 +170,10 @@
                                 <label class="form-check-label small" for="st_ferias">Em Férias</label>
                             </div>
                             <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AFASTADO" data-category="status" id="st_afastado">
+                                <label class="form-check-label small" for="st_afastado">Afastado</label>
+                            </div>
+                            <div class="form-check">
                                 <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status" id="st_inativo">
                                 <label class="form-check-label small" for="st_inativo">Desligado</label>
                             </div>
@@ -328,7 +332,7 @@
                         {% for f in funcionarios %}
                         <tr class="rh-row border-bottom" 
                             data-nome="{{ f.nome_completo|default:''|lower }} {{ f.matricula|default:'' }}"
-                            data-status="{% if not f.is_active %}INATIVO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
+                            data-status="{% if not f.is_active %}INATIVO{% elif f.afastado %}AFASTADO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
                             data-setor="{{ f.setor.id|default:'' }}"
                             data-lider="{{ f.lider.id|default:'' }}"
                             data-supervisor="{{ f.supervisor.id|default:'' }}" 
@@ -347,6 +351,8 @@
                                             <i class="bi bi-person-vcard me-1"></i> {{ f.matricula }} <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#{{ f.id }}</span> 
                                             {% if not f.is_active %}
                                                 <span class="badge bg-danger ms-2 py-0" style="font-size: 0.6rem;">DESLIGADO</span>
+                                            {% elif f.afastado %}
+                                                <span class="badge bg-info ms-2 py-0" style="font-size: 0.6rem;">AFASTADO</span>
                                             {% elif f.em_ferias %}
                                                 <span class="badge bg-warning text-dark ms-2 py-0" style="font-size: 0.6rem;">FÉRIAS</span>
                                                 {% with ferias_ativa=f.ferias_set.all|first %}
