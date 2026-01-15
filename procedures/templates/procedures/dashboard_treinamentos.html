@@ -299,140 +299,138 @@
         </button>
     </div>
 
+    <!-- Sidebar com Título e KPIs -->
+    <div class="kpi-sidebar collapsed" id="kpiSidebar">
+        <h5 class="mb-3"><i class="bi bi-graph-up"></i> Dashboard</h5>
+        
+        <!-- KPIs Verticais -->
+        <div class="kpi-container-single" style="flex-direction: column; max-width: none;">
+            <!-- Total de Treinamentos -->
+            <div class="kpi-card">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body" style="padding: 0.5rem;">
+                        <div class="d-flex justify-content-between align-items-start gap-1">
+                            <div style="min-width: 0;">
+                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Total</small>
+                                <div class="h6 mb-0 mt-0 kpi-total" style="font-size: 1rem;">{{ total_treinamentos }}</div>
+                            </div>
+                            <div class="badge bg-primary rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                                <i class="bi bi-mortarboard" style="font-size: 0.6rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Treinamentos Vigentes -->
+            <div class="kpi-card">
+                <div class="card h-100 shadow-sm border-success">
+                    <div class="card-body" style="padding: 0.5rem;">
+                        <div class="d-flex justify-content-between align-items-start gap-1">
+                            <div style="min-width: 0;">
+                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Vigentes</small>
+                                <div class="h6 mb-0 mt-0 text-success kpi-vigentes" style="font-size: 1rem;">{{ treinamentos_vigentes }}</div>
+                            </div>
+                            <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                                <i class="bi bi-check-circle" style="font-size: 0.6rem;"></i>
+                            </div>
+                        </div>
+                        <div class="progress" style="height: 1px; margin-top: 0.25rem;">
+                            <div class="progress-bar bg-success kpi-conformidade" style="width: {{ taxa_conformidade }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Treinamentos Pendentes -->
+            <div class="kpi-card">
+                <div class="card h-100 shadow-sm border-danger">
+                    <div class="card-body" style="padding: 0.5rem;">
+                        <div class="d-flex justify-content-between align-items-start gap-1">
+                            <div style="min-width: 0;">
+                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Pendentes</small>
+                                <div class="h6 mb-0 mt-0 text-danger kpi-pendentes" style="font-size: 1rem;">{{ treinamentos_pendentes }}</div>
+                            </div>
+                            <div class="badge bg-danger rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                                <i class="bi bi-exclamation-circle" style="font-size: 0.6rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conformidade (%) -->
+            <div class="kpi-card">
+                <div class="card h-100 shadow-sm border-success">
+                    <div class="card-body" style="padding: 0.5rem;">
+                        <div class="d-flex justify-content-between align-items-start gap-1">
+                            <div style="min-width: 0;">
+                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Conformidade</small>
+                                <div class="h6 mb-0 mt-0 text-success" style="font-size: 1rem;">{{ taxa_conformidade|floatformat:0 }}%</div>
+                            </div>
+                            <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                                <i class="bi bi-percent" style="font-size: 0.6rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Últimos 30 dias -->
+            <div class="kpi-card">
+                <div class="card h-100 shadow-sm border-info">
+                    <div class="card-body" style="padding: 0.5rem;">
+                        <div class="d-flex justify-content-between align-items-start gap-1">
+                            <div style="min-width: 0;">
+                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Últ. 30</small>
+                                <div class="h6 mb-0 mt-0 text-info" style="font-size: 1rem;">{{ treinamentos_ultimos_30_dias }}</div>
+                            </div>
+                            <div class="badge bg-info rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
+                                <i class="bi bi-calendar-event" style="font-size: 0.6rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Conteúdo Principal -->
     <div class="main-content">
-        <!-- Dashboard Top Section with Title, KPIs and Tabs -->
-        <div class="dashboard-top-section">
-            <!-- Title Box -->
-            <div class="dashboard-title-box">
-                <h1><i class="bi bi-graph-up"></i> Dashboard</h1>
-            </div>
-
-            <!-- KPIs Inline -->
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <!-- Total de Treinamentos -->
-                <div class="kpi-card" style="flex: 0 0 auto; width: 120px;">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body" style="padding: 0.5rem;">
-                            <div class="d-flex justify-content-between align-items-start gap-1">
-                                <div style="min-width: 0;">
-                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Total</small>
-                                    <div class="h6 mb-0 mt-0 kpi-total" style="font-size: 1rem;">{{ total_treinamentos }}</div>
-                                </div>
-                                <div class="badge bg-primary rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                                    <i class="bi bi-mortarboard" style="font-size: 0.6rem;"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <div class="container-fluid py-0" style="flex: 1; display: flex; flex-direction: column;">
+            <!-- Tabs Card -->
+            <div class="card shadow-sm" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+                <div class="card-header bg-light p-0">
+                    <ul class="nav nav-tabs" id="myTabs" role="tablist" style="font-size: 0.9rem;">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active py-2 px-3" id="conformidade-tab" data-bs-toggle="tab" data-bs-target="#conformidade" type="button" role="tab" aria-controls="conformidade" aria-selected="true">
+                                <i class="bi bi-percent"></i> Conformidade
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-2 px-3" id="ultimos-tab" data-bs-toggle="tab" data-bs-target="#ultimos" type="button" role="tab" aria-controls="ultimos" aria-selected="false">
+                                <i class="bi bi-graph-up"></i> Últimos Treinamentos
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-2 px-3" id="demanda-tab" data-bs-toggle="tab" data-bs-target="#demanda" type="button" role="tab" aria-controls="demanda" aria-selected="false">
+                                <i class="bi bi-bar-chart"></i> Demanda
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-2 px-3" id="planejamento-tab" data-bs-toggle="tab" data-bs-target="#planejamento" type="button" role="tab" aria-controls="planejamento" aria-selected="false">
+                                <i class="bi bi-calendar2-week"></i> Planejamento
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link py-2 px-3" id="registros-tab" data-bs-toggle="tab" data-bs-target="#registros" type="button" role="tab" aria-controls="registros" aria-selected="false">
+                                <i class="bi bi-table"></i> Registros
+                            </button>
+                        </li>
+                    </ul>
                 </div>
 
-                <!-- Treinamentos Vigentes -->
-                <div class="kpi-card" style="flex: 0 0 auto; width: 120px;">
-                    <div class="card h-100 shadow-sm border-success">
-                        <div class="card-body" style="padding: 0.5rem;">
-                            <div class="d-flex justify-content-between align-items-start gap-1">
-                                <div style="min-width: 0;">
-                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Vigentes</small>
-                                    <div class="h6 mb-0 mt-0 text-success kpi-vigentes" style="font-size: 1rem;">{{ treinamentos_vigentes }}</div>
-                                </div>
-                                <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                                    <i class="bi bi-check-circle" style="font-size: 0.6rem;"></i>
-                                </div>
-                            </div>
-                            <div class="progress" style="height: 1px; margin-top: 0.25rem;">
-                                <div class="progress-bar bg-success kpi-conformidade" style="width: {{ taxa_conformidade }}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Treinamentos Pendentes -->
-                <div class="kpi-card" style="flex: 0 0 auto; width: 120px;">
-                    <div class="card h-100 shadow-sm border-danger">
-                        <div class="card-body" style="padding: 0.5rem;">
-                            <div class="d-flex justify-content-between align-items-start gap-1">
-                                <div style="min-width: 0;">
-                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Pendentes</small>
-                                    <div class="h6 mb-0 mt-0 text-danger kpi-pendentes" style="font-size: 1rem;">{{ treinamentos_pendentes }}</div>
-                                </div>
-                                <div class="badge bg-danger rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                                    <i class="bi bi-exclamation-circle" style="font-size: 0.6rem;"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Conformidade (%) -->
-                <div class="kpi-card" style="flex: 0 0 auto; width: 120px;">
-                    <div class="card h-100 shadow-sm border-success">
-                        <div class="card-body" style="padding: 0.5rem;">
-                            <div class="d-flex justify-content-between align-items-start gap-1">
-                                <div style="min-width: 0;">
-                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Conformidade</small>
-                                    <div class="h6 mb-0 mt-0 text-success" style="font-size: 1rem;">{{ taxa_conformidade|floatformat:0 }}%</div>
-                                </div>
-                                <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                                    <i class="bi bi-percent" style="font-size: 0.6rem;"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Últimos 30 dias -->
-                <div class="kpi-card" style="flex: 0 0 auto; width: 120px;">
-                    <div class="card h-100 shadow-sm border-info">
-                        <div class="card-body" style="padding: 0.5rem;">
-                            <div class="d-flex justify-content-between align-items-start gap-1">
-                                <div style="min-width: 0;">
-                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Últ. 30</small>
-                                    <div class="h6 mb-0 mt-0 text-info" style="font-size: 1rem;">{{ treinamentos_ultimos_30_dias }}</div>
-                                </div>
-                                <div class="badge bg-info rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                                    <i class="bi bi-calendar-event" style="font-size: 0.6rem;"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tabs Card - Flex grow to fill remaining space -->
-            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
-                    <div class="card shadow-sm" style="display: flex; flex-direction: column; height: 100%; max-height: calc(100vh - 280px);">
-                        <div class="card-header bg-light p-0">
-                            <ul class="nav nav-tabs" id="myTabs" role="tablist" style="font-size: 0.9rem;">
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link active py-2 px-3" id="conformidade-tab" data-bs-toggle="tab" data-bs-target="#conformidade" type="button" role="tab" aria-controls="conformidade" aria-selected="true">
-                                        <i class="bi bi-percent"></i> Conformidade
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link py-2 px-3" id="ultimos-tab" data-bs-toggle="tab" data-bs-target="#ultimos" type="button" role="tab" aria-controls="ultimos" aria-selected="false">
-                                        <i class="bi bi-graph-up"></i> Últimos Treinamentos
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link py-2 px-3" id="demanda-tab" data-bs-toggle="tab" data-bs-target="#demanda" type="button" role="tab" aria-controls="demanda" aria-selected="false">
-                                        <i class="bi bi-bar-chart"></i> Demanda
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link py-2 px-3" id="planejamento-tab" data-bs-toggle="tab" data-bs-target="#planejamento" type="button" role="tab" aria-controls="planejamento" aria-selected="false">
-                                        <i class="bi bi-calendar2-week"></i> Planejamento
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link py-2 px-3" id="registros-tab" data-bs-toggle="tab" data-bs-target="#registros" type="button" role="tab" aria-controls="registros" aria-selected="false">
-                                        <i class="bi bi-table"></i> Registros
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div class="tab-content flex-grow-1" id="myTabsContent" style="overflow-y: auto;">
+                <div class="tab-content flex-grow-1" id="myTabsContent" style="overflow-y: auto;">
                             <!-- ABA 1: CONFORMIDADE -->
                             <div class="tab-pane fade show active" id="conformidade" role="tabpanel" aria-labelledby="conformidade-tab">
                                 <div class="card-body pt-3">
@@ -645,8 +643,6 @@
                     </div>
             </div>
         </div>
-    </div>
-</div>
     </div>
 </div>
 
