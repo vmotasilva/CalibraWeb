@@ -350,6 +350,50 @@
                 </div>
             </div>
 
+            <!-- Seção de Planejamento de Treinamentos -->
+            <div class="row mb-3 mt-4">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0"><i class="bi bi-calendar2-week"></i> Planejamento de Treinamentos</h5>
+                        <div style="width: 200px;">
+                            <label for="periodoGraph" class="form-label mb-2 small fw-bold">Período:</label>
+                            <select id="periodoGraph" class="form-select form-select-sm">
+                                <option value="3" {% if periodo_planejamento == 3 %}selected{% endif %}>Últimos 3 meses</option>
+                                <option value="6" {% if periodo_planejamento == 6 %}selected{% endif %}>Últimos 6 meses</option>
+                                <option value="12" {% if periodo_planejamento == 12 %}selected{% endif %}>Últimos 12 meses</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos de Planejamento -->
+            <div class="row mb-4 g-2">
+                <!-- Planejamento por Setor e Turno -->
+                <div class="col-lg-6 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-diagram-3"></i> Planejados por Setor e Turno</h6>
+                        </div>
+                        <div class="card-body" style="padding: 0.75rem;">
+                            <canvas id="chartPlanejamentoSetorTurno" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Planejamento por Instrutor -->
+                <div class="col-lg-6 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="bi bi-person-check"></i> Planejados por Instrutor</h6>
+                        </div>
+                        <div class="card-body" style="padding: 0.75rem;">
+                            <canvas id="chartPlanejamentoInstrutor" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tabela de Dados -->
             <div class="table-container">
                 <h5><i class="bi bi-table"></i> Registros de Treinamento</h5>
@@ -629,6 +673,161 @@
         });
     }
 
+    // Renderizar gráficos de planejamento
+    let planejamentosCharts = {
+        setorTurno: null,
+        instrutor: null
+    };
+
+    // Dados de planejamento passados do backend
+    let dadosPlanejamento = {
+        planejamentos_setor_turno: {{ planejamentos_setor_turno|safe }},
+        planejamentos_instrutor: {{ planejamentos_instrutor|safe }}
+    };
+
+    console.log('Dados de Planejamento:', dadosPlanejamento);
+
+    function initPlanejamentoCharts() {
+        // Destruir gráficos anteriores
+        if (planejamentosCharts.setorTurno) planejamentosCharts.setorTurno.destroy();
+        if (planejamentosCharts.instrutor) planejamentosCharts.instrutor.destroy();
+
+        // Cores para os status
+        const cores = {
+            no_prazo: 'rgba(40, 167, 69, 0.8)',      // Verde
+            fora_prazo: 'rgba(248, 113, 113, 0.8)',  // Vermelho
+            cancelados: 'rgba(108, 117, 125, 0.8)',  // Cinza
+            concluidos: 'rgba(23, 162, 184, 0.8)'    // Azul
+        };
+
+        const coresBorder = {
+            no_prazo: 'rgba(40, 167, 69, 1)',
+            fora_prazo: 'rgba(248, 113, 113, 1)',
+            cancelados: 'rgba(108, 117, 125, 1)',
+            concluidos: 'rgba(23, 162, 184, 1)'
+        };
+
+        // Gráfico Setor e Turno
+        const setorLabels = dadosPlanejamento.planejamentos_setor_turno.map(s => s.nome);
+        const setorNoPrazo = dadosPlanejamento.planejamentos_setor_turno.map(s => s.no_prazo);
+        const setorForaPrazo = dadosPlanejamento.planejamentos_setor_turno.map(s => s.fora_prazo);
+        const setorCancelados = dadosPlanejamento.planejamentos_setor_turno.map(s => s.cancelados);
+        const setorConcluidos = dadosPlanejamento.planejamentos_setor_turno.map(s => s.concluidos);
+
+        const ctxSetorTurnoPlanj = document.getElementById('chartPlanejamentoSetorTurno').getContext('2d');
+        planejamentosCharts.setorTurno = new Chart(ctxSetorTurnoPlanj, {
+            type: 'bar',
+            data: {
+                labels: setorLabels,
+                datasets: [
+                    {
+                        label: 'No Prazo',
+                        data: setorNoPrazo,
+                        backgroundColor: cores.no_prazo,
+                        borderColor: coresBorder.no_prazo,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Fora do Prazo',
+                        data: setorForaPrazo,
+                        backgroundColor: cores.fora_prazo,
+                        borderColor: coresBorder.fora_prazo,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Cancelados',
+                        data: setorCancelados,
+                        backgroundColor: cores.cancelados,
+                        borderColor: coresBorder.cancelados,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Concluídos',
+                        data: setorConcluidos,
+                        backgroundColor: cores.concluidos,
+                        borderColor: coresBorder.concluidos,
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                layout: {
+                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
+                },
+                plugins: {
+                    legend: { display: true, position: 'top', labels: { padding: 15, font: { size: 12 } } }
+                },
+                scales: {
+                    x: { stacked: true, beginAtZero: true, ticks: { font: { size: 11 } } },
+                    y: { stacked: true, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+
+        // Gráfico Instrutor
+        const instrutorLabels = dadosPlanejamento.planejamentos_instrutor.map(i => i.nome);
+        const instrutorNoPrazo = dadosPlanejamento.planejamentos_instrutor.map(i => i.no_prazo);
+        const instrutorForaPrazo = dadosPlanejamento.planejamentos_instrutor.map(i => i.fora_prazo);
+        const instrutorCancelados = dadosPlanejamento.planejamentos_instrutor.map(i => i.cancelados);
+        const instrutorConcluidos = dadosPlanejamento.planejamentos_instrutor.map(i => i.concluidos);
+
+        const ctxInstrutorPlanj = document.getElementById('chartPlanejamentoInstrutor').getContext('2d');
+        planejamentosCharts.instrutor = new Chart(ctxInstrutorPlanj, {
+            type: 'bar',
+            data: {
+                labels: instrutorLabels,
+                datasets: [
+                    {
+                        label: 'No Prazo',
+                        data: instrutorNoPrazo,
+                        backgroundColor: cores.no_prazo,
+                        borderColor: coresBorder.no_prazo,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Fora do Prazo',
+                        data: instrutorForaPrazo,
+                        backgroundColor: cores.fora_prazo,
+                        borderColor: coresBorder.fora_prazo,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Cancelados',
+                        data: instrutorCancelados,
+                        backgroundColor: cores.cancelados,
+                        borderColor: coresBorder.cancelados,
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Concluídos',
+                        data: instrutorConcluidos,
+                        backgroundColor: cores.concluidos,
+                        borderColor: coresBorder.concluidos,
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                layout: {
+                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
+                },
+                plugins: {
+                    legend: { display: true, position: 'top', labels: { padding: 15, font: { size: 12 } } }
+                },
+                scales: {
+                    x: { stacked: true, beginAtZero: true, ticks: { font: { size: 11 } } },
+                    y: { stacked: true, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+    }
+
     function aplicarFiltros() {
         const turno = document.getElementById('filterTurno').value;
         const setor = document.getElementById('filterSetor').value;
@@ -700,11 +899,20 @@
         aplicarFiltros();
     });
 
+    // Event Listener para o seletor de período de planejamento
+    document.getElementById('periodoGraph').addEventListener('change', function() {
+        const periodo = this.value;
+        const url = window.location.pathname + '?periodo_planejamento=' + periodo;
+        window.location.href = url;
+    });
+
     // Inicializar gráficos ao carregar
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             console.log('Inicializando gráficos com dados:', dadosOriginais);
             initCharts();
+            console.log('Inicializando gráficos de planejamento:', dadosPlanejamento);
+            initPlanejamentoCharts();
         }, 500);
     });
 </script>

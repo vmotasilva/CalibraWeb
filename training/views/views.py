@@ -4,7 +4,8 @@ Views para o módulo Training (Treinamentos e Procedimentos)
 """
 
 import io
-from datetime import date
+from datetime import date, timedelta
+from dateutil.relativedelta import relativedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -632,6 +633,107 @@ def dashboard_treinamentos_view(request):
     context['dados_tabela'] = dados_processados
     context['page_obj'] = page_obj
     context['paginator'] = paginator
+    
+    # ===== GRÁFICOS DE PLANEJAMENTOS =====
+    from procedures.models import PlanejamentoTreinamento
+    from django.utils import timezone
+    from dateutil.relativedelta import relativedelta
+    
+    # Pegar período do request (default: últimos 3 meses)
+    periodo_meses = int(request.GET.get('periodo_planejamento', 3))
+    data_inicio_planejamento = date.today() - relativedelta(months=periodo_meses)
+    
+    # Adicionar ao context para o form
+    context['periodo_planejamento'] = periodo_meses
+    
+    # Filtrar planejamentos no período
+    planejamentos = PlanejamentoTreinamento.objects.filter(
+        data_prevista__gte=data_inicio_planejamento,
+        data_prevista__lte=date.today() + timedelta(days=365)  # 1 ano no futuro
+    )
+    
+    # ===== GRÁFICO 1: Por Setor e Turno =====
+    planejamentos_setor_turno = {}
+    
+    for planejamento in planejamentos:
+        for colaborador in planejamento.colaboradores.all():
+            setor = colaborador.setor
+            turno = colaborador.turno
+            
+            if not setor:
+                continue
+            
+            # Criar chave
+            chave = f"{setor.nome} - {turno}"
+            
+            if chave not in planejamentos_setor_turno:
+                planejamentos_setor_turno[chave] = {
+                    'nome': chave,
+                    'no_prazo': 0,
+                    'fora_prazo': 0,
+                    'cancelados': 0,
+                    'concluidos': 0
+                }
+            
+            # Categorizar planejamento
+            if planejamento.status == 'CANCELADO':
+                planejamentos_setor_turno[chave]['cancelados'] += 1
+            elif planejamento.status == 'REALIZADO':
+                planejamentos_setor_turno[chave]['concluidos'] += 1
+            elif planejamento.status in ['PLANEJADO', 'CONFIRMADO']:
+                if planejamento.data_prevista >= date.today():
+                    planejamentos_setor_turno[chave]['no_prazo'] += 1
+                else:
+                    planejamentos_setor_turno[chave]['fora_prazo'] += 1
+    
+    # Converter para lista e ordenar
+    planejamentos_setor_turno_lista = list(planejamentos_setor_turno.values())
+    planejamentos_setor_turno_lista.sort(
+        key=lambda x: x['no_prazo'] + x['fora_prazo'] + x['cancelados'] + x['concluidos'],
+        reverse=True
+    )
+    planejamentos_setor_turno_lista = planejamentos_setor_turno_lista[:15]  # Top 15
+    
+    context['planejamentos_setor_turno'] = planejamentos_setor_turno_lista
+    
+    # ===== GRÁFICO 2: Por Instrutor =====
+    planejamentos_instrutor = {}
+    
+    for planejamento in planejamentos:
+        if not planejamento.instrutor:
+            continue
+        
+        instrutor_nome = planejamento.instrutor.nome_completo
+        
+        if instrutor_nome not in planejamentos_instrutor:
+            planejamentos_instrutor[instrutor_nome] = {
+                'nome': instrutor_nome,
+                'no_prazo': 0,
+                'fora_prazo': 0,
+                'cancelados': 0,
+                'concluidos': 0
+            }
+        
+        # Categorizar planejamento
+        if planejamento.status == 'CANCELADO':
+            planejamentos_instrutor[instrutor_nome]['cancelados'] += 1
+        elif planejamento.status == 'REALIZADO':
+            planejamentos_instrutor[instrutor_nome]['concluidos'] += 1
+        elif planejamento.status in ['PLANEJADO', 'CONFIRMADO']:
+            if planejamento.data_prevista >= date.today():
+                planejamentos_instrutor[instrutor_nome]['no_prazo'] += 1
+            else:
+                planejamentos_instrutor[instrutor_nome]['fora_prazo'] += 1
+    
+    # Converter para lista e ordenar
+    planejamentos_instrutor_lista = list(planejamentos_instrutor.values())
+    planejamentos_instrutor_lista.sort(
+        key=lambda x: x['no_prazo'] + x['fora_prazo'] + x['cancelados'] + x['concluidos'],
+        reverse=True
+    )
+    planejamentos_instrutor_lista = planejamentos_instrutor_lista[:15]  # Top 15
+    
+    context['planejamentos_instrutor'] = planejamentos_instrutor_lista
     
     return render(request, 'procedures/dashboard_treinamentos.html', context)
 
