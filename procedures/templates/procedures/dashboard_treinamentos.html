@@ -241,11 +241,58 @@
         min-height: 0;
         overflow-y: auto;
         flex: 1;
+        display: flex;
+        flex-direction: column;
     }
 
-    .tab-pane .card-body {
-        padding: 0.5rem;
+    .tab-pane > .card-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
         overflow-y: auto;
+        padding: 0.5rem;
+    }
+
+    .tab-pane .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .tab-pane .col-lg-12 {
+        flex: 1 1 100%;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tab-pane .card {
+        width: 100%;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tab-pane .card > .card-body {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow-y: auto;
+        padding: 0.5rem;
+    }
+
+    .tab-pane canvas {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+    }
+
+    .tab-pane .h-100 {
+        height: 100%;
     }
 
     /* Responsive Card Grid */
@@ -472,16 +519,16 @@
                 <div class="tab-content flex-grow-1" id="myTabsContent" style="overflow: hidden; display: flex; flex-direction: column;">
                             <!-- ABA 1: CONFORMIDADE -->
                             <div class="tab-pane fade show active" id="conformidade" role="tabpanel" aria-labelledby="conformidade-tab" style="overflow-y: auto;">
-                                <div class="card-body pt-1">
+                                <div class="card-body pt-1" style="flex: 1; display: flex; flex-direction: column;">
                                     <!-- Gráfico de Distribuição de Status -->
-                                    <div class="row">
-                                        <div class="col-lg-12">
-                                            <div class="card shadow-sm">
+                                    <div class="row" style="flex: 1; min-height: 0;">
+                                        <div class="col-lg-12" style="display: flex; flex-direction: column;">
+                                            <div class="card shadow-sm" style="flex: 1; display: flex; flex-direction: column;">
                                                 <div class="card-header bg-light">
                                                     <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
                                                 </div>
-                                                <div class="card-body" style="padding: 0.5rem; overflow-y: auto;">
-                                                    <canvas id="chartStatus" height="100"></canvas>
+                                                <div class="card-body" style="padding: 0.5rem; flex: 1; display: flex; align-items: center; justify-content: center;">
+                                                    <canvas id="chartStatus"></canvas>
                                                 </div>
                                             </div>
                                         </div>
@@ -491,16 +538,16 @@
 
                             <!-- ABA 2: ÚLTIMOS TREINAMENTOS REALIZADOS -->
                             <div class="tab-pane fade" id="ultimos" role="tabpanel" aria-labelledby="ultimos-tab" style="overflow-y: auto;">
-                                <div class="card-body pt-1">
+                                <div class="card-body pt-1" style="flex: 1; display: flex; flex-direction: column;">
                                     <!-- Gráfico Últimos 6 Meses -->
-                                    <div class="row">
-                                        <div class="col-lg-12">
-                                            <div class="card shadow-sm h-100">
+                                    <div class="row" style="flex: 1; min-height: 0;">
+                                        <div class="col-lg-12" style="display: flex; flex-direction: column;">
+                                            <div class="card shadow-sm" style="flex: 1; display: flex; flex-direction: column;">
                                                 <div class="card-header bg-light">
                                                     <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Últimos 6 Meses</h6>
                                                 </div>
-                                                <div class="card-body" style="padding: 0.75rem;">
-                                                    <canvas id="chartMeses" height="150"></canvas>
+                                                <div class="card-body" style="padding: 0.75rem; flex: 1; display: flex; align-items: center; justify-content: center;">
+                                                    <canvas id="chartMeses"></canvas>
                                                 </div>
                                             </div>
                                         </div>
@@ -526,21 +573,21 @@
                                     </ul>
 
                                     <!-- Conteúdo das Sub-abas Demanda -->
-                                    <div class="tab-content">
+                                    <div class="tab-content" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto;">
                                         <!-- Sub-aba: Setor e Turno -->
-                                        <div class="tab-pane fade show active" id="demanda-setor">
-                                            <div class="card shadow-sm">
-                                                <div class="card-body" style="padding: 0.75rem;">
-                                                    <canvas id="chartSetorTurno" height="180"></canvas>
+                                        <div class="tab-pane fade show active" id="demanda-setor" style="flex: 1; display: flex; flex-direction: column;">
+                                            <div class="card shadow-sm" style="flex: 1; display: flex; flex-direction: column;">
+                                                <div class="card-body" style="padding: 0.75rem; flex: 1; display: flex; align-items: center; justify-content: center;">
+                                                    <canvas id="chartSetorTurno"></canvas>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <!-- Sub-aba: Líderes -->
-                                        <div class="tab-pane fade" id="demanda-lider">
-                                            <div class="card shadow-sm">
-                                                <div class="card-body" style="padding: 0.75rem;">
-                                                    <canvas id="chartLider" height="180"></canvas>
+                                        <div class="tab-pane fade" id="demanda-lider" style="flex: 1; display: flex; flex-direction: column;">
+                                            <div class="card shadow-sm" style="flex: 1; display: flex; flex-direction: column;">
+                                                <div class="card-body" style="padding: 0.75rem; flex: 1; display: flex; align-items: center; justify-content: center;">
+                                                    <canvas id="chartLider"></canvas>
                                                 </div>
                                             </div>
                                         </div>
@@ -550,7 +597,7 @@
 
                             <!-- ABA 4: PLANEJAMENTO -->
                             <div class="tab-pane fade" id="planejamento" role="tabpanel" aria-labelledby="planejamento-tab" style="overflow-y: auto;">
-                                <div class="card-body pt-1">
+                                <div class="card-body pt-1" style="flex: 1; display: flex; flex-direction: column;">
                                     <!-- Sub-abas Planejamento -->
                                     <ul class="nav nav-tabs" style="font-size: 0.9rem; margin-bottom: 1rem;">
                                         <li class="nav-item">
@@ -566,21 +613,21 @@
                                     </ul>
 
                                     <!-- Conteúdo das Sub-abas Planejamento -->
-                                    <div class="tab-content">
+                                    <div class="tab-content" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto;">
                                         <!-- Sub-aba: Setor/Turno -->
-                                        <div class="tab-pane fade show active" id="planejamento-setor">
-                                            <div class="card shadow-sm">
-                                                <div class="card-body" style="padding: 0.75rem;">
-                                                    <canvas id="chartPlanejamentoSetorTurno" height="180"></canvas>
+                                        <div class="tab-pane fade show active" id="planejamento-setor" style="flex: 1; display: flex; flex-direction: column;">
+                                            <div class="card shadow-sm" style="flex: 1; display: flex; flex-direction: column;">
+                                                <div class="card-body" style="padding: 0.75rem; flex: 1; display: flex; align-items: center; justify-content: center;">
+                                                    <canvas id="chartPlanejamentoSetorTurno"></canvas>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <!-- Sub-aba: Instrutor -->
-                                        <div class="tab-pane fade" id="planejamento-instrutor">
-                                            <div class="card shadow-sm">
-                                                <div class="card-body" style="padding: 0.75rem;">
-                                                    <canvas id="chartPlanejamentoInstrutor" height="180"></canvas>
+                                        <div class="tab-pane fade" id="planejamento-instrutor" style="flex: 1; display: flex; flex-direction: column;">
+                                            <div class="card shadow-sm" style="flex: 1; display: flex; flex-direction: column;">
+                                                <div class="card-body" style="padding: 0.75rem; flex: 1; display: flex; align-items: center; justify-content: center;">
+                                                    <canvas id="chartPlanejamentoInstrutor"></canvas>
                                                 </div>
                                             </div>
                                         </div>
@@ -732,7 +779,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 layout: {
                     padding: { left: 10, right: 10, top: 10, bottom: 10 }
                 },
@@ -766,7 +813,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 layout: {
                     padding: { left: 10, right: 10, top: 10, bottom: 10 }
                 },
@@ -809,7 +856,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 indexAxis: 'y',
                 layout: {
                     padding: { left: 10, right: 10, top: 10, bottom: 10 }
@@ -853,7 +900,7 @@
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 indexAxis: 'y',
                 layout: {
                     padding: { left: 10, right: 10, top: 10, bottom: 10 }
@@ -949,7 +996,7 @@
             options: {
                 indexAxis: 'y',
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 layout: {
                     padding: { left: 5, right: 5, top: 5, bottom: 5 }
                 },
@@ -1009,7 +1056,7 @@
             options: {
                 indexAxis: 'y',
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 layout: {
                     padding: { left: 10, right: 10, top: 10, bottom: 10 }
                 },
