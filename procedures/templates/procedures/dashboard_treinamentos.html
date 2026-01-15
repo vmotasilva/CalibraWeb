@@ -320,96 +320,6 @@
         object-fit: contain;
     }
 
-    /* Toggle Headers - Mesmo padrão do Header */
-    .chart-toggle {
-        padding: 1rem 1.25rem;
-        background: #f5f5f5;
-        border-bottom: 2px solid #e0e0e0;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        flex-shrink: 0;
-        height: auto;
-        min-height: 50px;
-        flex-wrap: wrap;
-    }
-
-    .chart-toggle strong {
-        font-size: 0.95rem;
-        color: #222;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 700;
-    }
-
-    .chart-toggle strong i {
-        font-size: 1rem;
-        color: #0066cc;
-    }
-
-    .chart-toggle button {
-        padding: 0.5rem 1rem;
-        font-size: 0.85rem;
-        border: 2px solid #dee2e6;
-        background: white;
-        color: #333;
-        border-radius: 0.375rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        white-space: nowrap;
-        font-weight: 500;
-    }
-
-    .chart-toggle button:hover {
-        border-color: #0066cc;
-        background: #f0f8ff;
-        color: #0066cc;
-    }
-
-    .chart-toggle button.active {
-        background: #0066cc;
-        color: white;
-        border-color: #0052a3;
-        box-shadow: 0 2px 4px rgba(0, 102, 204, 0.3);
-    }
-
-    /* Containers dos Gráficos com Toggle - FORÇO ALTURA */
-    [id$="-container"] {
-        width: 100%;
-        height: 100%;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        background: white;
-        min-height: 300px;
-        box-sizing: border-box;
-    }
-
-    .demanda-chart-container,
-    .planejamento-chart-container {
-        width: 100%;
-        height: 100%;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        background: white;
-    }
-
-    /* GARANTIR QUE CANVAS TENHA ALTURA */
-    .demanda-chart-container canvas,
-    .planejamento-chart-container canvas {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: 100% !important;
-        max-height: 100% !important;
-        display: block !important;
-    }
-
     /* Responsive Design */
     @media (max-width: 1200px) {
         .dashboard-grid {
@@ -702,49 +612,47 @@
                     </div>
                 </div>
 
-                <!-- LINHA 2: Demanda (Full Width com Toggle) -->
-                <div class="grid-item full-width">
-                    <div class="chart-toggle">
-                        <strong>
-                            <i class="bi bi-bar-chart"></i> Demanda por:
-                        </strong>
-                        <button class="demanda-btn active" data-target="demanda-setor">
-                            <i class="bi bi-diagram-3"></i> Setor e Turno
-                        </button>
-                        <button class="demanda-btn" data-target="demanda-lider">
-                            <i class="bi bi-people"></i> Líderes
-                        </button>
+                <!-- LINHA 2: Demanda (Lado a Lado) -->
+                
+                <!-- Demanda por Setor e Turno -->
+                <div class="grid-item">
+                    <div class="grid-item-header">
+                        <i class="bi bi-diagram-3"></i> Demanda por Setor e Turno
                     </div>
-                    <div class="grid-item-body" style="position: relative;">
-                        <div id="demanda-setor-container" class="demanda-chart-container" style="width: 100%; height: 100%;">
-                            <canvas id="chartSetorTurno"></canvas>
-                        </div>
-                        <div id="demanda-lider-container" class="demanda-chart-container" style="width: 100%; height: 100%; display: none;">
-                            <canvas id="chartLider"></canvas>
-                        </div>
+                    <div class="grid-item-body">
+                        <canvas id="chartSetorTurno"></canvas>
                     </div>
                 </div>
 
-                <!-- LINHA 3: Planejamento (Full Width com Toggle) -->
-                <div class="grid-item full-width">
-                    <div class="chart-toggle">
-                        <strong>
-                            <i class="bi bi-calendar2-week"></i> Planejamento:
-                        </strong>
-                        <button class="planejamento-btn active" data-target="planejamento-setor">
-                            <i class="bi bi-calendar-event"></i> Setor/Turno
-                        </button>
-                        <button class="planejamento-btn" data-target="planejamento-instrutor">
-                            <i class="bi bi-person-check"></i> Instrutor
-                        </button>
+                <!-- Demanda por Liderança -->
+                <div class="grid-item">
+                    <div class="grid-item-header">
+                        <i class="bi bi-people"></i> Demanda por Liderança
                     </div>
-                    <div class="grid-item-body" style="position: relative;">
-                        <div id="planejamento-setor-container" class="planejamento-chart-container" style="width: 100%; height: 100%;">
-                            <canvas id="chartPlanejamentoSetorTurno"></canvas>
-                        </div>
-                        <div id="planejamento-instrutor-container" class="planejamento-chart-container" style="width: 100%; height: 100%; display: none;">
-                            <canvas id="chartPlanejamentoInstrutor"></canvas>
-                        </div>
+                    <div class="grid-item-body">
+                        <canvas id="chartLider"></canvas>
+                    </div>
+                </div>
+
+                <!-- LINHA 3: Planejamento (Lado a Lado) -->
+                
+                <!-- Planejamento por Setor e Turno -->
+                <div class="grid-item">
+                    <div class="grid-item-header">
+                        <i class="bi bi-calendar-event"></i> Planejamento por Setor/Turno
+                    </div>
+                    <div class="grid-item-body">
+                        <canvas id="chartPlanejamentoSetorTurno"></canvas>
+                    </div>
+                </div>
+
+                <!-- Planejamento por Instrutor -->
+                <div class="grid-item">
+                    <div class="grid-item-header">
+                        <i class="bi bi-person-check"></i> Planejamento por Instrutor
+                    </div>
+                    <div class="grid-item-body">
+                        <canvas id="chartPlanejamentoInstrutor"></canvas>
                     </div>
                 </div>
             </div>
@@ -1303,49 +1211,6 @@
             }
         });
     }
-
-    // Controle dos Toggles - Demanda e Planejamento
-    document.querySelectorAll('.demanda-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const target = this.getAttribute('data-target');
-            
-            // Atualizar classe ativa
-            document.querySelectorAll('.demanda-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Mostrar/Esconder containers
-            document.getElementById(target + '-container').style.display = '';
-            Array.from(document.querySelectorAll('[id^="demanda-"][id$="-container"]')).forEach(el => {
-                if (el.id !== target + '-container') el.style.display = 'none';
-            });
-            
-            // Trigger resize para gráficos
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-            }, 100);
-        });
-    });
-
-    document.querySelectorAll('.planejamento-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const target = this.getAttribute('data-target');
-            
-            // Atualizar classe ativa
-            document.querySelectorAll('.planejamento-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Mostrar/Esconder containers
-            document.getElementById(target + '-container').style.display = '';
-            Array.from(document.querySelectorAll('[id^="planejamento-"][id$="-container"]')).forEach(el => {
-                if (el.id !== target + '-container') el.style.display = 'none';
-            });
-            
-            // Trigger resize para gráficos
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-            }, 100);
-        });
-    });
 
     function aplicarFiltros() {
         const turno = document.getElementById('filterTurno').value;
