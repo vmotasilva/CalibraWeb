@@ -141,8 +141,14 @@
                 <div class="col-md-6">
                     <div class="mb-3">
                         <span class="info-label">Data Prevista:</span>
-                        <div class="info-value">{{ planejamento.data_prevista|date:"d/m/Y" }}{% if planejamento.hora_prevista %} às {{ planejamento.hora_prevista }}{% endif %}</div>
+                        <div class="info-value">{{ planejamento.data_prevista|date:"d/m/Y" }}</div>
                     </div>
+                    {% if planejamento.horario_previsto %}
+                    <div class="mb-3">
+                        <span class="info-label">Horário Previsto:</span>
+                        <div class="info-value">{{ planejamento.horario_previsto|time:"H:i" }}</div>
+                    </div>
+                    {% endif %}
                     {% if planejamento.data_realizada %}
                     <div class="mb-3">
                         <span class="info-label">Data Realizada:</span>
