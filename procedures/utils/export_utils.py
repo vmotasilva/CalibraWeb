@@ -97,6 +97,7 @@ class PlanejamentoExcelExporter:
     def export_detalhe_planejamento(self, planejamento):
         """
         Exporta detalhes de um planejamento específico para Excel
+        Estrutura única com 2 abas: Informações Gerais e Relação Pessoa x Treinamentos
         
         Args:
             planejamento: Instância de PlanejamentoTreinamento
@@ -106,7 +107,7 @@ class PlanejamentoExcelExporter:
         """
         # ===== ABA 1: Informações Gerais =====
         ws_info = self.ws
-        ws_info.title = "Informações"
+        ws_info.title = "Informações Gerais"
         
         # Cabeçalho
         self._adicionar_titulo(ws_info, planejamento.titulo, 1)
@@ -131,17 +132,9 @@ class PlanejamentoExcelExporter:
             self._adicionar_linha_info(ws_info, row, label, valor)
             row += 1
         
-        # ===== ABA 2: Procedimentos =====
-        ws_proc = self.workbook.create_sheet("Procedimentos")
-        self._adicionar_procedimentos(ws_proc, planejamento)
-        
-        # ===== ABA 3: Colaboradores =====
-        ws_colab = self.workbook.create_sheet("Colaboradores")
-        self._adicionar_colaboradores(ws_colab, planejamento)
-        
-        # ===== ABA 4: Registros de Treinamento =====
-        ws_registros = self.workbook.create_sheet("Registros de Treinamento")
-        self._adicionar_registros_treinamento(ws_registros, planejamento)
+        # ===== ABA 2: Relação Pessoa x Treinamentos =====
+        ws_pessoas = self.workbook.create_sheet("Relação Pessoa x Treinamentos")
+        self._adicionar_relacao_pessoa_treinamento(ws_pessoas, planejamento)
         
         # Ajustar largura de todas as abas
         for ws in self.workbook.sheetnames:
@@ -176,57 +169,67 @@ class PlanejamentoExcelExporter:
         
         ws.merge_cells(f"B{row}:L{row}")
     
-    def _adicionar_procedimentos(self, ws, planejamento):
-        """Adiciona lista de procedimentos em uma aba separada"""
-        self._adicionar_titulo(ws, f"Procedimentos - {planejamento.titulo}", 1)
+    def _adicionar_relacao_pessoa_treinamento(self, ws, planejamento):
+        """
+        Adiciona tabela consolidada: Pessoa x Treinamentos
+        Mostra cada colaborador com seus procedimentos e status de conclusão
+        """
+        self._adicionar_titulo(ws, f"Relação Pessoa x Treinamentos - {planejamento.titulo}", 1)
+        
+        from procedures.models import RegistroTreinamento
         
         # Cabeçalhos
-        headers = ["Código", "Nome", "Descrição", "Disciplina"]
+        headers = [
+            "Colaborador",
+            "Matrícula",
+            "Cargo",
+            "Setor",
+            "Procedimentos Planejados",
+            "Procedimentos Concluídos",
+            "Status Geral"
+        ]
+        
         for col_num, header in enumerate(headers, 1):
             cell = ws.cell(row=3, column=col_num)
             cell.value = header
             cell.font = self.HEADER_FONT
             cell.fill = self.HEADER_FILL
-            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             cell.border = self.BORDER
         
-        # Dados
-        for row_num, procedimento in enumerate(planejamento.procedimentos.all(), 4):
-            dados = [
-                procedimento.codigo,
-                procedimento.nome,
-                procedimento.descricao or "",
-                ", ".join([d.nome for d in procedimento.disciplinas.all()]) or ""
-            ]
+        # Dados: um colaborador por linha
+        row_num = 4
+        for colaborador in planejamento.colaboradores.all().order_by('nome_completo'):
+            # Procedimentos planejados (do planejamento)
+            procs_planejados = ", ".join([p.codigo for p in planejamento.procedimentos.all()])
             
-            for col_num, valor in enumerate(dados, 1):
-                cell = ws.cell(row=row_num, column=col_num)
-                cell.value = valor
-                cell.alignment = Alignment(wrap_text=True, vertical='top')
-                cell.border = self.BORDER
-    
-    def _adicionar_colaboradores(self, ws, planejamento):
-        """Adiciona lista de colaboradores em uma aba separada"""
-        self._adicionar_titulo(ws, f"Colaboradores - {planejamento.titulo}", 1)
-        
-        # Cabeçalhos
-        headers = ["Nome", "Matrícula", "Cargo", "Setor", "Status"]
-        for col_num, header in enumerate(headers, 1):
-            cell = ws.cell(row=3, column=col_num)
-            cell.value = header
-            cell.font = self.HEADER_FONT
-            cell.fill = self.HEADER_FILL
-            cell.alignment = Alignment(horizontal='center', vertical='center')
-            cell.border = self.BORDER
-        
-        # Dados
-        for row_num, colaborador in enumerate(planejamento.colaboradores.all(), 4):
+            # Procedimentos concluídos (baseado em RegistroTreinamento)
+            registros_concluidos = RegistroTreinamento.objects.filter(
+                colaborador=colaborador,
+                procedimento__in=planejamento.procedimentos.all(),
+                concluido=True
+            ).values_list('procedimento__codigo', flat=True).distinct()
+            procs_concluidos = ", ".join(registros_concluidos) if registros_concluidos else "-"
+            
+            # Status geral
+            total_procs = planejamento.procedimentos.count()
+            if total_procs == 0:
+                status_geral = "Sem procedimentos"
+            elif len(list(registros_concluidos)) == total_procs:
+                status_geral = "✅ Completo"
+            elif len(list(registros_concluidos)) > 0:
+                status_geral = f"⚠️ Parcial ({len(list(registros_concluidos))}/{total_procs})"
+            else:
+                status_geral = "❌ Pendente"
+            
             dados = [
                 colaborador.nome_completo,
                 colaborador.matricula or "",
                 colaborador.cargo or "",
-                colaborador.setor or "",
-                "Ativo" if colaborador.is_active else "Inativo"
+                str(colaborador.setor) if colaborador.setor else "",
+                procs_planejados,
+                procs_concluidos,
+                status_geral
             ]
             
             for col_num, valor in enumerate(dados, 1):
@@ -234,49 +237,13 @@ class PlanejamentoExcelExporter:
                 cell.value = valor
                 cell.alignment = Alignment(wrap_text=True, vertical='top')
                 cell.border = self.BORDER
-    
-    def _adicionar_registros_treinamento(self, ws, planejamento):
-        """Adiciona registros de treinamento realizados"""
-        from procedures.models import RegistroTreinamento
-        
-        self._adicionar_titulo(ws, f"Registros de Treinamento - {planejamento.titulo}", 1)
-        
-        # Cabeçalhos
-        headers = ["Colaborador", "Procedimento", "Data", "Hora", "Status"]
-        for col_num, header in enumerate(headers, 1):
-            cell = ws.cell(row=3, column=col_num)
-            cell.value = header
-            cell.font = self.HEADER_FONT
-            cell.fill = self.HEADER_FILL
-            cell.alignment = Alignment(horizontal='center', vertical='center')
-            cell.border = self.BORDER
-        
-        # Buscar registros
-        registros = RegistroTreinamento.objects.filter(
-            procedimento__in=planejamento.procedimentos.all(),
-            colaborador__in=planejamento.colaboradores.all()
-        ).select_related('colaborador', 'procedimento').order_by('-data_treinamento')
-        
-        # Dados
-        for row_num, registro in enumerate(registros, 4):
-            dados = [
-                registro.colaborador.nome_completo,
-                registro.procedimento.codigo,
-                registro.data_treinamento.strftime("%d/%m/%Y") if registro.data_treinamento else "",
-                registro.data_treinamento.strftime("%H:%M") if registro.data_treinamento else "",
-                "Concluído" if registro.concluido else "Pendente"
-            ]
             
-            for col_num, valor in enumerate(dados, 1):
-                cell = ws.cell(row=row_num, column=col_num)
-                cell.value = valor
-                cell.alignment = Alignment(wrap_text=True, vertical='top')
-                cell.border = self.BORDER
+            row_num += 1
         
-        if not registros.exists():
+        if not planejamento.colaboradores.exists():
             cell = ws.cell(row=4, column=1)
-            cell.value = "Nenhum registro de treinamento encontrado"
-            ws.merge_cells("A4:E4")
+            cell.value = "Nenhum colaborador associado a este planejamento"
+            ws.merge_cells("A4:G4")
     
     def _auto_adjust_columns(self, ws=None):
         """Ajusta automaticamente a largura das colunas"""
