@@ -306,6 +306,66 @@ class PlanejamentoExcelExporter:
         }
         return origem_map.get(origem, origem)
     
+    def export_matriz_treinamentos(self, treinamentos):
+        """
+        Exporta matriz de treinamentos (relação pessoa x procedimento)
+        
+        Args:
+            treinamentos: QuerySet ou List de RegistroTreinamento
+        
+        Returns:
+            HttpResponse com arquivo Excel
+        """
+        # Configurar cabeçalhos
+        headers = [
+            "Colaborador",
+            "Matrícula",
+            "Cargo",
+            "Setor",
+            "Procedimento",
+            "Código",
+            "Data Treinamento",
+            "Status",
+            "Carga Horária"
+        ]
+        
+        # Adicionar cabeçalhos
+        for col_num, header in enumerate(headers, 1):
+            cell = self.ws.cell(row=1, column=col_num)
+            cell.value = header
+            cell.font = self.HEADER_FONT
+            cell.fill = self.HEADER_FILL
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            cell.border = self.BORDER
+        
+        # Adicionar dados
+        for row_num, treinamento in enumerate(treinamentos, 2):
+            dados = [
+                treinamento.colaborador.nome_completo if treinamento.colaborador else "",
+                treinamento.colaborador.matricula if treinamento.colaborador else "",
+                treinamento.colaborador.cargo if treinamento.colaborador else "",
+                treinamento.colaborador.setor if treinamento.colaborador else "",
+                treinamento.procedimento.nome if treinamento.procedimento else "",
+                treinamento.procedimento.codigo if treinamento.procedimento else "",
+                treinamento.data_treinamento.strftime("%d/%m/%Y") if treinamento.data_treinamento else "",
+                treinamento.status_treinamento if hasattr(treinamento, 'status_treinamento') else "",
+                f"{treinamento.carga_horaria}h" if treinamento.carga_horaria else ""
+            ]
+            
+            for col_num, valor in enumerate(dados, 1):
+                cell = self.ws.cell(row=row_num, column=col_num)
+                cell.value = valor
+                cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+                cell.border = self.BORDER
+        
+        # Ajustar largura das colunas
+        self._auto_adjust_columns()
+        
+        # Congelar a primeira linha
+        self.ws.freeze_panes = "A2"
+        
+        return self._generate_response("matriz_treinamentos.xlsx")
+    
     def _generate_response(self, filename):
         """Gera HttpResponse com o arquivo Excel"""
         output = BytesIO()

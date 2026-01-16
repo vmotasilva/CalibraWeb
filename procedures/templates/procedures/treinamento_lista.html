@@ -70,6 +70,9 @@
                 Registros 
                 <span class="badge bg-info">{{ total_registros }} total</span>
             </h6>
+            <a href="{% url 'procedures:treinamentos_exportar_excel' %}?{% if busca %}q={{ busca }}&{% endif %}{% if status %}status={{ status }}&{% endif %}{% if colaborador_id %}colaborador={{ colaborador_id }}&{% endif %}{% if procedimento_id %}procedimento={{ procedimento_id }}&{% endif %}{% if ativo %}ativo={{ ativo }}{% endif %}" class="btn btn-success btn-sm" title="Exportar para Excel">
+                <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+            </a>
             {% if treinamentos.paginator.num_pages > 1 %}
                 <small class="text-muted">
                     Página {{ treinamentos.number }} de {{ treinamentos.paginator.num_pages }}

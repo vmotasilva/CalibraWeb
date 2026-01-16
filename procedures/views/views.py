@@ -383,6 +383,45 @@ def treinamentos_list_view(request):
 
 
 @login_required
+def treinamentos_exportar_excel_view(request):
+    """Exporta matriz de treinamentos com filtros para Excel."""
+    from procedures.utils.export_utils import PlanejamentoExcelExporter
+    
+    # Aplicar os mesmos filtros da lista
+    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
+    
+    status = request.GET.get('status', '')
+    colaborador_id = request.GET.get('colaborador', '')
+    procedimento_id = request.GET.get('procedimento', '')
+    busca = request.GET.get('q', '')
+    ativo = request.GET.get('ativo', '')
+
+    # Filtro de status
+    if status:
+        qs = [t for t in qs if t.status_treinamento == status]
+    
+    if colaborador_id:
+        qs = qs.filter(colaborador_id=colaborador_id)
+    if procedimento_id:
+        qs = qs.filter(procedimento_id=procedimento_id)
+    if ativo:
+        qs = qs.filter(ativo=ativo == '1')
+    if busca:
+        qs = qs.filter(
+            Q(colaborador__nome_completo__icontains=busca) |
+            Q(procedimento__codigo__icontains=busca) |
+            Q(procedimento__nome__icontains=busca)
+        )
+    
+    # Ordenar
+    qs = qs.order_by('-data_treinamento') if isinstance(qs, list) else qs.order_by('-data_treinamento')
+    
+    # Exportar
+    exporter = PlanejamentoExcelExporter()
+    return exporter.export_matriz_treinamentos(qs)
+
+
+@login_required
 def treinamentos_detalhe_view(request, treinamento_id):
     """View detalhes de um registro de treinamento."""
     treinamento = get_object_or_404(RegistroTreinamento, id=treinamento_id)

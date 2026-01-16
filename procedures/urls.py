@@ -37,6 +37,7 @@ urlpatterns = [
     # TREINAMENTOS
     # ==========================
     path('treinamentos/', views.treinamentos_list_view, name='treinamentos_list'),
+    path('treinamentos/exportar-excel/', views.treinamentos_exportar_excel_view, name='treinamentos_exportar_excel'),
     path('treinamentos/<int:treinamento_id>/', views.treinamentos_detalhe_view, name='treinamentos_detalhe'),
     path('treinamentos/novo/', views.novo_treinamento_view, name='novo_treinamento'),
     path('treinamentos/<int:treinamento_id>/editar/', views.editar_treinamento_view, name='editar_treinamento'),
