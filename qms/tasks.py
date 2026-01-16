@@ -439,6 +439,34 @@ def import_historico_task(job_id, filepath):
                     except Exception as cert_error:
                         logger.error(f"Erro ao processar certificado para TAG {tag}: {str(cert_error)}")
 
+                # ===== ASSOCIAR FAIXAS EXISTENTES PARA VALIDAÇÃO =====
+                # Em vez de criar novas faixas, associa as faixas já existentes do instrumento
+                try:
+                    from metrologia.models import FaixaMedicao, ResultadoFaixaCalibracao
+                    
+                    # Buscar todas as faixas existentes do instrumento
+                    faixas_existentes = FaixaMedicao.objects.filter(instrumento=inst).order_by('valor_minimo')
+                    
+                    # Para cada faixa existente, criar/atualizar ResultadoFaixaCalibracao
+                    for faixa in faixas_existentes:
+                        try:
+                            resultado, _ = ResultadoFaixaCalibracao.objects.update_or_create(
+                                historico=obj,
+                                faixa=faixa,
+                                defaults={
+                                    'valor_minimo': faixa.valor_minimo,
+                                    'valor_maximo': faixa.valor_maximo,
+                                    'erro': float(erro.replace(',', '.')) if erro else None,
+                                    'incerteza': float(inc.replace(',', '.')) if inc else None,
+                                    'tolerancia': float(tol.replace(',', '.')) if tol else None,
+                                }
+                            )
+                            logger.debug(f"Faixa {faixa.id} associada ao histórico {obj.id}")
+                        except Exception as e:
+                            logger.warning(f"Erro ao associar faixa {faixa.id} ao histórico {obj.id}: {str(e)}")
+                except Exception as e:
+                    logger.warning(f"Erro ao associar faixas existentes para TAG {tag}: {str(e)}")
+
                 # Ensure Instrumento fields reflect latest calibration
                 try:
                     if dt_cal:
@@ -462,7 +490,7 @@ def import_historico_task(job_id, filepath):
                     updated += 1
 
         job.status = 'SUCCESS'
-        msg = f'Historico: {created} new, {updated} updated, {errors} ignored (missing TAG/date)'
+        msg = f'Historico: {created} new, {updated} updated, {errors} ignored (missing TAG/date). Faixas existentes foram associadas para validação.'
         if sample_errors:
             msg += f" | Samples: {', '.join(sample_errors)}"
         job.result = msg
