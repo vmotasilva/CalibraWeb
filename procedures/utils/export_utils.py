@@ -194,9 +194,10 @@ class PlanejamentoExcelExporter:
             cell_indent.value = ""
             cell_indent.border = self.BORDER
             
-            # Código e Nome do procedimento
+            # Código, Nome e Revisão do procedimento
+            revisao = procedimento.numero_revisao if procedimento.numero_revisao else "-"
             cell_proc = ws.cell(row=row, column=2)
-            cell_proc.value = f"{procedimento.codigo} - {procedimento.nome}"
+            cell_proc.value = f"{procedimento.codigo} - {procedimento.nome} - Rev {revisao}"
             cell_proc.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
             cell_proc.border = self.BORDER
             
