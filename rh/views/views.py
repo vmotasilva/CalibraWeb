@@ -237,29 +237,52 @@ def modulo_rh_view(request):
     except EmptyPage:
         funcionarios_page = paginator.page(paginator.num_pages)
     
-    # Calcular estatísticas APENAS para a página atual usando dados pré-carregados
+    # Calcular estatísticas APENAS para a página atual
+    # ✅ CORRIGIDO: Usar a mesma lógica que a página de detalhe para contar procedimentos únicos
     for f in funcionarios_page.object_list:
-        # Cálculo simples: contar todos os treinamentos vigentes/pendentes
-        # Sem iteração em perfis/grupos que gera N+1 queries
         # IMPORTANTE: Apenas contar treinamentos de colaboradores ATIVOS e NÃO AFASTADOS
         if f.is_active and not f.afastado:
-            treinamentos = f.treinamentos.all()
+            # Contar procedimentos únicos por perfil (não duplicatas entre perfis)
+            procedimentos_contabilizados = set()
+            vig = 0
+            pend = 0
+            last = None
+            
+            # Buscar perfis com prefetch para evitar N+1
+            perfis = f.colaboradorperfil_set.filter(ativo=True).select_related('perfil').prefetch_related('perfil__grupos__subgrupos__procedimentos')
+            
+            for cp in perfis:
+                perfil = cp.perfil
+                grupos_ids = cp.grupos_selecionados.get('grupos', []) if cp.grupos_selecionados else []
+                subgrupos_ids = cp.grupos_selecionados.get('subgrupos', []) if cp.grupos_selecionados else []
+                
+                for grupo in perfil.grupos.all():
+                    if grupos_ids and grupo.id not in grupos_ids:
+                        continue
+                    
+                    for subgrupo in grupo.subgrupos.all():
+                        if subgrupos_ids and subgrupo.id not in subgrupos_ids:
+                            continue
+                        
+                        for proc in subgrupo.procedimentos.all():
+                            if proc.id not in procedimentos_contabilizados:
+                                procedimentos_contabilizados.add(proc.id)
+                                
+                                rt = f.treinamentos.filter(procedimento=proc).first()
+                                if rt:
+                                    if rt.status_treinamento in ("OK", "VIGENTE"):
+                                        vig += 1
+                                    else:
+                                        pend += 1
+                                    if rt.data_treinamento and (last is None or rt.data_treinamento > last):
+                                        last = rt.data_treinamento
+                                else:
+                                    pend += 1
         else:
-            # Colaborador desligado ou afastado não deve ter treinamentos contados
-            treinamentos = []
-        
-        vig = 0
-        pend = 0
-        last = None
-        
-        for rt in treinamentos:
-            status = rt.status_treinamento
-            if status in ("VIGENTE", "OK"):
-                vig += 1
-            else:
-                pend += 1
-            if rt.data_treinamento and (last is None or rt.data_treinamento > last):
-                last = rt.data_treinamento
+            # Colaborador desligado ou afastado
+            vig = 0
+            pend = 0
+            last = None
         
         f.trein_vigentes = vig
         f.trein_pendentes = pend
