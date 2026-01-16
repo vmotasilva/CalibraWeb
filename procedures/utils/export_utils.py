@@ -124,7 +124,6 @@ class PlanejamentoExcelExporter:
             ("Instrutor", planejamento.instrutor.nome_completo if planejamento.instrutor else "Não definido"),
             ("Local", planejamento.local or ""),
             ("Carga Horária", f"{planejamento.carga_horaria} minutos" if planejamento.carga_horaria else ""),
-            ("Descrição", planejamento.descricao or ""),
             ("Observações", planejamento.observacoes or ""),
         ]
         
