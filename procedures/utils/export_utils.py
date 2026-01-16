@@ -97,7 +97,9 @@ class PlanejamentoExcelExporter:
     def export_detalhe_planejamento(self, planejamento):
         """
         Exporta detalhes de um planejamento específico para Excel
-        Estrutura única com 2 abas: Informações Gerais e Relação Pessoa x Treinamentos
+        Estrutura com 2 abas:
+        - Aba 1: Informações Gerais + Procedimentos
+        - Aba 2: Colaboradores (Relação Pessoa x Treinamentos)
         
         Args:
             planejamento: Instância de PlanejamentoTreinamento
@@ -132,9 +134,13 @@ class PlanejamentoExcelExporter:
             self._adicionar_linha_info(ws_info, row, label, valor)
             row += 1
         
-        # ===== ABA 2: Relação Pessoa x Treinamentos =====
-        ws_pessoas = self.workbook.create_sheet("Relação Pessoa x Treinamentos")
-        self._adicionar_relacao_pessoa_treinamento(ws_pessoas, planejamento)
+        # Seção de Procedimentos
+        row += 1
+        self._adicionar_secao_procedimentos(ws_info, planejamento, row)
+        
+        # ===== ABA 2: Colaboradores =====
+        ws_colab = self.workbook.create_sheet("Colaboradores")
+        self._adicionar_relacao_pessoa_treinamento(ws_colab, planejamento)
         
         # Ajustar largura de todas as abas
         for ws in self.workbook.sheetnames:
@@ -168,6 +174,40 @@ class PlanejamentoExcelExporter:
         cell_valor.border = self.BORDER
         
         ws.merge_cells(f"B{row}:L{row}")
+    
+    def _adicionar_secao_procedimentos(self, ws, planejamento, start_row):
+        """Adiciona seção de procedimentos na aba de informações gerais"""
+        # Título da seção
+        cell_titulo = ws.cell(row=start_row, column=1)
+        cell_titulo.value = "📋 Procedimentos"
+        cell_titulo.font = Font(name='Calibri', size=12, bold=True, color="FFFFFF")
+        cell_titulo.fill = PatternFill(start_color="0D6EFD", end_color="0D6EFD", fill_type="solid")
+        cell_titulo.alignment = Alignment(horizontal='left', vertical='center')
+        ws.merge_cells(f"A{start_row}:B{start_row}")
+        ws.row_dimensions[start_row].height = 20
+        
+        # Lista de procedimentos, um por linha
+        row = start_row + 1
+        for procedimento in planejamento.procedimentos.all().order_by('codigo'):
+            # Célula vazia para indentação
+            cell_indent = ws.cell(row=row, column=1)
+            cell_indent.value = ""
+            cell_indent.border = self.BORDER
+            
+            # Código e Nome do procedimento
+            cell_proc = ws.cell(row=row, column=2)
+            cell_proc.value = f"{procedimento.codigo} - {procedimento.nome}"
+            cell_proc.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+            cell_proc.border = self.BORDER
+            
+            row += 1
+        
+        # Se não houver procedimentos
+        if not planejamento.procedimentos.exists():
+            cell_vazio = ws.cell(row=row, column=2)
+            cell_vazio.value = "Nenhum procedimento associado"
+            cell_vazio.alignment = Alignment(horizontal='left', vertical='top')
+            cell_vazio.border = self.BORDER
     
     def _adicionar_relacao_pessoa_treinamento(self, ws, planejamento):
         """
