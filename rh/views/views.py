@@ -107,6 +107,13 @@ def modulo_rh_view(request):
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
     from procedures.models import ColaboradorPerfil
     
+    # ⚡ CACHE: Gerar chave de cache única por usuário + página + filtros
+    # Invalidado quando há mudanças nos colaboradores
+    cache_key = f"rh_dashboard_{request.user.id}_{request.GET.urlencode()}"
+    cached_result = cache.get(cache_key)
+    if cached_result and request.method == "GET" and not request.GET.get('nocache'):
+        return render(request, "rh/dashboard.html", cached_result)
+    
     colab = None
     try:
         colab = get_colaborador_for_user(request.user)
@@ -272,6 +279,9 @@ def modulo_rh_view(request):
         "can_see_salary": can_see_salary,
         "can_edit": True,
     }
+    
+    # ⚡ CACHE: Guardar resultado por 5 minutos
+    cache.set(cache_key, ctx, 300)
     
     return render(request, "rh/dashboard.html", ctx)
 

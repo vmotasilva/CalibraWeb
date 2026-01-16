@@ -111,3 +111,21 @@ def rastrear_mudancas_colaborador(sender, instance, **kwargs):
                 )
         except Colaborador.DoesNotExist:
             pass
+
+@receiver(post_save, sender=Colaborador)
+def invalidar_cache_dashboard_rh(sender, instance, **kwargs):
+    """
+    Invalida o cache do dashboard RH quando um colaborador é alterado.
+    Isso garante que mudanças sejam refletidas imediatamente.
+    """
+    from django.core.cache import cache
+    from django.contrib.auth.models import User
+    
+    # Limpar cache de TODOS os usuários (mais seguro)
+    # Padrão: rh_dashboard_<user_id>_*
+    cache.delete_pattern("rh_dashboard_*")
+    
+    # Log para debug
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"✓ Cache RH dashboard invalidado (Colaborador {instance.id} alterado)")
