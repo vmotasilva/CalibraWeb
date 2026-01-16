@@ -87,6 +87,9 @@
                 <a href="{% url 'procedures:alterar_status_planejamento' planejamento.id %}" class="btn btn-info btn-sm">
                     <i class="bi bi-arrow-repeat"></i> Alterar Status
                 </a>
+                <a href="{% url 'procedures:exportar_detalhe_planejamento_excel' planejamento.id %}" class="btn btn-success btn-sm" title="Exportar para Excel">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel
+                </a>
                 <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-secondary btn-sm">
                     <i class="bi bi-arrow-left"></i> Voltar
                 </a>

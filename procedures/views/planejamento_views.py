@@ -1002,3 +1002,74 @@ def api_areas_list_view(request):
     }
     
     return JsonResponse(data)
+
+
+# ==================== EXPORT PARA EXCEL ====================
+
+@login_required
+def exportar_lista_planejamentos_excel_view(request):
+    """Exporta lista de planejamentos (com filtros aplicados) para Excel"""
+    from procedures.utils.export_utils import PlanejamentoExcelExporter
+    
+    # Replicar a mesma lógica de filtro da view de lista
+    planejamentos = PlanejamentoTreinamento.objects.select_related(
+        'instrutor'
+    ).prefetch_related('colaboradores', 'procedimentos').all()
+    
+    # Aplicar os mesmos filtros da lista
+    termo = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '')
+    procedimento_id = request.GET.get('procedimento', '')
+    mes = request.GET.get('mes', '')
+    instrutor_id = request.GET.get('instrutor', '').strip()
+    colaborador_id = request.GET.get('colaborador', '').strip()
+    
+    if termo:
+        planejamentos = planejamentos.filter(
+            Q(titulo__icontains=termo) | 
+            Q(procedimentos__codigo__icontains=termo) |
+            Q(procedimentos__nome__icontains=termo)
+        ).distinct()
+    
+    if status:
+        planejamentos = planejamentos.filter(status=status)
+    
+    if procedimento_id:
+        planejamentos = planejamentos.filter(procedimentos__id=procedimento_id)
+    
+    if instrutor_id:
+        planejamentos = planejamentos.filter(instrutor_id=instrutor_id)
+    
+    if colaborador_id:
+        planejamentos = planejamentos.filter(colaboradores__id=colaborador_id).distinct()
+    
+    if mes:
+        try:
+            ano, mes_num = mes.split('-')
+            planejamentos = planejamentos.filter(
+                data_prevista__year=ano,
+                data_prevista__month=mes_num
+            )
+        except:
+            pass
+    
+    planejamentos = planejamentos.order_by('-data_prevista', '-criado_em')
+    
+    # Gerar Excel
+    exporter = PlanejamentoExcelExporter()
+    return exporter.export_lista_planejamentos(planejamentos)
+
+
+@login_required
+def exportar_detalhe_planejamento_excel_view(request, planejamento_id):
+    """Exporta detalhes de um planejamento específico para Excel (múltiplas abas)"""
+    from procedures.utils.export_utils import PlanejamentoExcelExporter
+    
+    planejamento = get_object_or_404(
+        PlanejamentoTreinamento.objects.select_related('instrutor')
+        .prefetch_related('colaboradores', 'procedimentos'),
+        id=planejamento_id
+    )
+    
+    exporter = PlanejamentoExcelExporter()
+    return exporter.export_detalhe_planejamento(planejamento)

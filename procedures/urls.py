@@ -183,6 +183,10 @@ urlpatterns = [
     path('planejamentos/excluir-massa/', planejamento_views.excluir_planejamentos_massa_view, name='excluir_planejamentos_massa'),
     path('planejamentos/<int:planejamento_id>/criar-registros/', planejamento_views.criar_registros_planejamento_view, name='criar_registros_planejamento'),
     
+    # Export para Excel
+    path('planejamentos/export/lista-excel/', planejamento_views.exportar_lista_planejamentos_excel_view, name='exportar_lista_planejamentos_excel'),
+    path('planejamentos/<int:planejamento_id>/export/excel/', planejamento_views.exportar_detalhe_planejamento_excel_view, name='exportar_detalhe_planejamento_excel'),
+    
     # Gerenciar itens do planejamento via AJAX
     path('planejamentos/<int:planejamento_id>/procedimentos/adicionar/', planejamento_views.adicionar_procedimento_planejamento, name='adicionar_procedimento_planejamento'),
     path('planejamentos/<int:planejamento_id>/procedimentos/<int:procedimento_id>/remover/', planejamento_views.remover_procedimento_planejamento, name='remover_procedimento_planejamento'),
