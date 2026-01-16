@@ -172,11 +172,9 @@ class PlanejamentoExcelExporter:
     def _adicionar_relacao_pessoa_treinamento(self, ws, planejamento):
         """
         Adiciona tabela consolidada: Pessoa x Treinamentos
-        Mostra cada colaborador com seus procedimentos e status de conclusão
+        Mostra cada colaborador com seus procedimentos planejados
         """
         self._adicionar_titulo(ws, f"Relação Pessoa x Treinamentos - {planejamento.titulo}", 1)
-        
-        from procedures.models import RegistroTreinamento
         
         # Cabeçalhos
         headers = [
@@ -185,8 +183,7 @@ class PlanejamentoExcelExporter:
             "Cargo",
             "Setor",
             "Procedimentos Planejados",
-            "Procedimentos Concluídos",
-            "Status Geral"
+            "Quantidade"
         ]
         
         for col_num, header in enumerate(headers, 1):
@@ -201,35 +198,17 @@ class PlanejamentoExcelExporter:
         row_num = 4
         for colaborador in planejamento.colaboradores.all().order_by('nome_completo'):
             # Procedimentos planejados (do planejamento)
-            procs_planejados = ", ".join([p.codigo for p in planejamento.procedimentos.all()])
-            
-            # Procedimentos concluídos (baseado em RegistroTreinamento)
-            registros_concluidos = RegistroTreinamento.objects.filter(
-                colaborador=colaborador,
-                procedimento__in=planejamento.procedimentos.all(),
-                concluido=True
-            ).values_list('procedimento__codigo', flat=True).distinct()
-            procs_concluidos = ", ".join(registros_concluidos) if registros_concluidos else "-"
-            
-            # Status geral
-            total_procs = planejamento.procedimentos.count()
-            if total_procs == 0:
-                status_geral = "Sem procedimentos"
-            elif len(list(registros_concluidos)) == total_procs:
-                status_geral = "✅ Completo"
-            elif len(list(registros_concluidos)) > 0:
-                status_geral = f"⚠️ Parcial ({len(list(registros_concluidos))}/{total_procs})"
-            else:
-                status_geral = "❌ Pendente"
+            procs_planejados = planejamento.procedimentos.all()
+            procs_texto = ", ".join([p.codigo for p in procs_planejados])
+            total_procs = procs_planejados.count()
             
             dados = [
                 colaborador.nome_completo,
                 colaborador.matricula or "",
                 colaborador.cargo or "",
                 str(colaborador.setor) if colaborador.setor else "",
-                procs_planejados,
-                procs_concluidos,
-                status_geral
+                procs_texto if procs_texto else "Nenhum",
+                str(total_procs)
             ]
             
             for col_num, valor in enumerate(dados, 1):
@@ -243,7 +222,7 @@ class PlanejamentoExcelExporter:
         if not planejamento.colaboradores.exists():
             cell = ws.cell(row=4, column=1)
             cell.value = "Nenhum colaborador associado a este planejamento"
-            ws.merge_cells("A4:G4")
+            ws.merge_cells("A4:F4")
     
     def _auto_adjust_columns(self, ws=None):
         """Ajusta automaticamente a largura das colunas"""
