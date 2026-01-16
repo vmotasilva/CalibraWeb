@@ -195,9 +195,11 @@ class PlanejamentoExcelExporter:
             cell_indent.border = self.BORDER
             
             # Código, Nome e Revisão do procedimento
-            revisao = procedimento.numero_revisao if procedimento.numero_revisao else "-"
+            # Se não houver revisão, usa 0; sempre formata com 2 dígitos
+            revisao = procedimento.numero_revisao if procedimento.numero_revisao else "0"
+            revisao_formatada = str(revisao).zfill(2)
             cell_proc = ws.cell(row=row, column=2)
-            cell_proc.value = f"{procedimento.codigo} - {procedimento.nome} - Rev {revisao}"
+            cell_proc.value = f"{procedimento.codigo} - {procedimento.nome} - Rev {revisao_formatada}"
             cell_proc.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
             cell_proc.border = self.BORDER
             
