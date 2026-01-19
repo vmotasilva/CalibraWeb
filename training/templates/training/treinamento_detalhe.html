@@ -16,7 +16,7 @@
             <dt class="col-sm-4">Procedimento</dt><dd class="col-sm-8">{{ treinamento.procedimento.codigo }} - {{ treinamento.procedimento.titulo }}</dd>
             <dt class="col-sm-4">Revisão Treinada</dt><dd class="col-sm-8">{{ treinamento.revisao_treinada }}</dd>
             <dt class="col-sm-4">Data Treinamento</dt><dd class="col-sm-8">{{ treinamento.data_treinamento|date:'d/m/Y' }}</dd>
-            <dt class="col-sm-4">Status</dt><dd class="col-sm-8">{% if treinamento.status_treinamento == 'VIGENTE' %}<span class="badge bg-success">Vigente</span>{% else %}<span class="badge bg-warning text-dark">Pendente</span>{% endif %}</dd>
+            <dt class="col-sm-4">Status</dt><dd class="col-sm-8">{% if treinamento.status_treinamento == 'OK' %}<span class="badge bg-success">Vigente</span>{% else %}<span class="badge bg-warning text-dark">Pendente</span>{% endif %}</dd>
             <dt class="col-sm-4">Observações</dt><dd class="col-sm-8">{{ treinamento.observacoes|default:'-' }}</dd>
           </dl>
         </div>

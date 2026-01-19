@@ -78,18 +78,17 @@ class RegistroTreinamentoTests(TestCase):
         )
         self.registro = RegistroTreinamento.objects.create(
             colaborador=self.colaborador,
-            procedimento=self.procedimento,
-            status_treinamento="VIGENTE"
+            procedimento=self.procedimento
         )
     
     def test_registro_treinamento_creation(self):
         """Test creation of RegistroTreinamento"""
-        self.assertEqual(self.registro.status_treinamento, "VIGENTE")
+        self.assertIn(self.registro.status_treinamento, ["OK", "PENDENTE"])
         self.assertEqual(self.registro.procedimento.codigo, "PROC-OPS-001")
     
     def test_registro_vigente(self):
-        """Test that training status can be VIGENTE"""
-        self.assertTrue(self.registro.status_treinamento in ["VIGENTE", "PENDENTE"])
+        """Test that training status can be OK or PENDENTE"""
+        self.assertIn(self.registro.status_treinamento, ["OK", "PENDENTE"])
 
 
 class TrainingViewsTests(TestCase):

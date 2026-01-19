@@ -384,44 +384,48 @@ def dashboard_treinamentos_view(request):
     valid_registros = get_valid_registros()
     total_treinamentos = valid_registros.count()
     
-    treinamentos_vigentes = valid_registros.filter(
-        data_treinamento__isnull=False
-    ).count()
+    # ⚠️ IMPORTANTE: Usar property status_treinamento ao invés de data_treinamento__isnull
+    # Porque status_treinamento é calculado dinamicamente baseado em revisão_treinada + data_treinamento
+    # Contar em Python após fetch para não quebrar a property
+    registros_list = list(valid_registros)
+    treinamentos_vigentes = sum(1 for r in registros_list if r.status_treinamento == 'OK')
+    treinamentos_pendentes = sum(1 for r in registros_list if r.status_treinamento == 'PENDENTE')
     
-    treinamentos_pendentes = valid_registros.filter(
-        data_treinamento__isnull=True
-    ).count()
+    # Colaboradores com treinamentos (com status OK)
+    total_colaboradores_treinados = len(set(
+        r.colaborador_id for r in registros_list if r.status_treinamento == 'OK'
+    ))
     
-    # Colaboradores com treinamentos
-    total_colaboradores_treinados = valid_registros.filter(
-        data_treinamento__isnull=False
-    ).values('colaborador').distinct().count()
+    # Procedimentos únicos treinados (com status OK)
+    total_procedimentos_unicos = len(set(
+        r.procedimento_id for r in registros_list if r.status_treinamento == 'OK'
+    ))
     
-    # Procedimentos únicos treinados
-    total_procedimentos_unicos = valid_registros.filter(
-        data_treinamento__isnull=False
-    ).values('procedimento').distinct().count()
-    
-    # Treinamentos nos últimos 30 dias
+    # Treinamentos nos últimos 30 dias (com status OK)
     data_30_dias_atras = date.today() - timedelta(days=30)
-    treinamentos_ultimos_30_dias = valid_registros.filter(
-        data_treinamento__gte=data_30_dias_atras,
-        data_treinamento__isnull=False
-    ).count()
+    treinamentos_ultimos_30_dias = sum(
+        1 for r in registros_list 
+        if r.status_treinamento == 'OK' and r.data_treinamento and r.data_treinamento >= data_30_dias_atras
+    )
     
-    # Top 10 procedimentos mais treinados
-    top_procedimentos = valid_registros.filter(
-        data_treinamento__isnull=False
-    ).values('procedimento__codigo', 'procedimento__nome').annotate(
-        total=Count('id')
-    ).order_by('-total')[:10]
+    # Top 10 procedimentos mais treinados (com status OK)
+    from collections import Counter
+    proc_counter = Counter(
+        r.procedimento.codigo for r in registros_list if r.status_treinamento == 'OK' and r.procedimento
+    )
+    top_procedimentos = [
+        {'procedimento__codigo': codigo, 'procedimento__nome': codigo, 'total': count}
+        for codigo, count in proc_counter.most_common(10)
+    ]
     
-    # Top 10 colaboradores com mais treinamentos
-    top_colaboradores = valid_registros.filter(
-        data_treinamento__isnull=False
-    ).values('colaborador__nome_completo').annotate(
-        total=Count('id')
-    ).order_by('-total')[:10]
+    # Top 10 colaboradores com mais treinamentos (com status OK)
+    colab_counter = Counter(
+        r.colaborador.nome_completo for r in registros_list if r.status_treinamento == 'OK' and r.colaborador
+    )
+    top_colaboradores = [
+        {'colaborador__nome_completo': nome, 'total': count}
+        for nome, count in colab_counter.most_common(10)
+    ]
     
     # Distribuição de status
     status_distribuicao = {
@@ -464,17 +468,14 @@ def dashboard_treinamentos_view(request):
         # Pegar todos os liderados ativos deste líder
         liderados_ids = lider.liderados.filter(is_active=True).values_list('id', flat=True)
         
-        # Contar registros de treinamento ATIVOS
-        vigentes = RegistroTreinamento.objects.filter(
+        # Contar registros de treinamento ATIVOS usando status_treinamento
+        registros_lider = RegistroTreinamento.objects.filter(
             colaborador_id__in=liderados_ids,
-            data_treinamento__isnull=False,
             ativo=True
-        ).count()
-        pendentes = RegistroTreinamento.objects.filter(
-            colaborador_id__in=liderados_ids,
-            data_treinamento__isnull=True,
-            ativo=True
-        ).count()
+        )
+        registros_lider_list = list(registros_lider)
+        vigentes = sum(1 for r in registros_lider_list if r.status_treinamento == 'OK')
+        pendentes = sum(1 for r in registros_lider_list if r.status_treinamento == 'PENDENTE')
         
         # Incluir se tem qualquer registro
         total = vigentes + pendentes
@@ -517,17 +518,14 @@ def dashboard_treinamentos_view(request):
                 is_active=True
             ).values_list('id', flat=True)
             
-            # Contar registros de treinamento
-            vigentes = RegistroTreinamento.objects.filter(
+            # Contar registros de treinamento usando status_treinamento
+            registros_setor = RegistroTreinamento.objects.filter(
                 colaborador_id__in=colaboradores_ids,
-                data_treinamento__isnull=False,
                 ativo=True
-            ).count()
-            pendentes = RegistroTreinamento.objects.filter(
-                colaborador_id__in=colaboradores_ids,
-                data_treinamento__isnull=True,
-                ativo=True
-            ).count()
+            )
+            registros_setor_list = list(registros_setor)
+            vigentes = sum(1 for r in registros_setor_list if r.status_treinamento == 'OK')
+            pendentes = sum(1 for r in registros_setor_list if r.status_treinamento == 'PENDENTE')
             
             # Incluir se tem qualquer registro
             total = vigentes + pendentes

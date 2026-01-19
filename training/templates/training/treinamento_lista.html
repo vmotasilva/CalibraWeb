@@ -31,7 +31,7 @@
         <div class="col-md-2">
             <select name="status" class="form-select">
                 <option value="">Status</option>
-                <option value="VIGENTE" {% if status == 'VIGENTE' %}selected{% endif %}>Vigente</option>
+                <option value="OK" {% if status == 'OK' %}selected{% endif %}>Vigente</option>
                 <option value="PENDENTE" {% if status == 'PENDENTE' %}selected{% endif %}>Pendente</option>
             </select>
         </div>
@@ -59,7 +59,7 @@
                             <td>{{ t.procedimento.codigo }} - {{ t.procedimento.titulo }}</td>
                             <td>{{ t.revisao_treinada }}</td>
                             <td>{{ t.data_treinamento|date:'d/m/Y' }}</td>
-                            <td>{% if t.status_treinamento == "VIGENTE" %}<span class="badge bg-success">Vigente</span>{% else %}<span class="badge bg-warning text-dark">Pendente</span>{% endif %}</td>
+                            <td>{% if t.status_treinamento == "OK" %}<span class="badge bg-success">Vigente</span>{% else %}<span class="badge bg-warning text-dark">Pendente</span>{% endif %}</td>
                         </tr>
                     {% endfor %}
                 {% else %}
