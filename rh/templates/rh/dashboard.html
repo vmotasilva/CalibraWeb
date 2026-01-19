@@ -480,11 +480,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const checkboxes = document.querySelectorAll('.filter-checkbox');
 
     restoreFiltros();
-    filtrar();
+    // ⚠️ DESABILITADO: Filtros client-side quebram a paginação server-side
+    // NOVA ABORDAGEM: Usar apenas filtros server-side com form POST/GET
+    // filtrar();
 
     // Event listeners para busca e checkboxes
-    searchInput.addEventListener('keyup', filtrar);
-    checkboxes.forEach(cb => cb.addEventListener('change', filtrar));
+    // Quando mudar busca ou checkbox, submeter o formulário (server-side filter)
+    searchInput.addEventListener('keyup', function(e) {
+        // Se pressionar Enter, submeter o form
+        if(e.key === 'Enter') {
+            document.getElementById('filterForm').submit();
+        }
+    });
+    
+    checkboxes.forEach(cb => cb.addEventListener('change', function() {
+        // Submeter form quando mudar checkbox
+        document.getElementById('filterForm').submit();
+    }));
 });
 
 // FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS (ACORDEÃO)
@@ -495,54 +507,16 @@ function toggleFilterGroup(element) {
 }
 
 function filtrar() {
+    // ⚠️ DESABILITADO: Filtros client-side foram movidos para server-side
+    // Manter function vazia para não quebrar código legado
+    return;
+    
+    // CÓDIGO ANTIGO (desabilitado):
+    /*
     const searchInput = document.getElementById('searchInput');
     const countDisplay = document.getElementById('countDisplay');
     const termoBusca = searchInput.value.toLowerCase();
-    
-    const filtrosAtivos = {
-        status: [],
-        setor: [],
-        lider: [],
-        supervisor: [],
-        gerente: [],
-        turno: [],
-        treino: []
-    };
-    
-    document.querySelectorAll('.filter-checkbox').forEach(cb => {
-        if (cb.checked) {
-            filtrosAtivos[cb.dataset.category].push(cb.value);
-        }
-    });
-
-    let visiveis = 0;
-    
-    document.querySelectorAll('.rh-row').forEach(row => {
-        let mostrar = true;
-
-        if (termoBusca && !row.dataset.nome.includes(termoBusca)) mostrar = false;
-        if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) mostrar = false;
-        if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
-        if (mostrar && filtrosAtivos.lider.length > 0 && !filtrosAtivos.lider.includes(row.dataset.lider)) mostrar = false;
-        
-        // NOVOS FILTROS (Lógica de filtragem Client-side)
-        if (mostrar && filtrosAtivos.supervisor.length > 0 && !filtrosAtivos.supervisor.includes(row.dataset.supervisor)) mostrar = false;
-        if (mostrar && filtrosAtivos.gerente.length > 0 && !filtrosAtivos.gerente.includes(row.dataset.gerente)) mostrar = false;
-        
-        if (mostrar && filtrosAtivos.turno.length > 0 && !filtrosAtivos.turno.includes(row.dataset.turno)) mostrar = false;
-        if (mostrar && filtrosAtivos.treino.length > 0 && !filtrosAtivos.treino.includes(row.dataset.treino)) mostrar = false;
-
-        row.style.display = mostrar ? '' : 'none';
-        if (mostrar) visiveis++;
-    });
-
-    if(countDisplay) countDisplay.innerText = visiveis;
-
-    // Persistência dos filtros
-    try {
-        const estado = { search: searchInput.value || '', filtros: filtrosAtivos };
-        localStorage.setItem('rh_filtros_v1', JSON.stringify(estado));
-    } catch (e) { /* ignore */ }
+    */
 }
 
 function limparFiltros() {
@@ -583,7 +557,7 @@ function toggleSidebar() {
     }
 
     // Reforça visibilidade da tabela após transição
-    try { filtrar(); } catch(e) { /* ignore */ }
+    // try { filtrar(); } catch(e) { /* ignore */ }
 }
 
 // Restaura filtros do localStorage
