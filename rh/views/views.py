@@ -242,13 +242,17 @@ def modulo_rh_view(request):
     
     # Pré-carregar tudo de uma vez (não query por colaborador)
     treinamentos_ativo = RegistroTreinamento.objects.filter(ativo=True).select_related('procedimento')
+    
+    # Prefetch para perfis_treinamento com select_related apenas para perfil FK
+    perfis_prefetch = ColaboradorPerfil.objects.filter(ativo=True).select_related('perfil').prefetch_related(
+        'perfil__grupos__subgrupos__procedimentos'
+    )
+    
     colaboradores_otimizado = Colaborador.objects.filter(
         id__in=colaboradores_ids
     ).prefetch_related(
         Prefetch('treinamentos', queryset=treinamentos_ativo),
-        Prefetch('perfis_treinamento', queryset=ColaboradorPerfil.objects.filter(ativo=True).select_related(
-            'perfil__grupos__subgrupos__procedimentos'
-        ))
+        Prefetch('perfis_treinamento', queryset=perfis_prefetch)
     )
     
     # Mapa para acesso O(1)
