@@ -507,15 +507,11 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('rh_search', searchInput.value.trim());
     });
     
-    checkboxes.forEach(cb => cb.addEventListener('change', function() {
-        // Ao mudar checkbox, recarregar a página mantendo a busca
-        const q = searchInput.value.trim();
-        if(q) {
-            window.location.href = '?q=' + encodeURIComponent(q);
-        } else {
-            window.location.href = window.location.pathname;
-        }
-    }));
+    // ⚠️ NOTA: Checkboxes de filtro não funcionam pois não há suporte server-side ainda
+    // Os event listeners estão desabilitados para não quebrar a navegação
+    // checkboxes.forEach(cb => cb.addEventListener('change', function() {
+    //     // Implementar filtros server-side para checkbox no futuro
+    // }));
 });
 
 // FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS (ACORDEÃO)

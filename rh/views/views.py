@@ -210,7 +210,7 @@ def modulo_rh_view(request):
     if busca:
         funcionarios_visiveis = funcionarios_visiveis.filter(
             Q(nome_completo__icontains=busca) | 
-            Q(colaborador_nome__icontains=busca) |
+            Q(matriculaains=busca) |
             Q(id__icontains=busca)  # Buscar por ID também
         )
     
