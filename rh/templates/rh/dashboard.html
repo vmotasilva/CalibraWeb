@@ -485,17 +485,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // filtrar();
 
     // Event listeners para busca e checkboxes
-    // Quando mudar busca ou checkbox, submeter o formulário (server-side filter)
+    // Quando mudar busca ou checkbox, submeter a página com query string
+    let submitTimeout;
+    
     searchInput.addEventListener('keyup', function(e) {
-        // Se pressionar Enter, submeter o form
+        // Se pressionar Enter, submeter com busca
         if(e.key === 'Enter') {
-            document.getElementById('filterForm').submit();
+            const q = searchInput.value.trim();
+            window.location.href = '?q=' + encodeURIComponent(q);
         }
     });
     
     checkboxes.forEach(cb => cb.addEventListener('change', function() {
-        // Submeter form quando mudar checkbox
-        document.getElementById('filterForm').submit();
+        // Submeter form quando mudar checkbox (com delay para não fazer múltiplos requests)
+        clearTimeout(submitTimeout);
+        submitTimeout = setTimeout(function() {
+            // Enviar para servidor com parâmetro query
+            if(searchInput.value.trim()) {
+                window.location.href = '?q=' + encodeURIComponent(searchInput.value.trim());
+            } else {
+                window.location.href = window.location.pathname;
+            }
+        }, 500);
     }));
 });
 
