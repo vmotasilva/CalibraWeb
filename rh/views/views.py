@@ -215,39 +215,41 @@ def modulo_rh_view(request):
     trein_stats = {}
     
     if colaboradores_ids:
-        # Subquery: Contar treinamentos VIGENTES por colaborador
-        vigentes = RegistroTreinamento.objects.filter(
-            colaborador_id__in=colaboradores_ids,
-            ativo=True,
-            status_treinamento__in=("OK", "VIGENTE")
-        ).values('colaborador_id').annotate(
-            count=Count('id'),
-            ultima_data=Max('data_treinamento')
-        )
+        # ⚠️ IMPORTANTE: status_treinamento é uma PROPERTY em Python, não um campo do BD
+        # Logo, não podemos usar em .filter() SQL. Usamos data_treinamento como proxy:
+        # - data_treinamento NOT NULL + revisao_treinada = OK
+        # - data_treinamento NULL = PENDENTE
         
-        # Subquery: Contar treinamentos PENDENTES por colaborador
-        pendentes = RegistroTreinamento.objects.filter(
+        # Pegar TODOS os treinamentos ativos destes colaboradores
+        treinamentos_ativos = RegistroTreinamento.objects.filter(
             colaborador_id__in=colaboradores_ids,
             ativo=True
-        ).exclude(
-            status_treinamento__in=("OK", "VIGENTE")
-        ).values('colaborador_id').annotate(count=Count('id'))
+        ).values_list('colaborador_id', 'data_treinamento', 'revisao_treinada')
         
-        # Estruturar dados
-        vigentes_map = {v['colaborador_id']: v for v in vigentes}
-        pendentes_map = {p['colaborador_id']: p for p in pendentes}
-        
+        # Contar em Python usando a lógica da property
         for colab_id in colaboradores_ids:
-            v_data = vigentes_map.get(colab_id, {})
-            p_data = pendentes_map.get(colab_id, {})
-            ultima_vig = v_data.get('ultima_data') if v_data else None
-            ultima_pend = p_data.get('ultima_data') if p_data else None
-            ultima = ultima_vig if ultima_vig else ultima_pend
+            registros = [
+                (data, rev) for cid, data, rev in treinamentos_ativos 
+                if cid == colab_id
+            ]
+            
+            vigentes = 0
+            pendentes = 0
+            ultima_vig = None
+            
+            for data_trein, revisao in registros:
+                # Simular a lógica da property status_treinamento
+                if revisao and data_trein:  # OK
+                    vigentes += 1
+                    if ultima_vig is None or data_trein > ultima_vig:
+                        ultima_vig = data_trein
+                else:  # PENDENTE
+                    pendentes += 1
             
             trein_stats[colab_id] = {
-                'vigentes': v_data.get('count', 0) if v_data else 0,
-                'pendentes': p_data.get('count', 0) if p_data else 0,
-                'ultima_data': ultima
+                'vigentes': vigentes,
+                'pendentes': pendentes,
+                'ultima_data': ultima_vig
             }
     
     # Atribuir dados aos colaboradores da página
