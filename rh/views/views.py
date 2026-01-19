@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import cache_page
 from django.db.models import Q, Prefetch
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.core.paginator import Paginator
 from django.core.cache import cache
 import logging
@@ -1441,3 +1441,121 @@ def importar_ferias_view(request):
         "descricao": "Importe férias dos colaboradores a partir de um arquivo CSV ou Excel"
     }
     return render(request, "rh/importar_ferias.html", context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def api_colaboradores_filtrados(request):
+    """
+    API para retornar colaboradores com filtros em tempo real (AJAX).
+    Suporta filtros: status, lider, supervisor, gerente, setor, turno, busca
+    """
+    from django.db.models import Count, Max
+    
+    # Obter colaborador do usuário logado
+    colab = None
+    try:
+        colab = get_colaborador_for_user(request.user)
+    except Exception:
+        pass
+
+    # 1. VISIBILIDADE - Quem pode ver todos vs sua árvore
+    ids_permitidos = set()
+    
+    if request.user.is_superuser:
+        ids_permitidos = set(Colaborador.objects.all().values_list("id", flat=True))
+    elif colab:
+        # Ver apenas subordinados diretos e a si mesmo
+        ids_permitidos.add(colab.id)
+        diretos = Colaborador.objects.filter(
+            Q(lider=colab) | Q(supervisor=colab) | Q(gerente=colab)
+        ).values_list('id', flat=True)
+        ids_permitidos.update(diretos)
+        subordinados_indiretos = get_all_subordinates(colab)
+        ids_permitidos.update(subordinados_indiretos)
+    else:
+        ids_permitidos = set()
+
+    # 2. Aplicar filtros
+    funcionarios = Colaborador.objects.filter(
+        id__in=list(ids_permitidos)
+    ).select_related(
+        'setor', 'centro_custo', 'lider', 'supervisor', 'gerente'
+    ).prefetch_related(
+        'treinamentos__procedimento'
+    ).order_by("nome_completo")
+
+    # Busca por nome/matrícula/ID
+    busca = request.GET.get('q', '').strip()
+    if busca:
+        funcionarios = funcionarios.filter(
+            Q(nome_completo__icontains=busca) | 
+            Q(matricula__icontains=busca) |
+            Q(id__icontains=busca)
+        )
+
+    # Filtro por Status
+    status_filtros = request.GET.getlist('status')
+    if status_filtros:
+        funcionarios = funcionarios.filter(ativo__in=['ATIVO' in s for s in status_filtros])
+
+    # Filtro por Lider
+    lider_ids = request.GET.getlist('lider')
+    if lider_ids:
+        funcionarios = funcionarios.filter(lider_id__in=lider_ids)
+
+    # Filtro por Supervisor
+    supervisor_ids = request.GET.getlist('supervisor')
+    if supervisor_ids:
+        funcionarios = funcionarios.filter(supervisor_id__in=supervisor_ids)
+
+    # Filtro por Gerente
+    gerente_ids = request.GET.getlist('gerente')
+    if gerente_ids:
+        funcionarios = funcionarios.filter(gerente_id__in=gerente_ids)
+
+    # Filtro por Setor
+    setor_ids = request.GET.getlist('setor')
+    if setor_ids:
+        funcionarios = funcionarios.filter(setor_id__in=setor_ids)
+
+    # Filtro por Turno
+    turnos = request.GET.getlist('turno')
+    if turnos:
+        funcionarios = funcionarios.filter(turno__in=turnos)
+
+    # Construir resposta JSON
+    dados = []
+    for colab in funcionarios:
+        # Contar treinamentos vigentes e pendentes
+        vigentes = 0
+        pendentes = 0
+        
+        for trein in colab.treinamentos.all():
+            if trein.ativo:
+                if trein.revisao_treinada and trein.data_treinamento:
+                    vigentes += 1
+                else:
+                    pendentes += 1
+        
+        dados.append({
+            'id': colab.id,
+            'nome': colab.nome_completo,
+            'matricula': colab.matricula or '',
+            'cargo': str(colab.cargo) if colab.cargo else '',
+            'setor': colab.setor.nome if colab.setor else '',
+            'centro_custo': colab.centro_custo.codigo if colab.centro_custo else '',
+            'turno': colab.turno or '',
+            'lider': colab.lider.nome_completo if colab.lider else '',
+            'supervisor': colab.supervisor.nome_completo if colab.supervisor else '',
+            'gerente': colab.gerente.nome_completo if colab.gerente else '',
+            'vigentes': vigentes,
+            'pendentes': pendentes,
+            'status': 'ATIVO' if colab.ativo == 'ATIVO' else (colab.ativo or 'INATIVO'),
+        })
+
+    return JsonResponse({
+        'total': len(dados),
+        'colaboradores': dados
+    })
+
