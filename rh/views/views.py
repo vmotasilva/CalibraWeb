@@ -49,16 +49,15 @@ def can_user_access_colaborador(request_user, target_colaborador):
     if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
         return True
     
-    # Verificar se é gerente ou diretor
-    if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
-       HierarquiaSetor.objects.filter(diretor=usuario_logado).exists():
+    # Verificar se é gerente ou diretor (hierarquia)
+    if HierarquiaSetor.objects.filter(Q(gerente=usuario_logado) | Q(diretor=usuario_logado)).exists():
         return True
     
     # Verificar se é o próprio colaborador
     if usuario_logado.id == target_colaborador.id:
         return True
     
-    # Verificar se é subordinado direto (lider, supervisor, gerente)
+    # ✅ NOVO: Verificar se é subordinado direto (lider, supervisor, gerente)
     if Colaborador.objects.filter(
         Q(lider=usuario_logado) | Q(supervisor=usuario_logado) | Q(gerente=usuario_logado),
         id=target_colaborador.id
@@ -89,9 +88,18 @@ def get_colaboradores_acessiveis(request_user):
     if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
         return Colaborador.objects.all()
     
-    # Se é gerente ou diretor, pode ver seus subordinados
-    if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
-       HierarquiaSetor.objects.filter(diretor=usuario_logado).exists():
+    # ✅ NOVO: Se é gerente, diretor, LÍDER ou SUPERVISOR, pode ver seus subordinados
+    if HierarquiaSetor.objects.filter(Q(gerente=usuario_logado) | Q(diretor=usuario_logado)).exists():
+        subordinados_ids = get_all_subordinates(usuario_logado)
+        subordinados_ids.add(usuario_logado.id)
+        return Colaborador.objects.filter(id__in=subordinados_ids)
+    
+    # Verificar se é líder ou supervisor - que também têm subordinados
+    subordinados_como_lider = Colaborador.objects.filter(
+        Q(lider=usuario_logado) | Q(supervisor=usuario_logado) | Q(gerente=usuario_logado)
+    ).exists()
+    
+    if subordinados_como_lider:
         subordinados_ids = get_all_subordinates(usuario_logado)
         subordinados_ids.add(usuario_logado.id)
         return Colaborador.objects.filter(id__in=subordinados_ids)
@@ -133,10 +141,11 @@ def modulo_rh_view(request):
         ):
             can_view_all = True
         
-        # Permissão para ver salário - verificar uma única vez
+        # Permissão para ver salário - gerentes, diretores e RH
         if ("GERENTE" in str(colab.cargo).upper() or
             "DIRETOR" in str(colab.cargo).upper() or
-            HierarquiaSetor.objects.filter(Q(gerente=colab) | Q(diretor=colab)).exists()):
+            HierarquiaSetor.objects.filter(Q(gerente=colab) | Q(diretor=colab)).exists() or
+            any(k in setor_nome for k in ["RH", "DP"])):
             can_see_salary = True
 
     # Definir IDs permitidos baseado em permissão
@@ -145,16 +154,16 @@ def modulo_rh_view(request):
         ids_permitidos = set(Colaborador.objects.all().values_list("id", flat=True))
     elif colab:
         # Ver apenas subordinados diretos e a si mesmo
-        # Subordinados por liderança
+        # Sempre pode ver a si mesmo
         ids_permitidos.add(colab.id)
         
-        # Subordinados diretos (lider, supervisor, gerente)
+        # Subordinados diretos (como lider, supervisor, gerente)
         diretos = Colaborador.objects.filter(
             Q(lider=colab) | Q(supervisor=colab) | Q(gerente=colab)
         ).values_list('id', flat=True)
         ids_permitidos.update(diretos)
         
-        # Subordinados indiretos (função auxiliar)
+        # Subordinados indiretos (função auxiliar para líderes/supervisores)
         subordinados_indiretos = get_all_subordinates(colab)
         ids_permitidos.update(subordinados_indiretos)
     else:
