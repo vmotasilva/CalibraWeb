@@ -192,43 +192,17 @@ def modulo_rh_view(request):
 
     # Extrair opções de filtro usando dados já carregados em memória
     # EVITAR: .exclude().values_list() - reavalia o queryset inteiro!
-    setores_ids = set()
-    lideres_ids = set()
-    supervisores_ids = set()
-    gerentes_ids = set()
+    setores_filtro = []
+    lideres_filtro = []
+    supervisores_filtro = []
+    gerentes_filtro = []
+    turnos_filtro = []
+    # Usar todos os colaboradores visíveis (sem filtros)
+    funcionarios_visiveis = funcionarios_base
     
-    # Uma única iteração para extrair todos os IDs
-    for f in funcionarios_base:
-        if f.setor_id:
-            setores_ids.add(f.setor_id)
-        if f.lider_id:
-            lideres_ids.add(f.lider_id)
-        if f.supervisor_id:
-            supervisores_ids.add(f.supervisor_id)
-        if f.gerente_id:
-            gerentes_ids.add(f.gerente_id)
-    
-    # Fazer queries bulk apenas uma vez com todos os IDs
-    setores_filtro = Setor.objects.filter(id__in=setores_ids).order_by("nome") if setores_ids else []
-    lideres_filtro = Colaborador.objects.filter(id__in=lideres_ids).order_by("nome_completo") if lideres_ids else []
-    supervisores_filtro = Colaborador.objects.filter(id__in=supervisores_ids).order_by("nome_completo") if supervisores_ids else []
-    gerentes_filtro = Colaborador.objects.filter(id__in=gerentes_ids).order_by("nome_completo") if gerentes_ids else []
-
-    # Turnos únicos - extrair de dados já em memória, não fazer query
-    turnos_unicos = sorted(set(f.turno for f in funcionarios_base if f.turno))
-    turnos_map = dict(Colaborador._meta.get_field('turno').choices)
-    turnos_filtro = [(turno, turnos_map.get(turno, turno)) for turno in turnos_unicos if turno]
-
-    # Filtro de férias (checkbox ou query param 'em_ferias')
-    em_ferias_param = request.GET.get('em_ferias')
-    if em_ferias_param == '1':
-        funcionarios_visiveis = funcionarios_base.filter(em_ferias=True)
-    else:
-        funcionarios_visiveis = funcionarios_base
-
     # Aplicar paginação ANTES de calcular estatísticas (lazy evaluation)
     total_colaboradores = funcionarios_visiveis.count()
-    paginator = Paginator(funcionarios_visiveis, 15)  # REDUZIR para 15 por página para melhor performance
+    paginator = Paginator(funcionarios_visiveis, total_colaboradores if total_colaboradores > 0 else 1)
     page = request.GET.get('page')
     try:
         funcionarios_page = paginator.page(page)
