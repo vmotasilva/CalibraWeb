@@ -197,7 +197,11 @@ def modulo_rh_view(request):
     supervisores_filtro = []
     gerentes_filtro = []
     turnos_filtro = []
-    # Usar todos os colaboradores visíveis (sem filtros)
+    
+    # ⚡ OTIMIZAÇÃO: Contar TODOS os colaboradores acessíveis ANTES do filtro
+    total_all_colaboradores = funcionarios_base.count()
+    
+    # Usar todos os colaboradores visíveis (sem filtros de busca ainda)
     funcionarios_visiveis = funcionarios_base
     
     # ⚡ OTIMIZAÇÃO: Aplicar busca por nome ANTES de paginar
@@ -210,10 +214,12 @@ def modulo_rh_view(request):
             Q(id__icontains=busca)  # Buscar por ID também
         )
     
+    # Contar colaboradores após aplicar busca (para exibir "X/200")
+    total_colaboradores_filtrados = funcionarios_visiveis.count()
+    
     # Aplicar paginação ANTES de calcular estatísticas (lazy evaluation)
-    # ⚡ OTIMIZAÇÃO: Mostrar 100 por página (já otimizado com SQL)
-    total_colaboradores = funcionarios_visiveis.count()
-    paginator = Paginator(funcionarios_visiveis, 100)
+    # ⚡ OTIMIZAÇÃO: Mostrar 50 por página
+    paginator = Paginator(funcionarios_visiveis, 50)
     page = request.GET.get('page')
     try:
         funcionarios_page = paginator.page(page)
@@ -291,8 +297,9 @@ def modulo_rh_view(request):
         "centros": centros,
         "can_see_salary": can_see_salary,
         "can_edit": True,
-        "total_colaboradores": total_colaboradores,
-        "busca": busca,  # Adicionar para manter valor na busca
+        "total_colaboradores_filtrados": total_colaboradores_filtrados,  # Colaboradores após busca
+        "total_colaboradores": total_all_colaboradores,  # Total de colaboradores acessíveis
+        "busca": busca,  # Manter valor na busca
     }
     
     return render(request, "rh/dashboard.html", ctx)
