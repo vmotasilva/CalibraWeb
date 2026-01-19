@@ -249,7 +249,7 @@ def modulo_rh_view(request):
             last = None
             
             # Buscar perfis com prefetch para evitar N+1
-            perfis = f.colaboradorperfil_set.filter(ativo=True).select_related('perfil').prefetch_related('perfil__grupos__subgrupos__procedimentos')
+            perfis = f.perfis_treinamento.filter(ativo=True).select_related('perfil').prefetch_related('perfil__grupos__subgrupos__procedimentos')
             
             for cp in perfis:
                 perfil = cp.perfil
