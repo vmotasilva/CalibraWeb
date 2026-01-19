@@ -4,6 +4,9 @@ from rh.views import views
 app_name = 'rh'
 
 urlpatterns = [
+    # Detalhe do colaborador
+    path('colaborador/<int:colab_id>/', views.detalhe_colaborador_view, name='detalhe_colaborador'),
+    
     # Dashboard e gestão
     path('gestao-ferias/', views.gestao_ferias_view, name='gestao_ferias'),
     path('gestao-ferias/atualizar-status/', views.atualizar_status_ferias_view, name='atualizar_status_ferias'),
