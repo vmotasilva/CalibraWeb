@@ -107,7 +107,11 @@
             <tbody>
                 {% for t in treinamentos.object_list %}
                 <tr {% if not t.is_ultimo_registro %}style="opacity: 0.6; background-color: #f5f5f5;"{% endif %}>
-                    <td>{{ t.colaborador.nome_completo }}</td>
+                    <td>
+                        <a href="{% url 'rh:detalhe_colaborador' t.colaborador.id %}" class="text-decoration-none">
+                            {{ t.colaborador.nome_completo }}
+                        </a>
+                    </td>
                     <td>{{ t.procedimento.codigo }}</td>
                     <td>{{ t.data_treinamento|date:"d/m/Y" }}</td>
                     <td>
