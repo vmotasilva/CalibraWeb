@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Imports dos models
 from rh.models import Colaborador, Ocorrencia, Ferias
 from organization.models import Setor, CentroCusto, HierarquiaSetor
-from procedures.models import ColaboradorPerfil, PerfilTreinamento, RegistroTreinamento
+from procedures.models import ColaboradorPerfil, PerfilTreinamento
 
 # Imports dos forms
 from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
@@ -228,7 +228,7 @@ def modulo_rh_view(request):
 
     # Aplicar paginação ANTES de calcular estatísticas (lazy evaluation)
     total_colaboradores = funcionarios_visiveis.count()
-    paginator = Paginator(funcionarios_visiveis, 15)  # REDUZIR para 15 por página para melhor performance
+    paginator = Paginator(funcionarios_visiveis, total_colaboradores if total_colaboradores > 0 else 1)
     page = request.GET.get('page')
     try:
         funcionarios_page = paginator.page(page)
@@ -237,56 +237,56 @@ def modulo_rh_view(request):
     except EmptyPage:
         funcionarios_page = paginator.page(paginator.num_pages)
     
-    # ⚡ OTIMIZAÇÃO: Pré-carregar treinamentos APENAS para colaboradores da página atual
-    from django.db.models import Prefetch
-    colaboradores_ids = [f.id for f in funcionarios_page.object_list]
-    
-    # Pré-carregar treinamentos com select_related
-    treinamentos_prefetch = Prefetch(
-        'treinamentos',
-        queryset=RegistroTreinamento.objects.filter(
-            ativo=True
-        ).select_related('procedimento')
-    )
-    
-    # Re-buscar apenas os colaboradores da página com prefetch
-    funcionarios_otimizado = Colaborador.objects.filter(
-        id__in=colaboradores_ids
-    ).prefetch_related(
-        treinamentos_prefetch,
-        Prefetch('perfis_treinamento', queryset=ColaboradorPerfil.objects.filter(ativo=True).select_related('perfil'))
-    )
-    
-    # Criar mapa para acesso rápido
-    colab_map = {c.id: c for c in funcionarios_otimizado}
-    
-    # Calcular estatísticas APENAS com dados pré-carregados
+    # Calcular estatísticas APENAS para a página atual
+    # ✅ CORRIGIDO: Usar a mesma lógica que a página de detalhe para contar procedimentos únicos
     for f in funcionarios_page.object_list:
-        colab_otimizado = colab_map.get(f.id)
-        
-        if colab_otimizado and f.is_active and not f.afastado:
+        # IMPORTANTE: Apenas contar treinamentos de colaboradores ATIVOS e NÃO AFASTADOS
+        if f.is_active and not f.afastado:
+            # Contar procedimentos únicos por perfil (não duplicatas entre perfis)
+            procedimentos_contabilizados = set()
             vig = 0
             pend = 0
             last = None
             
-            # Usar dados pré-carregados
-            for rt in colab_otimizado.treinamentos.all():
-                if rt.procedimento_id:
-                    if hasattr(rt, 'status_treinamento') and rt.status_treinamento in ("OK", "VIGENTE"):
-                        vig += 1
-                    else:
-                        pend += 1
-                    if rt.data_treinamento and (last is None or rt.data_treinamento > last):
-                        last = rt.data_treinamento
+            # Buscar perfis com prefetch para evitar N+1
+            perfis = f.perfis_treinamento.filter(ativo=True).select_related('perfil').prefetch_related('perfil__grupos__subgrupos__procedimentos')
             
-            f.trein_vigentes = vig
-            f.trein_pendentes = pend
-            f.trein_ultima_data = last
+            for cp in perfis:
+                perfil = cp.perfil
+                grupos_ids = cp.grupos_selecionados.get('grupos', []) if cp.grupos_selecionados else []
+                subgrupos_ids = cp.grupos_selecionados.get('subgrupos', []) if cp.grupos_selecionados else []
+                
+                for grupo in perfil.grupos.all():
+                    if grupos_ids and grupo.id not in grupos_ids:
+                        continue
+                    
+                    for subgrupo in grupo.subgrupos.all():
+                        if subgrupos_ids and subgrupo.id not in subgrupos_ids:
+                            continue
+                        
+                        for proc in subgrupo.procedimentos.all():
+                            if proc.id not in procedimentos_contabilizados:
+                                procedimentos_contabilizados.add(proc.id)
+                                
+                                rt = f.treinamentos.filter(procedimento=proc).first()
+                                if rt:
+                                    if rt.status_treinamento in ("OK", "VIGENTE"):
+                                        vig += 1
+                                    else:
+                                        pend += 1
+                                    if rt.data_treinamento and (last is None or rt.data_treinamento > last):
+                                        last = rt.data_treinamento
+                                else:
+                                    pend += 1
         else:
             # Colaborador desligado ou afastado
-            f.trein_vigentes = 0
-            f.trein_pendentes = 0
-            f.trein_ultima_data = None
+            vig = 0
+            pend = 0
+            last = None
+        
+        f.trein_vigentes = vig
+        f.trein_pendentes = pend
+        f.trein_ultima_data = last
 
     # Pré-carregar CentroCusto uma única vez
     centros = CentroCusto.objects.all().order_by("codigo")
