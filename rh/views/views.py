@@ -228,7 +228,7 @@ def modulo_rh_view(request):
 
     # Aplicar paginação ANTES de calcular estatísticas (lazy evaluation)
     total_colaboradores = funcionarios_visiveis.count()
-    paginator = Paginator(funcionarios_visiveis, total_colaboradores if total_colaboradores > 0 else 1)
+    paginator = Paginator(funcionarios_visiveis, 15)  # REDUZIR para 15 por página para melhor performance
     page = request.GET.get('page')
     try:
         funcionarios_page = paginator.page(page)
@@ -236,6 +236,28 @@ def modulo_rh_view(request):
         funcionarios_page = paginator.page(1)
     except EmptyPage:
         funcionarios_page = paginator.page(paginator.num_pages)
+    
+    # ⚡ OTIMIZAÇÃO: Pré-carregar apenas os colaboradores da página atual com seus relacionados
+    colaboradores_ids = [f.id for f in funcionarios_page.object_list]
+    
+    # Pré-carregar tudo de uma vez (não query por colaborador)
+    from django.db.models import Prefetch, Q
+    treinamentos_ativo = RegistroTreinamento.objects.filter(ativo=True).select_related('procedimento')
+    colaboradores_otimizado = Colaborador.objects.filter(
+        id__in=colaboradores_ids
+    ).prefetch_related(
+        Prefetch('treinamentos', queryset=treinamentos_ativo),
+        Prefetch('perfis_treinamento', queryset=ColaboradorPerfil.objects.filter(ativo=True).select_related(
+            'perfil__grupos__subgrupos__procedimentos'
+        ))
+    )
+    
+    # Mapa para acesso O(1)
+    colab_map = {c.id: c for c in colaboradores_otimizado}
+    treinamentos_map = {}  # {colaborador_id: {procedimento_id: registro}}
+    
+    for colab in colaboradores_otimizado:
+        treinamentos_map[colab.id] = {rt.procedimento_id: rt for rt in colab.treinamentos.all() if rt.procedimento_id}
     
     # Calcular estatísticas APENAS para a página atual
     # ✅ CORRIGIDO: Usar a mesma lógica que a página de detalhe para contar procedimentos únicos
@@ -248,8 +270,17 @@ def modulo_rh_view(request):
             pend = 0
             last = None
             
-            # Buscar perfis com prefetch para evitar N+1
-            perfis = f.perfis_treinamento.filter(ativo=True).select_related('perfil').prefetch_related('perfil__grupos__subgrupos__procedimentos')
+            # Usar dados pré-carregados do mapa
+            colab_otimizado = colab_map.get(f.id)
+            if not colab_otimizado:
+                f.trein_vigentes = 0
+                f.trein_pendentes = 0
+                f.trein_ultima_data = None
+                continue
+            
+            # Buscar perfis já pré-carregados
+            perfis = colab_otimizado.perfis_treinamento.all()
+            trein_desse_colab = treinamentos_map.get(f.id, {})
             
             for cp in perfis:
                 perfil = cp.perfil
@@ -268,7 +299,8 @@ def modulo_rh_view(request):
                             if proc.id not in procedimentos_contabilizados:
                                 procedimentos_contabilizados.add(proc.id)
                                 
-                                rt = f.treinamentos.filter(procedimento=proc).first()
+                                # Buscar no mapa pré-carregado (O(1))
+                                rt = trein_desse_colab.get(proc.id)
                                 if rt:
                                     if rt.status_treinamento in ("OK", "VIGENTE"):
                                         vig += 1
