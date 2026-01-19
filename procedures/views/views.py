@@ -328,10 +328,14 @@ def treinamentos_list_view(request):
     qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
     colaboradores = Colaborador.objects.order_by('nome_completo')
     procedimentos = Procedimento.objects.order_by('codigo')
+    lideres = Colaborador.objects.filter(
+        id__in=RegistroTreinamento.objects.values_list('colaborador__lider_id', flat=True).distinct()
+    ).order_by('nome_completo')
     
     status = request.GET.get('status', '')
     colaborador_id = request.GET.get('colaborador', '')
     procedimento_id = request.GET.get('procedimento', '')
+    lider_id = request.GET.get('lider', '')
     busca = request.GET.get('q', '')
     ativo = request.GET.get('ativo', '')
 
@@ -340,6 +344,8 @@ def treinamentos_list_view(request):
     # Aplicar filtros no QuerySet primeiro
     if colaborador_id:
         qs = qs.filter(colaborador_id=colaborador_id)
+    if lider_id:
+        qs = qs.filter(colaborador__lider_id=lider_id)
     if procedimento_id:
         qs = qs.filter(procedimento_id=procedimento_id)
     if ativo:
@@ -376,9 +382,11 @@ def treinamentos_list_view(request):
         "treinamentos": treinamentos,
         "colaboradores": colaboradores,
         "procedimentos": procedimentos,
+        "lideres": lideres,
         "status": status,
         "colaborador_id": colaborador_id,
         "procedimento_id": procedimento_id,
+        "lider_id": lider_id,
         "busca": busca,
         "ativo": ativo,
         "total_registros": total_registros,
