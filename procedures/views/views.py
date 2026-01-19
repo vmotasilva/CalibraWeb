@@ -336,9 +336,8 @@ def treinamentos_list_view(request):
     ativo = request.GET.get('ativo', '')
 
     # Filtro de status - nota: status_treinamento é uma property
-    if status:
-        qs = [t for t in qs if t.status_treinamento == status]
-    
+    # ⚠️ NOTA: Não é possível filtrar por property diretamente no QuerySet
+    # Aplicar filtros no QuerySet primeiro
     if colaborador_id:
         qs = qs.filter(colaborador_id=colaborador_id)
     if procedimento_id:
@@ -353,7 +352,11 @@ def treinamentos_list_view(request):
         )
     
     # Ordenar
-    qs = qs.order_by('-data_treinamento') if isinstance(qs, list) else qs.order_by('-data_treinamento')
+    qs = qs.order_by('-data_treinamento')
+    
+    # Se houver filtro de status (property), aplicar em memória
+    if status:
+        qs = [t for t in qs if t.status_treinamento == status]
     
     # Contar total de registros
     total_registros = len(qs) if isinstance(qs, list) else qs.count()
