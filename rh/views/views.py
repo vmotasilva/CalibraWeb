@@ -201,9 +201,9 @@ def modulo_rh_view(request):
     funcionarios_visiveis = funcionarios_base
     
     # Aplicar paginação ANTES de calcular estatísticas (lazy evaluation)
-    # ⚡ OTIMIZAÇÃO: Mostrar 20 por página ao invés de todos
+    # ⚡ OTIMIZAÇÃO: Mostrar 50 por página (melhor UX que 20)
     total_colaboradores = funcionarios_visiveis.count()
-    paginator = Paginator(funcionarios_visiveis, 20)
+    paginator = Paginator(funcionarios_visiveis, 50)
     page = request.GET.get('page')
     try:
         funcionarios_page = paginator.page(page)
