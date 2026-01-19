@@ -485,28 +485,36 @@ document.addEventListener('DOMContentLoaded', function() {
     // filtrar();
 
     // Event listeners para busca e checkboxes
-    // Quando mudar busca ou checkbox, submeter a página com query string
-    let submitTimeout;
-    
+    // Quando mudar busca, salvar em localStorage e preparar para submeter
     searchInput.addEventListener('keyup', function(e) {
-        // Se pressionar Enter, submeter com busca
+        // Salvar valor em localStorage
+        localStorage.setItem('rh_search', searchInput.value.trim());
+        
+        // Se pressionar Enter, navegar para a busca (voltar para página 1)
         if(e.key === 'Enter') {
             const q = searchInput.value.trim();
-            window.location.href = '?q=' + encodeURIComponent(q);
-        }
-    });
-    
-    checkboxes.forEach(cb => cb.addEventListener('change', function() {
-        // Submeter form quando mudar checkbox (com delay para não fazer múltiplos requests)
-        clearTimeout(submitTimeout);
-        submitTimeout = setTimeout(function() {
-            // Enviar para servidor com parâmetro query
-            if(searchInput.value.trim()) {
-                window.location.href = '?q=' + encodeURIComponent(searchInput.value.trim());
+            if(q) {
+                window.location.href = '?q=' + encodeURIComponent(q);
             } else {
                 window.location.href = window.location.pathname;
             }
-        }, 500);
+        }
+    });
+    
+    // Permitir busca ao sair do campo (blur)
+    searchInput.addEventListener('blur', function() {
+        // Salvar valor em localStorage
+        localStorage.setItem('rh_search', searchInput.value.trim());
+    });
+    
+    checkboxes.forEach(cb => cb.addEventListener('change', function() {
+        // Ao mudar checkbox, recarregar a página mantendo a busca
+        const q = searchInput.value.trim();
+        if(q) {
+            window.location.href = '?q=' + encodeURIComponent(q);
+        } else {
+            window.location.href = window.location.pathname;
+        }
     }));
 });
 
@@ -531,11 +539,18 @@ function filtrar() {
 }
 
 function limparFiltros() {
+    // Limpar campos
     document.getElementById('searchInput').value = '';
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
         cb.checked = false;
     });
-    filtrar();
+    
+    // Limpar localStorage
+    localStorage.removeItem('rh_search');
+    localStorage.removeItem('rh_filtros_v1');
+    
+    // Navegar para página inicial sem filtros
+    window.location.href = window.location.pathname;
 }
 
 function toggleSidebar() {
@@ -571,10 +586,32 @@ function toggleSidebar() {
     // try { filtrar(); } catch(e) { /* ignore */ }
 }
 
-// Restaura filtros do localStorage
+// Obtém parâmetro da URL
+function getUrlParameter(name) {
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+}
+
+// Restaura filtros do URL e localStorage
 function restoreFiltros() {
     try {
-        // Limpar localStorage antigo com padrão "Ativo" checado
+        const searchInput = document.getElementById('searchInput');
+        
+        // 1. Prioridade: Ler da URL (parâmetro ?q=...)
+        const qParam = getUrlParameter('q');
+        if (qParam) {
+            searchInput.value = qParam;
+            // Salvar no localStorage
+            localStorage.setItem('rh_search', qParam);
+        } else {
+            // 2. Se não tem na URL, tentar localStorage
+            const savedSearch = localStorage.getItem('rh_search');
+            if (savedSearch) {
+                searchInput.value = savedSearch;
+            }
+        }
+        
+        // Restaurar checkboxes do localStorage
         const raw = localStorage.getItem('rh_filtros_v1');
         if (raw) {
             const estado = JSON.parse(raw);
@@ -586,14 +623,7 @@ function restoreFiltros() {
                 // Esse é o estado padrão antigo, ignorar
                 return;
             }
-        }
-        
-        if (!raw) return;
-        const estado = JSON.parse(raw);
-        if (estado && typeof estado === 'object') {
-            if (estado.search !== undefined) {
-                document.getElementById('searchInput').value = estado.search;
-            }
+            
             const filtros = estado.filtros || {};
             document.querySelectorAll('.filter-checkbox').forEach(cb => {
                 const cat = cb.dataset.category;
