@@ -1250,6 +1250,134 @@ def download_template_importacao_view(request):
 
 
 @login_required
+def exportar_estrutura_view(request):
+    """Exporta estrutura completa: Perfis, Grupos, Subgrupos e Procedimentos para Excel"""
+    from django.http import HttpResponse
+    from io import BytesIO
+    import pandas as pd
+    
+    output = BytesIO()
+    
+    # Coletar dados
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # ABA 1: Perfis
+        perfis = PerfilTreinamento.objects.all().values_list('codigo', 'nome', 'descricao')
+        df_perfis = pd.DataFrame(
+            perfis,
+            columns=['Código Perfil', 'Nome Perfil', 'Descrição']
+        )
+        df_perfis.to_excel(writer, sheet_name='Perfis', index=False)
+        
+        # ABA 2: Grupos
+        grupos_data = []
+        for grupo in GrupoTreinamento.objects.select_related('perfil').all():
+            grupos_data.append({
+                'Código Perfil': grupo.perfil.codigo,
+                'Nome Grupo': grupo.nome,
+                'Descrição': grupo.descricao or '',
+                'Ordem': grupo.ordem or 1
+            })
+        df_grupos = pd.DataFrame(grupos_data)
+        if not df_grupos.empty:
+            df_grupos.to_excel(writer, sheet_name='Grupos', index=False)
+        else:
+            pd.DataFrame(columns=['Código Perfil', 'Nome Grupo', 'Descrição', 'Ordem']).to_excel(writer, sheet_name='Grupos', index=False)
+        
+        # ABA 3: Subgrupos
+        subgrupos_data = []
+        for subgrupo in SubGrupoTreinamento.objects.select_related('grupo__perfil').all():
+            subgrupos_data.append({
+                'Código Perfil': subgrupo.grupo.perfil.codigo,
+                'Nome Grupo': subgrupo.grupo.nome,
+                'Nome Subgrupo': subgrupo.nome,
+                'Descrição': subgrupo.descricao or '',
+                'Ordem': subgrupo.ordem or 1
+            })
+        df_subgrupos = pd.DataFrame(subgrupos_data)
+        if not df_subgrupos.empty:
+            df_subgrupos.to_excel(writer, sheet_name='Subgrupos', index=False)
+        else:
+            pd.DataFrame(columns=['Código Perfil', 'Nome Grupo', 'Nome Subgrupo', 'Descrição', 'Ordem']).to_excel(writer, sheet_name='Subgrupos', index=False)
+        
+        # ABA 4: Procedimentos (vínculo com subgrupos)
+        procedimentos_data = []
+        for subgrupo in SubGrupoTreinamento.objects.select_related('grupo__perfil').prefetch_related('procedimentos').all():
+            for procedimento in subgrupo.procedimentos.all():
+                procedimentos_data.append({
+                    'Código Perfil': subgrupo.grupo.perfil.codigo,
+                    'Nome Grupo': subgrupo.grupo.nome,
+                    'Nome Subgrupo': subgrupo.nome,
+                    'Código Procedimento': procedimento.codigo
+                })
+        df_procedimentos = pd.DataFrame(procedimentos_data)
+        if not df_procedimentos.empty:
+            df_procedimentos.to_excel(writer, sheet_name='Procedimentos', index=False)
+        else:
+            pd.DataFrame(columns=['Código Perfil', 'Nome Grupo', 'Nome Subgrupo', 'Código Procedimento']).to_excel(writer, sheet_name='Procedimentos', index=False)
+        
+        # ABA 5: Colaboradores
+        colaboradores_data = []
+        for cp in ColaboradorPerfil.objects.select_related('colaborador', 'perfil').all():
+            grupos_selecionados = cp.grupos_selecionados or {}
+            grupos_nomes = []
+            subgrupos_nomes = []
+            
+            if grupos_selecionados.get('grupos'):
+                grupos_nomes = [
+                    g.nome for g in GrupoTreinamento.objects.filter(
+                        id__in=grupos_selecionados['grupos']
+                    )
+                ]
+            
+            if grupos_selecionados.get('subgrupos'):
+                subgrupos_nomes = [
+                    s.nome for s in SubGrupoTreinamento.objects.filter(
+                        id__in=grupos_selecionados['subgrupos']
+                    )
+                ]
+            
+            colaboradores_data.append({
+                'Código Perfil': cp.perfil.codigo,
+                'Matrícula': cp.colaborador.matricula,
+                'Grupos': ','.join(grupos_nomes) if grupos_nomes else '',
+                'Subgrupos': ','.join(subgrupos_nomes) if subgrupos_nomes else ''
+            })
+        df_colaboradores = pd.DataFrame(colaboradores_data)
+        if not df_colaboradores.empty:
+            df_colaboradores.to_excel(writer, sheet_name='Colaboradores', index=False)
+        else:
+            pd.DataFrame(columns=['Código Perfil', 'Matrícula', 'Grupos', 'Subgrupos']).to_excel(writer, sheet_name='Colaboradores', index=False)
+        
+        # ABA 6: Instruções
+        instrucoes = pd.DataFrame({
+            'INSTRUÇÕES DE PREENCHIMENTO': [
+                '1. ABA PERFIS: Contém todos os perfis de treinamento exportados',
+                '2. ABA GRUPOS: Defina os grupos dentro de cada perfil',
+                '3. ABA SUBGRUPOS: Contém os subgrupos dentro dos grupos',
+                '4. ABA PROCEDIMENTOS: Mostra os procedimentos vinculados aos subgrupos',
+                '5. ABA COLABORADORES: Lista os colaboradores associados aos perfis',
+                '',
+                'COMO USAR ESTE ARQUIVO:',
+                '- Este arquivo é um template para re-importação',
+                '- Você pode editar os dados e usar em "Importar Estrutura"',
+                '- Códigos únicos: Cada perfil deve ter um código único',
+                '- Use este arquivo como backup ou para migração',
+            ]
+        })
+        instrucoes.to_excel(writer, sheet_name='Instruções', index=False)
+    
+    output.seek(0)
+    
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename=estrutura_perfis_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    
+    return response
+
+
+@login_required
 def exportar_erros_importacao_view(request):
     """Exporta os erros da última importação para Excel"""
     erros = request.session.get('erros_importacao', [])

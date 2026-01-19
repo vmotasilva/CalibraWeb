@@ -115,6 +115,7 @@ urlpatterns = [
     # Importação em massa
     path('perfis/importar/', perfis_views.importar_perfis_view, name='importar_perfis'),
     path('perfis/importar-estrutura/', perfis_views.importar_estrutura_completa_view, name='importar_estrutura'),
+    path('perfis/exportar-estrutura/', perfis_views.exportar_estrutura_view, name='exportar_estrutura'),
     path('perfis/template-importacao/', perfis_views.download_template_importacao_view, name='download_template_importacao'),
     path('perfis/exportar-erros/', perfis_views.exportar_erros_importacao_view, name='exportar_erros_importacao'),
     
