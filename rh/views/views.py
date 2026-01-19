@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Imports dos models
 from rh.models import Colaborador, Ocorrencia, Ferias
 from organization.models import Setor, CentroCusto, HierarquiaSetor
-from procedures.models import ColaboradorPerfil, PerfilTreinamento
+from procedures.models import ColaboradorPerfil, PerfilTreinamento, RegistroTreinamento
 
 # Imports dos forms
 from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
@@ -241,7 +241,6 @@ def modulo_rh_view(request):
     colaboradores_ids = [f.id for f in funcionarios_page.object_list]
     
     # Pré-carregar tudo de uma vez (não query por colaborador)
-    from django.db.models import Prefetch, Q
     treinamentos_ativo = RegistroTreinamento.objects.filter(ativo=True).select_related('procedimento')
     colaboradores_otimizado = Colaborador.objects.filter(
         id__in=colaboradores_ids
