@@ -389,7 +389,8 @@ def dashboard_treinamentos_view(request):
     # Contar em Python após fetch para não quebrar a property
     registros_list = list(valid_registros)
     treinamentos_vigentes = sum(1 for r in registros_list if r.status_treinamento == 'OK')
-    treinamentos_pendentes = sum(1 for r in registros_list if r.status_treinamento == 'PENDENTE')
+    # NAO_INICIADO também é considerado pendente (não treinado ainda)
+    treinamentos_pendentes = sum(1 for r in registros_list if r.status_treinamento in ('PENDENTE', 'NAO_INICIADO'))
     
     # Colaboradores com treinamentos (com status OK)
     total_colaboradores_treinados = len(set(
