@@ -28,6 +28,21 @@ from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
 
 # Imports dos helpers
 from qms.views_helpers import get_all_subordinates, get_colaborador_for_user
+
+
+def _get_status_colaborador(colab):
+    """
+    Determina o status de um colaborador baseado em seus campos.
+    Prioridade: Desligado > Afastado > Em Férias > Ativo
+    """
+    if not colab.is_active:
+        return 'Desligado'
+    elif colab.afastado:
+        return 'Afastado'
+    elif colab.em_ferias:
+        return 'Em Férias'
+    else:
+        return 'ATIVO'
 def can_user_access_colaborador(request_user, target_colaborador):
     """
     Verifica se o usuário logado pode acessar as informações de um colaborador.
@@ -1497,7 +1512,19 @@ def api_colaboradores_filtrados(request):
     # Filtro por Status
     status_filtros = request.GET.getlist('status')
     if status_filtros:
-        funcionarios = funcionarios.filter(ativo__in=['ATIVO' in s for s in status_filtros])
+        from django.db.models import Q
+        status_query = Q()
+        for status in status_filtros:
+            if status == 'ATIVO':
+                status_query |= Q(is_active=True, afastado=False, em_ferias=False)
+            elif status == 'FERIAS':
+                status_query |= Q(em_ferias=True)
+            elif status == 'AFASTADO':
+                status_query |= Q(afastado=True)
+            elif status == 'INATIVO':
+                status_query |= Q(is_active=False)
+        if status_query:
+            funcionarios = funcionarios.filter(status_query)
 
     # Filtro por Lider
     lider_ids = request.GET.getlist('lider')
@@ -1551,7 +1578,7 @@ def api_colaboradores_filtrados(request):
             'gerente': colab.gerente.nome_completo if colab.gerente else '',
             'vigentes': vigentes,
             'pendentes': pendentes,
-            'status': 'ATIVO' if colab.ativo == 'ATIVO' else (colab.ativo or 'INATIVO'),
+            'status': _get_status_colaborador(colab),
         })
 
     return JsonResponse({
