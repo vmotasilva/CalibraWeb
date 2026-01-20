@@ -375,7 +375,7 @@
             </div>
         </div>
 
-        <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col" style="padding: 0 0.75rem 0 0.75rem; max-height: 100vh; overflow: hidden;">
+        <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column flex-grow-1" id="content-col" style="padding: 0 0.75rem 0 0.75rem; max-height: 100vh; overflow: hidden;">
             
             <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
                 <div class="d-flex align-items-center gap-2">
@@ -982,24 +982,14 @@ function toggleSidebar() {
     const icon = document.getElementById('sidebarIcon');
 
     if (sidebar.classList.contains('d-none')) {
+        // MOSTRAR SIDEBAR
         sidebar.classList.remove('d-none');
-        if (content.classList.contains('col-12')) {
-            content.classList.replace('col-12', 'col-md-9');
-        }
-        content.classList.remove('col-lg-12');
-        if (!content.classList.contains('col-lg-10')) {
-            content.classList.add('col-lg-10');
-        }
+        content.style.flex = '1';  // Content volta a ocupar espaço restante
         icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
     } else {
+        // OCULTAR SIDEBAR
         sidebar.classList.add('d-none');
-        if (content.classList.contains('col-md-9')) {
-            content.classList.replace('col-md-9', 'col-12');
-        }
-        content.classList.remove('col-lg-10');
-        if (!content.classList.contains('col-lg-12')) {
-            content.classList.add('col-lg-12');
-        }
+        content.style.flex = '1';  // Content continua ocupando todo espaço
         icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
     }
 }
