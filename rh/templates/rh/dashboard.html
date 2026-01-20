@@ -199,9 +199,9 @@
 
     </div>
 
-    <div class="row h-100 overflow-hidden d-flex">
+    <div style="display: flex; gap: 0.75rem; height: calc(100vh - 180px); overflow: hidden;">
         
-        <div class="col-md-3 col-lg-2 d-flex flex-column" id="sidebar-col" style="padding: 0 0.75rem 0 0; max-height: 100vh; overflow: hidden;">
+        <div id="sidebar-col" style="flex: 0 0 280px; display: flex; flex-direction: column; max-height: 100vh; overflow: hidden;">
             
             <div class="card filter-card">
                 <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
@@ -375,7 +375,7 @@
             </div>
         </div>
 
-        <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column flex-grow-1" id="content-col" style="padding: 0 0.75rem 0 0.75rem; max-height: 100vh; overflow: hidden;">
+        <div id="content-col" style="flex: 1; display: flex; flex-direction: column; max-height: 100vh; overflow: hidden;">
             
             <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
                 <div class="d-flex align-items-center gap-2">
