@@ -121,9 +121,13 @@ def invalidar_cache_dashboard_rh(sender, instance, **kwargs):
     from django.core.cache import cache
     from django.contrib.auth.models import User
     
-    # Limpar cache de TODOS os usuários (mais seguro)
-    # Padrão: rh_dashboard_<user_id>_*
-    cache.delete_pattern("rh_dashboard_*")
+    # Limpar cache de TODOS os usuários - usa um método compatível com LocMemCache
+    # Tentar usar delete_pattern se disponível (Redis), senão limpar cache inteiro
+    try:
+        cache.delete_pattern("rh_dashboard_*")
+    except AttributeError:
+        # Fallback para LocMemCache: limpar todo o cache
+        cache.clear()
     
     # Log para debug
     import logging

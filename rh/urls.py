@@ -19,6 +19,8 @@ urlpatterns = [
     # API Endpoints
     path('api/colaboradores/', views.api_colaboradores, name='api_colaboradores'),
     path('api/colaboradores-filtrados/', views.api_colaboradores_filtrados, name='api_colaboradores_filtrados'),
+    path('api/colaborador/<int:colab_id>/delete/', views.api_delete_colaborador, name='api_delete_colaborador'),
+    path('api/colaboradores/delete-multiple/', views.api_delete_colaboradores_multiple, name='api_delete_colaboradores_multiple'),
     path('api/setores/', views.api_setores, name='api_setores'),
     path('api/cargos/', views.api_cargos, name='api_cargos'),
     path('api/grupos/', views.api_grupos, name='api_grupos'),

@@ -1,10 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Max
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 import pandas as pd
 from io import BytesIO
 from datetime import datetime
@@ -1462,3 +1463,85 @@ def reatribuir_todos_subgrupos_view(request, perfil_id):
         'message': f'✅ {total_atualizados} colaborador(es) reatribuído(s) com todos os {todos_subgrupos.count()} subgrupos. '
                    f'{total_procedimentos_criados} novas demanda(s) de treinamento criada(s).'
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def api_delete_perfil(request, perfil_id):
+    """
+    API para deletar um perfil de treinamento específico
+    """
+    import json
+    
+    try:
+        perfil = get_object_or_404(PerfilTreinamento, id=perfil_id)
+        codigo = perfil.codigo
+        
+        # Deletar perfil
+        perfil.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Perfil {codigo} deletado com sucesso.'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f'Erro ao deletar perfil {perfil_id}: {str(e)}')
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def api_delete_perfis_multiple(request):
+    """
+    API para deletar múltiplos perfis de treinamento
+    """
+    import json
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+        
+        if not ids:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nenhum ID fornecido'
+            }, status=400)
+        
+        deleted_count = 0
+        for perfil_id in ids:
+            try:
+                perfil = PerfilTreinamento.objects.get(id=perfil_id)
+                perfil.delete()
+                deleted_count += 1
+            except PerfilTreinamento.DoesNotExist:
+                continue
+            except Exception as e:
+                logger.error(f'Erro ao deletar perfil {perfil_id}: {str(e)}')
+                continue
+        
+        return JsonResponse({
+            'success': True,
+            'deleted': deleted_count,
+            'message': f'{deleted_count} perfil(is) deletado(s) com sucesso.'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'JSON inválido'
+        }, status=400)
+    except Exception as e:
+        logger.error(f'Erro ao deletar perfis: {str(e)}')
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)

@@ -9,6 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import cache_page
+from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q, Prefetch
 from django.http import HttpResponseRedirect, JsonResponse
 from django.core.paginator import Paginator
@@ -1585,4 +1586,87 @@ def api_colaboradores_filtrados(request):
         'total': len(dados),
         'colaboradores': dados
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def api_delete_colaborador(request, colab_id):
+    """
+    API para deletar um colaborador específico
+    """
+    try:
+        colaborador = get_object_or_404(Colaborador, id=colab_id)
+        nome = colaborador.nome_completo
+        
+        # Deletar usuário Django associado
+        if colaborador.user_django:
+            colaborador.user_django.delete()
+        
+        # Deletar colaborador
+        colaborador.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Colaborador {nome} deletado com sucesso.'
+        })
+    except Exception as e:
+        logger.error(f'Erro ao deletar colaborador {colab_id}: {str(e)}')
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
+@csrf_exempt
+def api_delete_colaboradores_multiple(request):
+    """
+    API para deletar múltiplos colaboradores
+    """
+    try:
+        data = json.loads(request.body)
+        ids = data.get('ids', [])
+        
+        if not ids:
+            return JsonResponse({
+                'success': False,
+                'error': 'Nenhum ID fornecido'
+            }, status=400)
+        
+        deleted_count = 0
+        for colab_id in ids:
+            try:
+                colaborador = Colaborador.objects.get(id=colab_id)
+                
+                # Deletar usuário Django associado
+                if colaborador.user_django:
+                    colaborador.user_django.delete()
+                
+                # Deletar colaborador
+                colaborador.delete()
+                deleted_count += 1
+            except Colaborador.DoesNotExist:
+                continue
+            except Exception as e:
+                logger.error(f'Erro ao deletar colaborador {colab_id}: {str(e)}')
+                continue
+        
+        return JsonResponse({
+            'success': True,
+            'deleted': deleted_count,
+            'message': f'{deleted_count} colaborador(es) deletado(s) com sucesso.'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'JSON inválido'
+        }, status=400)
+    except Exception as e:
+        logger.error(f'Erro ao deletar colaboradores: {str(e)}')
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
 

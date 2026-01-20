@@ -5,19 +5,53 @@
     /* --- ESTILOS DE "APP" (SEM ROLAGEM NA PÁGINA) --- */
     body { overflow: hidden; }
 
+    /* CARD DO FILTRO (SIDEBAR) */
+    .filter-card {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 200px);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #dee2e6;
+    }
+
+    .filter-card-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+
     /* BARRA LATERAL (FILTROS) */
     .sidebar-scroll {
-        height: calc(100vh - 160px);
+        height: 100%;
         overflow-y: auto;
         padding-right: 5px;
     }
 
+    /* CARD DA TABELA (MAIN) */
+    .table-card {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 220px);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #dee2e6;
+    }
+
+    .table-card-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .table-card-footer {
+        flex-shrink: 0;
+        border-top: 1px solid #dee2e6;
+        padding: 0.75rem 1rem;
+        background-color: #f8f9fa;
+    }
+
     /* TABELA (ROLAGEM) */
     .table-container-scroll {
-        height: calc(100vh - 200px);
+        height: 100%;
         overflow-y: auto;
-        border: 1px solid #dee2e6;
-        border-radius: 6px;
         background-color: white;
     }
     .table-container-scroll thead th {
@@ -26,6 +60,36 @@
         z-index: 10;
         background-color: #f8f9fa;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* PAGINAÇÃO */
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .pagination-info {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .pagination-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .pagination-nav button {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .items-per-page-select {
+        max-width: 80px;
+        font-size: 0.875rem;
     }
 
     /* --- NOVO: ESTILO DOS FILTROS EXPANSÍVEIS (ACORDEÃO) --- */
@@ -138,21 +202,23 @@
         
         <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
             
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-shrink-0">
-                <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
-                <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="limparFiltros()">
-                    <small>Limpar tudo</small>
-                </button>
-            </div>
-
-            <div class="sidebar-scroll">
-                
-                <div class="mb-3">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula...">
-                    </div>
+            <div class="card filter-card">
+                <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
+                    <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
+                    <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="limparFiltros()">
+                        <small>Limpar tudo</small>
+                    </button>
                 </div>
+
+                <div class="filter-card-body">
+                    <div class="sidebar-scroll">
+                        
+                        <div class="mb-3">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula...">
+                            </div>
+                        </div>
 
                 <div class="filter-group open">
                     <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -304,22 +370,41 @@
                     </div>
                 </div>
 
+                </div>
             </div>
         </div>
 
         <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col">
             
             <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
-                <span class="badge bg-secondary bg-opacity-10 text-secondary border">
-                    <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ total_colaboradores_filtrados }}/{{ total_colaboradores }}</span> colaboradores
-                </span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                        <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ total_colaboradores_filtrados }}/{{ total_colaboradores }}</span> colaboradores
+                    </span>
+                    <span class="badge bg-info bg-opacity-10 text-info border d-none" id="selectedBadge">
+                        <i class="bi bi-check-circle"></i> <span id="selectedCount">0</span> selecionados
+                    </span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-danger d-none" id="deleteSelectedBtn" onclick="deleteSelected()">
+                        <i class="bi bi-trash"></i> Deletar Selecionados
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
+                        <i class="bi bi-arrow-counterclockwise"></i> Limpar Filtros
+                    </button>
+                </div>
             </div>
 
-            <div class="table-container-scroll shadow-sm">
-                <table class="table table-hover align-middle mb-0" id="rhTable">
+            <div class="card table-card">
+                <div class="table-card-body">
+                    <div class="table-container-scroll">
+                        <table class="table table-hover align-middle mb-0" id="rhTable">
                     <thead class="small text-uppercase text-muted font-monospace">
                         <tr>
-                            <th class="ps-4 py-3" style="min-width: 250px;">Colaborador</th>
+                            <th class="ps-4 py-3" style="width: 40px;">
+                                <input type="checkbox" id="selectAllCheckbox" class="form-check-input" onchange="toggleSelectAll()" title="Selecionar todos">
+                            </th>
+                            <th class="py-3" style="min-width: 250px;">Colaborador</th>
                             <th class="py-3">Cargo</th>
                             <th class="py-3">Setor / CC</th>
                             <th class="py-3">Turno</th>
@@ -425,10 +510,45 @@
                         </tr>
                         {% endfor %}
                     </tbody>
-                </table>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-card-footer">
+                    <div class="pagination-controls">
+                        <div class="pagination-info">
+                            <span id="paginationInfo">Mostrando 1-10 de 0 colaboradores</span>
+                        </div>
+                        
+                        <div class="pagination-nav">
+                            <button class="btn btn-sm btn-outline-secondary" id="btnFirstPage" onclick="goToPage(1)" title="Primeira página">
+                                <i class="bi bi-chevron-bar-left"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="btnPrevPage" onclick="previousPage()" title="Página anterior">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            
+                            <div id="pageNumbers" style="display: flex; gap: 0.25rem;"></div>
+                            
+                            <button class="btn btn-sm btn-outline-secondary" id="btnNextPage" onclick="nextPage()" title="Próxima página">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="btnLastPage" onclick="goToPage('last')" title="Última página">
+                                <i class="bi bi-chevron-bar-right"></i>
+                            </button>
+                        </div>
+
+                        <div>
+                            <select id="itemsPerPageSelect" class="form-select form-select-sm items-per-page-select" onchange="changeItemsPerPage()">
+                                <option value="10">10 itens</option>
+                                <option value="25">25 itens</option>
+                                <option value="50">50 itens</option>
+                                <option value="100">100 itens</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
-            
-            <!-- ℹ️ PAGINAÇÃO REMOVIDA - TODOS OS RESULTADOS APARECEM COM FILTROS EM TEMPO REAL -->
         </div>
     </div>
 </div>
@@ -519,9 +639,12 @@ async function loadAndApplyFilters() {
         const data = await response.json();
         allColaboradores = data.colaboradores;
         
-        // Atualizar tabela e contador
-        renderTable(allColaboradores);
+        // Resetar para primeira página
+        currentPage = 1;
+        
+        // Atualizar tabela e contador com paginação
         updateCounter(allColaboradores.length);
+        renderTableWithPagination();
         
     } catch (error) {
         console.error('Erro ao carregar colaboradores:', error);
@@ -537,7 +660,7 @@ function renderTable(colaboradores) {
     if (colaboradores.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center py-5 text-muted bg-light">
+                <td colspan="8" class="text-center py-5 text-muted bg-light">
                     <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
                     <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
                 </td>
@@ -548,7 +671,10 @@ function renderTable(colaboradores) {
     
     tbody.innerHTML = colaboradores.map(c => `
         <tr class="rh-row border-bottom">
-            <td class="ps-4 py-2">
+            <td class="ps-3 py-2">
+                <input type="checkbox" class="form-check-input row-checkbox" data-id="${c.id}" onchange="updateSelectionBadge()">
+            </td>
+            <td class="py-2">
                 <div class="d-flex align-items-center">
                     <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
                         ${(c.nome[0] || 'C').toUpperCase()}
@@ -592,9 +718,14 @@ function renderTable(colaboradores) {
                 </div>
             </td>
             <td class="text-end pe-4 py-2">
-                <a href="/rh/colaborador/${c.id}/" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill" style="font-size: 0.75rem;">
-                    Perfil
-                </a>
+                <div class="btn-group" role="group">
+                    <a href="/rh/colaborador/${c.id}/" class="btn btn-sm btn-outline-primary py-0 px-3" style="font-size: 0.75rem;">
+                        <i class="bi bi-person"></i> Perfil
+                    </a>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteColaborador(${c.id}, '${c.nome}')" title="Deletar perfil">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
             </td>
         </tr>
     `).join('');
@@ -606,17 +737,224 @@ function updateCounter(count) {
     document.querySelector('#countDisplay').textContent = `${count}/${totalAll}`;
 }
 
+// ========== PAGINAÇÃO ==========
+let currentPage = 1;
+let itemsPerPage = 10;
+
+// Renderizar paginação
+function renderPagination(total) {
+    const totalPages = Math.ceil(total / itemsPerPage);
+    const pageNumbers = document.getElementById('pageNumbers');
+    const paginationInfo = document.getElementById('paginationInfo');
+    
+    // Limpar números antigos
+    pageNumbers.innerHTML = '';
+    
+    if (totalPages <= 1) {
+        document.getElementById('btnFirstPage').disabled = true;
+        document.getElementById('btnPrevPage').disabled = true;
+        document.getElementById('btnNextPage').disabled = true;
+        document.getElementById('btnLastPage').disabled = true;
+        paginationInfo.textContent = `Mostrando ${total} de ${total} colaboradores`;
+        return;
+    }
+    
+    // Gerar números de página
+    const maxPagesShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesShow - 1);
+    
+    if (endPage - startPage < maxPagesShow - 1) {
+        startPage = Math.max(1, endPage - maxPagesShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement('button');
+        btn.className = `btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-outline-secondary'}`;
+        btn.textContent = i;
+        btn.onclick = () => goToPage(i);
+        pageNumbers.appendChild(btn);
+    }
+    
+    // Atualizar botões de navegação
+    document.getElementById('btnFirstPage').disabled = currentPage === 1;
+    document.getElementById('btnPrevPage').disabled = currentPage === 1;
+    document.getElementById('btnNextPage').disabled = currentPage === totalPages;
+    document.getElementById('btnLastPage').disabled = currentPage === totalPages;
+    
+    // Atualizar info de paginação
+    const start = (currentPage - 1) * itemsPerPage + 1;
+    const end = Math.min(currentPage * itemsPerPage, total);
+    paginationInfo.textContent = `Mostrando ${start}-${end} de ${total} colaboradores`;
+}
+
+// Ir para página específica
+function goToPage(page) {
+    if (page === 'last') {
+        const total = allColaboradores.length;
+        currentPage = Math.ceil(total / itemsPerPage);
+    } else {
+        currentPage = Math.max(1, Math.min(page, Math.ceil(allColaboradores.length / itemsPerPage)));
+    }
+    renderTableWithPagination();
+}
+
+// Próxima página
+function nextPage() {
+    const totalPages = Math.ceil(allColaboradores.length / itemsPerPage);
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderTableWithPagination();
+    }
+}
+
+// Página anterior
+function previousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        renderTableWithPagination();
+    }
+}
+
+// Mudar quantidade de itens por página
+function changeItemsPerPage() {
+    itemsPerPage = parseInt(document.getElementById('itemsPerPageSelect').value);
+    currentPage = 1; // Voltar para primeira página
+    renderTableWithPagination();
+}
+
+// Renderizar tabela com paginação
+function renderTableWithPagination() {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const paginatedData = allColaboradores.slice(start, end);
+    
+    renderTable(paginatedData);
+    renderPagination(allColaboradores.length);
+}
+
 // Mostrar mensagem de erro
 function showErrorMessage(message) {
     const tbody = document.querySelector('#rhTable tbody');
     tbody.innerHTML = `
         <tr>
-            <td colspan="7" class="text-center py-5 text-danger">
+            <td colspan="8" class="text-center py-5 text-danger">
                 <i class="bi bi-exclamation-circle fs-1 d-block mb-2"></i>
                 <p class="mb-0">${message}</p>
             </td>
         </tr>
     `;
+}
+
+// Atualizar badge de seleção
+function updateSelectionBadge() {
+    const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+    const badge = document.getElementById('selectedBadge');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    
+    document.getElementById('selectedCount').textContent = selectedCount;
+    
+    if (selectedCount > 0) {
+        badge.classList.remove('d-none');
+        deleteBtn.classList.remove('d-none');
+    } else {
+        badge.classList.add('d-none');
+        deleteBtn.classList.add('d-none');
+        selectAllCheckbox.checked = false;
+    }
+}
+
+// Selecionar/Desselecionar todos
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    
+    rowCheckboxes.forEach(cb => {
+        cb.checked = selectAllCheckbox.checked;
+    });
+    
+    updateSelectionBadge();
+}
+
+// Deletar colaborador individual
+async function deleteColaborador(id, nome) {
+    if (!confirm(`Tem certeza que deseja deletar o perfil de ${nome}?\n\nEsta ação não pode ser desfeita!`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/rh/api/colaborador/${id}/delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            alert(`Colaborador ${nome} deletado com sucesso!`);
+            loadAndApplyFilters();
+        } else {
+            alert('Erro ao deletar colaborador. Tente novamente.');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao deletar colaborador. Tente novamente.');
+    }
+}
+
+// Deletar colaboradores selecionados
+async function deleteSelected() {
+    const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.dataset.id);
+    
+    if (selectedIds.length === 0) {
+        alert('Nenhum colaborador selecionado.');
+        return;
+    }
+    
+    if (!confirm(`Tem certeza que deseja deletar ${selectedIds.length} colaborador(es)?\n\nEsta ação não pode ser desfeita!`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/rh/api/colaboradores/delete-multiple/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ ids: selectedIds })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            alert(`${selectedIds.length} colaborador(es) deletado(s) com sucesso!`);
+            loadAndApplyFilters();
+        } else {
+            alert('Erro ao deletar colaboradores. Tente novamente.');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao deletar colaboradores. Tente novamente.');
+    }
+}
+
+// Obter cookie CSRF
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS

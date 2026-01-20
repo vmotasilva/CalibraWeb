@@ -6,7 +6,13 @@
 {% block content %}
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0">Perfis de Treinamento</h4>
+        <div>
+            <h4 class="mb-0">Perfis de Treinamento</h4>
+            <small class="text-muted" id="countDisplay">Total: {{ perfis_total|default:0 }} perfis</small>
+            <span class="badge bg-info bg-opacity-10 text-info border d-none ms-2" id="selectedBadge">
+                <i class="bi bi-check-circle"></i> <span id="selectedCount">0</span> selecionados
+            </span>
+        </div>
         <div>
             <div class="btn-group me-2" role="group">
                 <a href="{% url 'procedures:importar_estrutura' %}" class="btn btn-success" title="Importação completa de perfis, grupos, subgrupos e colaboradores">
@@ -19,9 +25,17 @@
                     <i class="bi bi-download"></i> Exportar Estrutura
                 </a>
             </div>
-            <a href="{% url 'procedures:novo_perfil' %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Novo Perfil
-            </a>
+            <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-outline-danger d-none" id="deleteSelectedBtn" onclick="deleteSelected()">
+                    <i class="bi bi-trash"></i> Deletar Selecionados
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
+                    <i class="bi bi-arrow-counterclockwise"></i> Limpar
+                </button>
+                <a href="{% url 'procedures:novo_perfil' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Novo Perfil
+                </a>
+            </div>
         </div>
     </div>
 
@@ -52,7 +66,12 @@
         <div class="col-md-6 mb-3">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0"><strong>{{ perfil.codigo }}</strong> - {{ perfil.nome }}</h6>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="checkbox" class="form-check-input perfil-checkbox" data-id="{{ perfil.id }}" onchange="updateSelectionBadge()">
+                        <div>
+                            <h6 class="mb-0"><strong>{{ perfil.codigo }}</strong> - {{ perfil.nome }}</h6>
+                        </div>
+                    </div>
                     {% if perfil.ativo %}
                         <span class="badge bg-success">Ativo</span>
                     {% else %}
@@ -66,12 +85,17 @@
                     <p class="mb-1"><i class="bi bi-folder"></i> <strong>Grupos:</strong> {{ perfil.num_grupos }}</p>
                 </div>
                 <div class="card-footer bg-white">
-                    <a href="{% url 'procedures:detalhe_perfil' perfil.id %}" class="btn btn-sm btn-outline-info">
-                        <i class="bi bi-eye"></i> Detalhes
-                    </a>
-                    <a href="{% url 'procedures:editar_perfil' perfil.id %}" class="btn btn-sm btn-outline-warning">
-                        <i class="bi bi-pencil"></i> Editar
-                    </a>
+                    <div class="btn-group w-100" role="group">
+                        <a href="{% url 'procedures:detalhe_perfil' perfil.id %}" class="btn btn-sm btn-outline-info flex-grow-1">
+                            <i class="bi bi-eye"></i> Detalhes
+                        </a>
+                        <a href="{% url 'procedures:editar_perfil' perfil.id %}" class="btn btn-sm btn-outline-warning flex-grow-1">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deletePerfil({{ perfil.id }}, '{{ perfil.codigo }}')" title="Deletar perfil">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -112,4 +136,115 @@
     </nav>
     {% endif %}
 </div>
+
+<script>
+// Atualizar badge de seleção
+function updateSelectionBadge() {
+    const selectedCount = document.querySelectorAll('.perfil-checkbox:checked').length;
+    const badge = document.getElementById('selectedBadge');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    
+    document.getElementById('selectedCount').textContent = selectedCount;
+    
+    if (selectedCount > 0) {
+        badge.classList.remove('d-none');
+        deleteBtn.classList.remove('d-none');
+    } else {
+        badge.classList.add('d-none');
+        deleteBtn.classList.add('d-none');
+    }
+}
+
+// Obter cookie CSRF com fallback para meta tag
+function getCsrfToken() {
+    // Primeiro, tenta obter do cookie
+    let csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    
+    if (csrftoken) {
+        return csrftoken;
+    }
+    
+    // Fallback: obter do cookie
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith('csrftoken=')) {
+            return decodeURIComponent(cookie.substring(10));
+        }
+    }
+    
+    return '';
+}
+
+// Deletar perfil individual
+async function deletePerfil(id, codigo) {
+    if (!confirm(`Tem certeza que deseja deletar o perfil ${codigo}?\n\nEsta ação não pode ser desfeita!`)) {
+        return;
+    }
+    
+    try {
+        const csrfToken = getCsrfToken();
+        const response = await fetch(`/procedures/api/perfil/${id}/delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        if (response.ok) {
+            alert(`Perfil ${codigo} deletado com sucesso!`);
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(`Erro: ${data.error || 'Não foi possível deletar o perfil.'}`);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao deletar perfil. Tente novamente.');
+    }
+}
+
+// Deletar perfis selecionados
+async function deleteSelected() {
+    const selectedIds = Array.from(document.querySelectorAll('.perfil-checkbox:checked')).map(cb => cb.dataset.id);
+    
+    if (selectedIds.length === 0) {
+        alert('Nenhum perfil selecionado.');
+        return;
+    }
+    
+    if (!confirm(`Tem certeza que deseja deletar ${selectedIds.length} perfil(is)?\n\nEsta ação não pode ser desfeita!`)) {
+        return;
+    }
+    
+    try {
+        const csrfToken = getCsrfToken();
+        const response = await fetch('/procedures/api/perfis/delete-multiple/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ ids: selectedIds })
+        });
+        
+        if (response.ok) {
+            alert(`${selectedIds.length} perfil(is) deletado(s) com sucesso!`);
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(`Erro: ${data.error || 'Não foi possível deletar os perfis.'}`);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao deletar perfis. Tente novamente.');
+    }
+}
+
+// Limpar filtros
+function limparFiltros() {
+    window.location.href = window.location.pathname;
+}
+</script>
 {% endblock %}

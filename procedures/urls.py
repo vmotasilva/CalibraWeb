@@ -112,6 +112,10 @@ urlpatterns = [
     path('perfis/<int:perfil_id>/', perfis_views.detalhe_perfil_view, name='detalhe_perfil'),
     path('perfil/<int:perfil_id>/reatribuir-todos-subgrupos/', perfis_views.reatribuir_todos_subgrupos_view, name='reatribuir_todos_subgrupos'),
     
+    # API de deleção de perfis
+    path('api/perfil/<int:perfil_id>/delete/', perfis_views.api_delete_perfil, name='api_delete_perfil'),
+    path('api/perfis/delete-multiple/', perfis_views.api_delete_perfis_multiple, name='api_delete_perfis_multiple'),
+    
     # Importação em massa
     path('perfis/importar/', perfis_views.importar_perfis_view, name='importar_perfis'),
     path('perfis/importar-estrutura/', perfis_views.importar_estrutura_completa_view, name='importar_estrutura'),
