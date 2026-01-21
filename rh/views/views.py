@@ -1980,6 +1980,9 @@ def api_atualizar_permissao(request):
         else:
             return JsonResponse({'success': False, 'error': 'Ação inválida'}, status=400)
         
+        # Limpar cache de permissões do usuário
+        user.refresh_from_db()
+        
         return JsonResponse({'success': True, 'message': msg})
     
     except User.DoesNotExist:
