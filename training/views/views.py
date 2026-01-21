@@ -393,25 +393,25 @@ def dashboard_treinamentos_view(request):
     # OTIMIZAÇÃO: Usar query SQL ao invés de carregar tudo na memória
     treinamentos_vigentes = valid_registros.filter(
         data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__ultima_revisao')
+        revisao_treinada=F('procedimento__numero_revisao')
     ).count()
     
     # Pendentes: sem data OU revisão desatualizada
     treinamentos_pendentes = valid_registros.filter(
         Q(data_treinamento__isnull=True) | 
-        ~Q(revisao_treinada=F('procedimento__ultima_revisao'))
+        ~Q(revisao_treinada=F('procedimento__numero_revisao'))
     ).count()
     
     # Colaboradores com treinamentos vigentes (com data e revisão OK)
     total_colaboradores_treinados = valid_registros.filter(
         data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__ultima_revisao')
+        revisao_treinada=F('procedimento__numero_revisao')
     ).values('colaborador_id').distinct().count()
     
     # Procedimentos únicos treinados
     total_procedimentos_unicos = valid_registros.filter(
         data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__ultima_revisao')
+        revisao_treinada=F('procedimento__numero_revisao')
     ).values('procedimento_id').distinct().count()
     
     # Treinamentos nos últimos 30 dias
@@ -424,7 +424,7 @@ def dashboard_treinamentos_view(request):
     # Top 10 procedimentos mais treinados - OTIMIZADO com agregação SQL
     top_procedimentos = valid_registros.filter(
         data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__ultima_revisao')
+        revisao_treinada=F('procedimento__numero_revisao')
     ).values('procedimento__codigo', 'procedimento__nome').annotate(
         total=Count('id')
     ).order_by('-total')[:10]
@@ -432,7 +432,7 @@ def dashboard_treinamentos_view(request):
     # Top 10 colaboradores com mais treinamentos - OTIMIZADO com agregação SQL
     top_colaboradores = valid_registros.filter(
         data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__ultima_revisao')
+        revisao_treinada=F('procedimento__numero_revisao')
     ).values('colaborador__nome_completo').annotate(
         total=Count('id')
     ).order_by('-total')[:10]
@@ -487,14 +487,14 @@ def dashboard_treinamentos_view(request):
         vigentes = valid_registros.filter(
             colaborador_id__in=liderados_ids,
             data_treinamento__isnull=False,
-            revisao_treinada=F('procedimento__ultima_revisao')
+            revisao_treinada=F('procedimento__numero_revisao')
         ).count()
         
         pendentes = valid_registros.filter(
             colaborador_id__in=liderados_ids
         ).filter(
             Q(data_treinamento__isnull=True) | 
-            ~Q(revisao_treinada=F('procedimento__ultima_revisao'))
+            ~Q(revisao_treinada=F('procedimento__numero_revisao'))
         ).count()
         
         total = vigentes + pendentes
@@ -524,11 +524,11 @@ def dashboard_treinamentos_view(request):
     ).annotate(
         vigentes=Count('id', filter=Q(
             data_treinamento__isnull=False,
-            revisao_treinada=F('procedimento__ultima_revisao')
+            revisao_treinada=F('procedimento__numero_revisao')
         )),
         pendentes=Count('id', filter=Q(
             Q(data_treinamento__isnull=True) | 
-            ~Q(revisao_treinada=F('procedimento__ultima_revisao'))
+            ~Q(revisao_treinada=F('procedimento__numero_revisao'))
         ))
     ).filter(
         colaborador__setor_id__isnull=False
