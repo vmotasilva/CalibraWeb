@@ -2571,7 +2571,7 @@ def api_colaboradores_sem_vinculo(request):
         
         # Buscar TODOS os colaboradores ativos
         colaboradores = Colaborador.objects.filter(
-            ativo=True
+            is_active=True
         ).select_related('setor', 'user_django').order_by('nome_completo')
         
         # Filtrar por busca se fornecido
@@ -2734,7 +2734,7 @@ def criar_usuario_view(request):
                     'is_staff': is_staff,
                     'colaborador_id': colaborador_id,
                 },
-                'colaboradores': Colaborador.objects.filter(user_django__isnull=True, ativo=True).select_related('setor').order_by('nome_completo')
+                'colaboradores': Colaborador.objects.filter(user_django__isnull=True, is_active=True).select_related('setor').order_by('nome_completo')
             })
         
         # Criar o usuário
@@ -2764,7 +2764,7 @@ def criar_usuario_view(request):
     # GET - exibir formulário
     colaboradores = Colaborador.objects.filter(
         user_django__isnull=True, 
-        ativo=True
+        is_active=True
     ).select_related('setor').order_by('nome_completo')
     
     return render(request, 'rh/usuario_criar.html', {
