@@ -8,6 +8,7 @@ from django.urls import path, include
 from django.http import JsonResponse, FileResponse
 from django.views.static import serve
 import os
+from two_factor.urls import urlpatterns as tf_urls
 # from procedures.views import nova_solicitacao  # TODO: Implementar se necessário
 from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view, editar_ocorrencia_view, deletar_ocorrencia_view, listar_ocorrencias_view, registrar_ferias_view, editar_ferias_view, excluir_ferias_view
 from metrologia.views import export_metrologia_view, export_etiquetas_view, detalhe_instrumento_view, modulo_metrologia_view, remover_historico_view, visualizar_historico_calibracao_view
@@ -135,12 +136,8 @@ urlpatterns = [
     # 3. Admin
     path("admin/", admin_site.urls),
     
-    # 4. Autenticação
-    path(
-        "login/",
-        auth_views.LoginView.as_view(template_name="registration/login.html"),
-        name="login",
-    ),
+    # 4. Autenticação com 2FA
+    path("", include(tf_urls)),  # Inclui todas as URLs do two-factor (login, setup, etc.)
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     
     # 5. Metrologia export routes

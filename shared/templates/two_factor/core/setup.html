@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Configurar Autenticador - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-shield-plus me-2"></i>
+                        Configurar Autenticação em Duas Etapas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if wizard.steps.current == 'welcome' %}
+                    <div class="text-center py-3">
+                        <i class="bi bi-shield-lock display-1 text-primary mb-3"></i>
+                        <h5>Bem-vindo à configuração do 2FA</h5>
+                        <p class="text-muted">
+                            Você precisará de um aplicativo autenticador no seu celular, como:
+                        </p>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check-circle text-success me-2"></i>Google Authenticator</li>
+                            <li><i class="bi bi-check-circle text-success me-2"></i>Microsoft Authenticator</li>
+                            <li><i class="bi bi-check-circle text-success me-2"></i>Authy</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ wizard.management_form }}
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-arrow-right me-2"></i>Continuar
+                            </button>
+                        </div>
+                    </form>
+                    
+                    {% elif wizard.steps.current == 'method' %}
+                    <h6 class="mb-3">Escolha o método de verificação:</h6>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ wizard.management_form }}
+                        
+                        <div class="mb-4">
+                            {% for radio in wizard.form.method %}
+                            <div class="form-check mb-2">
+                                {{ radio.tag }}
+                                <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                    {% if radio.choice_value == 'generator' %}
+                                    <i class="bi bi-phone me-1"></i>Aplicativo Autenticador (recomendado)
+                                    {% else %}
+                                    {{ radio.choice_label }}
+                                    {% endif %}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-arrow-right me-2"></i>Próximo
+                            </button>
+                        </div>
+                    </form>
+                    
+                    {% elif wizard.steps.current == 'generator' %}
+                    <div class="text-center mb-4">
+                        <p class="text-muted">Escaneie o QR Code com seu aplicativo autenticador:</p>
+                        <div class="bg-white p-3 d-inline-block rounded border">
+                            {{ QR_URL|safe }}
+                        </div>
+                        <p class="small text-muted mt-2">
+                            Ou digite manualmente: <code>{{ secret_key }}</code>
+                        </p>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ wizard.management_form }}
+                        
+                        <div class="mb-3">
+                            <label for="id_generator-token" class="form-label">
+                                <i class="bi bi-key me-1"></i>Código de Verificação
+                            </label>
+                            <input type="text" 
+                                   name="generator-token" 
+                                   id="id_generator-token" 
+                                   class="form-control form-control-lg text-center"
+                                   placeholder="000000"
+                                   maxlength="6"
+                                   pattern="[0-9]{6}"
+                                   inputmode="numeric"
+                                   autocomplete="one-time-code"
+                                   required>
+                            <div class="form-text">Digite o código de 6 dígitos mostrado no app</div>
+                        </div>
+                        
+                        {% if wizard.form.errors %}
+                        <div class="alert alert-danger">
+                            {% for error in wizard.form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle me-2"></i>Verificar e Ativar
+                            </button>
+                        </div>
+                    </form>
+                    
+                    {% elif wizard.steps.current == 'validation' %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Digite o código mostrado no seu aplicativo autenticador para confirmar a configuração.
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ wizard.management_form }}
+                        
+                        <div class="mb-3">
+                            <label for="id_validation-token" class="form-label">Código de Verificação</label>
+                            <input type="text" 
+                                   name="validation-token" 
+                                   id="id_validation-token" 
+                                   class="form-control form-control-lg text-center"
+                                   placeholder="000000"
+                                   maxlength="6"
+                                   required>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle me-2"></i>Confirmar
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                    
+                    <hr>
+                    <div class="text-center">
+                        <a href="{% url 'two_factor:profile' %}" class="text-muted">
+                            <i class="bi bi-arrow-left me-1"></i>Cancelar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

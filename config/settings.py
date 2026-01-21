@@ -64,6 +64,13 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     
+    # Autenticação em duas etapas (2FA)
+    "django_otp",
+    "django_otp.plugins.otp_static",
+    "django_otp.plugins.otp_totp",
+    "two_factor",
+    "two_factor.plugins.phonenumber",
+    
     # Novos módulos modulares (ATIVADOS - Phase 9 modularization)
     "core.apps.CoreConfig",
     "organization.apps.OrganizationConfig",
@@ -86,6 +93,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django_otp.middleware.OTPMiddleware",  # Middleware para 2FA
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "shared.middleware.ModuleAccessMiddleware",  # Controle de acesso por módulo
@@ -309,9 +317,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # Default is 1000, increased for bulk deletion with many items
 
 # Configurações de Login e Redirecionamento
-LOGIN_URL = "login"  # Avisa que sua URL se chama apenas 'login' e não 'accounts/login'
+LOGIN_URL = "two_factor:login"  # Redireciona para login com 2FA
 LOGIN_REDIRECT_URL = "/"  # Redireciona para dashboard após login bem-sucedido
-LOGOUT_REDIRECT_URL = "login"  # Para onde vai depois de sair
+LOGOUT_REDIRECT_URL = "two_factor:login"  # Para onde vai depois de sair
+
+# Configurações do Two-Factor Authentication (2FA)
+TWO_FACTOR_PATCH_ADMIN = True  # Adiciona 2FA ao admin
+TWO_FACTOR_CALL_GATEWAY = None  # Desabilita chamadas telefônicas (usar apenas TOTP/SMS)
+TWO_FACTOR_SMS_GATEWAY = None  # Configurar gateway SMS se necessário
+TWO_FACTOR_TOTP_DIGITS = 6  # Número de dígitos do código TOTP
+TWO_FACTOR_LOGIN_TIMEOUT = 600  # Timeout em segundos (10 minutos)
 
 # --- Security settings ---
 # Detectar se está em ambiente local (localhost/127.0.0.1)

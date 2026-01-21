@@ -1,0 +1,185 @@
+{% extends "base_auth.html" %}
+{% load i18n %}
+
+{% block title %}Login - Calibra QMS{% endblock %}
+
+{% block auth_content %}
+<div class="text-center mb-4">
+    <img src="/static/logo.png" alt="Calibra QMS" style="height: 60px;" class="mb-3" onerror="this.style.display='none'">
+    <h4 class="fw-bold text-primary">Calibra QMS</h4>
+    <p class="text-muted">Sistema de Gestão da Qualidade</p>
+</div>
+
+{% if wizard.steps.current == 'auth' %}
+<h5 class="text-center mb-4">
+    <i class="bi bi-box-arrow-in-right me-2"></i>Entrar no Sistema
+</h5>
+
+<form method="post" id="loginForm">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+    
+    {% if wizard.form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in wizard.form.non_field_errors %}
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="mb-3">
+        <label for="id_auth-username" class="form-label">
+            <i class="bi bi-person me-1"></i>Usuário
+        </label>
+        <input type="text" 
+               name="auth-username" 
+               id="id_auth-username" 
+               class="form-control {% if wizard.form.username.errors %}is-invalid{% endif %}"
+               placeholder="Digite seu usuário"
+               autofocus
+               required>
+        {% if wizard.form.username.errors %}
+        <div class="invalid-feedback">{{ wizard.form.username.errors.0 }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="mb-4">
+        <label for="id_auth-password" class="form-label">
+            <i class="bi bi-lock me-1"></i>Senha
+        </label>
+        <div class="input-group">
+            <input type="password" 
+                   name="auth-password" 
+                   id="id_auth-password" 
+                   class="form-control {% if wizard.form.password.errors %}is-invalid{% endif %}"
+                   placeholder="Digite sua senha"
+                   required>
+            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                <i class="bi bi-eye" id="eyeIcon"></i>
+            </button>
+        </div>
+        {% if wizard.form.password.errors %}
+        <div class="invalid-feedback d-block">{{ wizard.form.password.errors.0 }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="d-grid">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Entrar
+        </button>
+    </div>
+</form>
+
+{% elif wizard.steps.current == 'token' %}
+<h5 class="text-center mb-4">
+    <i class="bi bi-shield-lock me-2"></i>Verificação em Duas Etapas
+</h5>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-1"></i>
+    Digite o código de 6 dígitos do seu aplicativo autenticador.
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+    
+    {% if wizard.form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in wizard.form.non_field_errors %}
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="mb-4">
+        <label for="id_token-otp_token" class="form-label">
+            <i class="bi bi-key me-1"></i>Código de Verificação
+        </label>
+        <input type="text" 
+               name="token-otp_token" 
+               id="id_token-otp_token" 
+               class="form-control form-control-lg text-center {% if wizard.form.otp_token.errors %}is-invalid{% endif %}"
+               placeholder="000000"
+               maxlength="6"
+               pattern="[0-9]{6}"
+               inputmode="numeric"
+               autocomplete="one-time-code"
+               autofocus
+               required>
+        {% if wizard.form.otp_token.errors %}
+        <div class="invalid-feedback">{{ wizard.form.otp_token.errors.0 }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-circle me-2"></i>Verificar
+        </button>
+        <a href="{% url 'two_factor:login' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+</form>
+
+{% elif wizard.steps.current == 'backup' %}
+<h5 class="text-center mb-4">
+    <i class="bi bi-key me-2"></i>Código de Backup
+</h5>
+
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    Perdeu acesso ao seu dispositivo? Use um código de backup.
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+    
+    {% if wizard.form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in wizard.form.non_field_errors %}
+            {{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="mb-4">
+        <label for="id_backup-otp_token" class="form-label">Código de Backup</label>
+        <input type="text" 
+               name="backup-otp_token" 
+               id="id_backup-otp_token" 
+               class="form-control"
+               placeholder="Digite seu código de backup"
+               autofocus
+               required>
+    </div>
+    
+    <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-circle me-2"></i>Verificar
+        </button>
+        <a href="{% url 'two_factor:login' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+</form>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('id_auth-password');
+    const eyeIcon = document.getElementById('eyeIcon');
+    
+    if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            eyeIcon.classList.toggle('bi-eye');
+            eyeIcon.classList.toggle('bi-eye-slash');
+        });
+    }
+});
+</script>
+{% endblock %}

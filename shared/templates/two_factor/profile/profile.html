@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Configurar 2FA - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-shield-lock me-2"></i>
+                        Autenticação em Duas Etapas (2FA)
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if default_device %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle me-2"></i>
+                        <strong>2FA está ativado!</strong> Sua conta está protegida com autenticação em duas etapas.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-phone me-1"></i>Dispositivo Configurado
+                                    </h6>
+                                    <p class="card-text text-muted">{{ default_device.name }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-key me-1"></i>Códigos de Backup
+                                    </h6>
+                                    <p class="card-text">
+                                        {% if backup_tokens %}
+                                        <span class="badge bg-success">{{ backup_tokens }} disponíveis</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">Nenhum</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{% url 'two_factor:backup_tokens' %}" class="btn btn-outline-primary">
+                            <i class="bi bi-key me-1"></i>Ver Códigos de Backup
+                        </a>
+                        <a href="{% url 'two_factor:disable' %}" class="btn btn-outline-danger">
+                            <i class="bi bi-shield-x me-1"></i>Desativar 2FA
+                        </a>
+                    </div>
+                    
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>2FA não está ativado!</strong> Recomendamos ativar para maior segurança.
+                    </div>
+                    
+                    <div class="text-center py-4">
+                        <i class="bi bi-shield-lock display-1 text-primary mb-3"></i>
+                        <h5>Proteja sua conta</h5>
+                        <p class="text-muted">
+                            A autenticação em duas etapas adiciona uma camada extra de segurança à sua conta.
+                            Além da senha, você precisará de um código do seu celular para fazer login.
+                        </p>
+                        <a href="{% url 'two_factor:setup' %}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-shield-plus me-2"></i>Ativar 2FA
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
