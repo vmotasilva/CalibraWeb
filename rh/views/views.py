@@ -623,8 +623,12 @@ def registrar_ocorrencia_view(request):
         pass
     
     # Verificar permissão geral de acesso ao módulo
+    # Permitir se tem permissão Django de adicionar ocorrências
     permitido = False
     if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    elif request.user.has_perm('rh.add_ocorrencia'):
+        # Usuário tem permissão Django para adicionar ocorrências
         permitido = True
     elif usuario_logado:
         if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
@@ -695,7 +699,7 @@ def editar_ocorrencia_view(request, occ_id):
         messages.error(request, "Acesso Negado. Você não tem permissão para editar ocorrências deste colaborador.")
         return redirect("modulo_rh")
     
-    # Verificar permissão geral para editar ocorrências (superuser, staff ou RH)
+    # Verificar permissão geral para editar ocorrências (superuser, staff, RH ou permissão Django)
     usuario_logado = None
     try:
         usuario_logado = get_colaborador_for_user(request.user)
@@ -704,6 +708,9 @@ def editar_ocorrencia_view(request, occ_id):
     
     permitido = False
     if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    elif request.user.has_perm('rh.change_ocorrencia'):
+        # Usuário tem permissão Django para editar ocorrências
         permitido = True
     elif usuario_logado:
         if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
@@ -746,7 +753,7 @@ def deletar_ocorrencia_view(request, occ_id):
         messages.error(request, "Acesso Negado. Você não tem permissão para deletar ocorrências deste colaborador.")
         return redirect("modulo_rh")
     
-    # Verificar permissão geral para deletar ocorrências (superuser, staff ou RH)
+    # Verificar permissão geral para deletar ocorrências (superuser, staff, RH ou permissão Django)
     usuario_logado = None
     try:
         usuario_logado = get_colaborador_for_user(request.user)
@@ -755,6 +762,9 @@ def deletar_ocorrencia_view(request, occ_id):
     
     permitido = False
     if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    elif request.user.has_perm('rh.delete_ocorrencia'):
+        # Usuário tem permissão Django para deletar ocorrências
         permitido = True
     elif usuario_logado:
         if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
@@ -780,8 +790,12 @@ def listar_ocorrencias_view(request):
         pass
     
     # Verificar permissão geral de acesso ao módulo
+    # Permitir se tem permissão Django de visualizar ocorrências
     permitido = False
     if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    elif request.user.has_perm('rh.view_ocorrencia'):
+        # Usuário tem permissão Django para ver ocorrências
         permitido = True
     elif usuario_logado:
         if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
