@@ -1941,9 +1941,10 @@ def api_atualizar_permissao(request):
     """
     API para atualizar uma permissão específica de um usuário.
     Recebe: user_id, codename, acao ('add' ou 'remove'), app_label (opcional, padrão 'rh')
+    Apenas superusuários podem modificar permissões.
     """
-    if not request.user.is_superuser and not request.user.is_staff:
-        return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem modificar permissões'}, status=403)
     
     try:
         data = json.loads(request.body)
@@ -2003,9 +2004,10 @@ def api_atualizar_permissoes_lote(request):
     API para atualizar múltiplas permissões de um usuário de uma vez.
     Recebe: user_id, permissoes (dict com app_label como chave e lista de codenames como valor)
     Exemplo: {"user_id": 5, "permissoes": {"rh": ["view_colaborador"], "qms": ["view_instrumento"]}}
+    Apenas superusuários podem modificar permissões.
     """
-    if not request.user.is_superuser and not request.user.is_staff:
-        return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem modificar permissões'}, status=403)
     
     try:
         data = json.loads(request.body)
@@ -2476,10 +2478,11 @@ def detalhe_usuario_view(request, user_id):
 @require_http_methods(["POST"])
 def api_toggle_user_active(request):
     """
-    API para ativar/desativar (bloquear) um usuário.
+    API para alternar status ativo/bloqueado de um usuário.
+    Apenas superusuários podem modificar.
     """
-    if not request.user.is_superuser and not request.user.is_staff:
-        return JsonResponse({'success': False, 'error': 'Permissão negada'}, status=403)
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem modificar status de usuários'}, status=403)
     
     try:
         data = json.loads(request.body)
@@ -2517,10 +2520,11 @@ def api_toggle_user_active(request):
 @require_http_methods(["POST"])
 def api_reset_password(request):
     """
-    API para resetar a senha de um usuário para uma senha temporária.
+    API para resetar senha de um usuário.
+    Apenas superusuários podem resetar senhas.
     """
-    if not request.user.is_superuser and not request.user.is_staff:
-        return JsonResponse({'success': False, 'error': 'Permissão negada'}, status=403)
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem resetar senhas'}, status=403)
     
     try:
         data = json.loads(request.body)
@@ -2559,11 +2563,11 @@ def api_reset_password(request):
 @require_http_methods(["POST"])
 def api_vincular_colaborador(request):
     """
-    API para vincular um colaborador a um usuário Django.
-    Permite transferir vínculo de outro usuário.
+    API para vincular/desvincular colaborador de um usuário.
+    Apenas superusuários podem modificar vínculos.
     """
-    if not request.user.is_superuser and not request.user.is_staff:
-        return JsonResponse({'success': False, 'error': 'Permissão negada'}, status=403)
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem modificar vínculos de colaboradores'}, status=403)
     
     try:
         data = json.loads(request.body)
@@ -2669,6 +2673,12 @@ def api_colaboradores_sem_vinculo(request):
 @login_required
 def api_criar_usuario(request):
     """
+    API para criar novo usuário.
+    Apenas superusuários podem criar usuários.
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem criar usuários'}, status=403)
+    """
     API para criar um novo usuário no sistema.
     Gera uma senha temporária aleatória.
     """
@@ -2747,12 +2757,13 @@ def api_criar_usuario(request):
 @login_required
 def criar_usuario_view(request):
     """
-    View para criar um novo usuário no sistema com formulário dedicado.
+    View para criar novo usuário com formulário dedicado.
     O admin define username e senha.
+    Apenas superusuários podem criar usuários.
     """
-    if not request.user.is_superuser and not request.user.is_staff:
-        messages.error(request, 'Você não tem permissão para acessar esta página.')
-        return redirect('home')
+    if not request.user.is_superuser:
+        messages.error(request, 'Apenas superusuários podem criar usuários.')
+        return redirect('rh:listar_usuarios')
     
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()

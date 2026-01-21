@@ -344,7 +344,7 @@
                     <h5 class="mb-0"><i class="bi bi-lightning-fill"></i> Ações</h5>
                 </div>
                 <div class="card-body p-2">
-                    {% if request.user.is_superuser or request.user.is_staff %}
+                    {% if request.user.is_superuser %}
                     <button class="btn btn-outline-primary action-btn mb-2" data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
                         <i class="bi bi-key-fill me-2"></i> Resetar Senha
                     </button>
@@ -357,6 +357,10 @@
                         <i class="bi bi-link-45deg me-2" style="text-decoration: line-through;"></i> Desvincular Colaborador
                     </button>
                     {% endif %}
+                    {% elif request.user.is_staff %}
+                    <div class="alert alert-info mb-0">
+                        <small><i class="bi bi-info-circle"></i> Você pode visualizar as informações, mas apenas superusuários podem fazer alterações.</small>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -408,7 +412,7 @@
                                                    data-user-id="{{ usuario.id }}"
                                                    data-app-label="{{ modulo.app_label }}"
                                                    {% if codename in user_perms or usuario.is_superuser %}checked{% endif %}
-                                                   {% if usuario.is_superuser %}disabled{% endif %}>
+                                                   {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -422,6 +426,7 @@
             </div>
             
             {% if not usuario.is_superuser %}
+            {% if request.user.is_superuser %}
             <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
                 <div class="alert alert-secondary mb-0 flex-grow-1">
                     <small>
@@ -433,6 +438,14 @@
                     <i class="bi bi-save me-2"></i>Salvar Permissões
                 </button>
             </div>
+            {% elif request.user.is_staff %}
+            <div class="alert alert-info mb-0">
+                <small>
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Atenção:</strong> Você pode visualizar as permissões, mas apenas superusuários podem modificá-las.
+                </small>
+            </div>
+            {% endif %}
             {% else %}
             <div class="alert alert-secondary mb-0">
                 <small>
