@@ -32,6 +32,7 @@ urlpatterns = [
     
     # Seção Usuários - Gerenciamento de Usuários e Permissões
     path('usuarios/', views.listar_usuarios_view, name='listar_usuarios'),
+    path('usuarios/criar/', views.criar_usuario_view, name='criar_usuario'),
     path('usuarios/<int:user_id>/', views.detalhe_usuario_view, name='detalhe_usuario'),
     path('api/permissoes/atualizar/', views.api_atualizar_permissao, name='api_atualizar_permissao'),
     path('api/permissoes/atualizar-lote/', views.api_atualizar_permissoes_lote, name='api_atualizar_permissoes_lote'),

@@ -754,9 +754,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Carregar colaboradores quando abrir modal
-    document.getElementById('vincularColaboradorModal').addEventListener('show.bs.modal', loadColaboradores);
+    document.getElementById('vincularColaboradorModal').addEventListener('show.bs.modal', function() {
+        document.getElementById('searchColaborador').value = '';
+        loadColaboradores('');
+    });
     
-    async function loadColaboradores() {
+    let searchTimeout = null;
+    
+    async function loadColaboradores(search = '') {
         const listEl = document.getElementById('colaboradoresList');
         listEl.innerHTML = `
             <div class="text-center py-4">
@@ -768,7 +773,13 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         try {
-            const response = await fetch("{% url 'rh:api_colaboradores_sem_vinculo' %}?user_id={{ usuario.id }}");
+            const url = new URL("{% url 'rh:api_colaboradores_sem_vinculo' %}", window.location.origin);
+            url.searchParams.set('user_id', '{{ usuario.id }}');
+            if (search) {
+                url.searchParams.set('search', search);
+            }
+            
+            const response = await fetch(url);
             const data = await response.json();
             
             if (data.success) {
@@ -782,38 +793,59 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function renderColaboradores(colaboradores, filter = '') {
+    function renderColaboradores(colaboradores) {
         const listEl = document.getElementById('colaboradoresList');
-        const filteredColabs = colaboradores.filter(c => 
-            c.nome.toLowerCase().includes(filter.toLowerCase()) ||
-            c.setor.toLowerCase().includes(filter.toLowerCase())
-        );
         
-        if (filteredColabs.length === 0) {
-            listEl.innerHTML = '<div class="alert alert-info">Nenhum colaborador disponível para vincular.</div>';
+        if (colaboradores.length === 0) {
+            listEl.innerHTML = '<div class="alert alert-info">Nenhum colaborador encontrado. Tente outra busca.</div>';
             return;
         }
         
-        listEl.innerHTML = filteredColabs.map(c => `
-            <div class="colaborador-item card mb-2 ${c.vinculado ? 'selected border-primary' : ''}" data-id="${c.id}">
-                <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>${c.nome}</strong>
-                        ${c.vinculado ? '<span class="badge bg-primary ms-2">Atual</span>' : ''}
-                        <br>
-                        <small class="text-muted">${c.setor} • ${c.cargo}</small>
+        listEl.innerHTML = colaboradores.map(c => {
+            let statusBadge = '';
+            let disabled = '';
+            let icon = 'bi-circle';
+            
+            if (c.vinculado) {
+                statusBadge = '<span class="badge bg-primary ms-2">Vinculado a este usuário</span>';
+                icon = 'bi-check-circle-fill text-primary';
+            } else if (c.vinculado_outro) {
+                statusBadge = `<span class="badge bg-secondary ms-2">Vinculado a: ${c.usuario_vinculado}</span>`;
+                disabled = 'opacity-50';
+            }
+            
+            return `
+                <div class="colaborador-item card mb-2 ${c.vinculado ? 'selected border-primary' : ''} ${disabled}" 
+                     data-id="${c.id}" data-vinculado-outro="${c.vinculado_outro}">
+                    <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${c.nome}</strong>
+                            ${statusBadge}
+                            <br>
+                            <small class="text-muted">${c.setor} • ${c.cargo}</small>
+                        </div>
+                        <i class="bi ${icon}"></i>
                     </div>
-                    <i class="bi bi-${c.vinculado ? 'check-circle-fill text-primary' : 'circle'}"></i>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         
         // Adicionar handlers
         listEl.querySelectorAll('.colaborador-item').forEach(item => {
             item.addEventListener('click', function() {
+                // Avisar se já está vinculado a outro usuário
+                if (this.dataset.vinculadoOutro === 'true') {
+                    if (!confirm('Este colaborador já está vinculado a outro usuário. Deseja transferir o vínculo para este usuário?')) {
+                        return;
+                    }
+                }
+                
                 listEl.querySelectorAll('.colaborador-item').forEach(i => {
                     i.classList.remove('selected', 'border-primary');
-                    i.querySelector('i').className = 'bi bi-circle';
+                    const iconEl = i.querySelector('i');
+                    if (i.dataset.vinculadoOutro !== 'true') {
+                        iconEl.className = 'bi bi-circle';
+                    }
                 });
                 this.classList.add('selected', 'border-primary');
                 this.querySelector('i').className = 'bi bi-check-circle-fill text-primary';
@@ -821,16 +853,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('confirmVincular').disabled = false;
             });
         });
-        
-        // Guardar dados para filtro
-        listEl.dataset.colaboradores = JSON.stringify(colaboradores);
     }
     
-    // Filtro de busca
+    // Filtro de busca com debounce
     document.getElementById('searchColaborador').addEventListener('input', function() {
-        const listEl = document.getElementById('colaboradoresList');
-        const colaboradores = JSON.parse(listEl.dataset.colaboradores || '[]');
-        renderColaboradores(colaboradores, this.value);
+        const search = this.value.trim();
+        
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+        
+        searchTimeout = setTimeout(() => {
+            loadColaboradores(search);
+        }, 300);
     });
     
     // Confirmar vinculação

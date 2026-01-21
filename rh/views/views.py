@@ -2496,6 +2496,7 @@ def api_reset_password(request):
 def api_vincular_colaborador(request):
     """
     API para vincular um colaborador a um usuário Django.
+    Permite transferir vínculo de outro usuário.
     """
     if not request.user.is_superuser and not request.user.is_staff:
         return JsonResponse({'success': False, 'error': 'Permissão negada'}, status=403)
@@ -2522,27 +2523,28 @@ def api_vincular_colaborador(request):
         
         colaborador = Colaborador.objects.get(id=colaborador_id)
         
-        # Verificar se o colaborador já está vinculado a outro usuário
-        if colaborador.user_django and colaborador.user_django.id != user.id:
-            return JsonResponse({
-                'success': False,
-                'error': f'Este colaborador já está vinculado ao usuário {colaborador.user_django.username}'
-            }, status=400)
+        # Guardar usuário anterior para log (se houver)
+        usuario_anterior = colaborador.user_django.username if colaborador.user_django else None
         
         # Desvincular colaborador anterior do usuário (se houver)
         Colaborador.objects.filter(user_django=user).update(user_django=None)
         
-        # Vincular novo colaborador
+        # Vincular novo colaborador (transferindo de outro usuário se necessário)
         colaborador.user_django = user
         colaborador.save()
         
-        logger.info(f'{request.user.username} vinculou {colaborador.nome_completo} ao usuário {user.username}')
+        if usuario_anterior and usuario_anterior != user.username:
+            logger.info(f'{request.user.username} transferiu {colaborador.nome_completo} de {usuario_anterior} para {user.username}')
+            message = f'{colaborador.nome_completo} transferido de {usuario_anterior} para {user.username}'
+        else:
+            logger.info(f'{request.user.username} vinculou {colaborador.nome_completo} ao usuário {user.username}')
+            message = f'{colaborador.nome_completo} vinculado a {user.username}'
         
         return JsonResponse({
             'success': True,
             'colaborador_nome': colaborador.nome_completo,
             'colaborador_setor': colaborador.setor.nome if colaborador.setor else '-',
-            'message': f'{colaborador.nome_completo} vinculado a {user.username}'
+            'message': message
         })
     
     except User.DoesNotExist:
@@ -2557,35 +2559,40 @@ def api_vincular_colaborador(request):
 @login_required
 def api_colaboradores_sem_vinculo(request):
     """
-    API para listar colaboradores que não estão vinculados a nenhum usuário Django.
+    API para listar colaboradores para vinculação.
+    Retorna todos colaboradores ativos, marcando os que já têm vínculo.
     """
     if not request.user.is_superuser and not request.user.is_staff:
         return JsonResponse({'success': False, 'error': 'Permissão negada'}, status=403)
     
     try:
-        # Buscar colaboradores sem vínculo ou com vínculo ao usuário específico
         user_id = request.GET.get('user_id')
+        search = request.GET.get('search', '').strip()
         
+        # Buscar TODOS os colaboradores ativos
         colaboradores = Colaborador.objects.filter(
-            user_django__isnull=True,
             ativo=True
-        ).select_related('setor').order_by('nome_completo')
+        ).select_related('setor', 'user_django').order_by('nome_completo')
         
-        # Incluir o colaborador atualmente vinculado ao usuário, se houver
-        if user_id:
-            vinculado = Colaborador.objects.filter(user_django_id=user_id).first()
-            if vinculado:
-                colaboradores = list(colaboradores)
-                colaboradores.insert(0, vinculado)
+        # Filtrar por busca se fornecido
+        if search:
+            colaboradores = colaboradores.filter(nome_completo__icontains=search)
         
         data = []
         for colab in colaboradores:
+            # Verificar se está vinculado ao usuário atual
+            is_vinculado_usuario_atual = colab.user_django_id == int(user_id) if user_id and colab.user_django_id else False
+            # Verificar se está vinculado a outro usuário
+            vinculado_outro = colab.user_django_id and not is_vinculado_usuario_atual
+            
             data.append({
                 'id': colab.id,
                 'nome': colab.nome_completo,
                 'setor': colab.setor.nome if colab.setor else '-',
                 'cargo': colab.cargo or '-',
-                'vinculado': colab.user_django_id == int(user_id) if user_id else False
+                'vinculado': is_vinculado_usuario_atual,
+                'vinculado_outro': vinculado_outro,
+                'usuario_vinculado': colab.user_django.username if colab.user_django else None
             })
         
         return JsonResponse({'success': True, 'colaboradores': data})
@@ -2671,4 +2678,96 @@ def api_criar_usuario(request):
     except Exception as e:
         logger.error(f'Erro ao criar usuário: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def criar_usuario_view(request):
+    """
+    View para criar um novo usuário no sistema com formulário dedicado.
+    O admin define username e senha.
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        messages.error(request, 'Você não tem permissão para acessar esta página.')
+        return redirect('home')
+    
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
+        password_confirm = request.POST.get('password_confirm', '').strip()
+        email = request.POST.get('email', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        is_staff = request.POST.get('is_staff') == 'on'
+        colaborador_id = request.POST.get('colaborador_id')
+        
+        errors = []
+        
+        # Validações
+        if not username:
+            errors.append('Nome de usuário é obrigatório.')
+        elif len(username) < 3:
+            errors.append('Nome de usuário deve ter pelo menos 3 caracteres.')
+        elif ' ' in username:
+            errors.append('Nome de usuário não pode conter espaços.')
+        elif User.objects.filter(username__iexact=username).exists():
+            errors.append('Este nome de usuário já está em uso.')
+        
+        if not password:
+            errors.append('Senha é obrigatória.')
+        elif len(password) < 6:
+            errors.append('Senha deve ter pelo menos 6 caracteres.')
+        elif password != password_confirm:
+            errors.append('As senhas não conferem.')
+        
+        if email and User.objects.filter(email__iexact=email).exists():
+            errors.append('Este e-mail já está em uso.')
+        
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            return render(request, 'rh/usuario_criar.html', {
+                'form_data': {
+                    'username': username,
+                    'email': email,
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'is_staff': is_staff,
+                    'colaborador_id': colaborador_id,
+                },
+                'colaboradores': Colaborador.objects.filter(user_django__isnull=True, ativo=True).select_related('setor').order_by('nome_completo')
+            })
+        
+        # Criar o usuário
+        user = User.objects.create_user(
+            username=username,
+            email=email or None,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            is_staff=is_staff,
+            is_active=True
+        )
+        
+        # Vincular colaborador se fornecido
+        if colaborador_id:
+            try:
+                colaborador = Colaborador.objects.get(id=colaborador_id, user_django__isnull=True)
+                colaborador.user_django = user
+                colaborador.save()
+            except Colaborador.DoesNotExist:
+                pass
+        
+        logger.info(f'Novo usuário criado: {username} por {request.user.username}')
+        messages.success(request, f'Usuário "{username}" criado com sucesso!')
+        return redirect('rh:detalhe_usuario', user_id=user.id)
+    
+    # GET - exibir formulário
+    colaboradores = Colaborador.objects.filter(
+        user_django__isnull=True, 
+        ativo=True
+    ).select_related('setor').order_by('nome_completo')
+    
+    return render(request, 'rh/usuario_criar.html', {
+        'colaboradores': colaboradores
+    })
 
