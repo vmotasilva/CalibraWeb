@@ -61,6 +61,8 @@ def get_all_subordinates(colaborador):
     Retorna um SET com os IDs de todos os subordinados (diretos e indiretos)
     de um colaborador, descendo toda a árvore hierárquica.
     
+    Usa abordagem iterativa com proteção contra ciclos para evitar RecursionError.
+    
     Args:
         colaborador: Objeto Colaborador
         
@@ -71,16 +73,29 @@ def get_all_subordinates(colaborador):
     from django.db.models import Q
     
     subordinados = set()
+    visitados = set()  # Para evitar ciclos
+    fila = [colaborador.id]  # IDs a processar
     
-    # Subordinados diretos (pessoas que têm este colaborador como lider, supervisor ou gerente)
-    diretos = Colaborador.objects.filter(
-        Q(lider=colaborador) | Q(supervisor=colaborador) | Q(gerente=colaborador)
-    )
-    
-    for direto in diretos:
-        subordinados.add(direto.id)
-        # Recursivamente adicionar subordinados indiretos
-        subordinados.update(get_all_subordinates(direto))
+    while fila:
+        atual_id = fila.pop(0)
+        
+        # Evitar processar o mesmo colaborador duas vezes (proteção contra ciclos)
+        if atual_id in visitados:
+            continue
+        visitados.add(atual_id)
+        
+        # Subordinados diretos deste colaborador
+        diretos_ids = list(Colaborador.objects.filter(
+            Q(lider_id=atual_id) | Q(supervisor_id=atual_id) | Q(gerente_id=atual_id)
+        ).exclude(
+            id=atual_id  # Excluir auto-referência
+        ).values_list('id', flat=True))
+        
+        for direto_id in diretos_ids:
+            if direto_id not in subordinados and direto_id != colaborador.id:
+                subordinados.add(direto_id)
+                if direto_id not in visitados:
+                    fila.append(direto_id)
     
     return subordinados
 
