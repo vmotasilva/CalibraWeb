@@ -114,6 +114,14 @@
                         <li><a class="dropdown-item" href="{% url 'fornecedores:pergunta_list' %}">Perguntas de Avaliação</a></li>
                     </ul>
                 </li>
+
+                {% if user.is_superuser or user.is_staff %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'rh:listar_usuarios' %}">
+                        <i class="bi bi-person-gear"></i> Usuários
+                    </a>
+                </li>
+                {% endif %}
             </ul>
 
             <div class="d-flex align-items-center border-start border-secondary ps-3 ms-2">

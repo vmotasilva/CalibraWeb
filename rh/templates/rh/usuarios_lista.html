@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Gerenciar Usuários - Calibra QMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .user-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .user-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
+    
+    .badge-superuser {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .badge-staff {
+        background-color: #fd7e14;
+        color: white;
+    }
+    
+    .search-box {
+        max-width: 350px;
+    }
+    
+    .stats-card {
+        border-left: 4px solid;
+    }
+    
+    .stats-card.users { border-left-color: #0d6efd; }
+    .stats-card.superusers { border-left-color: #dc3545; }
+    .stats-card.staff { border-left-color: #fd7e14; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1 class="h3 d-flex align-items-center gap-2">
+                <i class="bi bi-people-fill text-primary"></i>
+                Gerenciar Usuários
+            </h1>
+            <p class="text-muted mb-0">Gerencie os usuários e suas permissões no sistema</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{% url 'home' %}" class="btn btn-secondary">
+                <i class="bi bi-house"></i> Voltar ao Início
+            </a>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card stats-card users">
+                <div class="card-body py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-0 small">Total de Usuários</p>
+                            <h3 class="mb-0 text-primary fw-bold">{{ total_usuarios }}</h3>
+                        </div>
+                        <i class="bi bi-people text-primary opacity-25" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card superusers">
+                <div class="card-body py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-0 small">Superusuários</p>
+                            <h3 class="mb-0 text-danger fw-bold">
+                                {% with superusers=usuarios|length %}
+                                    {% for u in usuarios %}{% if u.is_superuser %}{% with count=1 %}{% endwith %}{% endif %}{% endfor %}
+                                {% endwith %}
+                                {{ usuarios|length|default:0 }}
+                            </h3>
+                        </div>
+                        <i class="bi bi-shield-fill-check text-danger opacity-25" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stats-card staff">
+                <div class="card-body py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-0 small">Staff (Admin)</p>
+                            <h3 class="mb-0 text-warning fw-bold">-</h3>
+                        </div>
+                        <i class="bi bi-gear-fill text-warning opacity-25" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Busca -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="input-group search-box">
+                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="searchUser" placeholder="Buscar por nome de usuário ou colaborador...">
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Usuários -->
+    <div class="row" id="usersList">
+        {% for u in usuarios %}
+        <div class="col-lg-4 col-md-6 mb-4 user-item" 
+             data-username="{{ u.user.username|lower }}"
+             data-colaborador="{{ u.colaborador_nome|default:''|lower }}">
+            <a href="{% url 'rh:detalhe_usuario' u.user.id %}" class="text-decoration-none">
+                <div class="card user-card h-100 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="user-avatar bg-{{ u.is_superuser|yesno:'danger,primary' }} bg-opacity-10 text-{{ u.is_superuser|yesno:'danger,primary' }} me-3">
+                                {{ u.user.username|slice:":1"|upper }}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h5 class="mb-0 text-dark">{{ u.user.username }}</h5>
+                                    {% if u.is_superuser %}
+                                        <span class="badge badge-superuser" title="Superusuário">
+                                            <i class="bi bi-crown-fill"></i>
+                                        </span>
+                                    {% elif u.is_staff %}
+                                        <span class="badge badge-staff" title="Staff">
+                                            <i class="bi bi-gear-fill"></i>
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if u.colaborador_nome %}
+                                    <p class="text-muted mb-1 small">
+                                        <i class="bi bi-person"></i> {{ u.colaborador_nome }}
+                                    </p>
+                                    <p class="text-muted mb-0 small">
+                                        <i class="bi bi-building"></i> {{ u.colaborador_setor }}
+                                        {% if u.colaborador_cargo != '-' %}
+                                            • {{ u.colaborador_cargo }}
+                                        {% endif %}
+                                    </p>
+                                {% else %}
+                                    <p class="text-muted mb-0 small fst-italic">
+                                        <i class="bi bi-person-dash"></i> Sem colaborador vinculado
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <hr class="my-2">
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="bi bi-key"></i>
+                                {% if u.is_superuser %}
+                                    Acesso Total
+                                {% else %}
+                                    {{ u.perms_count }} permissões
+                                {% endif %}
+                            </small>
+                            <span class="text-primary">
+                                <i class="bi bi-chevron-right"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle me-2"></i>
+                Nenhum usuário encontrado.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchUser');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        document.querySelectorAll('.user-item').forEach(item => {
+            const username = item.dataset.username || '';
+            const colaborador = item.dataset.colaborador || '';
+            const matches = username.includes(searchTerm) || colaborador.includes(searchTerm);
+            item.style.display = matches ? '' : 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

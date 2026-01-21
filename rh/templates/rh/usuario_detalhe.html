@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ usuario.username }} - Permissões - Calibra QMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.5rem;
+        padding: 2rem;
+    }
+    
+    .user-avatar-large {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: bold;
+        background: rgba(255, 255, 255, 0.2);
+        border: 3px solid rgba(255, 255, 255, 0.5);
+    }
+    
+    .badge-superuser {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .badge-staff {
+        background-color: #fd7e14;
+        color: white;
+    }
+    
+    .perm-card {
+        border-left: 4px solid;
+        transition: all 0.2s ease;
+    }
+    
+    .perm-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .perm-card.border-primary { border-left-color: #0d6efd; }
+    .perm-card.border-success { border-left-color: #198754; }
+    .perm-card.border-warning { border-left-color: #ffc107; }
+    .perm-card.border-danger { border-left-color: #dc3545; }
+    
+    .perm-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+    
+    .perm-checkbox:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    
+    .perm-item {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .perm-item:last-child {
+        border-bottom: none;
+    }
+    
+    .saving-indicator {
+        display: none;
+        color: #0d6efd;
+    }
+    
+    .saving-indicator.active {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .staff-toggle {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .staff-toggle:hover {
+        opacity: 0.8;
+    }
+    
+    .info-item {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .info-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header com dados do usuário -->
+    <div class="user-header mb-4">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="d-flex align-items-center gap-4">
+                <div class="user-avatar-large">
+                    {{ usuario.username|slice:":1"|upper }}
+                </div>
+                <div>
+                    <h2 class="mb-1 d-flex align-items-center gap-2">
+                        {{ usuario.username }}
+                        {% if usuario.is_superuser %}
+                            <span class="badge badge-superuser" title="Superusuário - Acesso Total">
+                                <i class="bi bi-crown-fill"></i> Superusuário
+                            </span>
+                        {% elif usuario.is_staff %}
+                            <span class="badge badge-staff" title="Staff - Acesso ao Admin">
+                                <i class="bi bi-gear-fill"></i> Staff
+                            </span>
+                        {% endif %}
+                    </h2>
+                    {% if colaborador %}
+                        <p class="mb-0 opacity-75">
+                            <i class="bi bi-person"></i> {{ colaborador.nome_completo }}
+                        </p>
+                        <p class="mb-0 opacity-75 small">
+                            <i class="bi bi-building"></i> {{ colaborador.setor.nome|default:'-' }}
+                            {% if colaborador.cargo %}• {{ colaborador.cargo }}{% endif %}
+                        </p>
+                    {% else %}
+                        <p class="mb-0 opacity-75 fst-italic">
+                            <i class="bi bi-person-dash"></i> Sem colaborador vinculado
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <span class="saving-indicator me-3" id="savingIndicator">
+                    <span class="spinner-border spinner-border-sm"></span>
+                    Salvando...
+                </span>
+                <a href="{% url 'rh:listar_usuarios' %}" class="btn btn-light">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Informações do Usuário -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informações</h5>
+                </div>
+                <div class="card-body">
+                    <div class="info-item">
+                        <small class="text-muted d-block">Nome de Usuário</small>
+                        <strong>{{ usuario.username }}</strong>
+                    </div>
+                    <div class="info-item">
+                        <small class="text-muted d-block">E-mail</small>
+                        <strong>{{ usuario.email|default:'-' }}</strong>
+                    </div>
+                    <div class="info-item">
+                        <small class="text-muted d-block">Último Login</small>
+                        <strong>{{ usuario.last_login|date:"d/m/Y H:i"|default:"Nunca" }}</strong>
+                    </div>
+                    <div class="info-item">
+                        <small class="text-muted d-block">Cadastrado em</small>
+                        <strong>{{ usuario.date_joined|date:"d/m/Y" }}</strong>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted d-block">Status de Staff</small>
+                            <span class="badge {% if usuario.is_staff %}badge-staff{% else %}bg-secondary{% endif %}">
+                                {% if usuario.is_staff %}Staff Ativo{% else %}Usuário Comum{% endif %}
+                            </span>
+                        </div>
+                        {% if not usuario.is_superuser and request.user.is_superuser %}
+                        <button class="btn btn-sm btn-outline-warning staff-toggle" 
+                                data-user-id="{{ usuario.id }}"
+                                title="Alternar status de Staff">
+                            <i class="bi bi-toggle-{% if usuario.is_staff %}on{% else %}off{% endif %}"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid de Permissões -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-shield-lock"></i> Permissões do Módulo RH</h5>
+                    {% if usuario.is_superuser %}
+                        <span class="badge bg-danger">
+                            <i class="bi bi-infinity"></i> Superusuário tem acesso total
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if usuario.is_superuser %}
+                        <div class="alert alert-info mb-4">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Superusuários</strong> têm acesso total ao sistema automaticamente. 
+                            Não é necessário configurar permissões individuais.
+                        </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        {% for grupo in permissoes_grupos %}
+                        <div class="col-md-6 mb-4">
+                            <div class="card perm-card border-{{ grupo.cor }} h-100">
+                                <div class="card-header bg-{{ grupo.cor }} bg-opacity-10 border-0">
+                                    <h6 class="mb-0 text-{{ grupo.cor }}">
+                                        <i class="{{ grupo.icone }}"></i> {{ grupo.nome }}
+                                    </h6>
+                                </div>
+                                <div class="card-body py-2">
+                                    {% for codename, label in grupo.permissoes %}
+                                    <div class="perm-item d-flex justify-content-between align-items-center">
+                                        <label class="form-check-label mb-0" for="perm_{{ codename }}">
+                                            {{ label }}
+                                        </label>
+                                        <input type="checkbox" 
+                                               class="form-check-input perm-checkbox"
+                                               id="perm_{{ codename }}"
+                                               data-codename="{{ codename }}"
+                                               data-user-id="{{ usuario.id }}"
+                                               {% if codename in user_perms or usuario.is_superuser %}checked{% endif %}
+                                               {% if usuario.is_superuser %}disabled{% endif %}>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if not usuario.is_superuser %}
+                    <div class="alert alert-secondary mt-2 mb-0">
+                        <small>
+                            <i class="bi bi-lightbulb"></i>
+                            <strong>Dica:</strong> Clique nos checkboxes para ativar ou desativar permissões. 
+                            As alterações são salvas automaticamente.
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast de notificação -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+    <div id="toastNotification" class="toast align-items-center border-0" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMessage">
+                Permissão atualizada!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const savingIndicator = document.getElementById('savingIndicator');
+    const toast = new bootstrap.Toast(document.getElementById('toastNotification'), { delay: 2000 });
+    const toastEl = document.getElementById('toastNotification');
+    const toastMessage = document.getElementById('toastMessage');
+    
+    function showToast(message, isSuccess = true) {
+        toastEl.classList.remove('text-bg-success', 'text-bg-danger');
+        toastEl.classList.add(isSuccess ? 'text-bg-success' : 'text-bg-danger');
+        toastMessage.textContent = message;
+        toast.show();
+    }
+    
+    function showSaving(show) {
+        savingIndicator.classList.toggle('active', show);
+    }
+    
+    // Handler para checkboxes de permissão
+    document.querySelectorAll('.perm-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', async function() {
+            const userId = this.dataset.userId;
+            const codename = this.dataset.codename;
+            const acao = this.checked ? 'add' : 'remove';
+            
+            showSaving(true);
+            
+            try {
+                const response = await fetch("{% url 'rh:api_atualizar_permissao' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        codename: codename,
+                        acao: acao
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message || 'Permissão atualizada!', true);
+                } else {
+                    showToast(data.error || 'Erro ao atualizar', false);
+                    this.checked = !this.checked;
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast('Erro de conexão', false);
+                this.checked = !this.checked;
+            } finally {
+                showSaving(false);
+            }
+        });
+    });
+    
+    // Handler para toggle de staff
+    document.querySelectorAll('.staff-toggle').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const userId = this.dataset.userId;
+            
+            showSaving(true);
+            
+            try {
+                const response = await fetch("{% url 'rh:api_toggle_staff' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message, true);
+                    // Recarregar página para atualizar o estado
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.error || 'Erro ao alternar staff', false);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast('Erro de conexão', false);
+            } finally {
+                showSaving(false);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

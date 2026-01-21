@@ -2062,3 +2062,133 @@ def api_toggle_staff(request):
     except Exception as e:
         logger.error(f'Erro ao alternar staff: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+# ==============================================================================
+# SEÇÃO USUÁRIOS - GESTÃO DE USUÁRIOS E PERMISSÕES
+# ==============================================================================
+
+@login_required
+def listar_usuarios_view(request):
+    """
+    View para listar todos os usuários do sistema.
+    Acessível apenas por superusuários ou staff.
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        messages.error(request, 'Você não tem permissão para acessar esta página.')
+        return redirect('home')
+    
+    # Buscar todos os usuários ativos
+    usuarios = User.objects.filter(is_active=True).select_related().order_by('username')
+    
+    # Montar dados dos usuários
+    usuarios_data = []
+    for user in usuarios:
+        # Verificar se tem o colaborador vinculado
+        try:
+            colaborador = Colaborador.objects.get(user_django=user)
+            colaborador_nome = colaborador.nome_completo
+            colaborador_setor = colaborador.setor.nome if colaborador.setor else '-'
+            colaborador_cargo = colaborador.cargo or '-'
+        except Colaborador.DoesNotExist:
+            colaborador_nome = None
+            colaborador_setor = '-'
+            colaborador_cargo = '-'
+        
+        # Contar permissões
+        perms_count = user.user_permissions.filter(content_type__app_label='rh').count()
+        
+        usuarios_data.append({
+            'user': user,
+            'colaborador_nome': colaborador_nome,
+            'colaborador_setor': colaborador_setor,
+            'colaborador_cargo': colaborador_cargo,
+            'perms_count': perms_count,
+            'is_superuser': user.is_superuser,
+            'is_staff': user.is_staff,
+        })
+    
+    context = {
+        'usuarios': usuarios_data,
+        'total_usuarios': len(usuarios_data),
+    }
+    
+    return render(request, 'rh/usuarios_lista.html', context)
+
+
+@login_required
+def detalhe_usuario_view(request, user_id):
+    """
+    View para exibir detalhes e permissões de um usuário específico.
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        messages.error(request, 'Você não tem permissão para acessar esta página.')
+        return redirect('home')
+    
+    user = get_object_or_404(User, id=user_id)
+    
+    # Buscar colaborador vinculado
+    try:
+        colaborador = Colaborador.objects.get(user_django=user)
+    except Colaborador.DoesNotExist:
+        colaborador = None
+    
+    # Permissões do usuário
+    user_perms = set(user.user_permissions.filter(content_type__app_label='rh').values_list('codename', flat=True))
+    
+    # Definir grupos de permissões por modelo
+    permissoes_grupos = [
+        {
+            'nome': 'Colaborador',
+            'cor': 'primary',
+            'icone': 'bi-person',
+            'permissoes': [
+                ('view_colaborador', 'Visualizar'),
+                ('add_colaborador', 'Adicionar'),
+                ('change_colaborador', 'Editar'),
+                ('delete_colaborador', 'Excluir'),
+            ]
+        },
+        {
+            'nome': 'Documento Pessoal',
+            'cor': 'success',
+            'icone': 'bi-file-earmark-text',
+            'permissoes': [
+                ('view_documentopessoal', 'Visualizar'),
+                ('add_documentopessoal', 'Adicionar'),
+                ('change_documentopessoal', 'Editar'),
+                ('delete_documentopessoal', 'Excluir'),
+            ]
+        },
+        {
+            'nome': 'Férias',
+            'cor': 'warning',
+            'icone': 'bi-calendar-check',
+            'permissoes': [
+                ('view_ferias', 'Visualizar'),
+                ('add_ferias', 'Adicionar'),
+                ('change_ferias', 'Editar'),
+                ('delete_ferias', 'Excluir'),
+            ]
+        },
+        {
+            'nome': 'Ocorrência',
+            'cor': 'danger',
+            'icone': 'bi-exclamation-triangle',
+            'permissoes': [
+                ('view_ocorrencia', 'Visualizar'),
+                ('add_ocorrencia', 'Adicionar'),
+                ('change_ocorrencia', 'Editar'),
+                ('delete_ocorrencia', 'Excluir'),
+            ]
+        },
+    ]
+    
+    context = {
+        'usuario': user,
+        'colaborador': colaborador,
+        'user_perms': user_perms,
+        'permissoes_grupos': permissoes_grupos,
+    }
+    
+    return render(request, 'rh/usuario_detalhe.html', context)

@@ -30,8 +30,9 @@ urlpatterns = [
     # Exportação de Férias
     path('gestao-ferias/exportar/', views.exportar_ferias_view, name='exportar_ferias'),
     
-    # Gerenciamento de Permissões
-    path('permissoes/', views.gerenciar_permissoes_view, name='gerenciar_permissoes'),
+    # Seção Usuários - Gerenciamento de Usuários e Permissões
+    path('usuarios/', views.listar_usuarios_view, name='listar_usuarios'),
+    path('usuarios/<int:user_id>/', views.detalhe_usuario_view, name='detalhe_usuario'),
     path('api/permissoes/atualizar/', views.api_atualizar_permissao, name='api_atualizar_permissao'),
     path('api/permissoes/atualizar-lote/', views.api_atualizar_permissoes_lote, name='api_atualizar_permissoes_lote'),
     path('api/permissoes/toggle-staff/', views.api_toggle_staff, name='api_toggle_staff'),
