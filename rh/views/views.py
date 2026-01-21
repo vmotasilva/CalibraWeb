@@ -208,11 +208,36 @@ def modulo_rh_view(request):
 
     # Extrair opções de filtro usando dados já carregados em memória
     # EVITAR: .exclude().values_list() - reavalia o queryset inteiro!
-    setores_filtro = []
-    lideres_filtro = []
-    supervisores_filtro = []
-    gerentes_filtro = []
-    turnos_filtro = []
+    
+    # ⚡ OTIMIZAÇÃO: Buscar líderes, supervisores e gerentes únicos dos colaboradores visíveis
+    # Usar queries separadas e eficientes para popular os filtros
+    
+    # Setores únicos dos colaboradores visíveis
+    setor_ids = funcionarios_base.values_list('setor_id', flat=True).distinct()
+    setores_filtro = Setor.objects.filter(id__in=setor_ids).order_by('nome')
+    
+    # Líderes únicos (excluindo nulos)
+    lider_ids = funcionarios_base.exclude(lider__isnull=True).values_list('lider_id', flat=True).distinct()
+    lideres_filtro = Colaborador.objects.filter(id__in=lider_ids).order_by('nome_completo')
+    
+    # Supervisores únicos (excluindo nulos)
+    supervisor_ids = funcionarios_base.exclude(supervisor__isnull=True).values_list('supervisor_id', flat=True).distinct()
+    supervisores_filtro = Colaborador.objects.filter(id__in=supervisor_ids).order_by('nome_completo')
+    
+    # Gerentes únicos (excluindo nulos)
+    gerente_ids = funcionarios_base.exclude(gerente__isnull=True).values_list('gerente_id', flat=True).distinct()
+    gerentes_filtro = Colaborador.objects.filter(id__in=gerente_ids).order_by('nome_completo')
+    
+    # Turnos únicos dos colaboradores visíveis - como tuplas (codigo, nome) para o template
+    from core.models import TURNOS_CHOICES
+    turnos_dict = dict(TURNOS_CHOICES)
+    # Usar set() para garantir unicidade e depois ordenar
+    turnos_usados = set(funcionarios_base.exclude(turno__isnull=True).exclude(turno='').values_list('turno', flat=True))
+    # Criar lista ordenada de tuplas (codigo, nome) apenas para turnos válidos
+    turnos_filtro = sorted(
+        [(codigo, turnos_dict.get(codigo, codigo)) for codigo in turnos_usados if codigo in turnos_dict],
+        key=lambda x: x[1]  # Ordenar pelo nome do turno
+    )
     
     # ⚡ OTIMIZAÇÃO: Contar TODOS os colaboradores acessíveis ANTES do filtro
     total_all_colaboradores = funcionarios_base.count()
@@ -1513,7 +1538,6 @@ def api_colaboradores_filtrados(request):
     # Filtro por Status
     status_filtros = request.GET.getlist('status')
     if status_filtros:
-        from django.db.models import Q
         status_query = Q()
         for status in status_filtros:
             if status == 'ATIVO':
@@ -1527,20 +1551,29 @@ def api_colaboradores_filtrados(request):
         if status_query:
             funcionarios = funcionarios.filter(status_query)
 
-    # Filtro por Lider
+    # Filtro por Lider - Incluir o próprio líder nos resultados
     lider_ids = request.GET.getlist('lider')
     if lider_ids:
-        funcionarios = funcionarios.filter(lider_id__in=lider_ids)
+        # Mostrar colaboradores com esse líder E o próprio líder
+        funcionarios = funcionarios.filter(
+            Q(lider_id__in=lider_ids) | Q(id__in=lider_ids)
+        )
 
-    # Filtro por Supervisor
+    # Filtro por Supervisor - Incluir o próprio supervisor nos resultados
     supervisor_ids = request.GET.getlist('supervisor')
     if supervisor_ids:
-        funcionarios = funcionarios.filter(supervisor_id__in=supervisor_ids)
+        # Mostrar colaboradores com esse supervisor E o próprio supervisor
+        funcionarios = funcionarios.filter(
+            Q(supervisor_id__in=supervisor_ids) | Q(id__in=supervisor_ids)
+        )
 
-    # Filtro por Gerente
+    # Filtro por Gerente - Incluir o próprio gerente nos resultados
     gerente_ids = request.GET.getlist('gerente')
     if gerente_ids:
-        funcionarios = funcionarios.filter(gerente_id__in=gerente_ids)
+        # Mostrar colaboradores com esse gerente E o próprio gerente
+        funcionarios = funcionarios.filter(
+            Q(gerente_id__in=gerente_ids) | Q(id__in=gerente_ids)
+        )
 
     # Filtro por Setor
     setor_ids = request.GET.getlist('setor')
@@ -1551,6 +1584,10 @@ def api_colaboradores_filtrados(request):
     turnos = request.GET.getlist('turno')
     if turnos:
         funcionarios = funcionarios.filter(turno__in=turnos)
+
+    # Filtro por Treinamentos (PENDENTE ou EM_DIA)
+    # Este filtro será aplicado após calcular as estatísticas de treinamento
+    treino_filtros = request.GET.getlist('treino')
 
     # Construir resposta JSON
     dados = []
@@ -1565,6 +1602,21 @@ def api_colaboradores_filtrados(request):
                     vigentes += 1
                 else:
                     pendentes += 1
+        
+        # Aplicar filtro de treinamentos se selecionado
+        if treino_filtros:
+            tem_pendentes = pendentes > 0
+            em_dia = pendentes == 0
+            
+            # Verificar se o colaborador atende ao filtro
+            passa_filtro = False
+            if 'PENDENTE' in treino_filtros and tem_pendentes:
+                passa_filtro = True
+            if 'EM_DIA' in treino_filtros and em_dia:
+                passa_filtro = True
+            
+            if not passa_filtro:
+                continue  # Pular este colaborador
         
         dados.append({
             'id': colab.id,

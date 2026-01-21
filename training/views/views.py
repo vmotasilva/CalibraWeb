@@ -476,7 +476,8 @@ def dashboard_treinamentos_view(request):
         )
         registros_lider_list = list(registros_lider)
         vigentes = sum(1 for r in registros_lider_list if r.status_treinamento == 'OK')
-        pendentes = sum(1 for r in registros_lider_list if r.status_treinamento == 'PENDENTE')
+        # NAO_INICIADO também é pendente (não treinado ainda)
+        pendentes = sum(1 for r in registros_lider_list if r.status_treinamento in ('PENDENTE', 'NAO_INICIADO'))
         
         # Incluir se tem qualquer registro
         total = vigentes + pendentes
@@ -526,7 +527,8 @@ def dashboard_treinamentos_view(request):
             )
             registros_setor_list = list(registros_setor)
             vigentes = sum(1 for r in registros_setor_list if r.status_treinamento == 'OK')
-            pendentes = sum(1 for r in registros_setor_list if r.status_treinamento == 'PENDENTE')
+            # NAO_INICIADO também é pendente (não treinado ainda)
+            pendentes = sum(1 for r in registros_setor_list if r.status_treinamento in ('PENDENTE', 'NAO_INICIADO'))
             
             # Incluir se tem qualquer registro
             total = vigentes + pendentes

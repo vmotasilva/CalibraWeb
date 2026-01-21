@@ -632,6 +632,11 @@ function buildFilterParams() {
         params.append('turno', cb.value);
     });
     
+    // Treinamentos
+    document.querySelectorAll('input[data-category="treino"]:checked').forEach(cb => {
+        params.append('treino', cb.value);
+    });
+    
     return params.toString();
 }
 
