@@ -41,4 +41,5 @@ urlpatterns = [
     path('api/usuarios/reset-password/', views.api_reset_password, name='api_reset_password'),
     path('api/usuarios/vincular-colaborador/', views.api_vincular_colaborador, name='api_vincular_colaborador'),
     path('api/colaboradores-sem-vinculo/', views.api_colaboradores_sem_vinculo, name='api_colaboradores_sem_vinculo'),
+    path('api/usuarios/criar/', views.api_criar_usuario, name='api_criar_usuario'),
 ]

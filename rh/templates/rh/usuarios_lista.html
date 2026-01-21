@@ -62,6 +62,9 @@
             <p class="text-muted mb-0">Gerencie os usuários e suas permissões no sistema</p>
         </div>
         <div class="col-md-6 text-end">
+            <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#modalNovoUsuario">
+                <i class="bi bi-person-plus-fill"></i> Novo Usuário
+            </button>
             <a href="{% url 'home' %}" class="btn btn-secondary">
                 <i class="bi bi-house"></i> Voltar ao Início
             </a>
@@ -203,11 +206,125 @@
 
 {% endblock %}
 
+<!-- Modal Novo Usuário -->
+<div class="modal fade" id="modalNovoUsuario" tabindex="-1" aria-labelledby="modalNovoUsuarioLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalNovoUsuarioLabel">
+                    <i class="bi bi-person-plus-fill me-2"></i>Criar Novo Usuário
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNovoUsuario">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="novoUsername" class="form-label fw-bold">
+                                Nome de Usuário <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="novoUsername" required 
+                                   placeholder="Ex: joao.silva" minlength="3">
+                            <div class="form-text">Mínimo 3 caracteres, sem espaços</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="novoEmail" class="form-label fw-bold">E-mail</label>
+                            <input type="email" class="form-control" id="novoEmail" 
+                                   placeholder="Ex: joao.silva@empresa.com">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="novoFirstName" class="form-label fw-bold">Nome</label>
+                            <input type="text" class="form-control" id="novoFirstName" 
+                                   placeholder="Ex: João">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="novoLastName" class="form-label fw-bold">Sobrenome</label>
+                            <input type="text" class="form-control" id="novoLastName" 
+                                   placeholder="Ex: Silva">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="novoColaborador" class="form-label fw-bold">Vincular Colaborador</label>
+                            <select class="form-select" id="novoColaborador">
+                                <option value="">-- Selecione (opcional) --</option>
+                            </select>
+                            <div class="form-text">Colaboradores ainda não vinculados a usuários</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Permissões</label>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="novoIsStaff">
+                                <label class="form-check-label" for="novoIsStaff">
+                                    <span class="badge bg-warning text-dark">Staff</span>
+                                    Acesso ao painel administrativo
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Uma <strong>senha temporária</strong> será gerada automaticamente. 
+                        Anote-a para informar ao usuário.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnCriarUsuario">
+                    <i class="bi bi-check-lg me-1"></i>Criar Usuário
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Senha Temporária -->
+<div class="modal fade" id="modalSenhaTemp" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle-fill me-2"></i>Usuário Criado com Sucesso!
+                </h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="bi bi-person-check display-1 text-success"></i>
+                </div>
+                <p class="mb-2">O usuário <strong id="usuarioCriado"></strong> foi criado.</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>ATENÇÃO!</strong> Anote a senha temporária abaixo:
+                </div>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control form-control-lg text-center font-monospace" 
+                           id="senhaTemporariaResult" readonly>
+                    <button class="btn btn-outline-primary" type="button" id="btnCopiarSenhaTemp" title="Copiar">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                <p class="text-muted small">
+                    O usuário deverá trocar esta senha no primeiro acesso e configurar o 2FA.
+                </p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-primary" id="btnFecharSenhaTemp">
+                    <i class="bi bi-check-lg me-1"></i>Entendi, Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchUser');
     
+    // Busca de usuários
     searchInput.addEventListener('input', function() {
         const searchTerm = this.value.toLowerCase();
         document.querySelectorAll('.user-item').forEach(item => {
@@ -216,6 +333,117 @@ document.addEventListener('DOMContentLoaded', function() {
             const matches = username.includes(searchTerm) || colaborador.includes(searchTerm);
             item.style.display = matches ? '' : 'none';
         });
+    });
+    
+    // Carregar colaboradores sem vínculo quando abrir o modal
+    const modalNovoUsuario = document.getElementById('modalNovoUsuario');
+    modalNovoUsuario.addEventListener('show.bs.modal', function() {
+        carregarColaboradoresSemVinculo();
+        // Limpar formulário
+        document.getElementById('formNovoUsuario').reset();
+    });
+    
+    function carregarColaboradoresSemVinculo() {
+        const select = document.getElementById('novoColaborador');
+        select.innerHTML = '<option value="">Carregando...</option>';
+        
+        fetch('{% url "rh:api_colaboradores_sem_vinculo" %}')
+            .then(response => response.json())
+            .then(data => {
+                select.innerHTML = '<option value="">-- Selecione (opcional) --</option>';
+                if (data.success && data.colaboradores) {
+                    data.colaboradores.forEach(colab => {
+                        const option = document.createElement('option');
+                        option.value = colab.id;
+                        option.textContent = `${colab.nome} - ${colab.setor} (${colab.cargo})`;
+                        select.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao carregar colaboradores:', error);
+                select.innerHTML = '<option value="">Erro ao carregar</option>';
+            });
+    }
+    
+    // Criar novo usuário
+    document.getElementById('btnCriarUsuario').addEventListener('click', function() {
+        const btn = this;
+        const username = document.getElementById('novoUsername').value.trim();
+        const email = document.getElementById('novoEmail').value.trim();
+        const firstName = document.getElementById('novoFirstName').value.trim();
+        const lastName = document.getElementById('novoLastName').value.trim();
+        const isStaff = document.getElementById('novoIsStaff').checked;
+        const colaboradorId = document.getElementById('novoColaborador').value;
+        
+        // Validação
+        if (!username || username.length < 3) {
+            alert('Nome de usuário deve ter pelo menos 3 caracteres.');
+            return;
+        }
+        
+        if (username.includes(' ')) {
+            alert('Nome de usuário não pode conter espaços.');
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Criando...';
+        
+        fetch('{% url "rh:api_criar_usuario" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                username: username,
+                email: email,
+                first_name: firstName,
+                last_name: lastName,
+                is_staff: isStaff,
+                colaborador_id: colaboradorId || null
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Fechar modal de criação
+                bootstrap.Modal.getInstance(modalNovoUsuario).hide();
+                
+                // Mostrar modal com senha temporária
+                document.getElementById('usuarioCriado').textContent = username;
+                document.getElementById('senhaTemporariaResult').value = data.temp_password;
+                new bootstrap.Modal(document.getElementById('modalSenhaTemp')).show();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao criar usuário. Tente novamente.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Criar Usuário';
+        });
+    });
+    
+    // Copiar senha temporária
+    document.getElementById('btnCopiarSenhaTemp').addEventListener('click', function() {
+        const input = document.getElementById('senhaTemporariaResult');
+        input.select();
+        document.execCommand('copy');
+        this.innerHTML = '<i class="bi bi-check-lg"></i>';
+        setTimeout(() => {
+            this.innerHTML = '<i class="bi bi-clipboard"></i>';
+        }, 2000);
+    });
+    
+    // Fechar modal de senha e recarregar página
+    document.getElementById('btnFecharSenhaTemp').addEventListener('click', function() {
+        bootstrap.Modal.getInstance(document.getElementById('modalSenhaTemp')).hide();
+        window.location.reload();
     });
 });
 </script>

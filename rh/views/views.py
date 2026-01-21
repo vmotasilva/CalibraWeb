@@ -2594,3 +2594,81 @@ def api_colaboradores_sem_vinculo(request):
         logger.error(f'Erro ao listar colaboradores: {str(e)}')
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
+@login_required
+def api_criar_usuario(request):
+    """
+    API para criar um novo usuário no sistema.
+    Gera uma senha temporária aleatória.
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'Permissão negada'}, status=403)
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método não permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip()
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+        is_staff = data.get('is_staff', False)
+        colaborador_id = data.get('colaborador_id')
+        
+        # Validações
+        if not username:
+            return JsonResponse({'success': False, 'error': 'Nome de usuário é obrigatório'})
+        
+        if len(username) < 3:
+            return JsonResponse({'success': False, 'error': 'Nome de usuário deve ter pelo menos 3 caracteres'})
+        
+        # Verificar se usuário já existe
+        if User.objects.filter(username__iexact=username).exists():
+            return JsonResponse({'success': False, 'error': 'Este nome de usuário já está em uso'})
+        
+        # Verificar email duplicado (se fornecido)
+        if email and User.objects.filter(email__iexact=email).exists():
+            return JsonResponse({'success': False, 'error': 'Este e-mail já está em uso'})
+        
+        # Gerar senha temporária segura
+        temp_password = secrets.token_urlsafe(12)
+        
+        # Criar o usuário
+        user = User.objects.create_user(
+            username=username,
+            email=email or None,
+            password=temp_password,
+            first_name=first_name,
+            last_name=last_name,
+            is_staff=is_staff,
+            is_active=True
+        )
+        
+        # Vincular colaborador se fornecido
+        colaborador_nome = None
+        if colaborador_id:
+            try:
+                colaborador = Colaborador.objects.get(id=colaborador_id, user_django__isnull=True)
+                colaborador.user_django = user
+                colaborador.save()
+                colaborador_nome = colaborador.nome_completo
+            except Colaborador.DoesNotExist:
+                pass  # Ignorar se colaborador não existe ou já está vinculado
+        
+        logger.info(f'Novo usuário criado: {username} por {request.user.username}')
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Usuário {username} criado com sucesso!',
+            'user_id': user.id,
+            'temp_password': temp_password,
+            'colaborador_nome': colaborador_nome
+        })
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Dados inválidos'}, status=400)
+    except Exception as e:
+        logger.error(f'Erro ao criar usuário: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
