@@ -183,6 +183,11 @@
             </div>
         </div>
         <div class="d-flex gap-2 flex-nowrap">
+            {% if user.is_superuser or user.is_staff %}
+            <a href="{% url 'rh:gerenciar_permissoes' %}" class="btn btn-warning btn-sm shadow-sm" title="Gerenciar permissões de usuários">
+                <i class="bi bi-shield-lock"></i> Permissões
+            </a>
+            {% endif %}
             <a href="{% url 'rh:gestao_ferias' %}" class="btn btn-info text-white btn-sm shadow-sm" title="Gerenciar férias de todos os colaboradores">
                 <i class="bi bi-calendar-check"></i> Gestão de Férias
             </a>

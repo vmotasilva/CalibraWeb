@@ -1736,3 +1736,219 @@ def api_delete_colaboradores_multiple(request):
             'error': str(e)
         }, status=400)
 
+
+# ==============================================================================
+# GERENCIAMENTO DE PERMISSÕES
+# ==============================================================================
+
+from django.contrib.auth.models import User, Permission
+from django.contrib.contenttypes.models import ContentType
+
+
+@login_required
+def gerenciar_permissoes_view(request):
+    """
+    View para gerenciar permissões de usuários via interface customizada.
+    Apenas superusuários ou staff podem acessar.
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        messages.error(request, 'Você não tem permissão para acessar esta página.')
+        return redirect('modulo_rh')
+    
+    # Buscar todos os usuários ativos (exceto o próprio superusuário se não for admin)
+    usuarios = User.objects.filter(is_active=True).select_related().order_by('username')
+    
+    # Definir as permissões do módulo RH que queremos gerenciar
+    # Formato: (codename, nome_amigavel, model_name)
+    permissoes_rh = [
+        # Colaborador
+        ('view_colaborador', 'Visualizar Colaborador', 'colaborador'),
+        ('add_colaborador', 'Adicionar Colaborador', 'colaborador'),
+        ('change_colaborador', 'Editar Colaborador', 'colaborador'),
+        ('delete_colaborador', 'Excluir Colaborador', 'colaborador'),
+        # Documento Pessoal
+        ('view_documentopessoal', 'Visualizar Documento Pessoal', 'documentopessoal'),
+        ('add_documentopessoal', 'Adicionar Documento Pessoal', 'documentopessoal'),
+        ('change_documentopessoal', 'Editar Documento Pessoal', 'documentopessoal'),
+        ('delete_documentopessoal', 'Excluir Documento Pessoal', 'documentopessoal'),
+        # Férias
+        ('view_ferias', 'Visualizar Férias', 'ferias'),
+        ('add_ferias', 'Adicionar Férias', 'ferias'),
+        ('change_ferias', 'Editar Férias', 'ferias'),
+        ('delete_ferias', 'Excluir Férias', 'ferias'),
+        # Ocorrência
+        ('view_ocorrencia', 'Visualizar Ocorrência', 'ocorrencia'),
+        ('add_ocorrencia', 'Adicionar Ocorrência', 'ocorrencia'),
+        ('change_ocorrencia', 'Editar Ocorrência', 'ocorrencia'),
+        ('delete_ocorrencia', 'Excluir Ocorrência', 'ocorrencia'),
+    ]
+    
+    # Buscar as permissões do banco de dados
+    permissoes_db = {}
+    for codename, nome, model in permissoes_rh:
+        try:
+            perm = Permission.objects.get(codename=codename, content_type__app_label='rh')
+            permissoes_db[codename] = perm
+        except Permission.DoesNotExist:
+            logger.warning(f'Permissão {codename} não encontrada no banco.')
+    
+    # Montar dados dos usuários com suas permissões
+    usuarios_data = []
+    for user in usuarios:
+        user_perms = user.user_permissions.filter(content_type__app_label='rh').values_list('codename', flat=True)
+        user_perms_set = set(user_perms)
+        
+        # Verificar se tem o colaborador vinculado
+        try:
+            colaborador = Colaborador.objects.get(user_django=user)
+            colaborador_nome = colaborador.nome_completo
+            colaborador_setor = colaborador.setor.nome if colaborador.setor else '-'
+        except Colaborador.DoesNotExist:
+            colaborador_nome = None
+            colaborador_setor = '-'
+        
+        usuarios_data.append({
+            'user': user,
+            'colaborador_nome': colaborador_nome,
+            'colaborador_setor': colaborador_setor,
+            'permissoes': user_perms_set,
+            'is_superuser': user.is_superuser,
+            'is_staff': user.is_staff,
+        })
+    
+    context = {
+        'usuarios': usuarios_data,
+        'permissoes_rh': permissoes_rh,
+        'total_usuarios': len(usuarios_data),
+    }
+    
+    return render(request, 'rh/gerenciar_permissoes.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_atualizar_permissao(request):
+    """
+    API para atualizar uma permissão específica de um usuário.
+    Recebe: user_id, codename, acao ('add' ou 'remove')
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        codename = data.get('codename')
+        acao = data.get('acao')  # 'add' ou 'remove'
+        
+        if not all([user_id, codename, acao]):
+            return JsonResponse({'success': False, 'error': 'Dados incompletos'}, status=400)
+        
+        user = User.objects.get(id=user_id)
+        permission = Permission.objects.get(codename=codename, content_type__app_label='rh')
+        
+        if acao == 'add':
+            user.user_permissions.add(permission)
+            msg = f'Permissão "{permission.name}" adicionada para {user.username}'
+        elif acao == 'remove':
+            user.user_permissions.remove(permission)
+            msg = f'Permissão "{permission.name}" removida de {user.username}'
+        else:
+            return JsonResponse({'success': False, 'error': 'Ação inválida'}, status=400)
+        
+        logger.info(f'{request.user.username} alterou permissão: {msg}')
+        return JsonResponse({'success': True, 'message': msg})
+    
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Usuário não encontrado'}, status=404)
+    except Permission.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Permissão não encontrada'}, status=404)
+    except Exception as e:
+        logger.error(f'Erro ao atualizar permissão: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_atualizar_permissoes_lote(request):
+    """
+    API para atualizar múltiplas permissões de um usuário de uma vez.
+    Recebe: user_id, permissoes (lista de codenames a adicionar)
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        permissoes = data.get('permissoes', [])  # Lista de codenames
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': 'user_id é obrigatório'}, status=400)
+        
+        user = User.objects.get(id=user_id)
+        
+        # Remover todas as permissões RH atuais
+        perms_rh = Permission.objects.filter(content_type__app_label='rh')
+        user.user_permissions.remove(*perms_rh)
+        
+        # Adicionar as permissões selecionadas
+        if permissoes:
+            perms_to_add = Permission.objects.filter(
+                codename__in=permissoes,
+                content_type__app_label='rh'
+            )
+            user.user_permissions.add(*perms_to_add)
+        
+        logger.info(f'{request.user.username} atualizou permissões de {user.username}: {permissoes}')
+        return JsonResponse({
+            'success': True,
+            'message': f'Permissões de {user.username} atualizadas com sucesso.'
+        })
+    
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Usuário não encontrado'}, status=404)
+    except Exception as e:
+        logger.error(f'Erro ao atualizar permissões em lote: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_toggle_staff(request):
+    """
+    API para alternar o status de staff de um usuário.
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem alterar status de staff'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': 'user_id é obrigatório'}, status=400)
+        
+        user = User.objects.get(id=user_id)
+        
+        # Não permitir alterar o próprio status
+        if user.id == request.user.id:
+            return JsonResponse({'success': False, 'error': 'Você não pode alterar seu próprio status'}, status=400)
+        
+        user.is_staff = not user.is_staff
+        user.save()
+        
+        status_str = 'Staff' if user.is_staff else 'Usuário comum'
+        logger.info(f'{request.user.username} alterou {user.username} para {status_str}')
+        
+        return JsonResponse({
+            'success': True,
+            'is_staff': user.is_staff,
+            'message': f'{user.username} agora é {status_str}'
+        })
+    
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Usuário não encontrado'}, status=404)
+    except Exception as e:
+        logger.error(f'Erro ao alternar staff: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

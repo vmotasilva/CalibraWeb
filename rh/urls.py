@@ -26,4 +26,10 @@ urlpatterns = [
     path('api/grupos/', views.api_grupos, name='api_grupos'),
     path('api/lideres/', views.api_lideres, name='api_lideres'),
     path('api/supervisores/', views.api_supervisores, name='api_supervisores'),
+    
+    # Gerenciamento de Permissões
+    path('permissoes/', views.gerenciar_permissoes_view, name='gerenciar_permissoes'),
+    path('api/permissoes/atualizar/', views.api_atualizar_permissao, name='api_atualizar_permissao'),
+    path('api/permissoes/atualizar-lote/', views.api_atualizar_permissoes_lote, name='api_atualizar_permissoes_lote'),
+    path('api/permissoes/toggle-staff/', views.api_toggle_staff, name='api_toggle_staff'),
 ]
