@@ -44,14 +44,13 @@ class TwoFactorRequiredMiddleware:
             if not self._is_allowed_url(request):
                 # Verificar se o usuário tem 2FA configurado
                 if not user_has_device(request.user):
-                    # Adicionar mensagem de alerta apenas uma vez
-                    storage = messages.get_messages(request)
-                    existing_messages = [m.message for m in storage]
-                    storage.used = False  # Não consumir as mensagens
-                    
-                    alert_msg = "⚠️ Você precisa configurar a Autenticação em Duas Etapas (2FA) para acessar o sistema."
-                    if alert_msg not in existing_messages:
-                        messages.warning(request, alert_msg)
+                    # Adicionar mensagem de alerta (usando sessão para evitar duplicatas)
+                    if not request.session.get('_2fa_warning_shown'):
+                        messages.warning(
+                            request, 
+                            "⚠️ Você precisa configurar a Autenticação em Duas Etapas (2FA) para acessar o sistema."
+                        )
+                        request.session['_2fa_warning_shown'] = True
                     
                     return redirect('two_factor:setup')
         
