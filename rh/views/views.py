@@ -2178,9 +2178,135 @@ def detalhe_usuario_view(request, user_id):
     # Permissões do usuário - separar por app
     user_perms_rh = set(user.user_permissions.filter(content_type__app_label='rh').values_list('codename', flat=True))
     user_perms_qms = set(user.user_permissions.filter(content_type__app_label='qms').values_list('codename', flat=True))
+    user_perms_procedures = set(user.user_permissions.filter(content_type__app_label='procedures').values_list('codename', flat=True))
+    user_perms_fornecedores = set(user.user_permissions.filter(content_type__app_label='fornecedores').values_list('codename', flat=True))
     
     # Definir módulos com seus grupos de permissões
     modulos = [
+        {
+            'nome': 'Metrologia',
+            'cor': 'success',
+            'icone': 'bi-rulers',
+            'app_label': 'qms',
+            'grupos': [
+                {
+                    'nome': 'Instrumento',
+                    'icone': 'bi-tools',
+                    'permissoes': [
+                        ('view_instrumento', 'Visualizar'),
+                        ('add_instrumento', 'Adicionar'),
+                        ('change_instrumento', 'Editar'),
+                        ('delete_instrumento', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Calibração',
+                    'icone': 'bi-speedometer2',
+                    'permissoes': [
+                        ('view_calibracao', 'Visualizar'),
+                        ('add_calibracao', 'Adicionar'),
+                        ('change_calibracao', 'Editar'),
+                        ('delete_calibracao', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Certificado',
+                    'icone': 'bi-award',
+                    'permissoes': [
+                        ('view_certificado', 'Visualizar'),
+                        ('add_certificado', 'Adicionar'),
+                        ('change_certificado', 'Editar'),
+                        ('delete_certificado', 'Excluir'),
+                    ]
+                },
+            ]
+        },
+        {
+            'nome': 'Procedimentos',
+            'cor': 'info',
+            'icone': 'bi-file-earmark-text',
+            'app_label': 'procedures',
+            'grupos': [
+                {
+                    'nome': 'Procedimento',
+                    'icone': 'bi-file-earmark-ruled',
+                    'permissoes': [
+                        ('view_procedimento', 'Visualizar'),
+                        ('add_procedimento', 'Adicionar'),
+                        ('change_procedimento', 'Editar'),
+                        ('delete_procedimento', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Revisão',
+                    'icone': 'bi-clock-history',
+                    'permissoes': [
+                        ('view_procedimentorevisao', 'Visualizar'),
+                        ('add_procedimentorevisao', 'Adicionar'),
+                        ('change_procedimentorevisao', 'Editar'),
+                        ('delete_procedimentorevisao', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Disciplina',
+                    'icone': 'bi-book',
+                    'permissoes': [
+                        ('view_disciplina', 'Visualizar'),
+                        ('add_disciplina', 'Adicionar'),
+                        ('change_disciplina', 'Editar'),
+                        ('delete_disciplina', 'Excluir'),
+                    ]
+                },
+            ]
+        },
+        {
+            'nome': 'Treinamentos',
+            'cor': 'warning',
+            'icone': 'bi-mortarboard-fill',
+            'app_label': 'procedures',
+            'grupos': [
+                {
+                    'nome': 'Planejamento',
+                    'icone': 'bi-calendar-event',
+                    'permissoes': [
+                        ('view_planejamentotreinamento', 'Visualizar'),
+                        ('add_planejamentotreinamento', 'Adicionar'),
+                        ('change_planejamentotreinamento', 'Editar'),
+                        ('delete_planejamentotreinamento', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Registro',
+                    'icone': 'bi-journal-check',
+                    'permissoes': [
+                        ('view_registrotreinamento', 'Visualizar'),
+                        ('add_registrotreinamento', 'Adicionar'),
+                        ('change_registrotreinamento', 'Editar'),
+                        ('delete_registrotreinamento', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Lista de Presença',
+                    'icone': 'bi-list-check',
+                    'permissoes': [
+                        ('view_listapresenca', 'Visualizar'),
+                        ('add_listapresenca', 'Adicionar'),
+                        ('change_listapresenca', 'Editar'),
+                        ('delete_listapresenca', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Matriz de Habilidades',
+                    'icone': 'bi-grid-3x3',
+                    'permissoes': [
+                        ('view_matrizhabilidade', 'Visualizar'),
+                        ('add_matrizhabilidade', 'Adicionar'),
+                        ('change_matrizhabilidade', 'Editar'),
+                        ('delete_matrizhabilidade', 'Excluir'),
+                    ]
+                },
+            ]
+        },
         {
             'nome': 'RH',
             'cor': 'primary',
@@ -2230,39 +2356,39 @@ def detalhe_usuario_view(request, user_id):
             ]
         },
         {
-            'nome': 'Metrologia',
-            'cor': 'success',
-            'icone': 'bi-rulers',
-            'app_label': 'qms',
+            'nome': 'Fornecedores',
+            'cor': 'secondary',
+            'icone': 'bi-truck',
+            'app_label': 'fornecedores',
             'grupos': [
                 {
-                    'nome': 'Instrumento',
-                    'icone': 'bi-tools',
+                    'nome': 'Fornecedor',
+                    'icone': 'bi-building',
                     'permissoes': [
-                        ('view_instrumento', 'Visualizar'),
-                        ('add_instrumento', 'Adicionar'),
-                        ('change_instrumento', 'Editar'),
-                        ('delete_instrumento', 'Excluir'),
+                        ('view_fornecedor', 'Visualizar'),
+                        ('add_fornecedor', 'Adicionar'),
+                        ('change_fornecedor', 'Editar'),
+                        ('delete_fornecedor', 'Excluir'),
                     ]
                 },
                 {
-                    'nome': 'Calibração',
-                    'icone': 'bi-speedometer2',
+                    'nome': 'Avaliação',
+                    'icone': 'bi-star',
                     'permissoes': [
-                        ('view_calibracao', 'Visualizar'),
-                        ('add_calibracao', 'Adicionar'),
-                        ('change_calibracao', 'Editar'),
-                        ('delete_calibracao', 'Excluir'),
+                        ('view_avaliacaofornecedor', 'Visualizar'),
+                        ('add_avaliacaofornecedor', 'Adicionar'),
+                        ('change_avaliacaofornecedor', 'Editar'),
+                        ('delete_avaliacaofornecedor', 'Excluir'),
                     ]
                 },
                 {
-                    'nome': 'Certificado',
-                    'icone': 'bi-award',
+                    'nome': 'Documento',
+                    'icone': 'bi-file-earmark',
                     'permissoes': [
-                        ('view_certificado', 'Visualizar'),
-                        ('add_certificado', 'Adicionar'),
-                        ('change_certificado', 'Editar'),
-                        ('delete_certificado', 'Excluir'),
+                        ('view_documentofornecedor', 'Visualizar'),
+                        ('add_documentofornecedor', 'Adicionar'),
+                        ('change_documentofornecedor', 'Editar'),
+                        ('delete_documentofornecedor', 'Excluir'),
                     ]
                 },
             ]
@@ -2270,7 +2396,7 @@ def detalhe_usuario_view(request, user_id):
     ]
     
     # Combinar todas as permissões do usuário
-    all_user_perms = user_perms_rh | user_perms_qms
+    all_user_perms = user_perms_rh | user_perms_qms | user_perms_procedures | user_perms_fornecedores
     
     context = {
         'usuario': user,
