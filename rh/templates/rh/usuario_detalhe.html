@@ -35,6 +35,11 @@
         color: white;
     }
     
+    .badge-blocked {
+        background-color: #6c757d;
+        color: white;
+    }
+    
     .module-card {
         border-left: 4px solid;
         transition: all 0.2s ease;
@@ -49,6 +54,24 @@
     .module-card.border-warning { border-left-color: #ffc107; }
     .module-card.border-danger { border-left-color: #dc3545; }
     .module-card.border-info { border-left-color: #0dcaf0; }
+    .module-card.border-secondary { border-left-color: #6c757d; }
+    
+    .module-header {
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    .module-header:hover {
+        opacity: 0.9;
+    }
+    
+    .module-header .collapse-icon {
+        transition: transform 0.3s ease;
+    }
+    
+    .module-header.collapsed .collapse-icon {
+        transform: rotate(-90deg);
+    }
     
     .perm-checkbox {
         width: 18px;
@@ -126,6 +149,42 @@
     .status-row:last-child {
         border-bottom: none;
     }
+    
+    .action-btn {
+        width: 100%;
+        text-align: left;
+        padding: 0.75rem 1rem;
+        border-radius: 0.375rem;
+        transition: all 0.2s;
+    }
+    
+    .action-btn:hover {
+        transform: translateX(5px);
+    }
+    
+    .colaborador-item {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .colaborador-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .colaborador-item.selected {
+        background-color: #e7f1ff;
+        border-color: #0d6efd;
+    }
+    
+    .password-display {
+        font-family: monospace;
+        font-size: 1.25rem;
+        letter-spacing: 0.1em;
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border: 2px dashed #dee2e6;
+    }
 </style>
 {% endblock %}
 
@@ -141,6 +200,11 @@
                 <div>
                     <h2 class="mb-1 d-flex align-items-center gap-2 flex-wrap">
                         {{ usuario.username }}
+                        {% if not usuario.is_active %}
+                            <span class="badge badge-blocked" title="Usuário Bloqueado">
+                                <i class="bi bi-lock-fill"></i> Bloqueado
+                            </span>
+                        {% endif %}
                         {% if usuario.is_superuser %}
                             <span class="badge badge-superuser" title="Superusuário - Acesso Total">
                                 <i class="bi bi-crown-fill"></i> Superusuário
@@ -163,6 +227,9 @@
                     {% else %}
                         <p class="mb-0 opacity-75 fst-italic">
                             <i class="bi bi-person-dash"></i> Sem colaborador vinculado
+                            <button class="btn btn-sm btn-light ms-2" data-bs-toggle="modal" data-bs-target="#vincularColaboradorModal">
+                                <i class="bi bi-link-45deg"></i> Vincular
+                            </button>
                         </p>
                     {% endif %}
                 </div>
@@ -182,7 +249,7 @@
     <div class="row">
         <!-- Informações do Usuário -->
         <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm h-100">
+            <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
                     <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informações</h5>
                 </div>
@@ -205,6 +272,27 @@
                     </div>
                     
                     <hr>
+                    
+                    <!-- Status Ativo/Bloqueado -->
+                    <div class="status-row">
+                        <div>
+                            <small class="text-muted d-block">Status da Conta</small>
+                            <span class="badge {% if usuario.is_active %}bg-success{% else %}badge-blocked{% endif %}">
+                                {% if usuario.is_active %}
+                                    <i class="bi bi-check-circle-fill"></i> Ativo
+                                {% else %}
+                                    <i class="bi bi-lock-fill"></i> Bloqueado
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if request.user.is_superuser and usuario.id != request.user.id %}
+                        <button class="btn btn-sm {% if usuario.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %} status-toggle active-toggle" 
+                                data-user-id="{{ usuario.id }}"
+                                title="{% if usuario.is_active %}Bloquear{% else %}Desbloquear{% endif %} usuário">
+                            <i class="bi bi-{% if usuario.is_active %}lock{% else %}unlock{% endif %}"></i>
+                        </button>
+                        {% endif %}
+                    </div>
                     
                     <!-- Status de Superusuário -->
                     <div class="status-row">
@@ -249,6 +337,29 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Ações Rápidas -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-lightning-fill"></i> Ações</h5>
+                </div>
+                <div class="card-body p-2">
+                    {% if request.user.is_superuser or request.user.is_staff %}
+                    <button class="btn btn-outline-primary action-btn mb-2" data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
+                        <i class="bi bi-key-fill me-2"></i> Resetar Senha
+                    </button>
+                    <button class="btn btn-outline-info action-btn mb-2" data-bs-toggle="modal" data-bs-target="#vincularColaboradorModal">
+                        <i class="bi bi-link-45deg me-2"></i> 
+                        {% if colaborador %}Alterar{% else %}Vincular{% endif %} Colaborador
+                    </button>
+                    {% if colaborador %}
+                    <button class="btn btn-outline-secondary action-btn desvincular-btn" data-user-id="{{ usuario.id }}">
+                        <i class="bi bi-link-45deg me-2" style="text-decoration: line-through;"></i> Desvincular Colaborador
+                    </button>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         <!-- Grid de Permissões por Módulo -->
@@ -261,14 +372,22 @@
             </div>
             {% endif %}
             
-            <div class="row">
+            <div class="accordion" id="modulosAccordion">
                 {% for modulo in modulos %}
-                <div class="col-12 mb-4">
-                    <div class="card module-card border-{{ modulo.cor }} shadow-sm">
-                        <div class="card-header bg-{{ modulo.cor }} text-white d-flex align-items-center">
-                            <i class="{{ modulo.icone }} me-2 fs-5"></i>
-                            <h5 class="mb-0">{{ modulo.nome }}</h5>
+                <div class="card module-card border-{{ modulo.cor }} shadow-sm mb-3">
+                    <div class="card-header bg-{{ modulo.cor }} text-white module-header p-0" 
+                         data-bs-toggle="collapse" 
+                         data-bs-target="#collapse{{ forloop.counter }}"
+                         aria-expanded="true">
+                        <div class="d-flex align-items-center justify-content-between p-3">
+                            <div class="d-flex align-items-center">
+                                <i class="{{ modulo.icone }} me-2 fs-5"></i>
+                                <h5 class="mb-0">{{ modulo.nome }}</h5>
+                            </div>
+                            <i class="bi bi-chevron-down collapse-icon"></i>
                         </div>
+                    </div>
+                    <div id="collapse{{ forloop.counter }}" class="collapse show" data-bs-parent="#modulosAccordion">
                         <div class="card-body">
                             <div class="row">
                                 {% for grupo in modulo.grupos %}
@@ -307,10 +426,88 @@
                 <small>
                     <i class="bi bi-lightbulb"></i>
                     <strong>Dica:</strong> Clique nos checkboxes para ativar ou desativar permissões. 
-                    As alterações são salvas automaticamente.
+                    As alterações são salvas automaticamente. Clique no cabeçalho do módulo para expandir/recolher.
                 </small>
             </div>
             {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal Reset de Senha -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-key-fill me-2"></i>Resetar Senha
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="resetPasswordForm">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Atenção!</strong> Uma nova senha temporária será gerada para o usuário <strong>{{ usuario.username }}</strong>.
+                    </div>
+                    <p class="text-muted">
+                        O usuário deverá alterar a senha no próximo login.
+                    </p>
+                </div>
+                <div id="resetPasswordResult" style="display: none;">
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle me-2"></i>
+                        Senha resetada com sucesso!
+                    </div>
+                    <p class="mb-2"><strong>Nova senha temporária:</strong></p>
+                    <div class="password-display text-center" id="newPassword">
+                        <!-- Senha será inserida aqui -->
+                    </div>
+                    <p class="small text-muted mt-3">
+                        <i class="bi bi-clipboard me-1"></i>
+                        Clique na senha para copiar. Anote ou envie para o usuário.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="confirmResetPassword">
+                    <i class="bi bi-key me-1"></i> Gerar Nova Senha
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Vincular Colaborador -->
+<div class="modal fade" id="vincularColaboradorModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-link-45deg me-2"></i>Vincular Colaborador
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="searchColaborador" placeholder="Buscar colaborador por nome...">
+                </div>
+                <div id="colaboradoresList" style="max-height: 400px; overflow-y: auto;">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Carregando colaboradores...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info" id="confirmVincular" disabled>
+                    <i class="bi bi-link-45deg me-1"></i> Vincular Selecionado
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -335,6 +532,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const toast = new bootstrap.Toast(document.getElementById('toastNotification'), { delay: 2000 });
     const toastEl = document.getElementById('toastNotification');
     const toastMessage = document.getElementById('toastMessage');
+    
+    let selectedColaboradorId = null;
     
     function showToast(message, isSuccess = true) {
         toastEl.classList.remove('text-bg-success', 'text-bg-danger');
@@ -384,6 +583,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Erro:', error);
                 showToast('Erro de conexão', false);
                 this.checked = !this.checked;
+            } finally {
+                showSaving(false);
+            }
+        });
+    });
+    
+    // Handler para toggle de ativo/bloqueado
+    document.querySelectorAll('.active-toggle').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const userId = this.dataset.userId;
+            const isActive = this.querySelector('i').classList.contains('bi-lock');
+            
+            if (isActive && !confirm('Tem certeza que deseja BLOQUEAR este usuário? Ele não poderá mais acessar o sistema.')) {
+                return;
+            }
+            
+            showSaving(true);
+            
+            try {
+                const response = await fetch("{% url 'rh:api_toggle_user_active' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message, true);
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.error || 'Erro ao alternar status', false);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast('Erro de conexão', false);
             } finally {
                 showSaving(false);
             }
@@ -460,6 +698,228 @@ document.addEventListener('DOMContentLoaded', function() {
                 showSaving(false);
             }
         });
+    });
+    
+    // Handler para reset de senha
+    document.getElementById('confirmResetPassword').addEventListener('click', async function() {
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Gerando...';
+        
+        try {
+            const response = await fetch("{% url 'rh:api_reset_password' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ user_id: {{ usuario.id }} })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('resetPasswordForm').style.display = 'none';
+                document.getElementById('resetPasswordResult').style.display = 'block';
+                document.getElementById('newPassword').textContent = data.temp_password;
+                btn.style.display = 'none';
+                
+                // Copiar ao clicar na senha
+                document.getElementById('newPassword').style.cursor = 'pointer';
+                document.getElementById('newPassword').addEventListener('click', function() {
+                    navigator.clipboard.writeText(this.textContent);
+                    showToast('Senha copiada para a área de transferência!', true);
+                });
+            } else {
+                showToast(data.error || 'Erro ao resetar senha', false);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-key me-1"></i> Gerar Nova Senha';
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            showToast('Erro de conexão', false);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-key me-1"></i> Gerar Nova Senha';
+        }
+    });
+    
+    // Reset modal ao fechar
+    document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal', function() {
+        document.getElementById('resetPasswordForm').style.display = 'block';
+        document.getElementById('resetPasswordResult').style.display = 'none';
+        const btn = document.getElementById('confirmResetPassword');
+        btn.style.display = 'inline-block';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-key me-1"></i> Gerar Nova Senha';
+    });
+    
+    // Carregar colaboradores quando abrir modal
+    document.getElementById('vincularColaboradorModal').addEventListener('show.bs.modal', loadColaboradores);
+    
+    async function loadColaboradores() {
+        const listEl = document.getElementById('colaboradoresList');
+        listEl.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-2 text-muted">Carregando colaboradores...</p>
+            </div>
+        `;
+        
+        try {
+            const response = await fetch("{% url 'rh:api_colaboradores_sem_vinculo' %}?user_id={{ usuario.id }}");
+            const data = await response.json();
+            
+            if (data.success) {
+                renderColaboradores(data.colaboradores);
+            } else {
+                listEl.innerHTML = '<div class="alert alert-danger">Erro ao carregar colaboradores</div>';
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            listEl.innerHTML = '<div class="alert alert-danger">Erro de conexão</div>';
+        }
+    }
+    
+    function renderColaboradores(colaboradores, filter = '') {
+        const listEl = document.getElementById('colaboradoresList');
+        const filteredColabs = colaboradores.filter(c => 
+            c.nome.toLowerCase().includes(filter.toLowerCase()) ||
+            c.setor.toLowerCase().includes(filter.toLowerCase())
+        );
+        
+        if (filteredColabs.length === 0) {
+            listEl.innerHTML = '<div class="alert alert-info">Nenhum colaborador disponível para vincular.</div>';
+            return;
+        }
+        
+        listEl.innerHTML = filteredColabs.map(c => `
+            <div class="colaborador-item card mb-2 ${c.vinculado ? 'selected border-primary' : ''}" data-id="${c.id}">
+                <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${c.nome}</strong>
+                        ${c.vinculado ? '<span class="badge bg-primary ms-2">Atual</span>' : ''}
+                        <br>
+                        <small class="text-muted">${c.setor} • ${c.cargo}</small>
+                    </div>
+                    <i class="bi bi-${c.vinculado ? 'check-circle-fill text-primary' : 'circle'}"></i>
+                </div>
+            </div>
+        `).join('');
+        
+        // Adicionar handlers
+        listEl.querySelectorAll('.colaborador-item').forEach(item => {
+            item.addEventListener('click', function() {
+                listEl.querySelectorAll('.colaborador-item').forEach(i => {
+                    i.classList.remove('selected', 'border-primary');
+                    i.querySelector('i').className = 'bi bi-circle';
+                });
+                this.classList.add('selected', 'border-primary');
+                this.querySelector('i').className = 'bi bi-check-circle-fill text-primary';
+                selectedColaboradorId = this.dataset.id;
+                document.getElementById('confirmVincular').disabled = false;
+            });
+        });
+        
+        // Guardar dados para filtro
+        listEl.dataset.colaboradores = JSON.stringify(colaboradores);
+    }
+    
+    // Filtro de busca
+    document.getElementById('searchColaborador').addEventListener('input', function() {
+        const listEl = document.getElementById('colaboradoresList');
+        const colaboradores = JSON.parse(listEl.dataset.colaboradores || '[]');
+        renderColaboradores(colaboradores, this.value);
+    });
+    
+    // Confirmar vinculação
+    document.getElementById('confirmVincular').addEventListener('click', async function() {
+        if (!selectedColaboradorId) return;
+        
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Vinculando...';
+        
+        try {
+            const response = await fetch("{% url 'rh:api_vincular_colaborador' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    user_id: {{ usuario.id }},
+                    colaborador_id: selectedColaboradorId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast(data.message, true);
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.error || 'Erro ao vincular', false);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-link-45deg me-1"></i> Vincular Selecionado';
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            showToast('Erro de conexão', false);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-link-45deg me-1"></i> Vincular Selecionado';
+        }
+    });
+    
+    // Desvincular colaborador
+    document.querySelectorAll('.desvincular-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            if (!confirm('Tem certeza que deseja desvincular o colaborador deste usuário?')) {
+                return;
+            }
+            
+            const userId = this.dataset.userId;
+            
+            try {
+                const response = await fetch("{% url 'rh:api_vincular_colaborador' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        colaborador_id: null
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message, true);
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.error || 'Erro ao desvincular', false);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast('Erro de conexão', false);
+            }
+        });
+    });
+    
+    // Expandir/Recolher módulos - atualizar ícone
+    document.querySelectorAll('.module-header').forEach(header => {
+        const target = document.querySelector(header.dataset.bsTarget);
+        if (target) {
+            target.addEventListener('hidden.bs.collapse', () => {
+                header.classList.add('collapsed');
+            });
+            target.addEventListener('shown.bs.collapse', () => {
+                header.classList.remove('collapsed');
+            });
+        }
     });
 });
 </script>

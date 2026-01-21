@@ -2406,3 +2406,191 @@ def detalhe_usuario_view(request, user_id):
     }
     
     return render(request, 'rh/usuario_detalhe.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_toggle_user_active(request):
+    """
+    API para ativar/desativar (bloquear) um usuário.
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'Permissão negada'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': 'user_id é obrigatório'}, status=400)
+        
+        user = User.objects.get(id=user_id)
+        
+        # Não permitir desativar o próprio usuário
+        if user.id == request.user.id:
+            return JsonResponse({'success': False, 'error': 'Você não pode desativar sua própria conta'}, status=400)
+        
+        user.is_active = not user.is_active
+        user.save()
+        
+        status_str = 'ativado' if user.is_active else 'bloqueado'
+        logger.info(f'{request.user.username} {status_str} o usuário {user.username}')
+        
+        return JsonResponse({
+            'success': True,
+            'is_active': user.is_active,
+            'message': f'Usuário {user.username} foi {status_str}'
+        })
+    
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Usuário não encontrado'}, status=404)
+    except Exception as e:
+        logger.error(f'Erro ao alternar status de usuário: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_reset_password(request):
+    """
+    API para resetar a senha de um usuário para uma senha temporária.
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'Permissão negada'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': 'user_id é obrigatório'}, status=400)
+        
+        user = User.objects.get(id=user_id)
+        
+        # Gerar senha temporária
+        import secrets
+        import string
+        alphabet = string.ascii_letters + string.digits
+        temp_password = ''.join(secrets.choice(alphabet) for _ in range(12))
+        
+        user.set_password(temp_password)
+        user.save()
+        
+        logger.info(f'{request.user.username} resetou a senha do usuário {user.username}')
+        
+        return JsonResponse({
+            'success': True,
+            'temp_password': temp_password,
+            'message': f'Senha de {user.username} foi resetada'
+        })
+    
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Usuário não encontrado'}, status=404)
+    except Exception as e:
+        logger.error(f'Erro ao resetar senha: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_vincular_colaborador(request):
+    """
+    API para vincular um colaborador a um usuário Django.
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'Permissão negada'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        colaborador_id = data.get('colaborador_id')
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': 'user_id é obrigatório'}, status=400)
+        
+        user = User.objects.get(id=user_id)
+        
+        # Se colaborador_id é null/None, desvincular
+        if not colaborador_id:
+            # Desvincular colaborador atual se existir
+            Colaborador.objects.filter(user_django=user).update(user_django=None)
+            logger.info(f'{request.user.username} desvinculou colaborador do usuário {user.username}')
+            return JsonResponse({
+                'success': True,
+                'message': f'Colaborador desvinculado de {user.username}'
+            })
+        
+        colaborador = Colaborador.objects.get(id=colaborador_id)
+        
+        # Verificar se o colaborador já está vinculado a outro usuário
+        if colaborador.user_django and colaborador.user_django.id != user.id:
+            return JsonResponse({
+                'success': False,
+                'error': f'Este colaborador já está vinculado ao usuário {colaborador.user_django.username}'
+            }, status=400)
+        
+        # Desvincular colaborador anterior do usuário (se houver)
+        Colaborador.objects.filter(user_django=user).update(user_django=None)
+        
+        # Vincular novo colaborador
+        colaborador.user_django = user
+        colaborador.save()
+        
+        logger.info(f'{request.user.username} vinculou {colaborador.nome_completo} ao usuário {user.username}')
+        
+        return JsonResponse({
+            'success': True,
+            'colaborador_nome': colaborador.nome_completo,
+            'colaborador_setor': colaborador.setor.nome if colaborador.setor else '-',
+            'message': f'{colaborador.nome_completo} vinculado a {user.username}'
+        })
+    
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Usuário não encontrado'}, status=404)
+    except Colaborador.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Colaborador não encontrado'}, status=404)
+    except Exception as e:
+        logger.error(f'Erro ao vincular colaborador: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def api_colaboradores_sem_vinculo(request):
+    """
+    API para listar colaboradores que não estão vinculados a nenhum usuário Django.
+    """
+    if not request.user.is_superuser and not request.user.is_staff:
+        return JsonResponse({'success': False, 'error': 'Permissão negada'}, status=403)
+    
+    try:
+        # Buscar colaboradores sem vínculo ou com vínculo ao usuário específico
+        user_id = request.GET.get('user_id')
+        
+        colaboradores = Colaborador.objects.filter(
+            user_django__isnull=True,
+            ativo=True
+        ).select_related('setor').order_by('nome_completo')
+        
+        # Incluir o colaborador atualmente vinculado ao usuário, se houver
+        if user_id:
+            vinculado = Colaborador.objects.filter(user_django_id=user_id).first()
+            if vinculado:
+                colaboradores = list(colaboradores)
+                colaboradores.insert(0, vinculado)
+        
+        data = []
+        for colab in colaboradores:
+            data.append({
+                'id': colab.id,
+                'nome': colab.nome_completo,
+                'setor': colab.setor.nome if colab.setor else '-',
+                'cargo': colab.cargo or '-',
+                'vinculado': colab.user_django_id == int(user_id) if user_id else False
+            })
+        
+        return JsonResponse({'success': True, 'colaboradores': data})
+    
+    except Exception as e:
+        logger.error(f'Erro ao listar colaboradores: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+

@@ -37,4 +37,8 @@ urlpatterns = [
     path('api/permissoes/atualizar-lote/', views.api_atualizar_permissoes_lote, name='api_atualizar_permissoes_lote'),
     path('api/permissoes/toggle-staff/', views.api_toggle_staff, name='api_toggle_staff'),
     path('api/permissoes/toggle-superuser/', views.api_toggle_superuser, name='api_toggle_superuser'),
+    path('api/usuarios/toggle-active/', views.api_toggle_user_active, name='api_toggle_user_active'),
+    path('api/usuarios/reset-password/', views.api_reset_password, name='api_reset_password'),
+    path('api/usuarios/vincular-colaborador/', views.api_vincular_colaborador, name='api_vincular_colaborador'),
+    path('api/colaboradores-sem-vinculo/', views.api_colaboradores_sem_vinculo, name='api_colaboradores_sem_vinculo'),
 ]
