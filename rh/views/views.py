@@ -271,7 +271,7 @@ def modulo_rh_view(request):
     
     # ⚡ OTIMIZAÇÃO RADICAL: Usar SQL para calcular estatísticas ao invés de Python
     # Isto é 100x mais rápido que loops em Python
-    from django.db.models import Q, Count, Max
+    from django.db.models import Count, Max
     
     # Buscar IDs dos colaboradores da página atual
     colaboradores_ids = list(funcionarios_page.object_list.values_list('id', flat=True))
