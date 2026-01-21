@@ -6,27 +6,118 @@
 {% block content %}
 <div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-lg-6">
+        <div class="col-lg-8">
+            
+            <!-- Alerta de obrigatoriedade -->
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="bi bi-shield-plus me-2"></i>
-                        Configurar Autenticação em Duas Etapas
+                        Configurar Autenticação em Duas Etapas (2FA)
                     </h5>
                 </div>
                 <div class="card-body">
                     {% if wizard.steps.current == 'welcome' %}
-                    <div class="text-center py-3">
-                        <i class="bi bi-shield-lock display-1 text-primary mb-3"></i>
-                        <h5>Bem-vindo à configuração do 2FA</h5>
-                        <p class="text-muted">
-                            Você precisará de um aplicativo autenticador no seu celular, como:
+                    <!-- Step 1: Tutorial de Boas-vindas -->
+                    <div class="alert alert-info border-0">
+                        <h5 class="alert-heading">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Por que configurar o 2FA?
+                        </h5>
+                        <p class="mb-0">
+                            A autenticação em duas etapas adiciona uma camada extra de segurança à sua conta.
+                            Além da senha, você precisará de um código temporário gerado pelo seu celular para acessar o sistema.
                         </p>
-                        <ul class="list-unstyled">
-                            <li><i class="bi bi-check-circle text-success me-2"></i>Google Authenticator</li>
-                            <li><i class="bi bi-check-circle text-success me-2"></i>Microsoft Authenticator</li>
-                            <li><i class="bi bi-check-circle text-success me-2"></i>Authy</li>
-                        </ul>
+                    </div>
+                    
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center">
+                                    <div class="display-4 text-primary mb-3">
+                                        <i class="bi bi-1-circle-fill"></i>
+                                    </div>
+                                    <h6>Baixe um App</h6>
+                                    <p class="text-muted small mb-0">
+                                        Instale um aplicativo autenticador no seu celular
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center">
+                                    <div class="display-4 text-primary mb-3">
+                                        <i class="bi bi-2-circle-fill"></i>
+                                    </div>
+                                    <h6>Escaneie o QR Code</h6>
+                                    <p class="text-muted small mb-0">
+                                        Use o app para escanear o código que aparecerá na tela
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center">
+                                    <div class="display-4 text-primary mb-3">
+                                        <i class="bi bi-3-circle-fill"></i>
+                                    </div>
+                                    <h6>Digite o Código</h6>
+                                    <p class="text-muted small mb-0">
+                                        Confirme digitando o código de 6 dígitos mostrado no app
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="bi bi-phone me-2"></i>
+                                Aplicativos Recomendados (gratuitos)
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="d-flex align-items-center p-2 border rounded bg-white mb-2">
+                                        <i class="bi bi-google fs-3 text-primary me-2"></i>
+                                        <div>
+                                            <strong>Google Authenticator</strong>
+                                            <br><small class="text-muted">Android / iOS</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-flex align-items-center p-2 border rounded bg-white mb-2">
+                                        <i class="bi bi-microsoft fs-3 text-info me-2"></i>
+                                        <div>
+                                            <strong>Microsoft Authenticator</strong>
+                                            <br><small class="text-muted">Android / iOS</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-flex align-items-center p-2 border rounded bg-white mb-2">
+                                        <i class="bi bi-shield-check fs-3 text-danger me-2"></i>
+                                        <div>
+                                            <strong>Authy</strong>
+                                            <br><small class="text-muted">Android / iOS / Desktop</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <form method="post">
@@ -34,12 +125,18 @@
                         {{ wizard.management_form }}
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-arrow-right me-2"></i>Continuar
+                                <i class="bi bi-arrow-right me-2"></i>Iniciar Configuração
                             </button>
                         </div>
                     </form>
                     
                     {% elif wizard.steps.current == 'method' %}
+                    <!-- Step 2: Escolha do método -->
+                    <div class="alert alert-info border-0 mb-4">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        <strong>Dica:</strong> Recomendamos usar o Aplicativo Autenticador por ser mais seguro e não depender de sinal de celular.
+                    </div>
+                    
                     <h6 class="mb-3">Escolha o método de verificação:</h6>
                     
                     <form method="post">
@@ -48,12 +145,16 @@
                         
                         <div class="mb-4">
                             {% for radio in wizard.form.method %}
-                            <div class="form-check mb-2">
+                            <div class="form-check mb-3 p-3 border rounded {% if radio.choice_value == 'generator' %}border-primary bg-light{% endif %}">
                                 {{ radio.tag }}
-                                <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                <label class="form-check-label ms-2" for="{{ radio.id_for_label }}">
                                     {% if radio.choice_value == 'generator' %}
-                                    <i class="bi bi-phone me-1"></i>Aplicativo Autenticador (recomendado)
+                                    <i class="bi bi-phone me-1 text-primary"></i>
+                                    <strong>Aplicativo Autenticador</strong>
+                                    <span class="badge bg-success ms-2">Recomendado</span>
+                                    <br><small class="text-muted">Use Google Authenticator, Microsoft Authenticator ou Authy</small>
                                     {% else %}
+                                    <i class="bi bi-chat-dots me-1"></i>
                                     {{ radio.choice_label }}
                                     {% endif %}
                                 </label>
@@ -62,20 +163,110 @@
                         </div>
                         
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-arrow-right me-2"></i>Próximo
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-arrow-right me-2"></i>Continuar
                             </button>
                         </div>
                     </form>
                     
                     {% elif wizard.steps.current == 'generator' %}
-                    <div class="text-center mb-4">
-                        <p class="text-muted">Escaneie o QR Code com seu aplicativo autenticador:</p>
-                        <div class="bg-white p-3 d-inline-block rounded border">
-                            {{ QR_URL|safe }}
+                    <!-- Step 3: QR Code e configuração -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="text-center mb-4">
+                                <h6 class="mb-3">
+                                    <i class="bi bi-qr-code-scan me-2"></i>
+                                    Escaneie este QR Code
+                                </h6>
+                                <div class="bg-white p-4 d-inline-block rounded border shadow-sm">
+                                    <img src="{% url 'two_factor:qr' %}" 
+                                         alt="QR Code para configuração do autenticador"
+                                         class="img-fluid"
+                                         style="max-width: 200px;">
+                                </div>
+                                <p class="small text-muted mt-3">
+                                    <i class="bi bi-keyboard me-1"></i>
+                                    Ou digite manualmente no app:
+                                    <br>
+                                    <code class="user-select-all bg-light p-1 rounded">{{ secret_key }}</code>
+                                </p>
+                            </div>
                         </div>
-                        <p class="small text-muted mt-2">
-                            Ou digite manualmente: <code>{{ secret_key }}</code>
+                        <div class="col-md-6">
+                            <div class="card bg-light border-0 mb-4">
+                                <div class="card-body">
+                                    <h6 class="card-title text-primary">
+                                        <i class="bi bi-question-circle me-2"></i>
+                                        Como fazer?
+                                    </h6>
+                                    <ol class="mb-0 ps-3">
+                                        <li class="mb-2">Abra o app autenticador no seu celular</li>
+                                        <li class="mb-2">Toque em <strong>"+"</strong> ou <strong>"Adicionar conta"</strong></li>
+                                        <li class="mb-2">Escolha <strong>"Escanear QR Code"</strong></li>
+                                        <li class="mb-2">Aponte a câmera para o código ao lado</li>
+                                        <li>Digite abaixo o código de 6 dígitos que aparecer</li>
+                                    </ol>
+                                </div>
+                            </div>
+                            
+                            <form method="post">
+                                {% csrf_token %}
+                                {{ wizard.management_form }}
+                                
+                                <div class="mb-3">
+                                    <label for="id_generator-token" class="form-label fw-bold">
+                                        <i class="bi bi-key me-1"></i>Código de Verificação
+                                    </label>
+                                    <input type="text" 
+                                           name="generator-token" 
+                                           id="id_generator-token" 
+                                           class="form-control form-control-lg text-center fs-3"
+                                           placeholder="000000"
+                                           maxlength="6"
+                                           pattern="[0-9]{6}"
+                                           inputmode="numeric"
+                                           autocomplete="one-time-code"
+                                           style="letter-spacing: 0.5em;"
+                                           required
+                                           autofocus>
+                                    <div class="form-text">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Digite o código de 6 dígitos mostrado no seu app
+                                    </div>
+                                </div>
+                                
+                                {% if wizard.form.errors %}
+                                <div class="alert alert-danger">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    {% for error in wizard.form.non_field_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                    {% for field in wizard.form %}
+                                        {% for error in field.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="bi bi-check-circle me-2"></i>Verificar e Ativar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    {% elif wizard.steps.current == 'validation' %}
+                    <!-- Step 4: Validação final -->
+                    <div class="text-center mb-4">
+                        <div class="display-1 text-warning mb-3">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <h5>Quase lá!</h5>
+                        <p class="text-muted">
+                            Digite o código atual mostrado no seu aplicativo autenticador para confirmar a configuração.
                         </p>
                     </div>
                     
@@ -83,74 +274,50 @@
                         {% csrf_token %}
                         {{ wizard.management_form }}
                         
-                        <div class="mb-3">
-                            <label for="id_generator-token" class="form-label">
-                                <i class="bi bi-key me-1"></i>Código de Verificação
-                            </label>
-                            <input type="text" 
-                                   name="generator-token" 
-                                   id="id_generator-token" 
-                                   class="form-control form-control-lg text-center"
-                                   placeholder="000000"
-                                   maxlength="6"
-                                   pattern="[0-9]{6}"
-                                   inputmode="numeric"
-                                   autocomplete="one-time-code"
-                                   required>
-                            <div class="form-text">Digite o código de 6 dígitos mostrado no app</div>
-                        </div>
-                        
-                        {% if wizard.form.errors %}
-                        <div class="alert alert-danger">
-                            {% for error in wizard.form.non_field_errors %}
-                                {{ error }}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-check-circle me-2"></i>Verificar e Ativar
-                            </button>
-                        </div>
-                    </form>
-                    
-                    {% elif wizard.steps.current == 'validation' %}
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Digite o código mostrado no seu aplicativo autenticador para confirmar a configuração.
-                    </div>
-                    
-                    <form method="post">
-                        {% csrf_token %}
-                        {{ wizard.management_form }}
-                        
-                        <div class="mb-3">
-                            <label for="id_validation-token" class="form-label">Código de Verificação</label>
-                            <input type="text" 
-                                   name="validation-token" 
-                                   id="id_validation-token" 
-                                   class="form-control form-control-lg text-center"
-                                   placeholder="000000"
-                                   maxlength="6"
-                                   required>
-                        </div>
-                        
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-check-circle me-2"></i>Confirmar
-                            </button>
+                        <div class="row justify-content-center">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_validation-token" class="form-label fw-bold">
+                                        Código de Verificação
+                                    </label>
+                                    <input type="text" 
+                                           name="validation-token" 
+                                           id="id_validation-token" 
+                                           class="form-control form-control-lg text-center fs-3"
+                                           placeholder="000000"
+                                           maxlength="6"
+                                           style="letter-spacing: 0.5em;"
+                                           required
+                                           autofocus>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="bi bi-check-circle me-2"></i>Confirmar Configuração
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </form>
                     {% endif %}
                     
+                    {% if wizard.steps.current != 'welcome' %}
                     <hr>
                     <div class="text-center">
-                        <a href="{% url 'two_factor:profile' %}" class="text-muted">
-                            <i class="bi bi-arrow-left me-1"></i>Cancelar
-                        </a>
+                        <small class="text-muted">
+                            Etapa {{ wizard.steps.step1 }} de {{ wizard.steps.count }}
+                        </small>
                     </div>
+                    {% endif %}
                 </div>
+            </div>
+            
+            <!-- Aviso de suporte -->
+            <div class="text-center mt-3">
+                <small class="text-muted">
+                    <i class="bi bi-headset me-1"></i>
+                    Precisa de ajuda? Entre em contato com o administrador do sistema.
+                </small>
             </div>
         </div>
     </div>

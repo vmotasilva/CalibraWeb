@@ -94,6 +94,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django_otp.middleware.OTPMiddleware",  # Middleware para 2FA
+    "shared.middleware.two_factor_required.TwoFactorRequiredMiddleware",  # Força ativação do 2FA
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "shared.middleware.ModuleAccessMiddleware",  # Controle de acesso por módulo
