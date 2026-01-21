@@ -548,14 +548,24 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Handler para checkboxes de permissão
     document.querySelectorAll('.perm-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', async function() {
+        checkbox.addEventListener('change', async function(e) {
+            // Prevenir múltiplos disparos
+            if (this.dataset.updating === 'true') {
+                console.log('Já está atualizando, ignorando...');
+                return;
+            }
+            
             const userId = this.dataset.userId;
             const codename = this.dataset.codename;
             const appLabel = this.dataset.appLabel;
             const acao = this.checked ? 'add' : 'remove';
+            const originalState = this.checked;
             
             console.log('Atualizando permissão:', { userId, codename, appLabel, acao });
             
+            // Marcar como em atualização
+            this.dataset.updating = 'true';
+            this.disabled = true;
             showSaving(true);
             
             try {
@@ -578,15 +588,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (data.success) {
                     showToast(data.message || 'Permissão atualizada!', true);
+                    // Manter o estado atual do checkbox
+                    this.checked = originalState;
                 } else {
                     showToast(data.error || 'Erro ao atualizar', false);
-                    this.checked = !this.checked;
+                    // Reverter ao estado anterior
+                    this.checked = !originalState;
                 }
             } catch (error) {
                 console.error('Erro ao atualizar permissão:', error);
                 showToast('Erro de conexão', false);
-                this.checked = !this.checked;
+                // Reverter ao estado anterior
+                this.checked = !originalState;
             } finally {
+                this.disabled = false;
+                this.dataset.updating = 'false';
                 showSaving(false);
             }
         });
