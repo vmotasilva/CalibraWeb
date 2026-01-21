@@ -27,6 +27,9 @@ urlpatterns = [
     path('api/lideres/', views.api_lideres, name='api_lideres'),
     path('api/supervisores/', views.api_supervisores, name='api_supervisores'),
     
+    # Exportação de Férias
+    path('gestao-ferias/exportar/', views.exportar_ferias_view, name='exportar_ferias'),
+    
     # Gerenciamento de Permissões
     path('permissoes/', views.gerenciar_permissoes_view, name='gerenciar_permissoes'),
     path('api/permissoes/atualizar/', views.api_atualizar_permissao, name='api_atualizar_permissao'),

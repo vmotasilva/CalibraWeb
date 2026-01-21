@@ -1065,6 +1065,116 @@ def gestao_ferias_view(request):
         return redirect("modulo_rh")
 
 
+@login_required
+def exportar_ferias_view(request):
+    """
+    Exporta registros de férias para Excel no mesmo formato do template de importação.
+    Colunas: Matrícula | Data Início | Data Fim | Dias Solicitados | Aprovada | Descrição | Status | Colaborador
+    """
+    import io
+    from django.http import HttpResponse
+    
+    # Verificar permissão
+    permitido = False
+    if request.user.is_superuser or request.user.is_staff:
+        permitido = True
+    else:
+        try:
+            usuario_logado = get_colaborador_for_user(request.user)
+            if usuario_logado:
+                setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
+                if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
+                    permitido = True
+        except Exception:
+            pass
+    
+    if not permitido:
+        messages.error(request, "Você não tem permissão para exportar férias.")
+        return redirect("rh:gestao_ferias")
+    
+    try:
+        import pandas as pd
+        
+        # Buscar todas as férias
+        ferias_qs = Ferias.objects.select_related('colaborador').order_by(
+            'colaborador__nome_completo', '-data_inicio'
+        )
+        
+        # Aplicar filtros se existirem (mesmos filtros da tela)
+        status = request.GET.get('status', '')
+        aprovada = request.GET.get('aprovada', '')
+        colaborador_id = request.GET.get('colaborador', '')
+        
+        if status:
+            ferias_qs = ferias_qs.filter(status=status)
+        if aprovada:
+            if aprovada == 'sim':
+                ferias_qs = ferias_qs.filter(aprovada=True)
+            elif aprovada == 'nao':
+                ferias_qs = ferias_qs.filter(aprovada=False)
+        if colaborador_id:
+            ferias_qs = ferias_qs.filter(colaborador_id=colaborador_id)
+        
+        # Preparar dados para o DataFrame
+        dados = []
+        for f in ferias_qs:
+            dados.append({
+                'Matrícula': f.colaborador.matricula,
+                'Colaborador': f.colaborador.nome_completo,
+                'Data Início': f.data_inicio.strftime('%d/%m/%Y') if f.data_inicio else '',
+                'Data Fim': f.data_fim.strftime('%d/%m/%Y') if f.data_fim else '',
+                'Dias Solicitados': f.dias_solicitados or '',
+                'Aprovada': 'Sim' if f.aprovada else 'Não',
+                'Status': f.get_status_display() if hasattr(f, 'get_status_display') else f.status,
+                'Descrição': f.descricao or '',
+            })
+        
+        # Criar DataFrame
+        df = pd.DataFrame(dados)
+        
+        # Se não houver dados, criar DataFrame vazio com cabeçalhos
+        if df.empty:
+            df = pd.DataFrame(columns=[
+                'Matrícula', 'Colaborador', 'Data Início', 'Data Fim', 
+                'Dias Solicitados', 'Aprovada', 'Status', 'Descrição'
+            ])
+        
+        # Criar arquivo Excel em memória
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Férias')
+            
+            # Ajustar largura das colunas
+            worksheet = writer.sheets['Férias']
+            for idx, col in enumerate(df.columns):
+                max_length = max(
+                    df[col].astype(str).map(len).max() if not df.empty else 0,
+                    len(col)
+                ) + 2
+                worksheet.column_dimensions[chr(65 + idx)].width = min(max_length, 50)
+        
+        output.seek(0)
+        
+        # Criar response
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+        from datetime import datetime
+        filename = f"ferias_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        logger.info(f"📊 Exportação de férias realizada por {request.user.username}: {len(dados)} registros")
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ Erro ao exportar férias: {str(e)}", exc_info=True)
+        messages.error(request, f"Erro ao exportar férias: {str(e)}")
+        return redirect("rh:gestao_ferias")
+
+
 # ==================== API ENDPOINTS ====================
 
 from django.http import JsonResponse
