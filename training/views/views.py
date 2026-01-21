@@ -384,7 +384,7 @@ def dashboard_treinamentos_view(request):
         colaborador__afastado=False,
         procedimento__isnull=False,
         ativo=True
-    ).select_related('colaborador', 'procedimento', 'procedimento__revisao_atual')
+    ).select_related('colaborador', 'procedimento')
     
     # Estatísticas gerais usando queries SQL otimizadas
     total_treinamentos = valid_registros.count()
@@ -620,7 +620,7 @@ def dashboard_treinamentos_view(request):
     registros_query = valid_registros.order_by('-data_treinamento', '-id').values(
         'id', 'colaborador__id', 'colaborador__nome_completo', 
         'procedimento__codigo', 'procedimento__nome', 'data_treinamento',
-        'revisao_treinada', 'procedimento__revisao_atual'
+        'revisao_treinada', 'procedimento__numero_revisao'
     )
     
     # Paginar com 15 registros por página
@@ -634,7 +634,7 @@ def dashboard_treinamentos_view(request):
         # Calcular status diretamente
         if not registro['data_treinamento']:
             status = 'NAO_INICIADO'
-        elif registro['revisao_treinada'] == registro['procedimento__revisao_atual']:
+        elif registro['revisao_treinada'] == registro['procedimento__numero_revisao']:
             status = 'OK'
         else:
             status = 'PENDENTE'
