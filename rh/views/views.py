@@ -2001,7 +2001,8 @@ def api_atualizar_permissao(request):
 def api_atualizar_permissoes_lote(request):
     """
     API para atualizar múltiplas permissões de um usuário de uma vez.
-    Recebe: user_id, permissoes (lista de codenames a adicionar)
+    Recebe: user_id, permissoes (dict com app_label como chave e lista de codenames como valor)
+    Exemplo: {"user_id": 5, "permissoes": {"rh": ["view_colaborador"], "qms": ["view_instrumento"]}}
     """
     if not request.user.is_superuser and not request.user.is_staff:
         return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
@@ -2009,35 +2010,43 @@ def api_atualizar_permissoes_lote(request):
     try:
         data = json.loads(request.body)
         user_id = data.get('user_id')
-        permissoes = data.get('permissoes', [])  # Lista de codenames
+        permissoes_dict = data.get('permissoes', {})  # Dict: {app_label: [codenames]}
         
         if not user_id:
             return JsonResponse({'success': False, 'error': 'user_id é obrigatório'}, status=400)
         
         user = User.objects.get(id=user_id)
         
-        # Remover todas as permissões RH atuais
-        perms_rh = Permission.objects.filter(content_type__app_label='rh')
-        user.user_permissions.remove(*perms_rh)
+        # Remover TODAS as permissões atuais dos apps gerenciados
+        apps_gerenciados = ['rh', 'qms', 'procedures', 'fornecedores']
+        for app_label in apps_gerenciados:
+            perms_app = Permission.objects.filter(content_type__app_label=app_label)
+            user.user_permissions.remove(*perms_app)
         
-        # Adicionar as permissões selecionadas
-        if permissoes:
-            perms_to_add = Permission.objects.filter(
-                codename__in=permissoes,
-                content_type__app_label='rh'
-            )
-            user.user_permissions.add(*perms_to_add)
+        # Adicionar as permissões selecionadas por app
+        total_adicionadas = 0
+        for app_label, codenames in permissoes_dict.items():
+            if codenames:
+                perms_to_add = Permission.objects.filter(
+                    codename__in=codenames,
+                    content_type__app_label=app_label
+                )
+                user.user_permissions.add(*perms_to_add)
+                total_adicionadas += perms_to_add.count()
         
-        logger.info(f'{request.user.username} atualizou permissões de {user.username}: {permissoes}')
+        # Refresh do usuário
+        user.refresh_from_db()
+        
+        logger.info(f'{request.user.username} atualizou {total_adicionadas} permissões de {user.username}')
         return JsonResponse({
             'success': True,
-            'message': f'Permissões de {user.username} atualizadas com sucesso.'
+            'message': f'{total_adicionadas} permissões salvas com sucesso!'
         })
     
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Usuário não encontrado'}, status=404)
     except Exception as e:
-        logger.error(f'Erro ao atualizar permissões em lote: {str(e)}')
+        logger.error(f'Erro ao atualizar permissões em lote: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
