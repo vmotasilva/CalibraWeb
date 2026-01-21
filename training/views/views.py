@@ -364,69 +364,78 @@ def editar_treinamento_view(request, treinamento_id):
 @login_required
 @login_required
 def dashboard_treinamentos_view(request):
-    """Dashboard completo de treinamentos com estatísticas e gráficos"""
-    from django.db.models import Count, Q, Exists, OuterRef
+    """Dashboard completo de treinamentos com estatísticas e gráficos - OTIMIZADO"""
+    from django.db.models import Count, Q, Exists, OuterRef, Prefetch
     from datetime import timedelta, date
     from core.models import TURNOS_CHOICES
+    from django.core.cache import cache
+    
+    # Cache key para estatísticas do dashboard
+    cache_key = 'dashboard_treinamentos_stats'
+    cached_data = cache.get(cache_key)
+    
+    if cached_data:
+        return render(request, 'training/dashboard_treinamentos.html', cached_data)
     
     # Base query: apenas registros com colaborador e procedimento vinculados E ATIVOS E NÃO AFASTADOS
-    def get_valid_registros():
-        """Retorna apenas registros com colaborador ATIVO (não afastado), procedimento não nulos E ativo=True"""
-        return RegistroTreinamento.objects.filter(
-            colaborador__isnull=False,
-            colaborador__is_active=True,
-            colaborador__afastado=False,  # Não contar treinamentos de colaboradores afastados
-            procedimento__isnull=False,
-            ativo=True
-        ).distinct()
+    valid_registros = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False,
+        colaborador__is_active=True,
+        colaborador__afastado=False,
+        procedimento__isnull=False,
+        ativo=True
+    ).select_related('colaborador', 'procedimento', 'procedimento__revisao_atual')
     
-    # Estatísticas gerais - apenas registros válidos E ativos
-    valid_registros = get_valid_registros()
+    # Estatísticas gerais usando queries SQL otimizadas
     total_treinamentos = valid_registros.count()
     
-    # ⚠️ IMPORTANTE: Usar property status_treinamento ao invés de data_treinamento__isnull
-    # Porque status_treinamento é calculado dinamicamente baseado em revisão_treinada + data_treinamento
-    # Contar em Python após fetch para não quebrar a property
-    registros_list = list(valid_registros)
-    treinamentos_vigentes = sum(1 for r in registros_list if r.status_treinamento == 'OK')
-    # NAO_INICIADO também é considerado pendente (não treinado ainda)
-    treinamentos_pendentes = sum(1 for r in registros_list if r.status_treinamento in ('PENDENTE', 'NAO_INICIADO'))
+    # Treinamentos vigentes: têm data E revisão coincide
+    # OTIMIZAÇÃO: Usar query SQL ao invés de carregar tudo na memória
+    treinamentos_vigentes = valid_registros.filter(
+        data_treinamento__isnull=False,
+        revisao_treinada=Q(procedimento__revisao_atual)
+    ).count()
     
-    # Colaboradores com treinamentos (com status OK)
-    total_colaboradores_treinados = len(set(
-        r.colaborador_id for r in registros_list if r.status_treinamento == 'OK'
-    ))
+    # Pendentes: sem data OU revisão desatualizada
+    treinamentos_pendentes = valid_registros.filter(
+        Q(data_treinamento__isnull=True) | 
+        ~Q(revisao_treinada=Q(procedimento__revisao_atual))
+    ).count()
     
-    # Procedimentos únicos treinados (com status OK)
-    total_procedimentos_unicos = len(set(
-        r.procedimento_id for r in registros_list if r.status_treinamento == 'OK'
-    ))
+    # Colaboradores com treinamentos vigentes (com data e revisão OK)
+    total_colaboradores_treinados = valid_registros.filter(
+        data_treinamento__isnull=False,
+        revisao_treinada=Q(procedimento__revisao_atual)
+    ).values('colaborador_id').distinct().count()
     
-    # Treinamentos nos últimos 30 dias (com status OK)
+    # Procedimentos únicos treinados
+    total_procedimentos_unicos = valid_registros.filter(
+        data_treinamento__isnull=False,
+        revisao_treinada=Q(procedimento__revisao_atual)
+    ).values('procedimento_id').distinct().count()
+    
+    # Treinamentos nos últimos 30 dias
     data_30_dias_atras = date.today() - timedelta(days=30)
-    treinamentos_ultimos_30_dias = sum(
-        1 for r in registros_list 
-        if r.status_treinamento == 'OK' and r.data_treinamento and r.data_treinamento >= data_30_dias_atras
-    )
+    treinamentos_ultimos_30_dias = valid_registros.filter(
+        data_treinamento__gte=data_30_dias_atras,
+        data_treinamento__isnull=False
+    ).count()
     
-    # Top 10 procedimentos mais treinados (com status OK)
-    from collections import Counter
-    proc_counter = Counter(
-        r.procedimento.codigo for r in registros_list if r.status_treinamento == 'OK' and r.procedimento
-    )
-    top_procedimentos = [
-        {'procedimento__codigo': codigo, 'procedimento__nome': codigo, 'total': count}
-        for codigo, count in proc_counter.most_common(10)
-    ]
+    # Top 10 procedimentos mais treinados - OTIMIZADO com agregação SQL
+    top_procedimentos = valid_registros.filter(
+        data_treinamento__isnull=False,
+        revisao_treinada=Q(procedimento__revisao_atual)
+    ).values('procedimento__codigo', 'procedimento__nome').annotate(
+        total=Count('id')
+    ).order_by('-total')[:10]
     
-    # Top 10 colaboradores com mais treinamentos (com status OK)
-    colab_counter = Counter(
-        r.colaborador.nome_completo for r in registros_list if r.status_treinamento == 'OK' and r.colaborador
-    )
-    top_colaboradores = [
-        {'colaborador__nome_completo': nome, 'total': count}
-        for nome, count in colab_counter.most_common(10)
-    ]
+    # Top 10 colaboradores com mais treinamentos - OTIMIZADO com agregação SQL
+    top_colaboradores = valid_registros.filter(
+        data_treinamento__isnull=False,
+        revisao_treinada=Q(procedimento__revisao_atual)
+    ).values('colaborador__nome_completo').annotate(
+        total=Count('id')
+    ).order_by('-total')[:10]
     
     # Distribuição de status
     status_distribuicao = {
@@ -440,17 +449,19 @@ def dashboard_treinamentos_view(request):
     else:
         taxa_conformidade = 0
     
-    # Treinamentos por mês (últimos 6 meses)
+    # Treinamentos por mês (últimos 6 meses) - OTIMIZADO: query única com agregação
+    from django.db.models import Case, When, IntegerField
+    from django.db.models.functions import TruncMonth
+    
     treinamentos_por_mes = []
     for i in range(5, -1, -1):
         data_inicio = date.today() - timedelta(days=30 * (i + 1))
         data_fim = date.today() - timedelta(days=30 * i)
         
-        count = RegistroTreinamento.objects.filter(
+        count = valid_registros.filter(
             data_treinamento__gte=data_inicio,
             data_treinamento__lt=data_fim,
-            data_treinamento__isnull=False,
-            ativo=True
+            data_treinamento__isnull=False
         ).count()
         
         treinamentos_por_mes.append({
@@ -458,36 +469,39 @@ def dashboard_treinamentos_view(request):
             'total': count
         })
     
-    # Gráfico por Líder: contar todos os colaboradores que têm esse líder
+    # Gráfico por Líder - OTIMIZADO: apenas líderes com liderados ativos
     treinamentos_por_lider = []
-    líderes = Colaborador.objects.filter(
-        liderados__isnull=False, 
-        liderados__is_active=True
-    ).distinct().order_by('nome_completo')
     
-    for lider in líderes:
-        # Pegar todos os liderados ativos deste líder
-        liderados_ids = lider.liderados.filter(is_active=True).values_list('id', flat=True)
+    # Query otimizada: buscar líderes que têm liderados ativos
+    lideres_com_liderados = Colaborador.objects.filter(
+        liderados__is_active=True,
+        liderados__isnull=False
+    ).distinct().prefetch_related(
+        Prefetch('liderados', queryset=Colaborador.objects.filter(is_active=True))
+    ).order_by('nome_completo')[:20]  # Limitar a 20 líderes para performance
+    
+    for lider in lideres_com_liderados:
+        liderados_ids = [l.id for l in lider.liderados.all()]
         
-        # Contar registros de treinamento ATIVOS usando status_treinamento
-        registros_lider = RegistroTreinamento.objects.filter(
+        # Contar vigentes e pendentes com queries SQL otimizadas
+        vigentes = valid_registros.filter(
             colaborador_id__in=liderados_ids,
-            ativo=True
-        )
-        registros_lider_list = list(registros_lider)
-        vigentes = sum(1 for r in registros_lider_list if r.status_treinamento == 'OK')
-        # NAO_INICIADO também é pendente (não treinado ainda)
-        pendentes = sum(1 for r in registros_lider_list if r.status_treinamento in ('PENDENTE', 'NAO_INICIADO'))
+            data_treinamento__isnull=False,
+            revisao_treinada=Q(procedimento__revisao_atual)
+        ).count()
         
-        # Incluir se tem qualquer registro
+        pendentes = valid_registros.filter(
+            colaborador_id__in=liderados_ids
+        ).filter(
+            Q(data_treinamento__isnull=True) | 
+            ~Q(revisao_treinada=Q(procedimento__revisao_atual))
+        ).count()
+        
         total = vigentes + pendentes
         if total > 0:
-            # Abreviar nome: primeira palavra + última palavra (ex: "EDUARDO SILVA")
+            # Abreviar nome
             parts = lider.nome_completo.split()
-            if len(parts) > 1:
-                nome_abrev = f"{parts[0]} {parts[-1]}"
-            else:
-                nome_abrev = lider.nome_completo[:30]
+            nome_abrev = f"{parts[0]} {parts[-1]}" if len(parts) > 1 else lider.nome_completo[:30]
             
             treinamentos_por_lider.append({
                 'nome': nome_abrev,
@@ -495,65 +509,57 @@ def dashboard_treinamentos_view(request):
                 'pendentes': pendentes
             })
     
-    # Ordenar por total descendente e pegar top 10
+    # Ordenar por total e limitar a 10
     treinamentos_por_lider.sort(key=lambda x: x['vigentes'] + x['pendentes'], reverse=True)
     treinamentos_por_lider = treinamentos_por_lider[:10]
     
-    # Gráfico por Setor e Turno: agrupar colaboradores por setor+turno
+    # Gráfico por Setor e Turno - OTIMIZADO com agregação
+    from organization.models import Setor
     treinamentos_por_setor_turno = []
     
-    # Pegar combinações únicas de setor + turno
-    combinacoes = Colaborador.objects.filter(
-        setor__isnull=False,
-        is_active=True
-    ).values_list('setor_id', 'turno').distinct()
+    # Query otimizada: buscar combinações de setor+turno com agregação
+    combinacoes = valid_registros.values(
+        'colaborador__setor_id', 
+        'colaborador__turno'
+    ).annotate(
+        vigentes=Count('id', filter=Q(
+            data_treinamento__isnull=False,
+            revisao_treinada=Q(procedimento__revisao_atual)
+        )),
+        pendentes=Count('id', filter=Q(
+            Q(data_treinamento__isnull=True) | 
+            ~Q(revisao_treinada=Q(procedimento__revisao_atual))
+        ))
+    ).filter(
+        colaborador__setor_id__isnull=False
+    ).order_by('-vigentes', '-pendentes')[:15]  # Top 15 combinações
     
-    for setor_id, turno in combinacoes:
-        from organization.models import Setor
-        try:
-            setor = Setor.objects.get(id=setor_id)
-            
-            # Pegar todos os colaboradores ativos neste setor e turno
-            colaboradores_ids = Colaborador.objects.filter(
-                setor_id=setor_id,
-                turno=turno,
-                is_active=True
-            ).values_list('id', flat=True)
-            
-            # Contar registros de treinamento usando status_treinamento
-            registros_setor = RegistroTreinamento.objects.filter(
-                colaborador_id__in=colaboradores_ids,
-                ativo=True
-            )
-            registros_setor_list = list(registros_setor)
-            vigentes = sum(1 for r in registros_setor_list if r.status_treinamento == 'OK')
-            # NAO_INICIADO também é pendente (não treinado ainda)
-            pendentes = sum(1 for r in registros_setor_list if r.status_treinamento in ('PENDENTE', 'NAO_INICIADO'))
-            
-            # Incluir se tem qualquer registro
-            total = vigentes + pendentes
-            if total > 0:
-                # Mapear turno para label legível usando TURNOS_CHOICES
-                turno_dict = dict(TURNOS_CHOICES)
-                turno_label = turno_dict.get(turno, turno)
-                
-                # Abreviar nome do setor se necessário
-                setor_nome = setor.nome
-                if len(setor_nome) > 20:
-                    setor_nome = setor_nome[:17] + '...'
-                
-                treinamentos_por_setor_turno.append({
-                    'nome': f'{setor_nome} - {turno_label}'[:40],
-                    'vigentes': vigentes,
-                    'pendentes': pendentes
-                })
-        except Exception as e:
-            pass
+    # Buscar setores uma única vez
+    setor_ids = [c['colaborador__setor_id'] for c in combinacoes]
+    setores_dict = {s.id: s.nome for s in Setor.objects.filter(id__in=setor_ids)}
+    turno_dict = dict(TURNOS_CHOICES)
     
-    # Ordenar por total descendente e pegar top 10
-    treinamentos_por_setor_turno.sort(key=lambda x: x['vigentes'] + x['pendentes'], reverse=True)
-    treinamentos_por_setor_turno = treinamentos_por_setor_turno[:10]
+    for combo in combinacoes:
+        setor_id = combo['colaborador__setor_id']
+        turno = combo['colaborador__turno']
+        vigentes = combo['vigentes']
+        pendentes = combo['pendentes']
+        
+        total = vigentes + pendentes
+        if total > 0:
+            setor_nome = setores_dict.get(setor_id, 'Desconhecido')
+            if len(setor_nome) > 20:
+                setor_nome = setor_nome[:17] + '...'
+            
+            turno_label = turno_dict.get(turno, turno or 'N/A')
+            
+            treinamentos_por_setor_turno.append({
+                'nome': f'{setor_nome} - {turno_label}'[:40],
+                'vigentes': vigentes,
+                'pendentes': pendentes
+            })
     
+    # Montar contexto
     context = {
         'total_treinamentos': total_treinamentos,
         'treinamentos_vigentes': treinamentos_vigentes,
@@ -562,61 +568,59 @@ def dashboard_treinamentos_view(request):
         'total_procedimentos_unicos': total_procedimentos_unicos,
         'treinamentos_ultimos_30_dias': treinamentos_ultimos_30_dias,
         'taxa_conformidade': taxa_conformidade,
-        'top_procedimentos': top_procedimentos,
-        'top_colaboradores': top_colaboradores,
+        'top_procedimentos': list(top_procedimentos),
+        'top_colaboradores': list(top_colaboradores),
         'status_distribuicao': status_distribuicao,
         'treinamentos_por_mes': treinamentos_por_mes,
         'treinamentos_por_lider': treinamentos_por_lider,
         'treinamentos_por_setor_turno': treinamentos_por_setor_turno,
     }
     
-    # Adicionar dados de filtros dinâmicos
+    # Adicionar dados de filtros dinâmicos - OTIMIZADO
     from organization.models import Setor
-    from core.models import TURNOS_CHOICES
     
-    # Setores
+    # Setores com colaboradores ativos
     setores = Setor.objects.filter(
         colaborador__is_active=True,
         colaborador__afastado=False
-    ).distinct().order_by('nome').values_list('id', 'nome')
-    context['setores'] = [{'id': s[0], 'nome': s[1]} for s in setores]
+    ).distinct().order_by('nome').values('id', 'nome')
+    context['setores'] = list(setores)
     
     # Turnos
     context['turnos'] = [{'value': t[0], 'label': t[1]} for t in TURNOS_CHOICES]
     
-    # Líderes
+    # Líderes com liderados ativos - OTIMIZADO
     lideres = Colaborador.objects.filter(
         liderados__isnull=False,
         liderados__is_active=True,
         is_active=True,
         afastado=False
-    ).distinct().order_by('nome_completo').values_list('id', 'nome_completo')
-    context['lideres'] = [{'id': l[0], 'nome': l[1]} for l in lideres]
+    ).distinct().order_by('nome_completo').values('id', 'nome_completo')
+    context['lideres'] = [{'id': l['id'], 'nome': l['nome_completo']} for l in lideres]
     
-    # Supervisores
+    # Supervisores - OTIMIZADO
     supervisores = Colaborador.objects.filter(
         supervisionados__isnull=False,
         supervisionados__is_active=True,
         is_active=True,
         afastado=False
-    ).distinct().order_by('nome_completo').values_list('id', 'nome_completo')
-    context['supervisores'] = [{'id': s[0], 'nome': s[1]} for s in supervisores]
+    ).distinct().order_by('nome_completo').values('id', 'nome_completo')
+    context['supervisores'] = [{'id': s['id'], 'nome': s['nome_completo']} for s in supervisores]
     
-    # Gerentes
+    # Gerentes - OTIMIZADO
     gerentes = Colaborador.objects.filter(
         gerenciados__isnull=False,
         gerenciados__is_active=True,
         is_active=True,
         afastado=False
-    ).distinct().order_by('nome_completo').values_list('id', 'nome_completo')
-    context['gerentes'] = [{'id': g[0], 'nome': g[1]} for g in gerentes]
+    ).distinct().order_by('nome_completo').values('id', 'nome_completo')
+    context['gerentes'] = [{'id': g['id'], 'nome': g['nome_completo']} for g in gerentes]
     
-    # Tabela de dados com paginação
-    registros_query = valid_registros.select_related(
-        'colaborador', 'procedimento'
-    ).order_by('-data_treinamento', '-id').values(
-        'id', 'colaborador__id', 'colaborador__nome_completo', 'procedimento__codigo',
-        'procedimento__nome', 'data_treinamento'
+    # Tabela de dados com paginação - OTIMIZADO: apenas valores necessários
+    registros_query = valid_registros.order_by('-data_treinamento', '-id').values(
+        'id', 'colaborador__id', 'colaborador__nome_completo', 
+        'procedimento__codigo', 'procedimento__nome', 'data_treinamento',
+        'revisao_treinada', 'procedimento__revisao_atual'
     )
     
     # Paginar com 15 registros por página
@@ -627,121 +631,32 @@ def dashboard_treinamentos_view(request):
     # Processar dados da tabela para o template
     dados_processados = []
     for registro in page_obj.object_list:
+        # Calcular status diretamente
+        if not registro['data_treinamento']:
+            status = 'NAO_INICIADO'
+        elif registro['revisao_treinada'] == registro['procedimento__revisao_atual']:
+            status = 'OK'
+        else:
+            status = 'PENDENTE'
+        
         dados_processados.append({
             'id': registro['id'],
             'colaborador_id': registro['colaborador__id'],
             'colaborador': registro['colaborador__nome_completo'],
             'procedimento': registro['procedimento__codigo'],
-            'procedimento_nome': registro['procedimento__nome'][:40],
-            'data': registro['data_treinamento'].strftime('%d/%m/%Y') if registro['data_treinamento'] else 'Pendente'
+            'procedimento_nome': registro['procedimento__nome'][:40] if registro['procedimento__nome'] else '',
+            'data': registro['data_treinamento'].strftime('%d/%m/%Y') if registro['data_treinamento'] else 'Pendente',
+            'status': status
         })
     
     context['dados_tabela'] = dados_processados
     context['page_obj'] = page_obj
     context['paginator'] = paginator
     
-    # ===== GRÁFICOS DE PLANEJAMENTOS =====
-    from procedures.models import PlanejamentoTreinamento
-    from django.utils import timezone
-    from dateutil.relativedelta import relativedelta
+    # Cachear contexto por 5 minutos (300 segundos)
+    cache.set(cache_key, context, 300)
     
-    # Pegar período do request (default: últimos 3 meses)
-    periodo_meses = int(request.GET.get('periodo_planejamento', 3))
-    data_inicio_planejamento = date.today() - relativedelta(months=periodo_meses)
-    
-    # Adicionar ao context para o form
-    context['periodo_planejamento'] = periodo_meses
-    
-    # Filtrar planejamentos no período
-    planejamentos = PlanejamentoTreinamento.objects.filter(
-        data_prevista__gte=data_inicio_planejamento,
-        data_prevista__lte=date.today() + timedelta(days=365)  # 1 ano no futuro
-    )
-    
-    # ===== GRÁFICO 1: Por Setor e Turno =====
-    planejamentos_setor_turno = {}
-    
-    for planejamento in planejamentos:
-        for colaborador in planejamento.colaboradores.all():
-            setor = colaborador.setor
-            turno = colaborador.turno
-            
-            if not setor:
-                continue
-            
-            # Criar chave
-            chave = f"{setor.nome} - {turno}"
-            
-            if chave not in planejamentos_setor_turno:
-                planejamentos_setor_turno[chave] = {
-                    'nome': chave,
-                    'no_prazo': 0,
-                    'fora_prazo': 0,
-                    'cancelados': 0,
-                    'concluidos': 0
-                }
-            
-            # Categorizar planejamento
-            if planejamento.status == 'CANCELADO':
-                planejamentos_setor_turno[chave]['cancelados'] += 1
-            elif planejamento.status == 'REALIZADO':
-                planejamentos_setor_turno[chave]['concluidos'] += 1
-            elif planejamento.status in ['PLANEJADO', 'CONFIRMADO']:
-                if planejamento.data_prevista >= date.today():
-                    planejamentos_setor_turno[chave]['no_prazo'] += 1
-                else:
-                    planejamentos_setor_turno[chave]['fora_prazo'] += 1
-    
-    # Converter para lista e ordenar
-    planejamentos_setor_turno_lista = list(planejamentos_setor_turno.values())
-    planejamentos_setor_turno_lista.sort(
-        key=lambda x: x['no_prazo'] + x['fora_prazo'] + x['cancelados'] + x['concluidos'],
-        reverse=True
-    )
-    planejamentos_setor_turno_lista = planejamentos_setor_turno_lista[:15]  # Top 15
-    
-    context['planejamentos_setor_turno'] = planejamentos_setor_turno_lista
-    
-    # ===== GRÁFICO 2: Por Instrutor =====
-    planejamentos_instrutor = {}
-    
-    for planejamento in planejamentos:
-        if not planejamento.instrutor:
-            continue
-        
-        instrutor_nome = planejamento.instrutor.nome_completo
-        
-        if instrutor_nome not in planejamentos_instrutor:
-            planejamentos_instrutor[instrutor_nome] = {
-                'nome': instrutor_nome,
-                'no_prazo': 0,
-                'fora_prazo': 0,
-                'cancelados': 0,
-                'concluidos': 0
-            }
-        
-        # Categorizar planejamento
-        if planejamento.status == 'CANCELADO':
-            planejamentos_instrutor[instrutor_nome]['cancelados'] += 1
-        elif planejamento.status == 'REALIZADO':
-            planejamentos_instrutor[instrutor_nome]['concluidos'] += 1
-        elif planejamento.status in ['PLANEJADO', 'CONFIRMADO']:
-            if planejamento.data_prevista >= date.today():
-                planejamentos_instrutor[instrutor_nome]['no_prazo'] += 1
-            else:
-                planejamentos_instrutor[instrutor_nome]['fora_prazo'] += 1
-    
-    # Converter para lista e ordenar
-    planejamentos_instrutor_lista = list(planejamentos_instrutor.values())
-    planejamentos_instrutor_lista.sort(
-        key=lambda x: x['no_prazo'] + x['fora_prazo'] + x['cancelados'] + x['concluidos'],
-        reverse=True
-    )
-    planejamentos_instrutor_lista = planejamentos_instrutor_lista[:15]  # Top 15
-    
-    context['planejamentos_instrutor'] = planejamentos_instrutor_lista
-    
-    return render(request, 'procedures/dashboard_treinamentos.html', context)
+    return render(request, 'training/dashboard_treinamentos.html', context)
 
 
 @login_required
