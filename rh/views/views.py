@@ -1952,30 +1952,44 @@ def api_atualizar_permissao(request):
         acao = data.get('acao')  # 'add' ou 'remove'
         app_label = data.get('app_label', 'rh')  # Suporte a múltiplos apps
         
+        logger.info(f'API atualizar_permissao - user_id: {user_id}, codename: {codename}, acao: {acao}, app_label: {app_label}')
+        
         if not all([user_id, codename, acao]):
             return JsonResponse({'success': False, 'error': 'Dados incompletos'}, status=400)
         
         user = User.objects.get(id=user_id)
-        permission = Permission.objects.get(codename=codename, content_type__app_label=app_label)
+        
+        # Buscar a permissão
+        try:
+            permission = Permission.objects.get(codename=codename, content_type__app_label=app_label)
+        except Permission.DoesNotExist:
+            logger.error(f'Permissão não encontrada: codename={codename}, app_label={app_label}')
+            return JsonResponse({
+                'success': False, 
+                'error': f'Permissão "{codename}" não encontrada no app "{app_label}"'
+            }, status=404)
         
         if acao == 'add':
             user.user_permissions.add(permission)
-            msg = f'Permissão "{permission.name}" adicionada para {user.username}'
+            msg = f'Permissão "{permission.name}" adicionada'
+            logger.info(f'{request.user.username} adicionou permissão {codename} para {user.username}')
         elif acao == 'remove':
             user.user_permissions.remove(permission)
-            msg = f'Permissão "{permission.name}" removida de {user.username}'
+            msg = f'Permissão "{permission.name}" removida'
+            logger.info(f'{request.user.username} removeu permissão {codename} de {user.username}')
         else:
             return JsonResponse({'success': False, 'error': 'Ação inválida'}, status=400)
         
-        logger.info(f'{request.user.username} alterou permissão: {msg}')
         return JsonResponse({'success': True, 'message': msg})
     
     except User.DoesNotExist:
+        logger.error(f'Usuário não encontrado: id={user_id}')
         return JsonResponse({'success': False, 'error': 'Usuário não encontrado'}, status=404)
-    except Permission.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Permissão não encontrada'}, status=404)
+    except json.JSONDecodeError as e:
+        logger.error(f'Erro ao decodificar JSON: {str(e)}')
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
     except Exception as e:
-        logger.error(f'Erro ao atualizar permissão: {str(e)}')
+        logger.error(f'Erro ao atualizar permissão: {str(e)}', exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
