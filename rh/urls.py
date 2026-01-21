@@ -36,4 +36,5 @@ urlpatterns = [
     path('api/permissoes/atualizar/', views.api_atualizar_permissao, name='api_atualizar_permissao'),
     path('api/permissoes/atualizar-lote/', views.api_atualizar_permissoes_lote, name='api_atualizar_permissoes_lote'),
     path('api/permissoes/toggle-staff/', views.api_toggle_staff, name='api_toggle_staff'),
+    path('api/permissoes/toggle-superuser/', views.api_toggle_superuser, name='api_toggle_superuser'),
 ]

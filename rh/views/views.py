@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q, Prefetch
@@ -1940,7 +1940,7 @@ def gerenciar_permissoes_view(request):
 def api_atualizar_permissao(request):
     """
     API para atualizar uma permissão específica de um usuário.
-    Recebe: user_id, codename, acao ('add' ou 'remove')
+    Recebe: user_id, codename, acao ('add' ou 'remove'), app_label (opcional, padrão 'rh')
     """
     if not request.user.is_superuser and not request.user.is_staff:
         return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
@@ -1950,12 +1950,13 @@ def api_atualizar_permissao(request):
         user_id = data.get('user_id')
         codename = data.get('codename')
         acao = data.get('acao')  # 'add' ou 'remove'
+        app_label = data.get('app_label', 'rh')  # Suporte a múltiplos apps
         
         if not all([user_id, codename, acao]):
             return JsonResponse({'success': False, 'error': 'Dados incompletos'}, status=400)
         
         user = User.objects.get(id=user_id)
-        permission = Permission.objects.get(codename=codename, content_type__app_label='rh')
+        permission = Permission.objects.get(codename=codename, content_type__app_label=app_label)
         
         if acao == 'add':
             user.user_permissions.add(permission)
@@ -2064,6 +2065,47 @@ def api_toggle_staff(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+@login_required
+@require_POST
+def api_toggle_superuser(request):
+    """
+    API para alternar o status de superusuário de um usuário.
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem alterar status de superusuário'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return JsonResponse({'success': False, 'error': 'user_id é obrigatório'}, status=400)
+        
+        user = User.objects.get(id=user_id)
+        
+        # Não permitir alterar o próprio status
+        if user.id == request.user.id:
+            return JsonResponse({'success': False, 'error': 'Você não pode alterar seu próprio status de superusuário'}, status=400)
+        
+        user.is_superuser = not user.is_superuser
+        user.save()
+        
+        status_str = 'Superusuário' if user.is_superuser else 'Usuário comum'
+        logger.info(f'{request.user.username} alterou {user.username} para {status_str}')
+        
+        return JsonResponse({
+            'success': True,
+            'is_superuser': user.is_superuser,
+            'message': f'{user.username} agora é {status_str}'
+        })
+    
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Usuário não encontrado'}, status=404)
+    except Exception as e:
+        logger.error(f'Erro ao alternar superusuário: {str(e)}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 # ==============================================================================
 # SEÇÃO USUÁRIOS - GESTÃO DE USUÁRIOS E PERMISSÕES
 # ==============================================================================
@@ -2133,62 +2175,108 @@ def detalhe_usuario_view(request, user_id):
     except Colaborador.DoesNotExist:
         colaborador = None
     
-    # Permissões do usuário
-    user_perms = set(user.user_permissions.filter(content_type__app_label='rh').values_list('codename', flat=True))
+    # Permissões do usuário - separar por app
+    user_perms_rh = set(user.user_permissions.filter(content_type__app_label='rh').values_list('codename', flat=True))
+    user_perms_qms = set(user.user_permissions.filter(content_type__app_label='qms').values_list('codename', flat=True))
     
-    # Definir grupos de permissões por modelo
-    permissoes_grupos = [
+    # Definir módulos com seus grupos de permissões
+    modulos = [
         {
-            'nome': 'Colaborador',
+            'nome': 'RH',
             'cor': 'primary',
-            'icone': 'bi-person',
-            'permissoes': [
-                ('view_colaborador', 'Visualizar'),
-                ('add_colaborador', 'Adicionar'),
-                ('change_colaborador', 'Editar'),
-                ('delete_colaborador', 'Excluir'),
+            'icone': 'bi-people-fill',
+            'app_label': 'rh',
+            'grupos': [
+                {
+                    'nome': 'Colaborador',
+                    'icone': 'bi-person',
+                    'permissoes': [
+                        ('view_colaborador', 'Visualizar'),
+                        ('add_colaborador', 'Adicionar'),
+                        ('change_colaborador', 'Editar'),
+                        ('delete_colaborador', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Documento Pessoal',
+                    'icone': 'bi-file-earmark-text',
+                    'permissoes': [
+                        ('view_documentopessoal', 'Visualizar'),
+                        ('add_documentopessoal', 'Adicionar'),
+                        ('change_documentopessoal', 'Editar'),
+                        ('delete_documentopessoal', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Férias',
+                    'icone': 'bi-calendar-check',
+                    'permissoes': [
+                        ('view_ferias', 'Visualizar'),
+                        ('add_ferias', 'Adicionar'),
+                        ('change_ferias', 'Editar'),
+                        ('delete_ferias', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Ocorrência',
+                    'icone': 'bi-exclamation-triangle',
+                    'permissoes': [
+                        ('view_ocorrencia', 'Visualizar'),
+                        ('add_ocorrencia', 'Adicionar'),
+                        ('change_ocorrencia', 'Editar'),
+                        ('delete_ocorrencia', 'Excluir'),
+                    ]
+                },
             ]
         },
         {
-            'nome': 'Documento Pessoal',
+            'nome': 'Metrologia',
             'cor': 'success',
-            'icone': 'bi-file-earmark-text',
-            'permissoes': [
-                ('view_documentopessoal', 'Visualizar'),
-                ('add_documentopessoal', 'Adicionar'),
-                ('change_documentopessoal', 'Editar'),
-                ('delete_documentopessoal', 'Excluir'),
-            ]
-        },
-        {
-            'nome': 'Férias',
-            'cor': 'warning',
-            'icone': 'bi-calendar-check',
-            'permissoes': [
-                ('view_ferias', 'Visualizar'),
-                ('add_ferias', 'Adicionar'),
-                ('change_ferias', 'Editar'),
-                ('delete_ferias', 'Excluir'),
-            ]
-        },
-        {
-            'nome': 'Ocorrência',
-            'cor': 'danger',
-            'icone': 'bi-exclamation-triangle',
-            'permissoes': [
-                ('view_ocorrencia', 'Visualizar'),
-                ('add_ocorrencia', 'Adicionar'),
-                ('change_ocorrencia', 'Editar'),
-                ('delete_ocorrencia', 'Excluir'),
+            'icone': 'bi-rulers',
+            'app_label': 'qms',
+            'grupos': [
+                {
+                    'nome': 'Instrumento',
+                    'icone': 'bi-tools',
+                    'permissoes': [
+                        ('view_instrumento', 'Visualizar'),
+                        ('add_instrumento', 'Adicionar'),
+                        ('change_instrumento', 'Editar'),
+                        ('delete_instrumento', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Calibração',
+                    'icone': 'bi-speedometer2',
+                    'permissoes': [
+                        ('view_calibracao', 'Visualizar'),
+                        ('add_calibracao', 'Adicionar'),
+                        ('change_calibracao', 'Editar'),
+                        ('delete_calibracao', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Certificado',
+                    'icone': 'bi-award',
+                    'permissoes': [
+                        ('view_certificado', 'Visualizar'),
+                        ('add_certificado', 'Adicionar'),
+                        ('change_certificado', 'Editar'),
+                        ('delete_certificado', 'Excluir'),
+                    ]
+                },
             ]
         },
     ]
     
+    # Combinar todas as permissões do usuário
+    all_user_perms = user_perms_rh | user_perms_qms
+    
     context = {
         'usuario': user,
         'colaborador': colaborador,
-        'user_perms': user_perms,
-        'permissoes_grupos': permissoes_grupos,
+        'user_perms': all_user_perms,
+        'modulos': modulos,
     }
     
     return render(request, 'rh/usuario_detalhe.html', context)
