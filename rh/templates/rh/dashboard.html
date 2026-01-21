@@ -557,6 +557,7 @@
                                 <option value="25">25 itens</option>
                                 <option value="50">50 itens</option>
                                 <option value="100">100 itens</option>
+                                <option value="all">Todos</option>
                             </select>
                         </div>
                     </div>
@@ -837,7 +838,8 @@ function previousPage() {
 
 // Mudar quantidade de itens por página
 function changeItemsPerPage() {
-    itemsPerPage = parseInt(document.getElementById('itemsPerPageSelect').value);
+    const value = document.getElementById('itemsPerPageSelect').value;
+    itemsPerPage = value === 'all' ? allColaboradores.length || 9999 : parseInt(value);
     currentPage = 1; // Voltar para primeira página
     renderTableWithPagination();
 }
