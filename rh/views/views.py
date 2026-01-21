@@ -2153,8 +2153,6 @@ def listar_usuarios_view(request):
     context = {
         'usuarios': usuarios_data,
         'total_usuarios': len(usuarios_data),
-        'total_superusers': sum(1 for u in usuarios_data if u['is_superuser']),
-        'total_staff': sum(1 for u in usuarios_data if u['is_staff'] and not u['is_superuser']),
     }
     
     return render(request, 'rh/usuarios_lista.html', context)
@@ -2305,6 +2303,44 @@ def detalhe_usuario_view(request, user_id):
                         ('add_matrizhabilidade', 'Adicionar'),
                         ('change_matrizhabilidade', 'Editar'),
                         ('delete_matrizhabilidade', 'Excluir'),
+                    ]
+                },
+            ]
+        },
+        {
+            'nome': 'Avaliação de Colaboradores',
+            'cor': 'danger',
+            'icone': 'bi-clipboard-check',
+            'app_label': 'procedures',
+            'grupos': [
+                {
+                    'nome': 'Avaliação de Habilidade',
+                    'icone': 'bi-star-fill',
+                    'permissoes': [
+                        ('view_avaliacaohabilidade', 'Visualizar'),
+                        ('add_avaliacaohabilidade', 'Adicionar'),
+                        ('change_avaliacaohabilidade', 'Editar'),
+                        ('delete_avaliacaohabilidade', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Histórico de Avaliação',
+                    'icone': 'bi-clock-history',
+                    'permissoes': [
+                        ('view_historicoavaliacaohabilidade', 'Visualizar'),
+                        ('add_historicoavaliacaohabilidade', 'Adicionar'),
+                        ('change_historicoavaliacaohabilidade', 'Editar'),
+                        ('delete_historicoavaliacaohabilidade', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Validação de Matriz',
+                    'icone': 'bi-check-circle',
+                    'permissoes': [
+                        ('view_solicitacaovalidacaomatriz', 'Visualizar'),
+                        ('add_solicitacaovalidacaomatriz', 'Adicionar'),
+                        ('change_solicitacaovalidacaomatriz', 'Editar'),
+                        ('delete_solicitacaovalidacaomatriz', 'Excluir'),
                     ]
                 },
             ]
