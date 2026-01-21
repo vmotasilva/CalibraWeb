@@ -2153,6 +2153,8 @@ def listar_usuarios_view(request):
     context = {
         'usuarios': usuarios_data,
         'total_usuarios': len(usuarios_data),
+        'total_superusers': sum(1 for u in usuarios_data if u['is_superuser']),
+        'total_staff': sum(1 for u in usuarios_data if u['is_staff'] and not u['is_superuser']),
     }
     
     return render(request, 'rh/usuarios_lista.html', context)
