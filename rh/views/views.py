@@ -953,7 +953,11 @@ def gestao_ferias_view(request):
     
     # Verificar permissão de acesso ao módulo
     permitido = False
-    if request.user.is_superuser or request.user.is_staff:
+    if (
+        request.user.is_superuser or
+        request.user.is_staff or
+        request.user.has_perm("rh.view_ferias")
+    ):
         permitido = True
     elif usuario_logado:
         setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
@@ -962,7 +966,7 @@ def gestao_ferias_view(request):
         if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
            HierarquiaSetor.objects.filter(diretor=usuario_logado).exists():
             permitido = True
-    
+
     if not permitido:
         messages.error(request, "Você não tem permissão para acessar a gestão de férias.")
         return redirect("modulo_rh")

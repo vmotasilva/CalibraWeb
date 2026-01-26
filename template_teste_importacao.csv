@@ -1,8 +1,0 @@
-Matriz Código|Matriz Nome|Disciplina Código|Disciplina Nome|Disciplina Descrição|Disciplina Prioridade|Disciplina Obrigatoriedade|Colaborador Matrícula|Colaborador Nome|Colaborador Email
-MAT001|Operação|DISC001|Segurança|Procedimentos de segurança operacional|Alta|NR 12|E001|João Silva|joao.silva@empresa.com
-MAT001|Operação|DISC002|Qualidade|Controle de qualidade em processo|Alta|ISO 9001|E002|Maria Santos|maria.santos@empresa.com
-MAT001|Operação|DISC003|Higiene|Higiene e limpeza do ambiente|Média|NR 32|E001|João Silva|joao.silva@empresa.com
-MAT002|Manutenção|DISC004|Manutenção Preventiva|Procedimentos de manutenção preventiva|Alta|NR 12|E003|Pedro Costa|pedro.costa@empresa.com
-MAT002|Manutenção|DISC005|Manutenção Corretiva|Procedimentos de manutenção corretiva|Média|NR 12|E003|Pedro Costa|pedro.costa@empresa.com
-MAT003|Recursos Humanos|DISC006|Recrutamento|Processo de recrutamento e seleção|Média||E004|Ana Paula|ana.paula@empresa.com
-MAT003|Recursos Humanos|DISC007|Treinamento|Condução de treinamentos|Alta||E004|Ana Paula|ana.paula@empresa.com

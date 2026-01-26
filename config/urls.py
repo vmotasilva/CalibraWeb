@@ -7,6 +7,7 @@ from django.shortcuts import render, redirect
 from django.urls import path, include
 from django.http import JsonResponse, FileResponse
 from django.views.static import serve
+from django.views.generic import RedirectView
 import os
 from two_factor.urls import urlpatterns as tf_urls
 # from procedures.views import nova_solicitacao  # TODO: Implementar se necessário

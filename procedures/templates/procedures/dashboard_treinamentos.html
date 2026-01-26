@@ -4,1108 +4,490 @@
 {% block title %}Dashboard de Treinamentos{% endblock %}
 
 {% block content %}
-<style>
-    .dashboard-wrapper {
-        display: flex;
-        gap: 1rem;
-        height: calc(100vh - 100px);
-    }
+{% block content %}
+<div class="container-fluid py-4">
+    <div id="mainContent">
+        <!-- Filtros -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">Filtros</h6>
+            </div>
+            <div class="card-body">
+                <form id="filterForm">
+                    <!-- Setor -->
+                    <div class="mb-3">
+                        <label for="setor" class="form-label">Setor</label>
+                        <select class="form-select form-select-sm" id="setor" name="setor">
+                            <option value="">Todos os Setores</option>
+                            {% for setor in setores %}
+                            <option value="{{ setor.id }}">{{ setor.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-    .sidebar {
-        width: 280px;
-        background: white;
-        border-right: 1px solid #dee2e6;
-        padding: 1rem;
-        overflow-y: auto;
-        transition: all 0.3s ease;
-        position: relative;
-        max-height: calc(100vh - 120px);
-    }
+                    <!-- Turno -->
+                    <div class="mb-3">
+                        <label for="turno" class="form-label">Turno</label>
+                        <select class="form-select form-select-sm" id="turno" name="turno">
+                            <option value="">Todos os Turnos</option>
+                            {% for turno in turnos %}
+                            <option value="{{ turno.value }}">{{ turno.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-    .sidebar.collapsed {
-        width: 0;
-        padding: 0;
-        overflow: hidden;
-        border: none;
-    }
+                    <!-- Líder -->
+                    <div class="mb-3">
+                        <label for="lider" class="form-label">Líder</label>
+                        <select class="form-select form-select-sm" id="lider" name="lider">
+                            <option value="">Todos os Líderes</option>
+                            {% for lider in lideres %}
+                            <option value="{{ lider.id }}">{{ lider.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-    .kpi-sidebar {
-        width: 220px;
-        background: white;
-        border-right: 1px solid #dee2e6;
-        padding: 1rem;
-        overflow-y: auto;
-        transition: all 0.3s ease;
-        position: relative;
-        max-height: calc(100vh - 120px);
-    }
+                    <!-- Supervisor -->
+                    <div class="mb-3">
+                        <label for="supervisor" class="form-label">Supervisor</label>
+                        <select class="form-select form-select-sm" id="supervisor" name="supervisor">
+                            <option value="">Todos os Supervisores</option>
+                            {% for supervisor in supervisores %}
+                            <option value="{{ supervisor.id }}">{{ supervisor.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-    .kpi-sidebar.collapsed {
-        width: 0;
-        padding: 0;
-        overflow: hidden;
-        border: none;
-    }
+                    <!-- Gerente -->
+                    <div class="mb-3">
+                        <label for="gerente" class="form-label">Gerente</label>
+                        <select class="form-select form-select-sm" id="gerente" name="gerente">
+                            <option value="">Todos os Gerentes</option>
+                            {% for gerente in gerentes %}
+                            <option value="{{ gerente.id }}">{{ gerente.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-    .dashboard-header {
-        background: white;
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid #dee2e6;
-        z-index: 990;
-    }
-
-    .dashboard-header h1 {
-        margin: 0;
-        font-size: 1.1rem;
-    }
-
-    .dashboard-header small {
-        font-size: 0.75rem;
-    }
-
-    .dashboard-top-section {
-        display: flex;
-        gap: 0.5rem;
-        align-items: flex-start;
-        padding: 0.5rem;
-        min-height: 0;
-        flex: 1;
-    }
-
-    .dashboard-title-box {
-        background: white;
-        padding: 0.5rem 0.75rem;
-        border-radius: 0.25rem;
-        border: 1px solid #dee2e6;
-        display: flex;
-        align-items: center;
-        white-space: nowrap;
-        min-width: fit-content;
-        height: fit-content;
-    }
-
-    .dashboard-title-box h1 {
-        margin: 0;
-        font-size: 0.95rem;
-    }
-
-    .main-content {
-        flex: 1;
-        overflow: hidden;
-        padding: 0.5rem;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .toggle-sidebar-btn {
-        position: fixed;
-        left: 10px;
-        top: 70px;
-        z-index: 1000;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 0.25rem;
-        padding: 0.25rem 0.5rem;
-        font-size: 0.75rem;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .toggle-sidebar-btn:hover {
-        background: #0056b3;
-    }
-
-    .toggle-kpi-btn {
-        position: fixed;
-        left: 10px;
-        top: 105px;
-        z-index: 1000;
-        background: #17a2b8;
-        color: white;
-        border: none;
-        border-radius: 0.25rem;
-        padding: 0.25rem 0.5rem;
-        font-size: 0.75rem;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .toggle-kpi-btn:hover {
-        background: #138496;
-    }
-
-    .filter-group {
-        margin-bottom: 1.5rem;
-    }
-
-    .filter-group label {
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: #495057;
-        display: block;
-        margin-bottom: 0.5rem;
-    }
-
-    .filter-group select {
-        width: 100%;
-        padding: 0.5rem;
-        border: 1px solid #ced4da;
-        border-radius: 0.25rem;
-        font-size: 0.875rem;
-    }
-
-    .btn-clear-filters {
-        width: 100%;
-        margin-top: 1rem;
-        font-size: 0.85rem;
-    }
-
-    .kpi-container-single {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
-        max-width: 220px;
-    }
-    
-    .kpi-card {
-        flex: 1 1 auto;
-        min-width: 0;
-    }
-    
-    .kpi-card .card-body {
-        padding: 0.4rem !important;
-    }
-    
-    @media (max-width: 576px) {
-        .kpi-container-single {
-            flex-wrap: wrap;
-        }
-        .kpi-card {
-            flex: 1 1 calc(50% - 0.25rem);
-        }
-        .dashboard-wrapper {
-            flex-direction: column;
-        }
-        .sidebar {
-            width: 100%;
-        }
-        .toggle-sidebar-btn {
-            display: none;
-        }
-    }
-    
-    @media (min-width: 577px) and (max-width: 767px) {
-        .kpi-card {
-            flex: 1 1 calc(33.333% - 0.33rem);
-        }
-    }
-    
-    @media (min-width: 768px) and (max-width: 991px) {
-        .kpi-card {
-            flex: 1 1 calc(25% - 0.375rem);
-        }
-    }
-
-    .table-container {
-        margin-top: 1rem;
-        background: white;
-        border-radius: 0.5rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        overflow: hidden;
-        max-height: calc(100vh - 200px);
-        display: flex;
-        flex-direction: column;
-    }
-
-    .table-container h5 {
-        padding: 0.75rem;
-        background: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-        margin: 0;
-        flex-shrink: 0;
-        font-size: 0.9rem;
-    }
-
-    .table-container table {
-        margin: 0;
-        overflow-y: auto;
-        flex: 1;
-    }
-
-    .table-container table tbody {
-        display: block;
-        max-height: calc(100vh - 260px);
-        overflow-y: auto;
-        width: 100%;
-    }
-
-    .table-container table thead {
-        display: block;
-        width: 100%;
-    }
-
-    .table-container table tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-
-    /* Tab Content Responsive */
-    .tab-content {
-        display: none;
-    }
-
-    /* ========== DASHBOARD GRID ANTI-COLAPSO ========== */
-    
-    /* Container Principal do Grid */
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        grid-auto-rows: 450px;
-        gap: 1.5rem;
-        padding: 1.5rem 1.5rem 3rem 1.5rem;
-        height: 100%;
-        width: 100%;
-        box-sizing: border-box;
-        background: #fafafa;
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
-
-    /* Cards Individuais - FORÇO DIMENSÕES */
-    .grid-item {
-        display: flex;
-        flex-direction: column;
-        background: white;
-        border-radius: 0.5rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-        overflow: hidden;
-        
-        /* ⭐ PROPRIEDADES CRÍTICAS ANTI-COLAPSO */
-        min-height: 450px;
-        height: 100%;
-        width: 100%;
-        box-sizing: border-box;
-        
-        /* Garante estrutura mesmo se vazio */
-        border: 1px solid #e0e0e0;
-    }
-
-    /* Cards que ocupam linha inteira */
-    .grid-item.full-width {
-        grid-column: 1 / -1;
-    }
-
-    /* Header do Card - NÃO ENCOLHE */
-    .grid-item-header {
-        padding: 1rem 1.25rem;
-        background: #f5f5f5;
-        border-bottom: 2px solid #e0e0e0;
-        font-size: 1rem;
-        font-weight: 700;
-        color: #222;
-        flex-shrink: 0;
-        height: auto;
-        min-height: 50px;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .grid-item-header i {
-        font-size: 1.1rem;
-        color: #0066cc;
-    }
-
-    /* Corpo do Card - EXPANDE E PREENCHE */
-    .grid-item-body {
-        flex: 1;
-        display: flex;
-        align-items: stretch;
-        justify-content: stretch;
-        overflow: hidden;
-        padding: 1rem;
-        position: relative;
-        width: 100%;
-        height: 100%;
-        box-sizing: border-box;
-        background: white;
-    }
-
-    /* Canvas dentro do Body - OCUPA 100% */
-    .grid-item canvas {
-        width: 100% !important;
-        height: 100% !important;
-        max-width: 100% !important;
-        max-height: 100% !important;
-        display: block !important;
-        object-fit: contain;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 1200px) {
-        .dashboard-grid {
-            grid-template-columns: 1fr;
-            grid-auto-rows: 420px;
-            gap: 1rem;
-            padding: 1rem;
-        }
-
-        .grid-item {
-            min-height: 420px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .dashboard-grid {
-            grid-template-columns: 1fr;
-            grid-auto-rows: 350px;
-            gap: 0.75rem;
-            padding: 0.75rem;
-        }
-
-        .grid-item {
-            min-height: 350px;
-        }
-
-        .grid-item-header {
-            padding: 0.75rem 1rem;
-            font-size: 0.9rem;
-            min-height: 45px;
-        }
-
-        .chart-toggle {
-            padding: 0.75rem 1rem;
-            min-height: 45px;
-            gap: 0.5rem;
-        }
-
-        .chart-toggle button {
-            padding: 0.35rem 0.75rem;
-            font-size: 0.8rem;
-        }
-
-        .grid-item-body {
-            padding: 0.75rem;
-        }
-    }
-
-    /* Sub-tab content styling */
-    .tab-pane .tab-content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-    .tab-pane .tab-pane {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-    .tab-pane .tab-pane .card {
-        border: none;
-        box-shadow: none;
-        flex: 1;
-    }
-
-    .tab-pane .tab-pane .card-header {
-        padding: 0.5rem 0.75rem;
-        background: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-    }
-
-    .tab-pane .h-100 {
-        height: 100%;
-    }
-
-    /* Responsive Card Grid */
-    .tab-pane .row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-
-    .tab-pane .col-lg-12 {
-        flex: 1 1 100%;
-        min-width: 0;
-    }
-
-    .tab-pane .card {
-        width: 100%;
-        max-height: 100%;
-    }
-
-    .tab-pane .card-body {
-        max-height: calc(100vh - 280px);
-    }
-</style>
-
-<button class="toggle-sidebar-btn" id="toggleSidebarBtn" title="Filtros">
-    <i class="bi bi-funnel"></i>
-</button>
-
-<button class="toggle-kpi-btn" id="toggleKpiBtn" title="Indicadores">
-    <i class="bi bi-speedometer2"></i>
-</button>
-
-<div class="dashboard-wrapper">
-    <!-- Sidebar com Filtros -->
-    <div class="sidebar collapsed" id="filterSidebar">
-        <h6 class="mb-3"><i class="bi bi-sliders"></i> Filtros</h6>
-
-        <div class="filter-group">
-            <label for="filterSetor">Setor</label>
-            <select id="filterSetor" class="form-select form-select-sm">
-                <option value="">Todos os setores</option>
-                {% for setor in setores %}
-                <option value="{{ setor.id }}">{{ setor.nome }}</option>
-                {% endfor %}
-            </select>
+                    <button type="button" class="btn btn-primary btn-sm w-100" id="applyFilters">
+                        <i class="bi bi-search"></i> Aplicar Filtros
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm w-100 mt-2" id="clearFilters">
+                        <i class="bi bi-x-circle"></i> Limpar Filtros
+                    </button>
+                </form>
+            </div>
         </div>
 
-        <div class="filter-group">
-            <label for="filterTurno">Turno</label>
-            <select id="filterTurno" class="form-select form-select-sm">
-                <option value="">Todos os turnos</option>
-                {% for turno in turnos %}
-                <option value="{{ turno.value }}">{{ turno.label }}</option>
-                {% endfor %}
-            </select>
+        <!-- Cabeçalho -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2 mb-0"><i class="bi bi-graph-up"></i> Dashboard de Treinamentos</h1>
+                <small class="text-muted">Visão geral de estatísticas e conformidade</small>
+            </div>
         </div>
 
-        <div class="filter-group">
-            <label for="filterLider">Líder</label>
-            <select id="filterLider" class="form-select form-select-sm">
-                <option value="">Todos os líderes</option>
-                {% for lider in lideres %}
-                <option value="{{ lider.id }}">{{ lider.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="filter-group">
-            <label for="filterSupervisor">Supervisor</label>
-            <select id="filterSupervisor" class="form-select form-select-sm">
-                <option value="">Todos os supervisores</option>
-                {% for supervisor in supervisores %}
-                <option value="{{ supervisor.id }}">{{ supervisor.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="filter-group">
-            <label for="filterGerente">Gerente</label>
-            <select id="filterGerente" class="form-select form-select-sm">
-                <option value="">Todos os gerentes</option>
-                {% for gerente in gerentes %}
-                <option value="{{ gerente.id }}">{{ gerente.nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <button class="btn btn-sm btn-outline-secondary btn-clear-filters" id="clearFiltersBtn">
-            <i class="bi bi-x-circle"></i> Limpar Filtros
-        </button>
-    </div>
-
-    <!-- Sidebar com Título e KPIs -->
-    <div class="kpi-sidebar" id="kpiSidebar">
-        <h5 class="mb-3"><i class="bi bi-graph-up"></i> Dashboard</h5>
-        
-        <!-- KPIs Verticais -->
-        <div class="kpi-container-single" style="flex-direction: column; max-width: none;">
-            <!-- Total de Treinamentos -->
-            <div class="kpi-card">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-body" style="padding: 0.5rem;">
-                        <div class="d-flex justify-content-between align-items-start gap-1">
-                            <div style="min-width: 0;">
-                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Total</small>
-                                <div class="h6 mb-0 mt-0 kpi-total" style="font-size: 1rem;">{{ total_treinamentos }}</div>
+            <!-- KPIs Principais - Colapsível -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <button class="btn btn-link p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#kpiCollapse" aria-expanded="true" aria-controls="kpiCollapse">
+                            <i class="bi bi-chevron-down"></i> Indicadores Principais
+                        </button>
+                    </h6>
+                </div>
+                <div id="kpiCollapse" class="collapse show">
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Total de Treinamentos -->
+                            <div class="col-md-3 mb-3">
+                                <div class="card h-100 shadow-sm">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <small class="text-muted text-uppercase fw-bold">Total de Treinamentos</small>
+                                                <h3 class="mb-0 mt-2" id="totalTreinamentos">{{ total_treinamentos }}</h3>
+                                            </div>
+                                            <div class="badge bg-primary rounded-circle p-3">
+                                                <i class="bi bi-mortarboard fs-5"></i>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block">Registros completos no sistema</small>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="badge bg-primary rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                                <i class="bi bi-mortarboard" style="font-size: 0.6rem;"></i>
+
+                            <!-- Treinamentos Vigentes -->
+                            <div class="col-md-3 mb-3">
+                                <div class="card h-100 shadow-sm border-success">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <small class="text-muted text-uppercase fw-bold">Vigentes</small>
+                                                <h3 class="mb-0 mt-2 text-success" id="treinamentosVigentes">{{ treinamentos_vigentes }}</h3>
+                                            </div>
+                                            <div class="badge bg-success rounded-circle p-3">
+                                                <i class="bi bi-check-circle fs-5"></i>
+                                            </div>
+                                        </div>
+                                        <div class="progress mt-2" style="height: 4px;">
+                                            <div class="progress-bar bg-success" id="progressConformidade" style="width: {{ taxa_conformidade }}%"></div>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block" id="taxaConformidade">{{ taxa_conformidade }}% de conformidade</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Treinamentos Pendentes -->
+                            <div class="col-md-3 mb-3">
+                                <div class="card h-100 shadow-sm border-warning">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <small class="text-muted text-uppercase fw-bold">Pendentes</small>
+                                                <h3 class="mb-0 mt-2 text-warning" id="treinamentosPendentes">{{ treinamentos_pendentes }}</h3>
+                                            </div>
+                                            <div class="badge bg-warning rounded-circle p-3">
+                                                <i class="bi bi-exclamation-circle fs-5"></i>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block">Aguardando realização</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Últimos 30 dias -->
+                            <div class="col-md-3 mb-3">
+                                <div class="card h-100 shadow-sm border-info">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <small class="text-muted text-uppercase fw-bold">Últimos 30 dias</small>
+                                                <h3 class="mb-0 mt-2 text-info" id="treinamentos30Dias">{{ treinamentos_ultimos_30_dias }}</h3>
+                                            </div>
+                                            <div class="badge bg-info rounded-circle p-3">
+                                                <i class="bi bi-calendar-event fs-5"></i>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block">Novos registros</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Treinamentos Vigentes -->
-            <div class="kpi-card">
-                <div class="card h-100 shadow-sm border-success">
-                    <div class="card-body" style="padding: 0.5rem;">
-                        <div class="d-flex justify-content-between align-items-start gap-1">
-                            <div style="min-width: 0;">
-                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Vigentes</small>
-                                <div class="h6 mb-0 mt-0 text-success kpi-vigentes" style="font-size: 1rem;">{{ treinamentos_vigentes }}</div>
-                            </div>
-                            <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                                <i class="bi bi-check-circle" style="font-size: 0.6rem;"></i>
-                            </div>
-                        </div>
-                        <div class="progress" style="height: 1px; margin-top: 0.25rem;">
-                            <div class="progress-bar bg-success kpi-conformidade" style="width: {{ taxa_conformidade }}%"></div>
-                        </div>
-                    </div>
+            <!-- Gráficos -->
+    <div class="row mb-4">
+        <!-- Distribuição por Status -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartStatus" height="300"></canvas>
                 </div>
             </div>
+        </div>
 
-            <!-- Treinamentos Pendentes -->
-            <div class="kpi-card">
-                <div class="card h-100 shadow-sm border-danger">
-                    <div class="card-body" style="padding: 0.5rem;">
-                        <div class="d-flex justify-content-between align-items-start gap-1">
-                            <div style="min-width: 0;">
-                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Pendentes</small>
-                                <div class="h6 mb-0 mt-0 text-danger kpi-pendentes" style="font-size: 1rem;">{{ treinamentos_pendentes }}</div>
-                            </div>
-                            <div class="badge bg-danger rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                                <i class="bi bi-exclamation-circle" style="font-size: 0.6rem;"></i>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Treinamentos por Mês -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Treinamentos Últimos 6 Meses</h6>
                 </div>
-            </div>
-
-            <!-- Conformidade (%) -->
-            <div class="kpi-card">
-                <div class="card h-100 shadow-sm border-success">
-                    <div class="card-body" style="padding: 0.5rem;">
-                        <div class="d-flex justify-content-between align-items-start gap-1">
-                            <div style="min-width: 0;">
-                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Conformidade</small>
-                                <div class="h6 mb-0 mt-0 text-success" style="font-size: 1rem;">{{ taxa_conformidade|floatformat:0 }}%</div>
-                            </div>
-                            <div class="badge bg-success rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                                <i class="bi bi-percent" style="font-size: 0.6rem;"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Últimos 30 dias -->
-            <div class="kpi-card">
-                <div class="card h-100 shadow-sm border-info">
-                    <div class="card-body" style="padding: 0.5rem;">
-                        <div class="d-flex justify-content-between align-items-start gap-1">
-                            <div style="min-width: 0;">
-                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Últ. 30</small>
-                                <div class="h6 mb-0 mt-0 text-info" style="font-size: 1rem;">{{ treinamentos_ultimos_30_dias }}</div>
-                            </div>
-                            <div class="badge bg-info rounded-circle flex-shrink-0" style="padding: 0.25rem; font-size: 0.65rem;">
-                                <i class="bi bi-calendar-event" style="font-size: 0.6rem;"></i>
-                            </div>
-                        </div>
-                    </div>
+                <div class="card-body">
+                    <canvas id="chartMeses" height="300"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Conteúdo Principal -->
-    <div class="main-content">
-        <div class="container-fluid" style="flex: 1; display: flex; flex-direction: column; padding: 0; margin: 0; min-height: 0;">
-            <!-- Dashboard Grid -->
-            <div class="dashboard-grid">
-                <!-- LINHA 1: Visão Geral (50/50) -->
-                
-                <!-- Gráfico Pizza: Conformidade -->
-                <div class="grid-item">
-                    <div class="grid-item-header">
-                        <i class="bi bi-pie-chart"></i> Distribuição de Status
-                    </div>
-                    <div class="grid-item-body">
-                        <canvas id="chartStatus"></canvas>
-                    </div>
+    <!-- Top 10 -->
+    <div class="row">
+        <!-- Top Procedimentos -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-award"></i> Top 10 Procedimentos Mais Treinados</h6>
                 </div>
-
-                <!-- Gráfico Barras: Últimos 6 Meses -->
-                <div class="grid-item">
-                    <div class="grid-item-header">
-                        <i class="bi bi-bar-chart"></i> Últimos 6 Meses
+                <div class="card-body" id="topProcedimentos">
+                    {% if top_procedimentos %}
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nome</th>
+                                    <th class="text-end">Treinamentos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for proc in top_procedimentos %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ proc.procedimento__codigo }}</span>
+                                    </td>
+                                    <td>
+                                        <small>{{ proc.procedimento__nome|truncatewords:5 }}</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>{{ proc.total }}</strong>
+                                        <span class="ms-2">
+                                            <div class="progress" style="width: 50px; height: 4px; display: inline-block;">
+                                                <div class="progress-bar bg-info" style="width: {% widthratio proc.total 20 100 %}%"></div>
+                                            </div>
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="grid-item-body">
-                        <canvas id="chartMeses"></canvas>
-                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">Nenhum procedimento com treinamentos completos</p>
+                    {% endif %}
                 </div>
+            </div>
+        </div>
 
-                <!-- LINHA 2: Demanda (Lado a Lado) -->
-                
-                <!-- Demanda por Setor e Turno -->
-                <div class="grid-item">
-                    <div class="grid-item-header">
-                        <i class="bi bi-diagram-3"></i> Demanda por Setor e Turno
-                    </div>
-                    <div class="grid-item-body">
-                        <canvas id="chartSetorTurno"></canvas>
-                    </div>
+        <!-- Top Colaboradores -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-people"></i> Top 10 Colaboradores Mais Treinados</h6>
                 </div>
-
-                <!-- Demanda por Liderança -->
-                <div class="grid-item">
-                    <div class="grid-item-header">
-                        <i class="bi bi-people"></i> Demanda por Liderança
+                <div class="card-body" id="topColaboradores">
+                    {% if top_colaboradores %}
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Colaborador</th>
+                                    <th class="text-end">Treinamentos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for colab in top_colaboradores %}
+                                <tr>
+                                    <td>
+                                        <small>{{ colab.colaborador__nome_completo }}</small>
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>{{ colab.total }}</strong>
+                                        <span class="ms-2">
+                                            <span class="badge bg-success">{{ colab.total }}</span>
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="grid-item-body">
-                        <canvas id="chartLider"></canvas>
-                    </div>
-                </div>
-
-                <!-- LINHA 3: Planejamento (Lado a Lado) -->
-                
-                <!-- Planejamento por Setor e Turno -->
-                <div class="grid-item">
-                    <div class="grid-item-header">
-                        <i class="bi bi-calendar-event"></i> Planejamento por Setor/Turno
-                    </div>
-                    <div class="grid-item-body">
-                        <canvas id="chartPlanejamentoSetorTurno"></canvas>
-                    </div>
-                </div>
-
-                <!-- Planejamento por Instrutor -->
-                <div class="grid-item">
-                    <div class="grid-item-header">
-                        <i class="bi bi-person-check"></i> Planejamento por Instrutor
-                    </div>
-                    <div class="grid-item-body">
-                        <canvas id="chartPlanejamentoInstrutor"></canvas>
-                    </div>
+                    {% else %}
+                    <p class="text-muted text-center">Nenhum colaborador com treinamentos completos</p>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Chart.js -->
+<!-- Chart.js para gráficos -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
-    let chartsInstances = {
-        status: null,
-        meses: null,
-        setorTurno: null,
-        lider: null
-    };
+document.addEventListener('DOMContentLoaded', function() {
+    let chartStatus, chartMeses;
 
-    let dadosOriginais = {
-        treinamentos_por_mes: {{ treinamentos_por_mes|safe }},
-        treinamentos_por_setor_turno: {{ treinamentos_por_setor_turno|safe }},
-        treinamentos_por_lider: {{ treinamentos_por_lider|safe }},
-        status_distribuicao: {{ status_distribuicao|safe }}
-    };
+    // Função para atualizar gráficos
+    function updateCharts(data) {
+        // Atualizar KPIs
+        document.getElementById('totalTreinamentos').textContent = data.total_treinamentos;
+        document.getElementById('treinamentosVigentes').textContent = data.treinamentos_vigentes;
+        document.getElementById('treinamentosPendentes').textContent = data.treinamentos_pendentes;
+        document.getElementById('treinamentos30Dias').textContent = data.treinamentos_ultimos_30_dias;
+        document.getElementById('taxaConformidade').textContent = data.taxa_conformidade + '% de conformidade';
+        document.getElementById('progressConformidade').style.width = data.taxa_conformidade + '%';
 
-    console.log('Dados Originais:', dadosOriginais);
-
-    function initCharts(data = null) {
-        // Usar dados filtrados ou originais
-        const statusDist = data ? data.status_distribuicao : dadosOriginais.status_distribuicao;
-        const mesesData = data ? data.treinamentos_por_mes : dadosOriginais.treinamentos_por_mes;
-        const setorData = data ? data.treinamentos_por_setor_turno : dadosOriginais.treinamentos_por_setor_turno;
-        const liderData = data ? data.treinamentos_por_lider : dadosOriginais.treinamentos_por_lider;
-
-        // Destruir gráficos anteriores
-        Object.values(chartsInstances).forEach(chart => {
-            if (chart) chart.destroy();
-        });
-
-        // Gráfico de Status
-        const ctxStatus = document.getElementById('chartStatus').getContext('2d');
-        chartsInstances.status = new Chart(ctxStatus, {
-            type: 'doughnut',
-            data: {
-                labels: ['Vigentes', 'Pendentes'],
-                datasets: [{
-                    data: [statusDist.vigente || 0, statusDist.pendente || 0],
-                    backgroundColor: ['#28a745', '#f87171'],
-                    borderColor: ['#218838', '#dc2626'],
-                    borderWidth: 2,
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: {
-                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
-                },
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { padding: 15, font: { size: 13 } }
-                    }
-                }
-            }
-        });
-
-        // Gráfico de Meses
-        const meses = mesesData.map(m => m.mes);
-        const valores = mesesData.map(m => m.total);
-
-        const ctxMeses = document.getElementById('chartMeses').getContext('2d');
-        chartsInstances.meses = new Chart(ctxMeses, {
-            type: 'bar',
-            data: {
-                labels: meses,
-                datasets: [{
-                    label: 'Treinamentos',
-                    data: valores,
-                    backgroundColor: 'rgba(23, 162, 184, 0.6)',
-                    borderColor: 'rgba(23, 162, 184, 1)',
-                    borderWidth: 2,
-                    borderRadius: 4,
-                    hoverBackgroundColor: 'rgba(23, 162, 184, 0.8)'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: {
-                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
-                },
-                plugins: {
-                    legend: { display: true, labels: { padding: 15, font: { size: 13 } } }
-                },
-                scales: {
-                    x: { ticks: { font: { size: 11 } } },
-                    y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } }
-                }
-            }
-        });
-
-        // Gráfico de Setor e Turno
-        const setorLabels = setorData.map(s => s.nome);
-        const setorVigentes = setorData.map(s => s.vigentes);
-        const setorPendentes = setorData.map(s => s.pendentes);
-
-        const ctxSetorTurno = document.getElementById('chartSetorTurno').getContext('2d');
-        chartsInstances.setorTurno = new Chart(ctxSetorTurno, {
-            type: 'bar',
-            data: {
-                labels: setorLabels,
-                datasets: [
-                    {
-                        label: 'Vigentes',
-                        data: setorVigentes,
-                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
-                        borderColor: 'rgba(40, 167, 69, 1)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Pendentes',
-                        data: setorPendentes,
-                        backgroundColor: 'rgba(248, 113, 113, 0.7)',
-                        borderColor: 'rgba(248, 113, 113, 1)',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                layout: {
-                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
-                },
-                plugins: {
-                    legend: { display: true, position: 'top', labels: { padding: 15, font: { size: 12 } } }
-                },
-                scales: {
-                    x: { stacked: true, beginAtZero: true },
-                    y: { stacked: true, ticks: { font: { size: 11 } } }
-                }
-            }
-        });
-
-        // Gráfico de Líderes
-        const liderLabels = liderData.map(l => l.nome);
-        const liderVigentes = liderData.map(l => l.vigentes);
-        const liderPendentes = liderData.map(l => l.pendentes);
-
-        const ctxLider = document.getElementById('chartLider').getContext('2d');
-        chartsInstances.lider = new Chart(ctxLider, {
-            type: 'bar',
-            data: {
-                labels: liderLabels,
-                datasets: [
-                    {
-                        label: 'Vigentes',
-                        data: liderVigentes,
-                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
-                        borderColor: 'rgba(40, 167, 69, 1)',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Pendentes',
-                        data: liderPendentes,
-                        backgroundColor: 'rgba(248, 113, 113, 0.7)',
-                        borderColor: 'rgba(248, 113, 113, 1)',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                layout: {
-                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
-                },
-                plugins: {
-                    legend: { display: true, position: 'top', labels: { padding: 15, font: { size: 12 } } }
-                },
-                scales: {
-                    x: { stacked: true, beginAtZero: true },
-                    y: { stacked: true, ticks: { font: { size: 11 } } }
-                }
-            }
-        });
-    }
-
-    // Renderizar gráficos de planejamento
-    let planejamentosCharts = {
-        setorTurno: null,
-        instrutor: null
-    };
-
-    // Dados de planejamento passados do backend
-    let dadosPlanejamento = {
-        planejamentos_setor_turno: {{ planejamentos_setor_turno|safe }},
-        planejamentos_instrutor: {{ planejamentos_instrutor|safe }}
-    };
-
-    console.log('Dados de Planejamento:', dadosPlanejamento);
-
-    function initPlanejamentoCharts() {
-        // Destruir gráficos anteriores
-        if (planejamentosCharts.setorTurno) planejamentosCharts.setorTurno.destroy();
-        if (planejamentosCharts.instrutor) planejamentosCharts.instrutor.destroy();
-
-        // Cores para os status
-        const cores = {
-            no_prazo: 'rgba(40, 167, 69, 0.8)',      // Verde
-            fora_prazo: 'rgba(248, 113, 113, 0.8)',  // Vermelho
-            cancelados: 'rgba(108, 117, 125, 0.8)',  // Cinza
-            concluidos: 'rgba(23, 162, 184, 0.8)'    // Azul
-        };
-
-        const coresBorder = {
-            no_prazo: 'rgba(40, 167, 69, 1)',
-            fora_prazo: 'rgba(248, 113, 113, 1)',
-            cancelados: 'rgba(108, 117, 125, 1)',
-            concluidos: 'rgba(23, 162, 184, 1)'
-        };
-
-        // Gráfico Setor e Turno
-        const setorLabels = dadosPlanejamento.planejamentos_setor_turno.map(s => s.nome);
-        const setorNoPrazo = dadosPlanejamento.planejamentos_setor_turno.map(s => s.no_prazo);
-        const setorForaPrazo = dadosPlanejamento.planejamentos_setor_turno.map(s => s.fora_prazo);
-        const setorCancelados = dadosPlanejamento.planejamentos_setor_turno.map(s => s.cancelados);
-        const setorConcluidos = dadosPlanejamento.planejamentos_setor_turno.map(s => s.concluidos);
-
-        const ctxSetorTurnoPlanj = document.getElementById('chartPlanejamentoSetorTurno').getContext('2d');
-        planejamentosCharts.setorTurno = new Chart(ctxSetorTurnoPlanj, {
-            type: 'bar',
-            data: {
-                labels: setorLabels,
-                datasets: [
-                    {
-                        label: 'No Prazo',
-                        data: setorNoPrazo,
-                        backgroundColor: cores.no_prazo,
-                        borderColor: coresBorder.no_prazo,
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Fora do Prazo',
-                        data: setorForaPrazo,
-                        backgroundColor: cores.fora_prazo,
-                        borderColor: coresBorder.fora_prazo,
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Cancelados',
-                        data: setorCancelados,
-                        backgroundColor: cores.cancelados,
-                        borderColor: coresBorder.cancelados,
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Concluídos',
-                        data: setorConcluidos,
-                        backgroundColor: cores.concluidos,
-                        borderColor: coresBorder.concluidos,
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: {
-                    padding: { left: 5, right: 5, top: 5, bottom: 5 }
-                },
-                plugins: {
-                    legend: { display: true, position: 'top', labels: { padding: 8, font: { size: 10 } } }
-                },
-                scales: {
-                    x: { stacked: true, beginAtZero: true, ticks: { font: { size: 9 } } },
-                    y: { stacked: true, ticks: { font: { size: 9 } } }
-                }
-            }
-        });
-
-        // Gráfico Instrutor
-        const instrutorLabels = dadosPlanejamento.planejamentos_instrutor.map(i => i.nome);
-        const instrutorNoPrazo = dadosPlanejamento.planejamentos_instrutor.map(i => i.no_prazo);
-        const instrutorForaPrazo = dadosPlanejamento.planejamentos_instrutor.map(i => i.fora_prazo);
-        const instrutorCancelados = dadosPlanejamento.planejamentos_instrutor.map(i => i.cancelados);
-        const instrutorConcluidos = dadosPlanejamento.planejamentos_instrutor.map(i => i.concluidos);
-
-        const ctxInstrutorPlanj = document.getElementById('chartPlanejamentoInstrutor').getContext('2d');
-        planejamentosCharts.instrutor = new Chart(ctxInstrutorPlanj, {
-            type: 'bar',
-            data: {
-                labels: instrutorLabels,
-                datasets: [
-                    {
-                        label: 'No Prazo',
-                        data: instrutorNoPrazo,
-                        backgroundColor: cores.no_prazo,
-                        borderColor: coresBorder.no_prazo,
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Fora do Prazo',
-                        data: instrutorForaPrazo,
-                        backgroundColor: cores.fora_prazo,
-                        borderColor: coresBorder.fora_prazo,
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Cancelados',
-                        data: instrutorCancelados,
-                        backgroundColor: cores.cancelados,
-                        borderColor: coresBorder.cancelados,
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Concluídos',
-                        data: instrutorConcluidos,
-                        backgroundColor: cores.concluidos,
-                        borderColor: coresBorder.concluidos,
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                layout: {
-                    padding: { left: 10, right: 10, top: 10, bottom: 10 }
-                },
-                plugins: {
-                    legend: { display: true, position: 'top', labels: { padding: 8, font: { size: 10 } } }
-                },
-                scales: {
-                    x: { stacked: true, beginAtZero: true, ticks: { font: { size: 9 } } },
-                    y: { stacked: true, ticks: { font: { size: 9 } } }
-                }
-            }
-        });
-    }
-
-    function aplicarFiltros() {
-        const turno = document.getElementById('filterTurno').value;
-        const setor = document.getElementById('filterSetor').value;
-        const lider = document.getElementById('filterLider').value;
-        const supervisor = document.getElementById('filterSupervisor').value;
-        const gerente = document.getElementById('filterGerente').value;
-
-        const params = new URLSearchParams();
-        if (turno) params.append('turno', turno);
-        if (setor) params.append('setor', setor);
-        if (lider) params.append('lider', lider);
-        if (supervisor) params.append('supervisor', supervisor);
-        if (gerente) params.append('gerente', gerente);
-
-        const url = '{% url "training:dashboard_filtered" %}?' + params.toString();
-
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                document.querySelector('.kpi-total').textContent = data.total_treinamentos;
-                document.querySelector('.kpi-vigentes').textContent = data.treinamentos_vigentes;
-                document.querySelector('.kpi-pendentes').textContent = data.treinamentos_pendentes;
-                document.querySelector('.kpi-conformidade').style.width = data.taxa_conformidade + '%';
-
-                initCharts(data);
-                atualizarTabela(data.dados_tabela);
-            })
-            .catch(error => console.error('Erro ao filtrar:', error));
-    }
-
-    function atualizarTabela(dados) {
-        const tbody = document.getElementById('tabelaDados');
-        tbody.innerHTML = '';
-
-        if (dados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum registro encontrado</td></tr>';
-            return;
+        // Atualizar gráfico de status
+        if (chartStatus) {
+            chartStatus.data.datasets[0].data = [data.status_distribuicao.vigente, data.status_distribuicao.pendente];
+            chartStatus.update();
         }
 
-        dados.forEach(reg => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${reg.colaborador}</td>
-                <td><span class="badge bg-secondary">${reg.procedimento}</span></td>
-                <td><small>${reg.procedimento_nome}</small></td>
-                <td>${reg.data}</td>
-            `;
-            tbody.appendChild(tr);
-        });
+        // Atualizar gráfico de meses
+        if (chartMeses) {
+            const meses = data.treinamentos_por_mes.map(item => item.mes);
+            const valores = data.treinamentos_por_mes.map(item => item.total);
+            chartMeses.data.labels = meses;
+            chartMeses.data.datasets[0].data = valores;
+            chartMeses.update();
+        }
+
+        // Atualizar top procedimentos
+        let htmlProc = '';
+        if (data.top_procedimentos && data.top_procedimentos.length > 0) {
+            htmlProc = '<div style="max-height: 400px; overflow-y: auto;"><table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Código</th><th>Nome</th><th class="text-end">Treinamentos</th></tr></thead><tbody>';
+            data.top_procedimentos.forEach(proc => {
+                htmlProc += `<tr><td><span class="badge bg-primary">${proc.procedimento__codigo}</span></td><td><small>${proc.procedimento__nome.split(' ').slice(0,5).join(' ')}</small></td><td class="text-end"><strong>${proc.total}</strong><span class="ms-2"><div class="progress" style="width: 50px; height: 4px; display: inline-block;"><div class="progress-bar bg-info" style="width: ${Math.min(proc.total * 5, 100)}%"></div></div></span></td></tr>`;
+            });
+            htmlProc += '</tbody></table></div>';
+        } else {
+            htmlProc = '<p class="text-muted text-center">Nenhum procedimento com treinamentos completos</p>';
+        }
+        document.getElementById('topProcedimentos').innerHTML = htmlProc;
+
+        // Atualizar top colaboradores
+        let htmlColab = '';
+        if (data.top_colaboradores && data.top_colaboradores.length > 0) {
+            htmlColab = '<div style="max-height: 400px; overflow-y: auto;"><table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Colaborador</th><th class="text-end">Treinamentos</th></tr></thead><tbody>';
+            data.top_colaboradores.forEach(colab => {
+                htmlColab += `<tr><td><small>${colab.colaborador__nome_completo}</small></td><td class="text-end"><strong>${colab.total}</strong><span class="ms-2"><span class="badge bg-success">${colab.total}</span></span></td></tr>`;
+            });
+            htmlColab += '</tbody></table></div>';
+        } else {
+            htmlColab = '<p class="text-muted text-center">Nenhum colaborador com treinamentos completos</p>';
+        }
+        document.getElementById('topColaboradores').innerHTML = htmlColab;
     }
 
-    // Event Listeners
-    document.getElementById('toggleSidebarBtn').addEventListener('click', function() {
-        document.getElementById('filterSidebar').classList.toggle('collapsed');
+    // Inicializar gráficos
+    const ctxStatus = document.getElementById('chartStatus').getContext('2d');
+    chartStatus = new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+            labels: ['Vigentes', 'Pendentes'],
+            datasets: [{
+                data: [{{ status_distribuicao.vigente }}, {{ status_distribuicao.pendente }}],
+                backgroundColor: ['#28a745', '#ffc107'],
+                borderColor: ['#218838', '#e0a800'],
+                borderWidth: 2,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 14
+                        }
+                    }
+                }
+            }
+        }
     });
 
-    document.getElementById('toggleKpiBtn').addEventListener('click', function() {
-        document.getElementById('kpiSidebar').classList.toggle('collapsed');
+    // Gráfico de Treinamentos por Mês
+    const meses = [
+        {% for item in treinamentos_por_mes %}
+        '{{ item.mes }}'{{ forloop.last|yesno:'' }},
+        {% endfor %}
+    ];
+
+    const valores = [
+        {% for item in treinamentos_por_mes %}
+        {{ item.total }}{{ forloop.last|yesno:'' }},
+        {% endfor %}
+    ];
+
+    const ctxMeses = document.getElementById('chartMeses').getContext('2d');
+    chartMeses = new Chart(ctxMeses, {
+        type: 'bar',
+        data: {
+            labels: meses,
+            datasets: [{
+                label: 'Treinamentos Realizados',
+                data: valores,
+                backgroundColor: 'rgba(23, 162, 184, 0.6)',
+                borderColor: 'rgba(23, 162, 184, 1)',
+                borderWidth: 2,
+                borderRadius: 4,
+                hoverBackgroundColor: 'rgba(23, 162, 184, 0.8)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            indexAxis: 'x',
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 13
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
     });
 
-    document.getElementById('filterSetor').addEventListener('change', aplicarFiltros);
-    document.getElementById('filterTurno').addEventListener('change', aplicarFiltros);
-    document.getElementById('filterLider').addEventListener('change', aplicarFiltros);
-    document.getElementById('filterSupervisor').addEventListener('change', aplicarFiltros);
-    document.getElementById('filterGerente').addEventListener('change', aplicarFiltros);
+    // Aplicar filtros
+    document.getElementById('applyFilters').addEventListener('click', function() {
+        const formData = new FormData(document.getElementById('filterForm'));
+        const params = new URLSearchParams();
+        for (let [key, value] of formData.entries()) {
+            if (value) params.append(key, value);
+        }
 
-    document.getElementById('clearFiltersBtn').addEventListener('click', function() {
-        document.getElementById('filterSetor').value = '';
-        document.getElementById('filterTurno').value = '';
-        document.getElementById('filterLider').value = '';
-        document.getElementById('filterSupervisor').value = '';
-        document.getElementById('filterGerente').value = '';
-        aplicarFiltros();
+        fetch(`{% url 'training:dashboard_filtered' %}?${params}`)
+            .then(response => response.json())
+            .then(data => {
+                updateCharts(data);
+            })
+            .catch(error => console.error('Erro ao aplicar filtros:', error));
     });
 
-    // Inicializar gráficos ao carregar
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(() => {
-            console.log('Inicializando gráficos com dados:', dadosOriginais);
-            initCharts();
-            console.log('Inicializando gráficos de planejamento:', dadosPlanejamento);
-            initPlanejamentoCharts();
-        }, 500);
+    // Limpar filtros
+    document.getElementById('clearFilters').addEventListener('click', function() {
+        document.getElementById('filterForm').reset();
+        location.reload(); // Recarregar para dados originais
     });
+
+    // Toggle sidebar
+    document.getElementById('toggleSidebar').addEventListener('click', function() {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const icon = this.querySelector('i');
+        sidebar.classList.toggle('collapsed');
+        mainContent.classList.toggle('collapsed');
+        if (sidebar.classList.contains('collapsed')) {
+            icon.classList.remove('bi-funnel');
+            icon.classList.add('bi-chevron-right');
+        } else {
+            icon.classList.remove('bi-chevron-right');
+            icon.classList.add('bi-funnel');
+        }
+    });
+
+    // Toggle chevron icon for KPIs
+    document.querySelector('[data-bs-target="#kpiCollapse"]').addEventListener('click', function() {
+        const icon = this.querySelector('i');
+        if (icon.classList.contains('bi-chevron-down')) {
+            icon.classList.remove('bi-chevron-down');
+            icon.classList.add('bi-chevron-up');
+        } else {
+            icon.classList.remove('bi-chevron-up');
+            icon.classList.add('bi-chevron-down');
+        }
+    });
+});
 </script>
 
 <style>
@@ -1127,6 +509,40 @@
     .progress {
         background-color: #e9ecef;
         border-radius: 0.25rem;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .sticky-top {
+        z-index: 1020;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 300px;
+        height: 100vh;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        background-color: #f8f9fa;
+        padding: 1rem;
+        overflow-y: auto;
+    }
+
+    .sidebar.collapsed {
+        left: -300px;
+    }
+
+    #mainContent {
+        margin-left: 300px;
+        transition: margin-left 0.3s ease;
+    }
+
+    #mainContent.collapsed {
+        margin-left: 0;
     }
 </style>
 {% endblock %}

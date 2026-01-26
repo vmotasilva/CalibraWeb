@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     "fornecedores.apps.FornecedoresConfig",
     # Módulo legado (compatibilidade - mantém 3 cross-app models: SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob)
     "qms",
+    "training",  # Adicionado para compatibilidade com dashboard de gráficos
     # Aplicações de terceiros
     "widget_tweaks",
 ]

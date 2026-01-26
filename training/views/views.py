@@ -375,7 +375,7 @@ def dashboard_treinamentos_view(request):
     cached_data = cache.get(cache_key)
     
     if cached_data:
-        return render(request, 'training/dashboard_treinamentos.html', cached_data)
+        return render(request, 'procedures/dashboard_treinamentos.html', cached_data)
     
     # Base query: apenas registros com colaborador e procedimento vinculados E ATIVOS E NÃO AFASTADOS
     valid_registros = RegistroTreinamento.objects.filter(
@@ -741,6 +741,27 @@ def dashboard_treinamentos_filtered_view(request):
             'total': count
         })
     
+    # Treinamentos nos últimos 30 dias
+    data_30_dias_atras = date.today() - timedelta(days=30)
+    treinamentos_ultimos_30_dias = treinamentos.filter(
+        data_treinamento__gte=data_30_dias_atras,
+        data_treinamento__isnull=False
+    ).count()
+    
+    # Top 10 procedimentos mais treinados
+    top_procedimentos = treinamentos.filter(
+        data_treinamento__isnull=False
+    ).values('procedimento__codigo', 'procedimento__nome').annotate(
+        total=Count('id')
+    ).order_by('-total')[:10]
+    
+    # Top 10 colaboradores
+    top_colaboradores = treinamentos.filter(
+        data_treinamento__isnull=False
+    ).values('colaborador__nome_completo').annotate(
+        total=Count('id')
+    ).order_by('-total')[:10]
+    
     # Gráfico por Líder (considerando filtros aplicados)
     treinamentos_por_lider = []
     líderes_q = Colaborador.objects.filter(
@@ -854,10 +875,13 @@ def dashboard_treinamentos_filtered_view(request):
         'total_treinamentos': total_treinamentos,
         'treinamentos_vigentes': treinamentos_vigentes,
         'treinamentos_pendentes': treinamentos_pendentes,
+        'treinamentos_ultimos_30_dias': treinamentos_ultimos_30_dias,
         'taxa_conformidade': taxa_conformidade,
         'status_distribuicao': status_distribuicao,
         'treinamentos_por_mes': treinamentos_por_mes,
         'treinamentos_por_lider': treinamentos_por_lider,
         'treinamentos_por_setor_turno': treinamentos_por_setor_turno,
+        'top_procedimentos': list(top_procedimentos),
+        'top_colaboradores': list(top_colaboradores),
         'dados_tabela': dados_tabela_list
     })

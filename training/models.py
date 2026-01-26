@@ -64,9 +64,9 @@ class ProcedimentoRevisao(models.Model):
     revisao = models.CharField(max_length=10)
     data_revisao = models.DateField(null=True, blank=True)
     data_aprovacao = models.DateField(null=True, blank=True)
-    elaborador = models.ForeignKey('rh.Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='revisoes_elaboradas')
-    revisor = models.ForeignKey('rh.Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='revisoes_revisadas')
-    aprovador = models.ForeignKey('rh.Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='revisoes_aprovadas')
+    elaborador = models.ForeignKey('rh.Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='training_revisoes_elaboradas')
+    revisor = models.ForeignKey('rh.Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='training_revisoes_revisadas')
+    aprovador = models.ForeignKey('rh.Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='training_revisoes_aprovadas')
     arquivo_prev = models.FileField(upload_to='procedimentos/rev/', null=True, blank=True, verbose_name='Arquivo Revisão Anterior')
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -81,13 +81,13 @@ class ProcedimentoRevisao(models.Model):
 
 class RegistroTreinamento(models.Model):
     colaborador = models.ForeignKey(
-        'rh.Colaborador', on_delete=models.CASCADE, related_name="treinamentos"
+        'rh.Colaborador', on_delete=models.CASCADE, related_name="training_treinamentos"
     )
     procedimento = models.ForeignKey(
         Procedimento, on_delete=models.CASCADE, related_name="registros_treinamento"
     )
     revisor_qualidade = models.ForeignKey(
-        'rh.Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name="revisoes_qualidade"
+        'rh.Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name="training_revisoes_qualidade"
     )
     revisao_treinada = models.CharField(max_length=10)
     data_treinamento = models.DateField()

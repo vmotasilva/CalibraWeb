@@ -8,6 +8,7 @@ from django.urls import path
 from . import views
 from .views import habilidades_views, perfis_views, avaliacoes_views, planejamento_views, gap_analysis_views, lista_presenca_views, validacao_views, template_mapeamento_views
 from .views.planejamento_api_matriz import api_disciplinas_por_matriz_view, api_procedimentos_por_disciplina_view, api_colaboradores_por_matriz_view, api_procedimentos_buscar_view, api_colaboradores_buscar_view
+from training.views import views as training_views
 
 app_name = 'procedures'
 
@@ -41,6 +42,7 @@ urlpatterns = [
     path('treinamentos/<int:treinamento_id>/', views.treinamentos_detalhe_view, name='treinamentos_detalhe'),
     path('treinamentos/novo/', views.novo_treinamento_view, name='novo_treinamento'),
     path('treinamentos/<int:treinamento_id>/editar/', views.editar_treinamento_view, name='editar_treinamento'),
+    path('dashboard/', training_views.dashboard_treinamentos_view, name='dashboard_treinamentos'),
     
     # ==========================
     # FORNECEDORES
