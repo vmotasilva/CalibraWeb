@@ -6,7 +6,175 @@
 {% block content %}
 <div class="container-fluid py-4">
     <div id="mainContent">
-        <!-- Cards e gráficos removidos -->
+        <div class="row">
+            <!-- Sidebar de filtros -->
+            <aside id="sidebar" class="sidebar col-md-3">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6 class="mb-3">Filtros</h6>
+                        <form id="filterForm">
+                            <div class="mb-2">
+                                <label class="form-label small">Setor</label>
+                                <select name="setor" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    {% for s in setores %}
+                                    <option value="{{ s.id }}">{{ s.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label small">Turno</label>
+                                <select name="turno" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    {% for t in turnos %}
+                                    <option value="{{ t.value }}">{{ t.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label small">Líder</label>
+                                <select name="lider" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    {% for l in lideres %}
+                                    <option value="{{ l.id }}">{{ l.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="d-flex gap-2 mt-3">
+                                <button id="applyFilters" type="button" class="btn btn-primary btn-sm flex-fill">Aplicar</button>
+                                <button id="clearFilters" type="button" class="btn btn-outline-secondary btn-sm flex-fill">Limpar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body text-center">
+                        <h6 class="mb-1">Taxa de Conformidade</h6>
+                        <div class="progress mb-2" style="height:18px">
+                            <div id="progressConformidade" class="progress-bar bg-success" role="progressbar" style="width: {{ taxa_conformidade }}%"></div>
+                        </div>
+                        <div id="taxaConformidade" class="small text-muted">{{ taxa_conformidade }}% de conformidade</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h6 class="mb-1">Últimos 30 dias</h6>
+                        <div id="treinamentos30Dias" class="display-6">{{ treinamentos_ultimos_30_dias }}</div>
+                        <small class="text-muted">treinamentos registrados</small>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Conteúdo principal -->
+            <section class="col-md-9">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center">
+                            <div class="small text-muted">Total Treinamentos</div>
+                            <div id="totalTreinamentos" class="h5">{{ total_treinamentos }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center">
+                            <div class="small text-muted">Vigentes</div>
+                            <div id="treinamentosVigentes" class="h5">{{ treinamentos_vigentes }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center">
+                            <div class="small text-muted">Pendentes</div>
+                            <div id="treinamentosPendentes" class="h5">{{ treinamentos_pendentes }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card p-3 text-center">
+                            <div class="small text-muted">Colaboradores Treinados</div>
+                            <div id="totalColaboradoresTreinados" class="h5">{{ total_colaboradores_treinados }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card p-3">
+                            <h6 class="card-title">Status</h6>
+                            <canvas id="chartStatus" style="height: 240px;"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card p-3">
+                            <h6 class="card-title">Treinamentos (últimos 6 meses)</h6>
+                            <canvas id="chartMeses" style="height: 240px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card p-3">
+                            <h6 class="card-title">Top Procedimentos</h6>
+                            <div id="topProcedimentos">Carregando...</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card p-3">
+                            <h6 class="card-title">Top Colaboradores</h6>
+                            <div id="topColaboradores">Carregando...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <h6 class="mb-0">Últimos Treinamentos</h6>
+                            <div>
+                                <button id="exportCsv" class="btn btn-outline-secondary btn-sm">Exportar CSV</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover" id="tbTreinamentos">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Colaborador</th>
+                                        <th>Procedimento</th>
+                                        <th>Data</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyTreinamentos">
+                                    {% for row in dados_tabela %}
+                                    <tr data-id="{{ row.id }}" class="table-row-clickable" style="cursor:pointer">
+                                        <td>{{ row.colaborador__nome_completo }}</td>
+                                        <td>{{ row.procedimento__codigo }}</td>
+                                        <td>{{ row.data_treinamento|date:"d/m/Y" }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">Nenhum registro</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-2">
+                            {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline-secondary btn-sm me-2">Anterior</a>
+                            {% endif %}
+                            {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline-secondary btn-sm">Próxima</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </div>
     </div>
 </div>
 
@@ -153,8 +321,55 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Aplicar filtros
+    // Estado local com últimos dados carregados
+    let lastFetchedData = null;
+
+    // Função para atualizar tabela com dados retornados pela API
+    function updateTable(data) {
+        const tbody = document.getElementById('tbodyTreinamentos');
+        tbody.innerHTML = '';
+        if (data.dados_tabela && data.dados_tabela.length > 0) {
+            data.dados_tabela.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-id', row.id || '');
+                tr.classList.add('table-row-clickable');
+                tr.style.cursor = 'pointer';
+                tr.innerHTML = `<td>${row.colaborador}</td><td>${row.procedimento}</td><td>${row.data}</td>`;
+                tbody.appendChild(tr);
+            });
+        } else {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="3" class="text-center text-muted">Nenhum registro</td>';
+            tbody.appendChild(tr);
+        }
+    }
+
+    // Delegation: clicar numa linha leva ao detalhe do treinamento
+    document.getElementById('tbodyTreinamentos').addEventListener('click', function(e) {
+        let tr = e.target.closest('tr');
+        if (!tr) return;
+        const id = tr.getAttribute('data-id');
+        if (!id) return;
+        // Navegar para a página de detalhes
+        window.location.href = `/procedures/treinamentos/${id}/`;
+    });
+
+    // Spinner helper
+    function setLoading(button, loading) {
+        if (loading) {
+            button.setAttribute('disabled', 'disabled');
+            button.dataset.original = button.innerHTML;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Carregando...';
+        } else {
+            button.removeAttribute('disabled');
+            if (button.dataset.original) button.innerHTML = button.dataset.original;
+        }
+    }
+
+    // Aplicar filtros (com feedback visual)
     document.getElementById('applyFilters').addEventListener('click', function() {
+        const btn = this;
+        setLoading(btn, true);
         const formData = new FormData(document.getElementById('filterForm'));
         const params = new URLSearchParams();
         for (let [key, value] of formData.entries()) {
@@ -164,15 +379,49 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(`{% url 'training:dashboard_filtered' %}?${params}`)
             .then(response => response.json())
             .then(data => {
+                lastFetchedData = data;
                 updateCharts(data);
+                updateTable(data);
             })
-            .catch(error => console.error('Erro ao aplicar filtros:', error));
+            .catch(error => console.error('Erro ao aplicar filtros:', error))
+            .finally(() => setLoading(btn, false));
     });
 
     // Limpar filtros
     document.getElementById('clearFilters').addEventListener('click', function() {
         document.getElementById('filterForm').reset();
-        location.reload(); // Recarregar para dados originais
+        lastFetchedData = null;
+        // Recarregar dados iniciais do contexto (recarregar página é a forma mais simples)
+        location.reload();
+    });
+
+    // Export CSV a partir do último conjunto de dados carregado (fallback para tabela atual)
+    document.getElementById('exportCsv').addEventListener('click', function() {
+        const data = lastFetchedData || { dados_tabela: Array.from(document.querySelectorAll('#tbodyTreinamentos tr')).map(tr => {
+            const tds = tr.querySelectorAll('td');
+            return { colaborador: tds[0]?.textContent || '', procedimento: tds[1]?.textContent || '', data: tds[2]?.textContent || '' };
+        }) };
+
+        if (!data || !data.dados_tabela || data.dados_tabela.length === 0) {
+            alert('Nenhum dado disponível para exportar.');
+            return;
+        }
+
+        const rows = data.dados_tabela;
+        const csv = [];
+        csv.push(['Colaborador','Procedimento','Data']);
+        rows.forEach(r => csv.push([r.colaborador, r.procedimento, r.data]));
+        const csvContent = csv.map(e => e.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `treinamentos_export_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
     });
 
     // Toggle sidebar
