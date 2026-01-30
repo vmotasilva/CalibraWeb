@@ -11,6 +11,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from datetime import datetime, timedelta
 import pandas as pd
 import os
+
+from django.http import FileResponse
 from django.conf import settings
 
 from procedures.models import (
@@ -345,7 +347,9 @@ def lista_presenca_export_pdf_view(request, pk):
         try:
             return _gerar_pdf_com_template_mapeado(lista)
         except Exception as e:
-            print(f"Erro ao gerar PDF com template: {e}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception(f"Erro ao gerar PDF com template: {e}")
             # Fallback para layout genérico
             pass
     
@@ -521,7 +525,9 @@ def _gerar_pdf_com_template_mapeado(lista):
         return response
         
     except Exception as e:
-        print(f"Erro ao processar PDF com pdfrw: {e}")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.exception(f"Erro ao processar PDF com pdfrw: {e}")
         
         # Fallback: Usar pdfplumber para overlay de texto
         try:
@@ -563,7 +569,9 @@ def _gerar_pdf_com_template_mapeado(lista):
             return response
             
         except Exception as e2:
-            print(f"Erro ao fazer overlay: {e2}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception(f"Erro ao fazer overlay: {e2}")
             raise ValueError(f"Não foi possível preencher o template PDF: {e2}")
 
 
@@ -576,6 +584,11 @@ def lista_presenca_importar_view(request):
         if form.is_valid():
             # Validar se arquivo foi enviado
             if 'arquivo' not in request.FILES:
+                # Se for AJAX, retornar JSON de erro
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    from django.http import JsonResponse
+                    return JsonResponse({'success': False, 'error': 'Nenhum arquivo foi selecionado.'}, status=400)
+
                 messages.error(request, 'Nenhum arquivo foi selecionado.')
                 context = {'form': form}
                 return render(request, 'procedures/lista_presenca_importar.html', context)
@@ -583,6 +596,7 @@ def lista_presenca_importar_view(request):
             arquivo = request.FILES['arquivo']
             criar_listas = form.cleaned_data['criar_listas_automaticamente']
             sobrescrever = form.cleaned_data['sobrescrever_existentes']
+            criar_participante_externo = form.cleaned_data.get('criar_participante_externo', False)
             
             try:
                 # Ler arquivo Excel - sem fazer parsing de datas (deixar como string)
@@ -606,7 +620,7 @@ def lista_presenca_importar_view(request):
                     return render(request, 'procedures/lista_presenca_importar.html', context)
                 
                 # Processar importação
-                resultados = processar_importacao(df, criar_listas, sobrescrever, request.user)
+                resultados = processar_importacao(df, criar_listas, sobrescrever, request.user, criar_participante_externo)
                 
                 # Mostrar resultados
                 if resultados['criados'] > 0:
@@ -615,6 +629,13 @@ def lista_presenca_importar_view(request):
                     messages.info(request, f"ℹ️ {resultados['atualizados']} registros atualizados.")
                 if resultados['listas_criadas'] > 0:
                     messages.info(request, f"📋 {resultados['listas_criadas']} listas de presença criadas automaticamente.")
+                if resultados.get('participantes_externos_criados', 0) > 0:
+                    messages.info(request, f"📌 {resultados['participantes_externos_criados']} participantes externos criados automaticamente.")
+                if resultados.get('skipped', 0) > 0:
+                    messages.info(request, f"ℹ️ {resultados['skipped']} registros já existiam e foram sincronizados (idempotente).")
+
+                # Salvar relatório de erros em cache (por usuário) com fallback para sessão e adicionar link para download
+                download_link = None
                 if resultados['erros'] > 0:
                     messages.warning(request, f"⚠️ {resultados['erros']} erros encontrados.")
                     # Mostrar primeiros 5 erros
@@ -622,28 +643,83 @@ def lista_presenca_importar_view(request):
                         messages.error(request, erro)
                     if len(resultados['mensagens_erro']) > 5:
                         messages.error(request, f"... e mais {len(resultados['mensagens_erro']) - 5} erros.")
-                
-                # Redirecionar apenas se houve sucesso
-                if resultados['criados'] > 0 or resultados['atualizados'] > 0:
-                    return redirect('procedures:lista_presenca_list')
+                    try:
+                        from django.core.cache import cache
+                        cache_key = f"import_erros_user_{request.user.id}" if request.user and request.user.is_authenticated else None
+                        if cache_key:
+                            cache.set(cache_key, resultados['mensagens_erro'], timeout=3600)
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.info(f"[IMPORT] Erros salvos em cache: {cache_key}")
+                        # Fallback para sessão (compatibilidade)
+                        request.session['ultimo_relatorio_erros'] = resultados['mensagens_erro']
+                        request.session.modified = True
+                    except Exception:
+                        logger.exception('Não foi possível salvar relatório de erros (cache/session).')
+
+                    # Preparar link para download do relatório completo
+                    from django.urls import reverse
+                    download_link = reverse('procedures:lista_presenca_erros_download')
+                    from django.utils.html import format_html
+                    messages.info(request, format_html('Baixe o relatório completo de erros: <a href="{}" class="alert-link">Download CSV</a>', download_link))
+
+                # Se a requisição for AJAX, retornar JSON com os resultados
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    from django.http import JsonResponse
+                    data = {
+                        'criados': resultados['criados'],
+                        'atualizados': resultados['atualizados'],
+                        'erros': resultados['erros'],
+                        'listas_criadas': resultados['listas_criadas'],
+                        'mensagens_erro': resultados['mensagens_erro'],
+                    }
+                    if download_link:
+                        data['download_url'] = download_link
+                    return JsonResponse(data)
+    
+                # Redirecionar apenas se houve sucesso — validar se 'next' é seguro
+                from django.urls import reverse
+                from django.utils.http import url_has_allowed_host_and_scheme
+
+                candidate_next = request.POST.get('next') or ''
+                if candidate_next and url_has_allowed_host_and_scheme(candidate_next, allowed_hosts={request.get_host()}):
+                    next_url = candidate_next
                 else:
-                    # Se nenhum registro foi criado/atualizado, mostrar mensagem e ficar na página
+                    next_url = reverse('procedures:lista_presenca_list')
+
+                if resultados['criados'] > 0 or resultados['atualizados'] > 0:
+                    return redirect(next_url)
+                else:
+                    # Se nenhum registro foi criado/atualizado, mostrar mensagem e permanecer na página de origem
                     messages.error(request, 'Nenhum registro foi importado. Verifique os erros acima.')
-                    context = {'form': form}
-                    return render(request, 'procedures/lista_presenca_importar.html', context)
-                
+                    return redirect(next_url)
             except pd.errors.EmptyDataError:
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    from django.http import JsonResponse
+                    return JsonResponse({'success': False, 'error': 'O arquivo Excel está vazio ou corrompido.'}, status=400)
+
                 messages.error(request, 'O arquivo Excel está vazio ou corrompido.')
                 context = {'form': form}
                 return render(request, 'procedures/lista_presenca_importar.html', context)
             except Exception as e:
+                # Em modo AJAX, retornar JSON com detalhes técnicos (limitado)
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    from django.http import JsonResponse
+                    return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
                 messages.error(request, f'❌ Erro ao processar arquivo: {str(e)}')
                 import traceback
                 messages.error(request, f'Detalhes técnicos: {traceback.format_exc()[:200]}')
                 context = {'form': form}
                 return render(request, 'procedures/lista_presenca_importar.html', context)
         else:
-            # Form inválido - mostrar erros
+            # Form inválido - retornar erros; se for AJAX, responder em JSON
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                from django.http import JsonResponse
+                # converter errors para dict simples
+                errors = {k: [str(e) for e in v] for k, v in form.errors.items()}
+                return JsonResponse({'success': False, 'errors': errors}, status=400)
+
             messages.error(request, 'Por favor, corrija os erros no formulário.')
             for field, errors in form.errors.items():
                 for error in errors:
@@ -658,6 +734,44 @@ def lista_presenca_importar_view(request):
     }
     return render(request, 'procedures/lista_presenca_importar.html', context)
 
+
+@login_required
+def lista_presenca_erros_download_view(request):
+    """Baixa um CSV com o relatório de erros da última importação (armazenado em sessão)."""
+    from django.http import HttpResponse
+    import csv
+    from io import StringIO
+
+    # Preferir cache por usuário, depois fallback para sessão
+    from django.core.cache import cache
+    cache_key = f"import_erros_user_{request.user.id}" if request.user and request.user.is_authenticated else None
+    erros = None
+    if cache_key:
+        erros = cache.get(cache_key)
+    if not erros:
+        erros = request.session.get('ultimo_relatorio_erros', [])
+    if not erros:
+        messages.info(request, 'Nenhum relatório de erros disponível para download.')
+        return redirect('procedures:lista_presenca_importar')
+
+    si = StringIO()
+    writer = csv.writer(si)
+    writer.writerow(['linha', 'mensagem'])
+
+    for e in erros:
+        if isinstance(e, str) and e.startswith('Linha') and ':' in e:
+            parts = e.split(':', 1)
+            linha = parts[0].replace('Linha', '').strip()
+            mensagem = parts[1].strip()
+        else:
+            linha = ''
+            mensagem = str(e)
+        writer.writerow([linha, mensagem])
+
+    csv_content = si.getvalue()
+    response = HttpResponse(csv_content, content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="erros_importacao_treinamentos.csv"'
+    return response
 
 @login_required
 def lista_presenca_download_template_view(request):
@@ -959,14 +1073,16 @@ def atualizar_demandas_apos_importacao():
         return False
 
 
-def processar_importacao(df, criar_listas, sobrescrever, usuario):
+def processar_importacao(df, criar_listas, sobrescrever, usuario, criar_participante_externo=False):
     """Processa DataFrame com dados de importação - estrutura completa com 28 colunas com OTIMIZAÇÕES."""
     resultados = {
         'criados': 0,
         'atualizados': 0,
         'erros': 0,
         'listas_criadas': 0,
-        'mensagens_erro': []
+        'mensagens_erro': [],
+        'skipped': 0,
+        'participantes_externos_criados': 0,
     }
     
     # OTIMIZAÇÃO: Cache em memória para evitar queries repetidas
@@ -975,24 +1091,84 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
     cache_listas = {}
     
     # Pré-carregar TODOS os colaboradores e procedimentos que serão usados
-    print("[IMPORT] Pré-carregando dados do banco...")
-    todos_colaboradores = {c.matricula: c for c in Colaborador.objects.all()}
-    todos_procedimentos = {p.codigo: p for p in Procedimento.objects.all()}
-    todas_listas = {l.data_sessao: l for l in ListaPresenca.objects.all()}
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("[IMPORT] Pré-carregando dados do banco...")
+
+    # Normalizadores
+    def norm_matricula(s):
+        if s is None:
+            return ''
+        return str(s).strip()
+
+    def norm_matricula_key(s):
+        return norm_matricula(s).upper()
+
+    def norm_cpf(s):
+        if s is None:
+            return ''
+        return ''.join(ch for ch in str(s) if ch.isdigit())
+
+    def norm_codigo_proc(s):
+        if s is None:
+            return ''
+        return ''.join(ch for ch in str(s).upper() if ch.isalnum())
+
+    # Colaboradores - criar múltiplos índices para matching robusto
+    todos_colaboradores = {}
+    colaboradores_por_cpf = {}
+    colaboradores_por_nome = {}
+    for c in Colaborador.objects.all():
+        mkey = norm_matricula_key(c.matricula)
+        todos_colaboradores[mkey] = c
+        mkey_nozeros = mkey.lstrip('0')
+        if mkey_nozeros and mkey_nozeros not in todos_colaboradores:
+            todos_colaboradores[mkey_nozeros] = c
+        cpf_key = norm_cpf(getattr(c, 'cpf', None))
+        if cpf_key:
+            colaboradores_por_cpf[cpf_key] = c
+        nome_key = str(getattr(c, 'nome_completo', '')).strip().upper()
+        if nome_key:
+            colaboradores_por_nome[nome_key] = c
+
+    # Procedimentos - índice por código normalizado
+    todos_procedimentos = {}
+    for p in Procedimento.objects.all():
+        pkey = norm_codigo_proc(p.codigo)
+        if pkey:
+            todos_procedimentos[pkey] = p
+
+    # Ajustar cache para usar a mesma chave de agrupamento
+    todas_listas = {}
+    for l in ListaPresenca.objects.all():
+        codigo_proc = ''
+        facilitador_key = ''
+        if l.titulo:
+            # Tentar extrair o código do procedimento do título (assumindo padrão novo)
+            partes = l.titulo.split('-')
+            if len(partes) >= 4:
+                codigo_proc = partes[3]
+            if len(partes) >= 5:
+                facilitador_key = partes[4]
+        chave = (codigo_proc, l.data_sessao, facilitador_key)
+        todas_listas[chave] = l
     
     # Pré-carregar registros existentes para verificação duplicada mais rápida
     # Separar em dois dicionários: um para registros com procedimento, outro para sem
-    registros_com_procedimento = {}  # (colaborador_id, procedimento_id) -> True
-    registros_sem_procedimento = {}  # (colaborador_id, titulo_treinamento, data_treinamento) -> True
+    # Suporte para participantes externos (colaborador NULL) usando prefixo 'c' ou 'e' na chave
+    registros_com_procedimento = {}  # ('c'/'e', participante_id, procedimento_id) -> True
+    registros_sem_procedimento = {}  # ('c'/'e', participante_id, titulo_treinamento, data_treinamento) -> True
     
-    for reg in RegistroTreinamento.objects.all().values('colaborador_id', 'procedimento_id', 'titulo_treinamento', 'data_treinamento'):
+    for reg in RegistroTreinamento.objects.all().values('colaborador_id', 'participante_externo_id', 'procedimento_id', 'titulo_treinamento', 'data_treinamento'):
+        participante_prefix = 'c' if reg['colaborador_id'] else 'e'
+        participante_id = reg['colaborador_id'] if reg['colaborador_id'] else reg['participante_externo_id']
         if reg['procedimento_id']:
-            # Registros com procedimento - constraint é (colaborador_id, procedimento_id)
-            chave = (reg['colaborador_id'], reg['procedimento_id'])
+            # Registros com procedimento - incluir também a data para permitir múltiplos registros do mesmo procedimento em datas diferentes
+            chave = (participante_prefix, participante_id, reg['procedimento_id'], reg['data_treinamento'])
             registros_com_procedimento[chave] = True
         else:
-            # Registros sem procedimento - constraint é (colaborador_id, titulo_treinamento, data_treinamento)
-            chave = (reg['colaborador_id'], reg['titulo_treinamento'], reg['data_treinamento'])
+            # Registros sem procedimento - constraint é (participante, titulo_treinamento, data_treinamento)
+            chave = (participante_prefix, participante_id, reg['titulo_treinamento'], reg['data_treinamento'])
             registros_sem_procedimento[chave] = True
     
     # Dicionário para agrupar por sessão
@@ -1004,22 +1180,63 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
     
     for index, row in df.iterrows():
         try:
+            erros_linha = []  # coletar vários erros dessa linha
+            participante_externo = None
             # Buscar colaborador pela matrícula (campo obrigatório)
             if 'matricula' not in row or pd.isna(row['matricula']):
                 resultados['erros'] += 1
-                resultados['mensagens_erro'].append(f"Linha {index + 2}: Matrícula ausente")
+                msg = f"Linha {index + 2}: Matrícula ausente"
+                resultados['mensagens_erro'].append(msg)
+
                 continue
                 
-            matricula_str = str(row['matricula']).strip()
-            
-            # OTIMIZAÇÃO: Usar cache em vez de query
-            if matricula_str not in todos_colaboradores:
-                resultados['erros'] += 1
-                resultados['mensagens_erro'].append(f"Linha {index + 2}: Colaborador com matrícula '{matricula_str}' não encontrado no sistema")
-                continue
-            
-            colaborador = todos_colaboradores[matricula_str]
-            
+            matricula_raw = str(row['matricula']).strip()
+            matricula_str = matricula_raw
+            colaborador = None
+            # Tentativas de match: matricula (normalizada), matricula sem zeros, cpf, nome similar
+            mkey = norm_matricula_key(matricula_str)
+            if mkey in todos_colaboradores:
+                colaborador = todos_colaboradores[mkey]
+                match_method = 'matricula'
+            else:
+                mkey_nozeros = mkey.lstrip('0')
+                if mkey_nozeros and mkey_nozeros in todos_colaboradores:
+                    colaborador = todos_colaboradores[mkey_nozeros]
+                    match_method = 'matricula_nozeros'
+                else:
+                    # Tentar CPF
+                    cpf_val = str(row.get('cpf_colaborador', '') or '')
+                    cpf_key = norm_cpf(cpf_val)
+                    if cpf_key and cpf_key in colaboradores_por_cpf:
+                        colaborador = colaboradores_por_cpf[cpf_key]
+                        match_method = 'cpf'
+                    else:
+                        # Tentar nome similar
+                        nome_val = str(row.get('nome_colaborador', '') or '')
+                        if nome_val:
+                            possivel = tentar_linkar_colaborador(nome_val)
+                            if possivel:
+                                colaborador = possivel
+                                match_method = f'nome_similar ({possivel.id})'
+            if not colaborador:
+                # Se modo tolerante, criar participante externo
+                if criar_participante_externo:
+                    nome_ext = str(row.get('nome_colaborador') or row.get('colaborador_nome') or '').strip()
+                    cpf_ext = str(row.get('cpf_colaborador') or '').strip() or None
+                    empresa_ext = str(row.get('empresa') or '').strip() or None
+                    participante_externo = ParticipanteExterno.objects.create(
+                        nome_completo=nome_ext or f"Participante Externo Linha {index + 2}",
+                        cpf=cpf_ext,
+                        empresa=empresa_ext
+                    )
+                    resultados['participantes_externos_criados'] = resultados.get('participantes_externos_criados', 0) + 1
+                    match_method = 'created_externo'
+                else:
+                    resultados['erros'] += 1
+                    msg = f"Linha {index + 2}: Colaborador com matrícula '{matricula_str}' não encontrado no sistema"
+                    resultados['mensagens_erro'].append(msg)
+                    continue
+
             # Determinar tipo de treinamento
             tipo = row.get('tipo', 'PROCEDIMENTO')
             if pd.isna(tipo) or not tipo:
@@ -1036,15 +1253,33 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             if tipo == 'PROCEDIMENTO':
                 if 'codigo_documento' in row and pd.notna(row['codigo_documento']):
                     codigo_proc = str(row['codigo_documento']).strip()
-                    # OTIMIZAÇÃO: Usar cache em vez de query
-                    if codigo_proc not in todos_procedimentos:
+                    codigo_key = norm_codigo_proc(codigo_proc)
+                    procedimento = None
+                    match_proc_method = None
+                    if codigo_key in todos_procedimentos:
+                        procedimento = todos_procedimentos[codigo_key]
+                        match_proc_method = 'codigo_norm'
+                    else:
+                        # Tentar sem pontos/formatos alternativos
+                        alt = codigo_key.replace('.', '').replace(' ', '')
+                        if alt in todos_procedimentos:
+                            procedimento = todos_procedimentos[alt]
+                            match_proc_method = 'codigo_alt'
+                    if not procedimento:
                         resultados['erros'] += 1
-                        resultados['mensagens_erro'].append(f"Linha {index + 2}: Procedimento {row['codigo_documento']} não encontrado")
+                        msg = f"Linha {index + 2}: Procedimento {row['codigo_documento']} não encontrado"
+                        resultados['mensagens_erro'].append(msg)
+
                         continue
-                    procedimento = todos_procedimentos[codigo_proc]
+                    else:
+                        pass
+
                 else:
                     resultados['erros'] += 1
-                    resultados['mensagens_erro'].append(f"Linha {index + 2}: Tipo PROCEDIMENTO requer codigo_documento")
+                    msg = f"Linha {index + 2}: Tipo PROCEDIMENTO requer codigo_documento"
+                    resultados['mensagens_erro'].append(msg)
+
+
                     continue
             
             # Obter título do treinamento
@@ -1057,13 +1292,16 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             # Se não tem procedimento, título é obrigatório
             if not procedimento and not titulo_treinamento:
                 resultados['erros'] += 1
-                resultados['mensagens_erro'].append(f"Linha {index + 2}: Treinamento sem procedimento requer titulo_treinamento")
+                msg = f"Linha {index + 2}: Treinamento sem procedimento requer titulo_treinamento"
+                resultados['mensagens_erro'].append(msg)
+
                 continue
             
             # Converter data de início (obrigatória)
             if 'data_inicio_treinamento' not in row or pd.isna(row['data_inicio_treinamento']):
                 resultados['erros'] += 1
-                resultados['mensagens_erro'].append(f"Linha {index + 2}: data_inicio_treinamento ausente")
+                msg = f"Linha {index + 2}: data_inicio_treinamento ausente"
+                resultados['mensagens_erro'].append(msg)
                 continue
             
             try:
@@ -1087,7 +1325,8 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                     raise ValueError("Data nula após conversão")
             except Exception as e:
                 resultados['erros'] += 1
-                resultados['mensagens_erro'].append(f"Linha {index + 2}: Erro ao converter data_inicio_treinamento ({str(e)}). Valor: {row['data_inicio_treinamento']}")
+                msg = f"Linha {index + 2}: Erro ao converter data_inicio_treinamento ({str(e)}). Valor: {row['data_inicio_treinamento']}"
+                resultados['mensagens_erro'].append(msg)
                 continue
             
             # Converter data final (opcional)
@@ -1238,80 +1477,99 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             if pd.isna(observacoes):
                 observacoes = ''
             
-            # Criar chave de sessão para agrupamento (SEMPRE criar/usar listas por data)
+            # Criar chave de sessão para agrupamento (codigo_documento, data_inicio_treinamento, facilitador_fornecedor)
             lista = None
-            # Sempre agrupa por data para criar/usar listas de presença
-            chave_sessao = (data_treinamento,)
-            
-            if chave_sessao not in sessoes:
-                # Buscar ou criar lista pela data
-                titulo_lista = titulo_treinamento or (f"{procedimento.codigo} - {procedimento.nome}" if procedimento else f"Treinamento - {data_treinamento.strftime('%d/%m/%Y')}")
-                
-                # OTIMIZAÇÃO: Usar cache em vez de query
-                if data_treinamento in todas_listas:
-                    lista = todas_listas[data_treinamento]
+            codigo_proc = str(row['codigo_documento']).strip() if 'codigo_documento' in row and pd.notna(row['codigo_documento']) else ''
+            facilitador_key = str(facilitador_fornecedor).strip() if facilitador_fornecedor else ''
+            chave_sessao = (codigo_proc, data_treinamento, facilitador_key)
+
+            # Determinar se vamos criar/usar ListaPresenca ou não
+            lista = None
+            if criar_listas:
+                if chave_sessao not in sessoes:
+                    # Gerar título no formato ANO+MÊS+DIA+CODIGO PROCEDIMENTO+MATRICULA DO FORNECEDOR
+                    ano = data_treinamento.year if data_treinamento else ''
+                    mes = f"{data_treinamento.month:02d}" if data_treinamento else ''
+                    dia = f"{data_treinamento.day:02d}" if data_treinamento else ''
+                    codigo = codigo_proc if codigo_proc else ''
+                    matricula_fornecedor = ''
+                    if facilitador_fornecedor:
+                        import re
+                        match = re.search(r'\d+', facilitador_fornecedor)
+                        if match:
+                            matricula_fornecedor = match.group(0)
+                        else:
+                            matricula_fornecedor = facilitador_fornecedor.replace(' ', '').upper()
+                    partes = [str(ano), str(mes), str(dia), codigo, matricula_fornecedor]
+                    titulo_lista = '-'.join([p for p in partes if p])
+
+                    # Usar cache com a chave correta
+                    if chave_sessao in todas_listas:
+                        lista = todas_listas[chave_sessao]
+                    else:
+                        lista = ListaPresenca.objects.create(
+                            titulo=titulo_lista[:200],
+                            instrutor_nome=facilitador_fornecedor,
+                            instrutor=None,
+                            data_sessao=data_treinamento,
+                            hora_inicio=hora_inicio_sessao,
+                            hora_fim=hora_fim_sessao,
+                            carga_horaria=carga_horaria_sessao,
+                            local='',
+                            criado_por=usuario
+                        )
+                        todas_listas[chave_sessao] = lista
+                        resultados['listas_criadas'] += 1
+
+                    sessoes[chave_sessao] = lista
                 else:
-                    # Criar nova lista de presença
-                    lista = ListaPresenca.objects.create(
-                        titulo=titulo_lista[:200],  # Limitar tamanho
-                        instrutor_nome=facilitador_fornecedor,  # Salvar nome do facilitador também
-                        instrutor=None,  # Será preenchido manualmente depois
-                        data_sessao=data_treinamento,
-                        hora_inicio=hora_inicio_sessao,  # Preenchido se fornecido no Excel
-                        hora_fim=hora_fim_sessao,        # Preenchido se fornecido no Excel
-                        carga_horaria=carga_horaria_sessao,  # Preenchido se fornecido no Excel
-                        local='',
-                        criado_por=usuario
-                    )
-                    # OTIMIZAÇÃO: Adicionar à cache para próximas iterações
-                    todas_listas[data_treinamento] = lista
-                    resultados['listas_criadas'] += 1
-                
-                sessoes[chave_sessao] = lista
+                    lista = sessoes[chave_sessao]
             else:
-                lista = sessoes[chave_sessao]
-            
+                # Não agrupar em listas: manter lista = None e usar data_treinamento direto
+                lista = None
             # OTIMIZAÇÃO: Acumular registros para criar em batch
-            # Verificar se já existe registro usando a chave correta
+            # Verificar se já existe registro usando a chave correta (suporta colaborador e participante_externo)
+            # Usar data da lista (se houver) como data_registro
+            data_registro = lista.data_sessao if lista else data_treinamento
             if procedimento:
-                # Com procedimento - constraint é (colaborador_id, procedimento_id)
-                chave_existencia = (colaborador.id, procedimento.id)
+                participante_prefix = 'c' if colaborador else 'e'
+                participante_id = colaborador.id if colaborador else (participante_externo.id if participante_externo else None)
+                chave_existencia = (participante_prefix, participante_id, procedimento.id, data_registro)
                 existe = chave_existencia in registros_com_procedimento
             else:
-                # Sem procedimento - constraint é (colaborador_id, titulo_treinamento, data_treinamento)
-                chave_existencia = (colaborador.id, titulo_treinamento, data_treinamento)
+                participante_prefix = 'c' if colaborador else 'e'
+                participante_id = colaborador.id if colaborador else (participante_externo.id if participante_externo else None)
+                chave_existencia = (participante_prefix, participante_id, titulo_treinamento, data_treinamento)
                 existe = chave_existencia in registros_sem_procedimento
-            
+
             if existe:
-                if sobrescrever:
-                    # Adicionar à lista de atualização
-                    data_registro = lista.data_sessao if lista else data_treinamento
-                    registros_para_atualizar.append({
-                        'colaborador': colaborador,
-                        'procedimento': procedimento,
-                        'titulo_treinamento': titulo_treinamento,
-                        'data_treinamento': data_treinamento,
-                        'dados': {
-                            'tipo': tipo,
-                            'lista_presenca': lista,
-                            'data_treinamento': data_registro,  # Usar data da lista
-                            'revisao_treinada': revisao_treinada,
-                            'observacoes': observacoes,
-                            'categoria_comunicacao': categoria_comunicacao,
-                            'metodologia_treinamento': metodologia_treinamento,
-                            'area_conhecimento': area_conhecimento,
-                            'facilitador_fornecedor': facilitador_fornecedor,
-                            'carga_horaria': carga_horaria,
-                            'custo_treinamento': custo_treinamento,
-                            'data_final_treinamento': data_final_treinamento,
-                            'mes_referencia': mes_referencia,
-                            'necessita_avaliacao_eficacia': necessita_avaliacao,
-                            'data_limite_avaliacao_eficacia': data_limite_avaliacao
-                        }
-                    })
-                else:
-                    resultados['erros'] += 1
-                    resultados['mensagens_erro'].append(f"Linha {index + 2}: Registro já existe (colaborador + procedimento duplicado)")
+                # Em vez de tratar como erro, atualizar para evitar duplicação (comportamento idempotente)
+                data_registro = lista.data_sessao if lista else data_treinamento
+                registros_para_atualizar.append({
+                    'colaborador': colaborador,
+                    'participante_externo': participante_externo,
+                    'procedimento': procedimento,
+                    'titulo_treinamento': titulo_treinamento,
+                    'data_treinamento': data_treinamento,
+                    'dados': {
+                        'tipo': tipo,
+                        'lista_presenca': lista,
+                        'data_treinamento': data_registro,  # Usar data da lista
+                        'revisao_treinada': revisao_treinada,
+                        'observacoes': observacoes,
+                        'categoria_comunicacao': categoria_comunicacao,
+                        'metodologia_treinamento': metodologia_treinamento,
+                        'area_conhecimento': area_conhecimento,
+                        'facilitador_fornecedor': facilitador_fornecedor,
+                        'carga_horaria': carga_horaria,
+                        'custo_treinamento': custo_treinamento,
+                        'data_final_treinamento': data_final_treinamento,
+                        'mes_referencia': mes_referencia,
+                        'necessita_avaliacao_eficacia': necessita_avaliacao,
+                        'data_limite_avaliacao_eficacia': data_limite_avaliacao
+                    }
+                })
+                resultados['skipped'] += 1
             else:
                 # Adicionar à lista de criação
                 # Usar data da lista de presença como data_treinamento
@@ -1319,7 +1577,8 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                 
                 registros_para_criar.append(RegistroTreinamento(
                     colaborador=colaborador,
-                    colaborador_nome=colaborador.nome_completo if colaborador else '',
+                    participante_externo=participante_externo if 'participante_externo' in locals() else None,
+                    colaborador_nome=(colaborador.nome_completo if colaborador else (str(row.get('nome_colaborador') or '')[:200])),
                     procedimento=procedimento,
                     tipo=tipo,
                     titulo_treinamento=titulo_treinamento,
@@ -1341,81 +1600,140 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
                 
         except Exception as e:
             resultados['erros'] += 1
-            resultados['mensagens_erro'].append(f"Linha {index + 2}: {str(e)}")
+            msg = f"Linha {index + 2}: {str(e)}"
+            resultados['mensagens_erro'].append(msg)
+        # Registrar erro da linha
+            resultados['mensagens_erro'].append(msg)
+            continue
+
+
     
     # OTIMIZAÇÃO: Usar update_or_create para evitar duplicatas
     # Isso é mais lento que bulk_create mas não falha com duplicatas
-    print(f"[IMPORT] Processando {len(registros_para_criar)} registros...")
+    logger.info(f"[IMPORT] Processando {len(registros_para_criar)} registros...")
+    # Helper to coerce pandas timestamps/NaT to native date or None
+    from datetime import datetime, date
+    def _safe_date(val):
+        if val is None:
+            return None
+        # pandas NaT
+        try:
+            import pandas as _pd
+            if isinstance(val, _pd._libs.tslibs.nattype.NaTType) or (_pd.isna(val) if hasattr(_pd, 'isna') else False):
+                return None
+        except Exception:
+            pass
+        if isinstance(val, datetime):
+            return val.date()
+        if isinstance(val, date):
+            return val
+        try:
+            # Try pandas conversion
+            import pandas as _pd
+            return _pd.to_datetime(val).date()
+        except Exception:
+            return None
+
     if registros_para_criar:
         for reg in registros_para_criar:
             try:
+                # Prepare filter kwargs depending on whether registro refers to colaborador or participante_externo
                 if reg.procedimento:
-                    # Com procedimento - usar constraint (colaborador, procedimento)
-                    RegistroTreinamento.objects.update_or_create(
-                        colaborador=reg.colaborador,
-                        procedimento=reg.procedimento,
-                        defaults={
-                            'tipo': reg.tipo,
-                            'titulo_treinamento': reg.titulo_treinamento,
-                            'lista_presenca': reg.lista_presenca,
-                            'data_treinamento': reg.data_treinamento,
-                            'revisao_treinada': reg.revisao_treinada,
-                            'observacoes': reg.observacoes,
-                            'categoria_comunicacao': reg.categoria_comunicacao,
-                            'metodologia_treinamento': reg.metodologia_treinamento,
-                            'area_conhecimento': reg.area_conhecimento,
-                            'facilitador_fornecedor': reg.facilitador_fornecedor,
-                            'carga_horaria': reg.carga_horaria,
-                            'custo_treinamento': reg.custo_treinamento,
-                            'data_final_treinamento': reg.data_final_treinamento,
-                            'mes_referencia': reg.mes_referencia,
-                            'necessita_avaliacao_eficacia': reg.necessita_avaliacao_eficacia,
-                            'data_limite_avaliacao_eficacia': reg.data_limite_avaliacao_eficacia,
-                            'colaborador_nome': reg.colaborador_nome,
-                        }
+                    # Incluir data na chave do filtro para permitir múltiplos registros do mesmo procedimento em datas diferentes
+                    if reg.colaborador:
+                        filter_kwargs = {'colaborador': reg.colaborador, 'procedimento': reg.procedimento, 'data_treinamento': _safe_date(reg.data_treinamento)}
+                    else:
+                        filter_kwargs = {'participante_externo': getattr(reg, 'participante_externo', None), 'procedimento': reg.procedimento, 'data_treinamento': _safe_date(reg.data_treinamento)}
+
+                    defaults = {
+                        'tipo': reg.tipo,
+                        'titulo_treinamento': reg.titulo_treinamento,
+                        'lista_presenca': reg.lista_presenca,
+                        'data_treinamento': _safe_date(reg.data_treinamento),
+                        'revisao_treinada': reg.revisao_treinada,
+                        'observacoes': reg.observacoes,
+                        'categoria_comunicacao': reg.categoria_comunicacao,
+                        'metodologia_treinamento': reg.metodologia_treinamento,
+                        'area_conhecimento': reg.area_conhecimento,
+                        'facilitador_fornecedor': reg.facilitador_fornecedor,
+                        'carga_horaria': reg.carga_horaria,
+                        'custo_treinamento': reg.custo_treinamento,
+                        'data_final_treinamento': _safe_date(reg.data_final_treinamento),
+                        'mes_referencia': reg.mes_referencia,
+                        'necessita_avaliacao_eficacia': reg.necessita_avaliacao_eficacia,
+                        'data_limite_avaliacao_eficacia': _safe_date(reg.data_limite_avaliacao_eficacia),
+                        'colaborador_nome': reg.colaborador_nome,
+                        'participante_externo': getattr(reg, 'participante_externo', None),
+                    }
+
+                    obj, created = RegistroTreinamento.objects.update_or_create(
+                        **filter_kwargs,
+                        defaults=defaults
                     )
-                    resultados['criados'] += 1
+                    if created:
+                        resultados['criados'] += 1
+                    else:
+                        resultados['atualizados'] += 1
                 else:
-                    # Sem procedimento - criar direto (sem constraint de duplicata)
-                    RegistroTreinamento.objects.create(
-                        colaborador=reg.colaborador,
-                        colaborador_nome=reg.colaborador_nome,
-                        procedimento=reg.procedimento,
-                        tipo=reg.tipo,
-                        titulo_treinamento=reg.titulo_treinamento,
-                        lista_presenca=reg.lista_presenca,
-                        data_treinamento=reg.data_treinamento,
-                        revisao_treinada=reg.revisao_treinada,
-                        observacoes=reg.observacoes,
-                        categoria_comunicacao=reg.categoria_comunicacao,
-                        metodologia_treinamento=reg.metodologia_treinamento,
-                        area_conhecimento=reg.area_conhecimento,
-                        facilitador_fornecedor=reg.facilitador_fornecedor,
-                        carga_horaria=reg.carga_horaria,
-                        custo_treinamento=reg.custo_treinamento,
-                        data_final_treinamento=reg.data_final_treinamento,
-                        mes_referencia=reg.mes_referencia,
-                        necessita_avaliacao_eficacia=reg.necessita_avaliacao_eficacia,
-                        data_limite_avaliacao_eficacia=reg.data_limite_avaliacao_eficacia
+                    # Sem procedimento - usar update_or_create com chave adequada
+                    if reg.colaborador:
+                        filter_kwargs = {'colaborador': reg.colaborador, 'titulo_treinamento': reg.titulo_treinamento, 'data_treinamento': _safe_date(reg.data_treinamento)}
+                    else:
+                        filter_kwargs = {'participante_externo': getattr(reg, 'participante_externo', None), 'titulo_treinamento': reg.titulo_treinamento, 'data_treinamento': _safe_date(reg.data_treinamento)}
+
+                    defaults = {
+                        'colaborador_nome': reg.colaborador_nome,
+                        'procedimento': reg.procedimento,
+                        'tipo': reg.tipo,
+                        'lista_presenca': reg.lista_presenca,
+                        'revisao_treinada': reg.revisao_treinada,
+                        'observacoes': reg.observacoes,
+                        'categoria_comunicacao': reg.categoria_comunicacao,
+                        'metodologia_treinamento': reg.metodologia_treinamento,
+                        'area_conhecimento': reg.area_conhecimento,
+                        'facilitador_fornecedor': reg.facilitador_fornecedor,
+                        'carga_horaria': reg.carga_horaria,
+                        'custo_treinamento': reg.custo_treinamento,
+                        'data_final_treinamento': _safe_date(reg.data_final_treinamento),
+                        'mes_referencia': reg.mes_referencia,
+                        'necessita_avaliacao_eficacia': reg.necessita_avaliacao_eficacia,
+                        'data_limite_avaliacao_eficacia': _safe_date(reg.data_limite_avaliacao_eficacia),
+                        'participante_externo': getattr(reg, 'participante_externo', None)
+                    }
+
+                    obj, created = RegistroTreinamento.objects.update_or_create(
+                        **filter_kwargs,
+                        defaults=defaults
                     )
-                    resultados['criados'] += 1
+                    if created:
+                        resultados['criados'] += 1
+                    else:
+                        resultados['atualizados'] += 1
             except Exception as e:
                 resultados['erros'] += 1
                 resultados['mensagens_erro'].append(f"Erro ao criar/atualizar registro: {str(e)}")
-                print(f"[IMPORT] Erro: {str(e)}")
-
+                logger.exception(f"Erro ao criar/atualizar registro: {str(e)}")
     
     # OTIMIZAÇÃO: Atualizar registros em batch
-    print(f"[IMPORT] Atualizando {len(registros_para_atualizar)} registros...")
+    logger.info(f"[IMPORT] Atualizando {len(registros_para_atualizar)} registros...")
     if registros_para_atualizar:
         for item in registros_para_atualizar:
             try:
-                reg = RegistroTreinamento.objects.get(
-                    colaborador=item['colaborador'],
-                    procedimento=item['procedimento'] if item['procedimento'] else None,
-                    titulo_treinamento=item['titulo_treinamento'] if not item['procedimento'] else None,
-                    data_treinamento=item['data_treinamento'] if not item['procedimento'] else None
-                )
+                # Montar filtro adequado (colaborador ou participante_externo)
+                if item.get('procedimento'):
+                    # Incluir data_treinamento para selecionar o registro correto (mesmo procedimento em datas diferentes)
+                    data_sel = item['dados'].get('data_treinamento')
+                    if item.get('colaborador'):
+                        filter_kwargs = {'colaborador': item['colaborador'], 'procedimento': item['procedimento'], 'data_treinamento': data_sel}
+                    else:
+                        filter_kwargs = {'participante_externo': item.get('participante_externo'), 'procedimento': item['procedimento'], 'data_treinamento': data_sel}
+                else:
+                    if item.get('colaborador'):
+                        filter_kwargs = {'colaborador': item['colaborador'], 'titulo_treinamento': item['titulo_treinamento'], 'data_treinamento': item['data_treinamento']}
+                    else:
+                        filter_kwargs = {'participante_externo': item.get('participante_externo'), 'titulo_treinamento': item['titulo_treinamento'], 'data_treinamento': item['data_treinamento']}
+
+                reg = RegistroTreinamento.objects.get(**filter_kwargs)
                 for chave, valor in item['dados'].items():
                     setattr(reg, chave, valor)
                 reg.save()
@@ -1423,13 +1741,14 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario):
             except Exception as e:
                 resultados['erros'] += 1
                 resultados['mensagens_erro'].append(f"Erro ao atualizar registro: {str(e)}")
+                logger.exception(f"Erro ao atualizar registro: {str(e)}")
     
     # Atualizar demandas após importação bem-sucedida
     if resultados['criados'] > 0 or resultados['atualizados'] > 0:
-        print(f"[IMPORT] Atualizando demandas...")
+        logger.info(f"[IMPORT] Atualizando demandas...")
         atualizar_demandas_apos_importacao()
     
-    print(f"[IMPORT] Concluído! Criados: {resultados['criados']}, Atualizados: {resultados['atualizados']}, Erros: {resultados['erros']}")
+    logger.info(f"[IMPORT] Concluído! Criados: {resultados['criados']}, Atualizados: {resultados['atualizados']}, Erros: {resultados['erros']}")
     return resultados
 
 # ============================================================================

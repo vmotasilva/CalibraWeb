@@ -4,8 +4,58 @@
 {% block header_title %}Matriz de Treinamentos{% endblock %}
 
 {% block header_actions %}
-    <a href="{% url 'procedures:novo_treinamento' %}" class="btn btn-primary btn-sm">+ Novo Treinamento</a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'procedures:novo_treinamento' %}" class="btn btn-primary btn-sm">+ Novo Treinamento</a>
+        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
+            <i class="bi bi-upload"></i> Importar
+        </button>
+    </div>
 {% endblock %}
+
+{# Import modal (form posts to procedures:treinamentos_importar) #}
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="post" id="form-import-modal" action="{% url 'procedures:treinamentos_importar' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="importModalLabel">Importar Treinamentos (Excel)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="importResultArea"></div>
+          <div class="mb-3">
+            <label class="form-label">Arquivo Excel</label>
+            <input type="file" name="arquivo" accept=".xlsx,.xls" class="form-control" required />
+            <input type="hidden" name="next" value="{% url 'procedures:treinamentos_list' %}" />
+            <small class="form-text text-muted">Use o <a href="{% url 'procedures:treinamentos_template_download' %}">template</a> se necessário.</small>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="criar_listas_automaticamente" id="opt_criar_listas" checked>
+            <label class="form-check-label" for="opt_criar_listas">Agrupar em listas de presença automaticamente</label>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="sobrescrever_existentes" id="opt_sobrescrever" checked>
+            <label class="form-check-label" for="opt_sobrescrever">Sobrescrever treinamentos existentes</label>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="criar_participante_externo" id="opt_criar_externo">
+            <label class="form-check-label" for="opt_criar_externo">Criar participante externo quando colaborador não for encontrado</label>
+          </div>
+
+          <div class="alert alert-info small mt-3">As colunas do arquivo devem seguir o template padrão (matricula, data_inicio_treinamento, codigo_documento, etc.).</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Iniciar Importação</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 {% block main_content %}
 <div class="card">
@@ -112,7 +162,12 @@
                             {{ t.colaborador.nome_completo }}
                         </a>
                     </td>
-                    <td>{{ t.procedimento.codigo }}</td>
+                    <td>
+                        {{ t.procedimento.codigo }}
+                        <a href="{% url 'procedures:treinamentos_historico' %}?colaborador={{ t.colaborador.id }}&procedimento={{ t.procedimento.id }}" class="ms-2 text-info" title="Ver histórico deste treinamento">
+                            <i class="bi bi-clock-history"></i> Histórico
+                        </a>
+                    </td>
                     <td>{{ t.data_treinamento|date:"d/m/Y" }}</td>
                     <td>
                         {% if t.is_ultimo_registro %}
@@ -207,4 +262,74 @@
     </nav>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const btn = document.querySelector('[data-bs-target="#importModal"]');
+    if (btn) {
+        btn.addEventListener('click', function (e) {
+            // Ensure modal shows in case bootstrap data attributes didn't work
+            setTimeout(function(){
+                const modalEl = document.getElementById('importModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                }
+            }, 10);
+        });
+    }
+
+    // AJAX form submission for import modal
+    const form = document.getElementById('form-import-modal');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btnSubmit = form.querySelector('button[type="submit"]');
+            const originalText = btnSubmit ? btnSubmit.innerHTML : '';
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Importando...';
+            }
+
+            const fd = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: fd,
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+                credentials: 'same-origin'
+            }).then(r => r.json()).then(data => {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalText;
+                }
+                const area = document.getElementById('importResultArea');
+                if (!area) return;
+                area.innerHTML = '';
+                if (data.erros && data.erros > 0) {
+                    const linkHtml = data.download_url ? `<a href="${data.download_url}" class="btn btn-sm btn-outline-secondary ms-2">Download CSV</a>` : '';
+                    area.innerHTML = `<div class="alert alert-warning">⚠️ ${data.erros} erros encontrados. ${linkHtml}</div>`;
+                }
+                if (data.criados && data.criados > 0) {
+                    area.innerHTML += `<div class="alert alert-success">✅ ${data.criados} registros criados.</div>`;
+                    // Fechar modal automaticamente após sucesso
+                    setTimeout(() => {
+                        const modalEl = document.getElementById('importModal');
+                        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.hide();
+                    }, 1000);
+                }
+            }).catch(err => {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalText;
+                }
+                const area = document.getElementById('importResultArea');
+                if (area) area.innerHTML = `<div class="alert alert-danger">Erro no envio: ${err}</div>`;
+            });
+        });
+    }
+})();
+</script>
 {% endblock %}

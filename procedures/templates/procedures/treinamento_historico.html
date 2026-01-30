@@ -1,0 +1,55 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Histórico de Treinamentos{% endblock %}
+{% block header_title %}Histórico de Treinamentos{% endblock %}
+
+{% block main_content %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">
+            Histórico de Treinamentos<br>
+            <small class="text-muted">Colaborador: <b>{{ colaborador.nome_completo }}</b> | Procedimento: <b>{{ procedimento.codigo }} - {{ procedimento.nome }}</b></small>
+        </h6>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-2">Este histórico mostra <strong>todos</strong> os treinamentos registrados para este colaborador e procedimento, em ordem decrescente de data.</p>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>Revisão</th>
+                    <th>Observações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in historico %}
+                <tr>
+                    <td>{{ t.data_treinamento|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if t.status_treinamento == 'OK' %}
+                            <span class="badge bg-success">Em dias</span>
+                        {% elif t.status_treinamento == 'PENDENTE' %}
+                            <span class="badge bg-danger">Pendente</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Não iniciado</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ t.revisao_treinada }}</td>
+                    <td>{{ t.observacoes|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">Nenhum registro encontrado</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer text-end">
+        <a href="{% url 'procedures:treinamentos_list' %}" class="btn btn-secondary btn-sm">Voltar</a>
+    </div>
+</div>
+{% endblock %}

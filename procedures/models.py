@@ -455,7 +455,8 @@ class RegistroTreinamento(models.Model):
 
     class Meta:
         verbose_name_plural = "Matriz de Treinamentos"
-        unique_together = ("colaborador", "procedimento")
+        # Permitir múltiplos registros do mesmo procedimento em datas diferentes
+        unique_together = ("colaborador", "procedimento", "data_treinamento")
 
 
 # ==============================================================================

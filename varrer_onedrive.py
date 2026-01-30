@@ -1,7 +1,10 @@
 import os
 from datetime import datetime
+import logging
 
 import pandas as pd
+
+logger = logging.getLogger(__name__) 
 
 # --- CONFIGURAÇÃO ---
 # O caminho da sua pasta (Use r antes das aspas para o Windows aceitar as barras)
@@ -9,7 +12,7 @@ CAMINHO_RAIZ = r"D:\OneDrive\OneDrive - Luxottica Group S.p.A\Tecnolens\Calibra�
 
 
 def varrer_pastas():
-    print(f"Iniciando varredura em: {CAMINHO_RAIZ}")
+    logger.info(f"Iniciando varredura em: {CAMINHO_RAIZ}")
 
     dados = []
 
@@ -57,13 +60,13 @@ def varrer_pastas():
         df = pd.DataFrame(dados)
         nome_saida = "Mapeamento_OneDrive.xlsx"
         df.to_excel(nome_saida, index=False)
-        print(f"\nSUCESSO! Encontrados {len(dados)} arquivos.")
-        print(f"Arquivo gerado: {nome_saida}")
-        print(
+        logger.info(f"\nSUCESSO! Encontrados {len(dados)} arquivos.")
+        logger.info(f"Arquivo gerado: {nome_saida}")
+        logger.info(
             "Agora abra esse arquivo, copie as colunas e cole no template de importação do sistema."
         )
     else:
-        print("Nenhum arquivo encontrado. Verifique o caminho.")
+        logger.warning("Nenhum arquivo encontrado. Verifique o caminho.")
 
 
 if __name__ == "__main__":

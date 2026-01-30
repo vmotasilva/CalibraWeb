@@ -151,3 +151,11 @@ class ImportacaoTreinamentoForm(forms.Form):
         required=False,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
     )
+
+    criar_participante_externo = forms.BooleanField(
+        label='Criar participante externo quando colaborador não for encontrado',
+        help_text='Se ativado, criará um participante externo com os dados da linha em vez de falhar',
+        initial=False,
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )

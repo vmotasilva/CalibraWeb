@@ -15,6 +15,7 @@ from .views import (
     api_procedimentos_list,
     # Treinamentos
     treinamentos_list_view,
+    treinamentos_historico_view,
     treinamentos_exportar_excel_view,
     treinamentos_detalhe_view,
     novo_treinamento_view,

@@ -7,6 +7,9 @@ Garante que todas as dependências estão listadas corretamente
 import subprocess
 import sys
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__) 
 
 
 def validate_requirements():
@@ -15,14 +18,14 @@ def validate_requirements():
     req_file = Path("requirements.txt")
     
     if not req_file.exists():
-        print("❌ requirements.txt não encontrado!")
+        logger.error("❌ requirements.txt não encontrado!")
         return False
     
     # Ler requirements.txt
     with open(req_file, 'r') as f:
         packages = [line.strip() for line in f if line.strip() and not line.startswith('#')]
     
-    print(f"📦 Verificando {len(packages)} pacotes...\n")
+    logger.info(f"📦 Verificando {len(packages)} pacotes...\n")
     
     missing = []
     installed = []
@@ -34,22 +37,22 @@ def validate_requirements():
         try:
             __import__(pkg_name.replace('-', '_'))
             installed.append(package)
-            print(f"✓ {package}")
+            logger.info(f"✓ {package}")
         except ImportError:
             missing.append(package)
-            print(f"✗ {package}")
+            logger.warning(f"✗ {package}")
     
-    print(f"\n{'='*60}")
-    print(f"✅ Instalados: {len(installed)}")
-    print(f"❌ Faltando: {len(missing)}")
+    logger.info(f"\n{'='*60}")
+    logger.info(f"✅ Instalados: {len(installed)}")
+    logger.info(f"❌ Faltando: {len(missing)}")
     
     if missing:
-        print(f"\n⚠️  Pacotes faltando:")
+        logger.warning(f"\n⚠️  Pacotes faltando:")
         for pkg in missing:
-            print(f"   - {pkg}")
+            logger.warning(f"   - {pkg}")
         
-        print("\n💡 Instale com:")
-        print(f"   pip install {' '.join(missing)}")
+        logger.info("\n💡 Instale com:")
+        logger.info(f"   pip install {' '.join(missing)}")
         return False
     
     print("\n🎉 Todos os pacotes estão instalados!")

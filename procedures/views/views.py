@@ -2,8 +2,6 @@
 """
 Views para o módulo Procedures
 Consolida training + procurements:
-- Procedimentos, Treinamentos
-- Fornecedores, Avaliações, Cotações
 """
 
 import io
@@ -21,7 +19,21 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# Models
+
+
+@login_required
+def treinamentos_historico_view(request):
+    """Exibe todos os registros de treinamento de um colaborador para um procedimento."""
+    colaborador_id = request.GET.get('colaborador')
+    procedimento_id = request.GET.get('procedimento')
+    colaborador = get_object_or_404(Colaborador, id=colaborador_id)
+    procedimento = get_object_or_404(Procedimento, id=procedimento_id)
+    historico = RegistroTreinamento.objects.filter(colaborador_id=colaborador_id, procedimento_id=procedimento_id).order_by('-data_treinamento')
+    return render(request, "procedures/treinamento_historico.html", {
+        "colaborador": colaborador,
+        "procedimento": procedimento,
+        "historico": historico,
+    })
 from procedures.models import (
     Procedimento, RegistroTreinamento, PacoteTreinamento,
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento

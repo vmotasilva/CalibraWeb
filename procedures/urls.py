@@ -13,6 +13,8 @@ from training.views import views as training_views
 app_name = 'procedures'
 
 urlpatterns = [
+
+
     # ==========================
     # API ENDPOINTS
     # ==========================
@@ -38,10 +40,13 @@ urlpatterns = [
     # TREINAMENTOS
     # ==========================
     path('treinamentos/', views.treinamentos_list_view, name='treinamentos_list'),
+    path('treinamentos/historico/', views.treinamentos_historico_view, name='treinamentos_historico'),
     path('treinamentos/exportar-excel/', views.treinamentos_exportar_excel_view, name='treinamentos_exportar_excel'),
     path('treinamentos/<int:treinamento_id>/', views.treinamentos_detalhe_view, name='treinamentos_detalhe'),
     path('treinamentos/novo/', views.novo_treinamento_view, name='novo_treinamento'),
     path('treinamentos/<int:treinamento_id>/editar/', views.editar_treinamento_view, name='editar_treinamento'),
+    path('treinamentos/importar/', lista_presenca_views.lista_presenca_importar_view, name='treinamentos_importar'),
+    path('treinamentos/template-download/', lista_presenca_views.lista_presenca_download_template_view, name='treinamentos_template_download'),
     path('dashboard/', training_views.dashboard_treinamentos_view, name='dashboard_treinamentos'),
     
     # ==========================
@@ -233,6 +238,7 @@ urlpatterns = [
     path('listas-presenca/exportar/', lista_presenca_views.lista_presenca_export_view, name='lista_presenca_export'),
     path('listas-presenca/<int:pk>/', lista_presenca_views.lista_presenca_detail_view, name='lista_presenca_detail'),
     path('listas-presenca/<int:pk>/editar/', lista_presenca_views.lista_presenca_edit_view, name='lista_presenca_edit'),
+    path('listas-presenca/import/erros/download/', lista_presenca_views.lista_presenca_erros_download_view, name='lista_presenca_erros_download'),
     path('listas-presenca/<int:pk>/deletar/', lista_presenca_views.lista_presenca_delete_view, name='lista_presenca_delete'),
     path('listas-presenca/<int:pk>/pdf/', lista_presenca_views.lista_presenca_export_pdf_view, name='lista_presenca_export_pdf'),
     path('listas-presenca/importar/', lista_presenca_views.lista_presenca_importar_view, name='lista_presenca_importar'),

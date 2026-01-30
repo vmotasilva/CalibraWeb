@@ -10,101 +10,32 @@
         <div>
             <h1 class="h2 mb-0"><i class="bi bi-graph-up"></i> Dashboard de Treinamentos</h1>
             <small class="text-muted">Visão geral de estatísticas e conformidade</small>
-        </div>
-    </div>
-
-    <!-- KPIs Principais -->
-    <div class="row mb-4">
-        <!-- Total de Treinamentos -->
-        <div class="col-md-3 mb-3">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <small class="text-muted text-uppercase fw-bold">Total de Treinamentos</small>
-                            <h3 class="mb-0 mt-2">{{ total_treinamentos }}</h3>
-                        </div>
-                        <div class="badge bg-primary rounded-circle p-3">
-                            <i class="bi bi-mortarboard fs-5"></i>
-                        </div>
+        <!-- Gráficos -->
+        <div class="row mb-4">
+            <!-- Distribuição por Status -->
+            <div class="col-md-6 mb-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
                     </div>
-                    <small class="text-muted mt-2 d-block">Registros completos no sistema</small>
+                    <div class="card-body">
+                        <canvas id="chartStatus" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Treinamentos por Mês -->
+            <div class="col-md-6 mb-3">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Treinamentos Últimos 6 Meses</h6>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="chartMeses" height="300"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <!-- Treinamentos Vigentes -->
-        <div class="col-md-3 mb-3">
-            <div class="card h-100 shadow-sm border-success">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <small class="text-muted text-uppercase fw-bold">Vigentes</small>
-                            <h3 class="mb-0 mt-2 text-success">{{ treinamentos_vigentes }}</h3>
-                        </div>
-                        <div class="badge bg-success rounded-circle p-3">
-                            <i class="bi bi-check-circle fs-5"></i>
-                        </div>
-                    </div>
-                    <div class="progress mt-2" style="height: 4px;">
-                        <div class="progress-bar bg-success" style="width: {{ taxa_conformidade }}%"></div>
-                    </div>
-                    <small class="text-muted mt-2 d-block">{{ taxa_conformidade }}% de conformidade</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Treinamentos Pendentes -->
-        <div class="col-md-3 mb-3">
-            <div class="card h-100 shadow-sm border-warning">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <small class="text-muted text-uppercase fw-bold">Pendentes</small>
-                            <h3 class="mb-0 mt-2 text-warning">{{ treinamentos_pendentes }}</h3>
-                        </div>
-                        <div class="badge bg-warning rounded-circle p-3">
-                            <i class="bi bi-exclamation-circle fs-5"></i>
-                        </div>
-                    </div>
-                    <small class="text-muted mt-2 d-block">Aguardando realização</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Últimos 30 dias -->
-        <div class="col-md-3 mb-3">
-            <div class="card h-100 shadow-sm border-info">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <small class="text-muted text-uppercase fw-bold">Últimos 30 dias</small>
-                            <h3 class="mb-0 mt-2 text-info">{{ treinamentos_ultimos_30_dias }}</h3>
-                        </div>
-                        <div class="badge bg-info rounded-circle p-3">
-                            <i class="bi bi-calendar-event fs-5"></i>
-                        </div>
-                    </div>
-                    <small class="text-muted mt-2 d-block">Novos registros</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Segunda linha de KPIs -->
-    <div class="row mb-4">
-        <div class="col-md-4 mb-3">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <small class="text-muted text-uppercase fw-bold">Colaboradores Treinados</small>
-                    <h2 class="mb-0 mt-2">{{ total_colaboradores_treinados }}</h2>
-                    <small class="text-muted">Com pelo menos um treinamento completo</small>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4 mb-3">
-            <div class="card shadow-sm">
                 <div class="card-body">
                     <small class="text-muted text-uppercase fw-bold">Procedimentos Únicos</small>
                     <h2 class="mb-0 mt-2">{{ total_procedimentos_unicos }}</h2>

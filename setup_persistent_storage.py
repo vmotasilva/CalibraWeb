@@ -14,6 +14,9 @@ Depois, adicione esta variável de ambiente no Railway:
 import os
 import sys
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 def setup_persistent_storage():
     """Setup directory structure for persistent media storage."""
@@ -21,7 +24,7 @@ def setup_persistent_storage():
     # Caminho que será montado como volume no Railway
     persist_path = os.environ.get('PERSIST_MEDIA_PATH', '/data/media')
     
-    print(f"📁 Configurando armazenamento persistente em: {persist_path}")
+    logger.info(f"📁 Configurando armazenamento persistente em: {persist_path}")
     
     # Criar diretórios necessários
     subdirs = [
@@ -37,19 +40,19 @@ def setup_persistent_storage():
             dir_path = Path(persist_path) / subdir
             dir_path.mkdir(parents=True, exist_ok=True)
             os.chmod(dir_path, 0o755)
-            print(f"  ✅ Criado: {dir_path}")
+            logger.info(f"  ✅ Criado: {dir_path}")
         
         # Criar .gitkeep para garantir que os diretórios sejam rastreados
         gitkeep = Path(persist_path) / '.gitkeep'
         gitkeep.touch()
         
-        print(f"\n✅ Armazenamento persistente configurado com sucesso!")
-        print(f"📝 Diretório: {persist_path}")
-        print(f"📊 Tamanho alocado: Confira no Railway Dashboard")
+        logger.info(f"\n✅ Armazenamento persistente configurado com sucesso!")
+        logger.info(f"📝 Diretório: {persist_path}")
+        logger.info(f"📊 Tamanho alocado: Confira no Railway Dashboard")
         return True
         
     except Exception as e:
-        print(f"\n❌ Erro ao configurar armazenamento: {e}")
+        logger.exception(f"\n❌ Erro ao configurar armazenamento: {e}")
         return False
 
 if __name__ == '__main__':

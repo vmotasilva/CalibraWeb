@@ -8,7 +8,10 @@ Status: ✅ COMPLETO E TESTADO
 Deploy: Pronto para produção (Railway)
 """
 
-print("""
+import logging
+logger = logging.getLogger(__name__)
+
+logger.info("""
 ╔════════════════════════════════════════════════════════════════════════════╗
 ║                    🎉 FUNCIONALIDADE IMPLEMENTADA 🎉                      ║
 ║                  EXPORT DE PLANEJAMENTOS PARA EXCEL                       ║

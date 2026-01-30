@@ -3,6 +3,9 @@
 """Atualizar templates de procedures para usar {% block main_content %}"""
 
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 templates_dir = r"C:\CalibraWeb\procedures\templates\procedures"
 files_to_update = [
@@ -36,11 +39,11 @@ for filename in files_to_update:
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(content)
             
-            print(f"✓ {filename} - atualizado")
+            logger.info(f"✓ {filename} - atualizado")
             count += 1
         else:
-            print(f"⚠ {filename} - já estava atualizado ou não encontrado")
+            logger.info(f"⚠ {filename} - já estava atualizado ou não encontrado")
     else:
-        print(f"✗ {filename} - arquivo não encontrado")
+        logger.warning(f"✗ {filename} - arquivo não encontrado")
 
-print(f"\nTotal atualizado: {count}")
+logger.info(f"\nTotal atualizado: {count}")
