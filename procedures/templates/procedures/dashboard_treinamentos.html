@@ -22,6 +22,22 @@
                                     {% endfor %}
                                 </select>
                             </div>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card p-3">
+                            <h6 class="card-title">Planejamento por Instrutor</h6>
+                            <canvas id="chartPlanejamentoInstrutor" style="height:200px;"></canvas>
+                            <div id="chartPlanejamentoInstrutorFallback" class="small text-muted mt-2">Carregando...</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card p-3">
+                            <h6 class="card-title">Planejamento por Setor - Turno</h6>
+                            <canvas id="chartPlanejamentoSetorTurno" style="height:200px;"></canvas>
+                            <div id="chartPlanejamentoSetorTurnoFallback" class="small text-muted mt-2">Carregando...</div>
+                        </div>
+                    </div>
+                </div>
 
                             <div class="mb-2">
                                 <label class="form-label small">Turno</label>
@@ -50,6 +66,8 @@
                         </form>
                     </div>
                 </div>
+
+                <div id="activeStatusFilter" class="mb-2 text-center"></div>
 
                 <div class="card mb-3">
                     <div class="card-body text-center">
@@ -100,10 +118,21 @@
                 </div>
 
                 <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card p-3">
+                    <div class="col-md-4">
+                        <div class="card p-2">
                             <h6 class="card-title">Status</h6>
-                            <canvas id="chartStatus" style="height: 240px;"></canvas>
+                            <canvas id="chartStatus" style="height: 180px;"></canvas>
+                            <div id="chartStatusFallback" class="small text-muted mt-2">Se o gráfico não carregar, são exibidos os totais abaixo.</div>
+                            <div id="statusNumbers" class="mt-2 d-flex gap-2 align-items-center justify-content-center">
+                                <div class="badge bg-success status-badge">
+                                    <i class="bi bi-check-circle me-1" aria-hidden="true"></i>
+                                    Vigentes: <span id="statusVigente" class="fw-bold ms-1">{{ status_distribuicao.vigente|default:'0' }}</span>
+                                </div>
+                                <div class="badge bg-warning text-dark status-badge">
+                                    <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
+                                    Pendentes: <span id="statusPendente" class="fw-bold ms-1">{{ status_distribuicao.pendente|default:'0' }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -114,17 +143,21 @@
                     </div>
                 </div>
 
+                <!-- Top Procedimentos e Top Colaboradores removidos (não necessários) -->
+
                 <div class="row mb-4">
                     <div class="col-md-6">
                         <div class="card p-3">
-                            <h6 class="card-title">Top Procedimentos</h6>
-                            <div id="topProcedimentos">Carregando...</div>
+                            <h6 class="card-title">Planejamento por Instrutor</h6>
+                            <canvas id="chartPlanejaInstrutor" style="height:200px;"></canvas>
+                            <div id="chartPlanejaInstrutorFallback" class="small text-muted mt-2">Carregando...</div>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="card p-3">
-                            <h6 class="card-title">Top Colaboradores</h6>
-                            <div id="topColaboradores">Carregando...</div>
+                            <h6 class="card-title">Planejamento por Setor - Turno</h6>
+                            <canvas id="chartPlanejaSetorTurno" style="height:200px;"></canvas>
+                            <div id="chartPlanejaSetorTurnoFallback" class="small text-muted mt-2">Carregando...</div>
                         </div>
                     </div>
                 </div>
@@ -181,6 +214,99 @@
 <!-- Chart.js para gráficos -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
+    // Gráfico Planejamento por Instrutor
+    try {
+        const instrutorLabels = [
+            {% for item in planejamento_por_instrutor %}'{{ item.instrutor__nome_completo|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const instrutorPlanejado = [
+            {% for item in planejamento_por_instrutor %}{{ item.planejado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const instrutorConfirmado = [
+            {% for item in planejamento_por_instrutor %}{{ item.confirmado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const instrutorRealizado = [
+            {% for item in planejamento_por_instrutor %}{{ item.realizado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const instrutorCancelado = [
+            {% for item in planejamento_por_instrutor %}{{ item.cancelado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const ctxInstrutor = document.getElementById('chartPlanejamentoInstrutor')?.getContext('2d');
+        if (ctxInstrutor) {
+            new Chart(ctxInstrutor, {
+                type: 'bar',
+                data: {
+                    labels: instrutorLabels,
+                    datasets: [
+                        { label: 'Planejado', data: instrutorPlanejado, backgroundColor: '#6c757d', stack: 'Stack 0' },
+                        { label: 'Confirmado', data: instrutorConfirmado, backgroundColor: '#0d6efd', stack: 'Stack 0' },
+                        { label: 'Realizado', data: instrutorRealizado, backgroundColor: '#198754', stack: 'Stack 0' },
+                        { label: 'Cancelado', data: instrutorCancelado, backgroundColor: '#dc3545', stack: 'Stack 0' }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        x: { beginAtZero: true, stacked: true },
+                        y: { stacked: true }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+            document.getElementById('chartPlanejamentoInstrutorFallback').style.display = 'none';
+        }
+    } catch (err) {
+        document.getElementById('chartPlanejamentoInstrutorFallback').textContent = 'Erro ao carregar gráfico.';
+    }
+
+    // Gráfico Planejamento por Setor-Turno
+    try {
+        const setorTurnoLabels = [
+            {% for item in planejamento_por_setor_turno %}'{{ item.colaboradores__setor__nome|escapejs }} - Turno {{ item.colaboradores__turno }}'{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const setorTurnoPlanejado = [
+            {% for item in planejamento_por_setor_turno %}{{ item.planejado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const setorTurnoConfirmado = [
+            {% for item in planejamento_por_setor_turno %}{{ item.confirmado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const setorTurnoRealizado = [
+            {% for item in planejamento_por_setor_turno %}{{ item.realizado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const setorTurnoCancelado = [
+            {% for item in planejamento_por_setor_turno %}{{ item.cancelado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const ctxSetorTurno = document.getElementById('chartPlanejamentoSetorTurno')?.getContext('2d');
+        if (ctxSetorTurno) {
+            new Chart(ctxSetorTurno, {
+                type: 'bar',
+                data: {
+                    labels: setorTurnoLabels,
+                    datasets: [
+                        { label: 'Planejado', data: setorTurnoPlanejado, backgroundColor: '#6c757d', stack: 'Stack 0' },
+                        { label: 'Confirmado', data: setorTurnoConfirmado, backgroundColor: '#0d6efd', stack: 'Stack 0' },
+                        { label: 'Realizado', data: setorTurnoRealizado, backgroundColor: '#198754', stack: 'Stack 0' },
+                        { label: 'Cancelado', data: setorTurnoCancelado, backgroundColor: '#dc3545', stack: 'Stack 0' }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        x: { beginAtZero: true, stacked: true },
+                        y: { stacked: true }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+            document.getElementById('chartPlanejamentoSetorTurnoFallback').style.display = 'none';
+        }
+    } catch (err) {
+        document.getElementById('chartPlanejamentoSetorTurnoFallback').textContent = 'Erro ao carregar gráfico.';
+    }
 document.addEventListener('DOMContentLoaded', function() {
     let chartStatus, chartMeses;
 
@@ -195,10 +321,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('progressConformidade').style.width = data.taxa_conformidade + '%';
 
         // Atualizar gráfico de status
+        const sd = data.status_distribuicao || {};
         if (chartStatus) {
-            chartStatus.data.datasets[0].data = [data.status_distribuicao.vigente, data.status_distribuicao.pendente];
+            chartStatus.data.datasets[0].data = [sd.vigente || 0, sd.pendente || 0];
             chartStatus.update();
         }
+        // Atualizar os indicadores numéricos permanentes
+        const vigEl = document.getElementById('statusVigente');
+        const penEl = document.getElementById('statusPendente');
+        if (vigEl) vigEl.textContent = sd.vigente || 0;
+        if (penEl) penEl.textContent = sd.pendente || 0; 
 
         // Atualizar gráfico de meses
         if (chartMeses) {
@@ -210,74 +342,108 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Atualizar top procedimentos
-        let htmlProc = '';
-        if (data.top_procedimentos && data.top_procedimentos.length > 0) {
-            htmlProc = '<div style="max-height: 400px; overflow-y: auto;"><table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Código</th><th>Nome</th><th class="text-end">Treinamentos</th></tr></thead><tbody>';
-            data.top_procedimentos.forEach(proc => {
-                htmlProc += `<tr><td><span class="badge bg-primary">${proc.procedimento__codigo}</span></td><td><small>${proc.procedimento__nome.split(' ').slice(0,5).join(' ')}</small></td><td class="text-end"><strong>${proc.total}</strong><span class="ms-2"><div class="progress" style="width: 50px; height: 4px; display: inline-block;"><div class="progress-bar bg-info" style="width: ${Math.min(proc.total * 5, 100)}%"></div></div></span></td></tr>`;
-            });
-            htmlProc += '</tbody></table></div>';
-        } else {
-            htmlProc = '<p class="text-muted text-center">Nenhum procedimento com treinamentos completos</p>';
-        }
-        document.getElementById('topProcedimentos').innerHTML = htmlProc;
+        // Top Procedimentos removed; placeholder
+        let htmlProc = '<p class="text-muted text-center">Removido</p>';
+        // TopProcedimentos removed — section no longer present in template; no update performed
 
-        // Atualizar top colaboradores
-        let htmlColab = '';
-        if (data.top_colaboradores && data.top_colaboradores.length > 0) {
-            htmlColab = '<div style="max-height: 400px; overflow-y: auto;"><table class="table table-sm table-hover mb-0"><thead class="table-light"><tr><th>Colaborador</th><th class="text-end">Treinamentos</th></tr></thead><tbody>';
-            data.top_colaboradores.forEach(colab => {
-                htmlColab += `<tr><td><small>${colab.colaborador__nome_completo}</small></td><td class="text-end"><strong>${colab.total}</strong><span class="ms-2"><span class="badge bg-success">${colab.total}</span></span></td></tr>`;
-            });
-            htmlColab += '</tbody></table></div>';
-        } else {
-            htmlColab = '<p class="text-muted text-center">Nenhum colaborador com treinamentos completos</p>';
+        // Top Colaboradores removed; placeholder
+        let htmlColab = '<p class="text-muted text-center">Removido</p>';
+        // TopColaboradores removed — section no longer present in template; no update performed
+        // Atualizar gráfico por líder
+        try {
+            const liderData = data.treinamentos_por_lider || [];
+            if (chartLider) {
+                chartLider.data.labels = liderData.map(x => x.nome).slice(0, 10);
+                chartLider.data.datasets[0].data = liderData.map(x => x.vigentes || 0).slice(0, 10);
+                chartLider.data.datasets[1].data = liderData.map(x => x.pendentes || 0).slice(0, 10);
+                chartLider.update();
+            } else {
+                const el = document.getElementById('chartLiderFallback');
+                if (el) el.textContent = liderData.length ? liderData.slice(0,5).map(l=>`${l.nome}: ${l.vigentes} vig / ${l.pendentes} pend`).join('; ') : 'Nenhum dado';
+            }
+        } catch (err) {
+            console.warn('Erro atualizando gráfico por líder', err);
         }
-        document.getElementById('topColaboradores').innerHTML = htmlColab;
-    }
+
+        // Atualizar gráfico por setor-turno
+        try {
+            const setorData = data.treinamentos_por_setor_turno || [];
+            if (chartSetorTurno) {
+                chartSetorTurno.data.labels = setorData.map(x => x.nome).slice(0, 10);
+                chartSetorTurno.data.datasets[0].data = setorData.map(x => x.vigentes || 0).slice(0, 10);
+                chartSetorTurno.data.datasets[1].data = setorData.map(x => x.pendentes || 0).slice(0, 10);
+                chartSetorTurno.update();
+            } else {
+                const el = document.getElementById('chartSetorTurnoFallback');
+                if (el) el.textContent = setorData.length ? setorData.slice(0,5).map(s=>`${s.nome}: ${s.vigentes} vig / ${s.pendentes} pend`).join('; ') : 'Nenhum dado';
+            }
+        } catch (err) {
+            console.warn('Erro atualizando gráfico por setor-turno', err);
+        }    }
 
     // Inicializar gráficos
-    const ctxStatus = document.getElementById('chartStatus').getContext('2d');
-    chartStatus = new Chart(ctxStatus, {
-        type: 'doughnut',
-        data: {
-            labels: ['Vigentes', 'Pendentes'],
-            datasets: [{
-                data: [{{ status_distribuicao.vigente }}, {{ status_distribuicao.pendente }}],
-                backgroundColor: ['#28a745', '#ffc107'],
-                borderColor: ['#218838', '#e0a800'],
-                borderWidth: 2,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 15,
-                        font: {
-                            size: 14
+    const ctxStatus = document.getElementById('chartStatus') ? document.getElementById('chartStatus').getContext('2d') : null;
+    try {
+        if (!ctxStatus) throw new Error('Canvas chartStatus não encontrado');
+        chartStatus = new Chart(ctxStatus, {
+            type: 'pie',
+            data: {
+                labels: ['Em dia', 'Pendentes'],
+                datasets: [{
+                    data: [{{ status_distribuicao.vigente|default:'0' }}, {{ status_distribuicao.pendente|default:'0' }}],
+                    backgroundColor: ['#28a745', '#ffc107'],
+                    borderColor: ['#ffffff', '#ffffff'],
+                    borderWidth: 2,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 12,
+                            font: {
+                                size: 13
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const label = ctx.label || '';
+                                const value = ctx.parsed || 0;
+                                const total = ctx.chart._metasets ? ctx.chart._metasets[ctx.datasetIndex].total : ctx.dataset.data.reduce((a,b)=>a+(+b||0),0);
+                                const pct = total ? ((value/total)*100).toFixed(1) : 0;
+                                return label + ': ' + value + ' (' + pct + '%)';
+                            }
                         }
                     }
                 }
             }
-        }
-    });
+        });
+        // Esconder fallback quando o gráfico conseguir inicializar
+        const f = document.getElementById('chartStatusFallback');
+        if (f) f.style.display = 'none';
+    } catch (err) {
+        console.warn('Chart.js falhou ao inicializar o doughnut de status:', err);
+        const f = document.getElementById('chartStatusFallback');
+        if (f) { f.textContent = `Vigentes: {{ status_distribuicao.vigente|default:'0' }}, Pendentes: {{ status_distribuicao.pendente|default:'0' }}`; f.style.display = 'block'; }
+        const vigSpan = document.getElementById('statusVigente');
+        const penSpan = document.getElementById('statusPendente');
+        if (vigSpan) vigSpan.textContent = {{ status_distribuicao.vigente|default:'0' }};
+        if (penSpan) penSpan.textContent = {{ status_distribuicao.pendente|default:'0' }};
+    }
 
     // Gráfico de Treinamentos por Mês
     const meses = [
-        {% for item in treinamentos_por_mes %}
-        '{{ item.mes }}'{{ forloop.last|yesno:'' }},
-        {% endfor %}
+        {% for item in treinamentos_por_mes %}'{{ item.mes }}'{% if not forloop.last %},{% endif %}{% endfor %}
     ];
 
     const valores = [
-        {% for item in treinamentos_por_mes %}
-        {{ item.total }}{{ forloop.last|yesno:'' }},
-        {% endfor %}
+        {% for item in treinamentos_por_mes %}{{ item.total }}{% if not forloop.last %},{% endif %}{% endfor %}
     ];
 
     const ctxMeses = document.getElementById('chartMeses').getContext('2d');
@@ -318,6 +484,243 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             }
+        }
+    });
+
+    // Inicializar gráficos de Demanda (Líder e Setor-Turno) com dados iniciais do contexto
+    let chartLider = null;
+    let chartSetorTurno = null;
+    let chartPlanejaInstrutor = null;
+    let chartPlanejaSetorTurno = null;
+    try {
+        const liderLabels = [
+            {% for item in treinamentos_por_lider %}'{{ item.nome|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const liderVigentes = [
+            {% for item in treinamentos_por_lider %}{{ item.vigentes }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const liderPendentes = [
+            {% for item in treinamentos_por_lider %}{{ item.pendentes }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+
+        const ctxLider = document.getElementById('chartLider')?.getContext('2d');
+        if (ctxLider) {
+            chartLider = new Chart(ctxLider, {
+                type: 'bar',
+                data: {
+                    labels: liderLabels.slice(0, 10),
+                    datasets: [
+                        { label: 'Vigentes', data: liderVigentes.slice(0, 10), backgroundColor: '#28a745', stack: 'Stack 0' },
+                        { label: 'Pendentes', data: liderPendentes.slice(0, 10), backgroundColor: '#ffc107', stack: 'Stack 0' }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true
+                        }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        } else {
+            const el = document.getElementById('chartLiderFallback');
+            if (el) el.textContent = 'Nenhum dado disponível para Demanda por Líder.';
+        }
+
+        const setorLabels = [
+            {% for item in treinamentos_por_setor_turno %}'{{ item.nome|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const setorVigentes = [
+            {% for item in treinamentos_por_setor_turno %}{{ item.vigentes }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const setorPendentes = [
+            {% for item in treinamentos_por_setor_turno %}{{ item.pendentes }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+
+        const ctxSetor = document.getElementById('chartSetorTurno')?.getContext('2d');
+        if (ctxSetor) {
+            chartSetorTurno = new Chart(ctxSetor, {
+                type: 'bar',
+                data: {
+                    labels: setorLabels.slice(0, 10),
+                    datasets: [
+                        { label: 'Vigentes', data: setorVigentes.slice(0, 10), backgroundColor: '#28a745', stack: 'Stack 0' },
+                        { label: 'Pendentes', data: setorPendentes.slice(0, 10), backgroundColor: '#ffc107', stack: 'Stack 0' }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true
+                        }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        } else {
+            const el = document.getElementById('chartSetorTurnoFallback');
+            if (el) el.textContent = 'Nenhum dado disponível para Demanda por Setor - Turno.';
+        }
+    } catch (err) {
+        console.warn('Falha ao inicializar gráficos de demanda:', err);
+        const elL = document.getElementById('chartLiderFallback'); if (elL) elL.textContent = 'Gráfico indisponível.';
+        const elS = document.getElementById('chartSetorTurnoFallback'); if (elS) elS.textContent = 'Gráfico indisponível.';
+    }
+
+    // Inicializar gráficos de Planejamento (Instrutor e Setor-Turno) com dados iniciais
+    try {
+        const planejaInstrutorLabels = [
+            {% for item in planejamento_por_instrutor %}'{{ item.instrutor__nome_completo|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const planejaInstrutorPlanejado = [
+            {% for item in planejamento_por_instrutor %}{{ item.planejado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const planejaInstrutorConfirmado = [
+            {% for item in planejamento_por_instrutor %}{{ item.confirmado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const planejaInstrutorRealizado = [
+            {% for item in planejamento_por_instrutor %}{{ item.realizado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const planejaInstrutorCancelado = [
+            {% for item in planejamento_por_instrutor %}{{ item.cancelado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+
+        const ctxPlanejaInstrutor = document.getElementById('chartPlanejaInstrutor')?.getContext('2d');
+        if (ctxPlanejaInstrutor) {
+            chartPlanejaInstrutor = new Chart(ctxPlanejaInstrutor, {
+                type: 'bar',
+                data: {
+                    labels: planejaInstrutorLabels.slice(0, 10),
+                    datasets: [
+                        { label: 'Planejado', data: planejaInstrutorPlanejado.slice(0, 10), backgroundColor: '#0dcaf0', stack: 'Stack 0' },
+                        { label: 'Confirmado', data: planejaInstrutorConfirmado.slice(0, 10), backgroundColor: '#0d6efd', stack: 'Stack 0' },
+                        { label: 'Realizado', data: planejaInstrutorRealizado.slice(0, 10), backgroundColor: '#28a745', stack: 'Stack 0' },
+                        { label: 'Cancelado', data: planejaInstrutorCancelado.slice(0, 10), backgroundColor: '#dc3545', stack: 'Stack 0' }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true
+                        }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        } else {
+            const el = document.getElementById('chartPlanejaInstrutorFallback');
+            if (el) el.textContent = 'Nenhum dado disponível para Planejamento por Instrutor.';
+        }
+
+        const planejaSetorLabels = [
+            {% for item in planejamento_por_setor_turno %}'{{ item.colaboradores__setor__nome|escapejs }} - {{ item.colaboradores__turno|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const planejaSetorPlanejado = [
+            {% for item in planejamento_por_setor_turno %}{{ item.planejado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const planejaSetorConfirmado = [
+            {% for item in planejamento_por_setor_turno %}{{ item.confirmado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const planejaSetorRealizado = [
+            {% for item in planejamento_por_setor_turno %}{{ item.realizado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+        const planejaSetorCancelado = [
+            {% for item in planejamento_por_setor_turno %}{{ item.cancelado }}{% if not forloop.last %},{% endif %}{% endfor %}
+        ];
+
+        const ctxPlanejaSetor = document.getElementById('chartPlanejaSetorTurno')?.getContext('2d');
+        if (ctxPlanejaSetor) {
+            chartPlanejaSetorTurno = new Chart(ctxPlanejaSetor, {
+                type: 'bar',
+                data: {
+                    labels: planejaSetorLabels.slice(0, 10),
+                    datasets: [
+                        { label: 'Planejado', data: planejaSetorPlanejado.slice(0, 10), backgroundColor: '#0dcaf0', stack: 'Stack 0' },
+                        { label: 'Confirmado', data: planejaSetorConfirmado.slice(0, 10), backgroundColor: '#0d6efd', stack: 'Stack 0' },
+                        { label: 'Realizado', data: planejaSetorRealizado.slice(0, 10), backgroundColor: '#28a745', stack: 'Stack 0' },
+                        { label: 'Cancelado', data: planejaSetorCancelado.slice(0, 10), backgroundColor: '#dc3545', stack: 'Stack 0' }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true
+                        }
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        } else {
+            const el = document.getElementById('chartPlanejaSetorTurnoFallback');
+            if (el) el.textContent = 'Nenhum dado disponível para Planejamento por Setor - Turno.';
+        }
+    } catch (err) {
+        console.warn('Falha ao inicializar gráficos de planejamento:', err);
+        const elI = document.getElementById('chartPlanejaInstrutorFallback'); if (elI) elI.textContent = 'Gráfico indisponível.';
+        const elS = document.getElementById('chartPlanejaSetorTurnoFallback'); if (elS) elS.textContent = 'Gráfico indisponível.';
+    }
+    document.getElementById('chartStatus').addEventListener('click', function(evt) {
+        try {
+            const points = chartStatus.getElementsAtEventForMode(evt, 'nearest', {intersect:true}, true);
+            if (!points || !points.length) return;
+            const idx = points[0].index;
+            const label = (chartStatus.data.labels[idx] || '').toLowerCase();
+            let statusParam = '';
+            // 'Em dia' -> vigente, 'Pendentes' -> pendente
+            if (label.includes('em dia') || label.includes('dia') || label.includes('vigente')) statusParam = 'vigente';
+            if (label.includes('pendente') || label.includes('pendentes')) statusParam = 'pendente';
+
+            // Visual indicator of active status filter
+            const activeDiv = document.getElementById('activeStatusFilter');
+            if (statusParam) {
+                activeDiv.innerHTML = `Filtro: <span class="badge bg-info">${statusParam}</span> <button id="clearStatusFilter" class="btn btn-sm btn-link">Limpar</button>`;
+                document.getElementById('clearStatusFilter').addEventListener('click', function() {
+                    activeDiv.innerHTML = '';
+                    // Reapply current filters without status
+                    const paramsNoStatus = new URLSearchParams(new FormData(document.getElementById('filterForm')));
+                    fetch(`{% url 'training:dashboard_filtered' %}?${paramsNoStatus}`)
+                        .then(res => res.json()).then(data => { lastFetchedData = data; updateCharts(data); updateTable(data); });
+                });
+            } else {
+                activeDiv.innerHTML = '';
+            }
+
+            // Apply filters with status
+            const params = new URLSearchParams(new FormData(document.getElementById('filterForm')));
+            if (statusParam) params.set('status', statusParam);
+            fetch(`{% url 'training:dashboard_filtered' %}?${params}`)
+                .then(res=>res.json()).then(data => { lastFetchedData = data; updateCharts(data); updateTable(data); });
+        } catch (err) {
+            console.error('Erro no click do gráfico de status', err);
         }
     });
 
@@ -424,33 +827,39 @@ document.addEventListener('DOMContentLoaded', function() {
         URL.revokeObjectURL(url);
     });
 
-    // Toggle sidebar
-    document.getElementById('toggleSidebar').addEventListener('click', function() {
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-        const icon = this.querySelector('i');
-        sidebar.classList.toggle('collapsed');
-        mainContent.classList.toggle('collapsed');
-        if (sidebar.classList.contains('collapsed')) {
-            icon.classList.remove('bi-funnel');
-            icon.classList.add('bi-chevron-right');
-        } else {
-            icon.classList.remove('bi-chevron-right');
-            icon.classList.add('bi-funnel');
-        }
-    });
+    // Toggle sidebar (safely attach if element exists)
+    const toggleBtn = document.getElementById('toggleSidebar');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const icon = this.querySelector('i');
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('collapsed');
+            if (sidebar.classList.contains('collapsed')) {
+                icon.classList.remove('bi-funnel');
+                icon.classList.add('bi-chevron-right');
+            } else {
+                icon.classList.remove('bi-chevron-right');
+                icon.classList.add('bi-funnel');
+            }
+        });
+    }
 
-    // Toggle chevron icon for KPIs
-    document.querySelector('[data-bs-target="#kpiCollapse"]').addEventListener('click', function() {
-        const icon = this.querySelector('i');
-        if (icon.classList.contains('bi-chevron-down')) {
-            icon.classList.remove('bi-chevron-down');
-            icon.classList.add('bi-chevron-up');
-        } else {
-            icon.classList.remove('bi-chevron-up');
-            icon.classList.add('bi-chevron-down');
-        }
-    });
+    // Toggle chevron icon for KPIs (attach only if element exists)
+    const kpiToggle = document.querySelector('[data-bs-target="#kpiCollapse"]');
+    if (kpiToggle) {
+        kpiToggle.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            if (icon.classList.contains('bi-chevron-down')) {
+                icon.classList.remove('bi-chevron-down');
+                icon.classList.add('bi-chevron-up');
+            } else {
+                icon.classList.remove('bi-chevron-up');
+                icon.classList.add('bi-chevron-down');
+            }
+        });
+    }
 });
 </script>
 
@@ -508,5 +917,23 @@ document.addEventListener('DOMContentLoaded', function() {
     #mainContent.collapsed {
         margin-left: 0;
     }
+
+    /* Visual fallbacks para os charts (quando Chart.js não carregar) */
+    #chartStatusFallback, #chartLiderFallback, #chartSetorTurnoFallback {
+        text-align: center;
+        padding: 40px 0;
+        font-weight: 600;
+        font-size: 14px;
+        color: #6c757d;
+    }
+    #chartStatusFallback { font-size: 18px; }
+
+    /* Status badges */
+    .status-badge {
+        font-size: 0.95rem;
+        padding: 0.5rem 0.75rem;
+    }
+    .status-badge .bi { font-size: 1rem; vertical-align: -2px; }
+    #statusNumbers { display: flex; }
 </style>
 {% endblock %}

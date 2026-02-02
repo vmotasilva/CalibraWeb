@@ -369,6 +369,7 @@ def dashboard_treinamentos_view(request):
     from datetime import timedelta, date
     from core.models import TURNOS_CHOICES
     from django.core.cache import cache
+    from procedures.models import PlanejamentoTreinamento
     
     # Cache key para estatísticas do dashboard
     cache_key = 'dashboard_treinamentos_stats'
@@ -421,21 +422,9 @@ def dashboard_treinamentos_view(request):
         data_treinamento__isnull=False
     ).count()
     
-    # Top 10 procedimentos mais treinados - OTIMIZADO com agregação SQL
-    top_procedimentos = valid_registros.filter(
-        data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__numero_revisao')
-    ).values('procedimento__codigo', 'procedimento__nome').annotate(
-        total=Count('id')
-    ).order_by('-total')[:10]
-    
-    # Top 10 colaboradores com mais treinamentos - OTIMIZADO com agregação SQL
-    top_colaboradores = valid_registros.filter(
-        data_treinamento__isnull=False,
-        revisao_treinada=F('procedimento__numero_revisao')
-    ).values('colaborador__nome_completo').annotate(
-        total=Count('id')
-    ).order_by('-total')[:10]
+    # Top lists removed to simplify dashboard and reduce query cost
+    top_procedimentos = []
+    top_colaboradores = []
     
     # Distribuição de status
     status_distribuicao = {
@@ -559,6 +548,36 @@ def dashboard_treinamentos_view(request):
                 'pendentes': pendentes
             })
     
+    # --- PLANEJAMENTO: Agregações para novos cards ---
+    planejamento_instrutor = (
+        PlanejamentoTreinamento.objects
+        .filter(instrutor__isnull=False)
+        .values('instrutor__nome_completo')
+        .annotate(
+            planejado=Count('id', filter=Q(status='PLANEJADO')),
+            confirmado=Count('id', filter=Q(status='CONFIRMADO')),
+            realizado=Count('id', filter=Q(status='REALIZADO')),
+            cancelado=Count('id', filter=Q(status='CANCELADO')),
+            total=Count('id')
+        )
+        .order_by('-total')[:10]
+    )
+
+    # Planejamento por Setor/Turno (baseado no planejamento)
+    planejamento_setor_turno_pl = (
+        PlanejamentoTreinamento.objects
+        .filter(colaboradores__setor__isnull=False)
+        .values('colaboradores__setor__nome', 'colaboradores__turno')
+        .annotate(
+            planejado=Count('id', filter=Q(status='PLANEJADO')),
+            confirmado=Count('id', filter=Q(status='CONFIRMADO')),
+            realizado=Count('id', filter=Q(status='REALIZADO')),
+            cancelado=Count('id', filter=Q(status='CANCELADO')),
+            total=Count('id')
+        )
+        .order_by('-total')[:10]
+    )
+    
     # Montar contexto
     context = {
         'total_treinamentos': total_treinamentos,
@@ -568,12 +587,12 @@ def dashboard_treinamentos_view(request):
         'total_procedimentos_unicos': total_procedimentos_unicos,
         'treinamentos_ultimos_30_dias': treinamentos_ultimos_30_dias,
         'taxa_conformidade': taxa_conformidade,
-        'top_procedimentos': list(top_procedimentos),
-        'top_colaboradores': list(top_colaboradores),
         'status_distribuicao': status_distribuicao,
         'treinamentos_por_mes': treinamentos_por_mes,
         'treinamentos_por_lider': treinamentos_por_lider,
         'treinamentos_por_setor_turno': treinamentos_por_setor_turno,
+        'planejamento_por_instrutor': list(planejamento_instrutor),
+        'planejamento_por_setor_turno': list(planejamento_setor_turno_pl),
     }
     
     # Adicionar dados de filtros dinâmicos - OTIMIZADO
@@ -705,6 +724,14 @@ def dashboard_treinamentos_filtered_view(request):
             base_query &= Q(colaborador__gerente_id=int(gerente_id))
         except:
             pass
+
+    # Novo: permitir filtrar por status (vigente / pendente)
+    status_param = (request.GET.get('status') or '').strip().lower()
+    if status_param == 'vigente':
+        base_query &= Q(data_treinamento__isnull=False) & Q(revisao_treinada=F('procedimento__numero_revisao'))
+    elif status_param == 'pendente':
+        base_query &= Q(Q(data_treinamento__isnull=True) | ~Q(revisao_treinada=F('procedimento__numero_revisao')))
+
     
     # Contar registros
     treinamentos = RegistroTreinamento.objects.filter(base_query).distinct()
@@ -748,19 +775,9 @@ def dashboard_treinamentos_filtered_view(request):
         data_treinamento__isnull=False
     ).count()
     
-    # Top 10 procedimentos mais treinados
-    top_procedimentos = treinamentos.filter(
-        data_treinamento__isnull=False
-    ).values('procedimento__codigo', 'procedimento__nome').annotate(
-        total=Count('id')
-    ).order_by('-total')[:10]
-    
-    # Top 10 colaboradores
-    top_colaboradores = treinamentos.filter(
-        data_treinamento__isnull=False
-    ).values('colaborador__nome_completo').annotate(
-        total=Count('id')
-    ).order_by('-total')[:10]
+    # Top lists removed to reduce payload
+    top_procedimentos = []
+    top_colaboradores = []
     
     # Gráfico por Líder (considerando filtros aplicados)
     treinamentos_por_lider = []
@@ -881,7 +898,5 @@ def dashboard_treinamentos_filtered_view(request):
         'treinamentos_por_mes': treinamentos_por_mes,
         'treinamentos_por_lider': treinamentos_por_lider,
         'treinamentos_por_setor_turno': treinamentos_por_setor_turno,
-        'top_procedimentos': list(top_procedimentos),
-        'top_colaboradores': list(top_colaboradores),
         'dados_tabela': dados_tabela_list
     })

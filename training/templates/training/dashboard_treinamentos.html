@@ -82,130 +82,78 @@
         </div>
     </div>
 
-    <!-- Top 10 -->
-    <div class="row">
-        <!-- Top Procedimentos -->
-        <div class="col-md-6 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-award"></i> Top 10 Procedimentos Mais Treinados</h6>
-                </div>
-                <div class="card-body">
-                    {% if top_procedimentos %}
-                    <div style="max-height: 400px; overflow-y: auto;">
-                        <table class="table table-sm table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Código</th>
-                                    <th>Nome</th>
-                                    <th class="text-end">Treinamentos</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for proc in top_procedimentos %}
-                                <tr>
-                                    <td>
-                                        <span class="badge bg-primary">{{ proc.procedimento__codigo }}</span>
-                                    </td>
-                                    <td>
-                                        <small>{{ proc.procedimento__nome|truncatewords:5 }}</small>
-                                    </td>
-                                    <td class="text-end">
-                                        <strong>{{ proc.total }}</strong>
-                                        <span class="ms-2">
-                                            <div class="progress" style="width: 50px; height: 4px; display: inline-block;">
-                                                <div class="progress-bar bg-info" style="width: {% widthratio proc.total 20 100 %}%"></div>
-                                            </div>
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <p class="text-muted text-center">Nenhum procedimento com treinamentos completos</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+    <!-- Top lists removed (Top Procedimentos and Top Colaboradores were removed) -->
 
-        <!-- Top Colaboradores -->
-        <div class="col-md-6 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-people"></i> Top 10 Colaboradores Mais Treinados</h6>
-                </div>
-                <div class="card-body">
-                    {% if top_colaboradores %}
-                    <div style="max-height: 400px; overflow-y: auto;">
-                        <table class="table table-sm table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Colaborador</th>
-                                    <th class="text-end">Treinamentos</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for colab in top_colaboradores %}
-                                <tr>
-                                    <td>
-                                        <small>{{ colab.colaborador__nome_completo }}</small>
-                                    </td>
-                                    <td class="text-end">
-                                        <strong>{{ colab.total }}</strong>
-                                        <span class="ms-2">
-                                            <span class="badge bg-success">{{ colab.total }}</span>
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <p class="text-muted text-center">Nenhum colaborador com treinamentos completos</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Top lists removed (Top Procedimentos and Top Colaboradores were removed) -->
 </div>
 
 <!-- Chart.js para gráficos -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Gráfico de Status
-    const ctxStatus = document.getElementById('chartStatus').getContext('2d');
-    const chartStatus = new Chart(ctxStatus, {
-        type: 'doughnut',
-        data: {
-            labels: ['Vigentes', 'Pendentes'],
-            datasets: [{
-                data: [{{ status_distribuicao.vigente }}, {{ status_distribuicao.pendente }}],
-                backgroundColor: ['#28a745', '#ffc107'],
-                borderColor: ['#218838', '#e0a800'],
-                borderWidth: 2,
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 15,
-                        font: {
-                            size: 14
+    // Gráfico de Status (inicialização segura com fallback)
+    const ctxStatus = document.getElementById('chartStatus') ? document.getElementById('chartStatus').getContext('2d') : null;
+    let chartStatus = null;
+    try {
+        if (!ctxStatus) throw new Error('Canvas chartStatus não encontrado');
+        chartStatus = new Chart(ctxStatus, {
+            type: 'pie',
+            data: {
+                labels: ['Em dia', 'Pendentes'],
+                datasets: [{
+                    data: [{{ status_distribuicao.vigente|default:'0' }}, {{ status_distribuicao.pendente|default:'0' }}],
+                    backgroundColor: ['#28a745', '#ffc107'],
+                    borderColor: ['#ffffff', '#ffffff'],
+                    borderWidth: 2,
+                    hoverOffset: 8
+                }]
+            },
+            // exibimos sempre números abaixo do gráfico
+            plugins: { afterInit: function(){} },
+            options: {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const label = ctx.label || '';
+                                const value = ctx.parsed || 0;
+                                const total = ctx.dataset.data.reduce((a,b)=>a+(+b||0),0);
+                                const pct = total ? ((value/total)*100).toFixed(1) : 0;
+                                return label + ': ' + value + ' (' + pct + '%)';
+                            }
+                        }
+                    },
+                    legend: { position: 'bottom' }
+                }
+            }
+            
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 14
+                            }
                         }
                     }
                 }
             }
-        }
-    });
+        });
+        const f = document.getElementById('chartStatusFallback'); if (f) f.style.display = 'none';
+    } catch (err) {
+        console.warn('Chart.js falhou ao inicializar o doughnut de status:', err);
+        const f = document.getElementById('chartStatusFallback');
+        if (f) f.textContent = `Vigentes: {{ status_distribuicao.vigente|default:'0' }}, Pendentes: {{ status_distribuicao.pendente|default:'0'}`;
+        // mostrar números permanentes
+        const vigSpan = document.getElementById('statusVigente');
+        const penSpan = document.getElementById('statusPendente');
+        if (vigSpan) vigSpan.textContent = {{ status_distribuicao.vigente|default:'0' }};
+        if (penSpan) penSpan.textContent = {{ status_distribuicao.pendente|default:'0' }};
+    }
 
     // Gráfico de Treinamentos por Mês
     const meses = [
@@ -213,6 +161,24 @@ document.addEventListener('DOMContentLoaded', function() {
         '{{ item.mes }}'{{ forloop.last|yesno:'' }},
         {% endfor %}
     ];
+
+    // Números permanentes do Status (inicialização com valores do contexto)
+    const statusInitEl = document.createElement('div');
+    statusInitEl.id = 'statusNumbers';
+    statusInitEl.className = 'mt-2 d-flex gap-2 align-items-center';
+    statusInitEl.innerHTML = `
+        <div class="badge bg-success status-badge">
+            <i class="bi bi-check-circle me-1" aria-hidden="true"></i>
+            Vigentes: <span id="statusVigente" class="fw-bold ms-1">{{ status_distribuicao.vigente|default:'0' }}</span>
+        </div>
+        <div class="badge bg-warning text-dark status-badge">
+            <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
+            Pendentes: <span id="statusPendente" class="fw-bold ms-1">{{ status_distribuicao.pendente|default:'0' }}</span>
+        </div>
+    `;
+    // inserir o elemento abaixo do canvas de status se existir
+    const statusCanvas = document.getElementById('chartStatus');
+    if (statusCanvas && statusCanvas.parentNode) statusCanvas.parentNode.appendChild(statusInitEl);
 
     const valores = [
         {% for item in treinamentos_por_mes %}
@@ -260,6 +226,95 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Inicializar gráficos de Planejamento (Líder e Setor-Turno)
+    let chartLider = null;
+    let chartSetorTurno = null;
+    try {
+        const liderLabels = [
+            {% for item in treinamentos_por_lider %}
+            '{{ item.nome|escapejs }}'{{ forloop.last|yesno:'' }},
+            {% endfor %}
+        ];
+        const liderVigentes = [
+            {% for item in treinamentos_por_lider %}
+            {{ item.vigentes }}{{ forloop.last|yesno:'' }},
+            {% endfor %}
+        ];
+        const liderPendentes = [
+            {% for item in treinamentos_por_lider %}
+            {{ item.pendentes }}{{ forloop.last|yesno:'' }},
+            {% endfor %}
+        ];
+
+        const ctxLider = document.getElementById('chartLider')?.getContext('2d');
+        if (ctxLider) {
+            chartLider = new Chart(ctxLider, {
+                type: 'bar',
+                data: {
+                    labels: liderLabels.slice(0, 10),
+                    datasets: [
+                        { label: 'Vigentes', data: liderVigentes.slice(0, 10), backgroundColor: '#28a745' },
+                        { label: 'Pendentes', data: liderPendentes.slice(0, 10), backgroundColor: '#ffc107' }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: { x: { beginAtZero: true } },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        } else {
+            const el = document.getElementById('chartLiderFallback');
+            if (el) el.textContent = 'Nenhum dado disponível para Planejamento por Líder.';
+        }
+
+        const setorLabels = [
+            {% for item in treinamentos_por_setor_turno %}
+            '{{ item.nome|escapejs }}'{{ forloop.last|yesno:'' }},
+            {% endfor %}
+        ];
+        const setorVigentes = [
+            {% for item in treinamentos_por_setor_turno %}
+            {{ item.vigentes }}{{ forloop.last|yesno:'' }},
+            {% endfor %}
+        ];
+        const setorPendentes = [
+            {% for item in treinamentos_por_setor_turno %}
+            {{ item.pendentes }}{{ forloop.last|yesno:'' }},
+            {% endfor %}
+        ];
+
+        const ctxSetor = document.getElementById('chartSetorTurno')?.getContext('2d');
+        if (ctxSetor) {
+            chartSetorTurno = new Chart(ctxSetor, {
+                type: 'bar',
+                data: {
+                    labels: setorLabels.slice(0, 10),
+                    datasets: [
+                        { label: 'Vigentes', data: setorVigentes.slice(0, 10), backgroundColor: '#28a745' },
+                        { label: 'Pendentes', data: setorPendentes.slice(0, 10), backgroundColor: '#ffc107' }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: { x: { beginAtZero: true } },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        } else {
+            const el = document.getElementById('chartSetorTurnoFallback');
+            if (el) el.textContent = 'Nenhum dado disponível para Planejamento por Setor - Turno.';
+        }
+    } catch (err) {
+        console.warn('Falha ao inicializar gráficos de planejamento:', err);
+        const elL = document.getElementById('chartLiderFallback'); if (elL) elL.textContent = 'Gráfico indisponível.';
+        const elS = document.getElementById('chartSetorTurnoFallback'); if (elS) elS.textContent = 'Gráfico indisponível.';
+    }
 });
 </script>
 
@@ -287,5 +342,22 @@ document.addEventListener('DOMContentLoaded', function() {
     .table-hover tbody tr:hover {
         background-color: #f8f9fa;
     }
+
+    /* Visual fallbacks para os charts (quando Chart.js não carregar) */
+    #chartStatusFallback, #chartLiderFallback, #chartSetorTurnoFallback {
+        text-align: center;
+        padding: 40px 0;
+        font-weight: 600;
+        font-size: 14px;
+        color: #6c757d;
+    }
+    #chartStatusFallback { font-size: 18px; }
+
+    /* Status badges */
+    .status-badge {
+        font-size: 0.95rem;
+        padding: 0.5rem 0.75rem;
+    }
+    .status-badge .bi { font-size: 1rem; vertical-align: -2px; }
 </style>
 {% endblock %}

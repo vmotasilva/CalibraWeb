@@ -3,11 +3,15 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Prefetch
 from django.utils import timezone
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+import json
 
 from procedures.models import (
     MatrizHabilidade,
     AvaliacaoHabilidade,
-    Disciplina
+    Disciplina,
+    HistoricoAvaliacaoHabilidade
 )
 from procedures.forms.forms import AvaliacaoHabilidadeForm
 from rh.models import Colaborador
@@ -409,12 +413,12 @@ def colaboradores_disponiveis_view(request, matriz_id):
             matriz=matriz
         ).values_list('colaborador_id', flat=True)
         
-        # Buscar colaboradores disponíveis
+        # Buscar colaboradores disponíveis (SEM limite)
         disponiveis = Colaborador.objects.filter(
             is_active=True
         ).exclude(
             id__in=associados
-        ).values('id', 'nome_completo', 'matricula').order_by('nome_completo')[:100]
+        ).values('id', 'nome_completo', 'matricula').order_by('nome_completo')
         
         return JsonResponse({
             'colaboradores': list(disponiveis)
@@ -471,3 +475,173 @@ def associar_colaborador_view(request, matriz_id):
     except Exception as e:
         from django.http import JsonResponse
         return JsonResponse({'sucesso': False, 'erro': str(e)})
+
+
+@login_required
+def obter_avaliacao_api(request, matriz_id, colaborador_id, disciplina_id):
+    """
+    API para obter dados de uma avaliação para o modal popup
+    """
+    try:
+        matriz = get_object_or_404(MatrizHabilidade, id=matriz_id)
+        colaborador = get_object_or_404(Colaborador, id=colaborador_id)
+        disciplina = get_object_or_404(Disciplina, id=disciplina_id)
+        
+        # Buscar avaliação existente
+        avaliacao = AvaliacaoHabilidade.objects.filter(
+            matriz=matriz,
+            colaborador=colaborador,
+            disciplina=disciplina
+        ).first()
+        
+        # Buscar histórico
+        historico = []
+        if avaliacao:
+            historico_qs = HistoricoAvaliacaoHabilidade.objects.filter(
+                avaliacao=avaliacao
+            ).order_by('-alterado_em')[:5]
+            
+            for h in historico_qs:
+                historico.append({
+                    'tipo': h.tipo_alteracao,
+                    'nivel_anterior': h.nivel_anterior,
+                    'nivel_novo': h.nivel_novo,
+                    'data_avaliacao': h.data_avaliacao_nova.strftime('%d/%m/%Y') if h.data_avaliacao_nova else None,
+                    'alterado_em': h.alterado_em.strftime('%d/%m/%Y %H:%M'),
+                    'avaliador': h.avaliador.nome_completo if h.avaliador else None,
+                    'observacoes': h.observacoes_nova
+                })
+        
+        return JsonResponse({
+            'sucesso': True,
+            'colaborador': {
+                'id': colaborador.id,
+                'nome': colaborador.nome_completo,
+                'matricula': colaborador.matricula,
+                'setor': str(colaborador.setor) if colaborador.setor else None
+            },
+            'disciplina': {
+                'id': disciplina.id,
+                'codigo': disciplina.codigo,
+                'nome': disciplina.nome
+            },
+            'avaliacao': {
+                'existe': avaliacao is not None,
+                'nivel': avaliacao.nivel if avaliacao else None,
+                'data_avaliacao': avaliacao.data_avaliacao.strftime('%Y-%m-%d') if avaliacao and avaliacao.data_avaliacao else None,
+                'observacoes': avaliacao.observacoes if avaliacao else '',
+                'avaliador': avaliacao.avaliador.nome_completo if avaliacao and avaliacao.avaliador else None
+            },
+            'historico': historico
+        })
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def salvar_avaliacao_api(request, matriz_id, colaborador_id, disciplina_id):
+    """
+    API para salvar avaliação via AJAX (modal popup)
+    """
+    try:
+        data = json.loads(request.body)
+        
+        matriz = get_object_or_404(MatrizHabilidade, id=matriz_id)
+        colaborador = get_object_or_404(Colaborador, id=colaborador_id)
+        disciplina = get_object_or_404(Disciplina, id=disciplina_id)
+        
+        nivel = data.get('nivel')
+        data_avaliacao_str = data.get('data_avaliacao')
+        observacoes = data.get('observacoes', '')
+        
+        # Validações
+        if nivel is None or nivel == '':
+            return JsonResponse({'sucesso': False, 'erro': 'Nível é obrigatório'}, status=400)
+        
+        if not data_avaliacao_str:
+            return JsonResponse({'sucesso': False, 'erro': 'Data é obrigatória'}, status=400)
+        
+        # Converter nível para inteiro
+        try:
+            nivel = int(nivel)
+        except ValueError:
+            return JsonResponse({'sucesso': False, 'erro': 'Nível inválido'}, status=400)
+        
+        # Converter data para objeto date
+        from datetime import datetime
+        try:
+            data_avaliacao = datetime.strptime(data_avaliacao_str, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({'sucesso': False, 'erro': 'Formato de data inválido'}, status=400)
+        
+        # Buscar avaliação existente
+        avaliacao = AvaliacaoHabilidade.objects.filter(
+            matriz=matriz,
+            colaborador=colaborador,
+            disciplina=disciplina
+        ).first()
+        
+        # Criar ou atualizar avaliação
+        if avaliacao:
+            # Guardar valores antigos para o histórico
+            nivel_anterior = avaliacao.nivel
+            data_anterior = avaliacao.data_avaliacao
+            observacoes_anterior = avaliacao.observacoes
+            
+            # Atualizar avaliação
+            avaliacao.nivel = nivel
+            avaliacao.data_avaliacao = data_avaliacao
+            avaliacao.observacoes = observacoes
+            avaliacao.avaliador = request.user.colaborador if hasattr(request.user, 'colaborador') else None
+            avaliacao.save()
+            
+            # Salvar no histórico
+            HistoricoAvaliacaoHabilidade.objects.create(
+                avaliacao=avaliacao,
+                nivel_anterior=nivel_anterior,
+                nivel_novo=nivel,
+                avaliador=request.user.colaborador if hasattr(request.user, 'colaborador') else None,
+                data_avaliacao=data_anterior,
+                data_avaliacao_nova=data_avaliacao,
+                observacoes_anterior=observacoes_anterior,
+                observacoes_nova=observacoes,
+                tipo_alteracao='atualizacao'
+            )
+            tipo_msg = 'Avaliação atualizada'
+        else:
+            avaliacao = AvaliacaoHabilidade.objects.create(
+                matriz=matriz,
+                colaborador=colaborador,
+                disciplina=disciplina,
+                nivel=nivel,
+                data_avaliacao=data_avaliacao,
+                observacoes=observacoes,
+                avaliador=request.user.colaborador if hasattr(request.user, 'colaborador') else None,
+            )
+            
+            # Salvar no histórico
+            HistoricoAvaliacaoHabilidade.objects.create(
+                avaliacao=avaliacao,
+                nivel_anterior=None,
+                nivel_novo=nivel,
+                avaliador=request.user.colaborador if hasattr(request.user, 'colaborador') else None,
+                data_avaliacao=None,
+                data_avaliacao_nova=data_avaliacao,
+                observacoes_anterior=None,
+                observacoes_nova=observacoes,
+                tipo_alteracao='criacao'
+            )
+            tipo_msg = 'Avaliação criada'
+        
+        return JsonResponse({
+            'sucesso': True,
+            'mensagem': f'{tipo_msg} com sucesso!',
+            'nivel': nivel
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"Erro ao salvar avaliação: {str(e)}")
+        print(traceback.format_exc())
+        return JsonResponse({'sucesso': False, 'erro': str(e)}, status=500)
