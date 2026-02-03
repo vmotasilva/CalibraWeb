@@ -370,13 +370,26 @@ def dashboard_treinamentos_view(request):
     from core.models import TURNOS_CHOICES
     from django.core.cache import cache
     from procedures.models import PlanejamentoTreinamento
+    from organization.models import Setor
     
-    # Cache key para estatísticas do dashboard
+    # Capturar filtros da URL
+    filtro_setor = request.GET.get('setor', '')
+    filtro_turno = request.GET.get('turno', '')
+    filtro_lider = request.GET.get('lider', '')
+    
+    # Se há filtros, não usar cache
+    has_filters = filtro_setor or filtro_turno or filtro_lider
+    
+    # Cache key para estatísticas do dashboard (apenas sem filtros)
     cache_key = 'dashboard_treinamentos_stats'
-    cached_data = cache.get(cache_key)
-    
-    if cached_data:
-        return render(request, 'procedures/dashboard_treinamentos.html', cached_data)
+    if not has_filters:
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            # Adicionar dados de filtros ao cache
+            cached_data['filtro_setor'] = filtro_setor
+            cached_data['filtro_turno'] = filtro_turno
+            cached_data['filtro_lider'] = filtro_lider
+            return render(request, 'training/dashboard_treinamentos.html', cached_data)
     
     # Base query: apenas registros com colaborador e procedimento vinculados E ATIVOS E NÃO AFASTADOS
     valid_registros = RegistroTreinamento.objects.filter(
@@ -386,6 +399,16 @@ def dashboard_treinamentos_view(request):
         procedimento__isnull=False,
         ativo=True
     ).select_related('colaborador', 'procedimento')
+    
+    # Aplicar filtros
+    if filtro_setor:
+        valid_registros = valid_registros.filter(colaborador__setor_id=filtro_setor)
+    
+    if filtro_turno:
+        valid_registros = valid_registros.filter(colaborador__turno=filtro_turno)
+    
+    if filtro_lider:
+        valid_registros = valid_registros.filter(colaborador__lider_id=filtro_lider)
     
     # Estatísticas gerais usando queries SQL otimizadas
     total_treinamentos = valid_registros.count()
@@ -438,12 +461,12 @@ def dashboard_treinamentos_view(request):
     else:
         taxa_conformidade = 0
     
-    # Treinamentos por mês (últimos 6 meses) - OTIMIZADO: query única com agregação
+    # Treinamentos por mês (últimos 12 meses) - OTIMIZADO: query única com agregação
     from django.db.models import Case, When, IntegerField
     from django.db.models.functions import TruncMonth
     
     treinamentos_por_mes = []
-    for i in range(5, -1, -1):
+    for i in range(11, -1, -1):
         data_inicio = date.today() - timedelta(days=30 * (i + 1))
         data_fim = date.today() - timedelta(days=30 * i)
         
@@ -672,8 +695,14 @@ def dashboard_treinamentos_view(request):
     context['page_obj'] = page_obj
     context['paginator'] = paginator
     
-    # Cachear contexto por 5 minutos (300 segundos)
-    cache.set(cache_key, context, 300)
+    # Adicionar filtros selecionados ao contexto
+    context['filtro_setor'] = filtro_setor
+    context['filtro_turno'] = filtro_turno
+    context['filtro_lider'] = filtro_lider
+    
+    # Cachear contexto por 5 minutos (300 segundos) - apenas sem filtros
+    if not has_filters:
+        cache.set(cache_key, context, 300)
     
     return render(request, 'training/dashboard_treinamentos.html', context)
 
@@ -751,9 +780,9 @@ def dashboard_treinamentos_filtered_view(request):
         'pendente': treinamentos_pendentes
     }
     
-    # Gráfico por mês
+    # Gráfico por mês (últimos 12 meses)
     treinamentos_por_mes = []
-    for i in range(5, -1, -1):
+    for i in range(11, -1, -1):
         data_inicio = date.today() - timedelta(days=30 * (i + 1))
         data_fim = date.today() - timedelta(days=30 * i)
         

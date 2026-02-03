@@ -4,360 +4,989 @@
 {% block title %}Dashboard de Treinamentos{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Cabeçalho -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h2 mb-0"><i class="bi bi-graph-up"></i> Dashboard de Treinamentos</h1>
-            <small class="text-muted">Visão geral de estatísticas e conformidade</small>
-        <!-- Gráficos -->
-        <div class="row mb-4">
-            <!-- Distribuição por Status -->
-            <div class="col-md-6 mb-3">
-                <div class="card shadow-sm h-100">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
+<div class="dashboard-wrapper">
+    <!-- Cabeçalho Principal - Fixo no topo -->
+    <div class="dashboard-header">
+        <div class="d-flex justify-content-between align-items-center bg-white rounded shadow-sm px-4 py-2">
+            <div>
+                <h1 class="h5 mb-0"><i class="bi bi-graph-up text-primary me-2"></i>Dashboard de Treinamentos</h1>
+                <small class="text-muted" style="font-size: 0.75rem;">Visão geral de estatísticas e conformidade</small>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <button id="exportCsv" class="btn btn-outline-success btn-sm py-1">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Exportar CSV
+                </button>
+                <span class="badge bg-light text-dark" style="font-size: 0.7rem;">
+                    <i class="bi bi-clock me-1"></i>Atualizado: {% now "d/m/Y H:i" %}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-body">
+        <!-- Sidebar de Filtros (Recolhível) -->
+        <div id="sidebarCol" class="col-auto sidebar-col">
+            <div id="filterSidebar" class="filter-sidebar">
+                <div class="sidebar-content">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0 fw-bold" style="font-size: 0.8rem;"><i class="bi bi-funnel text-primary me-1"></i>Filtros</h6>
+                        <button id="toggleSidebar" class="btn btn-sm btn-outline-secondary" title="Recolher">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
                     </div>
-                    <div class="card-body">
-                        <canvas id="chartStatus" height="300"></canvas>
+                    
+                    <form id="filterForm">
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold mb-1" style="font-size: 0.7rem;">Setor</label>
+                            <select name="setor" id="filterSetor" class="form-select form-select-sm" style="font-size: 0.75rem;">
+                                <option value="">Todos</option>
+                                {% for s in setores %}
+                                <option value="{{ s.id }}" {% if filtro_setor == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold mb-1" style="font-size: 0.7rem;">Turno</label>
+                            <select name="turno" id="filterTurno" class="form-select form-select-sm" style="font-size: 0.75rem;">
+                                <option value="">Todos</option>
+                                {% for t in turnos %}
+                                <option value="{{ t.value }}" {% if filtro_turno == t.value %}selected{% endif %}>{{ t.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold mb-1" style="font-size: 0.7rem;">Líder</label>
+                            <select name="lider" id="filterLider" class="form-select form-select-sm" style="font-size: 0.75rem;">
+                                <option value="">Todos</option>
+                                {% for l in lideres %}
+                                <option value="{{ l.id }}" {% if filtro_lider == l.id|stringformat:"s" %}selected{% endif %}>{{ l.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        {% if filtro_setor or filtro_turno or filtro_lider %}
+                        <div class="alert alert-info py-1 px-2 mb-2 small" style="font-size: 0.7rem;">
+                            <i class="bi bi-funnel-fill me-1"></i>Filtros ativos
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-grid">
+                            <button type="button" id="clearFilters" class="btn btn-outline-secondary btn-sm py-1" style="font-size: 0.7rem;">
+                                <i class="bi bi-x-circle me-1"></i>Limpar Filtros
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr class="my-2">
+                    
+                    <!-- Resumo Rápido -->
+                    <div class="sidebar-summary">
+                        <div class="mb-2">
+                            <small class="text-muted text-uppercase fw-bold d-block mb-1" style="font-size: 0.6rem;">Taxa de Conformidade</small>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ taxa_conformidade|default:0 }}%"></div>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.65rem;">{{ taxa_conformidade|default:0 }}%</small>
+                        </div>
+                        
+                        <div class="text-center p-1 bg-light rounded">
+                            <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.6rem;">Últimos 30 dias</small>
+                            <span class="fw-bold text-primary" style="font-size: 1rem;">{{ treinamentos_ultimos_30_dias|default:0 }}</span>
+                            <small class="text-muted d-block" style="font-size: 0.6rem;">treinamentos</small>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Treinamentos por Mês -->
-            <div class="col-md-6 mb-3">
-                <div class="card shadow-sm h-100">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Treinamentos Últimos 6 Meses</h6>
+            
+            <!-- Botão para expandir quando recolhido -->
+            <button id="expandSidebar" class="btn btn-primary expand-btn d-none" title="Expandir Filtros">
+                <i class="bi bi-funnel"></i>
+            </button>
+        </div>
+        
+        <!-- Sidebar 2 - Indicadores -->
+        <div id="sidebar2Col" class="col-auto sidebar2-col">
+            <div id="indicatorsSidebar" class="indicators-sidebar">
+                <div class="sidebar2-content">
+                    <h6 class="mb-2 fw-bold text-center" style="font-size: 0.8rem;"><i class="bi bi-speedometer2 text-primary me-1"></i>Indicadores</h6>
+                    
+                    <!-- Total Treinamentos -->
+                    <div class="indicator-card mb-1">
+                        <div class="d-flex align-items-center">
+                            <div class="indicator-icon bg-primary bg-opacity-10 rounded-circle">
+                                <i class="bi bi-journal-check text-primary"></i>
+                            </div>
+                            <div class="ms-2 flex-grow-1">
+                                <small class="text-muted d-block" style="font-size: 0.65rem;">Total</small>
+                                <span class="fw-bold text-primary" style="font-size: 1rem;">{{ total_treinamentos|default:"0" }}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <canvas id="chartMeses" height="300"></canvas>
+                    
+                    <!-- Vigentes -->
+                    <div class="indicator-card mb-1">
+                        <div class="d-flex align-items-center">
+                            <div class="indicator-icon bg-success bg-opacity-10 rounded-circle">
+                                <i class="bi bi-check-circle text-success"></i>
+                            </div>
+                            <div class="ms-2 flex-grow-1">
+                                <small class="text-muted d-block" style="font-size: 0.65rem;">Vigentes</small>
+                                <span class="fw-bold text-success" style="font-size: 1rem;">{{ treinamentos_vigentes|default:"0" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pendentes -->
+                    <div class="indicator-card mb-1">
+                        <div class="d-flex align-items-center">
+                            <div class="indicator-icon bg-danger bg-opacity-10 rounded-circle">
+                                <i class="bi bi-exclamation-triangle text-danger"></i>
+                            </div>
+                            <div class="ms-2 flex-grow-1">
+                                <small class="text-muted d-block" style="font-size: 0.65rem;">Pendentes</small>
+                                <span class="fw-bold text-danger" style="font-size: 1rem;">{{ treinamentos_pendentes|default:"0" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Colaboradores -->
+                    <div class="indicator-card mb-1">
+                        <div class="d-flex align-items-center">
+                            <div class="indicator-icon bg-info bg-opacity-10 rounded-circle">
+                                <i class="bi bi-people text-info"></i>
+                            </div>
+                            <div class="ms-2 flex-grow-1">
+                                <small class="text-muted d-block" style="font-size: 0.65rem;">Colaboradores</small>
+                                <span class="fw-bold text-info" style="font-size: 1rem;">{{ total_colaboradores_treinados|default:"0" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Taxa de Conformidade -->
+                    <div class="indicator-card">
+                        <div class="text-center">
+                            <small class="text-muted d-block mb-1" style="font-size: 0.65rem;">Taxa de Conformidade</small>
+                            <div class="d-flex align-items-center justify-content-center">
+                                <div class="circular-progress-sm">
+                                    <svg viewBox="0 0 36 36" class="circular-chart-sm">
+                                        <path class="circle-bg-red" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path class="circle-green" stroke-dasharray="{{ taxa_conformidade|default:0 }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    </svg>
+                                </div>
+                                <span class="fw-bold text-success ms-1" style="font-size: 1rem;">{{ taxa_conformidade|default:"0" }}%</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-                <div class="card-body">
-                    <small class="text-muted text-uppercase fw-bold">Procedimentos Únicos</small>
-                    <h2 class="mb-0 mt-2">{{ total_procedimentos_unicos }}</h2>
-                    <small class="text-muted">Diferentes procedimentos treinados</small>
+        
+        <!-- Conteúdo Principal -->
+        <div id="mainContent" class="col main-content">
+            <div class="charts-scroll-area">
+
+    <!-- Gráficos Linha 1 - Demanda -->
+    <div class="row mb-2 g-2">
+        <!-- Treinamentos por Líder -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-person-badge text-success me-1"></i>Demanda por Líder</h6>
+                </div>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartLider" height="140"></canvas>
+                    <div id="chartLiderFallback" class="text-center text-muted py-2 d-none">
+                        <i class="bi bi-bar-chart fs-4 text-muted"></i>
+                        <p class="mt-1 small mb-0">Nenhum dado disponível</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4 mb-3">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <small class="text-muted text-uppercase fw-bold">Taxa de Conformidade</small>
-                    <h2 class="mb-0 mt-2">{{ taxa_conformidade }}%</h2>
-                    <small class="text-muted">Treinados / Total necessário</small>
+        <!-- Treinamentos por Setor/Turno -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-building text-warning me-1"></i>Demanda por Setor/Turno</h6>
+                </div>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartSetorTurno" height="140"></canvas>
+                    <div id="chartSetorTurnoFallback" class="text-center text-muted py-2 d-none">
+                        <i class="bi bi-bar-chart fs-4 text-muted"></i>
+                        <p class="mt-1 small mb-0">Nenhum dado disponível</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Gráficos -->
-    <div class="row mb-4">
-        <!-- Distribuição por Status -->
-        <div class="col-md-6 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição de Status</h6>
+    <!-- Gráficos Linha 2 - Planejamento -->
+    <div class="row mb-2 g-2">
+        <!-- Planejamento por Instrutor -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-calendar-check text-primary me-1"></i>Planejamento por Instrutor</h6>
                 </div>
-                <div class="card-body">
-                    <canvas id="chartStatus" height="300"></canvas>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartPlanejamentoInstrutor" height="140"></canvas>
+                    <div id="chartPlanejamentoInstrutorFallback" class="text-center text-muted py-2 d-none">
+                        <i class="bi bi-calendar-x fs-4 text-muted"></i>
+                        <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Treinamentos por Mês -->
-        <div class="col-md-6 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Treinamentos Últimos 6 Meses</h6>
+        <!-- Planejamento por Setor/Turno -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-calendar2-week text-info me-1"></i>Planejamento por Setor/Turno</h6>
                 </div>
-                <div class="card-body">
-                    <canvas id="chartMeses" height="300"></canvas>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartPlanejamentoSetorTurno" height="140"></canvas>
+                    <div id="chartPlanejamentoSetorTurnoFallback" class="text-center text-muted py-2 d-none">
+                        <i class="bi bi-calendar-x fs-4 text-muted"></i>
+                        <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Top lists removed (Top Procedimentos and Top Colaboradores were removed) -->
+    <!-- Gráfico de Treinamentos por Mês -->
+    <div class="row mb-2 g-2">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-bar-chart text-info me-1"></i>Treinamentos Últimos 12 Meses</h6>
+                </div>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartMeses" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+            </div><!-- Fim charts-scroll-area -->
+        </div><!-- Fim main-content -->
+    </div><!-- Fim dashboard-body -->
+</div><!-- Fim dashboard-wrapper -->
 
-    <!-- Top lists removed (Top Procedimentos and Top Colaboradores were removed) -->
-</div>
+<style>
+    /* Dashboard Layout - Full Height */
+    .dashboard-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 60px); /* Ajuste conforme altura do navbar */
+        overflow: hidden;
+        padding: 0.5rem;
+    }
+    
+    .dashboard-header {
+        flex-shrink: 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .dashboard-body {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        gap: 0.5rem;
+    }
+    
+    /* Sidebar Styles */
+    .sidebar-col {
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .filter-sidebar {
+        width: 200px;
+        height: 100%;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        transition: all 0.3s ease;
+        overflow-y: auto;
+    }
+    
+    .filter-sidebar.collapsed {
+        width: 0;
+        padding: 0;
+        opacity: 0;
+    }
+    
+    .sidebar-content {
+        padding: 0.75rem;
+        min-width: 200px;
+    }
+    
+    .expand-btn {
+        position: fixed;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1000;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    /* Main Content com Scroll */
+    .main-content {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.3s ease;
+    }
+    
+    .charts-scroll-area {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 0.25rem;
+    }
+    
+    /* Scrollbar customizada */
+    .charts-scroll-area::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .charts-scroll-area::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .charts-scroll-area::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    
+    .charts-scroll-area::-webkit-scrollbar-thumb:hover {
+        background: #a1a1a1;
+    }
+    
+    /* Sidebar 2 - Indicadores */
+    .sidebar2-col {
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .indicators-sidebar {
+        width: 160px;
+        height: 100%;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        transition: all 0.3s ease;
+        overflow-y: auto;
+    }
+    
+    .sidebar2-content {
+        padding: 0.5rem;
+    }
+    
+    .indicator-card {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 0.35rem 0.5rem;
+    }
+    
+    .indicator-icon {
+        width: 26px;
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+    }
+    
+    .circular-progress-sm {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .circular-chart-sm {
+        width: 32px;
+        height: 32px;
+    }
+    
+    #toggleSidebar {
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    #toggleSidebar i {
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar-summary {
+        font-size: 0.9rem;
+    }
+    
+    .icon-box {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .card {
+        border-radius: 12px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .circular-chart {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .circle-bg {
+        fill: none;
+        stroke: #eee;
+        stroke-width: 3.8;
+    }
+    
+    .circle-bg-red {
+        fill: none;
+        stroke: #dc3545;
+        stroke-width: 3.8;
+    }
+    
+    .circle {
+        fill: none;
+        stroke: #28a745;
+        stroke-width: 2.8;
+        stroke-linecap: round;
+        transform: rotate(-90deg);
+        transform-origin: center;
+        transition: stroke-dasharray 0.6s ease;
+    }
+    
+    .circle-green {
+        fill: none;
+        stroke: #28a745;
+        stroke-width: 3.8;
+        stroke-linecap: round;
+        transform: rotate(-90deg);
+        transform-origin: center;
+        transition: stroke-dasharray 0.6s ease;
+    }
+    
+    .table th {
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+    }
+    
+    .table td {
+        vertical-align: middle;
+    }
+    
+    code {
+        background-color: #f8f9fa;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    
+    .badge {
+        font-weight: 500;
+    }
+    
+    /* Responsivo */
+    @media (max-width: 768px) {
+        .filter-sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            z-index: 1050;
+            border-radius: 0;
+        }
+        
+        .filter-sidebar.collapsed {
+            left: -260px;
+        }
+    }
+</style>
 
-<!-- Chart.js para gráficos -->
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Gráfico de Status (inicialização segura com fallback)
-    const ctxStatus = document.getElementById('chartStatus') ? document.getElementById('chartStatus').getContext('2d') : null;
-    let chartStatus = null;
-    try {
-        if (!ctxStatus) throw new Error('Canvas chartStatus não encontrado');
-        chartStatus = new Chart(ctxStatus, {
-            type: 'pie',
+    // =====================
+    // Sidebar Toggle
+    // =====================
+    const sidebar = document.getElementById('filterSidebar');
+    const toggleBtn = document.getElementById('toggleSidebar');
+    const expandBtn = document.getElementById('expandSidebar');
+    const sidebarCol = document.getElementById('sidebarCol');
+    
+    // Carregar estado salvo
+    const sidebarCollapsed = localStorage.getItem('dashboardSidebarCollapsed') === 'true';
+    if (sidebarCollapsed) {
+        collapseSidebar();
+    }
+    
+    toggleBtn?.addEventListener('click', function() {
+        collapseSidebar();
+    });
+    
+    expandBtn?.addEventListener('click', function() {
+        expandSidebar();
+    });
+    
+    function collapseSidebar() {
+        sidebar.classList.add('collapsed');
+        expandBtn.classList.remove('d-none');
+        sidebarCol.style.width = '0';
+        sidebarCol.style.padding = '0';
+        localStorage.setItem('dashboardSidebarCollapsed', 'true');
+    }
+    
+    function expandSidebar() {
+        sidebar.classList.remove('collapsed');
+        expandBtn.classList.add('d-none');
+        sidebarCol.style.width = '';
+        sidebarCol.style.padding = '';
+        localStorage.setItem('dashboardSidebarCollapsed', 'false');
+    }
+    
+    // =====================
+    // Filtros Dinâmicos (sem botão aplicar)
+    // =====================
+    function applyFilters() {
+        const setor = document.getElementById('filterSetor')?.value || '';
+        const turno = document.getElementById('filterTurno')?.value || '';
+        const lider = document.getElementById('filterLider')?.value || '';
+        
+        // Construir URL com parâmetros
+        const params = new URLSearchParams();
+        if (setor) params.append('setor', setor);
+        if (turno) params.append('turno', turno);
+        if (lider) params.append('lider', lider);
+        
+        const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = url;
+    }
+    
+    // Adicionar listeners para filtrar automaticamente ao mudar
+    document.getElementById('filterSetor')?.addEventListener('change', applyFilters);
+    document.getElementById('filterTurno')?.addEventListener('change', applyFilters);
+    document.getElementById('filterLider')?.addEventListener('change', applyFilters);
+    
+    document.getElementById('clearFilters')?.addEventListener('click', function() {
+        document.getElementById('filterSetor').value = '';
+        document.getElementById('filterTurno').value = '';
+        document.getElementById('filterLider').value = '';
+        window.location.href = window.location.pathname;
+    });
+    
+    // Manter valores selecionados após reload
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('setor')) document.getElementById('filterSetor').value = urlParams.get('setor');
+    if (urlParams.get('turno')) document.getElementById('filterTurno').value = urlParams.get('turno');
+    if (urlParams.get('lider')) document.getElementById('filterLider').value = urlParams.get('lider');
+    
+    // Configuração global dos gráficos
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial';
+    Chart.defaults.color = '#6c757d';
+    
+    // =====================
+    // Gráfico de Treinamentos por Mês
+    // =====================
+    const ctxMeses = document.getElementById('chartMeses');
+    if (ctxMeses) {
+        const meses = [{% for item in treinamentos_por_mes %}'{{ item.mes }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const valores = [{% for item in treinamentos_por_mes %}{{ item.total }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        
+        new Chart(ctxMeses.getContext('2d'), {
+            type: 'bar',
             data: {
-                labels: ['Em dia', 'Pendentes'],
+                labels: meses,
                 datasets: [{
-                    data: [{{ status_distribuicao.vigente|default:'0' }}, {{ status_distribuicao.pendente|default:'0' }}],
-                    backgroundColor: ['#28a745', '#ffc107'],
-                    borderColor: ['#ffffff', '#ffffff'],
+                    label: 'Treinamentos Realizados',
+                    data: valores,
+                    backgroundColor: 'rgba(23, 162, 184, 0.7)',
+                    borderColor: 'rgba(23, 162, 184, 1)',
                     borderWidth: 2,
-                    hoverOffset: 8
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    barThickness: 18
                 }]
             },
-            // exibimos sempre números abaixo do gráfico
-            plugins: { afterInit: function(){} },
-            options: {
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(ctx) {
-                                const label = ctx.label || '';
-                                const value = ctx.parsed || 0;
-                                const total = ctx.dataset.data.reduce((a,b)=>a+(+b||0),0);
-                                const pct = total ? ((value/total)*100).toFixed(1) : 0;
-                                return label + ': ' + value + ' (' + pct + '%)';
-                            }
-                        }
-                    },
-                    legend: { position: 'bottom' }
-                }
-            }
-            
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
                 plugins: {
                     legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 15,
-                            font: {
-                                size: 14
-                            }
-                        }
+                        display: true,
+                        position: 'top',
+                        align: 'end'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
                     }
                 }
             }
         });
-        const f = document.getElementById('chartStatusFallback'); if (f) f.style.display = 'none';
-    } catch (err) {
-        console.warn('Chart.js falhou ao inicializar o doughnut de status:', err);
-        const f = document.getElementById('chartStatusFallback');
-        if (f) f.textContent = `Vigentes: {{ status_distribuicao.vigente|default:'0' }}, Pendentes: {{ status_distribuicao.pendente|default:'0'}`;
-        // mostrar números permanentes
-        const vigSpan = document.getElementById('statusVigente');
-        const penSpan = document.getElementById('statusPendente');
-        if (vigSpan) vigSpan.textContent = {{ status_distribuicao.vigente|default:'0' }};
-        if (penSpan) penSpan.textContent = {{ status_distribuicao.pendente|default:'0' }};
     }
-
-    // Gráfico de Treinamentos por Mês
-    const meses = [
-        {% for item in treinamentos_por_mes %}
-        '{{ item.mes }}'{{ forloop.last|yesno:'' }},
-        {% endfor %}
-    ];
-
-    // Números permanentes do Status (inicialização com valores do contexto)
-    const statusInitEl = document.createElement('div');
-    statusInitEl.id = 'statusNumbers';
-    statusInitEl.className = 'mt-2 d-flex gap-2 align-items-center';
-    statusInitEl.innerHTML = `
-        <div class="badge bg-success status-badge">
-            <i class="bi bi-check-circle me-1" aria-hidden="true"></i>
-            Vigentes: <span id="statusVigente" class="fw-bold ms-1">{{ status_distribuicao.vigente|default:'0' }}</span>
-        </div>
-        <div class="badge bg-warning text-dark status-badge">
-            <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
-            Pendentes: <span id="statusPendente" class="fw-bold ms-1">{{ status_distribuicao.pendente|default:'0' }}</span>
-        </div>
-    `;
-    // inserir o elemento abaixo do canvas de status se existir
-    const statusCanvas = document.getElementById('chartStatus');
-    if (statusCanvas && statusCanvas.parentNode) statusCanvas.parentNode.appendChild(statusInitEl);
-
-    const valores = [
-        {% for item in treinamentos_por_mes %}
-        {{ item.total }}{{ forloop.last|yesno:'' }},
-        {% endfor %}
-    ];
-
-    const ctxMeses = document.getElementById('chartMeses').getContext('2d');
-    const chartMeses = new Chart(ctxMeses, {
-        type: 'bar',
-        data: {
-            labels: meses,
-            datasets: [{
-                label: 'Treinamentos Realizados',
-                data: valores,
-                backgroundColor: 'rgba(23, 162, 184, 0.6)',
-                borderColor: 'rgba(23, 162, 184, 1)',
-                borderWidth: 2,
-                borderRadius: 4,
-                hoverBackgroundColor: 'rgba(23, 162, 184, 0.8)'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            indexAxis: 'x',
-            plugins: {
-                legend: {
-                    display: true,
-                    labels: {
-                        padding: 15,
-                        font: {
-                            size: 13
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
-            }
-        }
-    });
-
-    // Inicializar gráficos de Planejamento (Líder e Setor-Turno)
-    let chartLider = null;
-    let chartSetorTurno = null;
-    try {
-        const liderLabels = [
-            {% for item in treinamentos_por_lider %}
-            '{{ item.nome|escapejs }}'{{ forloop.last|yesno:'' }},
-            {% endfor %}
-        ];
-        const liderVigentes = [
-            {% for item in treinamentos_por_lider %}
-            {{ item.vigentes }}{{ forloop.last|yesno:'' }},
-            {% endfor %}
-        ];
-        const liderPendentes = [
-            {% for item in treinamentos_por_lider %}
-            {{ item.pendentes }}{{ forloop.last|yesno:'' }},
-            {% endfor %}
-        ];
-
-        const ctxLider = document.getElementById('chartLider')?.getContext('2d');
-        if (ctxLider) {
-            chartLider = new Chart(ctxLider, {
+    
+    // =====================
+    // Gráfico por Líder (Horizontal Bar)
+    // =====================
+    const ctxLider = document.getElementById('chartLider');
+    if (ctxLider) {
+        const liderLabels = [{% for item in treinamentos_por_lider %}'{{ item.nome|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const liderVigentes = [{% for item in treinamentos_por_lider %}{{ item.vigentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const liderPendentes = [{% for item in treinamentos_por_lider %}{{ item.pendentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        
+        if (liderLabels.length > 0) {
+            new Chart(ctxLider.getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: liderLabels.slice(0, 10),
                     datasets: [
-                        { label: 'Vigentes', data: liderVigentes.slice(0, 10), backgroundColor: '#28a745' },
-                        { label: 'Pendentes', data: liderPendentes.slice(0, 10), backgroundColor: '#ffc107' }
+                        {
+                            label: 'Vigentes',
+                            data: liderVigentes.slice(0, 10),
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 12
+                        },
+                        {
+                            label: 'Pendentes',
+                            data: liderPendentes.slice(0, 10),
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 12
+                        }
                     ]
                 },
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: true,
-                    scales: { x: { beginAtZero: true } },
-                    plugins: { legend: { position: 'bottom' } }
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
+                    }
                 }
             });
         } else {
-            const el = document.getElementById('chartLiderFallback');
-            if (el) el.textContent = 'Nenhum dado disponível para Planejamento por Líder.';
+            document.getElementById('chartLiderFallback').classList.remove('d-none');
+            ctxLider.style.display = 'none';
         }
-
-        const setorLabels = [
-            {% for item in treinamentos_por_setor_turno %}
-            '{{ item.nome|escapejs }}'{{ forloop.last|yesno:'' }},
-            {% endfor %}
-        ];
-        const setorVigentes = [
-            {% for item in treinamentos_por_setor_turno %}
-            {{ item.vigentes }}{{ forloop.last|yesno:'' }},
-            {% endfor %}
-        ];
-        const setorPendentes = [
-            {% for item in treinamentos_por_setor_turno %}
-            {{ item.pendentes }}{{ forloop.last|yesno:'' }},
-            {% endfor %}
-        ];
-
-        const ctxSetor = document.getElementById('chartSetorTurno')?.getContext('2d');
-        if (ctxSetor) {
-            chartSetorTurno = new Chart(ctxSetor, {
+    }
+    
+    // =====================
+    // Gráfico por Setor/Turno (Horizontal Bar)
+    // =====================
+    const ctxSetorTurno = document.getElementById('chartSetorTurno');
+    if (ctxSetorTurno) {
+        const setorLabels = [{% for item in treinamentos_por_setor_turno %}'{{ item.nome|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const setorVigentes = [{% for item in treinamentos_por_setor_turno %}{{ item.vigentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const setorPendentes = [{% for item in treinamentos_por_setor_turno %}{{ item.pendentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        
+        if (setorLabels.length > 0) {
+            new Chart(ctxSetorTurno.getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: setorLabels.slice(0, 10),
                     datasets: [
-                        { label: 'Vigentes', data: setorVigentes.slice(0, 10), backgroundColor: '#28a745' },
-                        { label: 'Pendentes', data: setorPendentes.slice(0, 10), backgroundColor: '#ffc107' }
+                        {
+                            label: 'Vigentes',
+                            data: setorVigentes.slice(0, 10),
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 12
+                        },
+                        {
+                            label: 'Pendentes',
+                            data: setorPendentes.slice(0, 10),
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 12
+                        }
                     ]
                 },
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: true,
-                    scales: { x: { beginAtZero: true } },
-                    plugins: { legend: { position: 'bottom' } }
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
+                    }
                 }
             });
         } else {
-            const el = document.getElementById('chartSetorTurnoFallback');
-            if (el) el.textContent = 'Nenhum dado disponível para Planejamento por Setor - Turno.';
+            document.getElementById('chartSetorTurnoFallback').classList.remove('d-none');
+            ctxSetorTurno.style.display = 'none';
         }
-    } catch (err) {
-        console.warn('Falha ao inicializar gráficos de planejamento:', err);
-        const elL = document.getElementById('chartLiderFallback'); if (elL) elL.textContent = 'Gráfico indisponível.';
-        const elS = document.getElementById('chartSetorTurnoFallback'); if (elS) elS.textContent = 'Gráfico indisponível.';
     }
+    
+    // =====================
+    // Gráfico Planejamento por Instrutor (Stacked Bar)
+    // =====================
+    const ctxPlanejamentoInstrutor = document.getElementById('chartPlanejamentoInstrutor');
+    if (ctxPlanejamentoInstrutor) {
+        // Função para pegar primeiro e último nome
+        function primeiroUltimoNome(nomeCompleto) {
+            const partes = nomeCompleto.trim().split(/\s+/);
+            if (partes.length <= 2) return nomeCompleto;
+            return partes[0] + ' ' + partes[partes.length - 1];
+        }
+        
+        const plInstrutorLabelsRaw = [{% for item in planejamento_por_instrutor %}'{{ item.instrutor__nome_completo|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorLabels = plInstrutorLabelsRaw.map(primeiroUltimoNome);
+        const plInstrutorPlanejado = [{% for item in planejamento_por_instrutor %}{{ item.planejado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorConfirmado = [{% for item in planejamento_por_instrutor %}{{ item.confirmado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorRealizado = [{% for item in planejamento_por_instrutor %}{{ item.realizado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorCancelado = [{% for item in planejamento_por_instrutor %}{{ item.cancelado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        
+        if (plInstrutorLabels.length > 0) {
+            new Chart(ctxPlanejamentoInstrutor.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: plInstrutorLabels.slice(0, 10),
+                    datasets: [
+                        {
+                            label: 'Planejado',
+                            data: plInstrutorPlanejado.slice(0, 10),
+                            backgroundColor: 'rgba(108, 117, 125, 0.8)',
+                            borderColor: 'rgba(108, 117, 125, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Confirmado',
+                            data: plInstrutorConfirmado.slice(0, 10),
+                            backgroundColor: 'rgba(23, 162, 184, 0.8)',
+                            borderColor: 'rgba(23, 162, 184, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Realizado',
+                            data: plInstrutorRealizado.slice(0, 10),
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Cancelado',
+                            data: plInstrutorCancelado.slice(0, 10),
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartPlanejamentoInstrutorFallback').classList.remove('d-none');
+            ctxPlanejamentoInstrutor.style.display = 'none';
+        }
+    }
+    
+    // =====================
+    // Gráfico Planejamento por Setor/Turno (Stacked Bar)
+    // =====================
+    const ctxPlanejamentoSetorTurno = document.getElementById('chartPlanejamentoSetorTurno');
+    if (ctxPlanejamentoSetorTurno) {
+        const plSetorLabels = [{% for item in planejamento_por_setor_turno %}'{{ item.colaboradores__setor__nome|escapejs }} - {{ item.colaboradores__turno|default:"N/A"|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorPlanejado = [{% for item in planejamento_por_setor_turno %}{{ item.planejado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorConfirmado = [{% for item in planejamento_por_setor_turno %}{{ item.confirmado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorRealizado = [{% for item in planejamento_por_setor_turno %}{{ item.realizado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorCancelado = [{% for item in planejamento_por_setor_turno %}{{ item.cancelado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        
+        if (plSetorLabels.length > 0) {
+            new Chart(ctxPlanejamentoSetorTurno.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: plSetorLabels.slice(0, 10),
+                    datasets: [
+                        {
+                            label: 'Planejado',
+                            data: plSetorPlanejado.slice(0, 10),
+                            backgroundColor: 'rgba(108, 117, 125, 0.8)',
+                            borderColor: 'rgba(108, 117, 125, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Confirmado',
+                            data: plSetorConfirmado.slice(0, 10),
+                            backgroundColor: 'rgba(23, 162, 184, 0.8)',
+                            borderColor: 'rgba(23, 162, 184, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Realizado',
+                            data: plSetorRealizado.slice(0, 10),
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Cancelado',
+                            data: plSetorCancelado.slice(0, 10),
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartPlanejamentoSetorTurnoFallback').classList.remove('d-none');
+            ctxPlanejamentoSetorTurno.style.display = 'none';
+        }
+    }
+    
+    // =====================
+    // Exportar CSV
+    // =====================
+    document.getElementById('exportCsv')?.addEventListener('click', function() {
+        const table = document.getElementById('tbTreinamentos');
+        if (!table) return;
+        
+        let csv = [];
+        const rows = table.querySelectorAll('tr');
+        
+        rows.forEach(row => {
+            const cols = row.querySelectorAll('th, td');
+            const rowData = [];
+            cols.forEach(col => {
+                let text = col.innerText.replace(/"/g, '""');
+                rowData.push(`"${text}"`);
+            });
+            csv.push(rowData.join(';'));
+        });
+        
+        const blob = new Blob(['\ufeff' + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'treinamentos_' + new Date().toISOString().slice(0, 10) + '.csv';
+        link.click();
+    });
 });
 </script>
-
-<style>
-    .card {
-        border-radius: 0.5rem;
-        border: 1px solid #dee2e6;
-        transition: box-shadow 0.3s ease;
-    }
-
-    .card:hover {
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-    }
-
-    .badge {
-        font-weight: 500;
-        padding: 0.5rem 0.75rem;
-    }
-
-    .progress {
-        background-color: #e9ecef;
-        border-radius: 0.25rem;
-    }
-
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-
-    /* Visual fallbacks para os charts (quando Chart.js não carregar) */
-    #chartStatusFallback, #chartLiderFallback, #chartSetorTurnoFallback {
-        text-align: center;
-        padding: 40px 0;
-        font-weight: 600;
-        font-size: 14px;
-        color: #6c757d;
-    }
-    #chartStatusFallback { font-size: 18px; }
-
-    /* Status badges */
-    .status-badge {
-        font-size: 0.95rem;
-        padding: 0.5rem 0.75rem;
-    }
-    .status-badge .bi { font-size: 1rem; vertical-align: -2px; }
-</style>
 {% endblock %}
