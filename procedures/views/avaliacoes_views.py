@@ -28,6 +28,7 @@ def matriz_avaliacoes_view(request):
     # Filtros
     matriz_id = request.GET.get('matriz', '')
     setor = request.GET.get('setor', '')
+    turno = request.GET.get('turno', '')
     termo_colab = request.GET.get('colaborador', '').strip()
     
     # Buscar matrizes disponíveis
@@ -55,6 +56,9 @@ def matriz_avaliacoes_view(request):
         
         if setor:
             colaboradores = [c for c in colaboradores if c.setor == setor]
+        
+        if turno:
+            colaboradores = [c for c in colaboradores if c.turno == turno]
         
         if termo_colab:
             colaboradores = [
@@ -104,6 +108,7 @@ def matriz_avaliacoes_view(request):
         'setores': setores,
         'matriz_id': matriz_id,
         'setor': setor,
+        'turno': turno,
         'termo_colab': termo_colab,
     }
     
