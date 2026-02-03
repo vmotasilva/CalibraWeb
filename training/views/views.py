@@ -495,19 +495,29 @@ def dashboard_treinamentos_view(request):
     for lider in lideres_com_liderados:
         liderados_ids = [l.id for l in lider.liderados.all()]
         
-        # Contar vigentes e pendentes com queries SQL otimizadas
-        vigentes = valid_registros.filter(
-            colaborador_id__in=liderados_ids,
-            data_treinamento__isnull=False,
-            revisao_treinada=F('procedimento__numero_revisao')
-        ).count()
+        # Contar colaboradores ÚNICOS com status vigente ou pendente
+        # Cada colaborador conta apenas 1 vez, mesmo tendo múltiplos treinamentos
+        vigentes_colab = set(
+            valid_registros.filter(
+                colaborador_id__in=liderados_ids,
+                data_treinamento__isnull=False,
+                revisao_treinada=F('procedimento__numero_revisao')
+            ).values_list('colaborador_id', flat=True)
+        )
         
-        pendentes = valid_registros.filter(
-            colaborador_id__in=liderados_ids
-        ).filter(
-            Q(data_treinamento__isnull=True) | 
-            ~Q(revisao_treinada=F('procedimento__numero_revisao'))
-        ).count()
+        pendentes_colab = set(
+            valid_registros.filter(
+                colaborador_id__in=liderados_ids
+            ).filter(
+                Q(data_treinamento__isnull=True) | 
+                ~Q(revisao_treinada=F('procedimento__numero_revisao'))
+            ).values_list('colaborador_id', flat=True)
+        )
+        
+        # Colaboradores podem estar em ambas as listas se tiverem procedimentos em estado diferente
+        # Contar colaboradores distintos em cada categoria
+        vigentes = len(vigentes_colab)
+        pendentes = len(pendentes_colab - vigentes_colab)  # Colaboradores pendentes que não estão vigentes
         
         total = vigentes + pendentes
         if total > 0:
@@ -526,38 +536,50 @@ def dashboard_treinamentos_view(request):
     treinamentos_por_lider = treinamentos_por_lider[:10]
     
     # Gráfico por Setor e Turno - OTIMIZADO com agregação
+    # Cada colaborador conta apenas 1 vez por setor/turno, não por quantidade de registros
     from organization.models import Setor
     treinamentos_por_setor_turno = []
     
-    # Query otimizada: buscar combinações de setor+turno com agregação
+    # Query otimizada: buscar colaboradores únicos por setor+turno com seu status
     combinacoes = valid_registros.values(
+        'colaborador_id',
         'colaborador__setor_id', 
         'colaborador__turno'
     ).annotate(
-        vigentes=Count('id', filter=Q(
-            data_treinamento__isnull=False,
-            revisao_treinada=F('procedimento__numero_revisao')
-        )),
-        pendentes=Count('id', filter=Q(
+        # Marcar como vigente se TODOS os procedimentos do colaborador estão vigentes
+        tem_pendente=Count('id', filter=Q(
             Q(data_treinamento__isnull=True) | 
             ~Q(revisao_treinada=F('procedimento__numero_revisao'))
         ))
     ).filter(
         colaborador__setor_id__isnull=False
-    ).order_by('-vigentes', '-pendentes')[:15]  # Top 15 combinações
+    ).distinct()
+    
+    # Agregação em Python para contar colaboradores únicos por categoria
+    setor_turno_dict = {}
+    for item in combinacoes:
+        key = (item['colaborador__setor_id'], item['colaborador__turno'])
+        if key not in setor_turno_dict:
+            setor_turno_dict[key] = {'vigentes': set(), 'pendentes': set()}
+        
+        colab_id = item['colaborador_id']
+        if item['tem_pendente'] > 0:
+            setor_turno_dict[key]['pendentes'].add(colab_id)
+        else:
+            setor_turno_dict[key]['vigentes'].add(colab_id)
     
     # Buscar setores uma única vez
-    setor_ids = [c['colaborador__setor_id'] for c in combinacoes]
+    setor_ids = [k[0] for k in setor_turno_dict.keys() if k[0]]
     setores_dict = {s.id: s.nome for s in Setor.objects.filter(id__in=setor_ids)}
     turno_dict = dict(TURNOS_CHOICES)
     
-    for combo in combinacoes:
-        setor_id = combo['colaborador__setor_id']
-        turno = combo['colaborador__turno']
-        vigentes = combo['vigentes']
-        pendentes = combo['pendentes']
+    # Criar lista ordenada
+    setor_turno_list = []
+    for (setor_id, turno), dados in setor_turno_dict.items():
+        vigentes_count = len(dados['vigentes'])
+        pendentes_count = len(dados['pendentes'])
         
-        total = vigentes + pendentes
+        total = vigentes_count + pendentes_count
         if total > 0:
             setor_nome = setores_dict.get(setor_id, 'Desconhecido')
             if len(setor_nome) > 20:
@@ -567,11 +589,13 @@ def dashboard_treinamentos_view(request):
             
             treinamentos_por_setor_turno.append({
                 'nome': f'{setor_nome} - {turno_label}'[:40],
-                'vigentes': vigentes,
-                'pendentes': pendentes
+                'vigentes': vigentes_count,
+                'pendentes': pendentes_count
             })
     
-    # --- PLANEJAMENTO: Agregações para novos cards ---
+    # Ordenar por total e limitar a 10
+    treinamentos_por_setor_turno.sort(key=lambda x: x['vigentes'] + x['pendentes'], reverse=True)
+    treinamentos_por_setor_turno = treinamentos_por_setor_turno[:10]
     planejamento_instrutor = (
         PlanejamentoTreinamento.objects
         .filter(instrutor__isnull=False)
@@ -816,19 +840,27 @@ def dashboard_treinamentos_filtered_view(request):
     ).distinct().order_by('nome_completo')
     
     for lider in líderes_q:
-        liderados_ids = lider.liderados.filter(is_active=True).values_list('id', flat=True)
+        liderados_ids = list(lider.liderados.filter(is_active=True).values_list('id', flat=True))
         
-        vigentes = RegistroTreinamento.objects.filter(
-            colaborador_id__in=liderados_ids,
-            data_treinamento__isnull=False,
-            ativo=True
-        ).filter(base_query).count()
+        # Contar colaboradores ÚNICOS com status vigente ou pendente
+        vigentes_colab = set(
+            RegistroTreinamento.objects.filter(
+                colaborador_id__in=liderados_ids,
+                data_treinamento__isnull=False,
+                ativo=True
+            ).filter(base_query).values_list('colaborador_id', flat=True)
+        )
         
-        pendentes = RegistroTreinamento.objects.filter(
-            colaborador_id__in=liderados_ids,
-            data_treinamento__isnull=True,
-            ativo=True
-        ).filter(base_query).count()
+        pendentes_colab = set(
+            RegistroTreinamento.objects.filter(
+                colaborador_id__in=liderados_ids,
+                data_treinamento__isnull=True,
+                ativo=True
+            ).filter(base_query).values_list('colaborador_id', flat=True)
+        )
+        
+        vigentes = len(vigentes_colab)
+        pendentes = len(pendentes_colab - vigentes_colab)  # Colaboradores pendentes que não estão vigentes
         
         total = vigentes + pendentes
         if total > 0:
@@ -861,23 +893,31 @@ def dashboard_treinamentos_filtered_view(request):
         try:
             setor = Setor.objects.get(id=setor_id)
             
-            colaboradores_ids = Colaborador.objects.filter(
+            colaboradores_ids = list(Colaborador.objects.filter(
                 setor_id=setor_id,
                 turno=turno_val,
                 is_active=True
-            ).values_list('id', flat=True)
+            ).values_list('id', flat=True))
             
-            vigentes = RegistroTreinamento.objects.filter(
-                colaborador_id__in=colaboradores_ids,
-                data_treinamento__isnull=False,
-                ativo=True
-            ).filter(base_query).count()
+            # Contar colaboradores ÚNICOS com status vigente ou pendente
+            vigentes_colab = set(
+                RegistroTreinamento.objects.filter(
+                    colaborador_id__in=colaboradores_ids,
+                    data_treinamento__isnull=False,
+                    ativo=True
+                ).filter(base_query).values_list('colaborador_id', flat=True)
+            )
             
-            pendentes = RegistroTreinamento.objects.filter(
-                colaborador_id__in=colaboradores_ids,
-                data_treinamento__isnull=True,
-                ativo=True
-            ).filter(base_query).count()
+            pendentes_colab = set(
+                RegistroTreinamento.objects.filter(
+                    colaborador_id__in=colaboradores_ids,
+                    data_treinamento__isnull=True,
+                    ativo=True
+                ).filter(base_query).values_list('colaborador_id', flat=True)
+            )
+            
+            vigentes = len(vigentes_colab)
+            pendentes = len(pendentes_colab - vigentes_colab)  # Colaboradores pendentes que não estão vigentes
             
             total = vigentes + pendentes
             if total > 0:
