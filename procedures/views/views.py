@@ -334,10 +334,27 @@ def detalhe_procedimento_view(request, procedimento_id):
 
 @login_required
 def treinamentos_list_view(request):
-    """Lista de treinamentos realizados com filtros."""
-    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    """Lista de treinamentos realizados com filtros.
     
-    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
+    Mostra apenas o registro mais recente para cada combinação colaborador+procedimento.
+    O histórico completo fica disponível na tela de detalhes.
+    """
+    from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    from django.db.models import Max, OuterRef, Subquery
+    
+    # Subquery para pegar o ID do registro mais recente para cada colaborador+procedimento
+    # Agrupa por colaborador+procedimento e pega o maior ID (mais recente)
+    ultimos_registros_ids = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False,
+        procedimento__isnull=False
+    ).values('colaborador_id', 'procedimento_id').annotate(
+        ultimo_id=Max('id')
+    ).values_list('ultimo_id', flat=True)
+    
+    # Filtrar apenas os registros mais recentes (1 por colaborador+procedimento)
+    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').filter(
+        id__in=ultimos_registros_ids
+    )
     colaboradores = Colaborador.objects.order_by('nome_completo')
     procedimentos = Procedimento.objects.order_by('codigo')
     lideres = Colaborador.objects.filter(
