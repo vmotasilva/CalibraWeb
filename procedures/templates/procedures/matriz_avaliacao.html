@@ -16,7 +16,7 @@
         display: flex;
         background: #f8f9fa;
         border-bottom: 2px solid #dee2e6;
-        overflow: hidden;
+        overflow: visible !important;
     }
 
     .matriz-header-left {
@@ -31,13 +31,17 @@
         align-items: center;
         justify-content: center;
         font-size: 0.95rem;
-        min-height: 60px;
+        height: auto;
+        min-height: 50px;
+        vertical-align: middle !important;
+        line-height: 1.5;
+        overflow: visible !important;
     }
 
     .matriz-header-scroll {
         flex: 1;
         overflow-x: auto;
-        overflow-y: hidden;
+        overflow-y: visible;
     }
 
     .matriz-header-content {
@@ -48,24 +52,29 @@
         min-width: 130px;
         width: 130px;
         flex-shrink: 0;
-        padding: 15px 8px;
+        padding: 10px 8px;
         font-weight: 600;
         text-align: center;
         border-right: 1px solid #dee2e6;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 60px;
+        height: auto;
+        min-height: 50px;
+        vertical-align: middle !important;
+        line-height: 1.5;
+        overflow: visible !important;
     }
 
     .disciplina-header {
         width: 100%;
         white-space: normal;
         font-size: 0.85rem;
-        line-height: 1.4;
+        line-height: 1.5;
         word-break: break-word;
         text-align: center;
         display: block;
+        overflow: visible !important;
     }
 
     .matriz-body-container {
