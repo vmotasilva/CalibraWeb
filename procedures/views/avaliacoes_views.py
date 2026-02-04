@@ -39,6 +39,7 @@ def matriz_avaliacoes_view(request):
     disciplinas = []
     colaboradores = []
     avaliacoes_dict = {}
+    turnos_disponiveis = []
     
     if matriz_id:
         matriz_selecionada = get_object_or_404(MatrizHabilidade, id=matriz_id)
@@ -53,6 +54,9 @@ def matriz_avaliacoes_view(request):
         
         # Extrair lista de colaboradores
         colaboradores = [assoc.colaborador for assoc in colaboradores_assoc]
+        
+        # Obter turnos únicos disponíveis nesta matriz
+        turnos_disponiveis = sorted(list(set([c.turno for c in colaboradores if c.turno])))
         
         if setor:
             colaboradores = [c for c in colaboradores if c.setor == setor]
@@ -106,6 +110,7 @@ def matriz_avaliacoes_view(request):
         'disciplinas': disciplinas,
         'matriz_dados': matriz_dados if matriz_selecionada else [],
         'setores': setores,
+        'turnos_disponiveis': turnos_disponiveis,
         'matriz_id': matriz_id,
         'setor': setor,
         'turno': turno,
