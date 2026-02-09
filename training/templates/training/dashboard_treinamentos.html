@@ -24,86 +24,82 @@
     </div>
     
     <div class="dashboard-body">
-        <!-- Sidebar de Filtros (Recolhível) -->
-        <div id="sidebarCol" class="col-auto sidebar-col">
-            <div id="filterSidebar" class="filter-sidebar">
-                <div class="sidebar-content">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0 fw-bold" style="font-size: 0.8rem;"><i class="bi bi-funnel text-primary me-1"></i>Filtros</h6>
-                        <button id="toggleSidebar" class="btn btn-sm btn-outline-secondary" title="Recolher">
-                            <i class="bi bi-chevron-left"></i>
-                        </button>
-                    </div>
-                    
-                    <form id="filterForm">
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold mb-1" style="font-size: 0.7rem;">Setor</label>
-                            <select name="setor" id="filterSetor" class="form-select form-select-sm" style="font-size: 0.75rem;">
-                                <option value="">Todos</option>
-                                {% for s in setores %}
-                                <option value="{{ s.id }}" {% if filtro_setor == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+        <!-- Sidebar de Filtros (Recolhível) - Estilo RH -->
+        <div id="sidebarCol" class="col-auto sidebar-col" style="width: 250px; flex-shrink: 0;">
+            <div id="filterSidebar" class="filter-card">
+                <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
+                    <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
+                    <button type="button" id="clearFilters" class="btn btn-sm btn-link text-decoration-none text-muted p-0">
+                        <small>Limpar tudo</small>
+                    </button>
+                </div>
+
+                <div class="filter-card-body">
+                    <div class="sidebar-scroll">
                         
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold mb-1" style="font-size: 0.7rem;">Turno</label>
-                            <select name="turno" id="filterTurno" class="form-select form-select-sm" style="font-size: 0.75rem;">
-                                <option value="">Todos</option>
-                                {% for t in turnos %}
-                                <option value="{{ t.value }}" {% if filtro_turno == t.value %}selected{% endif %}>{{ t.label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold mb-1" style="font-size: 0.7rem;">Líder</label>
-                            <select name="lider" id="filterLider" class="form-select form-select-sm" style="font-size: 0.75rem;">
-                                <option value="">Todos</option>
-                                {% for l in lideres %}
-                                <option value="{{ l.id }}" {% if filtro_lider == l.id|stringformat:"s" %}selected{% endif %}>{{ l.nome }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        {% if filtro_setor or filtro_turno or filtro_lider %}
-                        <div class="alert alert-info py-1 px-2 mb-2 small" style="font-size: 0.7rem;">
-                            <i class="bi bi-funnel-fill me-1"></i>Filtros ativos
-                        </div>
-                        {% endif %}
-                        
-                        <div class="d-grid">
-                            <button type="button" id="clearFilters" class="btn btn-outline-secondary btn-sm py-1" style="font-size: 0.7rem;">
-                                <i class="bi bi-x-circle me-1"></i>Limpar Filtros
-                            </button>
-                        </div>
-                    </form>
-                    
-                    <hr class="my-2">
-                    
-                    <!-- Resumo Rápido -->
-                    <div class="sidebar-summary">
-                        <div class="mb-2">
-                            <small class="text-muted text-uppercase fw-bold d-block mb-1" style="font-size: 0.6rem;">Taxa de Conformidade</small>
-                            <div class="progress" style="height: 6px;">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ taxa_conformidade|default:0 }}%"></div>
+                        <!-- Setor -->
+                        <div class="filter-group open">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Setor</label>
+                                <i class="bi bi-chevron-down"></i>
                             </div>
-                            <small class="text-muted" style="font-size: 0.65rem;">{{ taxa_conformidade|default:0 }}%</small>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for s in setores %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ s.id }}" data-category="setor" id="set_{{ s.id }}" {% if filtro_setor == s.id|stringformat:"s" %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="set_{{ s.id }}" title="{{ s.nome }}">
+                                            {{ s.nome }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="text-center p-1 bg-light rounded">
-                            <small class="text-muted text-uppercase fw-bold d-block" style="font-size: 0.6rem;">Últimos 30 dias</small>
-                            <span class="fw-bold text-primary" style="font-size: 1rem;">{{ treinamentos_ultimos_30_dias|default:0 }}</span>
-                            <small class="text-muted d-block" style="font-size: 0.6rem;">treinamentos</small>
+                        <!-- Turno -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Turno</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for t in turnos %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ t.value }}" data-category="turno" id="turn_{{ t.value }}" {% if filtro_turno == t.value %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="turn_{{ t.value }}">
+                                            {{ t.label }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
                         </div>
+                        
+                        <!-- Líder -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Líder</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for l in lideres %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ l.id }}" data-category="lider" id="lider_{{ l.id }}" {% if filtro_lider == l.id|stringformat:"s" %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="lider_{{ l.id }}" title="{{ l.nome }}">
+                                            {{ l.nome }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
                     </div>
                 </div>
             </div>
-            
-            <!-- Botão para expandir quando recolhido -->
-            <button id="expandSidebar" class="btn btn-primary expand-btn d-none" title="Expandir Filtros">
-                <i class="bi bi-funnel"></i>
-            </button>
         </div>
         
         <!-- Sidebar 2 - Indicadores -->
@@ -582,6 +578,128 @@
         font-weight: 500;
     }
     
+    /* ========================================
+       NOVO ESTILO - FILTRO TIPO RH (ACCORDION)
+       ======================================== */
+    
+    .filter-card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-width: 250px;
+    }
+    
+    .filter-card .card-header {
+        padding: 0.75rem 1rem;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .filter-card-body {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+    
+    .sidebar-scroll {
+        height: 100%;
+        overflow-y: auto;
+        padding: 0;
+    }
+    
+    .sidebar-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .sidebar-scroll::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    
+    .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+        background: #a1a1a1;
+    }
+    
+    /* Filter Groups - Accordion Style */
+    .filter-group {
+        border-bottom: 1px solid #e9ecef;
+        margin: 0;
+    }
+    
+    .filter-group:last-child {
+        border-bottom: none;
+    }
+    
+    .filter-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        background-color: #fff;
+        user-select: none;
+        transition: background-color 0.2s ease;
+    }
+    
+    .filter-header:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .filter-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #495057;
+        margin: 0;
+        cursor: pointer;
+    }
+    
+    .filter-header i {
+        font-size: 0.8rem;
+        color: #6c757d;
+        transition: transform 0.3s ease;
+    }
+    
+    .filter-content {
+        display: none;
+        padding: 0 1rem 0.75rem 1rem;
+        background-color: #fafbfc;
+    }
+    
+    .filter-group.open .filter-content {
+        display: block;
+    }
+    
+    .filter-group.open .filter-header i {
+        transform: rotate(180deg);
+    }
+    
+    /* Filter Checkboxes */
+    .filter-checkbox {
+        width: 1rem;
+        height: 1rem;
+        margin-top: 0.25rem;
+    }
+    
+    .filter-checkbox:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    
+    .filter-checkbox:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
     /* Responsivo */
     @media (max-width: 768px) {
         .filter-sidebar {
@@ -604,8 +722,54 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // =====================
-    // Sidebar Toggle
+    // Toggle Filter Groups (Accordion)
     // =====================
+    window.toggleFilterGroup = function(headerElement) {
+        const filterGroup = headerElement.parentElement;
+        filterGroup.classList.toggle('open');
+    };
+    
+    // =====================
+    // New Filter System (Checkboxes)
+    // =====================
+    function applyFilters() {
+        const selectedFilters = {};
+        
+        // Coletar todos os checkboxes selecionados
+        document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+            const category = checkbox.dataset.category;
+            if (!selectedFilters[category]) {
+                selectedFilters[category] = [];
+            }
+            selectedFilters[category].push(checkbox.value);
+        });
+        
+        // Construir URL com parâmetros
+        const params = new URLSearchParams();
+        Object.keys(selectedFilters).forEach(category => {
+            selectedFilters[category].forEach(value => {
+                params.append(category, value);
+            });
+        });
+        
+        const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = url;
+    }
+    
+    // Add listeners a todos os checkboxes
+    document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', applyFilters);
+    });
+    
+    // Clear all filters button
+    document.getElementById('clearFilters')?.addEventListener('click', function() {
+        document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        window.location.href = window.location.pathname;
+    });
+    
+    // Sidebar Toggle (Old - Keep for compatibility)
     const sidebar = document.getElementById('filterSidebar');
     const toggleBtn = document.getElementById('toggleSidebar');
     const expandBtn = document.getElementById('expandSidebar');
@@ -640,42 +804,6 @@ document.addEventListener('DOMContentLoaded', function() {
         sidebarCol.style.padding = '';
         localStorage.setItem('dashboardSidebarCollapsed', 'false');
     }
-    
-    // =====================
-    // Filtros Dinâmicos (sem botão aplicar)
-    // =====================
-    function applyFilters() {
-        const setor = document.getElementById('filterSetor')?.value || '';
-        const turno = document.getElementById('filterTurno')?.value || '';
-        const lider = document.getElementById('filterLider')?.value || '';
-        
-        // Construir URL com parâmetros
-        const params = new URLSearchParams();
-        if (setor) params.append('setor', setor);
-        if (turno) params.append('turno', turno);
-        if (lider) params.append('lider', lider);
-        
-        const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-        window.location.href = url;
-    }
-    
-    // Adicionar listeners para filtrar automaticamente ao mudar
-    document.getElementById('filterSetor')?.addEventListener('change', applyFilters);
-    document.getElementById('filterTurno')?.addEventListener('change', applyFilters);
-    document.getElementById('filterLider')?.addEventListener('change', applyFilters);
-    
-    document.getElementById('clearFilters')?.addEventListener('click', function() {
-        document.getElementById('filterSetor').value = '';
-        document.getElementById('filterTurno').value = '';
-        document.getElementById('filterLider').value = '';
-        window.location.href = window.location.pathname;
-    });
-    
-    // Manter valores selecionados após reload
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('setor')) document.getElementById('filterSetor').value = urlParams.get('setor');
-    if (urlParams.get('turno')) document.getElementById('filterTurno').value = urlParams.get('turno');
-    if (urlParams.get('lider')) document.getElementById('filterLider').value = urlParams.get('lider');
     
     // Configuração global dos gráficos
     Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial';
