@@ -2866,7 +2866,7 @@ def atualizar_liderancas_em_massa(request):
     gerente_id = request.POST.get('gerente_id', '')
     
     # Obter dados para o formulário
-    setores = Setor.objects.filter(ativo=True).order_by('nome')
+    setores = Setor.objects.all().order_by('nome')
     turnos = TURNOS_CHOICES
     
     # Listar colaboradores que podem ser líderes, supervisores ou gerentes
