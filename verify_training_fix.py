@@ -103,7 +103,7 @@ logger.info("=" * 80)
 
 logger.info("\n✅ CORRIGIDO:")
 logger.info("   • RH Dashboard (modulo_rh_view): Agora não conta treinamentos de desligados")
-logger.info("   • Training Dashboard: Já estava filtrando por is_active=True")
+logger.info("   • Training Dashboard: Agora filtra por is_active=True, afastado=False e em_ferias=False")
 logger.info("   • Procedures Dashboard: Já estava filtrando por is_active=True")
 
 logger.info("\n📝 OBSERVAÇÃO:")

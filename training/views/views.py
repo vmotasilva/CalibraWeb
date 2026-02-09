@@ -391,11 +391,12 @@ def dashboard_treinamentos_view(request):
             cached_data['filtro_lider'] = filtro_lider
             return render(request, 'training/dashboard_treinamentos.html', cached_data)
     
-    # Base query: apenas registros com colaborador e procedimento vinculados E ATIVOS E NÃO AFASTADOS
+    # Base query: apenas registros com colaborador ATIVO, NÃO AFASTADO, NÃO EM FÉRIAS e procedimento vinculado
     valid_registros = RegistroTreinamento.objects.filter(
         colaborador__isnull=False,
         colaborador__is_active=True,
         colaborador__afastado=False,
+        colaborador__em_ferias=False,
         procedimento__isnull=False,
         ativo=True
     ).select_related('colaborador', 'procedimento')
@@ -645,22 +646,26 @@ def dashboard_treinamentos_view(request):
     # Adicionar dados de filtros dinâmicos - OTIMIZADO
     from organization.models import Setor
     
-    # Setores com colaboradores ativos
+    # Setores com colaboradores ativos, não afastados e não em férias
     setores = Setor.objects.filter(
         colaborador__is_active=True,
-        colaborador__afastado=False
+        colaborador__afastado=False,
+        colaborador__em_ferias=False
     ).distinct().order_by('nome').values('id', 'nome')
     context['setores'] = list(setores)
     
     # Turnos
     context['turnos'] = [{'value': t[0], 'label': t[1]} for t in TURNOS_CHOICES]
     
-    # Líderes com liderados ativos - OTIMIZADO
+    # Líderes com liderados ativos, não afastados e não em férias - OTIMIZADO
     lideres = Colaborador.objects.filter(
         liderados__isnull=False,
         liderados__is_active=True,
+        liderados__afastado=False,
+        liderados__em_ferias=False,
         is_active=True,
-        afastado=False
+        afastado=False,
+        em_ferias=False
     ).distinct().order_by('nome_completo').values('id', 'nome_completo')
     context['lideres'] = [{'id': l['id'], 'nome': l['nome_completo']} for l in lideres]
     
@@ -668,8 +673,11 @@ def dashboard_treinamentos_view(request):
     supervisores = Colaborador.objects.filter(
         supervisionados__isnull=False,
         supervisionados__is_active=True,
+        supervisionados__afastado=False,
+        supervisionados__em_ferias=False,
         is_active=True,
-        afastado=False
+        afastado=False,
+        em_ferias=False
     ).distinct().order_by('nome_completo').values('id', 'nome_completo')
     context['supervisores'] = [{'id': s['id'], 'nome': s['nome_completo']} for s in supervisores]
     
@@ -677,8 +685,11 @@ def dashboard_treinamentos_view(request):
     gerentes = Colaborador.objects.filter(
         gerenciados__isnull=False,
         gerenciados__is_active=True,
+        gerenciados__afastado=False,
+        gerenciados__em_ferias=False,
         is_active=True,
-        afastado=False
+        afastado=False,
+        em_ferias=False
     ).distinct().order_by('nome_completo').values('id', 'nome_completo')
     context['gerentes'] = [{'id': g['id'], 'nome': g['nome_completo']} for g in gerentes]
     
@@ -746,11 +757,12 @@ def dashboard_treinamentos_filtered_view(request):
     supervisor_id = request.GET.get('supervisor', '').strip()
     gerente_id = request.GET.get('gerente', '').strip()
     
-    # Base query - apenas registros com colaborador ATIVO (não afastado), procedimento não nulos E ativo=True
+    # Base query - apenas registros com colaborador ATIVO, NÃO AFASTADO, NÃO EM FÉRIAS, procedimento não nulos E ativo=True
     base_query = Q(
         colaborador__isnull=False,
         colaborador__is_active=True,
         colaborador__afastado=False,  # Não contar treinamentos de colaboradores afastados
+        colaborador__em_ferias=False,  # Não contar treinamentos de colaboradores em férias
         procedimento__isnull=False,
         ativo=True
     )
