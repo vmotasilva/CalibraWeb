@@ -614,6 +614,38 @@ def editar_colaborador_view(request, colab_id):
 
 
 @login_required
+def criar_colaborador_view(request):
+    """Cria um novo colaborador com permissões de RH."""
+    # Verificar se usuário tem permissão para criar
+    if not (request.user.is_staff or request.user.is_superuser):
+        messages.error(request, "Acesso Negado. Você não tem permissão para criar colaboradores.")
+        return redirect("modulo_rh")
+    
+    usuario_logado = None
+    try:
+        usuario_logado = get_colaborador_for_user(request.user)
+    except Exception:
+        pass
+
+    if request.method == "POST":
+        form = ColaboradorForm(request.POST)
+        if form.is_valid():
+            novo_colaborador = form.save()
+            messages.success(request, f"Colaborador {novo_colaborador.nome_completo} criado com sucesso!")
+            return redirect("detalhe_colaborador", colab_id=novo_colaborador.id)
+        else:
+            messages.error(request, "Erro ao salvar. Verifique os dados informados.")
+    else:
+        form = ColaboradorForm()
+    
+    return render(
+        request,
+        "rh/colaborador_criar.html",
+        {"form": form, "colaborador": usuario_logado},
+    )
+
+
+@login_required
 def registrar_ocorrencia_view(request):
     """Registra nova ocorrência de RH para um colaborador."""
     usuario_logado = None

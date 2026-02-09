@@ -1,6 +1,7 @@
 from django.urls import path
 from rh.views.views import (
     detalhe_colaborador_view,
+    criar_colaborador_view,
     gestao_ferias_view,
     atualizar_status_ferias_view,
     importar_ferias_view,
@@ -37,6 +38,7 @@ app_name = 'rh'
 urlpatterns = [
     # Detalhe do colaborador
     path('colaborador/<int:colab_id>/', detalhe_colaborador_view, name='detalhe_colaborador'),
+    path('colaborador/criar/', criar_colaborador_view, name='criar_colaborador'),
     
     # Dashboard e gestão
     path('gestao-ferias/', gestao_ferias_view, name='gestao_ferias'),
