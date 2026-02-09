@@ -44,7 +44,7 @@
                                 <div class="d-flex flex-column gap-1">
                                     {% for s in setores %}
                                     <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ s.id }}" data-category="setor" id="set_{{ s.id }}" {% if filtro_setor == s.id|stringformat:"s" %}checked{% endif %}>
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ s.id }}" data-category="setor" id="set_{{ s.id }}" {% if s.id|stringformat:"s" in filtro_setor_list %}checked{% endif %}>
                                         <label class="form-check-label small text-truncate" for="set_{{ s.id }}" title="{{ s.nome }}">
                                             {{ s.nome }}
                                         </label>
@@ -64,7 +64,7 @@
                                 <div class="d-flex flex-column gap-1">
                                     {% for t in turnos %}
                                     <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ t.value }}" data-category="turno" id="turn_{{ t.value }}" {% if filtro_turno == t.value %}checked{% endif %}>
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ t.value }}" data-category="turno" id="turn_{{ t.value }}" {% if t.value in filtro_turno_list %}checked{% endif %}>
                                         <label class="form-check-label small text-truncate" for="turn_{{ t.value }}">
                                             {{ t.label }}
                                         </label>
@@ -84,7 +84,7 @@
                                 <div class="d-flex flex-column gap-1">
                                     {% for l in lideres %}
                                     <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ l.id }}" data-category="lider" id="lider_{{ l.id }}" {% if filtro_lider == l.id|stringformat:"s" %}checked{% endif %}>
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ l.id }}" data-category="lider" id="lider_{{ l.id }}" {% if l.id|stringformat:"s" in filtro_lider_list %}checked{% endif %}>
                                         <label class="form-check-label small text-truncate" for="lider_{{ l.id }}" title="{{ l.nome }}">
                                             {{ l.nome }}
                                         </label>

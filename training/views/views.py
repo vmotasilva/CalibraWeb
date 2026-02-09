@@ -735,7 +735,12 @@ def dashboard_treinamentos_view(request):
     context['page_obj'] = page_obj
     context['paginator'] = paginator
     
-    # Adicionar filtros selecionados ao contexto
+    # Adicionar filtros selecionados ao contexto (como listas completas)
+    context['filtro_setor_list'] = filtro_setor_list
+    context['filtro_turno_list'] = filtro_turno_list
+    context['filtro_lider_list'] = filtro_lider_list
+    
+    # Também adicionar os valores únicos para compatibilidade
     context['filtro_setor'] = filtro_setor
     context['filtro_turno'] = filtro_turno
     context['filtro_lider'] = filtro_lider
