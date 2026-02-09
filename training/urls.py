@@ -7,4 +7,5 @@ urlpatterns = [
     # Dashboard
     path('dashboard/', views.dashboard_treinamentos_view, name='dashboard_treinamentos'),
     path('dashboard/filtered/', views.dashboard_treinamentos_filtered_view, name='dashboard_filtered'),
+    path('dashboard/exportar-csv/', views.dashboard_treinamentos_exportar_csv_view, name='dashboard_exportar_csv'),
 ]

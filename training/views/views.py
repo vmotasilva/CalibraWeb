@@ -994,3 +994,94 @@ def dashboard_treinamentos_filtered_view(request):
         'treinamentos_por_setor_turno': treinamentos_por_setor_turno,
         'dados_tabela': dados_tabela_list
     })
+
+
+@login_required
+def dashboard_treinamentos_exportar_csv_view(request):
+    """Exporta todos os treinamentos do dashboard em CSV (respeitando filtros)"""
+    import csv
+    from datetime import date
+    
+    # Pegar filtros da query string
+    turno = request.GET.get('turno', '').strip()
+    setor_id = request.GET.get('setor', '').strip()
+    lider_id = request.GET.get('lider', '').strip()
+    
+    # Base query - apenas registros ATIVOS, NÃO AFASTADOS, NÃO EM FÉRIAS
+    base_query = Q(
+        colaborador__isnull=False,
+        colaborador__is_active=True,
+        colaborador__afastado=False,
+        colaborador__em_ferias=False,
+        procedimento__isnull=False,
+        ativo=True
+    )
+    
+    # Aplicar filtros
+    if turno:
+        base_query &= Q(colaborador__turno=turno)
+    if setor_id:
+        try:
+            base_query &= Q(colaborador__setor_id=int(setor_id))
+        except:
+            pass
+    if lider_id:
+        try:
+            base_query &= Q(colaborador__lider_id=int(lider_id))
+        except:
+            pass
+    
+    # Obter TODOS os registros (não paginar)
+    registros = RegistroTreinamento.objects.filter(base_query).select_related(
+        'colaborador', 'procedimento'
+    ).order_by('-data_treinamento', '-id')
+    
+    # Criar resposta CSV
+    response = HttpResponse(content_type='text/csv;charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="treinamentos_{date.today().isoformat()}.csv"'
+    
+    # Escrever BOM para UTF-8
+    response.write('\ufeff')
+    
+    writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_ALL)
+    
+    # Cabeçalhos
+    writer.writerow([
+        'Colaborador',
+        'Matrícula',
+        'Cargo',
+        'Setor',
+        'Procedimento',
+        'Código',
+        'Data Treinamento',
+        'Revisão Treinada',
+        'Revisão Procedimento',
+        'Status',
+        'Carga Horária'
+    ])
+    
+    # Dados
+    for treinamento in registros:
+        # Determinar status
+        if not treinamento.data_treinamento:
+            status = 'NÃO INICIADO'
+        elif treinamento.revisao_treinada == treinamento.procedimento.numero_revisao:
+            status = 'VIGENTE'
+        else:
+            status = 'PENDENTE'
+        
+        writer.writerow([
+            treinamento.colaborador.nome_completo if treinamento.colaborador else '',
+            treinamento.colaborador.matricula if treinamento.colaborador else '',
+            treinamento.colaborador.cargo if treinamento.colaborador else '',
+            treinamento.colaborador.setor.nome if treinamento.colaborador and treinamento.colaborador.setor else '',
+            treinamento.procedimento.nome if treinamento.procedimento else '',
+            treinamento.procedimento.codigo if treinamento.procedimento else '',
+            treinamento.data_treinamento.strftime('%d/%m/%Y') if treinamento.data_treinamento else '',
+            treinamento.revisao_treinada if treinamento.revisao_treinada else '',
+            treinamento.procedimento.numero_revisao if treinamento.procedimento else '',
+            status,
+            f'{treinamento.carga_horaria}h' if treinamento.carga_horaria else ''
+        ])
+    
+    return response

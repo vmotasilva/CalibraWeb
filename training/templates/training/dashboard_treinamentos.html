@@ -1029,30 +1029,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // =====================
-    // Exportar CSV
+    // Exportar CSV - Todos os Dados Filtrados
     // =====================
     document.getElementById('exportCsv')?.addEventListener('click', function() {
-        const table = document.getElementById('tbTreinamentos');
-        if (!table) return;
+        // Capturar filtros aplicados
+        const setor = document.getElementById('filterSetor')?.value || '';
+        const turno = document.getElementById('filterTurno')?.value || '';
+        const lider = document.getElementById('filterLider')?.value || '';
         
-        let csv = [];
-        const rows = table.querySelectorAll('tr');
+        // Construir URL com filtros
+        let url = '{% url "training:dashboard_exportar_csv" %}?';
+        const params = [];
+        if (setor) params.push(`setor=${encodeURIComponent(setor)}`);
+        if (turno) params.push(`turno=${encodeURIComponent(turno)}`);
+        if (lider) params.push(`lider=${encodeURIComponent(lider)}`);
         
-        rows.forEach(row => {
-            const cols = row.querySelectorAll('th, td');
-            const rowData = [];
-            cols.forEach(col => {
-                let text = col.innerText.replace(/"/g, '""');
-                rowData.push(`"${text}"`);
-            });
-            csv.push(rowData.join(';'));
-        });
+        url += params.join('&');
         
-        const blob = new Blob(['\ufeff' + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'treinamentos_' + new Date().toISOString().slice(0, 10) + '.csv';
-        link.click();
+        // Redirecionar para download
+        window.location.href = url;
     });
 });
 </script>
