@@ -344,11 +344,11 @@ class PlanejamentoExcelExporter:
                 treinamento.colaborador.nome_completo if treinamento.colaborador else "",
                 treinamento.colaborador.matricula if treinamento.colaborador else "",
                 treinamento.colaborador.cargo if treinamento.colaborador else "",
-                treinamento.colaborador.setor if treinamento.colaborador else "",
+                treinamento.colaborador.setor.nome if treinamento.colaborador and treinamento.colaborador.setor else "",
                 treinamento.procedimento.nome if treinamento.procedimento else "",
                 treinamento.procedimento.codigo if treinamento.procedimento else "",
                 treinamento.data_treinamento.strftime("%d/%m/%Y") if treinamento.data_treinamento else "",
-                treinamento.status_treinamento if hasattr(treinamento, 'status_treinamento') else "",
+                str(treinamento.status_treinamento) if hasattr(treinamento, 'status_treinamento') else "",
                 f"{treinamento.carga_horaria}h" if treinamento.carga_horaria else ""
             ]
             
