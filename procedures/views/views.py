@@ -436,10 +436,7 @@ def treinamentos_exportar_excel_view(request):
     busca = request.GET.get('q', '')
     ativo = request.GET.get('ativo', '')
 
-    # Filtro de status
-    if status:
-        qs = [t for t in qs if t.status_treinamento == status]
-    
+    # Filtros por QuerySet (aplicar antes de filtro por status)
     if colaborador_id:
         qs = qs.filter(colaborador_id=colaborador_id)
     if procedimento_id:
@@ -454,7 +451,11 @@ def treinamentos_exportar_excel_view(request):
         )
     
     # Ordenar
-    qs = qs.order_by('-data_treinamento') if isinstance(qs, list) else qs.order_by('-data_treinamento')
+    qs = qs.order_by('-data_treinamento')
+    
+    # Filtro de status (aplicar por Python após converter para lista)
+    if status:
+        qs = [t for t in qs if t.status_treinamento == status]
     
     # Exportar
     exporter = PlanejamentoExcelExporter()
