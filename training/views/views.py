@@ -372,13 +372,18 @@ def dashboard_treinamentos_view(request):
     from procedures.models import PlanejamentoTreinamento
     from organization.models import Setor
     
-    # Capturar filtros da URL
-    filtro_setor = request.GET.get('setor', '')
-    filtro_turno = request.GET.get('turno', '')
-    filtro_lider = request.GET.get('lider', '')
+    # Capturar filtros da URL (suportar múltiplos valores)
+    filtro_setor_list = request.GET.getlist('setor')
+    filtro_turno_list = request.GET.getlist('turno')
+    filtro_lider_list = request.GET.getlist('lider')
+    
+    # Para template (primeiro valor ou vazio)
+    filtro_setor = filtro_setor_list[0] if filtro_setor_list else ''
+    filtro_turno = filtro_turno_list[0] if filtro_turno_list else ''
+    filtro_lider = filtro_lider_list[0] if filtro_lider_list else ''
     
     # Se há filtros, não usar cache
-    has_filters = filtro_setor or filtro_turno or filtro_lider
+    has_filters = filtro_setor_list or filtro_turno_list or filtro_lider_list
     
     # Cache key para estatísticas do dashboard (apenas sem filtros)
     cache_key = 'dashboard_treinamentos_stats'
@@ -402,14 +407,14 @@ def dashboard_treinamentos_view(request):
     ).select_related('colaborador', 'procedimento')
     
     # Aplicar filtros
-    if filtro_setor:
-        valid_registros = valid_registros.filter(colaborador__setor_id=filtro_setor)
+    if filtro_setor_list:
+        valid_registros = valid_registros.filter(colaborador__setor_id__in=filtro_setor_list)
     
-    if filtro_turno:
-        valid_registros = valid_registros.filter(colaborador__turno=filtro_turno)
+    if filtro_turno_list:
+        valid_registros = valid_registros.filter(colaborador__turno__in=filtro_turno_list)
     
-    if filtro_lider:
-        valid_registros = valid_registros.filter(colaborador__lider_id=filtro_lider)
+    if filtro_lider_list:
+        valid_registros = valid_registros.filter(colaborador__lider_id__in=filtro_lider_list)
     
     # =========================================================================
     # REGISTROS ÚNICOS: Apenas o registro mais recente por colaborador+procedimento
@@ -1002,10 +1007,10 @@ def dashboard_treinamentos_exportar_csv_view(request):
     import csv
     from datetime import date
     
-    # Pegar filtros da query string
-    turno = request.GET.get('turno', '').strip()
-    setor_id = request.GET.get('setor', '').strip()
-    lider_id = request.GET.get('lider', '').strip()
+    # Pegar filtros da query string (suportar múltiplos valores)
+    turnos = request.GET.getlist('turno')
+    setores = request.GET.getlist('setor')
+    lideres = request.GET.getlist('lider')
     
     # Base query - apenas registros ATIVOS, NÃO AFASTADOS, NÃO EM FÉRIAS
     base_query = Q(
@@ -1017,17 +1022,21 @@ def dashboard_treinamentos_exportar_csv_view(request):
         ativo=True
     )
     
-    # Aplicar filtros
-    if turno:
-        base_query &= Q(colaborador__turno=turno)
-    if setor_id:
+    # Aplicar filtros (se há múltiplos valores)
+    if turnos:
+        base_query &= Q(colaborador__turno__in=turnos)
+    if setores:
         try:
-            base_query &= Q(colaborador__setor_id=int(setor_id))
+            setores_int = [int(s) for s in setores if s.strip()]
+            if setores_int:
+                base_query &= Q(colaborador__setor_id__in=setores_int)
         except:
             pass
-    if lider_id:
+    if lideres:
         try:
-            base_query &= Q(colaborador__lider_id=int(lider_id))
+            lideres_int = [int(l) for l in lideres if l.strip()]
+            if lideres_int:
+                base_query &= Q(colaborador__lider_id__in=lideres_int)
         except:
             pass
     

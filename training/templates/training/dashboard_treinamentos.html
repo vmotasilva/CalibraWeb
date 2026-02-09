@@ -759,6 +759,8 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedFilters[category].push(checkbox.value);
         });
         
+        console.log('Selected Filters:', selectedFilters);
+        
         // Construir URL com parâmetros
         const params = new URLSearchParams();
         Object.keys(selectedFilters).forEach(category => {
@@ -768,19 +770,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        console.log('Navigating to:', url);
         window.location.href = url;
     }
     
     // Apply filters button (Only on button click, not on checkbox change)
-    document.getElementById('applyFilters')?.addEventListener('click', applyFilters);
+    const applyBtn = document.getElementById('applyFilters');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            applyFilters();
+        });
+    }
     
     // Clear all filters button
-    document.getElementById('clearFilters')?.addEventListener('click', function() {
-        document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
-            checkbox.checked = false;
+    const clearBtn = document.getElementById('clearFilters');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            window.location.href = window.location.pathname;
         });
-        window.location.href = window.location.pathname;
-    });
+    }
     
     // Sidebar Toggle (Old - Keep for compatibility)
     const sidebar = document.getElementById('filterSidebar');
