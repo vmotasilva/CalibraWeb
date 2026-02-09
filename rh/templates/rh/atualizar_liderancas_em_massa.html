@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Atualizar Lideranças em Massa{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0"><i class="bi bi-people-fill text-primary me-2"></i>Atualizar Lideranças em Massa</h1>
+                    <p class="text-muted small mt-1">Atualize líder, supervisor e gerente para um setor e turno específicos</p>
+                </div>
+                <a href="{% url 'rh:gestao_pessoas' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if sucesso %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>
+        <strong>Sucesso!</strong> {{ atualizado_count }} colaborador(es) do setor <strong>{{ setor_nome }}</strong> turno <strong>{{ turno_label }}</strong> foram atualizados com sucesso.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Formulário -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h5 class="mb-0 fw-bold">Selecione os Critérios</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="filterForm">
+                        {% csrf_token %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-building text-info me-1"></i>Setor <span class="text-danger">*</span>
+                                </label>
+                                <select name="setor_id" id="setor_id" class="form-select form-select-lg" required>
+                                    <option value="">-- Selecione um setor --</option>
+                                    {% for setor in setores %}
+                                    <option value="{{ setor.id }}" {% if setor_id|stringformat:"s" == setor.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ setor.nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-clock text-warning me-1"></i>Turno <span class="text-danger">*</span>
+                                </label>
+                                <select name="turno" id="turno" class="form-select form-select-lg" required>
+                                    <option value="">-- Selecione um turno --</option>
+                                    {% for turno_val, turno_label in turnos %}
+                                    <option value="{{ turno_val }}" {% if turno == turno_val %}selected{% endif %}>
+                                        {{ turno_label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h5 class="mb-3 fw-bold">Atribuições</h5>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-person-badge text-success me-1"></i>Líder
+                                </label>
+                                <select name="lider_id" id="lider_id" class="form-select">
+                                    <option value="">-- Não alterar --</option>
+                                    {% for pessoa in pessoas %}
+                                    <option value="{{ pessoa.id }}" {% if lider_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ pessoa.nome_completo }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted d-block mt-1">Deixe em branco para não alterar</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-person-check text-info me-1"></i>Supervisor
+                                </label>
+                                <select name="supervisor_id" id="supervisor_id" class="form-select">
+                                    <option value="">-- Não alterar --</option>
+                                    {% for pessoa in pessoas %}
+                                    <option value="{{ pessoa.id }}" {% if supervisor_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ pessoa.nome_completo }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted d-block mt-1">Deixe em branco para não alterar</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">
+                                    <i class="bi bi-crown text-warning me-1"></i>Gerente
+                                </label>
+                                <select name="gerente_id" id="gerente_id" class="form-select">
+                                    <option value="">-- Não alterar --</option>
+                                    {% for pessoa in pessoas %}
+                                    <option value="{{ pessoa.id }}" {% if gerente_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ pessoa.nome_completo }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted d-block mt-1">Deixe em branco para não alterar</small>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary btn-lg" id="previewBtn" onclick="previewChanges()">
+                                <i class="bi bi-eye me-1"></i>Visualizar
+                            </button>
+                            <button type="submit" class="btn btn-success btn-lg" id="submitBtn" style="display: none;">
+                                <i class="bi bi-check-circle me-1"></i>Confirmar Atualização
+                            </button>
+                            <input type="hidden" name="confirmar" id="confirmar" value="">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom py-3">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-info-circle text-info me-1"></i>Resumo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="summaryContent" class="text-center py-5 text-muted">
+                        <p>Selecione um setor e turno para visualizar os colaboradores que serão afetados.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-select-lg {
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+    }
+
+    .card {
+        border-radius: 12px;
+    }
+
+    .list-group-item {
+        border: none;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .list-group-item:last-child {
+        border-bottom: none;
+    }
+
+    .badge-summary {
+        font-size: 2rem;
+        padding: 1rem 1.5rem;
+    }
+</style>
+
+<script>
+function previewChanges() {
+    const setorId = document.getElementById('setor_id').value;
+    const turno = document.getElementById('turno').value;
+    const liderSelect = document.getElementById('lider_id');
+    const supervisorSelect = document.getElementById('supervisor_id');
+    const gerenteSelect = document.getElementById('gerente_id');
+
+    if (!setorId || !turno) {
+        alert('Por favor, selecione um setor e um turno.');
+        return;
+    }
+
+    // Obter nomes selecionados
+    const liderName = liderSelect.value ? liderSelect.options[liderSelect.selectedIndex].text : 'Não alterar';
+    const supervisorName = supervisorSelect.value ? supervisorSelect.options[supervisorSelect.selectedIndex].text : 'Não alterar';
+    const gerenteName = gerenteSelect.value ? gerenteSelect.options[gerenteSelect.selectedIndex].text : 'Não alterar';
+
+    // Contar colaboradores (simulado, pode ser obtido do backend)
+    const totalAfetados = parseInt(document.querySelector('[data-total]')?.dataset.total || 0) || 
+                          ('{{ total_atualizacoes }}' || 0);
+
+    // Atualizar sumário
+    const summaryHtml = `
+        <div class="text-start">
+            <h6 class="fw-bold mb-3">Colaboradores a serem atualizados:</h6>
+            <div class="alert alert-info mb-3">
+                <strong class="d-block mb-1">Critério:</strong>
+                <small>Setor: <strong>${document.getElementById('setor_id').options[document.getElementById('setor_id').selectedIndex].text}</strong></small><br>
+                <small>Turno: <strong>${document.getElementById('turno').options[document.getElementById('turno').selectedIndex].text}</strong></small>
+            </div>
+
+            <h6 class="fw-bold mb-2 mt-4">Novas atribuições:</h6>
+            <div class="list-group list-group-sm">
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="fw-bold">Líder:</span>
+                    <span>${liderName}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="fw-bold">Supervisor:</span>
+                    <span>${supervisorName}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="fw-bold">Gerente:</span>
+                    <span>${gerenteName}</span>
+                </div>
+            </div>
+
+            <div class="alert alert-warning mt-3" role="alert">
+                <strong>Atenção!</strong> Esta ação afetará <strong>${'{{ total_atualizacoes }}'}</strong> colaborador(es).
+            </div>
+
+            <button type="button" class="btn btn-success w-100" onclick="confirmarAtualizacao()">
+                <i class="bi bi-check-circle me-1"></i>Confirmar Atualização
+            </button>
+        </div>
+    `;
+
+    document.getElementById('summaryContent').innerHTML = summaryHtml;
+}
+
+function confirmarAtualizacao() {
+    if (confirm('Tem certeza que deseja atualizar os líderes, supervisores e gerentes destes colaboradores? Esta ação não pode ser desfeita.')) {
+        document.getElementById('confirmar').value = 'sim';
+        document.getElementById('filterForm').submit();
+    }
+}
+
+// Habilitar preview quando o formulário mudar
+document.getElementById('setor_id').addEventListener('change', previewChanges);
+document.getElementById('turno').addEventListener('change', previewChanges);
+document.getElementById('lider_id').addEventListener('change', previewChanges);
+document.getElementById('supervisor_id').addEventListener('change', previewChanges);
+document.getElementById('gerente_id').addEventListener('change', previewChanges);
+
+// Carregar preview ao abrir a página se houver dados
+window.addEventListener('load', function() {
+    const setorId = document.getElementById('setor_id').value;
+    const turno = document.getElementById('turno').value;
+    if (setorId && turno) {
+        previewChanges();
+    }
+});
+</script>
+{% endblock %}

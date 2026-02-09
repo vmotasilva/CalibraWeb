@@ -27,6 +27,9 @@ urlpatterns = [
     path('api/lideres/', views.api_lideres, name='api_lideres'),
     path('api/supervisores/', views.api_supervisores, name='api_supervisores'),
     
+    # Atualização em massa
+    path('atualizar-liderancas/', views.atualizar_liderancas_em_massa, name='atualizar_liderancas_em_massa'),
+    
     # Exportação de Férias
     path('gestao-ferias/exportar/', views.exportar_ferias_view, name='exportar_ferias'),
     
