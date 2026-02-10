@@ -38,7 +38,7 @@ class ColaboradorForm(forms.ModelForm):
     class Meta:
         model = Colaborador
         fields = "__all__"
-        exclude = ["user_django", "criado_em"]
+        exclude = ["user_django", "criado_em", "centro_custo", "pacotes_treinamento"]
         widgets = {
             "nome_completo": forms.TextInput(attrs={"class": "form-control"}),
             "matricula": forms.TextInput(attrs={"class": "form-control"}),
@@ -49,7 +49,6 @@ class ColaboradorForm(forms.ModelForm):
             "cargo": forms.TextInput(attrs={"class": "form-control"}),
             "grupo": forms.TextInput(attrs={"class": "form-control"}),
             "setor": forms.Select(attrs={"class": "form-select"}),
-            "centro_custo": forms.Select(attrs={"class": "form-select"}),
             "turno": forms.Select(attrs={"class": "form-select"}),
             "lider": forms.Select(attrs={"class": "form-select"}),
             "supervisor": forms.Select(attrs={"class": "form-select"}),
@@ -60,10 +59,6 @@ class ColaboradorForm(forms.ModelForm):
             }),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "em_ferias": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "pacotes_treinamento": forms.SelectMultiple(attrs={
-                "class": "form-control",
-                "style": "height: 150px;"
-            }),
         }
 
 
