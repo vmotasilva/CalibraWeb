@@ -13,24 +13,30 @@ class AcaoComentarioInline(admin.TabularInline):
 
 
 class AcaoCorretivaAdmin(admin.ModelAdmin):
-    list_display = ['titulo', 'tipo', 'status', 'prioridade', 'responsavel', 'data_vencimento', 'esta_vencida']
-    list_filter = ['tipo', 'status', 'prioridade', 'data_criacao']
-    search_fields = ['titulo', 'descricao', 'responsavel__nome_completo']
-    readonly_fields = ['data_criacao']
+    list_display = ['numero_registro', 'titulo', 'tipo_solucao', 'status', 'responsavel', 'data_vencimento', 'esta_vencida']
+    list_filter = ['tipo', 'status', 'prioridade', 'ano', 'data_abertura']
+    search_fields = ['numero_registro', 'titulo', 'descricao', 'responsavel__nome_completo']
+    readonly_fields = ['data_abertura']
     inlines = [AcaoComentarioInline]
     
     fieldsets = (
-        ('Informações Básicas', {
-            'fields': ('titulo', 'descricao', 'tipo', 'prioridade', 'origem')
+        ('Identificação', {
+            'fields': ('numero_registro', 'ano', 'unidade')
+        }),
+        ('Informações da Ação', {
+            'fields': ('titulo', 'descricao', 'tipo', 'tipo_solucao', 'prioridade')
+        }),
+        ('Origem e Análise', {
+            'fields': ('origem', 'causa_raiz')
         }),
         ('Status e Prazos', {
-            'fields': ('status', 'data_criacao', 'data_vencimento', 'data_conclusao')
+            'fields': ('status', 'data_abertura', 'data_vencimento', 'data_conclusao')
         }),
         ('Responsáveis', {
             'fields': ('criado_por', 'responsavel')
         }),
         ('Detalhes Adicionais', {
-            'fields': ('meta', 'resultado', 'observacoes'),
+            'fields': ('meta', 'resultado', 'observacoes', 'link_registro'),
             'classes': ('collapse',)
         }),
         ('Status', {

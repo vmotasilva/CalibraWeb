@@ -103,26 +103,75 @@
     <!-- Tabela de Ações -->
     <div class="card shadow-sm">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
+            <table class="table table-hover mb-0 table-sm">
+                <thead class="table-light sticky-top">
                     <tr>
-                        <th>Título</th>
-                        <th>Tipo</th>
-                        <th>Status</th>
-                        <th>Prioridade</th>
+                        <th>Data de Abertura</th>
+                        <th>Ano</th>
+                        <th>Unidade</th>
+                        <th>Nº do Registro</th>
+                        <th>Tipo de Solução</th>
+                        <th>Origem do Problema</th>
+                        <th>Descrição</th>
+                        <th>Causa Raiz</th>
                         <th>Responsável</th>
-                        <th>Vencimento</th>
+                        <th>Observação</th>
+                        <th>Link</th>
+                        <th>Data Vencimento</th>
+                        <th>Data Fechamento</th>
+                        <th>Status</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for acao in acoes %}
                     <tr>
-                        <td><strong>{{ acao.titulo }}</strong></td>
+                        <td>{{ acao.data_abertura|date:"d/m/Y" }}</td>
+                        <td>{{ acao.ano }}</td>
+                        <td>{{ acao.unidade }}</td>
                         <td>
-                            <span class="badge {% if acao.tipo == 'corretiva' %}bg-danger{% else %}bg-info{% endif %}">
-                                {{ acao.get_tipo_display }}
-                            </span>
+                            <strong>{{ acao.numero_registro }}</strong>
+                        </td>
+                        <td>
+                            {% if acao.tipo_solucao %}
+                                <span class="badge bg-info">{{ acao.get_tipo_solucao_display }}</span>
+                            {% else %}
+                                ---
+                            {% endif %}
+                        </td>
+                        <td>{{ acao.origem|default:"---" }}</td>
+                        <td>
+                            <small>{{ acao.descricao|truncatewords:10 }}</small>
+                        </td>
+                        <td>
+                            <small>{{ acao.causa_raiz|truncatewords:8|default:"---" }}</small>
+                        </td>
+                        <td>{{ acao.responsavel.nome_completo|default:"---" }}</td>
+                        <td>
+                            <small>{{ acao.observacoes|truncatewords:8|default:"---" }}</small>
+                        </td>
+                        <td>
+                            {% if acao.link_registro %}
+                                <a href="{{ acao.link_registro }}" target="_blank" class="btn btn-sm btn-link">
+                                    <i class="bi bi-link-45deg"></i>
+                                </a>
+                            {% else %}
+                                ---
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if acao.esta_vencida %}
+                                <span class="badge bg-danger">{{ acao.data_vencimento|date:"d/m/Y" }}</span>
+                            {% else %}
+                                {{ acao.data_vencimento|date:"d/m/Y" }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if acao.data_conclusao %}
+                                {{ acao.data_conclusao|date:"d/m/Y" }}
+                            {% else %}
+                                ---
+                            {% endif %}
                         </td>
                         <td>
                             <span class="badge 
@@ -134,23 +183,6 @@
                             </span>
                         </td>
                         <td>
-                            <span class="badge 
-                                {% if acao.prioridade == 'baixa' %}bg-success
-                                {% elif acao.prioridade == 'media' %}bg-info
-                                {% elif acao.prioridade == 'alta' %}bg-warning
-                                {% else %}bg-danger{% endif %}">
-                                {{ acao.get_prioridade_display }}
-                            </span>
-                        </td>
-                        <td>{{ acao.responsavel.nome_completo|default:"---" }}</td>
-                        <td>
-                            {% if acao.esta_vencida %}
-                                <span class="badge bg-danger">{{ acao.data_vencimento|date:"d/m/Y" }}</span>
-                            {% else %}
-                                {{ acao.data_vencimento|date:"d/m/Y" }}
-                            {% endif %}
-                        </td>
-                        <td>
                             <a href="{% url 'acoes:detalhe_acao' acao.id %}" class="btn btn-sm btn-primary">
                                 <i class="bi bi-eye"></i>
                             </a>
@@ -158,7 +190,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-4">
+                        <td colspan="15" class="text-center py-4">
                             <p class="text-muted mb-0">Nenhuma ação encontrada.</p>
                         </td>
                     </tr>

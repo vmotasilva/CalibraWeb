@@ -28,20 +28,66 @@ class AcaoCorretiva(models.Model):
         ('critica', 'Crítica'),
     ]
     
+    TIPO_SOLUCAO_CHOICES = [
+        ('corretiva', 'Corretiva'),
+        ('preventiva', 'Preventiva'),
+        ('melhoria', 'Melhoria'),
+    ]
+    
+    # Identificação do Registro
+    numero_registro = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="Nº do Registro"
+    )
+    ano = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Ano"
+    )
+    unidade = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="Unidade"
+    )
+    
     # Informações básicas
     titulo = models.CharField(max_length=200, verbose_name="Título da Ação")
-    descricao = models.TextField(verbose_name="Descrição")
+    descricao = models.TextField(verbose_name="Descrição da NC e/ou Melhoria")
     tipo = models.CharField(
         max_length=20, 
         choices=TIPO_CHOICES, 
         default='corretiva',
         verbose_name="Tipo de Ação"
     )
+    tipo_solucao = models.CharField(
+        max_length=20,
+        choices=TIPO_SOLUCAO_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Tipo de Solução"
+    )
     prioridade = models.CharField(
         max_length=20,
         choices=PRIORIDADE_CHOICES,
         default='media',
         verbose_name="Prioridade"
+    )
+    
+    # Origem e Causa
+    origem = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="Origem do Problema"
+    )
+    causa_raiz = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Causa Raiz"
     )
     
     # Status e prazos
@@ -51,9 +97,19 @@ class AcaoCorretiva(models.Model):
         default='aberta',
         verbose_name="Status"
     )
-    data_criacao = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
-    data_vencimento = models.DateField(verbose_name="Data de Vencimento")
-    data_conclusao = models.DateField(null=True, blank=True, verbose_name="Data de Conclusão")
+    data_abertura = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Data de Abertura"
+    )
+    data_vencimento = models.DateField(
+        verbose_name="Data de Fechamento Programada"
+    )
+    data_conclusao = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Data de Fechamento"
+    )
     
     # Responsáveis
     criado_por = models.ForeignKey(
@@ -72,15 +128,14 @@ class AcaoCorretiva(models.Model):
     )
     
     # Campos adicionais
-    origem = models.CharField(
-        max_length=100,
-        null=True,
-        blank=True,
-        verbose_name="Origem (Ex: Auditoria, Não Conformidade, etc.)"
-    )
     meta = models.TextField(null=True, blank=True, verbose_name="Meta/Objetivo")
     resultado = models.TextField(null=True, blank=True, verbose_name="Resultado Obtido")
-    observacoes = models.TextField(null=True, blank=True, verbose_name="Observações")
+    observacoes = models.TextField(null=True, blank=True, verbose_name="Observação")
+    link_registro = models.URLField(
+        null=True,
+        blank=True,
+        verbose_name="Link do Registro"
+    )
     
     # Ativo/Inativo
     ativo = models.BooleanField(default=True, verbose_name="Ativo")
@@ -88,16 +143,17 @@ class AcaoCorretiva(models.Model):
     class Meta:
         verbose_name = "Ação Corretiva/Preventiva"
         verbose_name_plural = "Ações Corretivas/Preventivas"
-        ordering = ['-data_criacao']
+        ordering = ['-data_abertura']
         indexes = [
-            models.Index(fields=['-data_criacao']),
+            models.Index(fields=['-data_abertura']),
             models.Index(fields=['status']),
             models.Index(fields=['responsavel']),
             models.Index(fields=['prioridade']),
+            models.Index(fields=['numero_registro']),
         ]
     
     def __str__(self):
-        return f"{self.get_tipo_display()} - {self.titulo}"
+        return f"{self.numero_registro} - {self.titulo}"
     
     def dias_vencimento(self):
         """Retorna dias até o vencimento (negativo se vencida)."""
