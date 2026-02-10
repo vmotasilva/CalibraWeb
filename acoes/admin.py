@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models import (
     AcaoCorretiva, 
     AcaoComentario,
+    TemplateSolucao,
     Solucao,
     PlanoAcao,
     SolucaoA3,
@@ -270,3 +271,27 @@ admin_site.register(Solucao8D, Solucao8DAdmin)
 admin_site.register(SolucaoRNC, SolucaoRNCAdmin)
 admin_site.register(SolucaoGestaoDeMudanca, SolucaoGestaoDeMudancaAdmin)
 admin_site.register(RevisaoGerencial, RevisaoGerencialAdmin)
+
+
+@admin.register(TemplateSolucao)
+class TemplateSolucaoAdmin(admin.ModelAdmin):
+    list_display = ('get_tipo_display', 'descricao', 'data_upload', 'arquivo_pdf', 'ativo')
+    list_filter = ('tipo', 'ativo', 'data_upload')
+    search_fields = ('descricao', 'tipo')
+    readonly_fields = ('data_upload',)
+    
+    fieldsets = (
+        ('Informações', {
+            'fields': ('tipo', 'descricao')
+        }),
+        ('Arquivo', {
+            'fields': ('arquivo_pdf', 'data_upload')
+        }),
+        ('Status', {
+            'fields': ('ativo',)
+        }),
+    )
+    
+    def get_tipo_display(self, obj):
+        return obj.get_tipo_display()
+    get_tipo_display.short_description = "Tipo de Solução"

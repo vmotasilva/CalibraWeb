@@ -6,6 +6,49 @@ from django.utils import timezone
 from django.db.models import Q
 
 
+class TemplateSolucao(models.Model):
+    """Armazena templates em PDF para cada tipo de solução"""
+    
+    TIPO_CHOICES = [
+        ('plano_acao', 'Plano de Ação'),
+        ('a3', 'A3'),
+        ('8d', '8D'),
+        ('rnc', 'RNC'),
+        ('gestao_mudanca', 'Gestão de Mudança'),
+        ('revisao_gerencial', 'Revisão Gerencial'),
+    ]
+    
+    tipo = models.CharField(
+        max_length=20,
+        choices=TIPO_CHOICES,
+        unique=True,
+        verbose_name="Tipo de Solução"
+    )
+    descricao = models.CharField(
+        max_length=255,
+        verbose_name="Descrição"
+    )
+    arquivo_pdf = models.FileField(
+        upload_to='templates_solucoes/',
+        verbose_name="Arquivo PDF"
+    )
+    data_upload = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Data de Upload"
+    )
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name="Ativo"
+    )
+    
+    class Meta:
+        verbose_name = "Template de Solução"
+        verbose_name_plural = "Templates de Soluções"
+    
+    def __str__(self):
+        return f"Template {self.get_tipo_display()}"
+
+
 class AcaoCorretiva(models.Model):
     """Modelo para gerenciar ações corretivas e preventivas."""
     

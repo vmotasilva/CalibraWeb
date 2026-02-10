@@ -5,6 +5,8 @@ from .views_solucoes import (
     detalhe_solucao,
     criar_solucao,
     editar_solucao,
+    listar_templates,
+    download_template,
 )
 
 app_name = 'acoes'
@@ -19,4 +21,8 @@ urlpatterns = [
     path('solucao/<int:solucao_id>/', detalhe_solucao, name='detalhe_solucao'),
     path('acao/<int:acao_id>/solucao/criar/', criar_solucao, name='criar_solucao'),
     path('solucao/<int:solucao_id>/editar/', editar_solucao, name='editar_solucao'),
+    
+    # Templates
+    path('templates/', listar_templates, name='listar_templates'),
+    path('template/<int:template_id>/download/', download_template, name='download_template'),
 ]

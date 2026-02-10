@@ -1,10 +1,11 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from django.db.models import Q
 from .models import (
     AcaoCorretiva,
     Solucao,
+    TemplateSolucao,
     PlanoAcao,
     SolucaoA3,
     Solucao8D,
@@ -12,6 +13,32 @@ from .models import (
     SolucaoGestaoDeMudanca,
     RevisaoGerencial
 )
+
+
+@login_required
+def listar_templates(request):
+    """Lista todos os templates de solução disponíveis"""
+    templates = TemplateSolucao.objects.filter(ativo=True).order_by('tipo')
+    
+    context = {
+        'templates': templates,
+    }
+    
+    return render(request, 'acoes/listar_templates.html', context)
+
+
+@login_required
+def download_template(request, template_id):
+    """Faz download de um template PDF"""
+    template = get_object_or_404(TemplateSolucao, id=template_id, ativo=True)
+    
+    if template.arquivo_pdf:
+        response = FileResponse(template.arquivo_pdf.open('rb'), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="template_{template.get_tipo_display()}.pdf"'
+        return response
+    
+    return JsonResponse({'error': 'Arquivo não encontrado'}, status=404)
+
 
 
 @login_required
