@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Criar Solução{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{% url 'acoes:detalhe_acao' acao.id %}" class="btn btn-outline-secondary btn-sm mb-3">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            
+            <h1 class="mb-2">
+                <i class="bi bi-plus-circle"></i> Nova Solução
+            </h1>
+            <p class="text-muted">Ação: <strong>{{ acao.numero_registro }}</strong> - {{ acao.titulo }}</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <p class="text-muted mb-4">
+                        <i class="bi bi-info-circle"></i> 
+                        Selecione o tipo de solução que deseja criar. Cada tipo de solução possui uma abordagem e fluxo específicos.
+                    </p>
+
+                    <div class="row g-3">
+                        <!-- Plano de Ação -->
+                        <div class="col-md-6">
+                            <button 
+                                type="button"
+                                class="card card-tipo h-100 border-0 shadow-sm cursor-pointer" 
+                                onclick="selecionarTipo('plano_acao')"
+                                style="cursor: pointer; transition: all 0.3s ease;"
+                            >
+                                <div class="card-body text-center">
+                                    <i class="bi bi-checklist" style="font-size: 2.5rem; color: #0d6efd;"></i>
+                                    <h5 class="card-title mt-3 mb-2">Plano de Ação</h5>
+                                    <p class="card-text text-muted small">
+                                        Definir ações específicas com responsáveis e prazos
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- A3 -->
+                        <div class="col-md-6">
+                            <button 
+                                type="button"
+                                class="card card-tipo h-100 border-0 shadow-sm cursor-pointer" 
+                                onclick="selecionarTipo('a3')"
+                                style="cursor: pointer; transition: all 0.3s ease;"
+                            >
+                                <div class="card-body text-center">
+                                    <i class="bi bi-file-pdf" style="font-size: 2.5rem; color: #0dcaf0;"></i>
+                                    <h5 class="card-title mt-3 mb-2">Relatório A3</h5>
+                                    <p class="card-text text-muted small">
+                                        Análise de problema em uma página (Toyota)
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- 8D -->
+                        <div class="col-md-6">
+                            <button 
+                                type="button"
+                                class="card card-tipo h-100 border-0 shadow-sm cursor-pointer" 
+                                onclick="selecionarTipo('8d')"
+                                style="cursor: pointer; transition: all 0.3s ease;"
+                            >
+                                <div class="card-body text-center">
+                                    <i class="bi bi-diagram-3" style="font-size: 2.5rem; color: #198754;"></i>
+                                    <h5 class="card-title mt-3 mb-2">8 Disciplinas</h5>
+                                    <p class="card-text text-muted small">
+                                        Abordagem estruturada em 8 etapas (Ford)
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- RNC -->
+                        <div class="col-md-6">
+                            <button 
+                                type="button"
+                                class="card card-tipo h-100 border-0 shadow-sm cursor-pointer" 
+                                onclick="selecionarTipo('rnc')"
+                                style="cursor: pointer; transition: all 0.3s ease;"
+                            >
+                                <div class="card-body text-center">
+                                    <i class="bi bi-x-circle" style="font-size: 2.5rem; color: #ffc107;"></i>
+                                    <h5 class="card-title mt-3 mb-2">RNC</h5>
+                                    <p class="card-text text-muted small">
+                                        Relatório de Não Conformidade (ISO 9001)
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Gestão de Mudança -->
+                        <div class="col-md-6">
+                            <button 
+                                type="button"
+                                class="card card-tipo h-100 border-0 shadow-sm cursor-pointer" 
+                                onclick="selecionarTipo('gestao_mudanca')"
+                                style="cursor: pointer; transition: all 0.3s ease;"
+                            >
+                                <div class="card-body text-center">
+                                    <i class="bi bi-arrow-repeat" style="font-size: 2.5rem; color: #dc3545;"></i>
+                                    <h5 class="card-title mt-3 mb-2">Gestão de Mudança</h5>
+                                    <p class="card-text text-muted small">
+                                        Controlar e validar mudanças no processo
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
+
+                        <!-- Revisão Gerencial -->
+                        <div class="col-md-6">
+                            <button 
+                                type="button"
+                                class="card card-tipo h-100 border-0 shadow-sm cursor-pointer" 
+                                onclick="selecionarTipo('revisao_gerencial')"
+                                style="cursor: pointer; transition: all 0.3s ease;"
+                            >
+                                <div class="card-body text-center">
+                                    <i class="bi bi-graph-up" style="font-size: 2.5rem; color: #6c757d;"></i>
+                                    <h5 class="card-title mt-3 mb-2">Revisão Gerencial</h5>
+                                    <p class="card-text text-muted small">
+                                        Análise estratégica e recomendações
+                                    </p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <form id="formSolucao" method="post" class="mt-4" style="display: none;">
+                        {% csrf_token %}
+                        <input type="hidden" id="tipoSolucao" name="tipo">
+                        
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label">Título da Solução</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="4"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="responsavel" class="form-label">Responsável</label>
+                            <select class="form-select" id="responsavel" name="responsavel">
+                                <option value="">Selecione um responsável</option>
+                                <!-- Adicionar colaboradores dinamicamente -->
+                            </select>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-secondary" onclick="voltarSelecao()">
+                                <i class="bi bi-arrow-left"></i> Voltar
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Criar Solução
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Painel lateral com informações -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle"></i> Ação Corretiva
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Número de Registro</label>
+                        <p class="mb-0">
+                            <strong>{{ acao.numero_registro }}</strong>
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Título</label>
+                        <p class="mb-0">
+                            <strong>{{ acao.titulo }}</strong>
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Tipo</label>
+                        <p class="mb-0">
+                            {% if acao.tipo == 'corretiva' %}
+                                <span class="badge bg-danger">Corretiva</span>
+                            {% else %}
+                                <span class="badge bg-info">Preventiva</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Status</label>
+                        <p class="mb-0">
+                            {% if acao.status == 'aberta' %}
+                                <span class="badge bg-secondary">Aberta</span>
+                            {% elif acao.status == 'em_progresso' %}
+                                <span class="badge bg-warning">Em Progresso</span>
+                            {% elif acao.status == 'concluida' %}
+                                <span class="badge bg-success">Concluída</span>
+                            {% else %}
+                                <span class="badge bg-dark">Cancelada</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label text-muted small">Responsável</label>
+                        <p class="mb-0">
+                            <strong>{{ acao.responsavel.nome_completo|default:'-' }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card-tipo {
+        border: 2px solid #e9ecef;
+    }
+
+    .card-tipo:hover {
+        border-color: #0d6efd !important;
+        box-shadow: 0 0.5rem 1rem rgba(13, 110, 253, 0.15) !important;
+        transform: translateY(-2px);
+    }
+
+    .card-tipo.active {
+        border-color: #0d6efd;
+        background-color: #f0f7ff;
+    }
+</style>
+
+<script>
+    function selecionarTipo(tipo) {
+        // Esconder seleção e mostrar formulário
+        document.querySelectorAll('.card-tipo').forEach(card => {
+            card.classList.remove('active');
+        });
+        
+        event.target.closest('.card-tipo').classList.add('active');
+        document.getElementById('tipoSolucao').value = tipo;
+        document.getElementById('formSolucao').style.display = 'block';
+        
+        // Scroll para o formulário
+        document.getElementById('formSolucao').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function voltarSelecao() {
+        document.getElementById('formSolucao').style.display = 'none';
+        document.getElementById('tipoSolucao').value = '';
+        document.querySelectorAll('.card-tipo').forEach(card => {
+            card.classList.remove('active');
+        });
+    }
+
+    document.getElementById('formSolucao').addEventListener('submit', function(e) {
+        if (!document.getElementById('tipoSolucao').value) {
+            e.preventDefault();
+            alert('Por favor, selecione um tipo de solução');
+        }
+    });
+</script>
+{% endblock %}

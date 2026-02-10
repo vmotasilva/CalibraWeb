@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Soluções de Ações Corretivas/Preventivas{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-2">
+                        <i class="bi bi-lightbulb"></i> Soluções
+                    </h1>
+                    <p class="text-muted">Gerenciar diferentes tipos de soluções para ações corretivas e preventivas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de contagem por tipo -->
+    <div class="row mb-4">
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card h-100 border-0 shadow-sm bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">Planos de Ação</h6>
+                    <h2 class="card-text">{{ contagem.plano_acao }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card h-100 border-0 shadow-sm bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">A3</h6>
+                    <h2 class="card-text">{{ contagem.a3 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card h-100 border-0 shadow-sm bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">8D</h6>
+                    <h2 class="card-text">{{ contagem.8d }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card h-100 border-0 shadow-sm bg-warning text-dark">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">RNC</h6>
+                    <h2 class="card-text">{{ contagem.rnc }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card h-100 border-0 shadow-sm bg-danger text-white">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">Gestão de Mudança</h6>
+                    <h2 class="card-text">{{ contagem.gestao_mudanca }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card h-100 border-0 shadow-sm bg-secondary text-white">
+                <div class="card-body">
+                    <h6 class="card-title mb-2">Revisão Gerencial</h6>
+                    <h2 class="card-text">{{ contagem.revisao_gerencial }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="busca" class="form-label">Busca</label>
+                            <input 
+                                type="text" 
+                                id="busca" 
+                                name="busca" 
+                                class="form-control" 
+                                placeholder="Título ou descrição"
+                                value="{{ busca }}"
+                            >
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tipo" class="form-label">Tipo de Solução</label>
+                            <select id="tipo" name="tipo" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="plano_acao" {% if tipo_selecionado == 'plano_acao' %}selected{% endif %}>Plano de Ação</option>
+                                <option value="a3" {% if tipo_selecionado == 'a3' %}selected{% endif %}>A3</option>
+                                <option value="8d" {% if tipo_selecionado == '8d' %}selected{% endif %}>8D</option>
+                                <option value="rnc" {% if tipo_selecionado == 'rnc' %}selected{% endif %}>RNC</option>
+                                <option value="gestao_mudanca" {% if tipo_selecionado == 'gestao_mudanca' %}selected{% endif %}>Gestão de Mudança</option>
+                                <option value="revisao_gerencial" {% if tipo_selecionado == 'revisao_gerencial' %}selected{% endif %}>Revisão Gerencial</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="status" class="form-label">Status</label>
+                            <select id="status" name="status" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="planejamento" {% if status_selecionado == 'planejamento' %}selected{% endif %}>Planejamento</option>
+                                <option value="analise" {% if status_selecionado == 'analise' %}selected{% endif %}>Análise</option>
+                                <option value="implementacao" {% if status_selecionado == 'implementacao' %}selected{% endif %}>Implementação</option>
+                                <option value="validacao" {% if status_selecionado == 'validacao' %}selected{% endif %}>Validação</option>
+                                <option value="encerrada" {% if status_selecionado == 'encerrada' %}selected{% endif %}>Encerrada</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                            <a href="{% url 'acoes:listar_solucoes' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-clockwise"></i> Limpar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Soluções -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-list-check"></i> Lista de Soluções
+                        {% if solucoes.count %}
+                            <span class="badge bg-secondary">{{ solucoes.count }}</span>
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if solucoes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 20%;">Título</th>
+                                        <th style="width: 15%;">Tipo</th>
+                                        <th style="width: 15%;">Ação Relacionada</th>
+                                        <th style="width: 15%;">Status</th>
+                                        <th style="width: 15%;">Responsável</th>
+                                        <th style="width: 10%;">Data</th>
+                                        <th style="width: 10%;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for solucao in solucoes %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ solucao.titulo }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ solucao.descricao|truncatewords:10 }}</small>
+                                            </td>
+                                            <td>
+                                                {% if solucao.tipo == 'plano_acao' %}
+                                                    <span class="badge bg-primary">Plano de Ação</span>
+                                                {% elif solucao.tipo == 'a3' %}
+                                                    <span class="badge bg-info">A3</span>
+                                                {% elif solucao.tipo == '8d' %}
+                                                    <span class="badge bg-success">8D</span>
+                                                {% elif solucao.tipo == 'rnc' %}
+                                                    <span class="badge bg-warning text-dark">RNC</span>
+                                                {% elif solucao.tipo == 'gestao_mudanca' %}
+                                                    <span class="badge bg-danger">Gestão de Mudança</span>
+                                                {% elif solucao.tipo == 'revisao_gerencial' %}
+                                                    <span class="badge bg-secondary">Revisão Gerencial</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'acoes:detalhe_acao' solucao.acao_corretiva.id %}" class="text-decoration-none">
+                                                    {{ solucao.acao_corretiva.numero_registro }}
+                                                </a>
+                                                <br>
+                                                <small class="text-muted">{{ solucao.acao_corretiva.titulo|truncatewords:5 }}</small>
+                                            </td>
+                                            <td>
+                                                {% if solucao.status == 'planejamento' %}
+                                                    <span class="badge bg-secondary">Planejamento</span>
+                                                {% elif solucao.status == 'analise' %}
+                                                    <span class="badge bg-info">Análise</span>
+                                                {% elif solucao.status == 'implementacao' %}
+                                                    <span class="badge bg-warning text-dark">Implementação</span>
+                                                {% elif solucao.status == 'validacao' %}
+                                                    <span class="badge bg-primary">Validação</span>
+                                                {% elif solucao.status == 'encerrada' %}
+                                                    <span class="badge bg-success">Encerrada</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if solucao.responsavel %}
+                                                    {{ solucao.responsavel.nome_completo }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small>{{ solucao.data_criacao|date:"d/m/Y" }}</small>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'acoes:detalhe_solucao' solucao.id %}" class="btn btn-sm btn-outline-primary" title="Ver detalhes">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a href="{% url 'acoes:editar_solucao' solucao.id %}" class="btn btn-sm btn-outline-secondary" title="Editar">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info m-4">
+                            <i class="bi bi-info-circle"></i> Nenhuma solução encontrada com os filtros selecionados.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-responsive {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+</style>
+{% endblock %}

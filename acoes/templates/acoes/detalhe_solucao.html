@@ -1,0 +1,626 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalhes da Solução{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{% url 'acoes:listar_solucoes' %}" class="btn btn-outline-secondary btn-sm mb-3">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1 class="mb-2">
+                        <i class="bi bi-lightbulb-fill"></i> {{ solucao.titulo }}
+                    </h1>
+                    <div class="mb-3">
+                        {% if solucao.tipo == 'plano_acao' %}
+                            <span class="badge bg-primary">Plano de Ação</span>
+                        {% elif solucao.tipo == 'a3' %}
+                            <span class="badge bg-info">A3</span>
+                        {% elif solucao.tipo == '8d' %}
+                            <span class="badge bg-success">8D</span>
+                        {% elif solucao.tipo == 'rnc' %}
+                            <span class="badge bg-warning text-dark">RNC</span>
+                        {% elif solucao.tipo == 'gestao_mudanca' %}
+                            <span class="badge bg-danger">Gestão de Mudança</span>
+                        {% elif solucao.tipo == 'revisao_gerencial' %}
+                            <span class="badge bg-secondary">Revisão Gerencial</span>
+                        {% endif %}
+                        
+                        {% if solucao.status == 'planejamento' %}
+                            <span class="badge bg-secondary">Planejamento</span>
+                        {% elif solucao.status == 'analise' %}
+                            <span class="badge bg-info">Análise</span>
+                        {% elif solucao.status == 'implementacao' %}
+                            <span class="badge bg-warning text-dark">Implementação</span>
+                        {% elif solucao.status == 'validacao' %}
+                            <span class="badge bg-primary">Validação</span>
+                        {% elif solucao.status == 'encerrada' %}
+                            <span class="badge bg-success">Encerrada</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <a href="{% url 'acoes:editar_solucao' solucao.id %}" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Coluna principal -->
+        <div class="col-lg-9">
+            <!-- Descrição geral -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-file-text"></i> Informações Básicas
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small">Ação Corretiva Relacionada</label>
+                            <a href="{% url 'acoes:detalhe_acao' solucao.acao_corretiva.id %}" class="text-decoration-none">
+                                <strong>{{ solucao.acao_corretiva.numero_registro }}</strong><br>
+                                {{ solucao.acao_corretiva.titulo }}
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small">Responsável</label>
+                            <strong>{{ solucao.responsavel.nome_completo|default:'-' }}</strong>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small">Data de Criação</label>
+                            <strong>{{ solucao.data_criacao|date:"d/m/Y H:i" }}</strong>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label text-muted small">Data de Conclusão</label>
+                            <strong>{{ solucao.data_conclusao|date:"d/m/Y"|default:'-' }}</strong>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label text-muted small">Descrição</label>
+                        <p>{{ solucao.descricao|linebreaks }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detalhes específicos por tipo -->
+            {% if solucao.tipo == 'plano_acao' and detalhes %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-bottom">
+                        <h6 class="mb-0">
+                            <i class="bi bi-checklist"></i> Detalhes do Plano de Ação
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Responsável pela Ação</label>
+                                <strong>{{ detalhes.responsavel_acao.nome_completo|default:'-' }}</strong>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Status</label>
+                                {% if detalhes.status == 'planejado' %}
+                                    <span class="badge bg-secondary">Planejado</span>
+                                {% elif detalhes.status == 'em_execucao' %}
+                                    <span class="badge bg-warning text-dark">Em Execução</span>
+                                {% elif detalhes.status == 'concluido' %}
+                                    <span class="badge bg-success">Concluído</span>
+                                {% elif detalhes.status == 'cancelado' %}
+                                    <span class="badge bg-danger">Cancelado</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Data de Início</label>
+                                <strong>{{ detalhes.data_inicio|date:"d/m/Y"|default:'-' }}</strong>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Data de Conclusão</label>
+                                <strong>{{ detalhes.data_conclusao|date:"d/m/Y"|default:'-' }}</strong>
+                            </div>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label text-muted small">Ação Proposta</label>
+                            <p>{{ detalhes.acao_proposta|linebreaks }}</p>
+                        </div>
+                        {% if detalhes.resultado %}
+                            <div class="mb-0">
+                                <label class="form-label text-muted small">Resultado</label>
+                                <p>{{ detalhes.resultado|linebreaks }}</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            {% elif solucao.tipo == 'a3' and detalhes %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-bottom">
+                        <h6 class="mb-0">
+                            <i class="bi bi-file-pdf"></i> Relatório A3
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Descrição do Problema</label>
+                                <p>{{ detalhes.problema_descricao|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Impacto do Problema</label>
+                                <p>{{ detalhes.problema_impacto|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Situação Atual</label>
+                                <p>{{ detalhes.situacao_atual|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Análise de Causas</label>
+                                <p>{{ detalhes.analise_causas|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Causa Raiz Identificada</label>
+                                <p>{{ detalhes.causa_raiz|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Contramedidas Propostas</label>
+                                <p>{{ detalhes.contramedidas|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Resultados Esperados</label>
+                                <p>{{ detalhes.resultados_esperados|linebreaks }}</p>
+                            </div>
+                        </div>
+                        {% if detalhes.plano_verificacao %}
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label text-muted small">Plano de Verificação</label>
+                                    <p>{{ detalhes.plano_verificacao|linebreaks }}</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                        {% if detalhes.resultado_verificacao %}
+                            <div class="row">
+                                <div class="col-12 mb-0">
+                                    <label class="form-label text-muted small">Resultado da Verificação</label>
+                                    <p>{{ detalhes.resultado_verificacao|linebreaks }}</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            {% elif solucao.tipo == '8d' and detalhes %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-bottom">
+                        <h6 class="mb-0">
+                            <i class="bi bi-diagram-3"></i> 8 Disciplinas
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <!-- D1 -->
+                        <div class="mb-4">
+                            <div class="alert alert-light border-start border-success border-5 mb-2">
+                                <strong>D1 - Nomear o Time</strong>
+                            </div>
+                            <p>{{ detalhes.d1_time|linebreaks }}</p>
+                        </div>
+
+                        <!-- D2 -->
+                        <div class="mb-4">
+                            <div class="alert alert-light border-start border-success border-5 mb-2">
+                                <strong>D2 - Descrever o Problema</strong>
+                            </div>
+                            <p><strong>Descrição:</strong> {{ detalhes.d2_descricao|linebreaks }}</p>
+                            <p><strong>Especificações Afetadas:</strong> {{ detalhes.d2_especificacoes|linebreaks }}</p>
+                        </div>
+
+                        <!-- D3 -->
+                        {% if detalhes.d3_contencao %}
+                            <div class="mb-4">
+                                <div class="alert alert-light border-start border-success border-5 mb-2">
+                                    <strong>D3 - Conter o Problema</strong>
+                                </div>
+                                <p>{{ detalhes.d3_contencao|linebreaks }}</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- D4 -->
+                        {% if detalhes.d4_causas %}
+                            <div class="mb-4">
+                                <div class="alert alert-light border-start border-success border-5 mb-2">
+                                    <strong>D4 - Análise de Causa Raiz</strong>
+                                </div>
+                                <p><strong>Causas:</strong> {{ detalhes.d4_causas|linebreaks }}</p>
+                                <p><strong>Causa Raiz:</strong> {{ detalhes.d4_causa_raiz|linebreaks }}</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- D5 -->
+                        {% if detalhes.d5_contramedidas %}
+                            <div class="mb-4">
+                                <div class="alert alert-light border-start border-success border-5 mb-2">
+                                    <strong>D5 - Desenvolvimento de Contramedidas</strong>
+                                </div>
+                                <p>{{ detalhes.d5_contramedidas|linebreaks }}</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- D6 -->
+                        {% if detalhes.d6_implementacao %}
+                            <div class="mb-4">
+                                <div class="alert alert-light border-start border-success border-5 mb-2">
+                                    <strong>D6 - Implementação de Contramedidas</strong>
+                                </div>
+                                <p>{{ detalhes.d6_implementacao|linebreaks }}</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- D7 -->
+                        {% if detalhes.d7_verificacao %}
+                            <div class="mb-4">
+                                <div class="alert alert-light border-start border-success border-5 mb-2">
+                                    <strong>D7 - Verificação de Efetividade</strong>
+                                </div>
+                                <p><strong>Verificação:</strong> {{ detalhes.d7_verificacao|linebreaks }}</p>
+                                <p><strong>Resultado:</strong> {{ detalhes.d7_resultado|linebreaks }}</p>
+                            </div>
+                        {% endif %}
+
+                        <!-- D8 -->
+                        {% if detalhes.d8_padronizacao %}
+                            <div class="mb-0">
+                                <div class="alert alert-light border-start border-success border-5 mb-2">
+                                    <strong>D8 - Padronização e Fechamento</strong>
+                                </div>
+                                <p><strong>Padronização:</strong> {{ detalhes.d8_padronizacao|linebreaks }}</p>
+                                <p><strong>Encerramento:</strong> {{ detalhes.d8_encerramento|linebreaks }}</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            {% elif solucao.tipo == 'rnc' and detalhes %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-bottom">
+                        <h6 class="mb-0">
+                            <i class="bi bi-x-circle"></i> Relatório de Não Conformidade
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Tipo de NC</label>
+                                {% if detalhes.nc_tipo == 'maior' %}
+                                    <span class="badge bg-danger">Maior</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Menor</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Descrição da Não Conformidade</label>
+                                <p>{{ detalhes.nc_descricao|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Análise de Causas</label>
+                                <p>{{ detalhes.analise_causas|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Causa Raiz</label>
+                                <p>{{ detalhes.causa_raiz|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Ação Imediata</label>
+                                <p>{{ detalhes.acao_imediata|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Ação Corretiva</label>
+                                <p>{{ detalhes.acao_corretiva|linebreaks }}</p>
+                            </div>
+                        </div>
+                        {% if detalhes.acao_preventiva %}
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label text-muted small">Ação Preventiva</label>
+                                    <p>{{ detalhes.acao_preventiva|linebreaks }}</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Plano de Verificação</label>
+                                <p>{{ detalhes.plano_verificacao|linebreaks }}</p>
+                            </div>
+                        </div>
+                        {% if detalhes.resultado %}
+                            <div class="row">
+                                <div class="col-12 mb-0">
+                                    <label class="form-label text-muted small">Resultado</label>
+                                    <p>{{ detalhes.resultado|linebreaks }}</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            {% elif solucao.tipo == 'gestao_mudanca' and detalhes %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-bottom">
+                        <h6 class="mb-0">
+                            <i class="bi bi-arrow-repeat"></i> Gestão de Mudança
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Status</label>
+                                {% if detalhes.status == 'proposta' %}
+                                    <span class="badge bg-secondary">Proposta</span>
+                                {% elif detalhes.status == 'analise' %}
+                                    <span class="badge bg-info">Análise</span>
+                                {% elif detalhes.status == 'aprovada' %}
+                                    <span class="badge bg-primary">Aprovada</span>
+                                {% elif detalhes.status == 'implementada' %}
+                                    <span class="badge bg-success">Implementada</span>
+                                {% elif detalhes.status == 'rejeitada' %}
+                                    <span class="badge bg-danger">Rejeitada</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Data de Implementação</label>
+                                <strong>{{ detalhes.data_implementacao|date:"d/m/Y" }}</strong>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Descrição da Mudança</label>
+                                <p>{{ detalhes.mudanca_descricao|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Motivação/Justificativa</label>
+                                <p>{{ detalhes.motivacao|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Impacto em Processos</label>
+                                <p>{{ detalhes.impacto_processos|linebreaks }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Impacto em Sistemas</label>
+                                <p>{{ detalhes.impacto_sistemas|linebreaks|default:'-' }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Impacto em Pessoas</label>
+                                <p>{{ detalhes.impacto_pessoas|linebreaks|default:'-' }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Plano de Implementação</label>
+                                <p>{{ detalhes.plano_implementacao|linebreaks }}</p>
+                            </div>
+                        </div>
+                        {% if detalhes.plano_validacao %}
+                            <div class="row">
+                                <div class="col-12 mb-3">
+                                    <label class="form-label text-muted small">Plano de Validação</label>
+                                    <p>{{ detalhes.plano_validacao|linebreaks }}</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                        {% if detalhes.resultado_validacao %}
+                            <div class="row">
+                                <div class="col-12 mb-0">
+                                    <label class="form-label text-muted small">Resultado da Validação</label>
+                                    <p>{{ detalhes.resultado_validacao|linebreaks }}</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+            {% elif solucao.tipo == 'revisao_gerencial' and detalhes %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-light border-bottom">
+                        <h6 class="mb-0">
+                            <i class="bi bi-graph-up"></i> Revisão Gerencial
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Prioridade de Implementação</label>
+                                {% if detalhes.prioridade_implementacao == 'alta' %}
+                                    <span class="badge bg-danger">Alta</span>
+                                {% elif detalhes.prioridade_implementacao == 'media' %}
+                                    <span class="badge bg-warning text-dark">Média</span>
+                                {% elif detalhes.prioridade_implementacao == 'baixa' %}
+                                    <span class="badge bg-secondary">Baixa</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Data Alvo de Implementação</label>
+                                <strong>{{ detalhes.data_alvo_implementacao|date:"d/m/Y"|default:'-' }}</strong>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Descrição da Revisão</label>
+                                <p>{{ detalhes.revisao_descricao|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Escopo da Revisão</label>
+                                <p>{{ detalhes.escopo|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Achados Principais</label>
+                                <p>{{ detalhes.achados_principais|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Oportunidades de Melhoria</label>
+                                <p>{{ detalhes.oportunidades_melhoria|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Recomendações</label>
+                                <p>{{ detalhes.recomendacoes|linebreaks }}</p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Responsável pela Implementação</label>
+                                <p>{{ detalhes.responsavel_implementacao.nome_completo|default:'-' }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Data de Conclusão</label>
+                                <strong>{{ detalhes.data_conclusao|date:"d/m/Y"|default:'-' }}</strong>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Plano de Ação</label>
+                                <p>{{ detalhes.plano_acao|linebreaks }}</p>
+                            </div>
+                        </div>
+                        {% if detalhes.resultado %}
+                            <div class="row">
+                                <div class="col-12 mb-0">
+                                    <label class="form-label text-muted small">Resultado</label>
+                                    <p>{{ detalhes.resultado|linebreaks }}</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Coluna lateral - Informações e ações -->
+        <div class="col-lg-3">
+            <!-- Card de informações -->
+            <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle"></i> Informações
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <small class="text-muted d-block mb-1">Tipo</small>
+                        <strong class="d-block">
+                            {% if solucao.tipo == 'plano_acao' %}
+                                Plano de Ação
+                            {% elif solucao.tipo == 'a3' %}
+                                A3
+                            {% elif solucao.tipo == '8d' %}
+                                8D
+                            {% elif solucao.tipo == 'rnc' %}
+                                RNC
+                            {% elif solucao.tipo == 'gestao_mudanca' %}
+                                Gestão de Mudança
+                            {% elif solucao.tipo == 'revisao_gerencial' %}
+                                Revisão Gerencial
+                            {% endif %}
+                        </strong>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <small class="text-muted d-block mb-1">Status</small>
+                        <strong class="d-block">
+                            {% if solucao.status == 'planejamento' %}
+                                Planejamento
+                            {% elif solucao.status == 'analise' %}
+                                Análise
+                            {% elif solucao.status == 'implementacao' %}
+                                Implementação
+                            {% elif solucao.status == 'validacao' %}
+                                Validação
+                            {% elif solucao.status == 'encerrada' %}
+                                Encerrada
+                            {% endif %}
+                        </strong>
+                    </div>
+
+                    <div class="mb-4">
+                        <small class="text-muted d-block mb-1">Criada em</small>
+                        <strong class="d-block">{{ solucao.data_criacao|date:"d/m/Y" }}</strong>
+                    </div>
+
+                    {% if solucao.data_inicio %}
+                        <div class="mb-4">
+                            <small class="text-muted d-block mb-1">Data de Início</small>
+                            <strong class="d-block">{{ solucao.data_inicio|date:"d/m/Y" }}</strong>
+                        </div>
+                    {% endif %}
+
+                    {% if solucao.data_conclusao %}
+                        <div class="mb-4">
+                            <small class="text-muted d-block mb-1">Data de Conclusão</small>
+                            <strong class="d-block">{{ solucao.data_conclusao|date:"d/m/Y" }}</strong>
+                        </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'acoes:editar_solucao' solucao.id %}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                        <a href="{% url 'acoes:detalhe_acao' solucao.acao_corretiva.id %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-right"></i> Ver Ação
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-start.border-success {
+        border-left: 4px solid #198754 !important;
+    }
+</style>
+{% endblock %}
