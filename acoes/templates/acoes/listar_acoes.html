@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Ações Corretivas/Preventivas</h1>
+                    <p class="text-muted small mt-1">Gerenciar ações corretivas e preventivas</p>
+                </div>
+                <a href="#" class="btn btn-success">
+                    <i class="bi bi-plus-circle me-1"></i>Nova Ação
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo de Status -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Aberta</h6>
+                    <h2 class="mb-0">{{ total_aberta }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Em Progresso</h6>
+                    <h2 class="mb-0">{{ total_em_progresso }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6 class="card-title">Concluída</h6>
+                    <h2 class="mb-0">{{ total_concluida }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-title">Total</h6>
+                    <h2 class="mb-0">{{ acoes.count }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Busca</label>
+                    <input type="text" name="busca" class="form-control" placeholder="Título ou descrição" value="{{ filtro_busca }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Tipo</label>
+                    <select name="tipo" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="corretiva" {% if filtro_tipo == 'corretiva' %}selected{% endif %}>Corretiva</option>
+                        <option value="preventiva" {% if filtro_tipo == 'preventiva' %}selected{% endif %}>Preventiva</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="aberta" {% if filtro_status == 'aberta' %}selected{% endif %}>Aberta</option>
+                        <option value="em_progresso" {% if filtro_status == 'em_progresso' %}selected{% endif %}>Em Progresso</option>
+                        <option value="concluida" {% if filtro_status == 'concluida' %}selected{% endif %}>Concluída</option>
+                        <option value="cancelada" {% if filtro_status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Prioridade</label>
+                    <select name="prioridade" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="baixa" {% if filtro_prioridade == 'baixa' %}selected{% endif %}>Baixa</option>
+                        <option value="media" {% if filtro_prioridade == 'media' %}selected{% endif %}>Média</option>
+                        <option value="alta" {% if filtro_prioridade == 'alta' %}selected{% endif %}>Alta</option>
+                        <option value="critica" {% if filtro_prioridade == 'critica' %}selected{% endif %}>Crítica</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2 align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-1"></i>Filtrar
+                    </button>
+                    <a href="{% url 'acoes:listar_acoes' %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-x me-1"></i>Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Ações -->
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Título</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Prioridade</th>
+                        <th>Responsável</th>
+                        <th>Vencimento</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for acao in acoes %}
+                    <tr>
+                        <td><strong>{{ acao.titulo }}</strong></td>
+                        <td>
+                            <span class="badge {% if acao.tipo == 'corretiva' %}bg-danger{% else %}bg-info{% endif %}">
+                                {{ acao.get_tipo_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge 
+                                {% if acao.status == 'aberta' %}bg-secondary
+                                {% elif acao.status == 'em_progresso' %}bg-warning
+                                {% elif acao.status == 'concluida' %}bg-success
+                                {% else %}bg-dark{% endif %}">
+                                {{ acao.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge 
+                                {% if acao.prioridade == 'baixa' %}bg-success
+                                {% elif acao.prioridade == 'media' %}bg-info
+                                {% elif acao.prioridade == 'alta' %}bg-warning
+                                {% else %}bg-danger{% endif %}">
+                                {{ acao.get_prioridade_display }}
+                            </span>
+                        </td>
+                        <td>{{ acao.responsavel.nome_completo|default:"---" }}</td>
+                        <td>
+                            {% if acao.esta_vencida %}
+                                <span class="badge bg-danger">{{ acao.data_vencimento|date:"d/m/Y" }}</span>
+                            {% else %}
+                                {{ acao.data_vencimento|date:"d/m/Y" }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'acoes:detalhe_acao' acao.id %}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            <p class="text-muted mb-0">Nenhuma ação encontrada.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 0.5rem;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
+    }
+</style>
+{% endblock %}
