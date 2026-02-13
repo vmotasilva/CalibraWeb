@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestão de Mudança - Lista{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0"><i class="bi bi-arrow-repeat text-info me-2"></i>Gestão de Mudança</h1>
+                    <p class="text-muted small mt-1">Gerenciar mudanças e impactos organizacionais</p>
+                </div>
+                <a href="{% url 'acoes:gestao_mudanca_create' %}" class="btn btn-info">
+                    <i class="bi bi-plus-circle me-1"></i>Nova Mudança
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nº Registro</th>
+                                <th>Tipo</th>
+                                <th>Prioridade</th>
+                                <th>Áreas Impactadas</th>
+                                <th>Status</th>
+                                <th>Data</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in object_list %}
+                            <tr>
+                                <td><strong>#{{ item.numero_registro|default:"N/A" }}</strong></td>
+                                <td>{{ item.get_tipo_mudanca_display|default:"-" }}</td>
+                                <td>
+                                    {% if item.prioridade_mudanca == 'urgente' %}
+                                        <span class="badge bg-danger">Urgente</span>
+                                    {% elif item.prioridade_mudanca == 'alto' %}
+                                        <span class="badge bg-warning">Alto</span>
+                                    {% else %}
+                                        <span class="badge bg-info">Médio</span>
+                                    {% endif %}
+                                </td>
+                                <td><div class="text-truncate">{{ item.area_impactada|truncatewords:5 }}</div></td>
+                                <td>
+                                    {% if item.status == 'aprovada' %}
+                                        <span class="badge bg-success">Aprovada</span>
+                                    {% elif item.status == 'implementada' %}
+                                        <span class="badge bg-success">Implementada</span>
+                                    {% elif item.status == 'analise' %}
+                                        <span class="badge bg-warning">Análise</span>
+                                    {% elif item.status == 'rejeitada' %}
+                                        <span class="badge bg-danger">Rejeitada</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ item.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{% if item.data_abertura %}{{ item.data_abertura|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                                <td>
+                                    <a href="{% url 'acoes:gestao_mudanca_detail' item.id %}" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>
+                                    <a href="{% url 'acoes:gestao_mudanca_update' item.id %}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">Nenhuma mudança encontrada</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

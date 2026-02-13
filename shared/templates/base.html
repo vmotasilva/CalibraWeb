@@ -110,8 +110,17 @@
                         <i class="bi bi-exclamation-triangle"></i> Ações Corretivas
                     </a>
                     <ul class="dropdown-menu shadow">
+                        <li><h6 class="dropdown-header text-muted">REGISTRO E SOLUÇÃO</h6></li>
                         <li><a class="dropdown-item" href="{% url 'acoes:listar_acoes' %}">📋 Ações Registradas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'acoes:listar_solucoes' %}">💡 Soluções</a></li>
+                        <li><a class="dropdown-item" href="{% url 'acoes:listar_solucoes' %}">📋 Controle de Registros</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">REFERÊNCIA DE DADOS</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'acoes:origem_problema_list' %}">
+                            <i class="bi bi-diagram-3"></i> Origens de Problemas
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'acoes:kpi_opcao_list' %}">
+                            <i class="bi bi-graph-up"></i> KPIs
+                        </a></li>
                     </ul>
                 </li>
 

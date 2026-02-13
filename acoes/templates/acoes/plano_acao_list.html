@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+
+{% block title %}Plano de Ação - Lista{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-check-list text-primary me-2"></i>Planos de Ação
+                    </h1>
+                    <p class="text-muted small mt-1">Gerenciar planos de ação e acompanhamento</p>
+                </div>
+                <a href="{% url 'acoes:plano_acao_create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle me-1"></i>Novo Plano
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-control">
+                                <option value="">Todos</option>
+                                <option value="planejada" {% if request.GET.status == 'planejada' %}selected{% endif %}>Planejada</option>
+                                <option value="em_curso" {% if request.GET.status == 'em_curso' %}selected{% endif %}>Em Curso</option>
+                                <option value="completa" {% if request.GET.status == 'completa' %}selected{% endif %}>Completa</option>
+                                <option value="retardo" {% if request.GET.status == 'retardo' %}selected{% endif %}>Atrasada</option>
+                                <option value="cancelada" {% if request.GET.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Classificação</label>
+                            <select name="classificacao" class="form-control">
+                                <option value="">Todas</option>
+                                <option value="corretiva" {% if request.GET.classificacao == 'corretiva' %}selected{% endif %}>Corretiva</option>
+                                <option value="preventiva" {% if request.GET.classificacao == 'preventiva' %}selected{% endif %}>Preventiva</option>
+                                <option value="melhoria" {% if request.GET.classificacao == 'melhoria' %}selected{% endif %}>Melhoria</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Laboratório</label>
+                            <input type="text" name="laboratorio" class="form-control" placeholder="Filtrar por laboratório">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-search me-1"></i>Filtrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo de Status -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Planejadas</h6>
+                    <h3 class="mb-0 text-info">
+                        {{ planejada_count|default:0 }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Em Curso</h6>
+                    <h3 class="mb-0 text-warning">
+                        {{ em_curso_count|default:0 }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Completas</h6>
+                    <h3 class="mb-0 text-success">
+                        {{ completa_count|default:0 }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Total</h6>
+                    <h3 class="mb-0 text-dark">
+                        {{ paginator.count|default:0 }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Planos -->
+    <div class="row">
+        <div class="col-md-12">
+            {% if object_list %}
+                <div class="card">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 10%">Nº Ação</th>
+                                    <th style="width: 25%">Descrição</th>
+                                    <th style="width: 15%">Responsável</th>
+                                    <th style="width: 12%">Status</th>
+                                    <th style="width: 12%">Deadline</th>
+                                    <th style="width: 10%">Prioridade</th>
+                                    <th style="width: 16%">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in object_list %}
+                                <tr>
+                                    <td>
+                                        <strong>#{{ item.numero_acao|default:"N/A" }}</strong>
+                                    </td>
+                                    <td>
+                                        <div class="text-truncate">{{ item.descricao|truncatewords:8 }}</div>
+                                        <small class="text-muted">{{ item.laboratorio }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ item.responsavel_acao.nome_completo|default:"Não atribuído" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if item.status == 'planejada' %}
+                                            <span class="badge bg-info">Planejada</span>
+                                        {% elif item.status == 'em_curso' %}
+                                            <span class="badge bg-warning">Em Curso</span>
+                                        {% elif item.status == 'completa' %}
+                                            <span class="badge bg-success">Completa</span>
+                                        {% elif item.status == 'retardo' %}
+                                            <span class="badge bg-danger">Atrasada</span>
+                                        {% elif item.status == 'cancelada' %}
+                                            <span class="badge bg-secondary">Cancelada</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.data_deadline %}
+                                            <small>{{ item.data_deadline|date:"d/m/Y" }}</small>
+                                        {% else %}
+                                            <small class="text-muted">-</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.prioridade %}
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-exclamation-circle me-1"></i>Prioritária
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'acoes:plano_acao_detail' item.id %}" class="btn btn-sm btn-info" title="Ver">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {% if item.solucao %}
+                                            <a href="{% url 'acoes:detalhe_solucao' item.solucao.id %}" class="btn btn-sm btn-warning" title="Gerenciar Ações">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Paginação -->
+                {% if is_paginated %}
+                <nav class="mt-4" aria-label="Paginação">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">Primeira</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info" role="alert">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Nenhum plano de ação encontrado.</strong>
+                    <a href="{% url 'acoes:plano_acao_create' %}" class="alert-link">Criar um novo</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -11,7 +11,6 @@
             <a href="{% url 'acoes:listar_solucoes' %}" class="btn btn-outline-secondary btn-sm mb-3">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
-            
             <div class="d-flex justify-content-between align-items-start">
                 <div>
                     <h1 class="mb-2">
@@ -31,7 +30,6 @@
                         {% elif solucao.tipo == 'revisao_gerencial' %}
                             <span class="badge bg-secondary">Revisão Gerencial</span>
                         {% endif %}
-                        
                         {% if solucao.status == 'planejamento' %}
                             <span class="badge bg-secondary">Planejamento</span>
                         {% elif solucao.status == 'analise' %}
@@ -54,91 +52,191 @@
 
     <div class="row">
         <!-- Coluna principal -->
-        <div class="col-lg-9">
-            <!-- Descrição geral -->
+        <div class="col-12">
+            <!-- Informações Básicas - Recolhível -->
             <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-light border-bottom">
-                    <h6 class="mb-0">
-                        <i class="bi bi-file-text"></i> Informações Básicas
-                    </h6>
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="bi bi-file-text me-2"></i>Informações Básicas
+                        </h6>
+                        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#infoBasicaCollapse" aria-expanded="true">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label text-muted small">Ação Corretiva Relacionada</label>
-                            <a href="{% url 'acoes:detalhe_acao' solucao.acao_corretiva.id %}" class="text-decoration-none">
-                                <strong>{{ solucao.acao_corretiva.numero_registro }}</strong><br>
-                                {{ solucao.acao_corretiva.titulo }}
-                            </a>
+                <div id="infoBasicaCollapse" class="collapse show">
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Nº do Registro</label>
+                                <strong>{{ solucao.acao_corretiva.numero_registro|default:'-' }}</strong>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Data de Abertura</label>
+                                <strong>{{ solucao.acao_corretiva.data_abertura|date:"d/m/Y"|default:'-' }}</strong>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label text-muted small">Responsável</label>
-                            <strong>{{ solucao.responsavel.nome_completo|default:'-' }}</strong>
+                        <div class="row mb-3">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Unidade</label>
+                                <strong>{{ solucao.acao_corretiva.unidade|default:'-' }}</strong>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Data de Vencimento</label>
+                                <strong>{{ solucao.acao_corretiva.data_vencimento|date:"d/m/Y"|default:'-' }}</strong>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label text-muted small">Data de Criação</label>
-                            <strong>{{ solucao.data_criacao|date:"d/m/Y H:i" }}</strong>
+                        <div class="row mb-3">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Origem do Problema</label>
+                                <strong>{{ solucao.acao_corretiva.origem|default:'-' }}</strong>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label text-muted small">Responsável</label>
+                                <strong>{{ solucao.acao_corretiva.responsavel.nome_completo|default:'-' }}</strong>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label text-muted small">Data de Conclusão</label>
-                            <strong>{{ solucao.data_conclusao|date:"d/m/Y"|default:'-' }}</strong>
+                        <div class="row mb-3">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Descrição</label>
+                                <p>{{ solucao.acao_corretiva.descricao|linebreaks }}</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="mb-0">
-                        <label class="form-label text-muted small">Descrição</label>
-                        <p>{{ solucao.descricao|linebreaks }}</p>
+                        <div class="row mb-3">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Causa Raiz</label>
+                                <p>{{ solucao.acao_corretiva.causa_raiz|linebreaks|default:'-' }}</p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted small">Observação</label>
+                                <p>{{ solucao.acao_corretiva.observacoes|linebreaks|default:'-' }}</p>
+                            </div>
+                        </div>
+                        {% if solucao.acao_corretiva.link_registro %}
+                        <div class="row">
+                            <div class="col-12">
+                                <label class="form-label text-muted small">Link (SharePoint)</label>
+                                <p><a href="{{ solucao.acao_corretiva.link_registro }}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">{{ solucao.acao_corretiva.link_registro }}</a></p>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- Detalhes específicos por tipo -->
-            {% if solucao.tipo == 'plano_acao' and detalhes %}
+            <!-- Card de Ações do Plano de Ação -->
+            {% if solucao.tipo == 'plano_acao' %}
                 <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-light border-bottom">
+                    <div class="card-header bg-light border-bottom d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">
-                            <i class="bi bi-checklist"></i> Detalhes do Plano de Ação
+                            <i class="bi bi-list-check"></i> Ações do Plano de Ação
                         </h6>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAdicionarAcao">
+                            <i class="bi bi-plus-circle me-1"></i>Adicionar ação
+                        </button>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted small">Responsável pela Ação</label>
-                                <strong>{{ detalhes.responsavel_acao.nome_completo|default:'-' }}</strong>
+                    <!-- Métricas das Ações -->
+                    <div class="card-body bg-light border-bottom">
+                        <div class="row g-3">
+                            <div class="col-6 col-md-3">
+                                <div class="text-center">
+                                    <div class="h5 mb-1">{{ total_acoes }}</div>
+                                    <small class="text-muted">Total de Ações</small>
+                                </div>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted small">Status</label>
-                                {% if detalhes.status == 'planejado' %}
-                                    <span class="badge bg-secondary">Planejado</span>
-                                {% elif detalhes.status == 'em_execucao' %}
-                                    <span class="badge bg-warning text-dark">Em Execução</span>
-                                {% elif detalhes.status == 'concluido' %}
-                                    <span class="badge bg-success">Concluído</span>
-                                {% elif detalhes.status == 'cancelado' %}
-                                    <span class="badge bg-danger">Cancelado</span>
-                                {% endif %}
+                            <div class="col-6 col-md-3">
+                                <div class="text-center">
+                                    <div class="h5 mb-1 text-primary">{{ acoes_em_curso }}</div>
+                                    <small class="text-muted">Em Curso</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-center">
+                                    <div class="h5 mb-1 text-success">{{ acoes_completas }}</div>
+                                    <small class="text-muted">Concluídas</small>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="text-center">
+                                    <div class="h5 mb-1 text-danger">{{ acoes_atrasadas }}</div>
+                                    <small class="text-muted">Atrasadas</small>
+                                </div>
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted small">Data de Início</label>
-                                <strong>{{ detalhes.data_inicio|date:"d/m/Y"|default:'-' }}</strong>
+                    </div>
+                    <!-- Tabela de Ações -->
+                    <div class="card-body p-0">
+                        {% if acoes_plano %}
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Nº Ação</th>
+                                            <th>Descrição</th>
+                                            <th>Responsável</th>
+                                            <th>Status</th>
+                                            <th>1º Deadline</th>
+                                            <th>Deadline Final</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for acao in acoes_plano %}
+                                            <tr class="{% if acao.is_atrasada %}table-danger{% endif %}">
+                                                <td>{{ acao.numero_acao|default:"-" }}</td>
+                                                <td>
+                                                    <strong>{{ acao.descricao|default:"-" }}</strong>
+                                                    {% if acao.problema %}
+                                                        <br>
+                                                        <small class="text-muted">{{ acao.problema|truncatewords:10 }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if acao.responsavel_acao %}
+                                                        {{ acao.responsavel_acao.nome_completo }}
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ acao.get_status_display|default:"-" }}</td>
+                                                <td>{% if acao.data_primeira_deadline %}{{ acao.data_primeira_deadline|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                                                <td>{% if acao.data_deadline %}{{ acao.data_deadline|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                                                <td class="text-nowrap">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary js-edit-acao" title="Editar"
+                                                        data-bs-toggle="modal" data-bs-target="#modalEditarAcao"
+                                                        data-id="{{ acao.id }}"
+                                                        data-numero="{{ acao.numero_acao|default:'' }}"
+                                                        data-problema="{{ acao.problema|default:''|escapejs }}"
+                                                        data-descricao="{{ acao.descricao|default:''|escapejs }}"
+                                                        data-input-origem="{{ acao.input_origem|default:''|escapejs }}"
+                                                        data-kpi="{{ acao.kpi|default:''|escapejs }}"
+                                                        data-classificacao="{{ acao.classificacao|default:'' }}"
+                                                        data-status="{{ acao.status|default:'planejada' }}"
+                                                        data-prioridade="{{ acao.prioridade|yesno:'1,0' }}"
+                                                        data-acao-eficaz="{{ acao.acao_eficaz|default:'' }}"
+                                                        data-primeira-deadline="{% if acao.data_primeira_deadline %}{{ acao.data_primeira_deadline|date:'Y-m-d' }}{% endif %}"
+                                                        data-deadline="{% if acao.data_deadline %}{{ acao.data_deadline|date:'Y-m-d' }}{% endif %}"
+                                                        data-comentarios="{{ acao.comentarios|default:''|escapejs }}"
+                                                        data-responsaveis="{% for resp in acao.responsaveis_multiplos.all %}{{ resp.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <form method="post" action="{% url 'acoes:linha_acao_delete' acao.id %}" class="d-inline">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir" onclick="return confirm('Excluir esta ação?');">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted small">Data de Conclusão</label>
-                                <strong>{{ detalhes.data_conclusao|date:"d/m/Y"|default:'-' }}</strong>
-                            </div>
-                        </div>
-                        <div class="mb-0">
-                            <label class="form-label text-muted small">Ação Proposta</label>
-                            <p>{{ detalhes.acao_proposta|linebreaks }}</p>
-                        </div>
-                        {% if detalhes.resultado %}
-                            <div class="mb-0">
-                                <label class="form-label text-muted small">Resultado</label>
-                                <p>{{ detalhes.resultado|linebreaks }}</p>
-                            </div>
+                        {% else %}
+                            <div class="p-4 text-center text-muted">Nenhuma ação cadastrada.</div>
                         {% endif %}
                     </div>
                 </div>
@@ -538,85 +636,512 @@
                 </div>
             {% endif %}
         </div>
+    </div>
+</div>
 
-        <!-- Coluna lateral - Informações e ações -->
-        <div class="col-lg-3">
-            <!-- Card de informações -->
-            <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
-                <div class="card-header bg-light border-bottom">
-                    <h6 class="mb-0">
-                        <i class="bi bi-info-circle"></i> Informações
-                    </h6>
+{% if solucao.tipo == 'plano_acao' %}
+<div class="modal fade" id="modalAdicionarAcao" tabindex="-1" aria-labelledby="modalAdicionarAcaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <form method="post" action="{% url 'acoes:criar_plano_acao_modal' %}">
+                {% csrf_token %}
+                <input type="hidden" name="numero_registro" value="{{ solucao.acao_corretiva.numero_registro }}">
+                <input type="hidden" name="solucao_id" value="{{ solucao.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAdicionarAcaoLabel">Adicionar Ação</h5>
+                    <div class="ms-auto me-3">
+                        <span class="badge bg-light text-dark border">N° Ação: {{ next_numero_acao }}</span>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
-                <div class="card-body">
-                    <div class="mb-4">
-                        <small class="text-muted d-block mb-1">Tipo</small>
-                        <strong class="d-block">
-                            {% if solucao.tipo == 'plano_acao' %}
-                                Plano de Ação
-                            {% elif solucao.tipo == 'a3' %}
-                                A3
-                            {% elif solucao.tipo == '8d' %}
-                                8D
-                            {% elif solucao.tipo == 'rnc' %}
-                                RNC
-                            {% elif solucao.tipo == 'gestao_mudanca' %}
-                                Gestão de Mudança
-                            {% elif solucao.tipo == 'revisao_gerencial' %}
-                                Revisão Gerencial
-                            {% endif %}
-                        </strong>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <small class="text-muted d-block mb-1">Status</small>
-                        <strong class="d-block">
-                            {% if solucao.status == 'planejamento' %}
-                                Planejamento
-                            {% elif solucao.status == 'analise' %}
-                                Análise
-                            {% elif solucao.status == 'implementacao' %}
-                                Implementação
-                            {% elif solucao.status == 'validacao' %}
-                                Validação
-                            {% elif solucao.status == 'encerrada' %}
-                                Encerrada
-                            {% endif %}
-                        </strong>
-                    </div>
-
-                    <div class="mb-4">
-                        <small class="text-muted d-block mb-1">Criada em</small>
-                        <strong class="d-block">{{ solucao.data_criacao|date:"d/m/Y" }}</strong>
-                    </div>
-
-                    {% if solucao.data_inicio %}
-                        <div class="mb-4">
-                            <small class="text-muted d-block mb-1">Data de Início</small>
-                            <strong class="d-block">{{ solucao.data_inicio|date:"d/m/Y" }}</strong>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-lg-5">
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-light">
+                                    <strong>Problema</strong>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" name="problema" rows="3"></textarea>
+                                </div>
+                            </div>
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-light">
+                                    <strong>Descrição</strong>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" name="descricao" rows="3" required></textarea>
+                                </div>
+                            </div>
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-light">
+                                    <strong>Lista de Responsáveis</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex flex-wrap gap-2 mb-2">
+                                        <div class="flex-grow-1">
+                                            <select class="form-select" id="responsavelSelect">
+                                                <option value="">Selecione um colaborador</option>
+                                                {% for colab in colaboradores %}
+                                                    <option value="{{ colab.id }}">{{ colab.nome_completo }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="addResponsavelBtn">
+                                            Adicionar
+                                        </button>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2 mb-2">
+                                        <div class="flex-grow-1">
+                                            <input type="text" class="form-control" id="responsavelExterno" placeholder="Adicionar Nome Externo">
+                                        </div>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="addResponsavelExternoBtn">
+                                            Adicionar Externo
+                                        </button>
+                                    </div>
+                                    <div class="border rounded p-2" style="min-height: 120px;">
+                                        <div id="responsaveisSelecionados" class="d-flex flex-column gap-1"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    {% endif %}
-
-                    {% if solucao.data_conclusao %}
-                        <div class="mb-4">
-                            <small class="text-muted d-block mb-1">Data de Conclusão</small>
-                            <strong class="d-block">{{ solucao.data_conclusao|date:"d/m/Y" }}</strong>
+                        <div class="col-lg-3">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Input</label>
+                                        <input type="text" class="form-control" name="input_origem">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">KPI</label>
+                                        <select class="form-select" name="kpi">
+                                            <option value="">Selecione</option>
+                                            {% for kpi in kpi_opcoes %}
+                                                <option value="{{ kpi.nome }}">{{ kpi.nome }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Classificação</label>
+                                        <select class="form-select" name="classificacao">
+                                            <option value="">Selecione</option>
+                                            <option value="corretiva">Corretiva</option>
+                                            <option value="preventiva">Preventiva</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Status</label>
+                                        <select class="form-select" name="status">
+                                            <option value="planejada">Planejada</option>
+                                            <option value="em_curso">Em Curso/Andamento</option>
+                                            <option value="retardo">Retardo/Atrasada</option>
+                                            <option value="completa">Completa/Concluido</option>
+                                            <option value="cancelada">Cancelada</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" name="prioridade" id="prioridadeAcao">
+                                        <label class="form-check-label" for="prioridadeAcao">Prioridade</label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">1º Deadline</label>
+                                        <input type="date" class="form-control" name="data_primeira_deadline">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Deadline Final</label>
+                                        <input type="date" class="form-control" name="data_deadline">
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label">Ação Eficaz?</label>
+                                        <select class="form-select" name="acao_eficaz">
+                                            <option value="">Selecione</option>
+                                            <option value="eficaz">Eficaz</option>
+                                            <option value="nao_eficaz">Não Eficaz</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    {% endif %}
-
-                    <div class="d-grid gap-2">
-                        <a href="{% url 'acoes:editar_solucao' solucao.id %}" class="btn btn-primary btn-sm">
-                            <i class="bi bi-pencil"></i> Editar
-                        </a>
-                        <a href="{% url 'acoes:detalhe_acao' solucao.acao_corretiva.id %}" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-arrow-right"></i> Ver Ação
-                        </a>
+                        <div class="col-lg-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-light">
+                                    <strong>Comentários</strong>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" name="comentarios" rows="10"></textarea>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+                <div class="modal-footer justify-content-end">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar ação</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalEditarAcao" tabindex="-1" aria-labelledby="modalEditarAcaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <form method="post" id="formEditarAcao" action="">
+                {% csrf_token %}
+                <input type="hidden" name="solucao_id" value="{{ solucao.id }}">
+                <input type="hidden" name="numero_acao" id="editNumeroAcao" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalEditarAcaoLabel">Editar Ação</h5>
+                    <div class="ms-auto me-3">
+                        <span class="badge bg-light text-dark border">N° Ação: <span id="editNumeroAcaoBadge">-</span></span>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-lg-5">
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-light">
+                                    <strong>Problema</strong>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" name="problema" id="editProblema" rows="3"></textarea>
+                                </div>
+                            </div>
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-light">
+                                    <strong>Descrição</strong>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" name="descricao" id="editDescricao" rows="3" required></textarea>
+                                </div>
+                            </div>
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-light">
+                                    <strong>Lista de Responsáveis</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex flex-wrap gap-2 mb-2">
+                                        <div class="flex-grow-1">
+                                            <select class="form-select" id="editResponsavelSelect">
+                                                <option value="">Selecione um colaborador</option>
+                                                {% for colab in colaboradores %}
+                                                    <option value="{{ colab.id }}">{{ colab.nome_completo }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="editAddResponsavelBtn">
+                                            Adicionar
+                                        </button>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2 mb-2">
+                                        <div class="flex-grow-1">
+                                            <input type="text" class="form-control" id="editResponsavelExterno" placeholder="Adicionar Nome Externo">
+                                        </div>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="editAddResponsavelExternoBtn">
+                                            Adicionar Externo
+                                        </button>
+                                    </div>
+                                    <div class="border rounded p-2" style="min-height: 120px;">
+                                        <div id="editResponsaveisSelecionados" class="d-flex flex-column gap-1"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Input</label>
+                                        <input type="text" class="form-control" name="input_origem" id="editInputOrigem">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">KPI</label>
+                                        <select class="form-select" name="kpi" id="editKpi">
+                                            <option value="">Selecione</option>
+                                            {% for kpi in kpi_opcoes %}
+                                                <option value="{{ kpi.nome }}">{{ kpi.nome }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Classificação</label>
+                                        <select class="form-select" name="classificacao" id="editClassificacao">
+                                            <option value="">Selecione</option>
+                                            <option value="corretiva">Corretiva</option>
+                                            <option value="preventiva">Preventiva</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Status</label>
+                                        <select class="form-select" name="status" id="editStatus">
+                                            <option value="planejada">Planejada</option>
+                                            <option value="em_curso">Em Curso/Andamento</option>
+                                            <option value="retardo">Retardo/Atrasada</option>
+                                            <option value="completa">Completa/Concluido</option>
+                                            <option value="cancelada">Cancelada</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" name="prioridade" id="editPrioridadeAcao">
+                                        <label class="form-check-label" for="editPrioridadeAcao">Prioridade</label>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">1º Deadline</label>
+                                        <input type="date" class="form-control" name="data_primeira_deadline" id="editDataPrimeiraDeadline">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Deadline Final</label>
+                                        <input type="date" class="form-control" name="data_deadline" id="editDataDeadline">
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label">Ação Eficaz?</label>
+                                        <select class="form-select" name="acao_eficaz" id="editAcaoEficaz">
+                                            <option value="">Selecione</option>
+                                            <option value="eficaz">Eficaz</option>
+                                            <option value="nao_eficaz">Não Eficaz</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-light">
+                                    <strong>Comentários</strong>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" name="comentarios" id="editComentarios" rows="10"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-end">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    (function () {
+        var addBtn = document.getElementById('addResponsavelBtn');
+        var addExternoBtn = document.getElementById('addResponsavelExternoBtn');
+        var selectInput = document.getElementById('responsavelSelect');
+        var externoInput = document.getElementById('responsavelExterno');
+        var listContainer = document.getElementById('responsaveisSelecionados');
+
+        if (!addBtn || !selectInput || !listContainer) {
+            return;
+        }
+
+        function buildItem(label, hiddenName, hiddenValue, key) {
+            if (listContainer.querySelector('[data-key="' + key + '"]')) {
+                return;
+            }
+
+            var row = document.createElement('div');
+            row.className = 'd-flex align-items-center justify-content-between border rounded px-2 py-1';
+            row.setAttribute('data-key', key);
+
+            var text = document.createElement('span');
+            text.textContent = label;
+
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-link text-danger p-0 ms-2';
+            removeBtn.textContent = 'Excluir';
+            removeBtn.addEventListener('click', function () {
+                row.remove();
+            });
+
+            var hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = hiddenName;
+            hiddenInput.value = hiddenValue;
+
+            row.appendChild(text);
+            row.appendChild(removeBtn);
+            row.appendChild(hiddenInput);
+            listContainer.appendChild(row);
+        }
+
+        function addResponsavel(id, nome) {
+            buildItem(nome + ' (Colaborador)', 'responsaveis_multiplos', id, 'colab-' + id);
+        }
+
+        function addExterno(nome) {
+            buildItem(nome + ' (Outro)', 'outros_responsaveis', nome, 'ext-' + nome.toLowerCase());
+        }
+
+        addBtn.addEventListener('click', function () {
+            var selectedId = selectInput.value;
+            if (!selectedId) {
+                return;
+            }
+
+            var selectedName = selectInput.options[selectInput.selectedIndex].text;
+            addResponsavel(selectedId, selectedName);
+            selectInput.value = '';
+        });
+
+        if (addExternoBtn && externoInput) {
+            addExternoBtn.addEventListener('click', function () {
+                var value = (externoInput.value || '').trim();
+                if (!value) {
+                    return;
+                }
+                addExterno(value);
+                externoInput.value = '';
+            });
+        }
+    })();
+
+    (function () {
+        var editButtons = document.querySelectorAll('.js-edit-acao');
+        var editForm = document.getElementById('formEditarAcao');
+        var editNumero = document.getElementById('editNumeroAcao');
+        var editNumeroBadge = document.getElementById('editNumeroAcaoBadge');
+        var editProblema = document.getElementById('editProblema');
+        var editDescricao = document.getElementById('editDescricao');
+        var editInputOrigem = document.getElementById('editInputOrigem');
+        var editKpi = document.getElementById('editKpi');
+        var editClassificacao = document.getElementById('editClassificacao');
+        var editStatus = document.getElementById('editStatus');
+        var editPrioridade = document.getElementById('editPrioridadeAcao');
+        var editDataPrimeiraDeadline = document.getElementById('editDataPrimeiraDeadline');
+        var editDataDeadline = document.getElementById('editDataDeadline');
+        var editAcaoEficaz = document.getElementById('editAcaoEficaz');
+        var editComentarios = document.getElementById('editComentarios');
+        var editResponsavelSelect = document.getElementById('editResponsavelSelect');
+        var editAddResponsavelBtn = document.getElementById('editAddResponsavelBtn');
+        var editAddResponsavelExternoBtn = document.getElementById('editAddResponsavelExternoBtn');
+        var editResponsavelExterno = document.getElementById('editResponsavelExterno');
+        var editResponsaveisSelecionados = document.getElementById('editResponsaveisSelecionados');
+
+        if (!editButtons.length || !editForm) {
+            return;
+        }
+
+        function buildEditItem(label, hiddenName, hiddenValue, key) {
+            if (editResponsaveisSelecionados.querySelector('[data-key="' + key + '"]')) {
+                return;
+            }
+
+            var row = document.createElement('div');
+            row.className = 'd-flex align-items-center justify-content-between border rounded px-2 py-1';
+            row.setAttribute('data-key', key);
+
+            var text = document.createElement('span');
+            text.textContent = label;
+
+            var removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-link text-danger p-0 ms-2';
+            removeBtn.textContent = 'Excluir';
+            removeBtn.addEventListener('click', function () {
+                row.remove();
+            });
+
+            var hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = hiddenName;
+            hiddenInput.value = hiddenValue;
+
+            row.appendChild(text);
+            row.appendChild(removeBtn);
+            row.appendChild(hiddenInput);
+            editResponsaveisSelecionados.appendChild(row);
+        }
+
+        function addEditResponsavel(id, nome) {
+            buildEditItem(nome + ' (Colaborador)', 'responsaveis_multiplos', id, 'colab-' + id);
+        }
+
+        function addEditExterno(nome) {
+            buildEditItem(nome + ' (Outro)', 'outros_responsaveis', nome, 'ext-' + nome.toLowerCase());
+        }
+
+        function clearEditResponsaveis() {
+            while (editResponsaveisSelecionados.firstChild) {
+                editResponsaveisSelecionados.removeChild(editResponsaveisSelecionados.firstChild);
+            }
+        }
+
+        editButtons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var id = btn.getAttribute('data-id');
+                var numero = btn.getAttribute('data-numero') || '';
+                var problema = btn.getAttribute('data-problema') || '';
+                var descricao = btn.getAttribute('data-descricao') || '';
+                var inputOrigem = btn.getAttribute('data-input-origem') || '';
+                var kpi = btn.getAttribute('data-kpi') || '';
+                var classificacao = btn.getAttribute('data-classificacao') || '';
+                var status = btn.getAttribute('data-status') || 'planejada';
+                var prioridade = btn.getAttribute('data-prioridade') === '1';
+                var acaoEficaz = btn.getAttribute('data-acao-eficaz') || '';
+                var primeiraDeadline = btn.getAttribute('data-primeira-deadline') || '';
+                var deadline = btn.getAttribute('data-deadline') || '';
+                var comentarios = btn.getAttribute('data-comentarios') || '';
+                var responsaveis = btn.getAttribute('data-responsaveis') || '';
+
+                editForm.action = '{% url "acoes:editar_linha_acao_modal" 0 %}'.replace('0', id);
+                editNumero.value = numero;
+                editNumeroBadge.textContent = numero || '-';
+                editProblema.value = problema;
+                editDescricao.value = descricao;
+                editInputOrigem.value = inputOrigem;
+                editKpi.value = kpi;
+                editClassificacao.value = classificacao;
+                editStatus.value = status;
+                editPrioridade.checked = prioridade;
+                editAcaoEficaz.value = acaoEficaz;
+                editDataPrimeiraDeadline.value = primeiraDeadline;
+                editDataDeadline.value = deadline;
+                editComentarios.value = comentarios;
+                clearEditResponsaveis();
+                if (responsaveis) {
+                    responsaveis.split(',').forEach(function (respId) {
+                        var trimmedId = respId.trim();
+                        if (!trimmedId) {
+                            return;
+                        }
+                        var option = editResponsavelSelect.querySelector('option[value="' + trimmedId + '"]');
+                        var label = option ? option.textContent : ('ID ' + trimmedId);
+                        addEditResponsavel(trimmedId, label);
+                    });
+                }
+            });
+        });
+
+        if (editAddResponsavelBtn && editResponsavelSelect) {
+            editAddResponsavelBtn.addEventListener('click', function () {
+                var selectedId = editResponsavelSelect.value;
+                if (!selectedId) {
+                    return;
+                }
+                var selectedName = editResponsavelSelect.options[editResponsavelSelect.selectedIndex].text;
+                addEditResponsavel(selectedId, selectedName);
+                editResponsavelSelect.value = '';
+            });
+        }
+
+        if (editAddResponsavelExternoBtn && editResponsavelExterno) {
+            editAddResponsavelExternoBtn.addEventListener('click', function () {
+                var value = (editResponsavelExterno.value || '').trim();
+                if (!value) {
+                    return;
+                }
+                addEditExterno(value);
+                editResponsavelExterno.value = '';
+            });
+        }
+    })();
+</script>
 
 <style>
     .border-start.border-success {

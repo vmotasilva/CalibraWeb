@@ -862,6 +862,7 @@ class PlanejamentoTreinamento(models.Model):
         ("CONFIRMADO", "Confirmado"),
         ("REALIZADO", "Realizado"),
         ("CANCELADO", "Cancelado"),
+        ("ATRASADO", "Atrasado"),
     ]
     
     # Identificação
@@ -932,6 +933,26 @@ class PlanejamentoTreinamento(models.Model):
         
         if self.origem == "MATRIZ" and not self.disciplina:
             raise ValidationError("Disciplina é obrigatória quando origem é 'Matriz de Habilidades'")
+
+    def update_status_if_overdue(self):
+        """Atualiza o status para ATRASADO se a data prevista passou e não foi realizado."""
+        from django.utils import timezone
+        today = timezone.now().date()
+        
+        # Se a data prevista passou, não foi realizado e não está cancelado, marca como atrasado
+        if (self.data_prevista < today and 
+            self.status not in ["REALIZADO", "CANCELADO", "ATRASADO"]):
+            self.status = "ATRASADO"
+            self.save(update_fields=['status', 'atualizado_em'])
+            return True
+        
+        return False
+    
+    def is_overdue(self):
+        """Verifica se o planejamento está atrasado."""
+        from django.utils import timezone
+        today = timezone.now().date()
+        return self.data_prevista < today and self.status not in ["REALIZADO", "CANCELADO", "ATRASADO"]
 
     def __str__(self):
         return f"{self.titulo} - {self.data_prevista} ({self.get_origem_display()})"

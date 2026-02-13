@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Importar Plano de Ação e Ações Corretivas{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-import"></i> 
+                        Importar Plano de Ação e Ações
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <h5 class="alert-heading"><i class="fas fa-lightbulb"></i> Instruções</h5>
+                        <p>
+                            Este formulário permite <strong>importar PlanoAcao e LinhaAcao</strong> para soluções já existentes.
+                            A planilha deve ter <strong>2 abas</strong>:
+                        </p>
+                        <ul class="mb-0">
+                            <li><strong>Controles:</strong> Referência (lista de soluções existentes)</li>
+                            <li><strong>Acoes:</strong> Dados das actions a importar (obrigatória)</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-warning" role="alert">
+                        <h5 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Colunas Obrigatórias na Aba "Acoes"</h5>
+                        <ul class="mb-0">
+                            <li><strong>Solucao Titulo:</strong> Título da solução existente (deve corresponder a uma solução já criada)</li>
+                            <li><strong>Numero Acao:</strong> Identificador único da linha de ação</li>
+                            <li><strong>Descricao Acao:</strong> Descrição detalhada da ação</li>
+                            <li><strong>Status Acao:</strong> Status (planejada, em_andamento, completa, cancelada)</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-success" role="alert">
+                        <h5 class="alert-heading"><i class="fas fa-info-circle"></i> Colunas Opcionais na Aba "Acoes"</h5>
+                        <ul class="mb-0">
+                            <li><strong>Classificacao:</strong> corretiva, preventiva, melhoria</li>
+                            <li><strong>Responsavel Matricula:</strong> Matrícula do colaborador responsável</li>
+                            <li><strong>Data Primeira Deadline:</strong> Data no formato DD/MM/YYYY</li>
+                            <li><strong>Data Deadline:</strong> Data de conclusão esperada</li>
+                            <li><strong>Data Conclusao:</strong> Data de conclusão real</li>
+                            <li><strong>KPI Opcao:</strong> Nome do indicador de desempenho</li>
+                            <li><strong>Meta Esperada:</strong> Meta do KPI</li>
+                            <li><strong>Acao Eficaz:</strong> true/false</li>
+                            <li><strong>Observacoes:</strong> Observações adicionais</li>
+                        </ul>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="arquivo_excel" class="form-label">
+                                <i class="fas fa-file-excel"></i> Arquivo Excel
+                            </label>
+                            {{ form.arquivo_excel }}
+                            <small class="form-text text-muted">
+                                Formatos suportados: .xlsx, .xls
+                            </small>
+                        </div>
+
+                        <div class="form-group mt-4">
+                            <a href="{% url 'acoes:download_template_plano_acao' %}" class="btn btn-info btn-sm">
+                                <i class="fas fa-download"></i> Baixar Template
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Importar
+                            </button>
+                            <a href="{% url 'acoes:listar_solucoes' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+                    <p class="text-muted small">
+                        <strong>Nota:</strong> Se uma línha de ação com o mesmo <strong>numero</strong> já existir na solução, 
+                        ela será atualizada com os dados da planilha. Caso contrário, uma nova será criada.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Soluções de Ações Corretivas/Preventivas{% endblock %}
+{% block title %}Controle de Registros{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
@@ -11,13 +11,35 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h1 class="mb-2">
-                        <i class="bi bi-lightbulb"></i> Soluções
+                        <i class="bi bi-clipboard-check"></i> Controle de Registros
                     </h1>
-                    <p class="text-muted">Gerenciar diferentes tipos de soluções para ações corretivas e preventivas</p>
+                    <p class="text-muted">Gerenciar registros e soluções para ações corretivas e preventivas</p>
                 </div>
-                <a href="{% url 'acoes:listar_templates' %}" class="btn btn-outline-primary" title="Download de templates">
-                    <i class="bi bi-file-pdf"></i> Templates
-                </a>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNovaSolucao" title="Criar novo registro">
+                        <i class="bi bi-plus-circle"></i> Novo Registro
+                    </button>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Opcoes de importacao">
+                            <i class="bi bi-upload"></i> Importar
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'acoes:importar_controle_registros' %}">
+                                    <i class="bi bi-file-earmark"></i> Criar Solução + Ação
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'acoes:importar_plano_acao' %}">
+                                    <i class="bi bi-file-earmark"></i> Atribuir Plano + Ações
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <a href="{% url 'acoes:listar_templates' %}" class="btn btn-outline-primary" title="Download de templates">
+                        <i class="bi bi-file-pdf"></i> Templates
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -128,13 +150,13 @@
         </div>
     </div>
 
-    <!-- Tabela de Soluções -->
+    <!-- Tabela de Registros -->
     <div class="row">
         <div class="col-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-light border-bottom">
                     <h6 class="mb-0">
-                        <i class="bi bi-list-check"></i> Lista de Soluções
+                        <i class="bi bi-list-check"></i> Lista de Registros
                         {% if solucoes.count %}
                             <span class="badge bg-secondary">{{ solucoes.count }}</span>
                         {% endif %}
@@ -243,5 +265,562 @@
         top: 0;
         z-index: 10;
     }
+
+    .tipo-solucao-btn {
+        border: 2px solid #e9ecef;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        height: 100%;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tipo-solucao-btn:hover {
+        border-color: #0d6efd;
+        background-color: #f8f9fa;
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
+    }
+
+    .tipo-solucao-btn i {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .tipo-solucao-btn .tipo-nome {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .tipo-solucao-btn .tipo-desc {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .tipo-solucao-btn.active {
+        border-color: #0d6efd;
+        background-color: #e7f1ff;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+    }
+
+    .step {
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    #codigoSolucao {
+        letter-spacing: 2px;
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+    }
+
+    #codigoSolucao:focus {
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        border-color: #0d6efd;
+    }
 </style>
+
+<!-- Modal: Nova Solução -->
+<div class="modal fade" id="modalNovaSolucao" tabindex="-1" aria-labelledby="modalNovaSolucaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light border-bottom">
+                <h1 class="modal-title fs-5" id="modalNovaSolucaoLabel">
+                    <i class="bi bi-plus-circle"></i> Criar Novo Registro
+                </h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- PASSO 1: Seleção do Tipo -->
+                <div id="step1" class="step">
+                    <p class="text-muted mb-4">Selecione o tipo de solução que deseja criar:</p>
+                    
+                    <div class="row g-3">
+                        <!-- Plano de Ação -->
+                        <div class="col-md-6">
+                            <button type="button" class="tipo-solucao-btn btn-block w-100" data-tipo="plano_acao" data-prefixo="PA">
+                                <i class="bi bi-list-check text-primary"></i>
+                                <div class="tipo-nome">Plano de Ação</div>
+                                <div class="tipo-desc">Ações estruturadas com responsáveis e prazos</div>
+                            </button>
+                        </div>
+
+                        <!-- A3 -->
+                        <div class="col-md-6">
+                            <button type="button" class="tipo-solucao-btn btn-block w-100" data-tipo="a3" data-prefixo="A3">
+                                <i class="bi bi-diagram-3 text-success"></i>
+                                <div class="tipo-nome">A3</div>
+                                <div class="tipo-desc">Problema, análise e solução em 1 página</div>
+                            </button>
+                        </div>
+
+                        <!-- 8D -->
+                        <div class="col-md-6">
+                            <button type="button" class="tipo-solucao-btn btn-block w-100" data-tipo="8d" data-prefixo="8D">
+                                <i class="bi bi-octagon text-warning"></i>
+                                <div class="tipo-nome">8D</div>
+                                <div class="tipo-desc">8 disciplinas para resolução sistemática</div>
+                            </button>
+                        </div>
+
+                        <!-- RNC -->
+                        <div class="col-md-6">
+                            <button type="button" class="tipo-solucao-btn btn-block w-100" data-tipo="rnc" data-prefixo="RNC">
+                                <i class="bi bi-exclamation-circle text-danger"></i>
+                                <div class="tipo-nome">RNC</div>
+                                <div class="tipo-desc">Registro de Não Conformidade</div>
+                            </button>
+                        </div>
+
+                        <!-- Gestão de Mudança -->
+                        <div class="col-md-6">
+                            <button type="button" class="tipo-solucao-btn btn-block w-100" data-tipo="gestao_mudanca" data-prefixo="GM">
+                                <i class="bi bi-arrow-repeat text-info"></i>
+                                <div class="tipo-nome">Gestão de Mudança</div>
+                                <div class="tipo-desc">Controle de mudanças organizacionais</div>
+                            </button>
+                        </div>
+
+                        <!-- Revisão Gerencial -->
+                        <div class="col-md-6">
+                            <button type="button" class="tipo-solucao-btn btn-block w-100" data-tipo="revisao_gerencial" data-prefixo="RG">
+                                <i class="bi bi-person-check text-secondary"></i>
+                                <div class="tipo-nome">Revisão Gerencial</div>
+                                <div class="tipo-desc">Análise crítica gerencial</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASSO 2: Confirmar Código -->
+                <div id="step2" class="step" style="display: none;">
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle"></i> 
+                        Preenchimento de dados para <strong id="tipoNome"></strong>. Complete os campos abaixo.
+                    </div>
+                    <div id="modalErro" class="alert alert-danger d-none" role="alert"></div>
+
+                    <div class="row g-3 mb-4">
+                        <!-- Nº do Registro -->
+                        <div class="col-md-6">
+                            <label for="numeroRegistro" class="form-label fw-bold">Nº do Registro</label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="numeroRegistro" 
+                                placeholder="PA-TEC-001/2026"
+                                style="font-weight: 600; letter-spacing: 1px;"
+                            >
+                            <small class="text-muted d-block mt-1">
+                                Padrão: <strong id="padraoExemplo">PA-TEC-XXX/AAAA</strong>
+                            </small>
+                        </div>
+
+                        <!-- Data de Abertura -->
+                        <div class="col-md-6">
+                            <label for="dataAbertura" class="form-label fw-bold">Data de Abertura</label>
+                            <input 
+                                type="date" 
+                                class="form-control" 
+                                id="dataAbertura"
+                            >
+                        </div>
+
+                        <!-- Unidade -->
+                        <div class="col-md-6">
+                            <label for="unidade" class="form-label fw-bold">Unidade</label>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="unidade" 
+                                placeholder="Tecnolens"
+                                value="Tecnolens"
+                            >
+                        </div>
+
+                        <!-- Data de Vencimento -->
+                        <div class="col-md-6">
+                            <label for="dataVencimento" class="form-label fw-bold">Data de Vencimento</label>
+                            <input 
+                                type="date" 
+                                class="form-control" 
+                                id="dataVencimento"
+                            >
+                        </div>
+
+                        <!-- Origem do Problema -->
+                        <div class="col-md-6">
+                            <label for="origemProblema" class="form-label fw-bold">Origem do Problema</label>
+                            <select 
+                                class="form-select" 
+                                id="origemProblema"
+                                required
+                            >
+                                <option value="">Selecionar uma origem...</option>
+                                {% for origem in origens %}
+                                    <option value="{{ origem.nome }}">{{ origem.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Responsável -->
+                        <div class="col-md-6">
+                            <label for="responsavel" class="form-label fw-bold">Responsável</label>
+                            <select 
+                                class="form-select" 
+                                id="responsavel"
+                                required
+                            >
+                                <option value="">Selecionar um colaborador...</option>
+                                {% for colaborador in colaboradores %}
+                                    <option value="{{ colaborador.id }}">{{ colaborador.nome_completo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Descrição -->
+                        <div class="col-12">
+                            <label for="descricao" class="form-label fw-bold">Descrição</label>
+                            <textarea 
+                                class="form-control" 
+                                id="descricao" 
+                                rows="2" 
+                                placeholder="Descreva o problema/solução..."
+                            ></textarea>
+                        </div>
+
+                        <!-- Causa Raiz -->
+                        <div class="col-12">
+                            <label for="causaRaiz" class="form-label fw-bold">Causa Raiz</label>
+                            <textarea 
+                                class="form-control" 
+                                id="causaRaiz" 
+                                rows="2" 
+                                placeholder="Análise da causa raiz..."
+                            ></textarea>
+                        </div>
+
+                        <!-- Observação -->
+                        <div class="col-12">
+                            <label for="observacao" class="form-label fw-bold">Observação</label>
+                            <textarea 
+                                class="form-control" 
+                                id="observacao" 
+                                rows="2" 
+                                placeholder="Observações adicionais..."
+                            ></textarea>
+                        </div>
+
+                        <!-- Link -->
+                        <div class="col-12">
+                            <label for="link" class="form-label fw-bold">Link (SharePoint)</label>
+                            <input 
+                                type="url" 
+                                class="form-control" 
+                                id="link" 
+                                placeholder="https://tecnolens.sharepoint.com/..."
+                            >
+                            <small class="text-muted d-block mt-1">
+                                <i class="bi bi-link-45deg"></i> URL para arquivo em SharePoint
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary flex-grow-1" id="voltarBtn">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </button>
+                        <button type="button" class="btn btn-primary flex-grow-1" id="proximoBtn">
+                            <i class="bi bi-check-lg"></i> Criar Registro
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PASSO 3: Submissão (oculto) -->
+            <form id="formCriarRegistro" method="POST" action="{% url 'acoes:criar_registro_modal' %}" style="display: none;">
+                {% csrf_token %}
+                <input type="hidden" id="tipoHidden" name="tipo">
+                <input type="hidden" id="numeroRegistroHidden" name="numero_registro">
+                <input type="hidden" id="dataAberturaHidden" name="data_abertura">
+                <input type="hidden" id="unidadeHidden" name="unidade">
+                <input type="hidden" id="dataVencimentoHidden" name="data_vencimento">
+                <input type="hidden" id="origemProblemaHidden" name="origem_problema">
+                <input type="hidden" id="responsavelHidden" name="responsavel">
+                <input type="hidden" id="descricaoHidden" name="descricao">
+                <input type="hidden" id="causaRaizHidden" name="causa_raiz">
+                <input type="hidden" id="observacaoHidden" name="observacao">
+                <input type="hidden" id="linkHidden" name="link">
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Mapeamento de tipos para nomes legíveis
+    const tipoNomeMap = {
+        'plano_acao': 'Plano de Ação',
+        'a3': 'A3',
+        '8d': '8D',
+        'rnc': 'RNC',
+        'gestao_mudanca': 'Gestão de Mudança',
+        'revisao_gerencial': 'Revisão Gerencial'
+    };
+
+    // Mapeamento de tipos para prefixo do código
+    const prefixoMap = {
+        'plano_acao': 'PA',
+        'a3': 'A3',
+        '8d': '8D',
+        'rnc': 'RNC',
+        'gestao_mudanca': 'GM',
+        'revisao_gerencial': 'RG'
+    };
+
+    let tipoSelecionado = null;
+    let prefixoSelecionado = null;
+
+    // Função para formatar data para input type="date" (YYYY-MM-DD)
+    function formatarDataInput(date) {
+        const ano = date.getFullYear();
+        const mes = String(date.getMonth() + 1).padStart(2, '0');
+        const dia = String(date.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    }
+
+    // Função para gerar número sequencial (AGORA VEM DA API)
+    async function obterNumeroSequencial(tipo) {
+        try {
+            const response = await fetch(`/acoes/api/proximo-numero/?tipo=${tipo}`);
+            const data = await response.json();
+            if (data.proximo_numero) {
+                return data.proximo_numero;
+            } else {
+                console.error('Erro ao obter número:', data.error);
+                return '001'; // Fallback
+            }
+        } catch (error) {
+            console.error('Erro ao chamar API:', error);
+            return '001'; // Fallback
+        }
+    }
+
+    // Função para gerar o código sugerido (agora async)
+    async function gerarCodigoSugerido(prefixo, tipo) {
+        const ano = new Date().getFullYear();
+        const numero = await obterNumeroSequencial(tipo);
+        return `${prefixo}-TEC-${numero}/${ano}`;
+    }
+
+    // Função para atualizar o padrão exibido
+    function atualizarPadrao(prefixo) {
+        document.getElementById('padraoExemplo').textContent = `${prefixo}-TEC-XXX/AAAA`;
+    }
+
+    // Função para obter data de hoje
+    function obterDataHoje() {
+        return formatarDataInput(new Date());
+    }
+
+    // Função para obter último dia do ano
+    function obterUltimoDialDoAno() {
+        const ano = new Date().getFullYear();
+        const ultimoDia = new Date(ano, 11, 31); // 31 de dezembro
+        return formatarDataInput(ultimoDia);
+    }
+
+    // Função para calcular última dia do ano baseado em uma data
+    function obterUltimoDiaDoAnoParaData(dataString) {
+        // dataString vem em formato YYYY-MM-DD
+        if (!dataString) return obterUltimoDialDoAno();
+        
+        const [ano, mes, dia] = dataString.split('-');
+        const ultimoDia = new Date(parseInt(ano), 11, 31); // 31 de dezembro do ano extraído
+        return formatarDataInput(ultimoDia);
+    }
+
+    // Event listener para atualizar vencimento quando data de abertura muda
+    document.getElementById('dataAbertura').addEventListener('change', function() {
+        const dataAbertura = this.value;
+        if (dataAbertura) {
+            const dataVencimento = obterUltimoDiaDoAnoParaData(dataAbertura);
+            document.getElementById('dataVencimento').value = dataVencimento;
+        }
+    });
+
+    // Event listeners para botões de tipo
+    document.querySelectorAll('.tipo-solucao-btn').forEach(botao => {
+        botao.addEventListener('click', async function(e) {
+            e.preventDefault();
+            
+            tipoSelecionado = this.dataset.tipo;
+            prefixoSelecionado = this.dataset.prefixo;
+
+            // Remover classe active de todos os botões
+            document.querySelectorAll('.tipo-solucao-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Adicionar classe active ao botão clicado
+            this.classList.add('active');
+
+            // Atualizar passo 2
+            document.getElementById('tipoNome').textContent = tipoNomeMap[tipoSelecionado];
+            atualizarPadrao(prefixoSelecionado);
+
+            // Gerar e pré-preencher dados sugeridos (aguardando código sequencial da API)
+            const codigoSugerido = await gerarCodigoSugerido(prefixoSelecionado, tipoSelecionado);
+            document.getElementById('numeroRegistro').value = codigoSugerido;
+            const dataAberturaHoje = obterDataHoje();
+            document.getElementById('dataAbertura').value = dataAberturaHoje;
+            document.getElementById('unidade').value = 'Tecnolens';
+            // Calcular data de vencimento baseado na data de abertura (último dia do ano)
+            document.getElementById('dataVencimento').value = obterUltimoDiaDoAnoParaData(dataAberturaHoje);
+
+            // Limpar campos opcionais
+            document.getElementById('origemProblema').value = '';
+            document.getElementById('descricao').value = '';
+            document.getElementById('causaRaiz').value = '';
+            document.getElementById('responsavel').value = '';
+            document.getElementById('observacao').value = '';
+            document.getElementById('link').value = '';
+
+            // Mostrar passo 2
+            document.getElementById('step1').style.display = 'none';
+            document.getElementById('step2').style.display = 'block';
+
+            // Focus no campo de número registro
+            document.getElementById('numeroRegistro').select();
+        });
+    });
+
+    // Botão Voltar
+    document.getElementById('voltarBtn').addEventListener('click', function() {
+        // Limpar seleção
+        document.querySelectorAll('.tipo-solucao-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        tipoSelecionado = null;
+        prefixoSelecionado = null;
+
+        // Mostrar passo 1
+        document.getElementById('step1').style.display = 'block';
+        document.getElementById('step2').style.display = 'none';
+    });
+
+    // Botão Próximo (Criar)
+    document.getElementById('proximoBtn').addEventListener('click', function() {
+        if (!tipoSelecionado) {
+            alert('Por favor, selecione um tipo de solução');
+            return;
+        }
+
+        // Capturar todos os campos
+        const numeroRegistro = document.getElementById('numeroRegistro').value.trim();
+        const dataAbertura = document.getElementById('dataAbertura').value;
+        const unidade = document.getElementById('unidade').value.trim();
+        const dataVencimento = document.getElementById('dataVencimento').value;
+        const origemProblema = document.getElementById('origemProblema').value.trim();
+        const descricao = document.getElementById('descricao').value.trim();
+        const causaRaiz = document.getElementById('causaRaiz').value.trim();
+        const responsavel = document.getElementById('responsavel').value.trim();
+        const observacao = document.getElementById('observacao').value.trim();
+        const link = document.getElementById('link').value.trim();
+
+        // Validar campo obrigatório
+        if (!numeroRegistro) {
+            alert('Por favor, insira o Nº do Registro');
+            document.getElementById('numeroRegistro').focus();
+            return;
+        }
+
+        if (!dataAbertura) {
+            alert('Por favor, selecione a Data de Abertura');
+            document.getElementById('dataAbertura').focus();
+            return;
+        }
+
+        document.getElementById('tipoHidden').value = tipoSelecionado;
+        document.getElementById('numeroRegistroHidden').value = numeroRegistro;
+        document.getElementById('dataAberturaHidden').value = dataAbertura;
+        document.getElementById('unidadeHidden').value = unidade;
+        document.getElementById('dataVencimentoHidden').value = dataVencimento;
+        document.getElementById('origemProblemaHidden').value = origemProblema;
+        document.getElementById('responsavelHidden').value = responsavel;
+        document.getElementById('descricaoHidden').value = descricao;
+        document.getElementById('causaRaizHidden').value = causaRaiz;
+        document.getElementById('observacaoHidden').value = observacao;
+        document.getElementById('linkHidden').value = link;
+
+        const form = document.getElementById('formCriarRegistro');
+        const formData = new FormData(form);
+        const erroEl = document.getElementById('modalErro');
+        erroEl.classList.add('d-none');
+        erroEl.textContent = '';
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+            .then(response => response.json().then(data => ({ ok: response.ok, data })))
+            .then(result => {
+                if (!result.ok) {
+                    const message = result.data && result.data.error ? result.data.error : 'Erro ao criar registro.';
+                    erroEl.textContent = message;
+                    erroEl.classList.remove('d-none');
+                    return;
+                }
+
+                const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovaSolucao'));
+                modal.hide();
+                window.location.reload();
+            })
+            .catch(() => {
+                erroEl.textContent = 'Erro ao criar registro. Tente novamente.';
+                erroEl.classList.remove('d-none');
+            });
+    });
+
+    // Permitir Enter em campos para enviar
+    ['numeroRegistro', 'dataAbertura', 'unidade', 'dataVencimento'].forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('proximoBtn').click();
+                }
+            });
+        }
+    });
+
+    // Limpar sessionStorage quando modal se abre
+    const modal = document.getElementById('modalNovaSolucao');
+    modal.addEventListener('show.bs.modal', function() {
+        // Reset
+        document.getElementById('step1').style.display = 'block';
+        document.getElementById('step2').style.display = 'none';
+        document.querySelectorAll('.tipo-solucao-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        tipoSelecionado = null;
+        prefixoSelecionado = null;
+    });
+});
+</script>
+
 {% endblock %}

@@ -4,9 +4,21 @@
 import os
 from config.settings import *  # noqa
 
+# Mark as testing mode
+TESTING = True
+
 # Override for testing
 DEBUG = True
 ALLOWED_HOSTS = ['*']
+
+# Disable 2FA for testing
+TWO_FACTOR_PATCH_ADMIN = False
+TWO_FACTOR_REQUIRED = False
+LOGIN_URL = 'admin:login'
+
+# Remove 2FA from middleware and installed apps
+MIDDLEWARE = [m for m in MIDDLEWARE if 'two_factor' not in m]
+INSTALLED_APPS = [a for a in INSTALLED_APPS if 'two_factor' not in a and 'otp' not in a]
 
 # Use in-memory cache for testing (no Redis required)
 CACHES = {

@@ -1,202 +1,366 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
     <div class="row mb-4">
-        <div class="col-md-12">
+        <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h1 class="h3 mb-0"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Ações Corretivas/Preventivas</h1>
                     <p class="text-muted small mt-1">Gerenciar ações corretivas e preventivas</p>
                 </div>
-                <a href="#" class="btn btn-success">
-                    <i class="bi bi-plus-circle me-1"></i>Nova Ação
-                </a>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAcao">
+                        <i class="bi bi-plus-circle me-1"></i>Nova Ação
+                    </button>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Opcoes de importacao">
+                            <i class="bi bi-upload"></i> Importar
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'acoes:importar_controle_registros' %}">
+                                    <i class="bi bi-file-earmark"></i> Importar Ações
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'acoes:importar_plano_acao' %}">
+                                    <i class="bi bi-file-earmark"></i> Atribuir Plano + Ações
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Resumo de Status -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
+    <div class="row mb-4 g-3">
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-success text-white border-0 shadow-sm h-100">
                 <div class="card-body">
-                    <h6 class="card-title">Aberta</h6>
-                    <h2 class="mb-0">{{ total_aberta }}</h2>
+                    <h6 class="card-title mb-0">Concluído</h6>
+                    <h2 class="mb-0 mt-2">{{ total_concluido }}</h2>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-warning text-white border-0 shadow-sm h-100">
                 <div class="card-body">
-                    <h6 class="card-title">Em Progresso</h6>
-                    <h2 class="mb-0">{{ total_em_progresso }}</h2>
+                    <h6 class="card-title mb-0">Em Andamento</h6>
+                    <h2 class="mb-0 mt-2">{{ total_em_andamento }}</h2>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-danger text-white border-0 shadow-sm h-100">
                 <div class="card-body">
-                    <h6 class="card-title">Concluída</h6>
-                    <h2 class="mb-0">{{ total_concluida }}</h2>
+                    <h6 class="card-title mb-0">Cancelado</h6>
+                    <h2 class="mb-0 mt-2">{{ total_cancelado }}</h2>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-light">
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-dark text-white border-0 shadow-sm h-100">
                 <div class="card-body">
-                    <h6 class="card-title">Total</h6>
-                    <h2 class="mb-0">{{ acoes.count }}</h2>
+                    <h6 class="card-title mb-0">Atrasado</h6>
+                    <h2 class="mb-0 mt-2">{{ total_atrasado }}</h2>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Filtros -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Busca</label>
-                    <input type="text" name="busca" class="form-control" placeholder="Título ou descrição" value="{{ filtro_busca }}">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Busca</label>
+                            <input type="text" name="busca" class="form-control" placeholder="Nº ou descrição" value="{{ filtro_busca }}">
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Tipo de Solução</label>
+                            <select name="tipo_solucao" class="form-select">
+                                <option value="">Todos</option>
+                                {% for tipo in tipos_solucao %}
+                                    <option value="{{ tipo }}" {% if filtro_tipo_solucao == tipo %}selected{% endif %}>{{ tipo|capfirst }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Origem do Problema</label>
+                            <select name="origem" class="form-select">
+                                <option value="">Todos</option>
+                                {% for origem in origens %}
+                                    <option value="{{ origem }}" {% if filtro_origem == origem %}selected{% endif %}>{{ origem }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Responsável</label>
+                            <select name="responsavel" class="form-select">
+                                <option value="">Todos</option>
+                                {% for responsavel in responsaveis %}
+                                    <option value="{{ responsavel.id }}" {% if filtro_responsavel == responsavel.id|stringformat:"s" %}selected{% endif %}>{{ responsavel.nome_completo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="em_progresso" {% if filtro_status == 'em_progresso' %}selected{% endif %}>Em Andamento</option>
+                                <option value="concluida" {% if filtro_status == 'concluida' %}selected{% endif %}>Concluído</option>
+                                <option value="cancelada" {% if filtro_status == 'cancelada' %}selected{% endif %}>Cancelado</option>
+                                <option value="atrasado" {% if filtro_status == 'atrasado' %}selected{% endif %}>Atrasado</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Ano</label>
+                            <select name="ano" class="form-select">
+                                <option value="">Todos</option>
+                                {% for ano in anos %}
+                                    <option value="{{ ano }}" {% if filtro_ano|stringformat:"s" == ano|stringformat:"s" %}selected{% endif %}>{{ ano }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-12">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-funnel me-1"></i>Filtrar
+                                </button>
+                                <a href="{% url 'acoes:listar_acoes' %}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x me-1"></i>Limpar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Tipo</label>
-                    <select name="tipo" class="form-select">
-                        <option value="">Todos</option>
-                        <option value="corretiva" {% if filtro_tipo == 'corretiva' %}selected{% endif %}>Corretiva</option>
-                        <option value="preventiva" {% if filtro_tipo == 'preventiva' %}selected{% endif %}>Preventiva</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="">Todos</option>
-                        <option value="aberta" {% if filtro_status == 'aberta' %}selected{% endif %}>Aberta</option>
-                        <option value="em_progresso" {% if filtro_status == 'em_progresso' %}selected{% endif %}>Em Progresso</option>
-                        <option value="concluida" {% if filtro_status == 'concluida' %}selected{% endif %}>Concluída</option>
-                        <option value="cancelada" {% if filtro_status == 'cancelada' %}selected{% endif %}>Cancelada</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Prioridade</label>
-                    <select name="prioridade" class="form-select">
-                        <option value="">Todos</option>
-                        <option value="baixa" {% if filtro_prioridade == 'baixa' %}selected{% endif %}>Baixa</option>
-                        <option value="media" {% if filtro_prioridade == 'media' %}selected{% endif %}>Média</option>
-                        <option value="alta" {% if filtro_prioridade == 'alta' %}selected{% endif %}>Alta</option>
-                        <option value="critica" {% if filtro_prioridade == 'critica' %}selected{% endif %}>Crítica</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex gap-2 align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-funnel me-1"></i>Filtrar
-                    </button>
-                    <a href="{% url 'acoes:listar_acoes' %}" class="btn btn-outline-secondary w-100">
-                        <i class="bi bi-x me-1"></i>Limpar
-                    </a>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
     <!-- Tabela de Ações -->
-    <div class="card shadow-sm">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0 table-sm">
-                <thead class="table-light sticky-top">
-                    <tr>
-                        <th>Data de Abertura</th>
-                        <th>Ano</th>
-                        <th>Unidade</th>
-                        <th>Nº do Registro</th>
-                        <th>Tipo de Solução</th>
-                        <th>Origem do Problema</th>
-                        <th>Descrição</th>
-                        <th>Causa Raiz</th>
-                        <th>Responsável</th>
-                        <th>Observação</th>
-                        <th>Link</th>
-                        <th>Data Vencimento</th>
-                        <th>Data Fechamento</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for acao in acoes %}
-                    <tr>
-                        <td>{{ acao.data_abertura|date:"d/m/Y" }}</td>
-                        <td>{{ acao.ano }}</td>
-                        <td>{{ acao.unidade }}</td>
-                        <td>
-                            <strong>{{ acao.numero_registro }}</strong>
-                        </td>
-                        <td>
-                            {% if acao.tipo_solucao %}
-                                <span class="badge bg-info">{{ acao.get_tipo_solucao_display }}</span>
-                            {% else %}
-                                ---
-                            {% endif %}
-                        </td>
-                        <td>{{ acao.origem|default:"---" }}</td>
-                        <td>
-                            <small>{{ acao.descricao|truncatewords:10 }}</small>
-                        </td>
-                        <td>
-                            <small>{{ acao.causa_raiz|truncatewords:8|default:"---" }}</small>
-                        </td>
-                        <td>{{ acao.responsavel.nome_completo|default:"---" }}</td>
-                        <td>
-                            <small>{{ acao.observacoes|truncatewords:8|default:"---" }}</small>
-                        </td>
-                        <td>
-                            {% if acao.link_registro %}
-                                <a href="{{ acao.link_registro }}" target="_blank" class="btn btn-sm btn-link">
-                                    <i class="bi bi-link-45deg"></i>
-                                </a>
-                            {% else %}
-                                ---
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if acao.esta_vencida %}
-                                <span class="badge bg-danger">{{ acao.data_vencimento|date:"d/m/Y" }}</span>
-                            {% else %}
-                                {{ acao.data_vencimento|date:"d/m/Y" }}
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if acao.data_conclusao %}
-                                {{ acao.data_conclusao|date:"d/m/Y" }}
-                            {% else %}
-                                ---
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge 
-                                {% if acao.status == 'aberta' %}bg-secondary
-                                {% elif acao.status == 'em_progresso' %}bg-warning
-                                {% elif acao.status == 'concluida' %}bg-success
-                                {% else %}bg-dark{% endif %}">
-                                {{ acao.get_status_display }}
-                            </span>
-                        </td>
-                        <td>
-                            <a href="{% url 'acoes:detalhe_acao' acao.id %}" class="btn btn-sm btn-primary">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="15" class="text-center py-4">
-                            <p class="text-muted mb-0">Nenhuma ação encontrada.</p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 table-sm">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Data de Abertura</th>
+                                <th>Ano</th>
+                                <th>Unidade</th>
+                                <th>Nº do Registro</th>
+                                <th>Tipo de Solução</th>
+                                <th>Origem do Problema</th>
+                                <th>Descrição</th>
+                                <th>Causa Raiz</th>
+                                <th>Responsável</th>
+                                <th>Observação</th>
+                                <th>Link</th>
+                                <th>Data Vencimento</th>
+                                <th>Data Fechamento</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for acao in acoes %}
+                            <tr data-acao-id="{{ acao.id }}"
+                                data-numero-registro="{{ acao.numero_registro }}"
+                                data-data-abertura="{{ acao.data_abertura|date:'Y-m-d' }}"
+                                data-ano="{{ acao.ano }}"
+                                data-unidade="{{ acao.unidade }}"
+                                data-tipo-solucao="{{ acao.tipo_solucao }}"
+                                data-origem="{{ acao.origem }}"
+                                data-descricao="{{ acao.descricao }}"
+                                data-causa-raiz="{{ acao.causa_raiz }}"
+                                data-responsavel-id="{% if acao.responsavel %}{{ acao.responsavel.id }}{% endif %}"
+                                data-observacoes="{{ acao.observacoes }}"
+                                data-link-registro="{{ acao.link_registro }}"
+                                data-data-vencimento="{{ acao.data_vencimento|date:'Y-m-d' }}"
+                                data-data-conclusao="{{ acao.data_conclusao|date:'Y-m-d' }}"
+                                data-status="{{ acao.status }}">
+                                <td>{{ acao.data_abertura|date:"d/m/Y" }}</td>
+                                <td>{{ acao.ano }}</td>
+                                <td>{{ acao.unidade }}</td>
+                                <td><strong>{{ acao.numero_registro }}</strong></td>
+                                <td>
+                                    {% if acao.tipo_solucao %}
+                                        <span class="badge bg-info">{{ acao.get_tipo_solucao_display }}</span>
+                                    {% else %}
+                                        ---
+                                    {% endif %}
+                                </td>
+                                <td>{{ acao.origem|default:"---" }}</td>
+                                <td><small>{{ acao.descricao|truncatewords:10 }}</small></td>
+                                <td><small>{{ acao.causa_raiz|truncatewords:8|default:"---" }}</small></td>
+                                <td>{{ acao.responsavel.nome_completo|default:"---" }}</td>
+                                <td><small>{{ acao.observacoes|truncatewords:8|default:"---" }}</small></td>
+                                <td>
+                                    {% if acao.link_registro %}
+                                        <a href="{{ acao.link_registro }}" target="_blank" class="btn btn-sm btn-link">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </a>
+                                    {% else %}
+                                        ---
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if acao.esta_vencida %}
+                                        <span class="badge bg-danger">{{ acao.data_vencimento|date:"d/m/Y" }}</span>
+                                    {% else %}
+                                        {{ acao.data_vencimento|date:"d/m/Y" }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if acao.data_conclusao %}
+                                        {{ acao.data_conclusao|date:"d/m/Y" }}
+                                    {% else %}
+                                        ---
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if acao.status == 'aberta' %}bg-secondary
+                                        {% elif acao.status == 'em_progresso' %}bg-warning
+                                        {% elif acao.status == 'concluida' %}bg-success
+                                        {% else %}bg-dark{% endif %}">
+                                        {{ acao.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{% url 'acoes:detalhe_acao' acao.id %}" class="btn btn-sm btn-primary" title="Visualizar">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-warning" title="Editar" data-bs-toggle="modal" data-bs-target="#modalAcao" onclick="editarAcao({{ acao.id }})">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="15" class="text-center py-4">
+                                    <p class="text-muted mb-0">Nenhuma ação encontrada.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Modal para Criar/Editar Ação Corretiva -->
+<div class="modal fade" id="modalAcao" tabindex="-1" aria-labelledby="modalAcaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light border-bottom">
+                <h5 class="modal-title" id="modalAcaoLabel">Nova Ação Corretiva</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <form id="formAcao">
+                    {% csrf_token %}
+                    <input type="hidden" id="acaoId" name="id">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data de Abertura</label>
+                            <input type="date" class="form-control" name="data_abertura" id="data_abertura">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Ano</label>
+                            <input type="number" class="form-control" name="ano" id="ano" min="2000">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Unidade</label>
+                            <input type="text" class="form-control" name="unidade" id="unidade">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Nº do Registro *</strong></label>
+                            <input type="text" class="form-control" name="numero_registro" id="numero_registro" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo de Solução</label>
+                            <input type="text" class="form-control" name="tipo_solucao" id="tipo_solucao" placeholder="Ex: Melhoria, RNC">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Origem do Problema</label>
+                            <input type="text" class="form-control" name="origem" id="origem">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status" id="status">
+                                <option value="aberta">Aberta</option>
+                                <option value="em_progresso">Em Progresso</option>
+                                <option value="concluida">Concluída</option>
+                                <option value="cancelada">Cancelada</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Descrição da NC e/ou Melhoria *</strong></label>
+                        <textarea class="form-control" name="descricao" id="descricao" rows="3" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Causa Raiz</label>
+                        <textarea class="form-control" name="causa_raiz" id="causa_raiz" rows="2"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Responsável</label>
+                            <select class="form-select" name="responsavel" id="responsavel">
+                                <option value="">--- Selecionar ---</option>
+                                {% for responsavel in responsaveis %}
+                                    <option value="{{ responsavel.id }}">{{ responsavel.nome_completo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Observação</label>
+                            <textarea class="form-control" name="observacoes" id="observacoes" rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Link do Registro</label>
+                        <input type="url" class="form-control" name="link_registro" id="link_registro" placeholder="https://...">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Data de Fechamento Programada *</strong></label>
+                            <input type="date" class="form-control" name="data_vencimento" id="data_vencimento" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data Fechamento</label>
+                            <input type="date" class="form-control" name="data_conclusao" id="data_conclusao">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light border-top">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarAcao()">
+                    <i class="bi bi-check-circle me-1"></i>Salvar
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -205,11 +369,150 @@
     .card {
         border: none;
         border-radius: 0.5rem;
+        transition: box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15) !important;
     }
     
     .badge {
         font-size: 0.75rem;
         padding: 0.5rem 0.75rem;
+        font-weight: 500;
+    }
+
+    table thead th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+
+    table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .btn-group {
+        gap: 0.25rem;
+    }
+
+    .modal-content {
+        border: none;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.15);
+    }
+
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .table-responsive {
+        border-radius: 0;
     }
 </style>
+
+<script>
+function novaAcao() {
+    // Limpa o formulário para criar nova ação
+    document.getElementById('formAcao').reset();
+    document.getElementById('acaoId').value = '';
+    document.getElementById('modalAcaoLabel').textContent = 'Nova Ação Corretiva';
+}
+
+function editarAcao(acaoId) {
+    // Busca os dados da linha da tabela pelos data attributes
+    const row = document.querySelector(`[data-acao-id="${acaoId}"]`);
+    
+    if (!row) {
+        alert('Ação não encontrada na tabela');
+        return;
+    }
+    
+    // Popula o formulário com os dados da ação
+    document.getElementById('acaoId').value = acaoId;
+    document.getElementById('numero_registro').value = row.dataset.numeroRegistro || '';
+    document.getElementById('data_abertura').value = row.dataset.dataAbertura || '';
+    document.getElementById('ano').value = row.dataset.ano || '';
+    document.getElementById('unidade').value = row.dataset.unidade || '';
+    document.getElementById('tipo_solucao').value = row.dataset.tipoSolucao || '';
+    document.getElementById('origem').value = row.dataset.origem || '';
+    document.getElementById('descricao').value = row.dataset.descricao || '';
+    document.getElementById('causa_raiz').value = row.dataset.causaRaiz || '';
+    document.getElementById('responsavel').value = row.dataset.responsavelId || '';
+    document.getElementById('observacoes').value = row.dataset.observacoes || '';
+    document.getElementById('link_registro').value = row.dataset.linkRegistro || '';
+    document.getElementById('data_vencimento').value = row.dataset.dataVencimento || '';
+    document.getElementById('data_conclusao').value = row.dataset.dataConclusao || '';
+    document.getElementById('status').value = row.dataset.status || 'aberta';
+    
+    // Atualiza o título do modal
+    document.getElementById('modalAcaoLabel').textContent = `Editar Ação - ${row.dataset.numeroRegistro}`;
+}
+
+function salvarAcao() {
+    const form = document.getElementById('formAcao');
+    const acaoId = document.getElementById('acaoId').value;
+    const numeroRegistro = document.getElementById('numero_registro').value;
+    
+    // Validação básica
+    if (!numeroRegistro.trim()) {
+        alert('O número de registro é obrigatório');
+        document.getElementById('numero_registro').focus();
+        return;
+    }
+    
+    if (!document.getElementById('descricao').value.trim()) {
+        alert('A descrição é obrigatória');
+        document.getElementById('descricao').focus();
+        return;
+    }
+    
+    if (!document.getElementById('data_vencimento').value) {
+        alert('A data de fechamento programada é obrigatória');
+        document.getElementById('data_vencimento').focus();
+        return;
+    }
+    
+    const formData = new FormData(form);
+    
+    fetch('{% url "acoes:salvar_acao_corretiva_modal" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const mensagem = acaoId ? 'Ação atualizada com sucesso!' : 'Ação criada com sucesso!';
+            alert(mensagem);
+            bootstrap.Modal.getInstance(document.getElementById('modalAcao')).hide();
+            location.reload();
+        } else {
+            let errorMsg = data.message || 'Erro ao salvar a ação';
+            if (data.errors) {
+                const erros = Object.entries(data.errors)
+                    .map(([campo, msgs]) => `${campo}: ${msgs.join(', ')}`)
+                    .join('\n');
+                errorMsg += '\n\n' + erros;
+            }
+            alert('Erro: ' + errorMsg);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao salvar a ação. Verifique o console para mais detalhes.');
+    });
+}
+</script>
+
 {% endblock %}

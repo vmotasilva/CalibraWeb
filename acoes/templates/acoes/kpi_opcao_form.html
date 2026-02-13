@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if form.instance.pk %}
+        Editar KPI
+    {% else %}
+        Novo KPI
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            {% if form.instance.pk %}
+                <h1 class="h3">
+                    <i class="bi bi-pencil-square text-primary me-2"></i>
+                    Editar KPI
+                </h1>
+                <p class="text-muted">Atualize os dados do KPI: <strong>{{ form.instance.nome }}</strong></p>
+            {% else %}
+                <h1 class="h3">
+                    <i class="bi bi-plus-circle text-success me-2"></i>
+                    Novo KPI
+                </h1>
+                <p class="text-muted">Preencha os campos abaixo para cadastrar um novo KPI</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="{{ form.nome.id_for_label }}" class="form-label">
+                                <i class="bi bi-pencil"></i> Nome *
+                            </label>
+                            {{ form.nome }}
+                            {% if form.nome.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.nome.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-2">
+                                Exemplo: "SLA", "Retrabalho", "Lead Time"
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.codigo.id_for_label }}" class="form-label">
+                                <i class="bi bi-code"></i> Codigo
+                            </label>
+                            {{ form.codigo }}
+                            {% if form.codigo.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.codigo.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-2">
+                                Codigo curto para identificar o KPI. Exemplo: "SLA", "RETR", "LT"
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.descricao.id_for_label }}" class="form-label">
+                                <i class="bi bi-file-text"></i> Descricao
+                            </label>
+                            {{ form.descricao }}
+                            {% if form.descricao.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.descricao.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-2">
+                                Descricao detalhada para facilitar o uso do KPI
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.ativo }}
+                                <label for="{{ form.ativo.id_for_label }}" class="form-check-label">
+                                    <i class="bi bi-check-circle"></i> Ativo
+                                </label>
+                            </div>
+                            {% if form.ativo.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.ativo.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted d-block mt-2">
+                                Marque para que este KPI esteja disponivel nos planos de acao
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="card-footer bg-light d-flex gap-2 justify-content-end">
+                        <a href="{% url 'acoes:kpi_opcao_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                        <button type="reset" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-counterclockwise"></i> Limpar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i>
+                            {% if form.instance.pk %}
+                                Atualizar
+                            {% else %}
+                                Cadastrar
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            {% if form.instance.criado_em %}
+                <div class="card mt-3 border-0 shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-clock-history"></i>
+                            Criado em: {{ form.instance.criado_em|date:"d/m/Y H:i" }}
+                        </p>
+                        {% if form.instance.atualizado_em != form.instance.criado_em %}
+                            <p class="text-muted small mb-0">
+                                <i class="bi bi-pencil"></i>
+                                Ultima atualizacao: {{ form.instance.atualizado_em|date:"d/m/Y H:i" }}
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-lightbulb text-warning"></i> Dicas
+                    </h6>
+                </div>
+                <div class="card-body small">
+                    <ul class="mb-0">
+                        <li>O <strong>nome</strong> do KPI e unico e obrigatorio</li>
+                        <li>O <strong>codigo</strong> deve ser curto e facil de lembrar</li>
+                        <li>A <strong>descricao</strong> ajuda a padronizar o uso</li>
+                        <li>Apenas KPIs <strong>ativos</strong> aparecem nos formularios</li>
+                        <li>Voce pode desativar um KPI sem perde-lo</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle text-info"></i> Exemplos
+                    </h6>
+                </div>
+                <div class="card-body small">
+                    <p class="mb-2"><strong>SLA</strong></p>
+                    <p class="text-muted mb-3">Tempo medio de atendimento e resposta</p>
+
+                    <p class="mb-2"><strong>Retrabalho</strong></p>
+                    <p class="text-muted mb-3">Quantidade de atividades refeitas</p>
+
+                    <p class="mb-2"><strong>Lead Time</strong></p>
+                    <p class="text-muted">Tempo total de execucao do processo</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        'use strict';
+        window.addEventListener('load', function () {
+            var forms = document.querySelectorAll('.needs-validation');
+            Array.prototype.slice.call(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    }());
+</script>
+{% endblock %}

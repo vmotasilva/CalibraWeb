@@ -5,11 +5,13 @@ from .models import (
     TemplateSolucao,
     Solucao,
     PlanoAcao,
+    LinhaAcao,
     SolucaoA3,
     Solucao8D,
     SolucaoRNC,
     SolucaoGestaoDeMudanca,
-    RevisaoGerencial
+    RevisaoGerencial,
+    KPIOpcao
 )
 from qms.admin import admin_site
 
@@ -87,178 +89,345 @@ class SolucaoAdmin(admin.ModelAdmin):
 
 
 class PlanoAcaoAdmin(admin.ModelAdmin):
-    list_display = ('solucao', 'responsavel_acao', 'status', 'data_inicio', 'data_conclusao')
-    list_filter = ('status', 'data_conclusao')
-    search_fields = ('solucao__titulo', 'acao_proposta')
+    list_display = ('numero_acao', 'descricao', 'status', 'responsavel_acao', 'data_deadline')
+    list_filter = ('status', 'prioridade', 'classificacao', 'data_deadline')
+    search_fields = ('numero_acao', 'descricao', 'problema', 'responsavel_acao__nome_completo')
+    readonly_fields = ('criado_em', 'atualizado_em')
     
     fieldsets = (
-        ('Relacionamento', {
-            'fields': ('solucao',)
+        ('Identificação', {
+            'fields': ('solucao', 'numero_acao', 'numero_registro', 'laboratorio_area_projeto')
         }),
-        ('Ação', {
-            'fields': ('acao_proposta', 'responsavel_acao')
+        ('Informações da Ação', {
+            'fields': ('input_origem', 'problema', 'laboratorio', 'kpi', 'descricao', 'classificacao')
         }),
-        ('Datas', {
-            'fields': ('data_inicio', 'data_conclusao')
+        ('Status e Prazos', {
+            'fields': ('status', 'prioridade', 'data_primeira_deadline', 'data_deadline', 'data_conclusao')
         }),
-        ('Acompanhamento', {
-            'fields': ('status', 'resultado')
+        ('Responsabilidades', {
+            'fields': ('responsavel_acao',)
+        }),
+        ('Eficácia', {
+            'fields': ('acao_eficaz', 'resultado', 'comentarios')
+        }),
+        ('Sistema', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
         }),
     )
+
+
+class LinhaAcaoAdmin(admin.ModelAdmin):
+    list_display = ('plano_acao', 'numero_acao', 'descricao', 'status', 'responsavel_acao', 'data_deadline')
+    list_filter = ('status', 'prioridade', 'classificacao', 'data_deadline')
+    search_fields = ('numero_acao', 'descricao', 'problema', 'responsavel_acao__nome_completo')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    
+    fieldsets = (
+        ('Identificação', {
+            'fields': ('plano_acao', 'numero_acao')
+        }),
+        ('Informações da Ação', {
+            'fields': ('input_origem', 'problema', 'kpi', 'descricao', 'classificacao')
+        }),
+        ('Status e Prazos', {
+            'fields': ('status', 'prioridade', 'data_primeira_deadline', 'data_deadline', 'data_conclusao')
+        }),
+        ('Responsabilidades', {
+            'fields': ('responsavel_acao', 'responsaveis_multiplos')
+        }),
+        ('Eficácia', {
+            'fields': ('acao_eficaz', 'comentarios')
+        }),
+        ('Sistema', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
+
 
 
 class SolucaoA3Admin(admin.ModelAdmin):
-    list_display = ('solucao', 'get_tipo_display')
-    search_fields = ('solucao__titulo', 'problema_descricao', 'causa_raiz')
+    list_display = ('a3_numero', 'laboratorio', 'lider_projeto', 'data_criacao')
+    list_filter = ('data_criacao', 'laboratorio')
+    search_fields = ('a3_numero', 'problema', 'laboratorio')
+    date_hierarchy = 'data_criacao'
     
     fieldsets = (
         ('Relacionamento', {
             'fields': ('solucao',)
         }),
+        ('Identificação', {
+            'fields': ('a3_numero', 'data_criacao', 'laboratorio', 'lider_projeto', 'participantes')
+        }),
         ('Problema', {
-            'fields': ('problema_descricao', 'problema_impacto')
+            'fields': ('problema', 'historico_importancia', 'observacoes_importantes')
         }),
-        ('Situação', {
-            'fields': ('situacao_atual',)
+        ('Ferramentas de Qualidade Utilizadas', {
+            'fields': (
+                'ferramenta_fluxograma',
+                'ferramenta_brainstorming',
+                'ferramenta_ishikawa',
+                'ferramenta_5_porques',
+                'ferramenta_grafico_pareto',
+                'ferramenta_checklist',
+                'ferramenta_grafico_geral',
+                'ferramenta_carta_tendencia',
+                'ferramenta_antes_depois',
+            ),
+            'classes': ('collapse',)
         }),
-        ('Análise', {
-            'fields': ('analise_causas', 'causa_raiz')
+        ('A.ANALISAR', {
+            'fields': ('analise_causas', 'causa_raiz'),
+            'classes': ('collapse',)
         }),
-        ('Solução', {
-            'fields': ('contramedidas', 'resultados_esperados')
+        ('D.DEFINIR', {
+            'fields': ('objetivo',)
         }),
-        ('Verificação', {
-            'fields': ('plano_verificacao', 'resultado_verificacao')
+        ('I.IMPLEMENTAR (Plano de Ação)', {
+            'fields': ('plano_acao_relacionado',)
+        }),
+        ('M.MEDIR', {
+            'fields': ('estado_atual',),
+            'classes': ('collapse',)
+        }),
+        ('C.CONTROLE', {
+            'fields': ('resultados',),
+            'classes': ('collapse',)
+        }),
+        ('Métricas', {
+            'fields': (
+                'total_acoes_planejadas',
+                'total_acoes_completas',
+                'total_acoes_andamento',
+                'total_acoes_prioridade_andamento',
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Rastreamento', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
         }),
     )
     
-    def get_tipo_display(self, obj):
-        return "A3"
+    readonly_fields = ('criado_em', 'atualizado_em')
 
 
 class Solucao8DAdmin(admin.ModelAdmin):
-    list_display = ('solucao', 'get_tipo_display')
-    search_fields = ('solucao__titulo', 'd2_descricao', 'd4_causa_raiz')
+    list_display = ('numero_formulario', 'lider_8d', 'departamento', 'data_abertura', 'prazo_projeto')
+    list_filter = ('data_abertura', 'departamento', 'lider_8d')
+    search_fields = ('numero_formulario', 'problema_identificado', 'lider_8d__nome_completo', 'equipe')
+    readonly_fields = ('criado_em', 'atualizado_em')
     
     fieldsets = (
-        ('Relacionamento', {
-            'fields': ('solucao',)
+        ('Identificação', {
+            'fields': ('solucao', 'numero_formulario', 'data_abertura', 'prazo_projeto')
         }),
-        ('D1 - Time', {
-            'fields': ('d1_time',)
+        ('D1 - Formação da Equipe', {
+            'fields': ('lider_8d', 'patrocinador', 'equipe', 'departamento', 'problema_identificado')
         }),
-        ('D2 - Problema', {
+        ('D2 - Descrever o Problema', {
             'fields': ('d2_descricao', 'd2_especificacoes')
         }),
-        ('D3 - Contenção', {
-            'fields': ('d3_contencao',)
+        ('D3 - Conter o Problema', {
+            'fields': ('d3_contencao', 'd3_responsavel', 'd3_deadline')
         }),
-        ('D4 - Causa Raiz', {
-            'fields': ('d4_causas', 'd4_causa_raiz')
+        ('D4 - Análise de Causa Raiz', {
+            'fields': ('d4_analise_causas', 'd4_ferramentas_qualidade', 'd4_causa_raiz')
         }),
-        ('D5 - Contramedidas', {
-            'fields': ('d5_contramedidas',)
+        ('D5 - Desenvolvimento de Contramedidas', {
+            'fields': ('d5_contramedidas', 'd5_criterios_selecao')
         }),
-        ('D6 - Implementação', {
-            'fields': ('d6_implementacao',)
+        ('D6 - Implementação de Contramedidas', {
+            'fields': ('d6_implementacao', 'd6_responsavel', 'd6_deadline', 'd6_status')
         }),
-        ('D7 - Verificação', {
-            'fields': ('d7_verificacao', 'd7_resultado')
+        ('D7 - Verificação de Efetividade', {
+            'fields': ('d7_verificacao', 'd7_resultado', 'd7_efetivo')
         }),
-        ('D8 - Padronização', {
-            'fields': ('d8_padronizacao', 'd8_encerramento')
+        ('D8 - Padronização e Fechamento', {
+            'fields': ('d8_padronizacao', 'd8_documentos_atualizados', 'd8_treinamento', 'd8_encerramento')
+        }),
+        ('Análise Geral', {
+            'fields': ('analise_causas', 'causa_raiz'),
+            'classes': ('collapse',)
+        }),
+        ('Sistema', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
         }),
     )
-    
-    def get_tipo_display(self, obj):
-        return "8D"
 
 
 class SolucaoRNCAdmin(admin.ModelAdmin):
-    list_display = ('solucao', 'nc_tipo', 'get_tipo_display')
-    list_filter = ('nc_tipo',)
-    search_fields = ('solucao__titulo', 'nc_descricao', 'causa_raiz')
+    list_display = ('numero_rnc', 'classificacao', 'origem', 'risco', 'data_abertura')
+    list_filter = ('classificacao', 'risco', 'frequencia', 'data_abertura')
+    search_fields = ('numero_rnc', 'descricao_nc', 'causa_raiz', 'unidade')
+    readonly_fields = ('criado_em', 'atualizado_em')
     
     fieldsets = (
-        ('Relacionamento', {
-            'fields': ('solucao',)
+        ('Identificação', {
+            'fields': ('solucao', 'numero_rnc', 'unidade', 'data_abertura')
+        }),
+        ('Classificação', {
+            'fields': ('origem', 'classificacao', 'requerimento_requisito')
         }),
         ('Não Conformidade', {
-            'fields': ('nc_descricao', 'nc_tipo')
+            'fields': ('descricao_nc', 'evidencia_nc')
         }),
-        ('Análise', {
-            'fields': ('analise_causas', 'causa_raiz')
+        ('Gerenciamento de Risco', {
+            'fields': ('frequencia', 'risco')
         }),
-        ('Ações', {
+        ('Tratativas', {
+            'fields': ('causa_raiz', 'acao_contencao', 'acao_nc', 'gerar_plano_acao', 'plano_acao_relacionado')
+        }),
+        ('Ações Associadas', {
             'fields': ('acao_imediata', 'acao_corretiva', 'acao_preventiva')
         }),
-        ('Verificação', {
-            'fields': ('plano_verificacao', 'resultado')
+        ('Análise', {
+            'fields': ('analise_causas', 'plano_verificacao', 'resultado')
+        }),
+        ('Conclusão', {
+            'fields': ('eficacia', 'evidencia_implementacao', 'responsavel', 'data_fechamento')
+        }),
+        ('Sistema', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
         }),
     )
-    
-    def get_tipo_display(self, obj):
-        return "RNC"
 
 
 class SolucaoGestaoDeMudancaAdmin(admin.ModelAdmin):
-    list_display = ('solucao', 'status', 'data_implementacao', 'get_tipo_display')
-    list_filter = ('status', 'data_implementacao')
-    search_fields = ('solucao__titulo', 'mudanca_descricao', 'motivacao')
+    list_display = ('numero_registro', 'tipo_mudanca', 'prioridade_mudanca', 'status', 'data_abertura')
+    list_filter = ('status', 'tipo_mudanca', 'prioridade_mudanca', 'data_abertura')
+    search_fields = ('numero_registro', 'descricao', 'unidade', 'solicitante')
+    readonly_fields = ('criado_em', 'atualizado_em')
     
     fieldsets = (
-        ('Relacionamento', {
-            'fields': ('solucao',)
+        ('Identificação', {
+            'fields': ('solucao', 'numero_registro', 'unidade', 'solicitante', 'data_abertura')
         }),
-        ('Mudança', {
-            'fields': ('mudanca_descricao', 'motivacao')
+        ('Classificação', {
+            'fields': ('tipo_mudanca', 'prioridade_mudanca', 'area_impactada', 'area_avaliadora')
         }),
-        ('Impacto', {
-            'fields': ('impacto_processos', 'impacto_sistemas', 'impacto_pessoas')
+        ('Dados da Mudança', {
+            'fields': ('situacao_antes', 'situacao_depois', 'justificativa', 'beneficios', 'data_mudanca', 'evidencia')
         }),
-        ('Implementação', {
-            'fields': ('plano_implementacao', 'data_implementacao')
+        ('Impactos de EHS', {
+            'fields': (
+                'impacto_pessoas', 'referencia_pessoas',
+                'impacto_ambiente', 'referencia_ambiente',
+                'impacto_ativos', 'referencia_ativos',
+                'impacto_compliance', 'referencia_compliance'
+            )
         }),
-        ('Status', {
-            'fields': ('status',)
+        ('Riscos Envolvidos', {
+            'fields': (
+                'processos_afetados', 'modulos_sistema_afetados',
+                'como_afeta_processo', 'consequencia_nao_mudanca',
+                'riscos_identificados', 'tratamento_riscos',
+                'plano_contingencia', 'areas_implantacao', 'observacoes'
+            )
         }),
-        ('Validação', {
-            'fields': ('plano_validacao', 'resultado_validacao')
+        ('Plano de Ação', {
+            'fields': ('gerar_plano_acao', 'plano_acao_relacionado', 'percentual_conclusao_plano')
+        }),
+        ('Análise Crítica pelas Áreas', {
+            'fields': (
+                'sera_implantada',
+                'justificativa_area1', 'responsavel_decisao_area1', 'data_area1',
+                'justificativa_area2', 'responsavel_decisao_area2', 'data_area2',
+                'solicitante_informado', 'data_informada'
+            )
+        }),
+        ('Status e Validação', {
+            'fields': ('status', 'plano_validacao', 'resultado_validacao')
+        }),
+        ('Sistema', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
         }),
     )
-    
-    def get_tipo_display(self, obj):
-        return "Gestão de Mudança"
 
 
 class RevisaoGerencialAdmin(admin.ModelAdmin):
-    list_display = ('solucao', 'prioridade_implementacao', 'data_alvo_implementacao', 'get_tipo_display')
-    list_filter = ('prioridade_implementacao', 'data_alvo_implementacao')
-    search_fields = ('solucao__titulo', 'revisao_descricao', 'recomendacoes')
+    list_display = ('numero_rg', 'laboratorio', 'data_realizacao', 'status')
+    list_filter = ('status', 'data_realizacao', 'laboratorio')
+    search_fields = ('numero_rg', 'laboratorio', 'representante_direcao', 'responsavel_unidade')
+    date_hierarchy = 'data_realizacao'
+    readonly_fields = ('criado_em', 'atualizado_em')
     
     fieldsets = (
         ('Relacionamento', {
             'fields': ('solucao',)
         }),
-        ('Revisão', {
-            'fields': ('revisao_descricao', 'escopo')
+        ('Identificação', {
+            'fields': ('numero_rg', 'data_realizacao', 'laboratorio', 'periodo_inicio', 'periodo_fim', 'status')
         }),
-        ('Achados', {
-            'fields': ('achados_principais', 'oportunidades_melhoria')
+        ('Participantes', {
+            'fields': ('representante_direcao', 'responsavel_unidade', 'participantes'),
+            'classes': ('collapse',)
         }),
-        ('Recomendações', {
-            'fields': ('recomendacoes', 'prioridade_implementacao')
+        ('Entradas', {
+            'fields': (
+                'entradas_acompanhamento',
+                'entradas_auditorias',
+                'entradas_satisfacao',
+                'entradas_desempenho',
+                'entradas_pessoal',
+                'entradas_fornecedores',
+                'entradas_mudancas',
+                'entradas_risco',
+                'entradas_oportunidades',
+            ),
+            'classes': ('collapse',)
         }),
-        ('Plano de Ação', {
-            'fields': ('plano_acao', 'responsavel_implementacao', 'data_alvo_implementacao')
+        ('Saídas', {
+            'fields': (
+                'saidas_eficacia_sgq',
+                'saidas_melhoria_produto',
+                'saidas_necessidades_cliente',
+                'saidas_necessidade_recurso',
+            ),
+            'classes': ('collapse',)
         }),
-        ('Acompanhamento', {
-            'fields': ('resultado', 'data_conclusao')
+        ('Análises Críticas', {
+            'fields': ('analises_criticas',)
+        }),
+        ('Plano de Ação Relacionado', {
+            'fields': ('plano_acao_relacionado',)
+        }),
+        ('Métricas', {
+            'fields': (
+                'total_acoes_planejadas',
+                'total_acoes_completas',
+                'total_acoes_andamento',
+                'total_acoes_prioridade_andamento',
+                'percentual_conclusao',
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Rastreamento', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
         }),
     )
+
+
+class KPIOpcaoAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'codigo', 'ativo', 'criado_em')
+    list_filter = ('ativo', 'criado_em')
+    search_fields = ('nome', 'codigo', 'descricao')
+    readonly_fields = ('criado_em', 'atualizado_em')
     
-    def get_tipo_display(self, obj):
-        return "Revisão Gerencial"
+    fieldsets = (
+        (None, {
+            'fields': ('nome', 'codigo', 'descricao', 'ativo')
+        }),
+        ('Rastreamento', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
 
 
 # Registrando no admin padrão do Django
@@ -266,11 +435,13 @@ admin_site.register(AcaoCorretiva, AcaoCorretivaAdmin)
 admin_site.register(AcaoComentario, AcaoComentarioAdmin)
 admin_site.register(Solucao, SolucaoAdmin)
 admin_site.register(PlanoAcao, PlanoAcaoAdmin)
+admin_site.register(LinhaAcao, LinhaAcaoAdmin)
 admin_site.register(SolucaoA3, SolucaoA3Admin)
 admin_site.register(Solucao8D, Solucao8DAdmin)
 admin_site.register(SolucaoRNC, SolucaoRNCAdmin)
 admin_site.register(SolucaoGestaoDeMudanca, SolucaoGestaoDeMudancaAdmin)
 admin_site.register(RevisaoGerencial, RevisaoGerencialAdmin)
+admin_site.register(KPIOpcao, KPIOpcaoAdmin)
 
 
 @admin.register(TemplateSolucao)

@@ -26,6 +26,13 @@ from rh.models import Colaborador
 @login_required
 def planejamentos_list_view(request):
     """Lista todos os planejamentos de treinamento"""
+    # Primeiro, atualiza o status de planejamentos que passaram da data
+    PlanejamentoTreinamento.objects.exclude(
+        status__in=["REALIZADO", "CANCELADO", "ATRASADO"]
+    ).filter(
+        data_prevista__lt=timezone.now().date()
+    ).update(status="ATRASADO")
+    
     planejamentos = PlanejamentoTreinamento.objects.select_related(
         'instrutor'
     ).prefetch_related('colaboradores', 'procedimentos').all()
@@ -93,6 +100,7 @@ def planejamentos_list_view(request):
         'confirmado': PlanejamentoTreinamento.objects.filter(status='CONFIRMADO').count(),
         'realizado': PlanejamentoTreinamento.objects.filter(status='REALIZADO').count(),
         'cancelado': PlanejamentoTreinamento.objects.filter(status='CANCELADO').count(),
+        'atrasado': PlanejamentoTreinamento.objects.filter(status='ATRASADO').count(),
     }
     
     context = {

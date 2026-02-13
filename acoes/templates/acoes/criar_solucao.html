@@ -155,7 +155,9 @@
                             <label for="responsavel" class="form-label">Responsável</label>
                             <select class="form-select" id="responsavel" name="responsavel">
                                 <option value="">Selecione um responsável</option>
-                                <!-- Adicionar colaboradores dinamicamente -->
+                                {% for colaborador in colaboradores %}
+                                    <option value="{{ colaborador.id }}">{{ colaborador.nome_completo }}</option>
+                                {% endfor %}
                             </select>
                         </div>
 

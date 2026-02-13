@@ -9,7 +9,13 @@ from django.http import JsonResponse, FileResponse
 from django.views.static import serve
 from django.views.generic import RedirectView
 import os
-from two_factor.urls import urlpatterns as tf_urls
+
+# Conditionally import 2FA URLs if two_factor is installed
+try:
+    from two_factor.urls import urlpatterns as tf_urls
+except RuntimeError:
+    # two_factor app not in INSTALLED_APPS (e.g., during testing)
+    tf_urls = []
 # from procedures.views import nova_solicitacao  # TODO: Implementar se necessário
 from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view, editar_ocorrencia_view, deletar_ocorrencia_view, listar_ocorrencias_view, registrar_ferias_view, editar_ferias_view, excluir_ferias_view
 from metrologia.views import export_metrologia_view, export_etiquetas_view, detalhe_instrumento_view, modulo_metrologia_view, remover_historico_view, visualizar_historico_calibracao_view
