@@ -611,6 +611,7 @@ def dashboard_treinamentos_view(request):
             confirmado=Count('id', filter=Q(status='CONFIRMADO')),
             realizado=Count('id', filter=Q(status='REALIZADO')),
             cancelado=Count('id', filter=Q(status='CANCELADO')),
+            atrasado=Count('id', filter=Q(status='ATRASADO')),
             total=Count('id')
         )
         .order_by('-total')[:10]
@@ -626,6 +627,7 @@ def dashboard_treinamentos_view(request):
             confirmado=Count('id', filter=Q(status='CONFIRMADO')),
             realizado=Count('id', filter=Q(status='REALIZADO')),
             cancelado=Count('id', filter=Q(status='CANCELADO')),
+            atrasado=Count('id', filter=Q(status='ATRASADO')),
             total=Count('id')
         )
         .order_by('-total')[:10]

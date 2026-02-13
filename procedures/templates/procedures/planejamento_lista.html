@@ -272,7 +272,9 @@
                                 {% elif p.status == 'REALIZADO' %}
                                     <span class="badge bg-success status-badge">Realizado</span>
                                 {% elif p.status == 'CANCELADO' %}
-                                    <span class="badge bg-danger status-badge">Cancelado</span>
+                                    <span class="badge bg-secondary status-badge">Cancelado</span>
+                                {% elif p.status == 'ATRASADO' %}
+                                    <span class="badge bg-danger status-badge">Atrasado</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">
