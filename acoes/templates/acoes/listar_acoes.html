@@ -113,10 +113,11 @@
                             <label class="form-label">Status</label>
                             <select name="status" class="form-select">
                                 <option value="">Todos</option>
+                                <option value="aberta" {% if filtro_status == 'aberta' %}selected{% endif %}>Aberta</option>
                                 <option value="em_progresso" {% if filtro_status == 'em_progresso' %}selected{% endif %}>Em Andamento</option>
                                 <option value="concluida" {% if filtro_status == 'concluida' %}selected{% endif %}>Concluído</option>
                                 <option value="cancelada" {% if filtro_status == 'cancelada' %}selected{% endif %}>Cancelado</option>
-                                <option value="atrasado" {% if filtro_status == 'atrasado' %}selected{% endif %}>Atrasado</option>
+                                <option value="atrasada" {% if filtro_status == 'atrasada' %}selected{% endif %}>Atrasado</option>
                             </select>
                         </div>
                         <div class="col-lg-2 col-md-6">
@@ -230,6 +231,8 @@
                                         {% if acao.status == 'aberta' %}bg-secondary
                                         {% elif acao.status == 'em_progresso' %}bg-warning
                                         {% elif acao.status == 'concluida' %}bg-success
+                                        {% elif acao.status == 'atrasada' %}bg-danger
+                                        {% elif acao.status == 'cancelada' %}bg-dark
                                         {% else %}bg-dark{% endif %}">
                                         {{ acao.get_status_display }}
                                     </span>
