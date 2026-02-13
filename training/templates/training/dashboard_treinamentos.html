@@ -1025,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const plInstrutorPlanejado = [{% for item in planejamento_por_instrutor %}{{ item.planejado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plInstrutorConfirmado = [{% for item in planejamento_por_instrutor %}{{ item.confirmado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plInstrutorRealizado = [{% for item in planejamento_por_instrutor %}{{ item.realizado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const plInstrutorCancelado = [{% for item in planejamento_por_instrutor %}{{ item.cancelado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorAtrasado = [{% for item in planejamento_por_instrutor %}{{ item.atrasado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         
         if (plInstrutorLabels.length > 0) {
             new Chart(ctxPlanejamentoInstrutor.getContext('2d'), {
@@ -1036,8 +1036,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         {
                             label: 'Planejado',
                             data: plInstrutorPlanejado.slice(0, 10),
-                            backgroundColor: 'rgba(108, 117, 125, 0.8)',
-                            borderColor: 'rgba(108, 117, 125, 1)',
+                            backgroundColor: 'rgba(124, 58, 237, 0.8)',
+                            borderColor: 'rgba(124, 58, 237, 1)',
                             borderWidth: 1,
                             borderRadius: 4,
                             barThickness: 10
@@ -1061,8 +1061,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             barThickness: 10
                         },
                         {
-                            label: 'Cancelado',
-                            data: plInstrutorCancelado.slice(0, 10),
+                            label: 'Atrasado',
+                            data: plInstrutorAtrasado.slice(0, 10),
                             backgroundColor: 'rgba(220, 53, 69, 0.8)',
                             borderColor: 'rgba(220, 53, 69, 1)',
                             borderWidth: 1,
@@ -1108,7 +1108,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const plSetorPlanejado = [{% for item in planejamento_por_setor_turno %}{{ item.planejado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plSetorConfirmado = [{% for item in planejamento_por_setor_turno %}{{ item.confirmado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         const plSetorRealizado = [{% for item in planejamento_por_setor_turno %}{{ item.realizado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
-        const plSetorCancelado = [{% for item in planejamento_por_setor_turno %}{{ item.cancelado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorAtrasado = [{% for item in planejamento_por_setor_turno %}{{ item.atrasado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         
         if (plSetorLabels.length > 0) {
             new Chart(ctxPlanejamentoSetorTurno.getContext('2d'), {
@@ -1119,8 +1119,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         {
                             label: 'Planejado',
                             data: plSetorPlanejado.slice(0, 10),
-                            backgroundColor: 'rgba(108, 117, 125, 0.8)',
-                            borderColor: 'rgba(108, 117, 125, 1)',
+                            backgroundColor: 'rgba(124, 58, 237, 0.8)',
+                            borderColor: 'rgba(124, 58, 237, 1)',
                             borderWidth: 1,
                             borderRadius: 4,
                             barThickness: 10
@@ -1144,8 +1144,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             barThickness: 10
                         },
                         {
-                            label: 'Cancelado',
-                            data: plSetorCancelado.slice(0, 10),
+                            label: 'Atrasado',
+                            data: plSetorAtrasado.slice(0, 10),
                             backgroundColor: 'rgba(220, 53, 69, 0.8)',
                             borderColor: 'rgba(220, 53, 69, 1)',
                             borderWidth: 1,

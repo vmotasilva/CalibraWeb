@@ -228,9 +228,6 @@
         const instrutorRealizado = [
             {% for item in planejamento_por_instrutor %}{{ item.realizado }}{% if not forloop.last %},{% endif %}{% endfor %}
         ];
-        const instrutorCancelado = [
-            {% for item in planejamento_por_instrutor %}{{ item.cancelado }}{% if not forloop.last %},{% endif %}{% endfor %}
-        ];
         const instrutorAtrasado = [
             {% for item in planejamento_por_instrutor %}{{ item.atrasado }}{% if not forloop.last %},{% endif %}{% endfor %}
         ];
@@ -244,7 +241,6 @@
                         { label: 'Planejado', data: instrutorPlanejado, backgroundColor: '#7c3aed', stack: 'Stack 0' },
                         { label: 'Confirmado', data: instrutorConfirmado, backgroundColor: '#0d6efd', stack: 'Stack 0' },
                         { label: 'Realizado', data: instrutorRealizado, backgroundColor: '#198754', stack: 'Stack 0' },
-                        { label: 'Cancelado', data: instrutorCancelado, backgroundColor: '#6c757d', stack: 'Stack 0' },
                         { label: 'Atrasado', data: instrutorAtrasado, backgroundColor: '#dc3545', stack: 'Stack 0' }
                     ]
                 },
@@ -279,9 +275,6 @@
         const setorTurnoRealizado = [
             {% for item in planejamento_por_setor_turno %}{{ item.realizado }}{% if not forloop.last %},{% endif %}{% endfor %}
         ];
-        const setorTurnoCancelado = [
-            {% for item in planejamento_por_setor_turno %}{{ item.cancelado }}{% if not forloop.last %},{% endif %}{% endfor %}
-        ];
         const setorTurnoAtrasado = [
             {% for item in planejamento_por_setor_turno %}{{ item.atrasado }}{% if not forloop.last %},{% endif %}{% endfor %}
         ];
@@ -295,7 +288,6 @@
                         { label: 'Planejado', data: setorTurnoPlanejado, backgroundColor: '#7c3aed', stack: 'Stack 0' },
                         { label: 'Confirmado', data: setorTurnoConfirmado, backgroundColor: '#0d6efd', stack: 'Stack 0' },
                         { label: 'Realizado', data: setorTurnoRealizado, backgroundColor: '#198754', stack: 'Stack 0' },
-                        { label: 'Cancelado', data: setorTurnoCancelado, backgroundColor: '#6c757d', stack: 'Stack 0' },
                         { label: 'Atrasado', data: setorTurnoAtrasado, backgroundColor: '#dc3545', stack: 'Stack 0' }
                     ]
                 },
@@ -604,9 +596,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const planejaInstrutorRealizado = [
             {% for item in planejamento_por_instrutor %}{{ item.realizado }}{% if not forloop.last %},{% endif %}{% endfor %}
         ];
-        const planejaInstrutorCancelado = [
-            {% for item in planejamento_por_instrutor %}{{ item.cancelado }}{% if not forloop.last %},{% endif %}{% endfor %}
-        ];
         const planejaInstrutorAtrasado = [
             {% for item in planejamento_por_instrutor %}{{ item.atrasado }}{% if not forloop.last %},{% endif %}{% endfor %}
         ];
@@ -621,7 +610,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         { label: 'Planejado', data: planejaInstrutorPlanejado.slice(0, 10), backgroundColor: '#7c3aed', stack: 'Stack 0' },
                         { label: 'Confirmado', data: planejaInstrutorConfirmado.slice(0, 10), backgroundColor: '#0d6efd', stack: 'Stack 0' },
                         { label: 'Realizado', data: planejaInstrutorRealizado.slice(0, 10), backgroundColor: '#28a745', stack: 'Stack 0' },
-                        { label: 'Cancelado', data: planejaInstrutorCancelado.slice(0, 10), backgroundColor: '#6c757d', stack: 'Stack 0' },
                         { label: 'Atrasado', data: planejaInstrutorAtrasado.slice(0, 10), backgroundColor: '#dc3545', stack: 'Stack 0' }
                     ]
                 },
@@ -658,9 +646,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const planejaSetorRealizado = [
             {% for item in planejamento_por_setor_turno %}{{ item.realizado }}{% if not forloop.last %},{% endif %}{% endfor %}
         ];
-        const planejaSetorCancelado = [
-            {% for item in planejamento_por_setor_turno %}{{ item.cancelado }}{% if not forloop.last %},{% endif %}{% endfor %}
-        ];
         const planejaSetorAtrasado = [
             {% for item in planejamento_por_setor_turno %}{{ item.atrasado }}{% if not forloop.last %},{% endif %}{% endfor %}
         ];
@@ -675,7 +660,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         { label: 'Planejado', data: planejaSetorPlanejado.slice(0, 10), backgroundColor: '#7c3aed', stack: 'Stack 0' },
                         { label: 'Confirmado', data: planejaSetorConfirmado.slice(0, 10), backgroundColor: '#0d6efd', stack: 'Stack 0' },
                         { label: 'Realizado', data: planejaSetorRealizado.slice(0, 10), backgroundColor: '#28a745', stack: 'Stack 0' },
-                        { label: 'Cancelado', data: planejaSetorCancelado.slice(0, 10), backgroundColor: '#6c757d', stack: 'Stack 0' },
                         { label: 'Atrasado', data: planejaSetorAtrasado.slice(0, 10), backgroundColor: '#dc3545', stack: 'Stack 0' }
                     ]
                 },
