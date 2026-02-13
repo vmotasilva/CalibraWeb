@@ -62,6 +62,7 @@ class AcaoCorretiva(models.Model):
         ('em_progresso', 'Em Progresso'),
         ('concluida', 'Concluída'),
         ('cancelada', 'Cancelada'),
+        ('atrasada', 'Atrasada'),
     ]
     
     PRIORIDADE_CHOICES = [

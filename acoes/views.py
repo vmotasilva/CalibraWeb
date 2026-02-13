@@ -35,6 +35,15 @@ def listar_acoes(request):
     from rh.models import Colaborador
     from django.utils import timezone
 
+    # Atualizar status de ações vencidas para ATRASADA
+    # Ações que não estão concluídas e passaram da data de vencimento
+    hoje = timezone.now().date()
+    AcaoCorretiva.objects.exclude(
+        Q(status='concluida') | Q(status='cancelada') | Q(status='atrasada')
+    ).filter(
+        data_vencimento__lt=hoje
+    ).update(status='atrasada')
+
     def normalize_spaces(value):
         return " ".join(value.split())
 
@@ -55,6 +64,8 @@ def listar_acoes(request):
         "concluido": "concluida",
         "cancelada": "cancelada",
         "cancelado": "cancelada",
+        "atrasada": "atrasada",
+        "atrasado": "atrasada",
     }
     
     acoes = AcaoCorretiva.objects.all()
@@ -92,10 +103,9 @@ def listar_acoes(request):
         filtro_status_key = status_key(filtro_status)
         filtro_status = status_map.get(filtro_status_key, filtro_status)
 
-        if filtro_status == 'atrasado':
-            # Ações abertas com vencimento no passado
-            hoje = timezone.now().date()
-            acoes = acoes.filter(status='aberta', data_vencimento__lt=hoje)
+        if filtro_status == 'atrasada':
+            # Filtrar apenas ações com status 'atrasada' (já atualizadas automaticamente)
+            acoes = acoes.filter(status='atrasada')
         else:
             if filtro_status == 'em_progresso':
                 acoes = acoes.filter(
@@ -128,10 +138,7 @@ def listar_acoes(request):
     total_cancelado = AcaoCorretiva.objects.filter(
         Q(status__iexact='cancelada') | Q(status__iexact='cancelado')
     ).count()
-    total_atrasado = AcaoCorretiva.objects.filter(
-        Q(status__iexact='aberta') | Q(status__iexact='aberto') | Q(status__iexact='atrasado'),
-        data_vencimento__lt=hoje
-    ).count()
+    total_atrasado = AcaoCorretiva.objects.filter(status='atrasada').count()
     
     context = {
         'acoes': acoes,
