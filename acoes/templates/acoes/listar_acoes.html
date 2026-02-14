@@ -87,7 +87,7 @@
                             <select name="tipo_solucao" class="form-select">
                                 <option value="">Todos</option>
                                 {% for tipo in tipos_solucao %}
-                                    <option value="{{ tipo }}" {% if filtro_tipo_solucao == tipo %}selected{% endif %}>{{ tipo|capfirst }}</option>
+                                    <option value="{{ tipo.nome }}" {% if filtro_tipo_solucao == tipo.nome %}selected{% endif %}>{{ tipo.nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -193,7 +193,7 @@
                                 <td><strong>{{ acao.numero_registro }}</strong></td>
                                 <td>
                                     {% if acao.tipo_solucao %}
-                                        <span class="badge bg-info">{{ acao.get_tipo_solucao_display }}</span>
+                                        <span class="badge bg-info">{{ acao.tipo_solucao }}</span>
                                     {% else %}
                                         ---
                                     {% endif %}
@@ -295,7 +295,12 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Tipo de Solução</label>
-                            <input type="text" class="form-control" name="tipo_solucao" id="tipo_solucao" placeholder="Ex: Melhoria, RNC">
+                            <select class="form-select" name="tipo_solucao" id="tipo_solucao">
+                                <option value="">--- Selecionar ---</option>
+                                {% for tipo in tipos_solucao %}
+                                    <option value="{{ tipo.nome }}">{{ tipo.nome }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
 
@@ -311,6 +316,7 @@
                                 <option value="em_progresso">Em Progresso</option>
                                 <option value="concluida">Concluída</option>
                                 <option value="cancelada">Cancelada</option>
+                                <option value="atrasada">Atrasada</option>
                             </select>
                         </div>
                     </div>
@@ -430,6 +436,23 @@ function novaAcao() {
     document.getElementById('modalAcaoLabel').textContent = 'Nova Ação Corretiva';
 }
 
+function normalizeStatus(value) {
+    const key = (value || '').toString().trim().toLowerCase().replace(/_/g, ' ');
+    const map = {
+        'aberta': 'aberta',
+        'aberto': 'aberta',
+        'em progresso': 'em_progresso',
+        'em andamento': 'em_progresso',
+        'concluida': 'concluida',
+        'concluido': 'concluida',
+        'cancelada': 'cancelada',
+        'cancelado': 'cancelada',
+        'atrasada': 'atrasada',
+        'atrasado': 'atrasada'
+    };
+    return map[key] || '';
+}
+
 function editarAcao(acaoId) {
     // Busca os dados da linha da tabela pelos data attributes
     const row = document.querySelector(`[data-acao-id="${acaoId}"]`);
@@ -454,7 +477,8 @@ function editarAcao(acaoId) {
     document.getElementById('link_registro').value = row.dataset.linkRegistro || '';
     document.getElementById('data_vencimento').value = row.dataset.dataVencimento || '';
     document.getElementById('data_conclusao').value = row.dataset.dataConclusao || '';
-    document.getElementById('status').value = row.dataset.status || 'aberta';
+    const statusValue = normalizeStatus(row.dataset.status) || 'aberta';
+    document.getElementById('status').value = statusValue;
     
     // Atualiza o título do modal
     document.getElementById('modalAcaoLabel').textContent = `Editar Ação - ${row.dataset.numeroRegistro}`;
@@ -484,6 +508,11 @@ function salvarAcao() {
         return;
     }
     
+    const statusField = document.getElementById('status');
+    if (!statusField.value) {
+        statusField.value = 'aberta';
+    }
+
     const formData = new FormData(form);
     
     fetch('{% url "acoes:salvar_acao_corretiva_modal" %}', {

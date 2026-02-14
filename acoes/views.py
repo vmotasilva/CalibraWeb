@@ -15,8 +15,9 @@ from datetime import timedelta, date
 import unicodedata
 
 from .models import (
-    Solucao, PlanoAcao, SolucaoA3, Solucao8D, SolucaoRNC,
-    SolucaoGestaoDeMudanca, RevisaoGerencial, AcaoCorretiva, AcaoComentario
+    Solucao, PlanoAcao, LinhaAcao, SolucaoA3, Solucao8D, SolucaoRNC,
+    SolucaoGestaoDeMudanca, RevisaoGerencial, AcaoCorretiva, AcaoComentario,
+    TipoSolucao
 )
 from .forms import (
     PlanoAcaoForm, SolucaoA3Form, Solucao8DForm,
@@ -34,6 +35,11 @@ def listar_acoes(request):
     """Lista todas as ações corretivas/preventivas com filtros."""
     from rh.models import Colaborador
     from django.utils import timezone
+
+    # Atualizar status de ações com data de fechamento para CONCLUIDA
+    AcaoCorretiva.objects.filter(data_conclusao__isnull=False).exclude(
+        status='concluida'
+    ).update(status='concluida')
 
     # Atualizar status de ações vencidas para ATRASADA
     # Ações que não estão concluídas e passaram da data de vencimento
@@ -71,9 +77,7 @@ def listar_acoes(request):
     acoes = AcaoCorretiva.objects.all()
     
     # Obter lista de valores únicos para os filtros (remove duplicatas e espacos)
-    tipos_solucao = sorted({
-        normalize_spaces(t) for t in AcaoCorretiva.objects.values_list('tipo_solucao', flat=True) if t
-    })
+    tipos_solucao = TipoSolucao.objects.filter(ativo=True).order_by('nome')
     origens = sorted({
         normalize_spaces(o) for o in AcaoCorretiva.objects.values_list('origem', flat=True) if o
     })
@@ -195,11 +199,29 @@ def salvar_acao_corretiva_modal(request):
 @login_required
 def detalhe_acao(request, acao_id):
     """Exibe detalhes de uma ação."""
+    from rh.models import Colaborador
+    from .models import OrigemProblema, KPIOpcao
+
     acao = get_object_or_404(AcaoCorretiva, id=acao_id)
+    solucao_plano = Solucao.objects.filter(acao_corretiva=acao, tipo='plano_acao').first()
+    plano_acao = solucao_plano.plano_acao if solucao_plano else None
+    acoes_associadas = LinhaAcao.objects.none()
+    if plano_acao:
+        acoes_associadas = (
+            LinhaAcao.objects.filter(plano_acao=plano_acao)
+            .select_related('responsavel_acao')
+            .prefetch_related('responsaveis_multiplos')
+            .order_by('numero_acao')
+        )
     
     context = {
         'acao': acao,
         'comentarios': acao.comentarios.all(),
+        'acoes_associadas': acoes_associadas,
+        'plano_acao': plano_acao,
+        'origens_problema': OrigemProblema.objects.filter(ativo=True).order_by('nome'),
+        'kpis_opcoes': KPIOpcao.objects.filter(ativo=True).order_by('nome'),
+        'responsaveis': Colaborador.objects.filter(afastado=False).order_by('nome_completo'),
     }
     
     return render(request, 'acoes/detalhe_acao.html', context)

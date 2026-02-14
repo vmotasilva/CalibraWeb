@@ -1008,7 +1008,7 @@ class AcaoComentarioForm(ModelForm):
 # ORIGEM DE PROBLEMA / KPI FORM
 # ============================================================================
 
-from .models import OrigemProblema, KPIOpcao
+from .models import OrigemProblema, KPIOpcao, TipoSolucao
 
 
 class OrigemProblemaForm(ModelForm):
@@ -1067,6 +1067,29 @@ class KPIOpcaoForm(ModelForm):
         }
 
 
+class TipoSolucaoForm(ModelForm):
+    """Form para criacao/edicao de tipos de solucao"""
+
+    class Meta:
+        model = TipoSolucao
+        fields = ['nome', 'descricao', 'ativo']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: Plano de Acao, A3, 8D...',
+                'required': True
+            }),
+            'descricao': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Descricao do tipo de solucao...'
+            }),
+            'ativo': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            })
+        }
+
+
 class ImportacaoControleRegistrosForm(forms.Form):
     """Formulário para importação de Controle de Registros"""
 
@@ -1095,6 +1118,7 @@ class LinhaAcaoForm(ModelForm):
             'prioridade',
             'responsavel_acao',
             'responsaveis_multiplos',
+            'responsaveis_externos',
             'data_primeira_deadline',
             'data_deadline',
             'comentarios',
@@ -1139,6 +1163,11 @@ class LinhaAcaoForm(ModelForm):
             'responsaveis_multiplos': forms.SelectMultiple(attrs={
                 'class': 'form-select',
                 'size': '5'
+            }),
+            'responsaveis_externos': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Responsáveis externos (separe por ponto e vírgula)'
             }),
             'data_primeira_deadline': forms.DateInput(attrs={
                 'class': 'form-control',

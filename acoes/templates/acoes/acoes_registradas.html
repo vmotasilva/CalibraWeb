@@ -1,18 +1,42 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Ações Registradas - CalibraWeb{% endblock %}
+{% block title %}Dashboard de Ações - CalibraWeb{% endblock %}
 
 {% block extra_css %}
 <style>
-    .table-responsive {
-        max-height: 70vh;
-        overflow-y: auto;
+    .stats-card {
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .stats-card.total { border-left-color: #007bff; }
+    .stats-card.planejada { border-left-color: #6c757d; }
+    .stats-card.em-curso { border-left-color: #ffc107; }
+    .stats-card.completa { border-left-color: #28a745; }
+    .stats-card.retardo { border-left-color: #dc3545; }
+    .stats-card.prioridade { border-left-color: #fd7e14; }
+    
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 0;
+    }
+    
+    .stats-label {
+        color: #6c757d;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
     .badge-tipo {
-        font-size: 0.85rem;
-        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+        padding: 0.35rem 0.65rem;
+        font-weight: 600;
     }
     
     .badge-plano_acao { background-color: #007bff; }
@@ -22,226 +46,441 @@
     .badge-mudanca { background-color: #17a2b8; }
     .badge-rg { background-color: #6f42c1; }
     
-    .status-planejada { background-color: #e9ecef; color: #495057; }
-    .status-em_curso { background-color: #ffc107; color: #000; }
-    .status-completa { background-color: #28a745; color: #fff; }
-    .status-retardo { background-color: #fd7e14; color: #fff; }
-    .status-cancelada { background-color: #6c757d; color: #fff; }
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
     
-    .filtros-container {
+    .filtros-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+    }
+    
+    .filtros-card .form-label {
+        color: white;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+    
+    .filtros-card .form-control, .filtros-card .form-select {
+        border: 2px solid rgba(255,255,255,0.3);
+        background: rgba(255,255,255,0.9);
+    }
+    
+    .nav-tabs .nav-link {
+        color: #495057;
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #007bff;
+        border-bottom: 3px solid #007bff;
+    }
+    
+    .responsavel-row {
+        border-left: 3px solid #007bff;
+        transition: all 0.2s;
+    }
+    
+    .responsavel-row:hover {
         background-color: #f8f9fa;
-        padding: 1.5rem;
-        border-radius: 0.5rem;
-        margin-bottom: 2rem;
+        border-left-color: #0056b3;
     }
     
-    .coluna-numero {
-        width: 80px;
-        text-align: center;
+    .progress-bar-mini {
+        height: 20px;
+        border-radius: 4px;
     }
     
-    .coluna-responsaveis {
-        width: 150px;
-        font-size: 0.9rem;
+    .table-hover tbody tr:hover {
+        background-color: #f1f3f5;
     }
     
-    .coluna-descricao {
-        width: 200px;
-        word-break: break-word;
+    .icon-stat {
+        font-size: 2rem;
+        opacity: 0.3;
+        position: absolute;
+        right: 15px;
+        top: 15px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid py-4">
+    
+    <!-- HEADER -->
     <div class="row mb-4">
         <div class="col-12">
-            <h1><i class="fas fa-check-circle"></i> Ações Registradas</h1>
-            <p class="text-muted">Visão consolidada de todas as ações de {{ total_acoes }} soluções</p>
+            <h1 class="mb-1">
+                <i class="bi bi-bar-chart-line text-primary"></i> Dashboard de Ações Registradas
+            </h1>
+            <p class="text-muted">Visão consolidada de todas as ações e registros do sistema</p>
+        </div>
+    </div>
+    
+    <!-- CARDS DE ESTATÍSTICAS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card total h-100">
+                <div class="card-body position-relative">
+                    <i class="bi bi-clipboard-data icon-stat"></i>
+                    <p class="stats-number text-primary">{{ estatisticas.total }}</p>
+                    <p class="stats-label mb-0">Total de Ações</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stats-card planejada h-100">
+                <div class="card-body position-relative">
+                    <i class="bi bi-clock-history icon-stat"></i>
+                    <p class="stats-number text-secondary">{{ estatisticas.planejada }}</p>
+                    <p class="stats-label mb-0">Planejadas</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stats-card em-curso h-100">
+                <div class="card-body position-relative">
+                    <i class="bi bi-arrow-repeat icon-stat"></i>
+                    <p class="stats-number text-warning">{{ estatisticas.em_curso }}</p>
+                    <p class="stats-label mb-0">Em Andamento</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stats-card completa h-100">
+                <div class="card-body position-relative">
+                    <i class="bi bi-check-circle icon-stat"></i>
+                    <p class="stats-number text-success">{{ estatisticas.completa }}</p>
+                    <p class="stats-label mb-0">Concluídas</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stats-card retardo h-100">
+                <div class="card-body position-relative">
+                    <i class="bi bi-exclamation-triangle icon-stat"></i>
+                    <p class="stats-number text-danger">{{ estatisticas.retardo }}</p>
+                    <p class="stats-label mb-0">Atrasadas</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-1">
+            <div class="card stats-card prioridade h-100">
+                <div class="card-body position-relative">
+                    <i class="bi bi-star-fill icon-stat"></i>
+                    <p class="stats-number" style="color: #fd7e14;">{{ estatisticas.prioridades }}</p>
+                    <p class="stats-label mb-0">Prioridade</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- DISTRIBUIÇÃO POR TIPO -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição por Tipo de Solução</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        {% for tipo, count in estatisticas.por_tipo.items %}
+                        <div class="col-md-2 mb-2">
+                            <h4 class="mb-1">{{ count }}</h4>
+                            <span class="badge badge-tipo badge-{{ tipo|slugify|cut:' ' }}">{{ tipo }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
     <!-- FILTROS -->
-    <div class="filtros-container">
-        <form method="GET" class="form-inline" id="filtrosForm">
-            <div class="form-group mr-3">
-                <label for="tipo" class="mr-2">Tipo de Solução:</label>
-                <select name="tipo" id="tipo" class="form-control form-control-sm">
-                    <option value="todas" {% if filtro_tipo == 'todas' %}selected{% endif %}>Todas</option>
-                    <option value="plano_acao" {% if filtro_tipo == 'plano_acao' %}selected{% endif %}>Plano de Ação</option>
-                    <option value="a3" {% if filtro_tipo == 'a3' %}selected{% endif %}>A3</option>
-                    <option value="8d" {% if filtro_tipo == '8d' %}selected{% endif %}>8D</option>
-                    <option value="rnc" {% if filtro_tipo == 'rnc' %}selected{% endif %}>RNC</option>
-                    <option value="mudanca" {% if filtro_tipo == 'mudanca' %}selected{% endif %}>Mudança</option>
-                    <option value="rg" {% if filtro_tipo == 'rg' %}selected{% endif %}>Revisão Gerencial</option>
-                </select>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card filtros-card shadow">
+                <div class="card-body">
+                    <form method="GET" id="filtrosForm">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-2">
+                                <label for="tipo" class="form-label">Tipo de Solução</label>
+                                <select name="tipo" id="tipo" class="form-select form-select-sm">
+                                    <option value="todas" {% if filtro_tipo == 'todas' %}selected{% endif %}>Todas</option>
+                                    <option value="plano_acao" {% if filtro_tipo == 'plano_acao' %}selected{% endif %}>Plano de Ação</option>
+                                    <option value="a3" {% if filtro_tipo == 'a3' %}selected{% endif %}>A3</option>
+                                    <option value="8d" {% if filtro_tipo == '8d' %}selected{% endif %}>8D</option>
+                                    <option value="rnc" {% if filtro_tipo == 'rnc' %}selected{% endif %}>RNC</option>
+                                    <option value="mudanca" {% if filtro_tipo == 'mudanca' %}selected{% endif %}>Mudança</option>
+                                    <option value="rg" {% if filtro_tipo == 'rg' %}selected{% endif %}>Revisão Gerencial</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <label for="status" class="form-label">Status</label>
+                                <select name="status" id="status" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if filtro_status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <label for="responsavel" class="form-label">Responsável</label>
+                                <select name="responsavel" id="responsavel" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    {% for resp in responsaveis_unicos %}
+                                    <option value="{{ resp }}" {% if filtro_responsavel == resp %}selected{% endif %}>{{ resp }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <label for="prioridade" class="form-label">Prioridade</label>
+                                <select name="prioridade" id="prioridade" class="form-select form-select-sm">
+                                    <option value="">Todas</option>
+                                    <option value="sim" {% if filtro_prioridade == 'sim' %}selected{% endif %}>Sim</option>
+                                    <option value="não" {% if filtro_prioridade == 'não' %}selected{% endif %}>Não</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label for="busca" class="form-label">Buscar</label>
+                                <input type="text" name="busca" id="busca" placeholder="Nº, Origem, Problema..." class="form-control form-control-sm" value="{{ busca }}">
+                            </div>
+                            
+                            <div class="col-md-1">
+                                <button type="submit" class="btn btn-light btn-sm w-100">
+                                    <i class="bi bi-search"></i> Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
-            
-            <div class="form-group mr-3">
-                <label for="status" class="mr-2">Status:</label>
-                <select name="status" id="status" class="form-control form-control-sm">
-                    <option value="">Todos os status</option>
-                    {% for value, label in status_choices %}
-                    <option value="{{ value }}" {% if filtro_status == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="form-group mr-3">
-                <label for="prioridade" class="mr-2">Prioridade:</label>
-                <select name="prioridade" id="prioridade" class="form-control form-control-sm">
-                    <option value="">Todas</option>
-                    <option value="sim" {% if filtro_prioridade == 'sim' %}selected{% endif %}>Sim</option>
-                    <option value="não" {% if filtro_prioridade == 'não' %}selected{% endif %}>Não</option>
-                </select>
-            </div>
-            
-            <div class="form-group mr-3">
-                <label for="busca" class="mr-2">Buscar:</label>
-                <input type="text" name="busca" id="busca" placeholder="Nº, Origem, Problema..." class="form-control form-control-sm" value="{{ busca }}">
-            </div>
-            
-            <button type="submit" class="btn btn-sm btn-primary mr-2">
-                <i class="fas fa-search"></i> Filtrar
-            </button>
-            <a href="{% url 'acoes:acoes_registradas' %}" class="btn btn-sm btn-secondary">
-                <i class="fas fa-redo"></i> Limpar
-            </a>
-        </form>
+        </div>
     </div>
     
-    <!-- TABELA DE AÇÕES -->
-    <div class="table-responsive">
-        <table class="table table-striped table-bordered table-sm table-hover">
-            <thead class="thead-dark sticky-top">
-                <tr>
-                    <th class="coluna-numero">Tipo</th>
-                    <th class="coluna-numero">Nº Ação</th>
-                    <th>Input/Origem</th>
-                    <th class="coluna-descricao">Problema</th>
-                    <th>Lab</th>
-                    <th>KPI</th>
-                    <th>Descrição</th>
-                    <th>Classificação</th>
-                    <th>Status</th>
-                    <th>Prioridade</th>
-                    <th class="coluna-responsaveis">Responsáveis</th>
-                    <th>1º Deadline</th>
-                    <th>2º Deadline</th>
-                    <th>Comentários</th>
-                    <th>Eficácia</th>
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for acao in acoes %}
-                <tr>
-                    <td>
-                        <span class="badge badge-tipo badge-{{ acao.tipo_slug }}" title="{{ acao.tipo_solucao }}">
-                            {{ acao.tipo_slug|upper }}
-                        </span>
-                    </td>
-                    <td class="coluna-numero font-weight-bold">{{ acao.numero_acao }}</td>
-                    <td><small>{{ acao.input_origem|truncatewords:3 }}</small></td>
-                    <td><small>{{ acao.problema|truncatewords:5 }}</small></td>
-                    <td><small>{{ acao.laboratorio }}</small></td>
-                    <td><small>{{ acao.kpi }}</small></td>
-                    <td><small>{{ acao.classificacao }}</small></td>
-                    <td><small>{{ acao.classificacao }}</small></td>
-                    <td>
-                        {% if acao.status %}
-                        <span class="badge badge-pill status-{{ acao.status|slugify }}">
-                            {{ acao.status }}
-                        </span>
-                        {% else %}
-                        <span class="badge badge-secondary">-</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if acao.prioridade == 'Sim' %}
-                        <span class="badge badge-danger">PRIORIDADE</span>
-                        {% else %}
-                        <span class="text-muted">-</span>
-                        {% endif %}
-                    </td>
-                    <td class="coluna-responsaveis"><small>{{ acao.responsaveis|truncatewords:3 }}</small></td>
-                    <td><small>{{ acao.data_primeira_deadline }}</small></td>
-                    <td><small>{{ acao.data_segunda_deadline }}</small></td>
-                    <td><small>{{ acao.comentarios|truncatewords:3 }}</small></td>
-                    <td>
-                        {% if acao.acao_eficaz == 'Eficaz' %}
-                        <span class="badge badge-success">✓ Eficaz</span>
-                        {% elif acao.acao_eficaz == 'Não Eficaz' %}
-                        <span class="badge badge-warning">✗ Não Eficaz</span>
-                        {% else %}
-                        <span class="text-muted">-</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="#" class="btn btn-sm btn-info" title="Ver detalhes">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                        <a href="#" class="btn btn-sm btn-warning" title="Editar">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="16" class="text-center text-muted py-4">
-                        <i class="fas fa-inbox"></i> Nenhuma ação encontrada com os filtros selecionados.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- TABS DE VISUALIZAÇÃO -->
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link {% if ver_por == 'acoes' %}active{% endif %}" href="?ver_por=acoes{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}{% if filtro_status %}&status={{ filtro_status }}{% endif %}">
+                <i class="bi bi-list-task"></i> Ver Ações
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link {% if ver_por == 'responsaveis' %}active{% endif %}" href="?ver_por=responsaveis{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}{% if filtro_status %}&status={{ filtro_status }}{% endif %}">
+                <i class="bi bi-people"></i> Ver por Responsável
+            </a>
+        </li>
+    </ul>
+    
+    <!-- VISUALIZAÇÃO POR AÇÕES -->
+    {% if ver_por == 'acoes' %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-table"></i> Lista de Ações ({{ total_acoes }})</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 600px;">
+                <table class="table table-hover table-sm mb-0">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th style="width: 150px;">Código Registro</th>
+                            <th style="width: 80px;">Nº Ação</th>
+                            <th>Problema</th>
+                            <th>Descrição</th>
+                            <th style="width: 120px;">Status</th>
+                            <th style="width: 180px;">Responsável</th>
+                            <th style="width: 110px;">Deadline</th>
+                            <th>Comentários</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for acao in acoes %}
+                        <tr>
+                            <td>
+                                <strong>{{ acao.numero_registro }}</strong>
+                            </td>
+                            <td class="font-weight-bold">{{ acao.numero_acao }}</td>
+                            <td><small>{{ acao.problema|truncatewords:8 }}</small></td>
+                            <td><small>{{ acao.descricao|truncatewords:8|default:"-" }}</small></td>
+                            <td>
+                                {% if 'Planejada' in acao.status %}
+                                <span class="badge bg-secondary status-badge">{{ acao.status }}</span>
+                                {% elif 'Curso' in acao.status or 'Andamento' in acao.status %}
+                                <span class="badge bg-warning text-dark status-badge">{{ acao.status }}</span>
+                                {% elif 'Complet' in acao.status or 'Conclu' in acao.status %}
+                                <span class="badge bg-success status-badge">{{ acao.status }}</span>
+                                {% elif 'Retardo' in acao.status or 'Atras' in acao.status %}
+                                <span class="badge bg-danger status-badge">{{ acao.status }}</span>
+                                {% elif 'Cancelada' in acao.status %}
+                                <span class="badge bg-dark status-badge">{{ acao.status }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark status-badge">{{ acao.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ acao.responsaveis|truncatewords:4 }}</small></td>
+                            <td><small>{{ acao.deadline|date:"d/m/Y"|default:"-" }}</small></td>
+                            <td><small>{{ acao.comentarios|truncatewords:6|default:"-" }}</small></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                                <p class="mt-2">Nenhuma ação encontrada com os filtros selecionados.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
     
     <!-- PAGINAÇÃO -->
     {% if page_obj.has_other_pages %}
-    <nav aria-label="Page navigation" class="mt-4">
+    <nav aria-label="Page navigation" class="mt-3">
         <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
             <li class="page-item">
-                <a class="page-link" href="?page=1{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">Primeira</a>
+                <a class="page-link" href="?page=1&ver_por=acoes{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}{% if filtro_status %}&status={{ filtro_status }}{% endif %}">Primeira</a>
             </li>
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">Anterior</a>
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&ver_por=acoes{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}{% if filtro_status %}&status={{ filtro_status }}{% endif %}">Anterior</a>
             </li>
             {% endif %}
             
             <li class="page-item active">
-                <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+                <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
             </li>
             
             {% if page_obj.has_next %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">Próxima</a>
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}&ver_por=acoes{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}{% if filtro_status %}&status={{ filtro_status }}{% endif %}">Próxima</a>
             </li>
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">Última</a>
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&ver_por=acoes{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}{% if filtro_status %}&status={{ filtro_status }}{% endif %}">Última</a>
             </li>
             {% endif %}
         </ul>
     </nav>
     {% endif %}
     
-    <!-- RESUMO -->
-    <div class="alert alert-info mt-4" role="alert">
-        <strong>{{ total_acoes }}</strong> ações registradas no total
-        {% if filtro_tipo != 'todas' %} • Filtrado por tipo: <strong>{{ filtro_tipo|upper }}</strong>{% endif %}
-        {% if filtro_status %} • Status: <strong>{{ filtro_status }}</strong>{% endif %}
-        {% if busca %} • Busca: <strong>{{ busca }}</strong>{% endif %}
+    {% else %}
+    
+    <!-- VISUALIZAÇÃO POR RESPONSÁVEL -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h6 class="mb-0"><i class="bi bi-person-badge"></i> Ações por Responsável (Top 20)</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 600px;">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th style="width: 40px;">#</th>
+                            <th>Responsável</th>
+                            <th class="text-center" style="width: 80px;">Total</th>
+                            <th class="text-center" style="width: 100px;">Planejadas</th>
+                            <th class="text-center" style="width: 100px;">Em Curso</th>
+                            <th class="text-center" style="width: 100px;">Concluídas</th>
+                            <th class="text-center" style="width: 100px;">Atrasadas</th>
+                            <th style="width: 300px;">Distribuição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for resp in acoes_por_responsavel %}
+                        <tr class="responsavel-row">
+                            <td class="text-muted">{{ forloop.counter }}</td>
+                            <td>
+                                <strong>{{ resp.responsavel }}</strong>
+                                <br>
+                                <small class="text-muted">
+                                    <a href="?ver_por=acoes&responsavel={{ resp.responsavel }}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}" class="text-decoration-none">
+                                        <i class="bi bi-filter"></i> Ver ações
+                                    </a>
+                                </small>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-primary rounded-pill">{{ resp.total }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if resp.planejada > 0 %}
+                                <span class="badge bg-secondary rounded-pill">{{ resp.planejada }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if resp.em_curso > 0 %}
+                                <span class="badge bg-warning text-dark rounded-pill">{{ resp.em_curso }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if resp.completa > 0 %}
+                                <span class="badge bg-success rounded-pill">{{ resp.completa }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if resp.retardo > 0 %}
+                                <span class="badge bg-danger rounded-pill">{{ resp.retardo }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 progress-bar-mini">
+                                        {% if resp.planejada > 0 %}
+                                        <div class="progress-bar bg-secondary" style="width: {{ resp.planejada|floatformat:0 }}%" title="Planejadas: {{ resp.planejada }}"></div>
+                                        {% endif %}
+                                        {% if resp.em_curso > 0 %}
+                                        <div class="progress-bar bg-warning" style="width: {{ resp.em_curso|floatformat:0 }}%" title="Em Curso: {{ resp.em_curso }}"></div>
+                                        {% endif %}
+                                        {% if resp.completa > 0 %}
+                                        <div class="progress-bar bg-success" style="width: {{ resp.completa|floatformat:0 }}%" title="Concluídas: {{ resp.completa }}"></div>
+                                        {% endif %}
+                                        {% if resp.retardo > 0 %}
+                                        <div class="progress-bar bg-danger" style="width: {{ resp.retardo|floatformat:0 }}%" title="Atrasadas: {{ resp.retardo }}"></div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                <i class="bi bi-person-x" style="font-size: 3rem;"></i>
+                                <p class="mt-2">Nenhum responsável encontrado.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+    {% endif %}
+    
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    document.getElementById('filtrosForm').addEventListener('submit', function(e) {
-        // Serializar e validar filtros antes de enviar
-        console.log('Filtros aplicados');
+    // Auto-submit on filter change
+    document.querySelectorAll('#filtrosForm select').forEach(function(select) {
+        select.addEventListener('change', function() {
+            document.getElementById('filtrosForm').submit();
+        });
     });
 </script>
 {% endblock %}

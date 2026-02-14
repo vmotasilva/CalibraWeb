@@ -280,6 +280,57 @@ def editar_linha_acao_modal(request, linha_id):
     return redirect('acoes:detalhe_solucao', solucao_id=solucao_id)
 
 
+@login_required
+def obter_dados_linha_acao(request, pk):
+    """Retorna os dados de uma LinhaAcao como JSON para popular o modal de edição"""
+    from acoes.models import LinhaAcao
+    
+    try:
+        linha = LinhaAcao.objects.select_related(
+            'responsavel_acao', 'plano_acao'
+        ).prefetch_related('responsaveis_multiplos').get(id=pk)
+    except LinhaAcao.DoesNotExist:
+        return JsonResponse({'error': 'Ação não encontrada'}, status=404)
+    
+    # Responsáveis internos
+    responsaveis = []
+    for r in linha.responsaveis_multiplos.all():
+        responsaveis.append({
+            'id': r.id,
+            'nome': r.nome_completo
+        })
+    
+    # Responsável principal
+    responsavel_principal = None
+    if linha.responsavel_acao:
+        responsavel_principal = {
+            'id': linha.responsavel_acao.id,
+            'nome': linha.responsavel_acao.nome_completo
+        }
+    
+    data = {
+        'id': linha.id,
+        'numero_acao': linha.numero_acao,
+        'input_origem': linha.input_origem or '',
+        'kpi': linha.kpi or '',
+        'classificacao': linha.classificacao or '',
+        'problema': linha.problema or '',
+        'descricao': linha.descricao or '',
+        'status': linha.status or '',
+        'prioridade': linha.prioridade,
+        'data_primeira_deadline': linha.data_primeira_deadline.strftime('%Y-%m-%d') if linha.data_primeira_deadline else '',
+        'data_deadline': linha.data_deadline.strftime('%Y-%m-%d') if linha.data_deadline else '',
+        'data_conclusao': linha.data_conclusao.strftime('%Y-%m-%d') if hasattr(linha, 'data_conclusao') and linha.data_conclusao else '',
+        'comentarios': linha.comentarios or '',
+        'acao_eficaz': linha.acao_eficaz or '',
+        'responsaveis_externos': linha.responsaveis_externos or '',
+        'responsavel_principal': responsavel_principal,
+        'responsaveis': responsaveis,
+        'solucao_id': linha.plano_acao.solucao_id if linha.plano_acao else None,
+    }
+    
+    return JsonResponse(data)
+
 
 @login_required
 def detalhe_solucao(request, solucao_id):

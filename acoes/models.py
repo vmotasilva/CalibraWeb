@@ -428,7 +428,11 @@ class PlanoAcao(models.Model):
     )
     acao_eficaz = models.CharField(
         max_length=20,
-        choices=[('eficaz', 'Eficaz'), ('nao_eficaz', 'Não Eficaz')],
+        choices=[
+            ('eficaz', 'Eficaz'),
+            ('nao_eficaz', 'Não Eficaz'),
+            ('parcialmente_eficaz', 'Parcialmente Eficaz'),
+        ],
         null=True,
         blank=True,
         verbose_name="Ação Eficaz?"
@@ -563,6 +567,11 @@ class LinhaAcao(models.Model):
         related_name="linhas_acao_multiplos",
         verbose_name="Responsáveis (Múltiplos)"
     )
+    responsaveis_externos = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Responsáveis Externos"
+    )
     data_primeira_deadline = models.DateField(
         null=True,
         blank=True,
@@ -580,7 +589,11 @@ class LinhaAcao(models.Model):
     )
     acao_eficaz = models.CharField(
         max_length=20,
-        choices=[('eficaz', 'Eficaz'), ('nao_eficaz', 'Não Eficaz')],
+        choices=[
+            ('eficaz', 'Eficaz'),
+            ('nao_eficaz', 'Não Eficaz'),
+            ('parcialmente_eficaz', 'Parcialmente Eficaz'),
+        ],
         null=True,
         blank=True,
         verbose_name="Ação Eficaz?"
@@ -709,7 +722,11 @@ class SolucaoA3(models.Model):
     )
     acao_eficaz = models.CharField(
         max_length=20,
-        choices=[('eficaz', 'Eficaz'), ('nao_eficaz', 'Não Eficaz')],
+        choices=[
+            ('eficaz', 'Eficaz'),
+            ('nao_eficaz', 'Não Eficaz'),
+            ('parcialmente_eficaz', 'Parcialmente Eficaz'),
+        ],
         null=True,
         blank=True,
         verbose_name="Ação Eficaz?"
@@ -1159,7 +1176,11 @@ class Solucao8D(models.Model):
     )
     acao_eficaz = models.CharField(
         max_length=20,
-        choices=[('eficaz', 'Eficaz'), ('nao_eficaz', 'Não Eficaz')],
+        choices=[
+            ('eficaz', 'Eficaz'),
+            ('nao_eficaz', 'Não Eficaz'),
+            ('parcialmente_eficaz', 'Parcialmente Eficaz'),
+        ],
         null=True,
         blank=True,
         verbose_name="Ação Eficaz?"
@@ -1467,7 +1488,11 @@ class SolucaoRNC(models.Model):
     )
     acao_eficaz = models.CharField(
         max_length=20,
-        choices=[('eficaz', 'Eficaz'), ('nao_eficaz', 'Não Eficaz')],
+        choices=[
+            ('eficaz', 'Eficaz'),
+            ('nao_eficaz', 'Não Eficaz'),
+            ('parcialmente_eficaz', 'Parcialmente Eficaz'),
+        ],
         null=True,
         blank=True,
         verbose_name="Ação Eficaz?"
@@ -1872,7 +1897,11 @@ class SolucaoGestaoDeMudanca(models.Model):
     )
     acao_eficaz = models.CharField(
         max_length=20,
-        choices=[('eficaz', 'Eficaz'), ('nao_eficaz', 'Não Eficaz')],
+        choices=[
+            ('eficaz', 'Eficaz'),
+            ('nao_eficaz', 'Não Eficaz'),
+            ('parcialmente_eficaz', 'Parcialmente Eficaz'),
+        ],
         null=True,
         blank=True,
         verbose_name="Ação Eficaz?"
@@ -2146,7 +2175,11 @@ class RevisaoGerencial(models.Model):
     )
     acao_eficaz = models.CharField(
         max_length=20,
-        choices=[('eficaz', 'Eficaz'), ('nao_eficaz', 'Não Eficaz')],
+        choices=[
+            ('eficaz', 'Eficaz'),
+            ('nao_eficaz', 'Não Eficaz'),
+            ('parcialmente_eficaz', 'Parcialmente Eficaz'),
+        ],
         null=True,
         blank=True,
         verbose_name="Ação Eficaz?"
@@ -2277,5 +2310,44 @@ class KPIOpcao(models.Model):
             models.Index(fields=['ativo']),
         ]
     
+    def __str__(self):
+        return self.nome
+
+
+class TipoSolucao(models.Model):
+    """Modelo para armazenar tipos de solucao configuraveis."""
+
+    nome = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name="Nome do Tipo"
+    )
+    descricao = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Descricao"
+    )
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name="Ativo"
+    )
+    criado_em = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Criado em"
+    )
+    atualizado_em = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Atualizado em"
+    )
+
+    class Meta:
+        verbose_name = "Tipo de Solucao"
+        verbose_name_plural = "Tipos de Solucao"
+        ordering = ['nome']
+        indexes = [
+            models.Index(fields=['nome']),
+            models.Index(fields=['ativo']),
+        ]
+
     def __str__(self):
         return self.nome

@@ -10,6 +10,7 @@ from .views_solucoes import (
     criar_registro_modal,
     criar_plano_acao_modal,
     editar_linha_acao_modal,
+    obter_dados_linha_acao,
 )
 from .views_aggregated import AcoesRegistradasView
 from .views_origem_problema import (
@@ -24,11 +25,21 @@ from .views_kpi import (
     KPIOpcaoUpdateView,
     KPIOpcaoDeleteView,
 )
+from .views_tipo_solucao import (
+    TipoSolucaoListView,
+    TipoSolucaoCreateView,
+    TipoSolucaoUpdateView,
+    TipoSolucaoDeleteView,
+)
 from .views_importacao_controles import (
     importar_controle_registros,
     download_template_controle_registros,
     importar_plano_acao,
     download_template_plano_acao,
+    importar_acoes_associadas,
+    download_template_acoes_associadas,
+    exportar_acoes_associadas,
+    deletar_acoes_associadas,
 )
 from .views import (
     # Dashboard
@@ -89,6 +100,10 @@ urlpatterns = [
     path('solucoes/importar-controles/template/', download_template_controle_registros, name='download_template_controle_registros'),
     path('solucoes/importar-plano-acao/', importar_plano_acao, name='importar_plano_acao'),
     path('solucoes/importar-plano-acao/template/', download_template_plano_acao, name='download_template_plano_acao'),
+    path('acao/<int:acao_id>/importar-acoes/', importar_acoes_associadas, name='importar_acoes_associadas'),
+    path('acao/<int:acao_id>/importar-acoes/template/', download_template_acoes_associadas, name='download_template_acoes_associadas'),
+    path('acao/<int:acao_id>/exportar-acoes/', exportar_acoes_associadas, name='exportar_acoes_associadas'),
+    path('acao/<int:acao_id>/deletar-acoes/', deletar_acoes_associadas, name='deletar_acoes_associadas'),
     path('solucao/<int:solucao_id>/', detalhe_solucao, name='detalhe_solucao'),
     path('acao/<int:acao_id>/solucao/criar/', criar_solucao, name='criar_solucao'),
     path('solucao/<int:solucao_id>/editar/', editar_solucao, name='editar_solucao'),
@@ -104,6 +119,14 @@ urlpatterns = [
     path('kpis/novo/', KPIOpcaoCreateView.as_view(), name='kpi_opcao_create'),
     path('kpis/<int:pk>/editar/', KPIOpcaoUpdateView.as_view(), name='kpi_opcao_update'),
     path('kpis/<int:pk>/deletar/', KPIOpcaoDeleteView.as_view(), name='kpi_opcao_delete'),
+
+    # ========================================================================
+    # TIPOS DE SOLUCAO (Referencia de Dados)
+    # ========================================================================
+    path('tipos-solucao/', TipoSolucaoListView.as_view(), name='tipo_solucao_list'),
+    path('tipos-solucao/novo/', TipoSolucaoCreateView.as_view(), name='tipo_solucao_create'),
+    path('tipos-solucao/<int:pk>/editar/', TipoSolucaoUpdateView.as_view(), name='tipo_solucao_update'),
+    path('tipos-solucao/<int:pk>/deletar/', TipoSolucaoDeleteView.as_view(), name='tipo_solucao_delete'),
     
     # ========================================================================
     # DASHBOARD
@@ -129,6 +152,7 @@ urlpatterns = [
     # ========================================================================
     path('linha-acao/<int:pk>/editar/', LinhaAcaoUpdateView.as_view(), name='linha_acao_update'),
     path('linha-acao/<int:pk>/deletar/', linha_acao_delete, name='linha_acao_delete'),
+    path('linha-acao/<int:pk>/dados/', obter_dados_linha_acao, name='obter_dados_linha_acao'),
     
     # ========================================================================
     # SOLUÇÃO A3
