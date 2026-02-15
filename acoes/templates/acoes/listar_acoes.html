@@ -153,19 +153,15 @@
                     <table class="table table-hover mb-0 table-sm">
                         <thead class="table-light sticky-top">
                             <tr>
-                                <th>Data de Abertura</th>
-                                <th>Ano</th>
-                                <th>Unidade</th>
-                                <th>Nº do Registro</th>
-                                <th>Tipo de Solução</th>
-                                <th>Origem do Problema</th>
+                                <th class="text-nowrap">Data de Abertura</th>
+                                <th class="text-nowrap">Nº do Registro</th>
+                                <th class="text-nowrap">Tipo de Solução</th>
+                                <th class="text-nowrap">Origem do Problema</th>
                                 <th>Descrição</th>
-                                <th>Causa Raiz</th>
+                                <th class="text-nowrap">Causa Raiz</th>
                                 <th>Responsável</th>
                                 <th>Observação</th>
                                 <th>Link</th>
-                                <th>Data Vencimento</th>
-                                <th>Data Fechamento</th>
                                 <th>Status</th>
                                 <th>Ações</th>
                             </tr>
@@ -187,10 +183,8 @@
                                 data-data-vencimento="{{ acao.data_vencimento|date:'Y-m-d' }}"
                                 data-data-conclusao="{{ acao.data_conclusao|date:'Y-m-d' }}"
                                 data-status="{{ acao.status }}">
-                                <td>{{ acao.data_abertura|date:"d/m/Y" }}</td>
-                                <td>{{ acao.ano }}</td>
-                                <td>{{ acao.unidade }}</td>
-                                <td><strong>{{ acao.numero_registro }}</strong></td>
+                                <td class="text-nowrap">{{ acao.data_abertura|date:"d/m/Y" }}</td>
+                                <td class="text-nowrap"><strong>{{ acao.numero_registro }}</strong></td>
                                 <td>
                                     {% if acao.tipo_solucao %}
                                         <span class="badge bg-info">{{ acao.tipo_solucao }}</span>
@@ -201,27 +195,13 @@
                                 <td>{{ acao.origem|default:"---" }}</td>
                                 <td><small>{{ acao.descricao|truncatewords:10 }}</small></td>
                                 <td><small>{{ acao.causa_raiz|truncatewords:8|default:"---" }}</small></td>
-                                <td>{{ acao.responsavel.nome_completo|default:"---" }}</td>
+                                <td class="text-nowrap">{{ acao.responsavel.nome_completo|default:"---" }}</td>
                                 <td><small>{{ acao.observacoes|truncatewords:8|default:"---" }}</small></td>
                                 <td>
                                     {% if acao.link_registro %}
-                                        <a href="{{ acao.link_registro }}" target="_blank" class="btn btn-sm btn-link">
+                                        <a href="{{ acao.link_registro }}" target="_blank" class="btn btn-sm btn-link p-0">
                                             <i class="bi bi-link-45deg"></i>
                                         </a>
-                                    {% else %}
-                                        ---
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if acao.esta_vencida %}
-                                        <span class="badge bg-danger">{{ acao.data_vencimento|date:"d/m/Y" }}</span>
-                                    {% else %}
-                                        {{ acao.data_vencimento|date:"d/m/Y" }}
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if acao.data_conclusao %}
-                                        {{ acao.data_conclusao|date:"d/m/Y" }}
                                     {% else %}
                                         ---
                                     {% endif %}
@@ -248,7 +228,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="15" class="text-center py-4">
+                                <td colspan="11" class="text-center py-4">
                                     <p class="text-muted mb-0">Nenhuma ação encontrada.</p>
                                 </td>
                             </tr>
@@ -387,8 +367,9 @@
     
     .badge {
         font-size: 0.75rem;
-        padding: 0.5rem 0.75rem;
+        padding: 0.4rem 0.6rem;
         font-weight: 500;
+        white-space: nowrap;
     }
 
     table thead th {
@@ -396,8 +377,15 @@
         font-weight: 600;
         border-bottom: 2px solid #dee2e6;
         text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.3px;
+        padding: 0.5rem 0.4rem;
+    }
+
+    table tbody td {
+        padding: 0.4rem 0.4rem;
         font-size: 0.85rem;
-        letter-spacing: 0.5px;
+        vertical-align: middle;
     }
 
     table tbody tr {
@@ -425,6 +413,33 @@
 
     .table-responsive {
         border-radius: 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1200px) {
+        table thead th,
+        table tbody td {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.3rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        table thead th,
+        table tbody td {
+            font-size: 0.72rem;
+            padding: 0.3rem 0.25rem;
+        }
+        .badge {
+            font-size: 0.65rem;
+            padding: 0.25rem 0.4rem;
+        }
     }
 </style>
 
