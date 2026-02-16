@@ -253,10 +253,13 @@
                                 <input type="text" name="busca" id="busca" placeholder="Nº, Origem, Problema..." class="form-control form-control-sm" value="{{ busca }}">
                             </div>
                             
-                            <div class="col-md-1">
-                                <button type="submit" class="btn btn-light btn-sm w-100">
+                            <div class="col-md-2 d-flex gap-1 align-items-end">
+                                <button type="submit" class="btn btn-light btn-sm">
                                     <i class="bi bi-search"></i> Filtrar
                                 </button>
+                                <a href="{% url 'acoes:acoes_registradas' %}" class="btn btn-outline-secondary btn-sm" title="Limpar filtros">
+                                    <i class="bi bi-x-circle"></i> Limpar
+                                </a>
                             </div>
                         </div>
                     </form>
@@ -291,12 +294,34 @@
                     <thead class="table-light sticky-top">
                         <tr>
                             <th style="width: 150px;">Código Registro</th>
-                            <th style="width: 80px;">Nº Ação</th>
+                            <th style="width: 80px;">
+                                <a href="?ver_por=acoes&ordenar={% if ordenar == 'numero_acao' %}-numero_acao{% else %}numero_acao{% endif %}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}{% if filtro_status %}&status={{ filtro_status }}{% endif %}{% if filtro_responsavel %}&responsavel={{ filtro_responsavel }}{% endif %}{% if filtro_prioridade %}&prioridade={{ filtro_prioridade }}{% endif %}{% if busca %}&busca={{ busca }}{% endif %}" class="text-decoration-none text-dark d-flex align-items-center" title="Ordenar por Nº Ação">
+                                    Nº Ação
+                                    {% if ordenar == 'numero_acao' %}
+                                    <i class="bi bi-sort-numeric-down ms-1"></i>
+                                    {% elif ordenar == '-numero_acao' %}
+                                    <i class="bi bi-sort-numeric-up ms-1"></i>
+                                    {% else %}
+                                    <i class="bi bi-arrow-down-up ms-1 text-muted" style="font-size: 0.7rem;"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
                             <th>Problema</th>
                             <th>Descrição</th>
                             <th style="width: 120px;">Status</th>
                             <th style="width: 180px;">Responsável</th>
-                            <th style="width: 110px;">Deadline</th>
+                            <th style="width: 110px;">
+                                <a href="?ver_por=acoes&ordenar={% if ordenar == 'deadline' %}-deadline{% else %}deadline{% endif %}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}{% if filtro_status %}&status={{ filtro_status }}{% endif %}{% if filtro_responsavel %}&responsavel={{ filtro_responsavel }}{% endif %}{% if filtro_prioridade %}&prioridade={{ filtro_prioridade }}{% endif %}{% if busca %}&busca={{ busca }}{% endif %}" class="text-decoration-none text-dark d-flex align-items-center" title="Ordenar por Deadline">
+                                    Deadline
+                                    {% if ordenar == 'deadline' %}
+                                    <i class="bi bi-sort-down ms-1"></i>
+                                    {% elif ordenar == '-deadline' %}
+                                    <i class="bi bi-sort-up ms-1"></i>
+                                    {% else %}
+                                    <i class="bi bi-arrow-down-up ms-1 text-muted" style="font-size: 0.7rem;"></i>
+                                    {% endif %}
+                                </a>
+                            </th>
                             <th>Comentários</th>
                         </tr>
                     </thead>

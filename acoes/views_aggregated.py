@@ -5,6 +5,7 @@ Permite visualizar/filtrar ações em uma única tela
 
 from django.shortcuts import render
 from django.core.paginator import Paginator
+from django.core.exceptions import FieldError
 from django.db.models import Q, F, Value as V, CharField, Count, Case, When
 from django.views import View
 from django.http import JsonResponse
@@ -31,9 +32,10 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
         responsavel = request.GET.get('responsavel', '')
         busca = request.GET.get('busca', '')
         ver_por = request.GET.get('ver_por', 'acoes')  # acoes ou responsaveis
+        ordenar = request.GET.get('ordenar', '')  # numero_acao, -numero_acao, deadline, -deadline
         
         # Agregação: Obter ações de cada modelo
-        acoes = self._agregar_acoes(tipo_solucao, status, prioridade, responsavel, busca)
+        acoes = self._agregar_acoes(tipo_solucao, status, prioridade, responsavel, busca, ordenar)
         
         # Estatísticas gerais (sem filtros de status/responsavel para mostrar panorama completo)
         todas_acoes = self._agregar_acoes(tipo_solucao, '', '', '', '')
@@ -69,6 +71,7 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
             'filtro_responsavel': responsavel,
             'busca': busca,
             'ver_por': ver_por,
+            'ordenar': ordenar,
             'status_choices': status_choices,
             'estatisticas': estatisticas,
             'acoes_por_responsavel': acoes_por_responsavel[:20],  # Top 20
@@ -77,7 +80,7 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
         
         return render(request, self.template_name, context)
     
-    def _agregar_acoes(self, tipo_solucao, status, prioridade, responsavel, busca):
+    def _agregar_acoes(self, tipo_solucao, status, prioridade, responsavel, busca, ordenar=''):
         """
         Agrega ações de todos os 6 modelos em uma lista única
         Retorna lista de dicts com campos padronizados
@@ -121,7 +124,7 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
         # SolucaoA3
         if tipo_solucao in ['todas', 'a3']:
             a3s = SolucaoA3.objects.select_related('solucao', 'solucao__acao_corretiva').prefetch_related('responsaveis_multiplos')
-            a3s = self._aplicar_filtros(a3s, status, prioridade, responsavel, busca, campo_descricao='objetivo')
+            a3s = self._aplicar_filtros(a3s, status, prioridade, responsavel, busca, campo_descricao='objetivo', campo_status='solucao__status')
             for a in a3s:
                 # Obter numero_registro: a3_numero ou numero_registro da ação corretiva
                 acao_corretiva = a.solucao.acao_corretiva if a.solucao else None
@@ -371,7 +374,18 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
             else:
                 acao['deadline'] = None
         
-        return sorted(acoes, key=lambda x: (x['deadline'] is None, x['deadline'] or ''), reverse=True)
+        # Ordenação
+        if ordenar == 'numero_acao':
+            return sorted(acoes, key=lambda x: (x['numero_acao'] == '-', x['numero_acao'] if isinstance(x['numero_acao'], int) else 0))
+        elif ordenar == '-numero_acao':
+            return sorted(acoes, key=lambda x: (x['numero_acao'] == '-', x['numero_acao'] if isinstance(x['numero_acao'], int) else 0), reverse=True)
+        elif ordenar == 'deadline':
+            return sorted(acoes, key=lambda x: (x['deadline'] is None, x['deadline'] or ''))
+        elif ordenar == '-deadline':
+            return sorted(acoes, key=lambda x: (x['deadline'] is None, x['deadline'] or ''), reverse=True)
+        else:
+            # Default: deadline mais recente primeiro
+            return sorted(acoes, key=lambda x: (x['deadline'] is None, x['deadline'] or ''), reverse=True)
     
     def _calcular_estatisticas(self, acoes):
         """Calcula estatísticas gerais das ações"""
@@ -475,10 +489,14 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
         
         return sorted(resultado, key=lambda x: x['total'], reverse=True)
     
-    def _aplicar_filtros(self, queryset, status, prioridade, responsavel, busca, campo_descricao='descricao', campo_problema='problema'):
+    def _aplicar_filtros(self, queryset, status, prioridade, responsavel, busca, campo_descricao='descricao', campo_problema='problema', campo_status='status'):
         """Aplica filtros ao queryset"""
         if status:
-            queryset = queryset.filter(status=status)
+            try:
+                queryset = queryset.filter(**{campo_status: status})
+            except FieldError:
+                # Modelo não possui o campo de status indicado
+                queryset = queryset.none()
         
         if prioridade:
             prioridade_bool = prioridade.lower() == 'sim'

@@ -9,6 +9,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
 from openpyxl import load_workbook, Workbook
+from openpyxl.worksheet.datavalidation import DataValidation
 
 from acoes.forms import ImportacaoControleRegistrosForm
 import unicodedata
@@ -361,36 +362,53 @@ def importar_controle_registros(request):
 # ============================================================================
 
 PLANO_ACAO_TEMPLATE_HEADERS = [
-    "Solucao Titulo",
-    "Numero Acao",
-    "Descricao Acao",
-    "Classificacao",
-    "Status Acao",
-    "Responsavel Matricula",
-    "Data Primeira Deadline",
-    "Data Deadline",
-    "Data Conclusao",
-    "KPI Opcao",
-    "Meta Esperada",
-    "Acao Eficaz",
-    "Observacoes",
+    "N° de Registro",
+    "Nº Ação",
+    "Input",
+    "Problema",
+    "Lab",
+    "KPI",
+    "Descrição",
+    "Classificação",
+    "Status",
+    "Prioridade",
+    "Responsável",
+    "1° Deadline",
+    "Deadline",
+    "COMENTÁRIOS",
+    "Ação Eficaz",
 ]
 
 
 PLANO_ACAO_HEADER_MAP = {
-    "solucaotitulo": "solucao_titulo",
+    "nderegistro": "numero_registro",
+    "ndoregistro": "numero_registro",
+    "numeroregistro": "numero_registro",
+    "nacao": "numero_acao",
     "numeroacao": "numero_acao",
-    "descricaoacao": "descricao_acao",
+    "input": "input_origem",
+    "inputorigem": "input_origem",
+    "problema": "problema",
+    "lab": "lab",
+    "laboratorio": "lab",
+    "kpi": "kpi",
+    "descricao": "descricao",
     "classificacao": "classificacao",
-    "statusacao": "status_acao",
-    "responsavelmatricula": "responsavel_matricula",
+    "status": "status",
+    "prioridade": "prioridade",
+    "responsavel": "responsavel",
+    "responsavelmatricula": "responsavel",
+    "responsaveismultiplosmatriculas": "responsaveis_multiplos",
+    "responsavelexterno": "responsavel_externo",
+    "responsavelexterno1": "responsavel_externo_1",
+    "responsavelexterno2": "responsavel_externo_2",
+    "responsavelexterno3": "responsavel_externo_3",
+    "1deadline": "data_primeira_deadline",
     "dataprimeiradeadline": "data_primeira_deadline",
+    "deadline": "data_deadline",
     "datadeadline": "data_deadline",
-    "dataconclusao": "data_conclusao",
-    "kpiopcao": "kpi_opcao",
-    "metaesperada": "meta_esperada",
+    "comentarios": "comentarios",
     "acaoeficaz": "acao_eficaz",
-    "observacoes": "observacoes",
 }
 
 
@@ -495,64 +513,42 @@ def parse_int(value):
 
 
 def build_plano_acao_template_workbook():
-    """Cria workbook com 2 abas: Controles e Ações"""
+    """Cria workbook com aba 'Acoes' para importacao em massa."""
     wb = Workbook()
-    
-    # Primeira aba: Controles (para referência)
-    ws_controles = wb.active
-    ws_controles.title = "Controles"
-    ws_controles.append(TEMPLATE_HEADERS)
-    ws_controles.append([
-        "PA-TEC-001/2026",
-        2026,
-        "Unidade X",
-        "Titulo da acao",
-        "Descricao da acao",
-        "corretiva",
-        "corretiva",
-        "media",
-        "Processo",
-        "Causa raiz exemplo",
-        "aberta",
-        "2026-02-10",
-        "2026-03-10",
-        "",
-        "202",
-        "202",
-        "Meta/objetivo",
-        "",
-        "",
-        "https://exemplo.com",
-        "true",
-        "Plano de Acao - PA-TEC-001/2026",
-        "Descricao da solucao",
-        "plano_acao",
-        "planejamento",
-        "2026-02-10",
-        "",
-        "202",
-        "true",
-    ])
-    
-    # Segunda aba: Ações
-    ws_acoes = wb.create_sheet("Acoes")
+    ws_acoes = wb.active
+    ws_acoes.title = "Acoes"
     ws_acoes.append(PLANO_ACAO_TEMPLATE_HEADERS)
     ws_acoes.append([
-        "Plano de Acao - PA-TEC-001/2026",
-        "001",
+        "PA-TEC-001/2026",
+        1,
+        "Processo",
+        "Falha no fluxo",
+        "Lab Metrologia",
+        "Tempo de ciclo",
         "Implantar novo processo",
         "corretiva",
         "planejada",
+        "sim",
         "202",
         "2026-03-10",
         "2026-04-10",
-        "",
-        "Tempo de ciclo",
-        "Reduzir em 25%",
-        False,
         "Acao de exemplo",
+        "EFICAZ",
     ])
-    
+
+    # Data validation para coluna "Ação Eficaz" (coluna 15 = O)
+    dv_eficaz = DataValidation(
+        type="list",
+        formula1='"EFICAZ,NÃO EFICAZ,PARCIALMENTE EFICAZ"',
+        allow_blank=True,
+    )
+    dv_eficaz.error = "Selecione uma opção válida"
+    dv_eficaz.errorTitle = "Valor inválido"
+    dv_eficaz.prompt = "Selecione a eficácia da ação"
+    dv_eficaz.promptTitle = "Ação Eficaz"
+    ws_acoes.add_data_validation(dv_eficaz)
+    dv_eficaz.add(f"O2:O1048576")
+
     return wb
 
 
@@ -915,9 +911,8 @@ def exportar_acoes_associadas(request, acao_id):
 @require_http_methods(["GET", "POST"])
 def importar_plano_acao(request):
     """
-    Importa PlanoAcao + LinhaAcao de Excel com 2 abas:
-    - Aba 'Acoes': Contem as linhas de acao
-    Usa Titulo da Solucao para vincular a uma Solucao existente
+    Importa LinhaAcao em massa para Solucoes existentes.
+    Aba 'Acoes' contem as linhas de acao com Numero do Registro.
     """
     if request.method == "GET":
         form = ImportacaoControleRegistrosForm()
@@ -963,10 +958,9 @@ def importar_plano_acao(request):
             header_indexes[PLANO_ACAO_HEADER_MAP[normalized]] = idx
 
     required_fields = [
-        "solucao_titulo",
+        "numero_registro",
         "numero_acao",
-        "descricao_acao",
-        "status_acao",
+        "descricao",
     ]
     missing_required = [field for field in required_fields if field not in header_indexes]
     if missing_required:
@@ -979,7 +973,7 @@ def importar_plano_acao(request):
     criadas = 0
     atualizadas = 0
     errors = []
-    plano_acao_map = {}  # Mapear solucao_titulo -> PlanoAcao
+    planos_map = {}
 
     for row_idx, row in enumerate(rows[1:], start=2):
         if not any(row):
@@ -991,79 +985,149 @@ def importar_plano_acao(request):
                 return None
             return row[col_idx]
 
-        # Busca a Solucao existente pelo titulo
-        solucao_titulo = str(get_cell("solucao_titulo") or "").strip()
-        if not solucao_titulo:
-            errors.append(f"Linha {row_idx} (Acoes): Solucao Titulo obrigatorio")
+        numero_registro = str(get_cell("numero_registro") or "").strip()
+        if not numero_registro:
+            errors.append(f"Linha {row_idx} (Acoes): N° do Registro obrigatorio")
             continue
 
-        solucao = Solucao.objects.filter(titulo=solucao_titulo).first()
-        if not solucao:
-            errors.append(f"Linha {row_idx} (Acoes): Solucao '{solucao_titulo}' nao encontrada")
+        acao = AcaoCorretiva.objects.filter(numero_registro__iexact=numero_registro).first()
+        if not acao:
+            errors.append(
+                f"Linha {row_idx} (Acoes): Registro '{numero_registro}' nao encontrado"
+            )
             continue
 
-        # Cria ou recupera PlanoAcao para esta solucao (apenas um por solucao)
-        if solucao_titulo not in plano_acao_map:
+        if acao.id not in planos_map:
+            solucao, _ = Solucao.objects.get_or_create(
+                acao_corretiva=acao,
+                tipo="plano_acao",
+                defaults={
+                    "titulo": f"Plano de Acao - {acao.numero_registro or acao.titulo}",
+                    "descricao": acao.descricao or "",
+                    "responsavel": acao.responsavel,
+                    "status": "planejamento",
+                },
+            )
             plano_acao, _ = PlanoAcao.objects.get_or_create(solucao=solucao)
-            plano_acao_map[solucao_titulo] = plano_acao
-        else:
-            plano_acao = plano_acao_map[solucao_titulo]
+            planos_map[acao.id] = {
+                "acao": acao,
+                "plano_acao": plano_acao,
+                "linhas_map": {},
+            }
 
-        numero_acao = str(get_cell("numero_acao") or "").strip()
-        descricao_acao = str(get_cell("descricao_acao") or "").strip()
-        if not numero_acao or not descricao_acao:
-            errors.append(f"Linha {row_idx} (Acoes): Numero e Descricao da acao obrigatorios")
+        plano_payload = planos_map[acao.id]
+        linhas_map = plano_payload["linhas_map"]
+
+        # Atualiza campo Lab no PlanoAcao se fornecido
+        lab_value = str(get_cell("lab") or "").strip()
+        if lab_value:
+            plano_acao_obj = plano_payload["plano_acao"]
+            if not plano_acao_obj.laboratorio or plano_acao_obj.laboratorio != lab_value:
+                plano_acao_obj.laboratorio = lab_value
+                plano_acao_obj.save(update_fields=["laboratorio"])
+
+        numero_acao = parse_int(get_cell("numero_acao"))
+        descricao = str(get_cell("descricao") or "").strip()
+        if not numero_acao or not descricao:
+            errors.append(f"Linha {row_idx} (Acoes): Numero Acao e Descricao sao obrigatorios")
             continue
 
-        status_raw = get_cell("status_acao")
-        status = resolve_choice(status_raw, LINHA_ACAO_STATUS_MAP, "planejada")
+        status_key = normalize_text(get_cell("status"))
+        status = ACOES_ASSOCIADAS_STATUS_MAP.get(status_key, "planejada")
+        acao_eficaz_raw = normalize_text(get_cell("acao_eficaz"))
+        acao_eficaz = ACOES_ASSOCIADAS_EFICAZ_MAP.get(acao_eficaz_raw)
 
-        linha_acao_defaults = {
-            "numero": numero_acao,
-            "descricao": descricao_acao,
+        base_defaults = {
+            "input_origem": get_cell("input_origem") or "",
+            "kpi": get_cell("kpi") or "",
+            "problema": get_cell("problema") or "",
+            "descricao": descricao,
             "classificacao": resolve_choice(
                 get_cell("classificacao"), LINHA_ACAO_CLASSIFICACAO_MAP, "corretiva"
             ),
             "status": status,
+            "prioridade": parse_bool(get_cell("prioridade"), False),
             "data_primeira_deadline": parse_date(get_cell("data_primeira_deadline")),
             "data_deadline": parse_date(get_cell("data_deadline")),
-            "data_conclusao": parse_date(get_cell("data_conclusao")),
-            "meta_esperada": get_cell("meta_esperada") or "",
-            "acao_eficaz": parse_bool(get_cell("acao_eficaz")),
-            "observacoes": get_cell("observacoes") or "",
+            "comentarios": get_cell("comentarios") or "",
+            "acao_eficaz": acao_eficaz,
         }
 
-        # Resolvendo Responsavel
-        responsavel = get_colaborador_by_matricula(get_cell("responsavel_matricula"))
-        if get_cell("responsavel_matricula") and not responsavel:
-            errors.append(f"Linha {row_idx} (Acoes): Responsavel matricula nao encontrado")
-        linha_acao_defaults["responsavel"] = responsavel
-
-        # Resolvendo KPI
-        kpi_nome = str(get_cell("kpi_opcao") or "").strip()
-        if kpi_nome:
-            kpi = KPIOpcao.objects.filter(nome__iexact=kpi_nome).first()
-            if not kpi:
-                errors.append(f"Linha {row_idx} (Acoes): KPI '{kpi_nome}' nao encontrado")
-            else:
-                linha_acao_defaults["kpi"] = kpi
-
-        # Get or create LinhaAcao by numero (única por PlanoAcao)
-        linha_acao, created_flag = LinhaAcao.objects.get_or_create(
-            plano_acao=plano_acao,
-            numero=numero_acao,
-            defaults=linha_acao_defaults,
-        )
-
-        if created_flag:
-            criadas += 1
+        if numero_acao not in linhas_map:
+            linhas_map[numero_acao] = {
+                "defaults": base_defaults,
+                "responsaveis_ids": set(),
+                "responsavel_principal": None,
+                "externos": [],
+            }
         else:
-            # Atualiza campos existentes
-            for field, value in linha_acao_defaults.items():
-                if value is not None and value != "":
-                    setattr(linha_acao, field, value)
-            linha_acao.save()
-            atualizadas += 1
+            for field, value in base_defaults.items():
+                merge_if_empty(linhas_map[numero_acao]["defaults"], field, value)
+
+        # Coluna unificada "Responsavel": tenta matricula, senao trata como externo
+        responsavel_raw = str(get_cell("responsavel") or "").strip()
+        responsaveis_raw = str(get_cell("responsaveis_multiplos") or "").strip()
+        externo_raw = str(get_cell("responsavel_externo") or "").strip()
+
+        if responsavel_raw:
+            responsavel = get_colaborador_by_matricula(responsavel_raw)
+            if responsavel:
+                linhas_map[numero_acao]["responsaveis_ids"].add(responsavel.id)
+                if not linhas_map[numero_acao]["responsavel_principal"]:
+                    linhas_map[numero_acao]["responsavel_principal"] = responsavel
+            else:
+                # Nao encontrou como matricula, trata como responsavel externo
+                linhas_map[numero_acao]["externos"].append(responsavel_raw)
+
+        if responsaveis_raw:
+            matriculas = [
+                item.strip() for item in re.split(r"[;,]", responsaveis_raw) if item.strip()
+            ]
+            for matricula in matriculas:
+                colaborador = get_colaborador_by_matricula(matricula)
+                if colaborador:
+                    linhas_map[numero_acao]["responsaveis_ids"].add(colaborador.id)
+                else:
+                    linhas_map[numero_acao]["externos"].append(matricula)
+
+        if externo_raw:
+            linhas_map[numero_acao]["externos"].append(externo_raw)
+
+        for field in ("responsavel_externo_1", "responsavel_externo_2", "responsavel_externo_3"):
+            value = str(get_cell(field) or "").strip()
+            if value:
+                linhas_map[numero_acao]["externos"].append(value)
+
+    for payload in planos_map.values():
+        plano_acao = payload["plano_acao"]
+        linhas_map = payload["linhas_map"]
+        for numero_acao, linha_payload in linhas_map.items():
+            linha_defaults = linha_payload["defaults"]
+            if linha_payload["responsavel_principal"]:
+                linha_defaults["responsavel_acao"] = linha_payload["responsavel_principal"]
+            if linha_payload["externos"]:
+                externos_unique = []
+                for item in linha_payload["externos"]:
+                    if item not in externos_unique:
+                        externos_unique.append(item)
+                linha_defaults["responsaveis_externos"] = "; ".join(externos_unique)
+
+            linha, created_flag = LinhaAcao.objects.get_or_create(
+                plano_acao=plano_acao,
+                numero_acao=numero_acao,
+                defaults=linha_defaults,
+            )
+            if created_flag:
+                criadas += 1
+            else:
+                for field, value in linha_defaults.items():
+                    if value is not None and value != "":
+                        setattr(linha, field, value)
+                linha.save()
+                atualizadas += 1
+
+            if linha_payload["responsaveis_ids"]:
+                linha.responsaveis_multiplos.set(list(linha_payload["responsaveis_ids"]))
 
     if errors:
         messages.warning(
