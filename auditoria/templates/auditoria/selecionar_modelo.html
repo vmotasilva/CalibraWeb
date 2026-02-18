@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Selecionar Modelo para Preencher - Auditoria{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'auditoria:modulo' %}">Auditoria</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Preencher Formulário</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-clipboard-check"></i> Preencher Formulário de Auditoria</h2>
+            <p class="text-muted">Selecione o modelo de auditoria que deseja preencher</p>
+        </div>
+    </div>
+
+    {% if modelos %}
+    <div class="row g-3">
+        {% for modelo in modelos %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">{{ modelo.nome }}</h5>
+                    <p class="card-text text-muted">
+                        <small>
+                            <i class="bi bi-box"></i> {{ modelo.objeto_auditoria }}
+                        </small>
+                    </p>
+                    <div class="mb-3">
+                        <span class="badge bg-primary">
+                            <i class="bi bi-calendar-event"></i> {{ modelo.get_periodicidade_completa }}
+                        </span>
+                        <span class="badge bg-info">
+                            <i class="bi bi-question-circle"></i> {{ modelo.total_perguntas }} pergunta{{ modelo.total_perguntas|pluralize }}
+                        </span>
+                    </div>
+                    {% if modelo.link_sharepoint %}
+                    <p class="card-text">
+                        <small>
+                            <a href="{{ modelo.link_sharepoint }}" target="_blank" class="text-decoration-none">
+                                <i class="bi bi-link-45deg"></i> Documentação SharePoint
+                            </a>
+                        </small>
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm w-100">
+                        <i class="bi bi-pencil-square"></i> Preencher Formulário
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        Nenhum modelo de auditoria ativo disponível para preenchimento.
+        <a href="{% url 'auditoria:modelo_create' %}" class="alert-link">Criar novo modelo</a>.
+    </div>
+    {% endif %}
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="{% url 'auditoria:modulo' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

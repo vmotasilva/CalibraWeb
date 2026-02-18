@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Perguntas dos Modelos</h2>
+        <a href="{% url 'auditoria:pergunta_create' %}{% if modelo_id %}?modelo={{ modelo_id }}{% endif %}" class="btn btn-primary">Nova Pergunta</a>
+    </div>
+
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-4">
+            <label class="form-label">Filtrar por modelo</label>
+            <select name="modelo" class="form-select">
+                <option value="">Todos</option>
+                {% for modelo in modelos %}
+                <option value="{{ modelo.id }}" {% if modelo_id == modelo.id|stringformat:'s' %}selected{% endif %}>{{ modelo.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end gap-2">
+            <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+            <a href="{% url 'auditoria:perguntas_list' %}" class="btn btn-outline-secondary">Limpar</a>
+        </div>
+    </form>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Modelo</th>
+                        <th>Ordem</th>
+                        <th>Pergunta</th>
+                        <th>Tipo de Resposta</th>
+                        <th>Obrigatória</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pergunta in perguntas %}
+                    <tr>
+                        <td>{{ pergunta.modelo.nome }}</td>
+                        <td>{{ pergunta.ordem }}</td>
+                        <td>{{ pergunta.pergunta }}</td>
+                        <td>{{ pergunta.get_tipo_resposta_display }}</td>
+                        <td>{% if pergunta.obrigatoria %}Sim{% else %}Não{% endif %}</td>
+                        <td>
+                            <a href="{% url 'auditoria:pergunta_edit' pergunta.id %}" class="btn btn-sm btn-warning">Editar</a>
+                            <a href="{% url 'auditoria:pergunta_delete' pergunta.id %}" class="btn btn-sm btn-danger">Excluir</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-3">Nenhuma pergunta cadastrada.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

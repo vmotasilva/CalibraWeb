@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     "shared.apps.SharedConfig",
     "fornecedores.apps.FornecedoresConfig",
     "acoes.apps.AcoesConfig",  # Ações Corretivas/Preventivas
+    "auditoria.apps.AuditoriaConfig",
     # Módulo legado (compatibilidade - mantém 3 cross-app models: SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob)
     "qms",
     "training",  # Adicionado para compatibilidade com dashboard de gráficos

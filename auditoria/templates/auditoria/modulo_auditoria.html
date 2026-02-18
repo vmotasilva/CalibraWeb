@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Auditoria</h2>
+        <a href="{% url 'auditoria:dashboard' %}" class="btn btn-outline-primary">Dashboard</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Modelos</h6>
+                    <h3>{{ total_modelos }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Perguntas</h6>
+                    <h3>{{ total_perguntas }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Registros de Auditoria</h6>
+                    <h3>{{ total_registros }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-list-check"></i> Ações Rápidas</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <div class="alert alert-success mb-0 d-flex align-items-center justify-content-between">
+                        <div>
+                            <i class="bi bi-clipboard-check fs-3 me-3"></i>
+                            <strong>Preencher Formulário de Auditoria</strong>
+                            <p class="mb-0 text-muted small">Selecione um modelo e preencha uma nova avaliação</p>
+                        </div>
+                        <a href="{% url 'auditoria:selecionar_modelo_preenchimento' %}" class="btn btn-success btn-lg">
+                            <i class="bi bi-pencil-square"></i> Preencher Agora
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'auditoria:modelos_list' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-folder"></i> Gerenciar Modelos
+                </a>
+                <a href="{% url 'auditoria:perguntas_list' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-question-circle"></i> Gerenciar Perguntas
+                </a>
+                <a href="{% url 'auditoria:registros_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-file-earmark-text"></i> Ver Todos os Registros
+                </a>
+                <a href="{% url 'auditoria:dashboard' %}" class="btn btn-outline-info">
+                    <i class="bi bi-graph-up"></i> Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">Últimos Registros</div>
+        <div class="card-body p-0">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Modelo</th>
+                        <th>Avaliador</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in registros_recentes %}
+                    <tr>
+                        <td>{{ registro.data_auditoria|date:'d/m/Y' }}</td>
+                        <td>{{ registro.modelo.nome }}</td>
+                        <td>{{ registro.avaliador|default:'-' }}</td>
+                        <td>
+                            <a href="{% url 'auditoria:registro_detail' registro.id %}" class="btn btn-sm btn-outline-primary">Detalhes</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center py-3">Nenhum registro cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

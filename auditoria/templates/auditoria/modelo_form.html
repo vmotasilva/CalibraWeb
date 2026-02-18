@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{% if modo == 'edicao' %}Editar Modelo{% else %}Novo Modelo de Auditoria{% endif %}</h2>
+    <form method="post" class="card shadow-sm p-3 mt-3">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Nome</label>
+            {{ form.nome }}
+            {% if form.nome.errors %}
+                <div class="text-danger">{{ form.nome.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Objeto da Auditoria</label>
+            {{ form.objeto_auditoria }}
+            {% if form.objeto_auditoria.errors %}
+                <div class="text-danger">{{ form.objeto_auditoria.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Responsável pela Auditoria</label>
+            {{ form.responsavel }}
+            <small class="form-text text-muted">Usuário responsável pela realização da auditoria</small>
+            {% if form.responsavel.errors %}
+                <div class="text-danger">{{ form.responsavel.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Periodicidade <span class="text-danger">*</span></label>
+                {{ form.periodicidade }}
+                {% if form.periodicidade.errors %}
+                    <div class="text-danger">{{ form.periodicidade.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-8 mb-3">
+                <label class="form-label">Link SharePoint</label>
+                {{ form.link_sharepoint }}
+                {% if form.link_sharepoint.errors %}
+                    <div class="text-danger">{{ form.link_sharepoint.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Campos de Referência de Periodicidade -->
+        <div id="campo-semanal" class="mb-3" style="display: none;">
+            <label class="form-label">Dia da Semana <span class="text-danger">*</span></label>
+            {{ form.dia_semana }}
+            <small class="form-text text-muted">Dia da semana em que a auditoria deve ser realizada</small>
+            {% if form.dia_semana.errors %}
+                <div class="text-danger">{{ form.dia_semana.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <div id="campo-quinzenal" class="mb-3" style="display: none;">
+            <label class="form-label">Dias da Quinzena <span class="text-danger">*</span></label>
+            {{ form.dias_quinzenal }}
+            <small class="form-text text-muted">Dois dias do mês separados por vírgula (ex: 1,16 ou 5,20)</small>
+            {% if form.dias_quinzenal.errors %}
+                <div class="text-danger">{{ form.dias_quinzenal.errors }}</div>
+            {% endif %}
+        </div>
+        
+        <div id="campo-dia-mes" class="mb-3" style="display: none;">
+            <label class="form-label">Dia do Mês <span class="text-danger">*</span></label>
+            {{ form.dia_mes }}
+            <small class="form-text text-muted">Dia do mês em que a auditoria deve ser realizada (1-31)</small>
+            {% if form.dia_mes.errors %}
+                <div class="text-danger">{{ form.dia_mes.errors }}</div>
+            {% endif %}
+            <div class="mt-2">
+                <small class="text-info">
+                    <i class="bi bi-info-circle"></i>
+                    <span id="info-periodicidade"></span>
+                </small>
+            </div>
+        </div>
+        
+        <div class="form-check mb-3">
+            {{ form.ativo }}
+            <label class="form-check-label">Ativo</label>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="{% url 'auditoria:modelos_list' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const periodicidadeSelect = document.getElementById('id_periodicidade');
+        const campoSemanal = document.getElementById('campo-semanal');
+        const campoQuinzenal = document.getElementById('campo-quinzenal');
+        const campoDiaMes = document.getElementById('campo-dia-mes');
+        const infoPeriodicidade = document.getElementById('info-periodicidade');
+        
+        function atualizarCampos() {
+            const valor = periodicidadeSelect.value;
+            
+            // Esconder todos os campos
+            campoSemanal.style.display = 'none';
+            campoQuinzenal.style.display = 'none';
+            campoDiaMes.style.display = 'none';
+            infoPeriodicidade.textContent = '';
+            
+            // Mostrar campo relevante baseado na periodicidade
+            switch(valor) {
+                case 'SEMANAL':
+                    campoSemanal.style.display = 'block';
+                    break;
+                case 'QUINZENAL':
+                    campoQuinzenal.style.display = 'block';
+                    break;
+                case 'MENSAL':
+                    campoDiaMes.style.display = 'block';
+                    infoPeriodicidade.textContent = 'A auditoria será realizada mensalmente no dia especificado.';
+                    break;
+                case 'TRIMESTRAL':
+                    campoDiaMes.style.display = 'block';
+                    infoPeriodicidade.textContent = 'A auditoria será realizada a cada 3 meses no dia especificado.';
+                    break;
+                case 'SEMESTRAL':
+                    campoDiaMes.style.display = 'block';
+                    infoPeriodicidade.textContent = 'A auditoria será realizada a cada 6 meses no dia especificado.';
+                    break;
+                case 'ANUAL':
+                    campoDiaMes.style.display = 'block';
+                    infoPeriodicidade.textContent = 'A auditoria será realizada anualmente no dia especificado.';
+                    break;
+            }
+        }
+        
+        // Executar ao carregar a página
+        atualizarCampos();
+        
+        // Executar quando o valor mudar
+        periodicidadeSelect.addEventListener('change', atualizarCampos);
+    });
+</script>
+{% endblock %}

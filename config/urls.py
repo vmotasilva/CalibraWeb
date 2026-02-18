@@ -217,6 +217,9 @@ urlpatterns = [
     
     # 8a. Ações Corretivas/Preventivas app URLs
     path("acoes/", include("acoes.urls")),
+
+    # 8b. Auditoria app URLs
+    path("auditoria/", include("auditoria.urls")),
     
     # 7. Procedures app URLs (Procedimentos, Treinamentos, Fornecedores, Cotações)
     path("procedures/", include("procedures.urls")),

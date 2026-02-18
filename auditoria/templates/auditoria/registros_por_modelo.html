@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Registros - {{ modelo.nome }} - Auditoria{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:modulo' %}">Auditoria</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ modelo.nome }}</li>
+        </ol>
+    </nav>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-file-earmark-text"></i> Registros Preenchidos: {{ modelo.nome }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Objeto de Auditoria:</strong> {{ modelo.objeto_auditoria }}</p>
+                            <p class="mb-2"><strong>Periodicidade:</strong> {{ modelo.get_periodicidade_completa }}</p>
+                            {% if modelo.responsavel %}
+                            <p class="mb-2"><strong>Responsável:</strong> {{ modelo.responsavel.get_full_name|default:modelo.responsavel.username }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 text-end">
+                            {% if modelo.link_sharepoint %}
+                            <a href="{{ modelo.link_sharepoint }}" target="_blank" class="btn btn-outline-info btn-sm">
+                                <i class="bi bi-link-45deg"></i> SharePoint
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
+                                <i class="bi bi-plus-circle"></i> Novo Registro
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Total de registros preenchidos: <strong>{{ registros|length }}</strong>
+                    </div>
+
+                    {% if estatisticas_perguntas %}
+                    <div class="card mb-3 border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Análise das Respostas</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if chart_labels and chart_datasets %}
+                            <div class="mb-4">
+                                <canvas id="chartRespostas" height="110"></canvas>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="bi bi-info-circle"></i> Este modelo ainda não possui perguntas ou respostas registradas para análise.
+                            </div>
+                            {% endif %}
+                            
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Pergunta</th>
+                                            <th>Tipo</th>
+                                            <th class="text-center">Respostas</th>
+                                            <th class="text-center">Estatísticas</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for est in estatisticas_perguntas %}
+                                        <tr>
+                                            <td>{{ est.pergunta }}</td>
+                                            <td><span class="badge bg-secondary">{{ est.tipo }}</span></td>
+                                            <td class="text-center">{{ est.total_respostas }}</td>
+                                            <td class="text-center">
+                                                {% if est.sim is not None %}
+                                                    <span class="badge bg-success">Sim: {{ est.sim }}</span>
+                                                    <span class="badge bg-danger">Não: {{ est.nao }}</span>
+                                                {% elif est.media_escala %}
+                                                    <span class="badge bg-info">Média: {{ est.media_escala }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if registros %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Data da Auditoria</th>
+                                    <th>Período</th>
+                                    <th>Avaliador</th>
+                                    <th>Criado em</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for registro in registros %}
+                                <tr>
+                                    <td>{{ registro.data_auditoria|date:"d/m/Y" }}</td>
+                                    <td>
+                                        {% if registro.periodo_inicio and registro.periodo_fim %}
+                                        {{ registro.periodo_inicio|date:"d/m/Y" }} a {{ registro.periodo_fim|date:"d/m/Y" }}
+                                        {% elif registro.periodo_inicio %}
+                                        A partir de {{ registro.periodo_inicio|date:"d/m/Y" }}
+                                        {% elif registro.periodo_fim %}
+                                        Até {{ registro.periodo_fim|date:"d/m/Y" }}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ registro.avaliador.get_full_name|default:registro.avaliador.username }}</td>
+                                    <td>{{ registro.criado_em|date:"d/m/Y H:i" }}</td>
+                                    <td class="text-center">
+                                        <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="btn btn-sm btn-info" title="Visualizar">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn btn-sm btn-warning" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Nenhum registro preenchido para este modelo ainda.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <a href="{% url 'auditoria:dashboard' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if chart_labels and chart_datasets %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('chartRespostas');
+    if (ctx) {
+        const labels = {{ chart_labels|safe }};
+        const datasets = {{ chart_datasets|safe }};
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: datasets.map(dataset => ({
+                    ...dataset,
+                    borderWidth: 2
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 12
+                            },
+                            padding: 15
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Análise de Respostas por Pergunta',
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        },
+                        padding: {
+                            bottom: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    // Se for escala, mostrar com 2 decimais
+                                    if (context.dataset.label.includes('Escala')) {
+                                        label += context.parsed.y.toFixed(2);
+                                    } else {
+                                        label += context.parsed.y;
+                                    }
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            autoSkip: false,
+                            maxRotation: 45,
+                            minRotation: 45,
+                            font: {
+                                size: 10
+                            }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        },
+                        title: {
+                            display: true,
+                            text: 'Quantidade / Média',
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        });
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Dashboard - Dados das Auditorias</h2>
+        <a href="{% url 'auditoria:modulo' %}" class="btn btn-outline-secondary">Módulo Auditoria</a>
+    </div>
+
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-3">
+            <label class="form-label">Modelo</label>
+            <select name="modelo" class="form-select">
+                <option value="">Todos os modelos</option>
+                {% for m in todos_modelos %}
+                <option value="{{ m.id }}" {% if modelo_id == m.id|stringformat:"s" %}selected{% endif %}>{{ m.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Período inicial</label>
+            <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Período final</label>
+            <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
+        </div>
+        <div class="col-md-3 d-flex align-items-end gap-2">
+            <button type="submit" class="btn btn-outline-primary">Aplicar Filtro</button>
+            <a href="{% url 'auditoria:dashboard' %}" class="btn btn-outline-secondary">Limpar</a>
+        </div>
+    </form>
+
+    {% if inicio or fim or modelo_selecionado %}
+    <div class="alert alert-info py-2">
+        {% if modelo_selecionado %}
+            <div><strong>Modelo:</strong> {{ modelo_selecionado.nome }}</div>
+        {% endif %}
+        {% if inicio and fim %}
+            Exibindo dados de <strong>{{ inicio|date:'d/m/Y' }}</strong> até <strong>{{ fim|date:'d/m/Y' }}</strong>.
+        {% elif inicio %}
+            Exibindo dados a partir de <strong>{{ inicio|date:'d/m/Y' }}</strong>.
+        {% elif fim %}
+            Exibindo dados até <strong>{{ fim|date:'d/m/Y' }}</strong>.
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Total de Modelos</h6>
+                    <h3>{{ total_modelos }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Total de Registros</h6>
+                    <h3>{{ total_registros }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">Gráfico - Registros por Modelo</div>
+                <div class="card-body">
+                    <canvas id="chartRegistrosModelo" height="110"></canvas>
+                    <div id="chartRegistrosModeloFallback" class="text-center text-muted py-2 d-none">
+                        Nenhum dado para exibir.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">Gráfico - Periodicidade</div>
+                <div class="card-body">
+                    <canvas id="chartPeriodicidade" height="110"></canvas>
+                    <div id="chartPeriodicidadeFallback" class="text-center text-muted py-2 d-none">
+                        Nenhum dado para exibir.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">Registros por Modelo</div>
+                <div class="card-body p-0">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Modelo</th>
+                                <th class="text-center">Total</th>
+                                <th class="text-center">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in por_modelo %}
+                            <tr>
+                                <td>{{ item.modelo__nome }}</td>
+                                <td class="text-center">{{ item.total }}</td>
+                                <td class="text-center">
+                                    <a href="{% url 'auditoria:registros_por_modelo' item.modelo__id %}" class="btn btn-sm btn-info" title="Ver registros">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center py-3">Sem dados.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">Modelos por Periodicidade</div>
+                <div class="card-body p-0">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Periodicidade</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in por_periodicidade %}
+                            <tr>
+                                <td>{{ item.periodicidade_label }}</td>
+                                <td>{{ item.total }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="2" class="text-center py-3">Sem dados.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+{{ chart_modelo_labels|json_script:"chart-modelo-labels" }}
+{{ chart_modelo_values|json_script:"chart-modelo-values" }}
+{{ chart_periodicidade_labels|json_script:"chart-periodicidade-labels" }}
+{{ chart_periodicidade_values|json_script:"chart-periodicidade-values" }}
+<script>
+    (function () {
+        const modeloLabels = JSON.parse(document.getElementById('chart-modelo-labels').textContent || '[]');
+        const modeloValues = JSON.parse(document.getElementById('chart-modelo-values').textContent || '[]');
+        const periodicidadeLabels = JSON.parse(document.getElementById('chart-periodicidade-labels').textContent || '[]');
+        const periodicidadeValues = JSON.parse(document.getElementById('chart-periodicidade-values').textContent || '[]');
+
+        const ctxModelo = document.getElementById('chartRegistrosModelo');
+        const fallbackModelo = document.getElementById('chartRegistrosModeloFallback');
+        if (ctxModelo && modeloLabels.length > 0) {
+            new Chart(ctxModelo, {
+                type: 'bar',
+                data: {
+                    labels: modeloLabels,
+                    datasets: [{
+                        label: 'Registros',
+                        data: modeloValues,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                }
+            });
+        } else if (ctxModelo && fallbackModelo) {
+            ctxModelo.classList.add('d-none');
+            fallbackModelo.classList.remove('d-none');
+        }
+
+        const ctxPeriodicidade = document.getElementById('chartPeriodicidade');
+        const fallbackPeriodicidade = document.getElementById('chartPeriodicidadeFallback');
+        if (ctxPeriodicidade && periodicidadeLabels.length > 0) {
+            new Chart(ctxPeriodicidade, {
+                type: 'doughnut',
+                data: {
+                    labels: periodicidadeLabels,
+                    datasets: [{
+                        label: 'Modelos',
+                        data: periodicidadeValues,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        } else if (ctxPeriodicidade && fallbackPeriodicidade) {
+            ctxPeriodicidade.classList.add('d-none');
+            fallbackPeriodicidade.classList.remove('d-none');
+        }
+    })();
+</script>
+{% endblock %}
