@@ -77,6 +77,18 @@ MODULES_PERMISSIONS = {
             'view_respostaauditoria',
         ]
     },
+    'procedures': {
+        'name': 'Procedimentos / Treinamentos',
+        'permissions': []
+    },
+    'fornecedores': {
+        'name': 'Fornecedores',
+        'permissions': []
+    },
+    'acoes': {
+        'name': 'Ações Corretivas',
+        'permissions': []
+    },
 }
 
 def setup_module_groups():
@@ -126,5 +138,9 @@ def has_module_access(user, module_key):
     if not module_info:
         return False
     
-    group = Group.objects.get(name=module_info['name'])
+    try:
+        group = Group.objects.get(name=module_info['name'])
+    except Group.DoesNotExist:
+        return False
+
     return user.groups.filter(id=group.id).exists()

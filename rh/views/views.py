@@ -2056,7 +2056,7 @@ def api_atualizar_permissoes_lote(request):
         user = User.objects.get(id=user_id)
         
         # Remover TODAS as permissões atuais dos apps gerenciados
-        apps_gerenciados = ['rh', 'qms', 'procedures', 'fornecedores']
+        apps_gerenciados = ['rh', 'qms', 'procedures', 'fornecedores', 'auditoria', 'acoes']
         for app_label in apps_gerenciados:
             perms_app = Permission.objects.filter(content_type__app_label=app_label)
             user.user_permissions.remove(*perms_app)
@@ -2078,6 +2078,7 @@ def api_atualizar_permissoes_lote(request):
         logger.info(f'{request.user.username} atualizou {total_adicionadas} permissões de {user.username}')
         return JsonResponse({
             'success': True,
+            'total': total_adicionadas,
             'message': f'{total_adicionadas} permissões salvas com sucesso!'
         })
     
@@ -2244,6 +2245,8 @@ def detalhe_usuario_view(request, user_id):
     user_perms_qms = set(user.user_permissions.filter(content_type__app_label='qms').values_list('codename', flat=True))
     user_perms_procedures = set(user.user_permissions.filter(content_type__app_label='procedures').values_list('codename', flat=True))
     user_perms_fornecedores = set(user.user_permissions.filter(content_type__app_label='fornecedores').values_list('codename', flat=True))
+    user_perms_auditoria = set(user.user_permissions.filter(content_type__app_label='auditoria').values_list('codename', flat=True))
+    user_perms_acoes = set(user.user_permissions.filter(content_type__app_label='acoes').values_list('codename', flat=True))
     
     # Definir módulos com seus grupos de permissões
     modulos = [
@@ -2495,10 +2498,123 @@ def detalhe_usuario_view(request, user_id):
                 },
             ]
         },
+        {
+            'nome': 'Ações Corretivas',
+            'cor': 'danger',
+            'icone': 'bi-exclamation-triangle',
+            'app_label': 'acoes',
+            'grupos': [
+                {
+                    'nome': 'Ação Corretiva',
+                    'icone': 'bi-clipboard2-check',
+                    'permissoes': [
+                        ('view_acaocorretiva', 'Visualizar'),
+                        ('add_acaocorretiva', 'Adicionar'),
+                        ('change_acaocorretiva', 'Editar'),
+                        ('delete_acaocorretiva', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Solução',
+                    'icone': 'bi-lightbulb',
+                    'permissoes': [
+                        ('view_solucao', 'Visualizar'),
+                        ('add_solucao', 'Adicionar'),
+                        ('change_solucao', 'Editar'),
+                        ('delete_solucao', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Origem do Problema',
+                    'icone': 'bi-diagram-3',
+                    'permissoes': [
+                        ('view_origemproblema', 'Visualizar'),
+                        ('add_origemproblema', 'Adicionar'),
+                        ('change_origemproblema', 'Editar'),
+                        ('delete_origemproblema', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Tipo de Solução',
+                    'icone': 'bi-journal-text',
+                    'permissoes': [
+                        ('view_tiposolucao', 'Visualizar'),
+                        ('add_tiposolucao', 'Adicionar'),
+                        ('change_tiposolucao', 'Editar'),
+                        ('delete_tiposolucao', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'KPI',
+                    'icone': 'bi-graph-up',
+                    'permissoes': [
+                        ('view_kpiopcao', 'Visualizar'),
+                        ('add_kpiopcao', 'Adicionar'),
+                        ('change_kpiopcao', 'Editar'),
+                        ('delete_kpiopcao', 'Excluir'),
+                    ]
+                },
+            ]
+        },
+        {
+            'nome': 'Auditoria',
+            'cor': 'info',
+            'icone': 'bi-clipboard2-check',
+            'app_label': 'auditoria',
+            'grupos': [
+                {
+                    'nome': 'Modelos',
+                    'icone': 'bi-files',
+                    'permissoes': [
+                        ('view_modeloauditoria', 'Visualizar'),
+                        ('add_modeloauditoria', 'Adicionar'),
+                        ('change_modeloauditoria', 'Editar'),
+                        ('delete_modeloauditoria', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Perguntas',
+                    'icone': 'bi-question-circle',
+                    'permissoes': [
+                        ('view_perguntaauditoria', 'Visualizar'),
+                        ('add_perguntaauditoria', 'Adicionar'),
+                        ('change_perguntaauditoria', 'Editar'),
+                        ('delete_perguntaauditoria', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Registros',
+                    'icone': 'bi-journal-check',
+                    'permissoes': [
+                        ('view_registroauditoria', 'Visualizar'),
+                        ('add_registroauditoria', 'Adicionar'),
+                        ('change_registroauditoria', 'Editar'),
+                        ('delete_registroauditoria', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Respostas',
+                    'icone': 'bi-check2-square',
+                    'permissoes': [
+                        ('view_respostaauditoria', 'Visualizar'),
+                        ('add_respostaauditoria', 'Adicionar'),
+                        ('change_respostaauditoria', 'Editar'),
+                        ('delete_respostaauditoria', 'Excluir'),
+                    ]
+                },
+            ]
+        },
     ]
     
     # Combinar todas as permissões do usuário
-    all_user_perms = user_perms_rh | user_perms_qms | user_perms_procedures | user_perms_fornecedores
+    all_user_perms = (
+        user_perms_rh
+        | user_perms_qms
+        | user_perms_procedures
+        | user_perms_fornecedores
+        | user_perms_auditoria
+        | user_perms_acoes
+    )
     
     context = {
         'usuario': user,

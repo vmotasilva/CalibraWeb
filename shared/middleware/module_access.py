@@ -23,6 +23,10 @@ class ModuleAccessMiddleware:
     URL_TO_MODULE_MAPPING = {
         '/metrologia/': 'metrologia',
         '/rh/': 'rh',
+        '/procedures/': 'procedures',
+        '/fornecedores/': 'fornecedores',
+        '/acoes/': 'acoes',
+        '/auditoria/': 'auditoria',
         '/procurements/': 'procurements',
         '/admin/': 'admin',  # Admin não é restringido
     }

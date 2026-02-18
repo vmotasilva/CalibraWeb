@@ -35,6 +35,9 @@
                                 <i class="bi bi-link-45deg"></i> SharePoint
                             </a>
                             {% endif %}
+                            <a href="{% url 'auditoria:exportar_respostas_excel' modelo.id %}" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                            </a>
                             <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
                                 <i class="bi bi-plus-circle"></i> Novo Registro
                             </a>
@@ -93,8 +96,8 @@
                                                 {% if est.sim is not None %}
                                                     <span class="badge bg-success">Sim: {{ est.sim }}</span>
                                                     <span class="badge bg-danger">Não: {{ est.nao }}</span>
-                                                {% elif est.media_escala %}
-                                                    <span class="badge bg-info">Média: {{ est.media_escala }}</span>
+                                                {% elif est.media %}
+                                                    <span class="badge bg-info">Média: {{ est.media }}</span>
                                                 {% else %}
                                                     <span class="text-muted">-</span>
                                                 {% endif %}
@@ -175,7 +178,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Gráfico 1: Sim/Não (Barras Agrupadas)
+    // Gráfico 1: Sim/Não (Barras Empilhadas)
     {% if simnao_labels %}
     const ctxSimNao = document.getElementById('chartSimNao');
     if (ctxSimNao) {
@@ -235,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 scales: {
                     x: {
+                        stacked: true,
                         ticks: {
                             autoSkip: false,
                             maxRotation: 45,
@@ -249,6 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     y: {
                         beginAtZero: true,
+                        stacked: true,
                         ticks: {
                             stepSize: 1
                         },

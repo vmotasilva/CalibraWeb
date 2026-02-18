@@ -89,20 +89,16 @@
                                 <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
                             </div>
 
-                            {% if pergunta.tipo_resposta == 'BOOLEANO' %}
+                            {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
                                 <select class="form-select" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
                                     <option value="">-- Selecione --</option>
                                     <option value="Sim">Sim</option>
                                     <option value="Não">Não</option>
                                 </select>
-                            {% elif pergunta.tipo_resposta == 'DATA' %}
-                                <input type="date" class="form-control" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
                             {% elif pergunta.tipo_resposta == 'NUMERO' %}
                                 <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
                             {% elif pergunta.tipo_resposta == 'DECIMAL' %}
                                 <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
-                            {% else %}
-                                <input type="text" class="form-control" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
                             {% endif %}
                         </div>
                     </div>

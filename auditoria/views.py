@@ -2,7 +2,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.db.models import Count
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from io import BytesIO
 import json
 
 from .forms import ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
@@ -380,7 +382,7 @@ def registros_por_modelo(request, modelo_id):
             "total_respostas": total_respostas,
         }
         
-        if pergunta.tipo_resposta == "SIM_NAO":
+        if pergunta.tipo_resposta in ["SIM_NAO", "BOOLEANO"]:
             # Contar respostas Sim e Não
             sim_count = respostas.filter(valor__in=["True", "true", "Sim", "sim", "1"]).count()
             nao_count = respostas.filter(valor__in=["False", "false", "Não", "não", "Nao", "nao", "0"]).count()
@@ -472,3 +474,94 @@ def registros_por_modelo(request, modelo_id):
         "numero_datasets": json.dumps(numero_chart_datasets),
     }
     return render(request, "auditoria/registros_por_modelo.html", context)
+
+
+@login_required
+def exportar_respostas_excel(request, modelo_id):
+    """Exporta em Excel (.xlsx) as respostas registradas de um modelo específico."""
+    from openpyxl import Workbook
+
+    modelo = get_object_or_404(ModeloAuditoria, pk=modelo_id)
+
+    perguntas = list(
+        PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("ordem", "id")
+    )
+    registros = (
+        RegistroAuditoria.objects.filter(modelo=modelo)
+        .select_related("avaliador")
+        .prefetch_related("respostas__pergunta")
+        .order_by("-data_auditoria", "-id")
+    )
+
+    def _normalize_sim_nao(value: str) -> str:
+        if value is None:
+            return ""
+        raw = str(value).strip()
+        if raw in {"True", "true", "Sim", "sim", "1", "SIM"}:
+            return "Sim"
+        if raw in {"False", "false", "Não", "não", "Nao", "nao", "0", "NAO", "NÃO"}:
+            return "Não"
+        return raw
+
+    # Mapear respostas por registro/pergunta
+    respostas_por_registro: dict[int, dict[int, str]] = {}
+    for registro in registros:
+        respostas_por_registro[registro.id] = {}
+        for resposta in getattr(registro, "respostas").all():
+            respostas_por_registro[registro.id][resposta.pergunta_id] = resposta.valor
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Respostas"
+
+    headers = [
+        "ID",
+        "Data Auditoria",
+        "Período Início",
+        "Período Fim",
+        "Avaliador",
+        "Observações",
+    ]
+    headers.extend([p.pergunta for p in perguntas])
+    ws.append(headers)
+
+    for registro in registros:
+        avaliador = ""
+        if registro.avaliador_id:
+            avaliador = registro.avaliador.get_full_name() or registro.avaliador.username
+
+        row = [
+            registro.id,
+            registro.data_auditoria.strftime("%d/%m/%Y") if registro.data_auditoria else "",
+            registro.periodo_inicio.strftime("%d/%m/%Y") if registro.periodo_inicio else "",
+            registro.periodo_fim.strftime("%d/%m/%Y") if registro.periodo_fim else "",
+            avaliador,
+            registro.observacoes or "",
+        ]
+
+        respostas_dict = respostas_por_registro.get(registro.id, {})
+        for pergunta in perguntas:
+            valor = respostas_dict.get(pergunta.id, "")
+            if pergunta.tipo_resposta in ["SIM_NAO", "BOOLEANO"]:
+                row.append(_normalize_sim_nao(valor))
+            else:
+                row.append(valor or "")
+
+        ws.append(row)
+
+    # Gerar arquivo em memória
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+
+    safe_name = "".join(c for c in (modelo.nome or "modelo") if c.isalnum() or c in {" ", "-", "_"}).strip()
+    if not safe_name:
+        safe_name = f"modelo_{modelo.id}"
+    filename = f"respostas_{safe_name}.xlsx"
+
+    response = HttpResponse(
+        stream.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
