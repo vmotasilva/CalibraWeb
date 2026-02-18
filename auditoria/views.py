@@ -358,22 +358,21 @@ def registros_por_modelo(request, modelo_id):
     
     # Estatísticas por pergunta
     estatisticas_perguntas = []
-    chart_labels = []
-    chart_datasets = []
     
-    # Preparar dados para cada tipo de resposta
-    sim_data = []
-    nao_data = []
-    escala_data = []
-    texto_data = []
+    # Dados separados por tipo de gráfico
+    # Gráfico 1: Sim/Não (barras agrupadas)
+    simnao_labels = []
+    simnao_sim = []
+    simnao_nao = []
+    
+    # Gráfico 2: Números (linhas - evolução temporal)
+    # Vamos coletar dados por registro e pergunta para mostrar evolução
+    numero_perguntas = []
+    numero_datasets = []
     
     for pergunta in perguntas:
-        respostas = RespostaAuditoria.objects.filter(pergunta=pergunta, registro__in=registros)
+        respostas = RespostaAuditoria.objects.filter(pergunta=pergunta, registro__in=registros).select_related('registro')
         total_respostas = respostas.count()
-        
-        # Label da pergunta (truncado)
-        label = pergunta.pergunta[:40] + "..." if len(pergunta.pergunta) > 40 else pergunta.pergunta
-        chart_labels.append(label)
         
         estatistica = {
             "pergunta": pergunta.pergunta,
@@ -382,79 +381,94 @@ def registros_por_modelo(request, modelo_id):
         }
         
         if pergunta.tipo_resposta == "SIM_NAO":
-            sim_count = respostas.filter(resposta_sim_nao=True).count()
-            nao_count = respostas.filter(resposta_sim_nao=False).count()
+            # Contar respostas Sim e Não
+            sim_count = respostas.filter(valor__in=["True", "true", "Sim", "sim", "1"]).count()
+            nao_count = respostas.filter(valor__in=["False", "false", "Não", "não", "Nao", "nao", "0"]).count()
             estatistica["sim"] = sim_count
             estatistica["nao"] = nao_count
-            sim_data.append(sim_count)
-            nao_data.append(nao_count)
-            escala_data.append(None)
-            texto_data.append(None)
             
-        elif pergunta.tipo_resposta == "ESCALA_1_5":
-            # Calcular média
-            escalas = respostas.exclude(resposta_escala__isnull=True)
-            if escalas.exists():
-                from django.db.models import Avg
-                media = escalas.aggregate(media=Avg("resposta_escala"))["media"]
-                if media:
-                    media_arredondada = round(media, 2)
-                    estatistica["media_escala"] = media_arredondada
-                    escala_data.append(media_arredondada)
-                else:
-                    escala_data.append(None)
-            else:
-                escala_data.append(None)
-            sim_data.append(None)
-            nao_data.append(None)
-            texto_data.append(None)
+            # Adicionar aos dados do gráfico de barras
+            label = pergunta.pergunta[:30] + "..." if len(pergunta.pergunta) > 30 else pergunta.pergunta
+            simnao_labels.append(label)
+            simnao_sim.append(sim_count)
+            simnao_nao.append(nao_count)
             
-        else:
-            # Outros tipos (texto, data, etc)
-            sim_data.append(None)
-            nao_data.append(None)
-            escala_data.append(None)
-            texto_data.append(total_respostas if total_respostas > 0 else None)
+        elif pergunta.tipo_resposta in ["NUMERO", "DECIMAL"]:
+            # Coletar valores para gráfico de linhas (evolução)
+            valores_resposta = []
+            datas_resposta = []
+            
+            for resposta in respostas.order_by('registro__data_auditoria'):
+                try:
+                    valor = float(resposta.valor) if resposta.valor else None
+                    if valor is not None:
+                        valores_resposta.append(valor)
+                        datas_resposta.append(resposta.registro.data_auditoria.strftime('%d/%m/%Y'))
+                except (ValueError, TypeError):
+                    pass
+            
+            if valores_resposta:
+                media = sum(valores_resposta) / len(valores_resposta)
+                estatistica["media"] = round(media, 2)
+                estatistica["valores"] = valores_resposta
+                
+                # Adicionar dataset para este pergunta no gráfico de linhas
+                label = pergunta.pergunta[:30] + "..." if len(pergunta.pergunta) > 30 else pergunta.pergunta
+                numero_perguntas.append({
+                    "label": label,
+                    "valores": valores_resposta,
+                    "datas": datas_resposta
+                })
                 
         estatisticas_perguntas.append(estatistica)
     
-    # Preparar datasets apenas com os que têm dados
-    chart_datasets = []
-    if any(x is not None for x in sim_data):
-        chart_datasets.append({
-            "label": "Sim",
-            "data": sim_data,
-            "backgroundColor": "rgba(40, 167, 69, 0.8)",
-            "borderColor": "rgba(40, 167, 69, 1)",
-        })
-    if any(x is not None for x in nao_data):
-        chart_datasets.append({
-            "label": "Não",
-            "data": nao_data,
-            "backgroundColor": "rgba(220, 53, 69, 0.8)",
-            "borderColor": "rgba(220, 53, 69, 1)",
-        })
-    if any(x is not None for x in escala_data):
-        chart_datasets.append({
-            "label": "Média (Escala 1-5)",
-            "data": escala_data,
-            "backgroundColor": "rgba(0, 123, 255, 0.8)",
-            "borderColor": "rgba(0, 123, 255, 1)",
-        })
-    if any(x is not None for x in texto_data):
-        chart_datasets.append({
-            "label": "Respostas",
-            "data": texto_data,
-            "backgroundColor": "rgba(108, 117, 125, 0.8)",
-            "borderColor": "rgba(108, 117, 125, 1)",
-        })
+    # Preparar dados para gráfico de linhas (números)
+    # Agrupar por data para mostrar evolução temporal
+    numero_chart_labels = []
+    numero_chart_datasets = []
+    
+    if numero_perguntas:
+        # Coletar todas as datas únicas (ordenadas)
+        todas_datas = set()
+        for perg in numero_perguntas:
+            todas_datas.update(perg['datas'])
+        numero_chart_labels = sorted(list(todas_datas), key=lambda x: tuple(reversed(x.split('/'))))
+        
+        # Criar um dataset para cada pergunta
+        cores = [
+            {"bg": "rgba(255, 99, 132, 0.2)", "border": "rgba(255, 99, 132, 1)"},
+            {"bg": "rgba(54, 162, 235, 0.2)", "border": "rgba(54, 162, 235, 1)"},
+            {"bg": "rgba(255, 206, 86, 0.2)", "border": "rgba(255, 206, 86, 1)"},
+            {"bg": "rgba(75, 192, 192, 0.2)", "border": "rgba(75, 192, 192, 1)"},
+            {"bg": "rgba(153, 102, 255, 0.2)", "border": "rgba(153, 102, 255, 1)"},
+        ]
+        
+        for idx, perg in enumerate(numero_perguntas):
+            # Mapear valores para as datas correspondentes
+            data_valor_map = dict(zip(perg['datas'], perg['valores']))
+            valores_ordenados = [data_valor_map.get(data, None) for data in numero_chart_labels]
+            
+            cor = cores[idx % len(cores)]
+            numero_chart_datasets.append({
+                "label": perg['label'],
+                "data": valores_ordenados,
+                "borderColor": cor['border'],
+                "backgroundColor": cor['bg'],
+                "tension": 0.3,
+                "fill": False
+            })
     
     context = {
         "modelo": modelo,
         "registros": registros,
         "perguntas": perguntas,
         "estatisticas_perguntas": estatisticas_perguntas,
-        "chart_labels": json.dumps(chart_labels),
-        "chart_datasets": json.dumps(chart_datasets),
+        # Gráfico Sim/Não
+        "simnao_labels": json.dumps(simnao_labels),
+        "simnao_sim": json.dumps(simnao_sim),
+        "simnao_nao": json.dumps(simnao_nao),
+        # Gráfico Números
+        "numero_labels": json.dumps(numero_chart_labels),
+        "numero_datasets": json.dumps(numero_chart_datasets),
     }
     return render(request, "auditoria/registros_por_modelo.html", context)

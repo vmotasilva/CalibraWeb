@@ -51,10 +51,22 @@
                             <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Análise das Respostas</h5>
                         </div>
                         <div class="card-body">
-                            {% if chart_labels and chart_datasets %}
+                            {% if simnao_labels or numero_labels %}
+                            
+                            {% if simnao_labels %}
                             <div class="mb-4">
-                                <canvas id="chartRespostas" height="110"></canvas>
+                                <h6 class="text-center mb-3 text-primary"><i class="bi bi-check-circle"></i> Perguntas do tipo Sim/Não</h6>
+                                <canvas id="chartSimNao" height="100"></canvas>
                             </div>
+                            {% endif %}
+                            
+                            {% if numero_labels %}
+                            <div class="mb-4">
+                                <h6 class="text-center mb-3 text-success"><i class="bi bi-graph-up"></i> Perguntas Numéricas - Evolução Temporal</h6>
+                                <canvas id="chartNumeros" height="100"></canvas>
+                            </div>
+                            {% endif %}
+                            
                             {% else %}
                             <div class="alert alert-warning">
                                 <i class="bi bi-info-circle"></i> Este modelo ainda não possui perguntas ou respostas registradas para análise.
@@ -160,23 +172,33 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if chart_labels and chart_datasets %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const ctx = document.getElementById('chartRespostas');
-    if (ctx) {
-        const labels = {{ chart_labels|safe }};
-        const datasets = {{ chart_datasets|safe }};
-        
-        new Chart(ctx, {
+    // Gráfico 1: Sim/Não (Barras Agrupadas)
+    {% if simnao_labels %}
+    const ctxSimNao = document.getElementById('chartSimNao');
+    if (ctxSimNao) {
+        new Chart(ctxSimNao, {
             type: 'bar',
             data: {
-                labels: labels,
-                datasets: datasets.map(dataset => ({
-                    ...dataset,
-                    borderWidth: 2
-                }))
+                labels: {{ simnao_labels|safe }},
+                datasets: [
+                    {
+                        label: 'Sim',
+                        data: {{ simnao_sim|safe }},
+                        backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Não',
+                        data: {{ simnao_nao|safe }},
+                        backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                        borderColor: 'rgba(220, 53, 69, 1)',
+                        borderWidth: 2
+                    }
+                ]
             },
             options: {
                 responsive: true,
@@ -186,14 +208,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         position: 'top',
                         labels: {
                             font: {
-                                size: 12
+                                size: 13,
+                                weight: 'bold'
                             },
                             padding: 15
                         }
                     },
                     title: {
                         display: true,
-                        text: 'Análise de Respostas por Pergunta',
+                        text: 'Distribuição de Respostas',
                         font: {
                             size: 16,
                             weight: 'bold'
@@ -205,19 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    // Se for escala, mostrar com 2 decimais
-                                    if (context.dataset.label.includes('Escala')) {
-                                        label += context.parsed.y.toFixed(2);
-                                    } else {
-                                        label += context.parsed.y;
-                                    }
-                                }
-                                return label;
+                                return context.dataset.label + ': ' + context.parsed.y + ' respostas';
                             }
                         }
                     }
@@ -229,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             maxRotation: 45,
                             minRotation: 45,
                             font: {
-                                size: 10
+                                size: 11
                             }
                         },
                         grid: {
@@ -243,7 +254,100 @@ document.addEventListener('DOMContentLoaded', function() {
                         },
                         title: {
                             display: true,
-                            text: 'Quantidade / Média',
+                            text: 'Número de Respostas',
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    {% endif %}
+    
+    // Gráfico 2: Números (Linhas - Evolução Temporal)
+    {% if numero_labels %}
+    const ctxNumeros = document.getElementById('chartNumeros');
+    if (ctxNumeros) {
+        const datasets = {{ numero_datasets|safe }};
+        new Chart(ctxNumeros, {
+            type: 'line',
+            data: {
+                labels: {{ numero_labels|safe }},
+                datasets: datasets.map(ds => ({
+                    ...ds,
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    fill: false
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 13,
+                                weight: 'bold'
+                            },
+                            padding: 15,
+                            usePointStyle: true
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Evolução dos Valores ao Longo do Tempo',
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        },
+                        padding: {
+                            bottom: 20
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toFixed(2);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Data da Auditoria',
+                            font: {
+                                size: 12
+                            }
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Valor',
                             font: {
                                 size: 12
                             }
@@ -251,13 +355,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 },
                 interaction: {
-                    mode: 'index',
+                    mode: 'nearest',
+                    axis: 'x',
                     intersect: false
                 }
             }
         });
     }
+    {% endif %}
 });
 </script>
-{% endif %}
 {% endblock %}

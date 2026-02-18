@@ -91,11 +91,9 @@ class ModeloAuditoria(models.Model):
 
 class PerguntaAuditoria(models.Model):
     TIPO_RESPOSTA_CHOICES = [
-        ("TEXTO", "Texto"),
+        ("SIM_NAO", "Sim/Não"),
         ("NUMERO", "Número inteiro"),
         ("DECIMAL", "Número decimal"),
-        ("DATA", "Data"),
-        ("BOOLEANO", "Sim/Não"),
     ]
 
     modelo = models.ForeignKey(
@@ -105,7 +103,7 @@ class PerguntaAuditoria(models.Model):
         verbose_name="Modelo",
     )
     pergunta = models.CharField(max_length=255)
-    tipo_resposta = models.CharField(max_length=20, choices=TIPO_RESPOSTA_CHOICES, default="TEXTO")
+    tipo_resposta = models.CharField(max_length=20, choices=TIPO_RESPOSTA_CHOICES, default="SIM_NAO")
     ordem = models.PositiveIntegerField(default=1)
     obrigatoria = models.BooleanField(default=True)
     ativo = models.BooleanField(default=True)
