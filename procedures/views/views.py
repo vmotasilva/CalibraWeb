@@ -342,19 +342,10 @@ def treinamentos_list_view(request):
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
     from django.db.models import Max, OuterRef, Subquery
     
-    # Subquery para pegar o ID do registro mais recente para cada colaborador+procedimento
-    # Agrupa por colaborador+procedimento e pega o maior ID (mais recente)
-    ultimos_registros_ids = RegistroTreinamento.objects.filter(
-        colaborador__isnull=False,
-        procedimento__isnull=False
-    ).values('colaborador_id', 'procedimento_id').annotate(
-        ultimo_id=Max('id')
-    ).values_list('ultimo_id', flat=True)
-    
-    # Filtrar apenas os registros mais recentes (1 por colaborador+procedimento)
-    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').filter(
-        id__in=ultimos_registros_ids
-    )
+    # Obs: por padrão esta tela mostra apenas o registro mais recente por colaborador+procedimento.
+    # Quando vier do dashboard (ocorridos=1 e/ou mes=YYYY-MM), precisamos listar TODOS os registros
+    # ocorridos no período para bater com o gráfico.
+    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
     from organization.models import Setor
 
     colaboradores = Colaborador.objects.order_by('nome_completo')
@@ -412,6 +403,19 @@ def treinamentos_list_view(request):
 
     ocorridos = (request.GET.get('ocorridos') or '').strip()
     mes = (request.GET.get('mes') or '').strip()
+
+    modo_ocorridos = (ocorridos in {'1', 'true', 'True', 'sim', 'SIM'}) or bool(mes)
+
+    if not modo_ocorridos:
+        # Subquery para pegar o ID do registro mais recente para cada colaborador+procedimento
+        ultimos_registros_ids = RegistroTreinamento.objects.filter(
+            colaborador__isnull=False,
+            procedimento__isnull=False
+        ).values('colaborador_id', 'procedimento_id').annotate(
+            ultimo_id=Max('id')
+        ).values_list('ultimo_id', flat=True)
+
+        qs = qs.filter(id__in=ultimos_registros_ids)
 
     # Filtro de status - nota: status_treinamento é uma property
     # ⚠️ NOTA: Não é possível filtrar por property diretamente no QuerySet
@@ -544,6 +548,19 @@ def treinamentos_exportar_excel_view(request):
 
     ocorridos = (request.GET.get('ocorridos') or '').strip()
     mes = (request.GET.get('mes') or '').strip()
+
+    modo_ocorridos = (ocorridos in {'1', 'true', 'True', 'sim', 'SIM'}) or bool(mes)
+
+    if not modo_ocorridos:
+        # Export padrão acompanha a lista (1 por colaborador+procedimento)
+        from django.db.models import Max
+        ultimos_registros_ids = qs.filter(
+            colaborador__isnull=False,
+            procedimento__isnull=False
+        ).values('colaborador_id', 'procedimento_id').annotate(
+            ultimo_id=Max('id')
+        ).values_list('ultimo_id', flat=True)
+        qs = qs.filter(id__in=ultimos_registros_ids)
 
     # Filtros por QuerySet (aplicar antes de filtro por status)
     if colaborador_id:

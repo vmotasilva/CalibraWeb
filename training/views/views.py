@@ -509,26 +509,38 @@ def dashboard_treinamentos_view(request):
     else:
         taxa_conformidade = 0
     
-    # Treinamentos por mês (últimos 12 meses) - OTIMIZADO: query única com agregação
-    from django.db.models import Case, When, IntegerField
+    # Treinamentos por mês (últimos 12 meses) - por mês de calendário
     from django.db.models.functions import TruncMonth
-    
-    treinamentos_por_mes = []
-    for i in range(11, -1, -1):
-        data_inicio = date.today() - timedelta(days=30 * (i + 1))
-        data_fim = date.today() - timedelta(days=30 * i)
-        
-        count = valid_registros.filter(
-            data_treinamento__gte=data_inicio,
-            data_treinamento__lt=data_fim,
-            data_treinamento__isnull=False
-        ).count()
-        
-        treinamentos_por_mes.append({
-            'mes': data_inicio.strftime('%b/%y'),
-            'mes_iso': data_inicio.strftime('%Y-%m'),
-            'total': count
-        })
+
+    def _add_months(month_start: date, months: int) -> date:
+        year = month_start.year + (month_start.month - 1 + months) // 12
+        month = (month_start.month - 1 + months) % 12 + 1
+        return date(year, month, 1)
+
+    current_month_start = date.today().replace(day=1)
+    oldest_month_start = _add_months(current_month_start, -11)
+    month_starts = [_add_months(oldest_month_start, i) for i in range(12)]
+
+    month_counts = {
+        row['mes'].date(): row['total']
+        for row in valid_registros.filter(
+            data_treinamento__isnull=False,
+            data_treinamento__gte=oldest_month_start,
+        )
+        .annotate(mes=TruncMonth('data_treinamento'))
+        .values('mes')
+        .annotate(total=Count('id'))
+        .order_by('mes')
+    }
+
+    treinamentos_por_mes = [
+        {
+            'mes': m.strftime('%b/%y'),
+            'mes_iso': m.strftime('%Y-%m'),
+            'total': month_counts.get(m, 0),
+        }
+        for m in month_starts
+    ]
     
     # Gráfico por Líder - OTIMIZADO: apenas líderes com liderados ativos
     treinamentos_por_lider = []
