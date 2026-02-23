@@ -9,7 +9,7 @@ from dateutil.relativedelta import relativedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
 from django.core.paginator import Paginator
 import pandas as pd
@@ -1201,3 +1201,28 @@ def dashboard_treinamentos_exportar_csv_view(request):
         ])
     
     return response
+
+
+@login_required
+def colaboradores_autocomplete_view(request):
+    """Retorna sugestões de colaboradores (RH) para autocomplete (nome/matrícula)."""
+    q = (request.GET.get('q') or '').strip()
+    try:
+        limit = int(request.GET.get('limit') or 20)
+    except Exception:
+        limit = 20
+    limit = max(1, min(limit, 50))
+
+    if len(q) < 2:
+        return JsonResponse({"results": []})
+
+    qs = Colaborador.objects.filter(
+        is_active=True,
+        afastado=False,
+        em_ferias=False,
+    ).filter(
+        Q(nome_completo__icontains=q) | Q(matricula__icontains=q)
+    ).order_by('nome_completo')
+
+    results = list(qs.values('id', 'nome_completo', 'matricula')[:limit])
+    return JsonResponse({"results": results})

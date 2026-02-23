@@ -161,7 +161,8 @@
                                 <i class="bi bi-chevron-down"></i>
                             </div>
                             <div class="filter-content">
-                                <input id="filterColaboradorQ" type="text" class="form-control form-control-sm" placeholder="Nome ou matrícula" value="{{ filtro_colaborador_q|default:'' }}">
+                                    <input id="filterColaboradorQ" type="text" class="form-control form-control-sm" placeholder="Nome ou matrícula" value="{{ filtro_colaborador_q|default:'' }}" list="colabSuggestions" autocomplete="off">
+                                    <datalist id="colabSuggestions"></datalist>
                                 <small class="text-muted" style="font-size: 0.7rem;">Filtro por nome ou matrícula</small>
                             </div>
                         </div>
@@ -808,6 +809,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const colaboradoresAutocompleteUrl = "{% url 'training:colaboradores_autocomplete' %}";
+
     // =====================
     // Toggle Filter Groups (Accordion)
     // =====================
@@ -871,6 +874,58 @@ document.addEventListener('DOMContentLoaded', function() {
             const colabInput = document.getElementById('filterColaboradorQ');
             if (colabInput) colabInput.value = '';
             window.location.href = window.location.pathname;
+        });
+    }
+
+    // =====================
+    // Autocomplete de Colaborador (datalist)
+    // =====================
+    const colabInput = document.getElementById('filterColaboradorQ');
+    const colabDatalist = document.getElementById('colabSuggestions');
+    let colabDebounce = null;
+    let lastColabQuery = '';
+
+    async function fetchColaboradoresSuggestions(query) {
+        const url = colaboradoresAutocompleteUrl + '?q=' + encodeURIComponent(query);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!response.ok) return { results: [] };
+        return response.json();
+    }
+
+    if (colabInput && colabDatalist) {
+        colabInput.addEventListener('input', function() {
+            const query = (colabInput.value || '').trim();
+            if (query.length < 2) {
+                colabDatalist.innerHTML = '';
+                lastColabQuery = '';
+                return;
+            }
+
+            if (query === lastColabQuery) return;
+            lastColabQuery = query;
+
+            if (colabDebounce) clearTimeout(colabDebounce);
+            colabDebounce = setTimeout(async () => {
+                try {
+                    const current = (colabInput.value || '').trim();
+                    if (current !== query) return;
+                    const data = await fetchColaboradoresSuggestions(query);
+                    if (((colabInput.value || '').trim()) !== query) return;
+
+                    const results = Array.isArray(data?.results) ? data.results : [];
+                    colabDatalist.innerHTML = '';
+                    results.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.nome_completo;
+                        colabDatalist.appendChild(opt);
+                    });
+                } catch (err) {
+                    // Silencioso: autocomplete não pode quebrar o dashboard
+                }
+            }, 250);
         });
     }
     
