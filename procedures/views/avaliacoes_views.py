@@ -44,7 +44,8 @@ def matriz_avaliacoes_view(request):
     if matriz_id:
         matriz_selecionada = get_object_or_404(MatrizHabilidade, id=matriz_id)
         # Colunas (disciplinas) em ordem alfabética crescente
-        disciplinas = matriz_selecionada.disciplinas_matriz.filter(ativo=True).order_by('nome')
+        from django.db.models.functions import Lower
+        disciplinas = matriz_selecionada.disciplinas_matriz.filter(ativo=True).order_by(Lower('nome'))
         
         # Buscar APENAS colaboradores associados à matriz
         from procedures.models import ColaboradorMatrizHabilidade
