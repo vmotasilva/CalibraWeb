@@ -162,6 +162,7 @@
                             </div>
                             <div class="filter-content">
                                     <input id="filterColaboradorQ" type="text" class="form-control form-control-sm" placeholder="Nome ou matrícula" value="{{ filtro_colaborador_q|default:'' }}" list="colabSuggestions" autocomplete="off">
+                                    <input id="filterColaboradorId" type="hidden" value="{{ filtro_colaborador_id|default:'' }}">
                                     <datalist id="colabSuggestions"></datalist>
                                 <small class="text-muted" style="font-size: 0.7rem;">Filtro por nome ou matrícula</small>
                             </div>
@@ -844,8 +845,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        const colaboradorId = (document.getElementById('filterColaboradorId')?.value || '').trim();
         const colaboradorQ = (document.getElementById('filterColaboradorQ')?.value || '').trim();
-        if (colaboradorQ) {
+        if (colaboradorId) {
+            params.set('colaborador_id', colaboradorId);
+        } else if (colaboradorQ) {
             params.set('colaborador_q', colaboradorQ);
         }
         
@@ -873,6 +877,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const colabInput = document.getElementById('filterColaboradorQ');
             if (colabInput) colabInput.value = '';
+            const colabIdInput = document.getElementById('filterColaboradorId');
+            if (colabIdInput) colabIdInput.value = '';
             window.location.href = window.location.pathname;
         });
     }
@@ -881,9 +887,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Autocomplete de Colaborador (datalist)
     // =====================
     const colabInput = document.getElementById('filterColaboradorQ');
+    const colabIdInput = document.getElementById('filterColaboradorId');
     const colabDatalist = document.getElementById('colabSuggestions');
     let colabDebounce = null;
     let lastColabQuery = '';
+    let colabSuggestionsMap = {};
 
     async function fetchColaboradoresSuggestions(query) {
         const url = colaboradoresAutocompleteUrl + '?q=' + encodeURIComponent(query);
@@ -898,8 +906,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (colabInput && colabDatalist) {
         colabInput.addEventListener('input', function() {
             const query = (colabInput.value || '').trim();
+
+            // Se digitou manualmente, zera o ID até selecionar uma sugestão exata
+            if (colabIdInput) colabIdInput.value = '';
+
             if (query.length < 2) {
                 colabDatalist.innerHTML = '';
+                colabSuggestionsMap = {};
                 lastColabQuery = '';
                 return;
             }
@@ -917,15 +930,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const results = Array.isArray(data?.results) ? data.results : [];
                     colabDatalist.innerHTML = '';
+                    colabSuggestionsMap = {};
                     results.forEach(item => {
                         const opt = document.createElement('option');
                         opt.value = item.nome_completo;
                         colabDatalist.appendChild(opt);
+                        colabSuggestionsMap[item.nome_completo] = String(item.id);
                     });
+
+                    // Se o valor bate exatamente com uma sugestão, seta o ID
+                    const exact = colabSuggestionsMap[(colabInput.value || '').trim()];
+                    if (exact && colabIdInput) colabIdInput.value = exact;
                 } catch (err) {
                     // Silencioso: autocomplete não pode quebrar o dashboard
                 }
             }, 250);
+        });
+
+        // Ao perder foco, se bater exatamente com sugestão, setar ID
+        colabInput.addEventListener('change', function() {
+            const exact = colabSuggestionsMap[(colabInput.value || '').trim()];
+            if (exact && colabIdInput) colabIdInput.value = exact;
         });
     }
     
@@ -1025,9 +1050,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     });
 
-                    // Levar filtro por colaborador para a lista usando o campo de busca (q)
+                    // Levar filtro por colaborador para a lista
+                    const colaboradorId = (document.getElementById('filterColaboradorId')?.value || '').trim();
                     const colaboradorQ = (document.getElementById('filterColaboradorQ')?.value || '').trim();
-                    if (colaboradorQ) {
+                    if (colaboradorId) {
+                        params.set('colaborador', colaboradorId);
+                    } else if (colaboradorQ) {
                         params.set('q', colaboradorQ);
                     }
 
@@ -1377,8 +1405,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        const colaboradorId = (document.getElementById('filterColaboradorId')?.value || '').trim();
         const colaboradorQ = (document.getElementById('filterColaboradorQ')?.value || '').trim();
-        if (colaboradorQ) {
+        if (colaboradorId) {
+            params.set('colaborador_id', colaboradorId);
+        } else if (colaboradorQ) {
             params.set('colaborador_q', colaboradorQ);
         }
 

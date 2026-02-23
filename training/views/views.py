@@ -379,7 +379,24 @@ def dashboard_treinamentos_view(request):
     filtro_criticidade_list = request.GET.getlist('criticidade')
     filtro_matriz_list = request.GET.getlist('matriz')
     filtro_sub_area_list = request.GET.getlist('sub_area')
+    filtro_colaborador_id = (request.GET.get('colaborador_id') or '').strip()
     filtro_colaborador_q = (request.GET.get('colaborador_q') or '').strip()
+
+    # Se veio apenas com texto e ele retorna UM único colaborador, promover para ID
+    # (evita ambiguidade e permite cálculo por perfil no dashboard)
+    if (not filtro_colaborador_id) and filtro_colaborador_q and len(filtro_colaborador_q) >= 2:
+        candidatos = list(
+            Colaborador.objects.filter(
+                is_active=True,
+                afastado=False,
+                em_ferias=False,
+            ).filter(
+                Q(nome_completo__icontains=filtro_colaborador_q)
+                | Q(matricula__icontains=filtro_colaborador_q)
+            ).values_list('id', flat=True)[:2]
+        )
+        if len(candidatos) == 1:
+            filtro_colaborador_id = str(candidatos[0])
     
     # Para template (primeiro valor ou vazio)
     filtro_setor = filtro_setor_list[0] if filtro_setor_list else ''
@@ -397,6 +414,7 @@ def dashboard_treinamentos_view(request):
         or filtro_criticidade_list
         or filtro_matriz_list
         or filtro_sub_area_list
+        or bool(filtro_colaborador_id)
         or bool(filtro_colaborador_q)
     )
     
@@ -412,6 +430,7 @@ def dashboard_treinamentos_view(request):
             cached_data['filtro_criticidade'] = filtro_criticidade
             cached_data['filtro_matriz'] = filtro_matriz
             cached_data['filtro_sub_area'] = filtro_sub_area
+            cached_data['filtro_colaborador_id'] = filtro_colaborador_id
             cached_data['filtro_colaborador_q'] = filtro_colaborador_q
             return render(request, 'training/dashboard_treinamentos.html', cached_data)
     
@@ -444,11 +463,78 @@ def dashboard_treinamentos_view(request):
     if filtro_sub_area_list:
         valid_registros = valid_registros.filter(procedimento__sub_area__in=filtro_sub_area_list)
 
-    if filtro_colaborador_q:
+    if filtro_colaborador_id and filtro_colaborador_id.isdigit():
+        valid_registros = valid_registros.filter(colaborador_id=int(filtro_colaborador_id))
+    elif filtro_colaborador_q:
         valid_registros = valid_registros.filter(
             Q(colaborador__nome_completo__icontains=filtro_colaborador_q)
             | Q(colaborador__matricula__icontains=filtro_colaborador_q)
         )
+
+    # Considerar apenas procedimentos associados a algum perfil ativo do colaborador
+    # (sem duplicar; Exists não multiplica linhas)
+    from procedures.models import ColaboradorPerfil
+    perfil_exists_qs = ColaboradorPerfil.objects.filter(
+        colaborador_id=OuterRef('colaborador_id'),
+        ativo=True,
+        perfil__grupos__subgrupos__procedimentos=OuterRef('procedimento_id'),
+    )
+    valid_registros = valid_registros.annotate(
+        _associado_perfil=Exists(perfil_exists_qs)
+    ).filter(_associado_perfil=True)
+
+    # =====================================================================
+    # MODO COLABORADOR (EXATO POR ID): indicadores devem refletir o PERFIL
+    # (inclui procedimentos sem registro => "não iniciado"), como no RH.
+    # =====================================================================
+    perfil_procedimentos_ids = None
+    colaborador_obj = None
+    if filtro_colaborador_id and filtro_colaborador_id.isdigit():
+        colab_id_int = int(filtro_colaborador_id)
+        colaborador_obj = Colaborador.objects.filter(id=colab_id_int).first()
+
+        # Se o colaborador não passar nos filtros de colaborador, tratamos como sem resultado.
+        if colaborador_obj:
+            if not getattr(colaborador_obj, 'is_active', False):
+                colaborador_obj = None
+            if getattr(colaborador_obj, 'afastado', False):
+                colaborador_obj = None
+            if getattr(colaborador_obj, 'em_ferias', False):
+                colaborador_obj = None
+
+        if colaborador_obj:
+            # Respeitar filtros "de colaborador" mesmo se ele não tiver registros.
+            if filtro_setor_list and str(getattr(colaborador_obj, 'setor_id', '') or '') not in set(map(str, filtro_setor_list)):
+                colaborador_obj = None
+            if filtro_turno_list and str(getattr(colaborador_obj, 'turno', '') or '') not in set(map(str, filtro_turno_list)):
+                colaborador_obj = None
+            if filtro_lider_list and str(getattr(colaborador_obj, 'lider_id', '') or '') not in set(map(str, filtro_lider_list)):
+                colaborador_obj = None
+
+        if colaborador_obj:
+            from procedures.models import ColaboradorPerfil
+
+            procedimentos_qs = Procedimento.objects.none()
+            for cp in ColaboradorPerfil.objects.filter(colaborador_id=colab_id_int, ativo=True).select_related('perfil'):
+                procedimentos_qs = procedimentos_qs | cp.get_procedimentos_necessarios()
+
+            procedimentos_qs = procedimentos_qs.distinct()
+
+            # Respeitar filtros do dashboard que são do procedimento
+            if filtro_criticidade_list:
+                procedimentos_qs = procedimentos_qs.filter(criticidade__in=filtro_criticidade_list)
+            if filtro_matriz_list:
+                procedimentos_qs = procedimentos_qs.filter(matriz__in=filtro_matriz_list)
+            if filtro_sub_area_list:
+                procedimentos_qs = procedimentos_qs.filter(sub_area__in=filtro_sub_area_list)
+
+            perfil_procedimentos_ids = list(procedimentos_qs.values_list('id', flat=True))
+            if not perfil_procedimentos_ids:
+                perfil_procedimentos_ids = None
+
+            # Garantir que gráficos/tabela (baseados em registros) fiquem consistentes com o Perfil
+            if perfil_procedimentos_ids:
+                valid_registros = valid_registros.filter(procedimento_id__in=perfil_procedimentos_ids)
     
     # =========================================================================
     # REGISTROS ÚNICOS: Apenas o registro mais recente por colaborador+procedimento
@@ -511,6 +597,65 @@ def dashboard_treinamentos_view(request):
         'vigente': treinamentos_vigentes,
         'pendente': treinamentos_pendentes
     }
+
+    # Se filtrou colaborador exato, os indicadores devem refletir a matriz do Perfil
+    if colaborador_obj is not None and perfil_procedimentos_ids:
+        EPOCH_DATE = date(1970, 1, 1)
+        ultimo_treinamento_por_procedimento = {}
+
+        treinamentos_qs = RegistroTreinamento.objects.filter(
+            colaborador_id=colaborador_obj.id,
+            procedimento_id__in=perfil_procedimentos_ids,
+            ativo=True,
+            procedimento__isnull=False,
+        ).select_related('procedimento').order_by('-data_treinamento', '-id')
+
+        # 1) Preferir registros com data válida (não nula e não 1970-01-01)
+        for t in treinamentos_qs:
+            proc_id = t.procedimento_id
+            if proc_id in ultimo_treinamento_por_procedimento:
+                continue
+            if not t.data_treinamento:
+                continue
+            if t.data_treinamento == EPOCH_DATE:
+                continue
+            ultimo_treinamento_por_procedimento[proc_id] = t
+
+        # 2) Se não houver data válida, cair para o registro mais recente sem data
+        for t in treinamentos_qs:
+            proc_id = t.procedimento_id
+            if proc_id in ultimo_treinamento_por_procedimento:
+                continue
+            if t.data_treinamento:
+                continue
+            ultimo_treinamento_por_procedimento[proc_id] = t
+
+        vigentes_count = 0
+        pendentes_count = 0
+        for proc_id in perfil_procedimentos_ids:
+            t = ultimo_treinamento_por_procedimento.get(proc_id)
+            if not t or not t.data_treinamento or t.data_treinamento == EPOCH_DATE:
+                pendentes_count += 1
+                continue
+            if t.revisao_treinada == t.procedimento.numero_revisao:
+                vigentes_count += 1
+            else:
+                pendentes_count += 1
+
+        total_treinamentos = len(perfil_procedimentos_ids)
+        treinamentos_vigentes = vigentes_count
+        treinamentos_pendentes = pendentes_count
+        total_procedimentos_unicos = vigentes_count
+        total_colaboradores_treinados = 1 if vigentes_count > 0 else 0
+        status_distribuicao = {
+            'vigente': treinamentos_vigentes,
+            'pendente': treinamentos_pendentes
+        }
+
+        if total_treinamentos > 0:
+            taxa_conformidade = round((treinamentos_vigentes / total_treinamentos) * 100, 1)
+        else:
+            taxa_conformidade = 0
     
     # Taxa de conformidade (treinados vs total)
     if total_treinamentos > 0:
@@ -820,6 +965,7 @@ def dashboard_treinamentos_view(request):
     context['filtro_criticidade'] = filtro_criticidade
     context['filtro_matriz'] = filtro_matriz
     context['filtro_sub_area'] = filtro_sub_area
+    context['filtro_colaborador_id'] = filtro_colaborador_id
     context['filtro_colaborador_q'] = filtro_colaborador_q
     
     # Cachear contexto por 5 minutos (300 segundos) - apenas sem filtros
@@ -1096,6 +1242,7 @@ def dashboard_treinamentos_exportar_csv_view(request):
     criticidades = request.GET.getlist('criticidade')
     matrizes = request.GET.getlist('matriz')
     sub_areas = request.GET.getlist('sub_area')
+    colaborador_id = (request.GET.get('colaborador_id') or '').strip()
     colaborador_q = (request.GET.get('colaborador_q') or '').strip()
     
     # Base query - apenas registros ATIVOS, NÃO AFASTADOS, NÃO EM FÉRIAS
@@ -1112,6 +1259,7 @@ def dashboard_treinamentos_exportar_csv_view(request):
     if turnos:
         base_query &= Q(colaborador__turno__in=turnos)
     if setores:
+        setores_int = []
         try:
             setores_int = [int(s) for s in setores if s.strip()]
             if setores_int:
@@ -1119,6 +1267,7 @@ def dashboard_treinamentos_exportar_csv_view(request):
         except:
             pass
     if lideres:
+        lideres_int = []
         try:
             lideres_int = [int(l) for l in lideres if l.strip()]
             if lideres_int:
@@ -1141,16 +1290,136 @@ def dashboard_treinamentos_exportar_csv_view(request):
         if sub_areas_clean:
             base_query &= Q(procedimento__sub_area__in=sub_areas_clean)
 
-    if colaborador_q:
+    if colaborador_id and colaborador_id.isdigit():
+        base_query &= Q(colaborador_id=int(colaborador_id))
+    elif colaborador_q:
         base_query &= (
             Q(colaborador__nome_completo__icontains=colaborador_q)
             | Q(colaborador__matricula__icontains=colaborador_q)
         )
-    
-    # Obter TODOS os registros (não paginar)
-    registros = RegistroTreinamento.objects.filter(base_query).select_related(
+
+    # Se houver colaborador exato, e existir Perfil associado, exportar lista baseada no Perfil
+    # (inclui procedimentos sem RegistroTreinamento), para bater com RH/Matriz.
+    itens_export = None
+    colaborador_obj = None
+    if colaborador_id and colaborador_id.isdigit():
+        colaborador_obj = Colaborador.objects.filter(
+            id=int(colaborador_id),
+            is_active=True,
+            afastado=False,
+            em_ferias=False,
+        ).first()
+
+    # Se filtros de colaborador foram aplicados, garantir que o colaborador escolhido respeita
+    # (mesmo que ele não tenha registros).
+    if colaborador_obj:
+        try:
+            if turnos and str(getattr(colaborador_obj, 'turno', '') or '') not in set(map(str, turnos)):
+                colaborador_obj = None
+        except Exception:
+            pass
+
+    if colaborador_obj and setores:
+        try:
+            setores_int_check = [int(s) for s in setores if str(s).strip().isdigit()]
+            if setores_int_check and getattr(colaborador_obj, 'setor_id', None) not in setores_int_check:
+                colaborador_obj = None
+        except Exception:
+            pass
+
+    if colaborador_obj and lideres:
+        try:
+            lideres_int_check = [int(l) for l in lideres if str(l).strip().isdigit()]
+            if lideres_int_check and getattr(colaborador_obj, 'lider_id', None) not in lideres_int_check:
+                colaborador_obj = None
+        except Exception:
+            pass
+
+    if colaborador_obj:
+        try:
+            from procedures.models import ColaboradorPerfil
+
+            procedimentos_qs = Procedimento.objects.none()
+            for cp in ColaboradorPerfil.objects.filter(colaborador_id=colaborador_obj.id, ativo=True).select_related('perfil'):
+                procedimentos_qs = procedimentos_qs | cp.get_procedimentos_necessarios()
+            procedimentos_qs = procedimentos_qs.distinct()
+
+            # Respeitar filtros do procedimento
+            if criticidades:
+                criticidades_clean = [c for c in criticidades if str(c).strip()]
+                if criticidades_clean:
+                    procedimentos_qs = procedimentos_qs.filter(criticidade__in=criticidades_clean)
+            if matrizes:
+                matrizes_clean = [m for m in matrizes if str(m).strip()]
+                if matrizes_clean:
+                    procedimentos_qs = procedimentos_qs.filter(matriz__in=matrizes_clean)
+            if sub_areas:
+                sub_areas_clean = [sa for sa in sub_areas if str(sa).strip()]
+                if sub_areas_clean:
+                    procedimentos_qs = procedimentos_qs.filter(sub_area__in=sub_areas_clean)
+
+            procedimentos_ids = list(procedimentos_qs.values_list('id', flat=True))
+            if procedimentos_ids:
+                EPOCH_DATE = date(1970, 1, 1)
+                ultimo_treinamento_por_procedimento = {}
+
+                treinamentos_qs = RegistroTreinamento.objects.filter(
+                    base_query,
+                    colaborador_id=colaborador_obj.id,
+                    procedimento_id__in=procedimentos_ids,
+                ).select_related('procedimento').order_by('-data_treinamento', '-id')
+
+                for t in treinamentos_qs:
+                    proc_id = t.procedimento_id
+                    if proc_id in ultimo_treinamento_por_procedimento:
+                        continue
+                    if not t.data_treinamento:
+                        continue
+                    if t.data_treinamento == EPOCH_DATE:
+                        continue
+                    ultimo_treinamento_por_procedimento[proc_id] = t
+
+                for t in treinamentos_qs:
+                    proc_id = t.procedimento_id
+                    if proc_id in ultimo_treinamento_por_procedimento:
+                        continue
+                    if t.data_treinamento:
+                        continue
+                    ultimo_treinamento_por_procedimento[proc_id] = t
+
+                itens_export = []
+                for proc in procedimentos_qs.order_by('codigo'):
+                    t = ultimo_treinamento_por_procedimento.get(proc.id)
+                    if t is None:
+                        t = RegistroTreinamento(
+                            colaborador=colaborador_obj,
+                            procedimento=proc,
+                            ativo=True,
+                            data_treinamento=None,
+                            revisao_treinada=None,
+                        )
+                    itens_export.append(t)
+        except Exception:
+            itens_export = None
+
+    # Fallback: exportar TODOS os registros (não paginar)
+    registros = itens_export if isinstance(itens_export, list) else RegistroTreinamento.objects.filter(base_query).select_related(
         'colaborador', 'procedimento'
-    ).order_by('-data_treinamento', '-id')
+    )
+
+    # No modo queryset, manter consistência com o dashboard: apenas itens associados a algum perfil ativo
+    if not isinstance(registros, list):
+        from django.db.models import Exists, OuterRef
+        from procedures.models import ColaboradorPerfil
+
+        perfil_exists_qs = ColaboradorPerfil.objects.filter(
+            colaborador_id=OuterRef('colaborador_id'),
+            ativo=True,
+            perfil__grupos__subgrupos__procedimentos=OuterRef('procedimento_id'),
+        )
+        registros = registros.annotate(_associado_perfil=Exists(perfil_exists_qs)).filter(_associado_perfil=True)
+
+    registros = registros if isinstance(registros, list) else registros.order_by('-data_treinamento', '-id')
     
     # Criar resposta CSV
     response = HttpResponse(content_type='text/csv;charset=utf-8')

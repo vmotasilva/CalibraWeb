@@ -341,6 +341,7 @@ def treinamentos_list_view(request):
     """
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
     from django.db.models import Max, OuterRef, Subquery, Exists
+    from datetime import date
     
     # Obs: por padrão esta tela mostra apenas o registro mais recente por colaborador+procedimento.
     # Quando vier do dashboard (ocorridos=1 e/ou mes=YYYY-MM), precisamos listar TODOS os registros
@@ -418,42 +419,140 @@ def treinamentos_list_view(request):
 
         qs = qs.filter(id__in=ultimos_registros_ids)
 
+    # Se solicitado, listar SOMENTE procedimentos associados a perfil.
+    # Quando há colaborador definido, a fonte de verdade passa a ser a lista de procedimentos do(s) perfil(is)
+    # (incluindo aqueles ainda sem RegistroTreinamento), para bater com a Matriz exibida no RH.
+    if perfil_assoc in {'1', 'true', 'True', 'sim', 'SIM'} and colaborador_id:
+        from procedures.models import ColaboradorPerfil
+
+        try:
+            colaborador_obj = Colaborador.objects.get(id=colaborador_id)
+        except Exception:
+            colaborador_obj = None
+
+        procedimentos_ids = set()
+        if colaborador_obj:
+            for cp in ColaboradorPerfil.objects.filter(colaborador_id=colaborador_id, ativo=True).select_related('perfil'):
+                procedimentos_ids.update(cp.get_procedimentos_necessarios().values_list('id', flat=True))
+
+        if not procedimentos_ids:
+            qs = []
+        else:
+            # Aplicar filtros de procedimento diretamente nos procedimentos do perfil
+            procs_qs = Procedimento.objects.filter(id__in=procedimentos_ids)
+            if procedimento_id:
+                procs_qs = procs_qs.filter(id=procedimento_id)
+            if criticidades:
+                procs_qs = procs_qs.filter(criticidade__in=criticidades)
+            if matrizes_filtro:
+                procs_qs = procs_qs.filter(matriz__in=matrizes_filtro)
+            if sub_areas_filtro:
+                procs_qs = procs_qs.filter(sub_area__in=sub_areas_filtro)
+            if busca:
+                procs_qs = procs_qs.filter(Q(codigo__icontains=busca) | Q(nome__icontains=busca))
+
+            # Buscar último registro por procedimento (quando existir)
+            ultimos_ids = RegistroTreinamento.objects.filter(
+                colaborador_id=colaborador_id,
+                procedimento_id__in=procs_qs.values_list('id', flat=True),
+            ).values('procedimento_id').annotate(ultimo_id=Max('id')).values_list('ultimo_id', flat=True)
+
+            treinos_por_proc_id = {
+                t.procedimento_id: t
+                for t in RegistroTreinamento.objects.filter(id__in=ultimos_ids).select_related('colaborador', 'procedimento')
+            }
+
+            itens = []
+            for proc in procs_qs.order_by('codigo'):
+                t = treinos_por_proc_id.get(proc.id)
+                if t is None:
+                    # Criar instância em memória para representar "não iniciado" (sem registro)
+                    t = RegistroTreinamento(
+                        colaborador=colaborador_obj,
+                        procedimento=proc,
+                        tipo='PROCEDIMENTO',
+                        ativo=True,
+                        data_treinamento=None,
+                        revisao_treinada=None,
+                    )
+                itens.append(t)
+
+            # Respeitar filtros de ocorridos/mes/status/ativo no nível do registro
+            if ocorridos in {'1', 'true', 'True', 'sim', 'SIM'}:
+                itens = [t for t in itens if getattr(t, 'data_treinamento', None)]
+            if mes:
+                try:
+                    ano_str, mes_str = mes.split('-', 1)
+                    ano = int(ano_str)
+                    mes_num = int(mes_str)
+                    data_inicio = date(ano, mes_num, 1)
+                    if mes_num == 12:
+                        data_fim = date(ano + 1, 1, 1)
+                    else:
+                        data_fim = date(ano, mes_num + 1, 1)
+                    itens = [t for t in itens if t.data_treinamento and data_inicio <= t.data_treinamento < data_fim]
+                except Exception:
+                    pass
+            if ativo:
+                ativo_bool = (ativo == '1')
+                itens = [t for t in itens if bool(getattr(t, 'ativo', True)) == ativo_bool]
+            if status:
+                itens = [t for t in itens if t.status_treinamento == status]
+
+            # Filtros de líder/setor/turno (quando presentes) precisam ser respeitados.
+            # Como estamos no modo de colaborador único, basta validar o colaborador.
+            try:
+                if lider_ids and str(getattr(colaborador_obj, 'lider_id', '') or '') not in set(map(str, lider_ids)):
+                    itens = []
+                if setor_ids and str(getattr(colaborador_obj, 'setor_id', '') or '') not in set(map(str, setor_ids)):
+                    itens = []
+                if turnos and str(getattr(colaborador_obj, 'turno', '') or '') not in set(map(str, turnos)):
+                    itens = []
+            except Exception:
+                pass
+
+            # Ordenação padrão (data desc; sem data vai pro fim)
+            itens.sort(key=lambda x: (x.data_treinamento is not None, x.data_treinamento or date.min), reverse=True)
+            qs = itens
+
+    qs_is_list = isinstance(qs, list)
+
     # Filtro de status - nota: status_treinamento é uma property
     # ⚠️ NOTA: Não é possível filtrar por property diretamente no QuerySet
     # Aplicar filtros no QuerySet primeiro
-    if colaborador_id:
-        qs = qs.filter(colaborador_id=colaborador_id)
-    if lider_ids:
-        qs = qs.filter(colaborador__lider_id__in=lider_ids)
-    if setor_ids:
-        qs = qs.filter(colaborador__setor_id__in=setor_ids)
-    if turnos:
-        qs = qs.filter(colaborador__turno__in=turnos)
-    if procedimento_id:
-        qs = qs.filter(procedimento_id=procedimento_id)
-    if criticidades:
-        qs = qs.filter(procedimento__criticidade__in=criticidades)
-    if matrizes_filtro:
-        qs = qs.filter(procedimento__matriz__in=matrizes_filtro)
-    if sub_areas_filtro:
-        qs = qs.filter(procedimento__sub_area__in=sub_areas_filtro)
-    if ativo:
-        qs = qs.filter(ativo=ativo == '1')
-    if busca:
-        qs = qs.filter(
-            Q(colaborador__nome_completo__icontains=busca) |
-            Q(procedimento__codigo__icontains=busca) |
-            Q(procedimento__nome__icontains=busca)
-        )
+    if not qs_is_list:
+        if colaborador_id:
+            qs = qs.filter(colaborador_id=colaborador_id)
+        if lider_ids:
+            qs = qs.filter(colaborador__lider_id__in=lider_ids)
+        if setor_ids:
+            qs = qs.filter(colaborador__setor_id__in=setor_ids)
+        if turnos:
+            qs = qs.filter(colaborador__turno__in=turnos)
+        if procedimento_id:
+            qs = qs.filter(procedimento_id=procedimento_id)
+        if criticidades:
+            qs = qs.filter(procedimento__criticidade__in=criticidades)
+        if matrizes_filtro:
+            qs = qs.filter(procedimento__matriz__in=matrizes_filtro)
+        if sub_areas_filtro:
+            qs = qs.filter(procedimento__sub_area__in=sub_areas_filtro)
+        if ativo:
+            qs = qs.filter(ativo=ativo == '1')
+        if busca:
+            qs = qs.filter(
+                Q(colaborador__nome_completo__icontains=busca) |
+                Q(procedimento__codigo__icontains=busca) |
+                Q(procedimento__nome__icontains=busca)
+            )
 
     # Treinamentos que ocorreram: têm data_treinamento
-    if ocorridos in {'1', 'true', 'True', 'sim', 'SIM'}:
+    if not qs_is_list and ocorridos in {'1', 'true', 'True', 'sim', 'SIM'}:
         qs = qs.filter(data_treinamento__isnull=False)
 
     # Filtrar por mês (YYYY-MM) considerando data_treinamento
-    if mes:
+    if (not qs_is_list) and mes:
         try:
-            from datetime import date
             ano_str, mes_str = mes.split('-', 1)
             ano = int(ano_str)
             mes_num = int(mes_str)
@@ -467,7 +566,7 @@ def treinamentos_list_view(request):
             pass
 
     # Somente treinamentos associados a algum Perfil atribuído
-    if perfil_assoc in {'1', 'true', 'True', 'sim', 'SIM'}:
+    if (not qs_is_list) and perfil_assoc in {'1', 'true', 'True', 'sim', 'SIM'}:
         from procedures.models import ColaboradorPerfil
 
         # Se filtrou um colaborador específico, aplicar regra exata (inclui seleção de subgrupos)
@@ -489,7 +588,8 @@ def treinamentos_list_view(request):
             qs = qs.annotate(_associado_perfil=Exists(perfil_exists_qs)).filter(_associado_perfil=True)
     
     # Ordenar
-    qs = qs.order_by('-data_treinamento')
+    if not qs_is_list:
+        qs = qs.order_by('-data_treinamento')
     
     # Se houver filtro de status (property), aplicar em memória
     if status:
@@ -631,6 +731,83 @@ def treinamentos_exportar_excel_view(request):
             qs = qs.filter(data_treinamento__gte=data_inicio, data_treinamento__lt=data_fim)
         except Exception:
             pass
+
+    # Modo Perfil + Colaborador: exportar todos os procedimentos do perfil (incluindo sem registro)
+    if perfil_assoc in {'1', 'true', 'True', 'sim', 'SIM'} and colaborador_id:
+        from procedures.models import ColaboradorPerfil
+        try:
+            colaborador_obj = Colaborador.objects.get(id=colaborador_id)
+        except Exception:
+            colaborador_obj = None
+
+        procedimentos_ids = set()
+        if colaborador_obj:
+            for cp in ColaboradorPerfil.objects.filter(colaborador_id=colaborador_id, ativo=True).select_related('perfil'):
+                procedimentos_ids.update(cp.get_procedimentos_necessarios().values_list('id', flat=True))
+
+        if not procedimentos_ids:
+            qs = []
+        else:
+            procs_qs = Procedimento.objects.filter(id__in=procedimentos_ids)
+            if procedimento_id:
+                procs_qs = procs_qs.filter(id=procedimento_id)
+            if criticidades:
+                procs_qs = procs_qs.filter(criticidade__in=criticidades)
+            if matrizes_filtro:
+                procs_qs = procs_qs.filter(matriz__in=matrizes_filtro)
+            if sub_areas_filtro:
+                procs_qs = procs_qs.filter(sub_area__in=sub_areas_filtro)
+            if busca:
+                procs_qs = procs_qs.filter(Q(codigo__icontains=busca) | Q(nome__icontains=busca))
+
+            ultimos_ids = RegistroTreinamento.objects.filter(
+                colaborador_id=colaborador_id,
+                procedimento_id__in=procs_qs.values_list('id', flat=True),
+            ).values('procedimento_id').annotate(ultimo_id=Max('id')).values_list('ultimo_id', flat=True)
+
+            treinos_por_proc_id = {
+                t.procedimento_id: t
+                for t in RegistroTreinamento.objects.filter(id__in=ultimos_ids).select_related('colaborador', 'procedimento')
+            }
+
+            itens = []
+            for proc in procs_qs.order_by('codigo'):
+                t = treinos_por_proc_id.get(proc.id)
+                if t is None:
+                    t = RegistroTreinamento(
+                        colaborador=colaborador_obj,
+                        procedimento=proc,
+                        tipo='PROCEDIMENTO',
+                        ativo=True,
+                        data_treinamento=None,
+                        revisao_treinada=None,
+                    )
+                itens.append(t)
+
+            if ocorridos in {'1', 'true', 'True', 'sim', 'SIM'}:
+                itens = [t for t in itens if getattr(t, 'data_treinamento', None)]
+            if mes:
+                try:
+                    from datetime import date
+                    ano_str, mes_str = mes.split('-', 1)
+                    ano = int(ano_str)
+                    mes_num = int(mes_str)
+                    data_inicio = date(ano, mes_num, 1)
+                    if mes_num == 12:
+                        data_fim = date(ano + 1, 1, 1)
+                    else:
+                        data_fim = date(ano, mes_num + 1, 1)
+                    itens = [t for t in itens if t.data_treinamento and data_inicio <= t.data_treinamento < data_fim]
+                except Exception:
+                    pass
+            if ativo:
+                ativo_bool = (ativo == '1')
+                itens = [t for t in itens if bool(getattr(t, 'ativo', True)) == ativo_bool]
+            if status:
+                itens = [t for t in itens if t.status_treinamento == status]
+
+            itens.sort(key=lambda x: (x.data_treinamento is not None, x.data_treinamento or date.min), reverse=True)
+            qs = itens
 
     # Somente treinamentos associados a algum Perfil atribuído
     if perfil_assoc in {'1', 'true', 'True', 'sim', 'SIM'}:
