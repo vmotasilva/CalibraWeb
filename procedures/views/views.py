@@ -380,34 +380,58 @@ def treinamentos_list_view(request):
     )
     criticidade_choices = list(Procedimento._meta.get_field('criticidade').choices)
     
+    from core.models import TURNOS_CHOICES
+
+    def _getlist_or_single(param_name: str):
+        values = [v for v in request.GET.getlist(param_name) if str(v).strip()]
+        if values:
+            return values
+        single = (request.GET.get(param_name) or '').strip()
+        return [single] if single else []
+
     status = request.GET.get('status', '')
     colaborador_id = request.GET.get('colaborador', '')
     procedimento_id = request.GET.get('procedimento', '')
-    lider_id = request.GET.get('lider', '')
     busca = request.GET.get('q', '')
     ativo = request.GET.get('ativo', '')
-    setor_id = request.GET.get('setor', '')
-    criticidade = request.GET.get('criticidade', '')
-    matriz = request.GET.get('matriz', '')
-    sub_area = request.GET.get('sub_area', '')
+
+    lider_ids = _getlist_or_single('lider')
+    setor_ids = _getlist_or_single('setor')
+    turnos = _getlist_or_single('turno')
+    criticidades = _getlist_or_single('criticidade')
+    matrizes_filtro = _getlist_or_single('matriz')
+    sub_areas_filtro = _getlist_or_single('sub_area')
+
+    # Para template (primeiro valor ou vazio)
+    lider_id = lider_ids[0] if lider_ids else ''
+    setor_id = setor_ids[0] if setor_ids else ''
+    turno = turnos[0] if turnos else ''
+    criticidade = criticidades[0] if criticidades else ''
+    matriz = matrizes_filtro[0] if matrizes_filtro else ''
+    sub_area = sub_areas_filtro[0] if sub_areas_filtro else ''
+
+    ocorridos = (request.GET.get('ocorridos') or '').strip()
+    mes = (request.GET.get('mes') or '').strip()
 
     # Filtro de status - nota: status_treinamento é uma property
     # ⚠️ NOTA: Não é possível filtrar por property diretamente no QuerySet
     # Aplicar filtros no QuerySet primeiro
     if colaborador_id:
         qs = qs.filter(colaborador_id=colaborador_id)
-    if lider_id:
-        qs = qs.filter(colaborador__lider_id=lider_id)
-    if setor_id:
-        qs = qs.filter(colaborador__setor_id=setor_id)
+    if lider_ids:
+        qs = qs.filter(colaborador__lider_id__in=lider_ids)
+    if setor_ids:
+        qs = qs.filter(colaborador__setor_id__in=setor_ids)
+    if turnos:
+        qs = qs.filter(colaborador__turno__in=turnos)
     if procedimento_id:
         qs = qs.filter(procedimento_id=procedimento_id)
-    if criticidade:
-        qs = qs.filter(procedimento__criticidade=criticidade)
-    if matriz:
-        qs = qs.filter(procedimento__matriz=matriz)
-    if sub_area:
-        qs = qs.filter(procedimento__sub_area=sub_area)
+    if criticidades:
+        qs = qs.filter(procedimento__criticidade__in=criticidades)
+    if matrizes_filtro:
+        qs = qs.filter(procedimento__matriz__in=matrizes_filtro)
+    if sub_areas_filtro:
+        qs = qs.filter(procedimento__sub_area__in=sub_areas_filtro)
     if ativo:
         qs = qs.filter(ativo=ativo == '1')
     if busca:
@@ -416,6 +440,26 @@ def treinamentos_list_view(request):
             Q(procedimento__codigo__icontains=busca) |
             Q(procedimento__nome__icontains=busca)
         )
+
+    # Treinamentos que ocorreram: têm data_treinamento
+    if ocorridos in {'1', 'true', 'True', 'sim', 'SIM'}:
+        qs = qs.filter(data_treinamento__isnull=False)
+
+    # Filtrar por mês (YYYY-MM) considerando data_treinamento
+    if mes:
+        try:
+            from datetime import date
+            ano_str, mes_str = mes.split('-', 1)
+            ano = int(ano_str)
+            mes_num = int(mes_str)
+            data_inicio = date(ano, mes_num, 1)
+            if mes_num == 12:
+                data_fim = date(ano + 1, 1, 1)
+            else:
+                data_fim = date(ano, mes_num + 1, 1)
+            qs = qs.filter(data_treinamento__gte=data_inicio, data_treinamento__lt=data_fim)
+        except Exception:
+            pass
     
     # Ordenar
     qs = qs.order_by('-data_treinamento')
@@ -437,6 +481,10 @@ def treinamentos_list_view(request):
         treinamentos = paginator.page(1)
     except EmptyPage:
         treinamentos = paginator.page(paginator.num_pages)
+
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+    query_string = query_params.urlencode()
     
     return render(request, "procedures/treinamento_lista.html", {
         "treinamentos": treinamentos,
@@ -444,6 +492,7 @@ def treinamentos_list_view(request):
         "procedimentos": procedimentos,
         "lideres": lideres,
         "setores": setores,
+        "turnos": [{'value': t[0], 'label': t[1]} for t in TURNOS_CHOICES],
         "criticidade_choices": criticidade_choices,
         "matrizes": matrizes,
         "sub_areas": sub_areas,
@@ -451,12 +500,16 @@ def treinamentos_list_view(request):
         "colaborador_id": colaborador_id,
         "procedimento_id": procedimento_id,
         "lider_id": lider_id,
+        "turno": turno,
         "busca": busca,
         "ativo": ativo,
         "setor_id": setor_id,
         "criticidade": criticidade,
         "matriz": matriz,
         "sub_area": sub_area,
+        "ocorridos": ocorridos,
+        "mes": mes,
+        "query_string": query_string,
         "total_registros": total_registros,
     })
 
@@ -469,32 +522,46 @@ def treinamentos_exportar_excel_view(request):
     # Aplicar os mesmos filtros da lista
     qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
     
+    def _getlist_or_single(param_name: str):
+        values = [v for v in request.GET.getlist(param_name) if str(v).strip()]
+        if values:
+            return values
+        single = (request.GET.get(param_name) or '').strip()
+        return [single] if single else []
+
     status = request.GET.get('status', '')
     colaborador_id = request.GET.get('colaborador', '')
     procedimento_id = request.GET.get('procedimento', '')
-    lider_id = request.GET.get('lider', '')
     busca = request.GET.get('q', '')
     ativo = request.GET.get('ativo', '')
-    setor_id = request.GET.get('setor', '')
-    criticidade = request.GET.get('criticidade', '')
-    matriz = request.GET.get('matriz', '')
-    sub_area = request.GET.get('sub_area', '')
+
+    lider_ids = _getlist_or_single('lider')
+    setor_ids = _getlist_or_single('setor')
+    turnos = _getlist_or_single('turno')
+    criticidades = _getlist_or_single('criticidade')
+    matrizes_filtro = _getlist_or_single('matriz')
+    sub_areas_filtro = _getlist_or_single('sub_area')
+
+    ocorridos = (request.GET.get('ocorridos') or '').strip()
+    mes = (request.GET.get('mes') or '').strip()
 
     # Filtros por QuerySet (aplicar antes de filtro por status)
     if colaborador_id:
         qs = qs.filter(colaborador_id=colaborador_id)
-    if lider_id:
-        qs = qs.filter(colaborador__lider_id=lider_id)
-    if setor_id:
-        qs = qs.filter(colaborador__setor_id=setor_id)
+    if lider_ids:
+        qs = qs.filter(colaborador__lider_id__in=lider_ids)
+    if setor_ids:
+        qs = qs.filter(colaborador__setor_id__in=setor_ids)
+    if turnos:
+        qs = qs.filter(colaborador__turno__in=turnos)
     if procedimento_id:
         qs = qs.filter(procedimento_id=procedimento_id)
-    if criticidade:
-        qs = qs.filter(procedimento__criticidade=criticidade)
-    if matriz:
-        qs = qs.filter(procedimento__matriz=matriz)
-    if sub_area:
-        qs = qs.filter(procedimento__sub_area=sub_area)
+    if criticidades:
+        qs = qs.filter(procedimento__criticidade__in=criticidades)
+    if matrizes_filtro:
+        qs = qs.filter(procedimento__matriz__in=matrizes_filtro)
+    if sub_areas_filtro:
+        qs = qs.filter(procedimento__sub_area__in=sub_areas_filtro)
     if ativo:
         qs = qs.filter(ativo=ativo == '1')
     if busca:
@@ -503,6 +570,24 @@ def treinamentos_exportar_excel_view(request):
             Q(procedimento__codigo__icontains=busca) |
             Q(procedimento__nome__icontains=busca)
         )
+
+    if ocorridos in {'1', 'true', 'True', 'sim', 'SIM'}:
+        qs = qs.filter(data_treinamento__isnull=False)
+
+    if mes:
+        try:
+            from datetime import date
+            ano_str, mes_str = mes.split('-', 1)
+            ano = int(ano_str)
+            mes_num = int(mes_str)
+            data_inicio = date(ano, mes_num, 1)
+            if mes_num == 12:
+                data_fim = date(ano + 1, 1, 1)
+            else:
+                data_fim = date(ano, mes_num + 1, 1)
+            qs = qs.filter(data_treinamento__gte=data_inicio, data_treinamento__lt=data_fim)
+        except Exception:
+            pass
     
     # Ordenar
     qs = qs.order_by('-data_treinamento')

@@ -526,6 +526,7 @@ def dashboard_treinamentos_view(request):
         
         treinamentos_por_mes.append({
             'mes': data_inicio.strftime('%b/%y'),
+            'mes_iso': data_inicio.strftime('%Y-%m'),
             'total': count
         })
     

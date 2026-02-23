@@ -901,9 +901,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const ctxMeses = document.getElementById('chartMeses');
     if (ctxMeses) {
         const meses = [{% for item in treinamentos_por_mes %}'{{ item.mes }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const mesesIso = [{% for item in treinamentos_por_mes %}'{{ item.mes_iso }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
         const valores = [{% for item in treinamentos_por_mes %}{{ item.total }}{% if not forloop.last %}, {% endif %}{% endfor %}];
         
-        new Chart(ctxMeses.getContext('2d'), {
+        const chartMeses = new Chart(ctxMeses.getContext('2d'), {
             type: 'bar',
             data: {
                 labels: meses,
@@ -928,6 +929,36 @@ document.addEventListener('DOMContentLoaded', function() {
                         align: 'end'
                     }
                 },
+                onClick: function(evt, elements) {
+                    if (!elements || elements.length === 0) return;
+                    const idx = elements[0].index;
+                    const mesIso = mesesIso[idx];
+                    if (!mesIso) return;
+
+                    const selectedFilters = {};
+                    document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+                        const category = checkbox.dataset.category;
+                        if (!selectedFilters[category]) {
+                            selectedFilters[category] = [];
+                        }
+                        selectedFilters[category].push(checkbox.value);
+                    });
+
+                    const params = new URLSearchParams();
+                    Object.keys(selectedFilters).forEach(category => {
+                        selectedFilters[category].forEach(value => {
+                            params.append(category, value);
+                        });
+                    });
+
+                    // Treinamentos que ocorreram no mês clicado
+                    params.set('ocorridos', '1');
+                    params.set('mes', mesIso);
+
+                    const baseUrl = '{% url "procedures:treinamentos_list" %}';
+                    const url = baseUrl + (params.toString() ? '?' + params.toString() : '');
+                    window.location.href = url;
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
@@ -940,6 +971,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+
+        // Feedback visual para indicar que o gráfico é clicável
+        ctxMeses.style.cursor = 'pointer';
     }
     
     // =====================
