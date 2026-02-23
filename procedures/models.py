@@ -752,23 +752,28 @@ class ColaboradorPerfil(models.Model):
     def get_procedimentos_necessarios(self):
         """Retorna todos os procedimentos que o colaborador precisa treinar."""
         from procedures.models import Procedimento
-        
-        if not self.grupos_selecionados:
-            # Se não tem seleção específica, retorna todos os procedimentos do perfil
-            procedimentos = Procedimento.objects.filter(
+
+        selecao = self.grupos_selecionados or {}
+        grupos_ids = selecao.get('grupos') or []
+        subgrupos_ids = selecao.get('subgrupos') or []
+
+        # Sem seleção específica (ou seleção vazia): retorna todos do perfil
+        if not grupos_ids and not subgrupos_ids:
+            return Procedimento.objects.filter(
                 subgrupos_treinamento__grupo__perfil=self.perfil
             ).distinct()
-        else:
-            # Retorna apenas procedimentos dos grupos/subgrupos selecionados
-            subgrupos_ids = self.grupos_selecionados.get('subgrupos', [])
-            if subgrupos_ids:
-                procedimentos = Procedimento.objects.filter(
-                    subgrupos_treinamento__id__in=subgrupos_ids
-                ).distinct()
-            else:
-                procedimentos = Procedimento.objects.none()
-        
-        return procedimentos
+
+        # Priorizar seleção por subgrupos (mais específica)
+        if subgrupos_ids:
+            return Procedimento.objects.filter(
+                subgrupos_treinamento__id__in=subgrupos_ids
+            ).distinct()
+
+        # Seleção por grupos: inclui procedimentos de todos os subgrupos desses grupos
+        return Procedimento.objects.filter(
+            subgrupos_treinamento__grupo__perfil=self.perfil,
+            subgrupos_treinamento__grupo__id__in=grupos_ids,
+        ).distinct()
 
     def get_subgrupos_status(self):
         """Retorna um dicionário com o status ativo/inativo de cada subgrupo para este colaborador.
