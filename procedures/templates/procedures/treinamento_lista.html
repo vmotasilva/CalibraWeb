@@ -165,6 +165,13 @@
                     <option value="0" {% if ativo == '0' %}selected{% endif %}>Inativos</option>
                 </select>
             </div>
+            <div class="col-md-2">
+                <label class="form-label small">Perfil</label>
+                <div class="form-check mt-1">
+                    <input class="form-check-input" type="checkbox" name="perfil_assoc" value="1" id="perfil_assoc" {% if perfil_assoc %}checked{% endif %}>
+                    <label class="form-check-label small" for="perfil_assoc">Somente associados a perfil</label>
+                </div>
+            </div>
             <div class="col-md-1 d-flex align-items-end gap-1">
                 <button type="submit" class="btn btn-outline-primary btn-sm w-100">Filtrar</button>
                 <a href="{% url 'procedures:treinamentos_list' %}" class="btn btn-outline-secondary btn-sm">Limpar</a>

@@ -340,7 +340,7 @@ def treinamentos_list_view(request):
     O histórico completo fica disponível na tela de detalhes.
     """
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-    from django.db.models import Max, OuterRef, Subquery
+    from django.db.models import Max, OuterRef, Subquery, Exists
     
     # Obs: por padrão esta tela mostra apenas o registro mais recente por colaborador+procedimento.
     # Quando vier do dashboard (ocorridos=1 e/ou mes=YYYY-MM), precisamos listar TODOS os registros
@@ -385,6 +385,7 @@ def treinamentos_list_view(request):
     procedimento_id = request.GET.get('procedimento', '')
     busca = request.GET.get('q', '')
     ativo = request.GET.get('ativo', '')
+    perfil_assoc = (request.GET.get('perfil_assoc') or '').strip()
 
     lider_ids = _getlist_or_single('lider')
     setor_ids = _getlist_or_single('setor')
@@ -464,6 +465,28 @@ def treinamentos_list_view(request):
             qs = qs.filter(data_treinamento__gte=data_inicio, data_treinamento__lt=data_fim)
         except Exception:
             pass
+
+    # Somente treinamentos associados a algum Perfil atribuído
+    if perfil_assoc in {'1', 'true', 'True', 'sim', 'SIM'}:
+        from procedures.models import ColaboradorPerfil
+
+        # Se filtrou um colaborador específico, aplicar regra exata (inclui seleção de subgrupos)
+        if colaborador_id:
+            procedimentos_ids = set()
+            for cp in ColaboradorPerfil.objects.filter(colaborador_id=colaborador_id, ativo=True).select_related('perfil'):
+                procedimentos_ids.update(cp.get_procedimentos_necessarios().values_list('id', flat=True))
+            if procedimentos_ids:
+                qs = qs.filter(procedimento_id__in=procedimentos_ids)
+            else:
+                qs = qs.none()
+        else:
+            # Sem colaborador: filtrar pelo relacionamento de perfil (sem considerar seleções JSON)
+            perfil_exists_qs = ColaboradorPerfil.objects.filter(
+                colaborador_id=OuterRef('colaborador_id'),
+                ativo=True,
+                perfil__grupos__subgrupos__procedimentos=OuterRef('procedimento_id'),
+            )
+            qs = qs.annotate(_associado_perfil=Exists(perfil_exists_qs)).filter(_associado_perfil=True)
     
     # Ordenar
     qs = qs.order_by('-data_treinamento')
@@ -513,6 +536,7 @@ def treinamentos_list_view(request):
         "sub_area": sub_area,
         "ocorridos": ocorridos,
         "mes": mes,
+        "perfil_assoc": perfil_assoc,
         "query_string": query_string,
         "total_registros": total_registros,
     })
@@ -522,6 +546,7 @@ def treinamentos_list_view(request):
 def treinamentos_exportar_excel_view(request):
     """Exporta matriz de treinamentos com filtros para Excel."""
     from procedures.utils.export_utils import PlanejamentoExcelExporter
+    from django.db.models import Exists, OuterRef
     
     # Aplicar os mesmos filtros da lista
     qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
@@ -538,6 +563,7 @@ def treinamentos_exportar_excel_view(request):
     procedimento_id = request.GET.get('procedimento', '')
     busca = request.GET.get('q', '')
     ativo = request.GET.get('ativo', '')
+    perfil_assoc = (request.GET.get('perfil_assoc') or '').strip()
 
     lider_ids = _getlist_or_single('lider')
     setor_ids = _getlist_or_single('setor')
@@ -605,6 +631,26 @@ def treinamentos_exportar_excel_view(request):
             qs = qs.filter(data_treinamento__gte=data_inicio, data_treinamento__lt=data_fim)
         except Exception:
             pass
+
+    # Somente treinamentos associados a algum Perfil atribuído
+    if perfil_assoc in {'1', 'true', 'True', 'sim', 'SIM'}:
+        from procedures.models import ColaboradorPerfil
+
+        if colaborador_id:
+            procedimentos_ids = set()
+            for cp in ColaboradorPerfil.objects.filter(colaborador_id=colaborador_id, ativo=True).select_related('perfil'):
+                procedimentos_ids.update(cp.get_procedimentos_necessarios().values_list('id', flat=True))
+            if procedimentos_ids:
+                qs = qs.filter(procedimento_id__in=procedimentos_ids)
+            else:
+                qs = qs.none()
+        else:
+            perfil_exists_qs = ColaboradorPerfil.objects.filter(
+                colaborador_id=OuterRef('colaborador_id'),
+                ativo=True,
+                perfil__grupos__subgrupos__procedimentos=OuterRef('procedimento_id'),
+            )
+            qs = qs.annotate(_associado_perfil=Exists(perfil_exists_qs)).filter(_associado_perfil=True)
     
     # Ordenar
     qs = qs.order_by('-data_treinamento')
