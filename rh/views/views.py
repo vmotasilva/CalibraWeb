@@ -430,6 +430,33 @@ def detalhe_colaborador_view(request, colab_id):
     total_pendentes = 0
     total_treinamentos = 0
     procedimentos_contabilizados = set()  # Rastrear procedimentos já contados globalmente
+
+    # Mapa de último treinamento por procedimento (evita N+1 e garante consistência)
+    EPOCH_DATE = date(1970, 1, 1)
+    ultimo_treinamento_por_procedimento = {}
+    treinamentos_qs = alvo.treinamentos.filter(
+        procedimento__isnull=False
+    ).select_related('procedimento').order_by('-data_treinamento', '-id')
+
+    # 1) Preferir registros com data válida (não nula e não 1970-01-01)
+    for t in treinamentos_qs:
+        proc_id = t.procedimento_id
+        if proc_id in ultimo_treinamento_por_procedimento:
+            continue
+        if not t.data_treinamento:
+            continue
+        if t.data_treinamento == EPOCH_DATE:
+            continue
+        ultimo_treinamento_por_procedimento[proc_id] = t
+
+    # 2) Se não houver data válida, cair para o registro mais recente sem data
+    for t in treinamentos_qs:
+        proc_id = t.procedimento_id
+        if proc_id in ultimo_treinamento_por_procedimento:
+            continue
+        if t.data_treinamento:
+            continue
+        ultimo_treinamento_por_procedimento[proc_id] = t
     
     # Buscar perfis atribuídos ao colaborador
     perfis_colab = ColaboradorPerfil.objects.filter(
@@ -479,7 +506,7 @@ def detalhe_colaborador_view(request, colab_id):
                 
                 # Para cada procedimento do subgrupo, buscar o registro de treinamento
                 for proc in subgrupo.procedimentos.all().order_by('codigo'):
-                    treinamento = alvo.treinamentos.filter(procedimento=proc).first()
+                    treinamento = ultimo_treinamento_por_procedimento.get(proc.id)
                     
                     # Verificar se este procedimento já foi contabilizado (em outro perfil)
                     eh_duplicada = proc.id in procedimentos_contabilizados
