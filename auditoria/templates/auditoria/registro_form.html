@@ -89,16 +89,37 @@
                                 <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
                             </div>
 
-                            {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
-                                <select class="form-select" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
-                                    <option value="">-- Selecione --</option>
-                                    <option value="Sim">Sim</option>
-                                    <option value="Não">Não</option>
-                                </select>
-                            {% elif pergunta.tipo_resposta == 'NUMERO' %}
-                                <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
-                            {% elif pergunta.tipo_resposta == 'DECIMAL' %}
-                                <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
+                            {% if modelo.periodicidade == 'SEMANAL' and pergunta.preenchimento_semanal == 'POR_DIA' %}
+                                <div class="row g-2">
+                                    {% for dia_key, dia_label in dias_semana_choices %}
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label small text-muted mb-1">{{ dia_label }}</label>
+                                        {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
+                                            <select class="form-select" name="resposta_{{ pergunta.id }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <option value="">-- Selecione --</option>
+                                                <option value="Sim">Sim</option>
+                                                <option value="Não">Não</option>
+                                            </select>
+                                        {% elif pergunta.tipo_resposta == 'NUMERO' %}
+                                            <input type="number" class="form-control" name="resposta_{{ pergunta.id }}_{{ dia_key }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
+                                        {% elif pergunta.tipo_resposta == 'DECIMAL' %}
+                                            <input type="number" class="form-control" name="resposta_{{ pergunta.id }}_{{ dia_key }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
+                                    <select class="form-select" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                        <option value="">-- Selecione --</option>
+                                        <option value="Sim">Sim</option>
+                                        <option value="Não">Não</option>
+                                    </select>
+                                {% elif pergunta.tipo_resposta == 'NUMERO' %}
+                                    <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
+                                {% elif pergunta.tipo_resposta == 'DECIMAL' %}
+                                    <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </div>
@@ -150,9 +171,9 @@
         const respostasScript = document.getElementById('respostas-dados');
         if (respostasScript) {
             const respostas = JSON.parse(respostasScript.textContent);
-            Object.keys(respostas).forEach(function(perguntaId) {
-                const valor = respostas[perguntaId];
-                const campo = document.querySelector('[name="resposta_' + perguntaId + '"]');
+            Object.keys(respostas).forEach(function(fieldName) {
+                const valor = respostas[fieldName];
+                const campo = document.querySelector('[name="' + fieldName + '"]');
                 if (campo && valor) {
                     campo.value = valor;
                 }

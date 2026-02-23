@@ -18,6 +18,13 @@
                 <label class="form-label">Tipo de Resposta</label>
                 {{ form.tipo_resposta }}
             </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Preenchimento (semanal)</label>
+                {{ form.preenchimento_semanal }}
+                {% if form.preenchimento_semanal.help_text %}
+                    <div class="form-text">{{ form.preenchimento_semanal.help_text }}</div>
+                {% endif %}
+            </div>
             <div class="col-md-2 mb-3">
                 <label class="form-label">Ordem</label>
                 {{ form.ordem }}

@@ -54,11 +54,12 @@ class ModeloAuditoriaForm(forms.ModelForm):
 class PerguntaAuditoriaForm(forms.ModelForm):
     class Meta:
         model = PerguntaAuditoria
-        fields = ["modelo", "pergunta", "tipo_resposta", "ordem", "obrigatoria", "ativo"]
+        fields = ["modelo", "pergunta", "tipo_resposta", "preenchimento_semanal", "ordem", "obrigatoria", "ativo"]
         widgets = {
             "modelo": forms.Select(attrs={"class": "form-select"}),
             "pergunta": forms.TextInput(attrs={"class": "form-control"}),
             "tipo_resposta": forms.Select(attrs={"class": "form-select"}),
+            "preenchimento_semanal": forms.Select(attrs={"class": "form-select"}),
             "ordem": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "obrigatoria": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),

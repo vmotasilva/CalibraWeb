@@ -93,6 +93,66 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Criticidade -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Criticidade</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for value, label in criticidade_choices %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ value }}" data-category="criticidade" id="crit_{{ value }}" {% if value|stringformat:"s" in filtro_criticidade_list %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="crit_{{ value }}" title="{{ label }}">
+                                            {{ label }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Matriz -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Matriz</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for m in matrizes %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ m }}" data-category="matriz" id="matriz_{{ forloop.counter }}" {% if m in filtro_matriz_list %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="matriz_{{ forloop.counter }}" title="{{ m }}">
+                                            {{ m }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sub-Área -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Sub-Área</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for sa in sub_areas %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ sa }}" data-category="sub_area" id="subarea_{{ forloop.counter }}" {% if sa in filtro_sub_area_list %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="subarea_{{ forloop.counter }}" title="{{ sa }}">
+                                            {{ sa }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
                         
                     </div>
                 </div>
@@ -327,13 +387,13 @@
                         <small class="text-muted">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</small>
                         <ul class="pagination pagination-sm mb-0">
                             {% if page_obj.has_previous %}
-                            <li class="page-item"><a class="page-link" href="?page=1">Primeira</a></li>
-                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                            <li class="page-item"><a class="page-link" href="?page=1{% if query_string %}&{{ query_string }}{% endif %}">Primeira</a></li>
+                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">Anterior</a></li>
                             {% endif %}
                             
                             {% if page_obj.has_next %}
-                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a></li>
-                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
+                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}">Próxima</a></li>
+                            <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if query_string %}&{{ query_string }}{% endif %}">Última</a></li>
                             {% endif %}
                         </ul>
                     </nav>
@@ -1186,21 +1246,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Exportar CSV - Todos os Dados Filtrados
     // =====================
     document.getElementById('exportCsv')?.addEventListener('click', function() {
-        // Capturar filtros aplicados
-        const setor = document.getElementById('filterSetor')?.value || '';
-        const turno = document.getElementById('filterTurno')?.value || '';
-        const lider = document.getElementById('filterLider')?.value || '';
-        
-        // Construir URL com filtros
-        let url = '{% url "training:dashboard_exportar_csv" %}?';
-        const params = [];
-        if (setor) params.push(`setor=${encodeURIComponent(setor)}`);
-        if (turno) params.push(`turno=${encodeURIComponent(turno)}`);
-        if (lider) params.push(`lider=${encodeURIComponent(lider)}`);
-        
-        url += params.join('&');
-        
-        // Redirecionar para download
+        const selectedFilters = {};
+
+        document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+            const category = checkbox.dataset.category;
+            if (!selectedFilters[category]) {
+                selectedFilters[category] = [];
+            }
+            selectedFilters[category].push(checkbox.value);
+        });
+
+        const params = new URLSearchParams();
+        Object.keys(selectedFilters).forEach(category => {
+            selectedFilters[category].forEach(value => {
+                params.append(category, value);
+            });
+        });
+
+        const baseUrl = '{% url "training:dashboard_exportar_csv" %}';
+        const url = baseUrl + (params.toString() ? '?' + params.toString() : '');
         window.location.href = url;
     });
 });

@@ -43,7 +43,8 @@ def matriz_avaliacoes_view(request):
     
     if matriz_id:
         matriz_selecionada = get_object_or_404(MatrizHabilidade, id=matriz_id)
-        disciplinas = matriz_selecionada.disciplinas_matriz.filter(ativo=True).order_by('codigo')
+        # Colunas (disciplinas) em ordem alfabética crescente
+        disciplinas = matriz_selecionada.disciplinas_matriz.filter(ativo=True).order_by('nome')
         
         # Buscar APENAS colaboradores associados à matriz
         from procedures.models import ColaboradorMatrizHabilidade
@@ -72,6 +73,9 @@ def matriz_avaliacoes_view(request):
             ]
         
         colaboradores = colaboradores[:50]  # Limitar para performance
+
+        # Garantir ordem alfabética crescente mesmo após filtros (A→Z)
+        colaboradores = sorted(colaboradores, key=lambda c: (c.nome_completo or '').lower())
         
         # Buscar avaliações existentes
         avaliacoes = AvaliacaoHabilidade.objects.filter(

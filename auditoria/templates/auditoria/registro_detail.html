@@ -84,6 +84,9 @@
                     <tr>
                         <th width="80">Ordem</th>
                         <th>Pergunta</th>
+                        {% if exibir_dia_semana %}
+                        <th width="160">Dia</th>
+                        {% endif %}
                         <th width="150">Tipo</th>
                         <th width="250">Resposta</th>
                     </tr>
@@ -100,6 +103,15 @@
                             <span class="text-danger">*</span>
                             {% endif %}
                         </td>
+                        {% if exibir_dia_semana %}
+                        <td>
+                            {% if resposta.dia_semana %}
+                                <span class="text-muted">{{ resposta.get_dia_semana_display }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
                         <td><span class="badge bg-info">{{ resposta.pergunta.get_tipo_resposta_display }}</span></td>
                         <td>
                             {% if resposta.valor %}
@@ -110,7 +122,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" class="text-center py-3 text-muted">Sem respostas registradas.</td></tr>
+                    <tr><td colspan="{% if exibir_dia_semana %}5{% else %}4{% endif %}" class="text-center py-3 text-muted">Sem respostas registradas.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

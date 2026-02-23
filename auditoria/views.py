@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.db.models import Count
@@ -162,11 +163,38 @@ def registros_list(request):
 @login_required
 def selecionar_modelo_preenchimento(request):
     """Lista modelos ativos para o usuário escolher qual preencher"""
-    modelos = ModeloAuditoria.objects.filter(ativo=True).annotate(
+    q = (request.GET.get("q") or "").strip()
+    responsavel_id = (request.GET.get("responsavel") or "").strip()
+    periodicidade = (request.GET.get("periodicidade") or "").strip()
+
+    modelos = ModeloAuditoria.objects.filter(ativo=True)
+    if q:
+        modelos = modelos.filter(models.Q(nome__icontains=q) | models.Q(objeto_auditoria__icontains=q))
+    if responsavel_id:
+        modelos = modelos.filter(responsavel_id=responsavel_id)
+    if periodicidade:
+        modelos = modelos.filter(periodicidade=periodicidade)
+
+    modelos = modelos.annotate(
         total_perguntas=Count("perguntas", filter=models.Q(perguntas__ativo=True))
     ).order_by("nome")
-    
-    context = {"modelos": modelos}
+
+    User = get_user_model()
+    responsaveis_ids = (
+        ModeloAuditoria.objects.filter(ativo=True, responsavel__isnull=False)
+        .values_list("responsavel_id", flat=True)
+        .distinct()
+    )
+    responsaveis = User.objects.filter(id__in=responsaveis_ids).order_by("username")
+
+    context = {
+        "modelos": modelos,
+        "q": q,
+        "responsavel_id": responsavel_id,
+        "periodicidade": periodicidade,
+        "periodicidade_choices": ModeloAuditoria.PERIODICIDADE_CHOICES,
+        "responsaveis": responsaveis,
+    }
     return render(request, "auditoria/selecionar_modelo.html", context)
 
 
@@ -184,6 +212,9 @@ def registro_create(request, modelo_id=None):
     
     perguntas = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("ordem", "id")
     
+    dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
+    is_semanal = modelo.periodicidade == "SEMANAL"
+
     if request.method == "POST":
         form = RegistroAuditoriaForm(request.POST)
         if form.is_valid():
@@ -195,10 +226,25 @@ def registro_create(request, modelo_id=None):
             # Salvar respostas
             erros = []
             for pergunta in perguntas:
-                valor = request.POST.get(f"resposta_{pergunta.id}", "").strip()
-                if not valor and pergunta.obrigatoria:
-                    erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
-                RespostaAuditoria.objects.create(registro=registro, pergunta=pergunta, valor=valor)
+                if is_semanal and getattr(pergunta, "preenchimento_semanal", "UNICO") == "POR_DIA":
+                    for dia_key, _dia_label in dias_semana_choices:
+                        field_name = f"resposta_{pergunta.id}_{dia_key}"
+                        valor = request.POST.get(field_name, "").strip()
+                        if not valor and pergunta.obrigatoria:
+                            erros.append(
+                                f"A pergunta '{pergunta.pergunta}' é obrigatória para {dict(dias_semana_choices).get(dia_key, dia_key)}."
+                            )
+                        RespostaAuditoria.objects.create(
+                            registro=registro,
+                            pergunta=pergunta,
+                            dia_semana=dia_key,
+                            valor=valor,
+                        )
+                else:
+                    valor = request.POST.get(f"resposta_{pergunta.id}", "").strip()
+                    if not valor and pergunta.obrigatoria:
+                        erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
+                    RespostaAuditoria.objects.create(registro=registro, pergunta=pergunta, valor=valor)
             
             if erros:
                 for erro in erros:
@@ -214,6 +260,7 @@ def registro_create(request, modelo_id=None):
         "form": form,
         "modelo": modelo,
         "perguntas": perguntas,
+        "dias_semana_choices": dias_semana_choices,
     }
     return render(request, "auditoria/registro_form.html", context)
 
@@ -224,6 +271,9 @@ def registro_edit(request, pk):
     registro = get_object_or_404(RegistroAuditoria.objects.select_related("modelo"), pk=pk)
     perguntas = PerguntaAuditoria.objects.filter(modelo=registro.modelo, ativo=True).order_by("ordem", "id")
     
+    dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
+    is_semanal = registro.modelo.periodicidade == "SEMANAL"
+
     if request.method == "POST":
         form = RegistroAuditoriaForm(request.POST, instance=registro)
         if form.is_valid():
@@ -232,12 +282,40 @@ def registro_edit(request, pk):
 
             # Atualizar respostas existentes
             for pergunta in perguntas:
-                valor = request.POST.get(f"resposta_{pergunta.id}", "").strip()
-                RespostaAuditoria.objects.update_or_create(
-                    registro=registro,
-                    pergunta=pergunta,
-                    defaults={"valor": valor}
-                )
+                is_por_dia = is_semanal and getattr(pergunta, "preenchimento_semanal", "UNICO") == "POR_DIA"
+
+                if is_por_dia:
+                    # Se antes era resposta única, remover para evitar duplicidade
+                    RespostaAuditoria.objects.filter(
+                        registro=registro,
+                        pergunta=pergunta,
+                        dia_semana__isnull=True,
+                    ).delete()
+
+                    for dia_key, _dia_label in dias_semana_choices:
+                        field_name = f"resposta_{pergunta.id}_{dia_key}"
+                        valor = request.POST.get(field_name, "").strip()
+                        RespostaAuditoria.objects.update_or_create(
+                            registro=registro,
+                            pergunta=pergunta,
+                            dia_semana=dia_key,
+                            defaults={"valor": valor},
+                        )
+                else:
+                    # Se antes era por dia, remover linhas por dia e manter apenas a resposta única
+                    RespostaAuditoria.objects.filter(
+                        registro=registro,
+                        pergunta=pergunta,
+                        dia_semana__isnull=False,
+                    ).delete()
+
+                    valor = request.POST.get(f"resposta_{pergunta.id}", "").strip()
+                    RespostaAuditoria.objects.update_or_create(
+                        registro=registro,
+                        pergunta=pergunta,
+                        dia_semana=None,
+                        defaults={"valor": valor},
+                    )
             
             messages.success(request, "Registro de auditoria atualizado com sucesso!")
             return redirect("auditoria:registro_detail", pk=registro.pk)
@@ -246,7 +324,10 @@ def registro_edit(request, pk):
         # Preencher valores atuais das respostas
         respostas_atuais = {}
         for resposta in registro.respostas.all():
-            respostas_atuais[resposta.pergunta_id] = resposta.valor
+            if resposta.dia_semana:
+                respostas_atuais[f"resposta_{resposta.pergunta_id}_{resposta.dia_semana}"] = resposta.valor
+            else:
+                respostas_atuais[f"resposta_{resposta.pergunta_id}"] = resposta.valor
 
     context = {
         "form": form,
@@ -255,6 +336,7 @@ def registro_edit(request, pk):
         "registro": registro,
         "respostas_atuais": respostas_atuais,
         "edicao": True,
+        "dias_semana_choices": dias_semana_choices,
     }
     return render(request, "auditoria/registro_form.html", context)
 
@@ -266,6 +348,7 @@ def registro_detail(request, pk):
         pk=pk,
     )
     respostas = registro.respostas.select_related("pergunta").order_by("pergunta__ordem", "id")
+    exibir_dia_semana = respostas.filter(dia_semana__isnull=False).exists()
     total_respostas = respostas.count()
     preenchidas = respostas.exclude(valor="").count()
     percentual_preenchimento = round((preenchidas / total_respostas) * 100, 1) if total_respostas else 0
@@ -273,6 +356,7 @@ def registro_detail(request, pk):
     context = {
         "registro": registro,
         "respostas": respostas,
+        "exibir_dia_semana": exibir_dia_semana,
         "total_respostas": total_respostas,
         "preenchidas": preenchidas,
         "percentual_preenchimento": percentual_preenchimento,
@@ -503,12 +587,16 @@ def exportar_respostas_excel(request, modelo_id):
             return "Não"
         return raw
 
-    # Mapear respostas por registro/pergunta
-    respostas_por_registro: dict[int, dict[int, str]] = {}
+    dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
+    is_semanal = modelo.periodicidade == "SEMANAL"
+
+    # Mapear respostas por registro/pergunta/(dia)
+    respostas_por_registro: dict[int, dict[tuple[int, str | None], str]] = {}
     for registro in registros:
         respostas_por_registro[registro.id] = {}
         for resposta in getattr(registro, "respostas").all():
-            respostas_por_registro[registro.id][resposta.pergunta_id] = resposta.valor
+            key = (resposta.pergunta_id, resposta.dia_semana)
+            respostas_por_registro[registro.id][key] = resposta.valor
 
     wb = Workbook()
     ws = wb.active
@@ -522,7 +610,12 @@ def exportar_respostas_excel(request, modelo_id):
         "Avaliador",
         "Observações",
     ]
-    headers.extend([p.pergunta for p in perguntas])
+    for p in perguntas:
+        if is_semanal and getattr(p, "preenchimento_semanal", "UNICO") == "POR_DIA":
+            for dia_key, dia_label in dias_semana_choices:
+                headers.append(f"{p.pergunta} ({dia_label})")
+        else:
+            headers.append(p.pergunta)
     ws.append(headers)
 
     for registro in registros:
@@ -541,11 +634,19 @@ def exportar_respostas_excel(request, modelo_id):
 
         respostas_dict = respostas_por_registro.get(registro.id, {})
         for pergunta in perguntas:
-            valor = respostas_dict.get(pergunta.id, "")
-            if pergunta.tipo_resposta in ["SIM_NAO", "BOOLEANO"]:
-                row.append(_normalize_sim_nao(valor))
+            if is_semanal and getattr(pergunta, "preenchimento_semanal", "UNICO") == "POR_DIA":
+                for dia_key, _dia_label in dias_semana_choices:
+                    valor = respostas_dict.get((pergunta.id, dia_key), "")
+                    if pergunta.tipo_resposta in ["SIM_NAO", "BOOLEANO"]:
+                        row.append(_normalize_sim_nao(valor))
+                    else:
+                        row.append(valor or "")
             else:
-                row.append(valor or "")
+                valor = respostas_dict.get((pergunta.id, None), "")
+                if pergunta.tipo_resposta in ["SIM_NAO", "BOOLEANO"]:
+                    row.append(_normalize_sim_nao(valor))
+                else:
+                    row.append(valor or "")
 
         ws.append(row)
 

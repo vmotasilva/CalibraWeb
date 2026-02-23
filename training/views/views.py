@@ -369,21 +369,34 @@ def dashboard_treinamentos_view(request):
     from datetime import timedelta, date
     from core.models import TURNOS_CHOICES
     from django.core.cache import cache
-    from procedures.models import PlanejamentoTreinamento
+    from procedures.models import PlanejamentoTreinamento, Procedimento
     from organization.models import Setor
     
     # Capturar filtros da URL (suportar múltiplos valores)
     filtro_setor_list = request.GET.getlist('setor')
     filtro_turno_list = request.GET.getlist('turno')
     filtro_lider_list = request.GET.getlist('lider')
+    filtro_criticidade_list = request.GET.getlist('criticidade')
+    filtro_matriz_list = request.GET.getlist('matriz')
+    filtro_sub_area_list = request.GET.getlist('sub_area')
     
     # Para template (primeiro valor ou vazio)
     filtro_setor = filtro_setor_list[0] if filtro_setor_list else ''
     filtro_turno = filtro_turno_list[0] if filtro_turno_list else ''
     filtro_lider = filtro_lider_list[0] if filtro_lider_list else ''
+    filtro_criticidade = filtro_criticidade_list[0] if filtro_criticidade_list else ''
+    filtro_matriz = filtro_matriz_list[0] if filtro_matriz_list else ''
+    filtro_sub_area = filtro_sub_area_list[0] if filtro_sub_area_list else ''
     
     # Se há filtros, não usar cache
-    has_filters = filtro_setor_list or filtro_turno_list or filtro_lider_list
+    has_filters = (
+        filtro_setor_list
+        or filtro_turno_list
+        or filtro_lider_list
+        or filtro_criticidade_list
+        or filtro_matriz_list
+        or filtro_sub_area_list
+    )
     
     # Cache key para estatísticas do dashboard (apenas sem filtros)
     cache_key = 'dashboard_treinamentos_stats'
@@ -394,6 +407,9 @@ def dashboard_treinamentos_view(request):
             cached_data['filtro_setor'] = filtro_setor
             cached_data['filtro_turno'] = filtro_turno
             cached_data['filtro_lider'] = filtro_lider
+            cached_data['filtro_criticidade'] = filtro_criticidade
+            cached_data['filtro_matriz'] = filtro_matriz
+            cached_data['filtro_sub_area'] = filtro_sub_area
             return render(request, 'training/dashboard_treinamentos.html', cached_data)
     
     # Base query: apenas registros com colaborador ATIVO, NÃO AFASTADO, NÃO EM FÉRIAS e procedimento vinculado
@@ -415,6 +431,15 @@ def dashboard_treinamentos_view(request):
     
     if filtro_lider_list:
         valid_registros = valid_registros.filter(colaborador__lider_id__in=filtro_lider_list)
+
+    if filtro_criticidade_list:
+        valid_registros = valid_registros.filter(procedimento__criticidade__in=filtro_criticidade_list)
+
+    if filtro_matriz_list:
+        valid_registros = valid_registros.filter(procedimento__matriz__in=filtro_matriz_list)
+
+    if filtro_sub_area_list:
+        valid_registros = valid_registros.filter(procedimento__sub_area__in=filtro_sub_area_list)
     
     # =========================================================================
     # REGISTROS ÚNICOS: Apenas o registro mais recente por colaborador+procedimento
@@ -663,6 +688,23 @@ def dashboard_treinamentos_view(request):
     
     # Turnos
     context['turnos'] = [{'value': t[0], 'label': t[1]} for t in TURNOS_CHOICES]
+
+    # Criticidade / Matriz / Sub-área (opções)
+    context['criticidade_choices'] = list(Procedimento._meta.get_field('criticidade').choices)
+    context['matrizes'] = list(
+        Procedimento.objects.exclude(matriz__isnull=True)
+        .exclude(matriz__exact='')
+        .values_list('matriz', flat=True)
+        .distinct()
+        .order_by('matriz')
+    )
+    context['sub_areas'] = list(
+        Procedimento.objects.exclude(sub_area__isnull=True)
+        .exclude(sub_area__exact='')
+        .values_list('sub_area', flat=True)
+        .distinct()
+        .order_by('sub_area')
+    )
     
     # Líderes com liderados ativos, não afastados e não em férias - OTIMIZADO
     lideres = Colaborador.objects.filter(
@@ -736,16 +778,26 @@ def dashboard_treinamentos_view(request):
     context['dados_tabela'] = dados_processados
     context['page_obj'] = page_obj
     context['paginator'] = paginator
+
+    query_params = request.GET.copy()
+    query_params.pop('page', None)
+    context['query_string'] = query_params.urlencode()
     
     # Adicionar filtros selecionados ao contexto (como listas completas)
     context['filtro_setor_list'] = filtro_setor_list
     context['filtro_turno_list'] = filtro_turno_list
     context['filtro_lider_list'] = filtro_lider_list
+    context['filtro_criticidade_list'] = filtro_criticidade_list
+    context['filtro_matriz_list'] = filtro_matriz_list
+    context['filtro_sub_area_list'] = filtro_sub_area_list
     
     # Também adicionar os valores únicos para compatibilidade
     context['filtro_setor'] = filtro_setor
     context['filtro_turno'] = filtro_turno
     context['filtro_lider'] = filtro_lider
+    context['filtro_criticidade'] = filtro_criticidade
+    context['filtro_matriz'] = filtro_matriz
+    context['filtro_sub_area'] = filtro_sub_area
     
     # Cachear contexto por 5 minutos (300 segundos) - apenas sem filtros
     if not has_filters:
@@ -1018,6 +1070,9 @@ def dashboard_treinamentos_exportar_csv_view(request):
     turnos = request.GET.getlist('turno')
     setores = request.GET.getlist('setor')
     lideres = request.GET.getlist('lider')
+    criticidades = request.GET.getlist('criticidade')
+    matrizes = request.GET.getlist('matriz')
+    sub_areas = request.GET.getlist('sub_area')
     
     # Base query - apenas registros ATIVOS, NÃO AFASTADOS, NÃO EM FÉRIAS
     base_query = Q(
@@ -1046,6 +1101,21 @@ def dashboard_treinamentos_exportar_csv_view(request):
                 base_query &= Q(colaborador__lider_id__in=lideres_int)
         except:
             pass
+
+    if criticidades:
+        criticidades_clean = [c for c in criticidades if str(c).strip()]
+        if criticidades_clean:
+            base_query &= Q(procedimento__criticidade__in=criticidades_clean)
+
+    if matrizes:
+        matrizes_clean = [m for m in matrizes if str(m).strip()]
+        if matrizes_clean:
+            base_query &= Q(procedimento__matriz__in=matrizes_clean)
+
+    if sub_areas:
+        sub_areas_clean = [sa for sa in sub_areas if str(sa).strip()]
+        if sub_areas_clean:
+            base_query &= Q(procedimento__sub_area__in=sub_areas_clean)
     
     # Obter TODOS os registros (não paginar)
     registros = RegistroTreinamento.objects.filter(base_query).select_related(

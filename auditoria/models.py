@@ -96,6 +96,11 @@ class PerguntaAuditoria(models.Model):
         ("DECIMAL", "Número decimal"),
     ]
 
+    PREENCHIMENTO_SEMANAL_CHOICES = [
+        ("UNICO", "Uma resposta (sem detalhar por dia)"),
+        ("POR_DIA", "Responder para cada dia da semana"),
+    ]
+
     modelo = models.ForeignKey(
         ModeloAuditoria,
         on_delete=models.CASCADE,
@@ -104,6 +109,13 @@ class PerguntaAuditoria(models.Model):
     )
     pergunta = models.CharField(max_length=255)
     tipo_resposta = models.CharField(max_length=20, choices=TIPO_RESPOSTA_CHOICES, default="SIM_NAO")
+    preenchimento_semanal = models.CharField(
+        max_length=10,
+        choices=PREENCHIMENTO_SEMANAL_CHOICES,
+        default="UNICO",
+        verbose_name="Preenchimento (semanal)",
+        help_text="Apenas para modelos com periodicidade semanal.",
+    )
     ordem = models.PositiveIntegerField(default=1)
     obrigatoria = models.BooleanField(default=True)
     ativo = models.BooleanField(default=True)
@@ -157,13 +169,21 @@ class RespostaAuditoria(models.Model):
         on_delete=models.PROTECT,
         related_name="respostas",
     )
+    dia_semana = models.CharField(
+        max_length=10,
+        choices=ModeloAuditoria.DIA_SEMANA_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name="Dia da Semana",
+        help_text="Usado quando a pergunta exige resposta por dia (auditoria semanal).",
+    )
     valor = models.TextField(blank=True)
 
     class Meta:
         verbose_name = "Resposta de Auditoria"
         verbose_name_plural = "Respostas de Auditoria"
-        ordering = ["registro", "pergunta__ordem", "id"]
-        unique_together = ("registro", "pergunta")
+        ordering = ["registro", "pergunta__ordem", "dia_semana", "id"]
+        unique_together = ("registro", "pergunta", "dia_semana")
 
     def __str__(self):
         return f"{self.registro} - {self.pergunta.pergunta[:60]}"

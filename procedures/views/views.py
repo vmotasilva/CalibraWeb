@@ -355,11 +355,30 @@ def treinamentos_list_view(request):
     qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').filter(
         id__in=ultimos_registros_ids
     )
+    from organization.models import Setor
+
     colaboradores = Colaborador.objects.order_by('nome_completo')
     procedimentos = Procedimento.objects.order_by('codigo')
     lideres = Colaborador.objects.filter(
         id__in=RegistroTreinamento.objects.values_list('colaborador__lider_id', flat=True).distinct()
     ).order_by('nome_completo')
+
+    setores = Setor.objects.order_by('nome')
+    matrizes = list(
+        Procedimento.objects.exclude(matriz__isnull=True)
+        .exclude(matriz__exact='')
+        .values_list('matriz', flat=True)
+        .distinct()
+        .order_by('matriz')
+    )
+    sub_areas = list(
+        Procedimento.objects.exclude(sub_area__isnull=True)
+        .exclude(sub_area__exact='')
+        .values_list('sub_area', flat=True)
+        .distinct()
+        .order_by('sub_area')
+    )
+    criticidade_choices = list(Procedimento._meta.get_field('criticidade').choices)
     
     status = request.GET.get('status', '')
     colaborador_id = request.GET.get('colaborador', '')
@@ -367,6 +386,10 @@ def treinamentos_list_view(request):
     lider_id = request.GET.get('lider', '')
     busca = request.GET.get('q', '')
     ativo = request.GET.get('ativo', '')
+    setor_id = request.GET.get('setor', '')
+    criticidade = request.GET.get('criticidade', '')
+    matriz = request.GET.get('matriz', '')
+    sub_area = request.GET.get('sub_area', '')
 
     # Filtro de status - nota: status_treinamento é uma property
     # ⚠️ NOTA: Não é possível filtrar por property diretamente no QuerySet
@@ -375,8 +398,16 @@ def treinamentos_list_view(request):
         qs = qs.filter(colaborador_id=colaborador_id)
     if lider_id:
         qs = qs.filter(colaborador__lider_id=lider_id)
+    if setor_id:
+        qs = qs.filter(colaborador__setor_id=setor_id)
     if procedimento_id:
         qs = qs.filter(procedimento_id=procedimento_id)
+    if criticidade:
+        qs = qs.filter(procedimento__criticidade=criticidade)
+    if matriz:
+        qs = qs.filter(procedimento__matriz=matriz)
+    if sub_area:
+        qs = qs.filter(procedimento__sub_area=sub_area)
     if ativo:
         qs = qs.filter(ativo=ativo == '1')
     if busca:
@@ -412,12 +443,20 @@ def treinamentos_list_view(request):
         "colaboradores": colaboradores,
         "procedimentos": procedimentos,
         "lideres": lideres,
+        "setores": setores,
+        "criticidade_choices": criticidade_choices,
+        "matrizes": matrizes,
+        "sub_areas": sub_areas,
         "status": status,
         "colaborador_id": colaborador_id,
         "procedimento_id": procedimento_id,
         "lider_id": lider_id,
         "busca": busca,
         "ativo": ativo,
+        "setor_id": setor_id,
+        "criticidade": criticidade,
+        "matriz": matriz,
+        "sub_area": sub_area,
         "total_registros": total_registros,
     })
 
@@ -433,14 +472,29 @@ def treinamentos_exportar_excel_view(request):
     status = request.GET.get('status', '')
     colaborador_id = request.GET.get('colaborador', '')
     procedimento_id = request.GET.get('procedimento', '')
+    lider_id = request.GET.get('lider', '')
     busca = request.GET.get('q', '')
     ativo = request.GET.get('ativo', '')
+    setor_id = request.GET.get('setor', '')
+    criticidade = request.GET.get('criticidade', '')
+    matriz = request.GET.get('matriz', '')
+    sub_area = request.GET.get('sub_area', '')
 
     # Filtros por QuerySet (aplicar antes de filtro por status)
     if colaborador_id:
         qs = qs.filter(colaborador_id=colaborador_id)
+    if lider_id:
+        qs = qs.filter(colaborador__lider_id=lider_id)
+    if setor_id:
+        qs = qs.filter(colaborador__setor_id=setor_id)
     if procedimento_id:
         qs = qs.filter(procedimento_id=procedimento_id)
+    if criticidade:
+        qs = qs.filter(procedimento__criticidade=criticidade)
+    if matriz:
+        qs = qs.filter(procedimento__matriz=matriz)
+    if sub_area:
+        qs = qs.filter(procedimento__sub_area=sub_area)
     if ativo:
         qs = qs.filter(ativo=ativo == '1')
     if busca:

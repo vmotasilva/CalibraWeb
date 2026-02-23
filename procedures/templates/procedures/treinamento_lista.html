@@ -69,6 +69,17 @@
                 <input type="text" name="q" class="form-control form-control-sm" placeholder="Nome ou código" value="{% if busca and busca != 'None' %}{{ busca }}{% endif %}">
             </div>
             <div class="col-md-2">
+                <label class="form-label small">Setor</label>
+                <select name="setor" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    {% for s in setores %}
+                        <option value="{{ s.id }}" {% if s.id|stringformat:"s" == setor_id %}selected{% endif %}>
+                            {{ s }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="form-label small">Colaborador</label>
                 <select name="colaborador" class="form-select form-select-sm">
                     <option value="">-- Todos --</option>
@@ -98,6 +109,33 @@
                         <option value="{{ proc.id }}" {% if proc.id|stringformat:"s" == procedimento_id %}selected{% endif %}>
                             {{ proc.codigo }} - {{ proc.nome|truncatewords:5 }}
                         </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Criticidade</label>
+                <select name="criticidade" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for value, label in criticidade_choices %}
+                        <option value="{{ value }}" {% if value|stringformat:"s" == criticidade %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Matriz</label>
+                <select name="matriz" class="form-select form-select-sm">
+                    <option value="">-- Todas --</option>
+                    {% for m in matrizes %}
+                        <option value="{{ m }}" {% if matriz == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Sub-Área</label>
+                <select name="sub_area" class="form-select form-select-sm">
+                    <option value="">-- Todas --</option>
+                    {% for sa in sub_areas %}
+                        <option value="{{ sa }}" {% if sub_area == sa %}selected{% endif %}>{{ sa }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -133,7 +171,7 @@
                 Registros 
                 <span class="badge bg-info">{{ total_registros }} total</span>
             </h6>
-            <a href="{% url 'procedures:treinamentos_exportar_excel' %}?{% if busca %}q={{ busca }}&{% endif %}{% if status %}status={{ status }}&{% endif %}{% if colaborador_id %}colaborador={{ colaborador_id }}&{% endif %}{% if procedimento_id %}procedimento={{ procedimento_id }}&{% endif %}{% if ativo %}ativo={{ ativo }}{% endif %}" class="btn btn-success btn-sm" title="Exportar para Excel">
+            <a href="{% url 'procedures:treinamentos_exportar_excel' %}?{% if busca %}q={{ busca|urlencode }}&{% endif %}{% if setor_id %}setor={{ setor_id }}&{% endif %}{% if colaborador_id %}colaborador={{ colaborador_id }}&{% endif %}{% if lider_id %}lider={{ lider_id }}&{% endif %}{% if procedimento_id %}procedimento={{ procedimento_id }}&{% endif %}{% if criticidade %}criticidade={{ criticidade }}&{% endif %}{% if matriz %}matriz={{ matriz|urlencode }}&{% endif %}{% if sub_area %}sub_area={{ sub_area|urlencode }}&{% endif %}{% if status %}status={{ status }}&{% endif %}{% if ativo %}ativo={{ ativo }}{% endif %}" class="btn btn-success btn-sm" title="Exportar para Excel">
                 <i class="bi bi-file-earmark-excel"></i> Exportar Excel
             </a>
             {% if treinamentos.paginator.num_pages > 1 %}
@@ -202,7 +240,7 @@
             <!-- Primeira página -->
             {% if treinamentos.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page=1{% if busca %}&q={{ busca }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}" title="Primeira página">
+                    <a class="page-link" href="?page=1{% if busca %}&q={{ busca|urlencode }}{% endif %}{% if setor_id %}&setor={{ setor_id }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if lider_id %}&lider={{ lider_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if criticidade %}&criticidade={{ criticidade }}{% endif %}{% if matriz %}&matriz={{ matriz|urlencode }}{% endif %}{% if sub_area %}&sub_area={{ sub_area|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}" title="Primeira página">
                         <span aria-hidden="true">&laquo;&laquo;</span>
                     </a>
                 </li>
@@ -211,7 +249,7 @@
             <!-- Página anterior -->
             {% if treinamentos.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ treinamentos.previous_page_number }}{% if busca %}&q={{ busca }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}" title="Página anterior">
+                    <a class="page-link" href="?page={{ treinamentos.previous_page_number }}{% if busca %}&q={{ busca|urlencode }}{% endif %}{% if setor_id %}&setor={{ setor_id }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if lider_id %}&lider={{ lider_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if criticidade %}&criticidade={{ criticidade }}{% endif %}{% if matriz %}&matriz={{ matriz|urlencode }}{% endif %}{% if sub_area %}&sub_area={{ sub_area|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}" title="Página anterior">
                         <span aria-hidden="true">&laquo;</span>
                     </a>
                 </li>
@@ -232,7 +270,7 @@
                     </li>
                 {% elif num > treinamentos.number|add:'-3' and num < treinamentos.number|add:'3' %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ num }}{% if busca %}&q={{ busca }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}">{{ num }}</a>
+                        <a class="page-link" href="?page={{ num }}{% if busca %}&q={{ busca|urlencode }}{% endif %}{% if setor_id %}&setor={{ setor_id }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if lider_id %}&lider={{ lider_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if criticidade %}&criticidade={{ criticidade }}{% endif %}{% if matriz %}&matriz={{ matriz|urlencode }}{% endif %}{% if sub_area %}&sub_area={{ sub_area|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}">{{ num }}</a>
                     </li>
                 {% endif %}
             {% endfor %}
@@ -240,7 +278,7 @@
             <!-- Próxima página -->
             {% if treinamentos.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ treinamentos.next_page_number }}{% if busca %}&q={{ busca }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}" title="Próxima página">
+                    <a class="page-link" href="?page={{ treinamentos.next_page_number }}{% if busca %}&q={{ busca|urlencode }}{% endif %}{% if setor_id %}&setor={{ setor_id }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if lider_id %}&lider={{ lider_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if criticidade %}&criticidade={{ criticidade }}{% endif %}{% if matriz %}&matriz={{ matriz|urlencode }}{% endif %}{% if sub_area %}&sub_area={{ sub_area|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}" title="Próxima página">
                         <span aria-hidden="true">&raquo;</span>
                     </a>
                 </li>
@@ -253,7 +291,7 @@
             <!-- Última página -->
             {% if treinamentos.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ treinamentos.paginator.num_pages }}{% if busca %}&q={{ busca }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}" title="Última página">
+                    <a class="page-link" href="?page={{ treinamentos.paginator.num_pages }}{% if busca %}&q={{ busca|urlencode }}{% endif %}{% if setor_id %}&setor={{ setor_id }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if lider_id %}&lider={{ lider_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if criticidade %}&criticidade={{ criticidade }}{% endif %}{% if matriz %}&matriz={{ matriz|urlencode }}{% endif %}{% if sub_area %}&sub_area={{ sub_area|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}" title="Última página">
                         <span aria-hidden="true">&raquo;&raquo;</span>
                     </a>
                 </li>
