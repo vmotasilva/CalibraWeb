@@ -522,7 +522,7 @@ def dashboard_treinamentos_view(request):
     month_starts = [_add_months(oldest_month_start, i) for i in range(12)]
 
     month_counts = {
-        row['mes'].date(): row['total']
+        (row['mes'].date() if hasattr(row['mes'], 'date') else row['mes']): row['total']
         for row in valid_registros.filter(
             data_treinamento__isnull=False,
             data_treinamento__gte=oldest_month_start,
