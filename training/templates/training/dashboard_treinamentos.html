@@ -153,6 +153,18 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Colaborador (texto) -->
+                        <div class="filter-group open">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Colaborador</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <input id="filterColaboradorQ" type="text" class="form-control form-control-sm" placeholder="Nome ou matrícula" value="{{ filtro_colaborador_q|default:'' }}">
+                                <small class="text-muted" style="font-size: 0.7rem;">Filtro por nome ou matrícula</small>
+                            </div>
+                        </div>
                         
                     </div>
                 </div>
@@ -828,6 +840,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 params.append(category, value);
             });
         });
+
+        const colaboradorQ = (document.getElementById('filterColaboradorQ')?.value || '').trim();
+        if (colaboradorQ) {
+            params.set('colaborador_q', colaboradorQ);
+        }
         
         const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
         console.log('Navigating to:', url);
@@ -851,6 +868,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
                 checkbox.checked = false;
             });
+            const colabInput = document.getElementById('filterColaboradorQ');
+            if (colabInput) colabInput.value = '';
             window.location.href = window.location.pathname;
         });
     }
@@ -950,6 +969,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             params.append(category, value);
                         });
                     });
+
+                    // Levar filtro por colaborador para a lista usando o campo de busca (q)
+                    const colaboradorQ = (document.getElementById('filterColaboradorQ')?.value || '').trim();
+                    if (colaboradorQ) {
+                        params.set('q', colaboradorQ);
+                    }
 
                     // Treinamentos que ocorreram no mês clicado
                     params.set('ocorridos', '1');
@@ -1296,6 +1321,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 params.append(category, value);
             });
         });
+
+        const colaboradorQ = (document.getElementById('filterColaboradorQ')?.value || '').trim();
+        if (colaboradorQ) {
+            params.set('colaborador_q', colaboradorQ);
+        }
 
         const baseUrl = '{% url "training:dashboard_exportar_csv" %}';
         const url = baseUrl + (params.toString() ? '?' + params.toString() : '');

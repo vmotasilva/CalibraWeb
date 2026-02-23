@@ -379,6 +379,7 @@ def dashboard_treinamentos_view(request):
     filtro_criticidade_list = request.GET.getlist('criticidade')
     filtro_matriz_list = request.GET.getlist('matriz')
     filtro_sub_area_list = request.GET.getlist('sub_area')
+    filtro_colaborador_q = (request.GET.get('colaborador_q') or '').strip()
     
     # Para template (primeiro valor ou vazio)
     filtro_setor = filtro_setor_list[0] if filtro_setor_list else ''
@@ -396,6 +397,7 @@ def dashboard_treinamentos_view(request):
         or filtro_criticidade_list
         or filtro_matriz_list
         or filtro_sub_area_list
+        or bool(filtro_colaborador_q)
     )
     
     # Cache key para estatísticas do dashboard (apenas sem filtros)
@@ -410,6 +412,7 @@ def dashboard_treinamentos_view(request):
             cached_data['filtro_criticidade'] = filtro_criticidade
             cached_data['filtro_matriz'] = filtro_matriz
             cached_data['filtro_sub_area'] = filtro_sub_area
+            cached_data['filtro_colaborador_q'] = filtro_colaborador_q
             return render(request, 'training/dashboard_treinamentos.html', cached_data)
     
     # Base query: apenas registros com colaborador ATIVO, NÃO AFASTADO, NÃO EM FÉRIAS e procedimento vinculado
@@ -440,6 +443,12 @@ def dashboard_treinamentos_view(request):
 
     if filtro_sub_area_list:
         valid_registros = valid_registros.filter(procedimento__sub_area__in=filtro_sub_area_list)
+
+    if filtro_colaborador_q:
+        valid_registros = valid_registros.filter(
+            Q(colaborador__nome_completo__icontains=filtro_colaborador_q)
+            | Q(colaborador__matricula__icontains=filtro_colaborador_q)
+        )
     
     # =========================================================================
     # REGISTROS ÚNICOS: Apenas o registro mais recente por colaborador+procedimento
@@ -811,6 +820,7 @@ def dashboard_treinamentos_view(request):
     context['filtro_criticidade'] = filtro_criticidade
     context['filtro_matriz'] = filtro_matriz
     context['filtro_sub_area'] = filtro_sub_area
+    context['filtro_colaborador_q'] = filtro_colaborador_q
     
     # Cachear contexto por 5 minutos (300 segundos) - apenas sem filtros
     if not has_filters:
@@ -1086,6 +1096,7 @@ def dashboard_treinamentos_exportar_csv_view(request):
     criticidades = request.GET.getlist('criticidade')
     matrizes = request.GET.getlist('matriz')
     sub_areas = request.GET.getlist('sub_area')
+    colaborador_q = (request.GET.get('colaborador_q') or '').strip()
     
     # Base query - apenas registros ATIVOS, NÃO AFASTADOS, NÃO EM FÉRIAS
     base_query = Q(
@@ -1129,6 +1140,12 @@ def dashboard_treinamentos_exportar_csv_view(request):
         sub_areas_clean = [sa for sa in sub_areas if str(sa).strip()]
         if sub_areas_clean:
             base_query &= Q(procedimento__sub_area__in=sub_areas_clean)
+
+    if colaborador_q:
+        base_query &= (
+            Q(colaborador__nome_completo__icontains=colaborador_q)
+            | Q(colaborador__matricula__icontains=colaborador_q)
+        )
     
     # Obter TODOS os registros (não paginar)
     registros = RegistroTreinamento.objects.filter(base_query).select_related(
