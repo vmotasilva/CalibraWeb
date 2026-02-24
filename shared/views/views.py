@@ -37,7 +37,19 @@ from qms.views_helpers import dl_df, dl_generic, parse_date
 @login_required
 def home_view(request):
     """Página inicial com boas-vindas ao usuário."""
-    return render(request, 'shared/home.html')
+    from shared.notifications import get_user_cobrancas_items
+
+    cobrancas_items = get_user_cobrancas_items(request.user)
+    total_cobrancas = sum(item.count for item in cobrancas_items)
+
+    return render(
+        request,
+        "shared/home.html",
+        {
+            "cobrancas_items": cobrancas_items,
+            "total_cobrancas": total_cobrancas,
+        },
+    )
 
 
 def dashboard_view(request):

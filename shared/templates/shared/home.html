@@ -13,5 +13,56 @@
             Use o menu acima para navegar pelas funcionalidades do sistema.</p>
         </div>
     </div>
+
+    <div class="row justify-content-center mt-4" id="cobrancas">
+        <div class="col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div class="fw-semibold">
+                        <i class="bi bi-bell"></i> Cobranças por módulo
+                    </div>
+                    <div class="text-muted small">
+                        Total: <strong>{{ total_cobrancas|default:0 }}</strong>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Módulo</th>
+                                    <th style="width: 140px;" class="text-center">Pendências</th>
+                                    <th style="width: 140px;" class="text-center">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in cobrancas_items %}
+                                <tr>
+                                    <td class="fw-semibold">{{ item.label }}</td>
+                                    <td class="text-center">
+                                        {% if item.count %}
+                                            <span class="badge bg-danger">{{ item.count }}</span>
+                                        {% else %}
+                                            <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <a class="btn btn-sm btn-outline-primary" href="{{ item.url }}">
+                                            Abrir
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-3">Sem cobranças para exibir.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

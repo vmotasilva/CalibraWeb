@@ -208,6 +208,17 @@
                     <i class="bi bi-shield-lock"></i>
                 </a>
 
+                <!-- Notificações de cobranças -->
+                <a href="{% url 'home' %}#cobrancas" class="btn btn-sm btn-outline-light me-2 position-relative" title="Notificações">
+                    <i class="bi bi-bell"></i>
+                    {% if nav_notifications_total and nav_notifications_total|add:0 > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ nav_notifications_total }}
+                            <span class="visually-hidden">notificações</span>
+                        </span>
+                    {% endif %}
+                </a>
+
                 {% if user.is_staff or colaborador and colaborador.is_admin %}
                     <a href="/admin/" target="_blank" class="btn btn-sm btn-outline-warning me-2" title="Admin">⚙️</a>
                 {% endif %}
