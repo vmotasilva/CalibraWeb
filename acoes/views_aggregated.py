@@ -39,25 +39,25 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
         
         # Agregação: Obter ações de cada modelo
         acoes = self._agregar_acoes(tipo_solucao, status, prioridade, responsavel, busca, ordenar)
-        
-        # Estatísticas gerais (sem filtros de status/responsavel para mostrar panorama completo)
-        todas_acoes = self._agregar_acoes(tipo_solucao, '', '', '', '')
-        estatisticas = self._calcular_estatisticas(todas_acoes)
-        
-        # Estatísticas por responsável
-        acoes_por_responsavel = self._agrupar_por_responsavel(todas_acoes)
-        
-        # Lista de responsáveis para o filtro
-        responsaveis_unicos = sorted(set([r['responsavel'] for r in acoes_por_responsavel if r['responsavel'] != '-']))
 
-        # Dados para cards colapsáveis (ignora filtro de status para permitir breakdown por status)
-        acoes_analytics = self._agregar_acoes(tipo_solucao, '', prioridade, responsavel, busca)
-        chart_status_por_registro = self._calcular_status_por_registro(acoes_analytics)
+        # Estatísticas gerais (respeita os filtros aplicados)
+        estatisticas = self._calcular_estatisticas(acoes)
+
+        # Estatísticas por responsável (respeita os filtros aplicados)
+        acoes_por_responsavel = self._agrupar_por_responsavel(acoes)
+
+        # Lista de responsáveis para o filtro (não restringe pelo próprio filtro de responsável)
+        acoes_para_dropdown_responsavel = self._agregar_acoes(tipo_solucao, status, prioridade, '', busca)
+        acoes_por_responsavel_dropdown = self._agrupar_por_responsavel(acoes_para_dropdown_responsavel)
+        responsaveis_unicos = sorted(set([r['responsavel'] for r in acoes_por_responsavel_dropdown if r['responsavel'] != '-']))
+
+        # Dados para cards colapsáveis (respeita os filtros aplicados)
+        chart_status_por_registro = self._calcular_status_por_registro(acoes)
 
         today = timezone.localdate()
         deadline_limite = today + timedelta(days=30)
         acoes_deadline_alerta = self._filtrar_acoes_deadline_alerta(
-            acoes_analytics,
+            acoes,
             today=today,
             deadline_limite=deadline_limite,
         )
