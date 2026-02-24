@@ -96,6 +96,14 @@
     .table-hover tbody tr:hover {
         background-color: #f1f3f5;
     }
+
+    .acao-row {
+        cursor: pointer;
+    }
+
+    .modal-value {
+        white-space: pre-wrap;
+    }
     
     .icon-stat {
         font-size: 2rem;
@@ -403,7 +411,7 @@
                     </thead>
                     <tbody>
                         {% for acao in acoes %}
-                        <tr>
+                        <tr class="acao-row" role="button" tabindex="0" data-acao-script-id="acao-data-{{ acao.id }}">
                             <td>
                                 <strong>{{ acao.numero_registro }}</strong>
                             </td>
@@ -439,6 +447,14 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+
+            <div class="d-none" id="acoesDetalheData">
+                {% for acao in acoes %}
+                    {% with sid="acao-data-"|add:acao.id %}
+                        {{ acao|json_script:sid }}
+                    {% endwith %}
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -573,6 +589,25 @@
     {% endif %}
     
 </div>
+
+<!-- MODAL: DETALHE DA AÇÃO -->
+<div class="modal fade" id="acaoDetalheModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="acaoDetalheTitulo">Detalhes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <tbody id="acaoDetalheBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -640,5 +675,120 @@
             },
         });
     })();
+
+    function formatDateBR(value) {
+        if (!value) return value;
+        const str = String(value);
+        // YYYY-MM-DD
+        const m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+        // YYYY-MM-DDTHH:MM:SS...
+        const m2 = str.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+        if (m2) return `${m2[3]}/${m2[2]}/${m2[1]}`;
+        return str;
+    }
+
+    function buildDetalheRows(data) {
+        const fields = [
+            ['tipo_solucao', 'Tipo de Solução'],
+            ['numero_registro', 'Código de Registro'],
+            ['numero_acao', 'Nº Ação'],
+            ['input_origem', 'Origem'],
+            ['problema', 'Problema'],
+            ['descricao', 'Descrição'],
+            ['laboratorio', 'Laboratório'],
+            ['kpi', 'KPI'],
+            ['classificacao', 'Classificação'],
+            ['status', 'Status'],
+            ['prioridade', 'Prioridade'],
+            ['responsaveis', 'Responsável(is)'],
+            ['data_primeira_deadline', '1ª Deadline'],
+            ['data_segunda_deadline', '2ª Deadline'],
+            ['deadline', 'Deadline efetiva'],
+            ['comentarios', 'Comentários'],
+            ['acao_eficaz', 'Ação eficaz'],
+            ['model', 'Modelo (sistema)'],
+            ['object_id', 'ID (sistema)'],
+            ['solucao_id', 'ID da Solução'],
+        ];
+
+        const seen = new Set(fields.map(f => f[0]));
+        const tail = Object.keys(data || {})
+            .filter(k => !seen.has(k))
+            .sort();
+
+        const ordered = fields.concat(tail.map(k => [k, k]));
+
+        const frag = document.createDocumentFragment();
+        ordered.forEach(([key, label]) => {
+            const raw = (data && Object.prototype.hasOwnProperty.call(data, key)) ? data[key] : undefined;
+            let value = raw;
+
+            if (value === null || value === undefined || value === '') value = '-';
+            if (typeof value === 'boolean') value = value ? 'Sim' : 'Não';
+            if (typeof value === 'string') value = formatDateBR(value);
+
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            th.className = 'text-muted';
+            th.style.width = '220px';
+            th.textContent = label;
+            const td = document.createElement('td');
+            td.className = 'modal-value text-break';
+            td.textContent = String(value);
+            tr.appendChild(th);
+            tr.appendChild(td);
+            frag.appendChild(tr);
+        });
+
+        return frag;
+    }
+
+    function openAcaoModalFromScriptId(scriptId) {
+        const scriptEl = document.getElementById(scriptId);
+        if (!scriptEl) return;
+
+        let data;
+        try {
+            data = JSON.parse(scriptEl.textContent);
+        } catch (e) {
+            return;
+        }
+
+        const tituloEl = document.getElementById('acaoDetalheTitulo');
+        const bodyEl = document.getElementById('acaoDetalheBody');
+        if (!tituloEl || !bodyEl) return;
+
+        const codigo = data && (data.numero_registro || '-');
+        const numeroAcao = data && (data.numero_acao || '-');
+        tituloEl.textContent = `${codigo} — Ação ${numeroAcao}`;
+
+        bodyEl.innerHTML = '';
+        bodyEl.appendChild(buildDetalheRows(data));
+
+        const modalEl = document.getElementById('acaoDetalheModal');
+        if (!modalEl || !window.bootstrap || !bootstrap.Modal) return;
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function bindAcaoRowClicks() {
+        document.querySelectorAll('tr.acao-row[data-acao-script-id]').forEach((row) => {
+            row.addEventListener('click', (ev) => {
+                const target = ev.target;
+                if (target && (target.closest('a') || target.closest('button') || target.closest('input') || target.closest('select') || target.closest('textarea'))) {
+                    return;
+                }
+                openAcaoModalFromScriptId(row.dataset.acaoScriptId);
+            });
+            row.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    openAcaoModalFromScriptId(row.dataset.acaoScriptId);
+                }
+            });
+        });
+    }
+
+    bindAcaoRowClicks();
 </script>
 {% endblock %}
