@@ -52,7 +52,7 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
 
         # Dados para cards colapsáveis (ignora filtro de status para permitir breakdown por status)
         acoes_analytics = self._agregar_acoes(tipo_solucao, '', prioridade, responsavel, busca)
-        chart_status_por_solucao = self._calcular_status_por_tipo(acoes_analytics)
+        chart_status_por_registro = self._calcular_status_por_registro(acoes_analytics)
 
         today = timezone.localdate()
         deadline_limite = today + timedelta(days=30)
@@ -91,7 +91,7 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
             'estatisticas': estatisticas,
             'acoes_por_responsavel': acoes_por_responsavel[:20],  # Top 20
             'responsaveis_unicos': responsaveis_unicos,
-            'chart_status_por_solucao': chart_status_por_solucao,
+            'chart_status_por_registro': chart_status_por_registro,
             'acoes_deadline_alerta': acoes_deadline_alerta,
             'today': today,
             'deadline_limite': deadline_limite,
@@ -482,38 +482,29 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
             return 'cancelada'
         return 'outros'
 
-    def _calcular_status_por_tipo(self, acoes):
-        """Monta dados do gráfico de barras empilhadas: tipos (X) x status (stacks)."""
-        from collections import defaultdict
+    def _calcular_status_por_registro(self, acoes):
+        """Monta dados do gráfico de barras empilhadas: código de registro (X) x status (stacks)."""
 
-        # Ordem esperada dos tipos (mantém o gráfico estável)
-        tipo_order = ['plano_acao', 'a3', '8d', 'rnc', 'mudanca', 'rg', 'linha_acao']
-
-        tipo_label_by_slug = {}
+        registros = []
         for a in acoes:
-            slug = a.get('tipo_slug')
-            label = a.get('tipo_solucao')
-            if slug and label and slug not in tipo_label_by_slug:
-                tipo_label_by_slug[slug] = label
+            codigo = str(a.get('numero_registro') or '').strip()
+            if not codigo or codigo == '-':
+                continue
+            registros.append(codigo)
 
-        tipo_slugs = [t for t in tipo_order if t in tipo_label_by_slug]
-        for slug in sorted(tipo_label_by_slug.keys()):
-            if slug not in tipo_slugs:
-                tipo_slugs.append(slug)
-
-        labels = [tipo_label_by_slug[s] for s in tipo_slugs]
-        index_by_slug = {slug: i for i, slug in enumerate(tipo_slugs)}
+        labels = sorted(set(registros))
+        index_by_codigo = {codigo: i for i, codigo in enumerate(labels)}
 
         status_keys = ['planejada', 'em_curso', 'completa', 'retardo', 'cancelada']
         counts = {k: [0] * len(labels) for k in status_keys}
 
         for a in acoes:
-            tipo_slug = a.get('tipo_slug')
-            if tipo_slug not in index_by_slug:
+            codigo = str(a.get('numero_registro') or '').strip()
+            if not codigo or codigo == '-' or codigo not in index_by_codigo:
                 continue
             status_key = self._normalize_status_key(a.get('status'))
             if status_key in counts:
-                counts[status_key][index_by_slug[tipo_slug]] += 1
+                counts[status_key][index_by_codigo[codigo]] += 1
 
         datasets = [
             {'key': 'planejada', 'label': 'Planejada', 'data': counts['planejada']},

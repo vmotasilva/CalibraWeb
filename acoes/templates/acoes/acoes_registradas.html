@@ -183,15 +183,15 @@
         <div class="col-12">
             <div class="card shadow-sm mb-3">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Ações por Status (por Solução)</h6>
+                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Ações por Status (por Código de Registro)</h6>
                     <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStatusPorSolucao" aria-expanded="false" aria-controls="collapseStatusPorSolucao">
                         <i class="bi bi-chevron-down"></i>
                     </button>
                 </div>
                 <div id="collapseStatusPorSolucao" class="collapse">
                     <div class="card-body">
-                        {{ chart_status_por_solucao|json_script:"chartStatusPorSolucaoData" }}
-                        {% if chart_status_por_solucao.labels %}
+                        {{ chart_status_por_registro|json_script:"chartStatusPorSolucaoData" }}
+                        {% if chart_status_por_registro.labels %}
                         <div style="height: 320px;">
                             <canvas id="statusPorSolucaoChart"></canvas>
                         </div>
