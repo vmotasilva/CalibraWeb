@@ -415,17 +415,20 @@ def dashboard_auditoria(request):
     inicio = request.GET.get("inicio")
     fim = request.GET.get("fim")
     modelo_id = request.GET.get("modelo")
+    responsavel_id = request.GET.get("responsavel")
 
-    total_modelos = ModeloAuditoria.objects.count()
     registros = RegistroAuditoria.objects.select_related("modelo")
 
     if modelo_id:
         registros = registros.filter(modelo_id=modelo_id)
+    if responsavel_id:
+        registros = registros.filter(modelo__responsavel_id=responsavel_id)
     if inicio:
         registros = registros.filter(data_auditoria__gte=inicio)
     if fim:
         registros = registros.filter(data_auditoria__lte=fim)
 
+    total_modelos = registros.values("modelo_id").distinct().count()
     total_registros = registros.count()
 
     por_modelo = list(
@@ -461,6 +464,18 @@ def dashboard_auditoria(request):
     if modelo_id:
         modelo_selecionado = ModeloAuditoria.objects.filter(pk=modelo_id).first()
 
+    # Lista de responsáveis (usuários vinculados aos modelos)
+    User = get_user_model()
+    responsavel_ids = (
+        ModeloAuditoria.objects.filter(responsavel__isnull=False)
+        .values_list("responsavel_id", flat=True)
+        .distinct()
+    )
+    responsaveis = User.objects.filter(pk__in=responsavel_ids).order_by("username")
+    responsavel_selecionado = None
+    if responsavel_id:
+        responsavel_selecionado = User.objects.filter(pk=responsavel_id).first()
+
     context = {
         "total_modelos": total_modelos,
         "total_registros": total_registros,
@@ -473,8 +488,11 @@ def dashboard_auditoria(request):
         "inicio": inicio,
         "fim": fim,
         "modelo_id": modelo_id,
+        "responsavel_id": responsavel_id,
         "todos_modelos": todos_modelos,
         "modelo_selecionado": modelo_selecionado,
+        "responsaveis": responsaveis,
+        "responsavel_selecionado": responsavel_selecionado,
     }
     return render(request, "auditoria/dashboard_auditoria.html", context)
 

@@ -18,23 +18,37 @@
             </select>
         </div>
         <div class="col-md-3">
+            <label class="form-label">Responsável</label>
+            <select name="responsavel" class="form-select">
+                <option value="">Todos</option>
+                {% for u in responsaveis %}
+                <option value="{{ u.id }}" {% if responsavel_id == u.id|stringformat:"s" %}selected{% endif %}>
+                    {{ u.get_full_name|default:u.username }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
             <label class="form-label">Período inicial</label>
             <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label">Período final</label>
             <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
         </div>
-        <div class="col-md-3 d-flex align-items-end gap-2">
+        <div class="col-md-2 d-flex align-items-end gap-2">
             <button type="submit" class="btn btn-outline-primary">Aplicar Filtro</button>
             <a href="{% url 'auditoria:dashboard' %}" class="btn btn-outline-secondary">Limpar</a>
         </div>
     </form>
 
-    {% if inicio or fim or modelo_selecionado %}
+    {% if inicio or fim or modelo_selecionado or responsavel_selecionado %}
     <div class="alert alert-info py-2">
         {% if modelo_selecionado %}
             <div><strong>Modelo:</strong> {{ modelo_selecionado.nome }}</div>
+        {% endif %}
+        {% if responsavel_selecionado %}
+            <div><strong>Responsável:</strong> {{ responsavel_selecionado.get_full_name|default:responsavel_selecionado.username }}</div>
         {% endif %}
         {% if inicio and fim %}
             Exibindo dados de <strong>{{ inicio|date:'d/m/Y' }}</strong> até <strong>{{ fim|date:'d/m/Y' }}</strong>.
