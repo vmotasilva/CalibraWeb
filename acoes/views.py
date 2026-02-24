@@ -250,6 +250,27 @@ def detalhe_acao(request, acao_id):
             .prefetch_related('responsaveis_multiplos')
             .order_by('numero_acao')
         )
+
+        # Deduplicar responsáveis internos para evitar repetição (ex.: responsável principal também em múltiplos)
+        for linha in acoes_associadas:
+            internos = []
+            if linha.responsavel_acao_id:
+                internos.append(linha.responsavel_acao)
+
+            for resp in linha.responsaveis_multiplos.all():
+                if linha.responsavel_acao_id and resp.id == linha.responsavel_acao_id:
+                    continue
+                internos.append(resp)
+
+            seen_ids = set()
+            unique_internos = []
+            for resp in internos:
+                if not resp or resp.id in seen_ids:
+                    continue
+                seen_ids.add(resp.id)
+                unique_internos.append(resp)
+
+            linha.responsaveis_internos_unicos = unique_internos
     
     context = {
         'acao': acao,

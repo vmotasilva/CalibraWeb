@@ -291,24 +291,19 @@
                                             </td>
                                             <td>{% if linha.prioridade %}Sim{% else %}Não{% endif %}</td>
                                             <td data-col="responsaveis">
-                                                {% if linha.responsavel_acao %}
-                                                    <span class="js-internal-name" data-full="{{ linha.responsavel_acao.nome_completo }}">
-                                                        {{ linha.responsavel_acao.nome_completo }}
-                                                    </span>
-                                                {% endif %}
-                                                {% if linha.responsaveis_multiplos.exists %}
-                                                    {% for resp in linha.responsaveis_multiplos.all %}
-                                                        {% if linha.responsavel_acao or not forloop.first %}<br>{% endif %}
+                                                {% if linha.responsaveis_internos_unicos %}
+                                                    {% for resp in linha.responsaveis_internos_unicos %}
+                                                        {% if not forloop.first %}<br>{% endif %}
                                                         <span class="js-internal-name" data-full="{{ resp.nome_completo }}">
                                                             {{ resp.nome_completo }}
                                                         </span>
                                                     {% endfor %}
                                                 {% endif %}
                                                 {% if linha.responsaveis_externos %}
-                                                    {% if linha.responsavel_acao or linha.responsaveis_multiplos.exists %}<br>{% endif %}
+                                                    {% if linha.responsaveis_internos_unicos %}<br>{% endif %}
                                                     <span class="js-external-name">{{ linha.responsaveis_externos }}</span>
                                                 {% endif %}
-                                                {% if not linha.responsavel_acao and not linha.responsaveis_multiplos.exists and not linha.responsaveis_externos %}
+                                                {% if not linha.responsaveis_internos_unicos and not linha.responsaveis_externos %}
                                                     ---
                                                 {% endif %}
                                             </td>
