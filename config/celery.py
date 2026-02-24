@@ -51,14 +51,42 @@ if hasattr(django.conf.settings, 'CELERY_BROKER_URL'):
 if hasattr(django.conf.settings, 'CELERY_RESULT_BACKEND'):
     app.conf.result_backend = django.conf.settings.CELERY_RESULT_BACKEND
 
+
+def _has_unresolved_template(value: object) -> bool:
+    return "${" in str(value) or "%24%7B" in str(value)
+
+
+def _safe_redis_url_from_env() -> str:
+    """Best-effort Redis URL builder that ignores '${...}' placeholders."""
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url and not _has_unresolved_template(redis_url):
+        return redis_url
+    return "redis://localhost:6379/0"
+
 # Validate broker connection
 broker_url = getattr(app.conf, 'broker_url', 'NOT SET')
-if "${" in str(broker_url) or "%24%7B" in str(broker_url):
-    print(f"[ERROR] CRITICAL: CELERY_BROKER_URL still has unresolved templates: {broker_url}")
-    print(f"   You MUST delete CELERY_BROKER_URL and CELERY_RESULT_BACKEND from beat service!")
-    print(f"   Keep only: REDIS_URL={os.getenv('REDIS_URL', 'NOT SET')[:30]}...")
+result_backend = getattr(app.conf, 'result_backend', 'NOT SET')
+
+if _has_unresolved_template(broker_url):
+    resolved = _safe_redis_url_from_env()
+    app.conf.broker_url = resolved
+    broker_url = resolved
+
+if _has_unresolved_template(result_backend):
+    resolved = _safe_redis_url_from_env()
+    app.conf.result_backend = resolved
+    result_backend = resolved
+
+if _has_unresolved_template(broker_url) or _has_unresolved_template(result_backend):
+    print(f"[ERROR] CRITICAL: Celery Redis URL still has unresolved templates")
+    print(f"   broker_url={broker_url}")
+    print(f"   result_backend={result_backend}")
+    print(f"   Fix Railway env vars: prefer only REDIS_URL (no '${{...}}' placeholders).")
 else:
-    print(f"[OK] CELERY_BROKER_URL configured: {broker_url[:30]}..." if len(str(broker_url)) > 30 else f"[OK] CELERY_BROKER_URL: {broker_url}")
+    short_broker = f"{broker_url[:30]}..." if len(str(broker_url)) > 30 else str(broker_url)
+    short_backend = f"{result_backend[:30]}..." if len(str(result_backend)) > 30 else str(result_backend)
+    print(f"[OK] CELERY broker_url: {short_broker}")
+    print(f"[OK] CELERY result_backend: {short_backend}")
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()

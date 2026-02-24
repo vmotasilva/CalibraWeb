@@ -58,7 +58,11 @@ show_task_args = os.getenv('FLOWER_SHOW_TASK_ARGS', 'false').lower() == 'true'
 hide_task_args = os.getenv('FLOWER_HIDE_TASK_ARGS', 'true').lower() == 'true'
 
 # Task result backend
-result_backend = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+result_backend = os.getenv('CELERY_RESULT_BACKEND', '')
+if not result_backend or '${' in result_backend or '%24%7B' in result_backend:
+    result_backend = os.getenv('REDIS_URL', '')
+if not result_backend or '${' in result_backend or '%24%7B' in result_backend:
+    result_backend = 'redis://localhost:6379/0'
 
 # Persist Flower's database to disk
 persistent = True
