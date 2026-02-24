@@ -4,13 +4,13 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Perguntas dos Modelos</h2>
-        <a href="{% url 'auditoria:pergunta_create' %}{% if modelo_id %}?modelo={{ modelo_id }}{% endif %}" class="btn btn-primary">Nova Pergunta</a>
+        <a href="{% url 'auditoria:pergunta_create' %}{% if modelo_id %}?modelo={{ modelo_id }}{% endif %}" class="btn btn-primary" id="btnNovaPergunta" data-base-href="{% url 'auditoria:pergunta_create' %}">Nova Pergunta</a>
     </div>
 
     <form method="get" class="row g-2 mb-3">
         <div class="col-md-4">
             <label class="form-label">Filtrar por modelo</label>
-            <select name="modelo" class="form-select">
+            <select name="modelo" class="form-select" id="filterModeloSelect">
                 <option value="">Todos</option>
                 {% for modelo in modelos %}
                 <option value="{{ modelo.id }}" {% if modelo_id == modelo.id|stringformat:'s' %}selected{% endif %}>{{ modelo.nome }}</option>
@@ -57,4 +57,23 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function() {
+        const select = document.getElementById('filterModeloSelect');
+        const btn = document.getElementById('btnNovaPergunta');
+        if (!select || !btn) return;
+
+        const baseHref = btn.getAttribute('data-base-href') || btn.getAttribute('href');
+
+        const updateHref = () => {
+            const modeloId = (select.value || '').trim();
+            btn.setAttribute('href', modeloId ? `${baseHref}?modelo=${encodeURIComponent(modeloId)}` : baseHref);
+        };
+
+        updateHref();
+        select.addEventListener('change', updateHref);
+        btn.addEventListener('click', updateHref);
+    })();
+</script>
 {% endblock %}

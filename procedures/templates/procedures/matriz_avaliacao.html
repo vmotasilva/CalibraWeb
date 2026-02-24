@@ -355,7 +355,7 @@
                     <select name="setor" class="form-select">
                         <option value="">Todos</option>
                         {% for s in setores %}
-                        <option value="{{ s }}" {% if setor == s %}selected{% endif %}>{{ s }}</option>
+                        <option value="{{ s.id }}" {% if setor == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nome }}</option>
                         {% endfor %}
                     </select>
                 </div>

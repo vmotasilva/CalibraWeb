@@ -44,6 +44,122 @@ def _get_status_colaborador(colab):
         return 'Em Férias'
     else:
         return 'ATIVO'
+
+
+def _compute_treinamento_stats_por_colaborador_ids(colaborador_ids):
+    """Retorna contagens de treinamentos por colaborador usando a mesma regra do detalhe.
+
+    Regra:
+    - Considera apenas procedimentos exigidos pelos perfis ativos (respeitando seleção de grupos/subgrupos).
+    - Dedupe por procedimento (se aparecer em mais de um perfil, conta 1x).
+    - Para cada procedimento, escolhe o "último" registro priorizando data válida (não nula e != 1970-01-01).
+      Se não houver data válida, cai para o registro mais recente sem data.
+    - Pendente: sem registro OU status_treinamento não em ('OK','VIGENTE').
+    """
+    colaborador_ids = [int(cid) for cid in (colaborador_ids or []) if cid is not None]
+    if not colaborador_ids:
+        return {}
+
+    procedimentos_por_colab = {cid: set() for cid in colaborador_ids}
+
+    cps = (
+        ColaboradorPerfil.objects.filter(colaborador_id__in=colaborador_ids, ativo=True)
+        .select_related('perfil')
+        .prefetch_related('perfil__grupos__subgrupos__procedimentos')
+    )
+
+    for cp in cps:
+        selecao = cp.grupos_selecionados or {}
+        grupos_ids = set(selecao.get('grupos') or [])
+        subgrupos_ids = set(selecao.get('subgrupos') or [])
+
+        perfil = cp.perfil
+        grupos = list(getattr(perfil, 'grupos', []).all())
+        if grupos_ids:
+            grupos = [g for g in grupos if g.id in grupos_ids]
+
+        for grupo in grupos:
+            subgrupos = list(getattr(grupo, 'subgrupos', []).all())
+            if subgrupos_ids:
+                subgrupos = [sg for sg in subgrupos if sg.id in subgrupos_ids]
+
+            for subgrupo in subgrupos:
+                for proc in subgrupo.procedimentos.all():
+                    procedimentos_por_colab[cp.colaborador_id].add(proc.id)
+
+    all_proc_ids = set()
+    for proc_set in procedimentos_por_colab.values():
+        all_proc_ids.update(proc_set)
+
+    base_stats = {cid: {'vigentes': 0, 'pendentes': 0, 'ultima_data': None} for cid in colaborador_ids}
+    if not all_proc_ids:
+        return base_stats
+
+    EPOCH_DATE = date(1970, 1, 1)
+
+    treinos = (
+        RegistroTreinamento.objects.filter(
+            colaborador_id__in=colaborador_ids,
+            procedimento_id__in=list(all_proc_ids),
+            procedimento__isnull=False,
+            ativo=True,
+        )
+        .select_related('procedimento', 'lista_presenca')
+        .only(
+            'id',
+            'colaborador_id',
+            'procedimento_id',
+            'data_treinamento',
+            'revisao_treinada',
+            'lista_presenca_id',
+            'procedimento__id',
+            'procedimento__ultima_revisao',
+            'procedimento__numero_revisao',
+        )
+    )
+
+    # best[(colab_id, proc_id)] = (rank_tuple, RegistroTreinamento)
+    best = {}
+
+    for t in treinos:
+        if t.data_treinamento == EPOCH_DATE:
+            continue
+
+        if t.data_treinamento:
+            rank = (2, t.data_treinamento, t.id)
+        else:
+            rank = (1, date.min, t.id)
+
+        key = (t.colaborador_id, t.procedimento_id)
+        current = best.get(key)
+        if current is None or rank > current[0]:
+            best[key] = (rank, t)
+
+    for cid in colaborador_ids:
+        proc_ids = procedimentos_por_colab.get(cid) or set()
+        total = len(proc_ids)
+        if total == 0:
+            continue
+
+        pendentes = 0
+        ultima_data = None
+        for pid in proc_ids:
+            treino = best.get((cid, pid), (None, None))[1]
+            if not treino or treino.status_treinamento not in ('OK', 'VIGENTE'):
+                pendentes += 1
+
+            dt = getattr(treino, 'data_treinamento', None) if treino else None
+            if dt and dt != EPOCH_DATE:
+                if ultima_data is None or dt > ultima_data:
+                    ultima_data = dt
+
+        base_stats[cid] = {
+            'vigentes': total - pendentes,
+            'pendentes': pendentes,
+            'ultima_data': ultima_data,
+        }
+
+    return base_stats
 def can_user_access_colaborador(request_user, target_colaborador):
     """
     Verifica se o usuário logado pode acessar as informações de um colaborador.
@@ -249,11 +365,10 @@ def modulo_rh_view(request):
     # Isso reduz drasticamente o resultado se o usuário está buscando alguém
     busca = request.GET.get('q', '').strip()
     if busca:
-        funcionarios_visiveis = funcionarios_visiveis.filter(
-            Q(nome_completo__icontains=busca) | 
-            Q(matriculaains=busca) |
-            Q(id__icontains=busca)  # Buscar por ID também
-        )
+        q_filter = Q(nome_completo__icontains=busca) | Q(matricula__icontains=busca)
+        if busca.isdigit():
+            q_filter |= Q(id=int(busca))
+        funcionarios_visiveis = funcionarios_visiveis.filter(q_filter)
     
     # Contar colaboradores após aplicar busca (para exibir "X/200")
     total_colaboradores_filtrados = funcionarios_visiveis.count()
@@ -269,54 +384,9 @@ def modulo_rh_view(request):
     except EmptyPage:
         funcionarios_page = paginator.page(paginator.num_pages)
     
-    # ⚡ OTIMIZAÇÃO RADICAL: Usar SQL para calcular estatísticas ao invés de Python
-    # Isto é 100x mais rápido que loops em Python
-    from django.db.models import Count, Max
-    
     # Buscar IDs dos colaboradores da página atual
     colaboradores_ids = list(funcionarios_page.object_list.values_list('id', flat=True))
-    
-    # Query ÚNICA para pegar stats de treinamento por colaborador
-    # {colaborador_id: {'vigentes': X, 'pendentes': Y, 'ultima_data': Z}}
-    trein_stats = {}
-    
-    if colaboradores_ids:
-        # ⚠️ IMPORTANTE: status_treinamento é uma PROPERTY em Python, não um campo do BD
-        # Logo, não podemos usar em .filter() SQL. Usamos data_treinamento como proxy:
-        # - data_treinamento NOT NULL + revisao_treinada = OK
-        # - data_treinamento NULL = PENDENTE
-        
-        # Pegar TODOS os treinamentos ativos destes colaboradores
-        treinamentos_ativos = RegistroTreinamento.objects.filter(
-            colaborador_id__in=colaboradores_ids,
-            ativo=True
-        ).values_list('colaborador_id', 'data_treinamento', 'revisao_treinada')
-        
-        # Contar em Python usando a lógica da property
-        for colab_id in colaboradores_ids:
-            registros = [
-                (data, rev) for cid, data, rev in treinamentos_ativos 
-                if cid == colab_id
-            ]
-            
-            vigentes = 0
-            pendentes = 0
-            ultima_vig = None
-            
-            for data_trein, revisao in registros:
-                # Simular a lógica da property status_treinamento
-                if revisao and data_trein:  # OK
-                    vigentes += 1
-                    if ultima_vig is None or data_trein > ultima_vig:
-                        ultima_vig = data_trein
-                else:  # PENDENTE
-                    pendentes += 1
-            
-            trein_stats[colab_id] = {
-                'vigentes': vigentes,
-                'pendentes': pendentes,
-                'ultima_data': ultima_vig
-            }
+    trein_stats = _compute_treinamento_stats_por_colaborador_ids(colaboradores_ids)
     
     # Atribuir dados aos colaboradores da página
     for f in funcionarios_page.object_list:
@@ -1678,8 +1748,6 @@ def api_colaboradores_filtrados(request):
     API para retornar colaboradores com filtros em tempo real (AJAX).
     Suporta filtros: status, lider, supervisor, gerente, setor, turno, busca
     """
-    from django.db.models import Count, Max
-    
     # Obter colaborador do usuário logado
     colab = None
     try:
@@ -1716,11 +1784,10 @@ def api_colaboradores_filtrados(request):
     # Busca por nome/matrícula/ID
     busca = request.GET.get('q', '').strip()
     if busca:
-        funcionarios = funcionarios.filter(
-            Q(nome_completo__icontains=busca) | 
-            Q(matricula__icontains=busca) |
-            Q(id__icontains=busca)
-        )
+        q_filter = Q(nome_completo__icontains=busca) | Q(matricula__icontains=busca)
+        if busca.isdigit():
+            q_filter |= Q(id=int(busca))
+        funcionarios = funcionarios.filter(q_filter)
 
     # Filtro por Status
     status_filtros = request.GET.getlist('status')
@@ -1776,35 +1843,30 @@ def api_colaboradores_filtrados(request):
     # Este filtro será aplicado após calcular as estatísticas de treinamento
     treino_filtros = request.GET.getlist('treino')
 
+    funcionarios_list = list(funcionarios)
+    stats_map = _compute_treinamento_stats_por_colaborador_ids([c.id for c in funcionarios_list])
+
     # Construir resposta JSON
     dados = []
-    for colab in funcionarios:
-        # Contar treinamentos vigentes e pendentes
-        vigentes = 0
-        pendentes = 0
-        
-        for trein in colab.treinamentos.all():
-            if trein.ativo:
-                if trein.revisao_treinada and trein.data_treinamento:
-                    vigentes += 1
-                else:
-                    pendentes += 1
-        
+    for colab in funcionarios_list:
+        stats = stats_map.get(colab.id, {'vigentes': 0, 'pendentes': 0, 'ultima_data': None})
+        vigentes = stats['vigentes']
+        pendentes = stats['pendentes']
+
         # Aplicar filtro de treinamentos se selecionado
         if treino_filtros:
             tem_pendentes = pendentes > 0
             em_dia = pendentes == 0
-            
-            # Verificar se o colaborador atende ao filtro
+
             passa_filtro = False
             if 'PENDENTE' in treino_filtros and tem_pendentes:
                 passa_filtro = True
             if 'EM_DIA' in treino_filtros and em_dia:
                 passa_filtro = True
-            
+
             if not passa_filtro:
-                continue  # Pular este colaborador
-        
+                continue
+
         dados.append({
             'id': colab.id,
             'nome': colab.nome_completo,

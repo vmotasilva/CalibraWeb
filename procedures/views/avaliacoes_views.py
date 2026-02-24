@@ -15,6 +15,7 @@ from procedures.models import (
 )
 from procedures.forms.forms import AvaliacaoHabilidadeForm
 from rh.models import Colaborador
+from organization.models import Setor
 
 
 # ==================== AVALIAÇÕES DE HABILIDADE ====================
@@ -30,6 +31,10 @@ def matriz_avaliacoes_view(request):
     setor = request.GET.get('setor', '')
     turno = request.GET.get('turno', '')
     termo_colab = request.GET.get('colaborador', '').strip()
+
+    setor_id = None
+    if setor and str(setor).isdigit():
+        setor_id = int(setor)
     
     # Buscar matrizes disponíveis
     matrizes = MatrizHabilidade.objects.filter(ativo=True).order_by('nome')
@@ -53,6 +58,13 @@ def matriz_avaliacoes_view(request):
             matriz=matriz_selecionada,
             ativo=True
         ).select_related('colaborador').order_by('colaborador__nome_completo')
+
+        # Setores disponíveis para esta matriz (antes de aplicar filtros/limites)
+        setores_ids_matriz = list(
+            colaboradores_assoc.values_list('colaborador__setor_id', flat=True)
+            .exclude(colaborador__setor_id__isnull=True)
+            .distinct()
+        )
         
         # Extrair lista de colaboradores
         colaboradores = [assoc.colaborador for assoc in colaboradores_assoc]
@@ -60,8 +72,8 @@ def matriz_avaliacoes_view(request):
         # Obter turnos únicos disponíveis nesta matriz
         turnos_disponiveis = sorted(list(set([c.turno for c in colaboradores if c.turno])))
         
-        if setor:
-            colaboradores = [c for c in colaboradores if c.setor == setor]
+        if setor_id is not None:
+            colaboradores = [c for c in colaboradores if c.setor_id == setor_id]
         
         if turno:
             colaboradores = [c for c in colaboradores if c.turno == turno]
@@ -105,9 +117,16 @@ def matriz_avaliacoes_view(request):
                 })
             matriz_dados.append(linha)
     
-    # Buscar setores disponíveis
-    setores = Colaborador.objects.filter(is_active=True).values_list('setor', flat=True).distinct().order_by('setor')
-    setores = [s for s in setores if s]
+    # Buscar setores disponíveis (com nome) para o filtro
+    if matriz_id and matriz_selecionada:
+        setores = Setor.objects.filter(id__in=setores_ids_matriz).order_by('nome')
+    else:
+        setores_ids = (
+            Colaborador.objects.filter(is_active=True, setor__isnull=False)
+            .values_list('setor_id', flat=True)
+            .distinct()
+        )
+        setores = Setor.objects.filter(id__in=setores_ids).order_by('nome')
     
     context = {
         'matrizes': matrizes,

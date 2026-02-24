@@ -69,11 +69,18 @@ class PerguntaAuditoriaForm(forms.ModelForm):
 class RegistroAuditoriaForm(forms.ModelForm):
     class Meta:
         model = RegistroAuditoria
-        fields = ["data_auditoria", "periodo_inicio", "periodo_fim", "observacoes"]
+        fields = ["data_auditoria", "periodo_inicio", "periodo_fim", "item_os", "observacoes"]
         widgets = {
             "data_auditoria": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "periodo_inicio": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "periodo_fim": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "item_os": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Ex: OS 12345 / Item 7",
+                    "maxlength": 120,
+                }
+            ),
             "observacoes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 

@@ -2,14 +2,35 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import models
-from django.db.models import Count
-from django.http import HttpResponse
+from django.db.models import Count, Max
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from io import BytesIO
 import json
 
 from .forms import ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
 from .models import ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
+
+
+def _get_next_pergunta_ordem(modelo_id: int) -> int:
+    """Retorna a próxima ordem (max+1) para perguntas de um modelo."""
+    if not modelo_id:
+        return 1
+    max_ordem = (
+        PerguntaAuditoria.objects.filter(modelo_id=modelo_id)
+        .aggregate(max_val=Max("ordem"))
+        .get("max_val")
+    )
+    return (max_ordem or 0) + 1
+
+
+@login_required
+def api_next_pergunta_ordem(request):
+    """API: devolve a próxima ordem para o modelo selecionado."""
+    modelo_id = (request.GET.get("modelo") or "").strip()
+    if not (modelo_id and modelo_id.isdigit()):
+        return JsonResponse({"next": 1})
+    return JsonResponse({"next": _get_next_pergunta_ordem(int(modelo_id))})
 
 
 @login_required
@@ -108,6 +129,8 @@ def pergunta_create(request):
         modelo_id = request.GET.get("modelo")
         if modelo_id:
             initial["modelo"] = modelo_id
+            if str(modelo_id).isdigit():
+                initial["ordem"] = _get_next_pergunta_ordem(int(modelo_id))
         form = PerguntaAuditoriaForm(initial=initial)
     return render(request, "auditoria/pergunta_form.html", {"form": form, "modo": "novo"})
 
@@ -214,9 +237,19 @@ def registro_create(request, modelo_id=None):
     
     dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
     is_semanal = modelo.periodicidade == "SEMANAL"
+    is_diaria_ou_unica = modelo.periodicidade in ("DIARIA", "UNICA")
 
     if request.method == "POST":
-        form = RegistroAuditoriaForm(request.POST)
+        post_data = request.POST
+        if is_diaria_ou_unica:
+            # Forçar período = data da auditoria (mesmo se vier em branco)
+            post_data = request.POST.copy()
+            data_auditoria = (post_data.get("data_auditoria") or "").strip()
+            if data_auditoria:
+                post_data["periodo_inicio"] = data_auditoria
+                post_data["periodo_fim"] = data_auditoria
+
+        form = RegistroAuditoriaForm(post_data)
         if form.is_valid():
             registro = form.save(commit=False)
             registro.modelo = modelo
@@ -254,7 +287,11 @@ def registro_create(request, modelo_id=None):
             return redirect("auditoria:registro_detail", pk=registro.pk)
     else:
         from datetime import date
-        form = RegistroAuditoriaForm(initial={"data_auditoria": date.today()})
+        initial = {"data_auditoria": date.today()}
+        if is_diaria_ou_unica:
+            initial["periodo_inicio"] = initial["data_auditoria"]
+            initial["periodo_fim"] = initial["data_auditoria"]
+        form = RegistroAuditoriaForm(initial=initial)
 
     context = {
         "form": form,
@@ -273,9 +310,18 @@ def registro_edit(request, pk):
     
     dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
     is_semanal = registro.modelo.periodicidade == "SEMANAL"
+    is_diaria_ou_unica = registro.modelo.periodicidade in ("DIARIA", "UNICA")
 
     if request.method == "POST":
-        form = RegistroAuditoriaForm(request.POST, instance=registro)
+        post_data = request.POST
+        if is_diaria_ou_unica:
+            post_data = request.POST.copy()
+            data_auditoria = (post_data.get("data_auditoria") or "").strip()
+            if data_auditoria:
+                post_data["periodo_inicio"] = data_auditoria
+                post_data["periodo_fim"] = data_auditoria
+
+        form = RegistroAuditoriaForm(post_data, instance=registro)
         if form.is_valid():
             registro = form.save(commit=False)
             registro.save()

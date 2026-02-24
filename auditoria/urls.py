@@ -11,6 +11,7 @@ urlpatterns = [
     path("modelos/<int:pk>/editar/", views.modelo_edit, name="modelo_edit"),
     path("modelos/<int:pk>/remover/", views.modelo_delete, name="modelo_delete"),
     path("perguntas/", views.perguntas_list, name="perguntas_list"),
+    path("perguntas/next-ordem/", views.api_next_pergunta_ordem, name="api_next_pergunta_ordem"),
     path("perguntas/nova/", views.pergunta_create, name="pergunta_create"),
     path("perguntas/<int:pk>/editar/", views.pergunta_edit, name="pergunta_edit"),
     path("perguntas/<int:pk>/remover/", views.pergunta_delete, name="pergunta_delete"),

@@ -146,6 +146,13 @@ class RegistroAuditoria(models.Model):
         blank=True,
         related_name="auditorias_realizadas",
     )
+    item_os = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        verbose_name="ITEM/O.S.",
+        help_text="Preencher se necessário para identificar ordens de serviço ou pontos específicos.",
+    )
     observacoes = models.TextField(blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 

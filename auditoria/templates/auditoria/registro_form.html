@@ -60,6 +60,14 @@
                 </div>
 
                 <div class="mb-4">
+                    <label class="form-label fw-bold">ITEM/O.S. <span class="text-muted">(preencher se necessário)</span></label>
+                    {{ form.item_os }}
+                    {% if form.item_os.errors %}
+                    <div class="invalid-feedback d-block">{{ form.item_os.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
                     <label class="form-label fw-bold">Observações Gerais</label>
                     {{ form.observacoes }}
                     {% if form.observacoes.errors %}
@@ -179,6 +187,29 @@
                 }
             });
         }
+    })();
+    {% endif %}
+
+    // Auto-preencher período para auditorias DIÁRIA ou APLICAÇÃO ÚNICA
+    {% if modelo and modelo.periodicidade == 'DIARIA' or modelo and modelo.periodicidade == 'UNICA' %}
+    (function() {
+        const dataInput = document.getElementById('id_data_auditoria');
+        const inicioInput = document.getElementById('id_periodo_inicio');
+        const fimInput = document.getElementById('id_periodo_fim');
+
+        if (!dataInput || !inicioInput || !fimInput) return;
+
+        const syncPeriodo = () => {
+            const dt = (dataInput.value || '').trim();
+            if (!dt) return;
+            inicioInput.value = dt;
+            fimInput.value = dt;
+        };
+
+        // Se já existe data, garantir que período esteja preenchido
+        syncPeriodo();
+        dataInput.addEventListener('change', syncPeriodo);
+        dataInput.addEventListener('blur', syncPeriodo);
     })();
     {% endif %}
 </script>

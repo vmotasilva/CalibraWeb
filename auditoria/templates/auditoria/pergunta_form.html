@@ -44,4 +44,39 @@
         </div>
     </form>
 </div>
+
+{% if modo != 'edicao' %}
+<script>
+    (function() {
+        const modeloSelect = document.getElementById('id_modelo');
+        const ordemInput = document.getElementById('id_ordem');
+        if (!modeloSelect || !ordemInput) return;
+
+        const endpoint = '{% url "auditoria:api_next_pergunta_ordem" %}';
+
+        const updateOrdem = async () => {
+            const modeloId = (modeloSelect.value || '').trim();
+            if (!modeloId) {
+                ordemInput.value = '1';
+                return;
+            }
+
+            try {
+                const url = `${endpoint}?modelo=${encodeURIComponent(modeloId)}`;
+                const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (data && typeof data.next !== 'undefined') {
+                    ordemInput.value = String(data.next);
+                }
+            } catch (e) {
+                // silencioso
+            }
+        };
+
+        updateOrdem();
+        modeloSelect.addEventListener('change', updateOrdem);
+    })();
+</script>
+{% endif %}
 {% endblock %}
