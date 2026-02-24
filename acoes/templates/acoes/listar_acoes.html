@@ -183,7 +183,11 @@
                                 data-status="{{ acao.status }}">
                                 <td class="col-abr-reg">
                                     <div class="text-nowrap">{{ acao.data_abertura|date:"d/m/Y" }}</div>
-                                    <div class="fw-semibold text-nowrap">{{ acao.numero_registro }}</div>
+                                    <div class="fw-semibold text-nowrap"
+                                         data-bs-toggle="tooltip" data-bs-placement="top"
+                                         title="{{ acao.acoes_status_resumo|default:'Sem ações associadas'|escape }}">
+                                        {{ acao.numero_registro }}
+                                    </div>
                                     <div class="mt-1">
                                         {% if acao.tipo_solucao %}
                                             <span class="badge bg-info">{{ acao.tipo_solucao }}</span>
@@ -521,7 +525,19 @@ function renderResponsaveis() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', renderResponsaveis);
+function initTooltips() {
+    if (!window.bootstrap || !bootstrap.Tooltip) {
+        return;
+    }
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+        new bootstrap.Tooltip(el);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    renderResponsaveis();
+    initTooltips();
+});
 
 function novaAcao() {
     // Limpa o formulário para criar nova ação

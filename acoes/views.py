@@ -35,6 +35,7 @@ def listar_acoes(request):
     """Lista todas as ações corretivas/preventivas com filtros."""
     from rh.models import Colaborador
     from django.utils import timezone
+    from collections import defaultdict
 
     # Atualizar status de ações com data de fechamento para CONCLUIDA
     AcaoCorretiva.objects.filter(data_conclusao__isnull=False).exclude(
@@ -144,8 +145,41 @@ def listar_acoes(request):
     ).count()
     total_atrasado = AcaoCorretiva.objects.filter(status='atrasada').count()
     
+    # Montar tooltip de resumo de status das ações associadas (Linhas de Ação do plano)
+    acoes_list = list(acoes.select_related('responsavel'))
+    acao_ids = [a.id for a in acoes_list]
+
+    counts_by_acao_id = defaultdict(dict)
+    if acao_ids:
+        linhas_counts = (
+            LinhaAcao.objects
+            .filter(plano_acao__solucao__acao_corretiva_id__in=acao_ids)
+            .values('plano_acao__solucao__acao_corretiva_id', 'status')
+            .annotate(total=Count('id'))
+        )
+        for row in linhas_counts:
+            counts_by_acao_id[row['plano_acao__solucao__acao_corretiva_id']][row['status']] = row['total']
+
+    known_statuses = [
+        ('planejada', 'Planejada'),
+        ('em_curso', 'Em andamento'),
+        ('completa', 'Concluída'),
+        ('retardo', 'Atrasada'),
+        ('cancelada', 'Cancelada'),
+    ]
+    known_keys = {k for k, _ in known_statuses}
+
+    for a in acoes_list:
+        counts = counts_by_acao_id.get(a.id) or {}
+        parts = [f"{label}: {counts[key]}" for key, label in known_statuses if counts.get(key)]
+        outros = sum(v for k, v in counts.items() if k not in known_keys)
+        if outros:
+            parts.append(f"Outros: {outros}")
+
+        a.acoes_status_resumo = " • ".join(parts) if parts else "Sem ações associadas"
+
     context = {
-        'acoes': acoes,
+        'acoes': acoes_list,
         'filtro_tipo_solucao': filtro_tipo_solucao,
         'filtro_origem': filtro_origem,
         'filtro_responsavel': filtro_responsavel,
