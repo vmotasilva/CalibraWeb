@@ -201,12 +201,15 @@ def detalhe_acao(request, acao_id):
     """Exibe detalhes de uma ação."""
     from rh.models import Colaborador
     from .models import OrigemProblema, KPIOpcao
+    from .status_utils import bulk_mark_overdue_as_retardo
 
     acao = get_object_or_404(AcaoCorretiva, id=acao_id)
     solucao_plano = Solucao.objects.filter(acao_corretiva=acao, tipo='plano_acao').first()
     plano_acao = solucao_plano.plano_acao if solucao_plano else None
     acoes_associadas = LinhaAcao.objects.none()
     if plano_acao:
+        # Atualiza automaticamente ações vencidas (Planejada/Em andamento -> Atrasada)
+        bulk_mark_overdue_as_retardo(LinhaAcao.objects.filter(plano_acao=plano_acao))
         acoes_associadas = (
             LinhaAcao.objects.filter(plano_acao=plano_acao)
             .select_related('responsavel_acao')

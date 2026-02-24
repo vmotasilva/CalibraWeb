@@ -85,6 +85,17 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute='*/55'),
         'options': {'queue': 'cache', 'expires': 3300}
     },
+
+    # ====================================================================
+    # AÇÕES TASKS - Atualização automática de atrasadas
+    # ====================================================================
+
+    # Atualiza status Planejada/Em andamento -> Retardo quando deadline expira
+    'atualizar-status-acoes-atrasadas': {
+        'task': 'acoes.tasks.atualizar_status_acoes_atrasadas',
+        'schedule': crontab(minute=10, hour=0),  # diariamente 00:10
+        'options': {'queue': 'default', 'expires': 3600}
+    },
 }
 
 # Queue configuration
