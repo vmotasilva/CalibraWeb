@@ -20,6 +20,76 @@
         </div>
     </div>
 
+    <!-- Indicadores (respeitam filtros) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Total</div>
+                            <div class="fs-3 fw-bold">{{ indicadores.total }}</div>
+                        </div>
+                        <i class="bi bi-clipboard-data fs-3 text-muted"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-start border-success border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Positivas</div>
+                            <div class="fs-3 fw-bold text-success">{{ indicadores.positivas }}</div>
+                        </div>
+                        <i class="bi bi-hand-thumbs-up fs-3 text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-start border-danger border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Negativas</div>
+                            <div class="fs-3 fw-bold text-danger">{{ indicadores.negativas }}</div>
+                        </div>
+                        <i class="bi bi-hand-thumbs-down fs-3 text-danger"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-start border-secondary border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Neutras</div>
+                            <div class="fs-3 fw-bold text-secondary">{{ indicadores.neutras }}</div>
+                        </div>
+                        <i class="bi bi-dash-circle fs-3 text-secondary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if indicadores_tipos %}
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                {% for t in indicadores_tipos %}
+                    <span class="badge bg-light text-dark border">
+                        {{ t.label }}: <strong>{{ t.total }}</strong>
+                    </span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Filtros -->
     <div class="card mb-4 shadow-sm">
         <div class="card-body">
@@ -74,100 +144,61 @@
         </div>
     </div>
 
-    <!-- Listagem -->
+    <!-- Listagem (lista) -->
     {% if ocorrencias %}
-        <div class="row">
-            {% for ocorrencia in ocorrencias %}
-            <div class="col-md-6 col-lg-4 mb-3">
-                <div class="card h-100 shadow-sm border-left" style="border-left-width: 4px; border-left-color: 
-                    {% if ocorrencia.natureza == 'POSITIVA' %}#28a745
-                    {% elif ocorrencia.natureza == 'NEGATIVA' %}#dc3545
-                    {% else %}#6c757d
-                    {% endif %};
-                ">
-                    <!-- Header do Card -->
-                    <div class="card-header pb-2 border-0">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h6 class="card-subtitle mb-2 text-muted small">
-                                    <i class="bi bi-person"></i> {{ ocorrencia.colaborador.nome_completo }}
-                                </h6>
-                                <h5 class="card-title mb-0">
-                                    <span class="badge bg-info">{{ ocorrencia.get_tipo_display }}</span>
-                                </h5>
-                            </div>
-                            <span class="badge" style="background-color: 
-                                {% if ocorrencia.natureza == 'POSITIVA' %}#d4edda
-                                {% elif ocorrencia.natureza == 'NEGATIVA' %}#f8d7da
-                                {% else %}#e2e3e5
-                                {% endif %};
-                                color: 
-                                {% if ocorrencia.natureza == 'POSITIVA' %}#155724
-                                {% elif ocorrencia.natureza == 'NEGATIVA' %}#721c24
-                                {% else %}#383d41
-                                {% endif %};
-                            ">
-                                {{ ocorrencia.get_natureza_display }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Corpo do Card -->
-                    <div class="card-body">
-                        {% if ocorrencia.descricao %}
-                        <p class="card-text small">{{ ocorrencia.descricao|truncatewords:20 }}</p>
-                        {% else %}
-                        <p class="card-text text-muted small"><em>Sem descrição</em></p>
-                        {% endif %}
-
-                        <!-- Informações -->
-                        <div class="small">
-                            <div class="mb-2">
-                                <strong>Data:</strong>
-                                <br>
-                                <i class="bi bi-calendar-event"></i>
-                                {{ ocorrencia.data_ocorrencia|date:"d/m/Y" }}
-                            </div>
-
-                            {% if ocorrencia.condutor %}
-                            <div class="mb-2">
-                                <strong>Responsável:</strong>
-                                <br>
-                                <i class="bi bi-person-check"></i>
-                                {{ ocorrencia.condutor.get_full_name|default:ocorrencia.condutor.username }}
-                            </div>
-                            {% endif %}
-
-                            {% if ocorrencia.arquivo_evidencia %}
-                            <div>
-                                <strong>Evidência:</strong>
-                                <br>
-                                <i class="bi bi-paperclip"></i>
-                                <a href="{{ ocorrencia.arquivo_evidencia.url }}" target="_blank" class="small">
-                                    Ver arquivo
-                                </a>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Footer do Card -->
-                    <div class="card-footer bg-light d-flex gap-2 justify-content-end">
-                        <a href="{% url 'editar_ocorrencia' ocorrencia.id %}" 
-                           class="btn btn-sm btn-outline-primary"
-                           title="Editar">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <a href="{% url 'deletar_ocorrencia' ocorrencia.id %}" 
-                           class="btn btn-sm btn-outline-danger"
-                           title="Deletar"
-                           onclick="return confirm('Tem certeza que deseja deletar esta ocorrência?');">
-                            <i class="bi bi-trash"></i>
-                        </a>
-                    </div>
+        {{ ocorrencias_modal_data|json_script:"ocorrenciasModalData" }}
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Colaborador</th>
+                                <th style="width: 140px;">Tipo</th>
+                                <th style="width: 120px;">Natureza</th>
+                                <th style="width: 120px;">Data</th>
+                                <th>Responsável</th>
+                                <th>Descrição</th>
+                                <th style="width: 90px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ocorrencia in ocorrencias %}
+                            <tr class="ocorrencia-row" role="button" tabindex="0" data-ocorrencia-id="{{ ocorrencia.id }}">
+                                <td class="fw-semibold">{{ ocorrencia.colaborador.nome_completo }}</td>
+                                <td><span class="badge bg-info">{{ ocorrencia.get_tipo_display }}</span></td>
+                                <td>
+                                    {% if ocorrencia.natureza == 'POSITIVA' %}
+                                        <span class="badge bg-success">{{ ocorrencia.get_natureza_display }}</span>
+                                    {% elif ocorrencia.natureza == 'NEGATIVA' %}
+                                        <span class="badge bg-danger">{{ ocorrencia.get_natureza_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ ocorrencia.get_natureza_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ ocorrencia.data_ocorrencia|date:"d/m/Y" }}</td>
+                                <td class="text-muted">{{ ocorrencia.condutor.get_full_name|default:ocorrencia.condutor.username|default:"-" }}</td>
+                                <td>
+                                    {% if ocorrencia.descricao %}
+                                        {{ ocorrencia.descricao|truncatewords:18 }}
+                                    {% else %}
+                                        <span class="text-muted"><em>Sem descrição</em></span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'editar_ocorrencia' ocorrencia.id %}" class="btn btn-sm btn-outline-primary js-row-action" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'deletar_ocorrencia' ocorrencia.id %}" class="btn btn-sm btn-outline-danger js-row-action" title="Deletar" onclick="return confirm('Tem certeza que deseja deletar esta ocorrência?');">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            {% endfor %}
         </div>
 
         <!-- Paginação -->
@@ -176,10 +207,10 @@
             <ul class="pagination justify-content-center">
                 {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page=1">Primeira</a>
+                    <a class="page-link" href="?page=1{% if querystring %}&{{ querystring }}{% endif %}">Primeira</a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Anterior</a>
                 </li>
                 {% endif %}
 
@@ -191,10 +222,10 @@
 
                 {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Próxima</a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if querystring %}&{{ querystring }}{% endif %}">Última</a>
                 </li>
                 {% endif %}
             </ul>
@@ -210,23 +241,129 @@
     {% endif %}
 </div>
 
-<style>
-    .card {
-        transition: transform 0.2s, box-shadow 0.2s;
+<!-- Modal de Visualização -->
+<div class="modal fade" id="ocorrenciaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ocorrenciaModalTitle">Ocorrência</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <tbody id="ocorrenciaModalBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function formatDateBR(iso) {
+        if (!iso) return '-';
+        const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!m) return String(iso);
+        return `${m[3]}/${m[2]}/${m[1]}`;
     }
-    
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+
+    function buildRows(data) {
+        const rows = [
+            ['colaborador', 'Colaborador'],
+            ['tipo', 'Tipo'],
+            ['natureza', 'Natureza'],
+            ['data_ocorrencia', 'Data'],
+            ['responsavel', 'Responsável'],
+            ['motivo', 'Motivo'],
+            ['descricao', 'Descrição'],
+        ];
+
+        const tbody = document.createDocumentFragment();
+        rows.forEach(([key, label]) => {
+            let value = (data && Object.prototype.hasOwnProperty.call(data, key)) ? data[key] : '';
+            if (!value) value = '-';
+            if (key === 'data_ocorrencia') value = formatDateBR(value);
+
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            th.className = 'text-muted';
+            th.style.width = '180px';
+            th.textContent = label;
+            const td = document.createElement('td');
+            td.className = 'text-break';
+            td.textContent = String(value);
+            tr.appendChild(th);
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        });
+
+        // Evidência (link)
+        const evidenciaUrl = data && data.evidencia_url;
+        const tr = document.createElement('tr');
+        const th = document.createElement('th');
+        th.className = 'text-muted';
+        th.textContent = 'Evidência';
+        const td = document.createElement('td');
+        if (evidenciaUrl) {
+            const a = document.createElement('a');
+            a.href = evidenciaUrl;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = 'Ver arquivo';
+            td.appendChild(a);
+        } else {
+            td.textContent = '-';
+        }
+        tr.appendChild(th);
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+
+        return tbody;
     }
-    
-    .card-header {
-        background-color: transparent;
+
+    function openOcorrenciaModal(ocorrenciaId) {
+        const dataEl = document.getElementById('ocorrenciasModalData');
+        if (!dataEl) return;
+
+        let all;
+        try {
+            all = JSON.parse(dataEl.textContent);
+        } catch (e) {
+            return;
+        }
+
+        const data = all && all[String(ocorrenciaId)];
+        if (!data) return;
+
+        const titleEl = document.getElementById('ocorrenciaModalTitle');
+        const bodyEl = document.getElementById('ocorrenciaModalBody');
+        if (!titleEl || !bodyEl) return;
+
+        titleEl.textContent = `${data.colaborador || 'Ocorrência'} — ${data.tipo || ''}`;
+        bodyEl.innerHTML = '';
+        bodyEl.appendChild(buildRows(data));
+
+        const modalEl = document.getElementById('ocorrenciaModal');
+        if (!modalEl || !window.bootstrap || !bootstrap.Modal) return;
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
-    
-    .badge {
-        font-size: 0.75rem;
-        padding: 0.35rem 0.6rem;
+
+    function bindOcorrenciaRows() {
+        document.querySelectorAll('tr.ocorrencia-row[data-ocorrencia-id]').forEach((row) => {
+            row.addEventListener('click', (ev) => {
+                if (ev.target && ev.target.closest('.js-row-action')) return;
+                openOcorrenciaModal(row.dataset.ocorrenciaId);
+            });
+            row.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    openOcorrenciaModal(row.dataset.ocorrenciaId);
+                }
+            });
+        });
     }
-</style>
+
+    document.addEventListener('DOMContentLoaded', bindOcorrenciaRows);
+</script>
 {% endblock %}

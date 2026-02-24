@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q, Prefetch
+from django.db.models import Q, Prefetch, Count
 from django.http import HttpResponseRedirect, JsonResponse
 from django.core.paginator import Paginator
 from django.core.cache import cache
@@ -958,11 +958,55 @@ def listar_ocorrencias_view(request):
     
     if natureza:
         ocorrencias = ocorrencias.filter(natureza=natureza)
+
+    # Indicadores (sempre baseados no queryset filtrado, antes da paginação)
+    natureza_counts_qs = ocorrencias.values('natureza').annotate(total=Count('id'))
+    natureza_counts = {row['natureza']: row['total'] for row in natureza_counts_qs}
+    indicadores = {
+        'total': ocorrencias.count(),
+        'positivas': natureza_counts.get('POSITIVA', 0),
+        'negativas': natureza_counts.get('NEGATIVA', 0),
+        'neutras': natureza_counts.get('NEUTRA', 0),
+    }
+
+    tipo_counts_qs = ocorrencias.values('tipo').annotate(total=Count('id')).order_by('-total', 'tipo')
+    tipo_choices_dict = dict(Ocorrencia.TIPO_CHOICES)
+    indicadores_tipos = [
+        {
+            'tipo': row['tipo'],
+            'label': tipo_choices_dict.get(row['tipo'], row['tipo']),
+            'total': row['total'],
+        }
+        for row in tipo_counts_qs
+    ]
     
     # Paginação
     paginator = Paginator(ocorrencias, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
+
+    # Dados para modal de visualização (apenas itens da página atual)
+    ocorrencias_modal_data = {}
+    for occ in page_obj.object_list:
+        ocorrencias_modal_data[str(occ.id)] = {
+            'id': occ.id,
+            'colaborador': getattr(occ.colaborador, 'nome_completo', '-') or '-',
+            'tipo': occ.get_tipo_display() if hasattr(occ, 'get_tipo_display') else (occ.tipo or '-'),
+            'tipo_value': occ.tipo or '',
+            'natureza': occ.get_natureza_display() if hasattr(occ, 'get_natureza_display') else (occ.natureza or '-'),
+            'natureza_value': occ.natureza or '',
+            'data_ocorrencia': occ.data_ocorrencia.isoformat() if occ.data_ocorrencia else '',
+            'descricao': occ.descricao or '',
+            'motivo': occ.motivo or '',
+            'responsavel': (occ.condutor.get_full_name() or getattr(occ.condutor, 'username', '-')) if occ.condutor else '-',
+            'evidencia_url': occ.arquivo_evidencia.url if getattr(occ, 'arquivo_evidencia', None) else '',
+        }
+
+    # Querystring para paginação mantendo filtros
+    query_params = request.GET.copy()
+    if 'page' in query_params:
+        query_params.pop('page')
+    querystring = query_params.urlencode()
     
     context = {
         'page_obj': page_obj,
@@ -971,6 +1015,10 @@ def listar_ocorrencias_view(request):
         'naturezas': Ocorrencia.NATUREZA_CHOICES,
         'colaboradores': Colaborador.objects.all().order_by('nome_completo') if (request.user.is_superuser or request.user.is_staff) else None,
         'total_ocorrencias': paginator.count,
+        'indicadores': indicadores,
+        'indicadores_tipos': indicadores_tipos,
+        'ocorrencias_modal_data': ocorrencias_modal_data,
+        'querystring': querystring,
     }
     
     return render(request, 'rh/ocorrencias_lista.html', context)
