@@ -178,21 +178,97 @@
         </div>
     </div>
     
-    <!-- DISTRIBUIÇÃO POR TIPO -->
+    <!-- CARDS COLAPSÁVEIS -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Distribuição por Tipo de Solução</h6>
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Ações por Status (por Solução)</h6>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStatusPorSolucao" aria-expanded="false" aria-controls="collapseStatusPorSolucao">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
                 </div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        {% for tipo, count in estatisticas.por_tipo.items %}
-                        <div class="col-md-2 mb-2">
-                            <h4 class="mb-1">{{ count }}</h4>
-                            <span class="badge badge-tipo badge-{{ tipo|slugify|cut:' ' }}">{{ tipo }}</span>
+                <div id="collapseStatusPorSolucao" class="collapse">
+                    <div class="card-body">
+                        {{ chart_status_por_solucao|json_script:"chartStatusPorSolucaoData" }}
+                        {% if chart_status_por_solucao.labels %}
+                        <div style="height: 320px;">
+                            <canvas id="statusPorSolucaoChart"></canvas>
                         </div>
-                        {% endfor %}
+                        {% else %}
+                        <div class="text-muted small">Sem dados para exibir.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-calendar-event"></i> Vencidas / vencendo em 30 dias (Data de Fechamento Programada)</h6>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDeadlineAlertas" aria-expanded="false" aria-controls="collapseDeadlineAlertas">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                </div>
+                <div id="collapseDeadlineAlertas" class="collapse">
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 380px;">
+                            <table class="table table-hover table-sm mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th style="width: 140px;">Tipo</th>
+                                        <th style="width: 150px;">Código Registro</th>
+                                        <th style="width: 80px;">Nº Ação</th>
+                                        <th>Problema</th>
+                                        <th style="width: 180px;">Responsável</th>
+                                        <th style="width: 170px;">Fechamento Programado</th>
+                                        <th style="width: 120px;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for acao in acoes_deadline_alerta %}
+                                    <tr {% if acao.deadline and acao.deadline < today %}class="table-danger"{% endif %}>
+                                        <td><span class="badge bg-primary">{{ acao.tipo_solucao }}</span></td>
+                                        <td><strong>{{ acao.numero_registro }}</strong></td>
+                                        <td class="font-weight-bold">{{ acao.numero_acao }}</td>
+                                        <td><small>{{ acao.problema|truncatewords:10 }}</small></td>
+                                        <td><small>{{ acao.responsaveis|truncatewords:4 }}</small></td>
+                                        <td>
+                                            <small>{{ acao.deadline|date:"d/m/Y"|default:"-" }}</small>
+                                            {% if acao.deadline %}
+                                                {% if acao.deadline < today %}
+                                                <span class="badge bg-danger ms-1">Vencido</span>
+                                                {% else %}
+                                                <span class="badge bg-warning text-dark ms-1">Próx. 30 dias</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if 'Planejada' in acao.status %}
+                                            <span class="badge bg-secondary status-badge">{{ acao.status }}</span>
+                                            {% elif 'Curso' in acao.status or 'Andamento' in acao.status %}
+                                            <span class="badge bg-warning text-dark status-badge">{{ acao.status }}</span>
+                                            {% elif 'Complet' in acao.status or 'Conclu' in acao.status %}
+                                            <span class="badge bg-success status-badge">{{ acao.status }}</span>
+                                            {% elif 'Retardo' in acao.status or 'Atras' in acao.status %}
+                                            <span class="badge bg-danger status-badge">{{ acao.status }}</span>
+                                            {% elif 'Cancelada' in acao.status %}
+                                            <span class="badge bg-dark status-badge">{{ acao.status }}</span>
+                                            {% else %}
+                                            <span class="badge bg-light text-dark status-badge">{{ acao.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="bi bi-check2-circle" style="font-size: 2.5rem;"></i>
+                                            <p class="mt-2 mb-0">Nenhuma ação vencida ou vencendo nos próximos 30 dias.</p>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -500,6 +576,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
 <script>
     // Auto-submit on filter change
     document.querySelectorAll('#filtrosForm select').forEach(function(select) {
@@ -507,5 +584,61 @@
             document.getElementById('filtrosForm').submit();
         });
     });
+
+    // Chart: barras empilhadas por solução x status
+    (function() {
+        const dataEl = document.getElementById('chartStatusPorSolucaoData');
+        const canvas = document.getElementById('statusPorSolucaoChart');
+        if (!dataEl || !canvas || typeof Chart === 'undefined') return;
+
+        let payload;
+        try {
+            payload = JSON.parse(dataEl.textContent);
+        } catch (e) {
+            return;
+        }
+        if (!payload || !payload.labels || payload.labels.length === 0) return;
+
+        const cssVar = (name) => {
+            const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+            return (v || '').trim() || undefined;
+        };
+
+        const palette = {
+            planejada: cssVar('--bs-secondary'),
+            em_curso: cssVar('--bs-warning'),
+            completa: cssVar('--bs-success'),
+            retardo: cssVar('--bs-danger'),
+            cancelada: cssVar('--bs-dark'),
+        };
+
+        const datasets = (payload.datasets || []).map((ds) => ({
+            label: ds.label,
+            data: ds.data,
+            backgroundColor: palette[ds.key] || cssVar('--bs-primary'),
+            borderWidth: 0,
+            stack: 'stack-1',
+        }));
+
+        new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: payload.labels,
+                datasets,
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: { mode: 'index', intersect: false },
+                },
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
+                },
+            },
+        });
+    })();
 </script>
 {% endblock %}

@@ -3,6 +3,8 @@ Agregação de dados de Ações Registradas de todos os 6 tipos de soluções
 Permite visualizar/filtrar ações em uma única tela
 """
 
+from datetime import datetime, timedelta
+
 from django.shortcuts import render
 from django.core.paginator import Paginator
 from django.core.exceptions import FieldError
@@ -10,6 +12,7 @@ from django.db.models import Q, F, Value as V, CharField, Count, Case, When
 from django.views import View
 from django.http import JsonResponse
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.utils import timezone
 from .models import PlanoAcao, SolucaoA3, Solucao8D, SolucaoRNC, SolucaoGestaoDeMudanca, RevisaoGerencial, LinhaAcao
 
 
@@ -46,6 +49,18 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
         
         # Lista de responsáveis para o filtro
         responsaveis_unicos = sorted(set([r['responsavel'] for r in acoes_por_responsavel if r['responsavel'] != '-']))
+
+        # Dados para cards colapsáveis (ignora filtro de status para permitir breakdown por status)
+        acoes_analytics = self._agregar_acoes(tipo_solucao, '', prioridade, responsavel, busca)
+        chart_status_por_solucao = self._calcular_status_por_tipo(acoes_analytics)
+
+        today = timezone.localdate()
+        deadline_limite = today + timedelta(days=30)
+        acoes_deadline_alerta = self._filtrar_acoes_deadline_alerta(
+            acoes_analytics,
+            today=today,
+            deadline_limite=deadline_limite,
+        )
         
         # Paginação
         paginator = Paginator(acoes, self.paginate_by)
@@ -76,6 +91,10 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
             'estatisticas': estatisticas,
             'acoes_por_responsavel': acoes_por_responsavel[:20],  # Top 20
             'responsaveis_unicos': responsaveis_unicos,
+            'chart_status_por_solucao': chart_status_por_solucao,
+            'acoes_deadline_alerta': acoes_deadline_alerta,
+            'today': today,
+            'deadline_limite': deadline_limite,
         }
         
         return render(request, self.template_name, context)
@@ -373,6 +392,10 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
                 acao['deadline'] = d2
             else:
                 acao['deadline'] = None
+
+            # Normalizar deadline para date (alguns campos podem ser datetime)
+            if isinstance(acao['deadline'], datetime):
+                acao['deadline'] = acao['deadline'].date()
         
         # Ordenação
         if ordenar == 'numero_acao':
@@ -444,6 +467,83 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
             'nao_eficaz': nao_eficaz,
             'parcialmente_eficaz': parcialmente_eficaz,
         }
+
+    def _normalize_status_key(self, status_value):
+        status_slug = str(status_value or '').lower().replace(' ', '_').replace('/', '_')
+        if 'planejada' in status_slug:
+            return 'planejada'
+        if 'curso' in status_slug or 'andamento' in status_slug:
+            return 'em_curso'
+        if 'complet' in status_slug or 'conclu' in status_slug:
+            return 'completa'
+        if 'retardo' in status_slug or 'atras' in status_slug:
+            return 'retardo'
+        if 'cancelada' in status_slug:
+            return 'cancelada'
+        return 'outros'
+
+    def _calcular_status_por_tipo(self, acoes):
+        """Monta dados do gráfico de barras empilhadas: tipos (X) x status (stacks)."""
+        from collections import defaultdict
+
+        # Ordem esperada dos tipos (mantém o gráfico estável)
+        tipo_order = ['plano_acao', 'a3', '8d', 'rnc', 'mudanca', 'rg', 'linha_acao']
+
+        tipo_label_by_slug = {}
+        for a in acoes:
+            slug = a.get('tipo_slug')
+            label = a.get('tipo_solucao')
+            if slug and label and slug not in tipo_label_by_slug:
+                tipo_label_by_slug[slug] = label
+
+        tipo_slugs = [t for t in tipo_order if t in tipo_label_by_slug]
+        for slug in sorted(tipo_label_by_slug.keys()):
+            if slug not in tipo_slugs:
+                tipo_slugs.append(slug)
+
+        labels = [tipo_label_by_slug[s] for s in tipo_slugs]
+        index_by_slug = {slug: i for i, slug in enumerate(tipo_slugs)}
+
+        status_keys = ['planejada', 'em_curso', 'completa', 'retardo', 'cancelada']
+        counts = {k: [0] * len(labels) for k in status_keys}
+
+        for a in acoes:
+            tipo_slug = a.get('tipo_slug')
+            if tipo_slug not in index_by_slug:
+                continue
+            status_key = self._normalize_status_key(a.get('status'))
+            if status_key in counts:
+                counts[status_key][index_by_slug[tipo_slug]] += 1
+
+        datasets = [
+            {'key': 'planejada', 'label': 'Planejada', 'data': counts['planejada']},
+            {'key': 'em_curso', 'label': 'Em andamento', 'data': counts['em_curso']},
+            {'key': 'completa', 'label': 'Concluída', 'data': counts['completa']},
+            {'key': 'retardo', 'label': 'Atrasada', 'data': counts['retardo']},
+            {'key': 'cancelada', 'label': 'Cancelada', 'data': counts['cancelada']},
+        ]
+
+        return {
+            'labels': labels,
+            'datasets': datasets,
+        }
+
+    def _filtrar_acoes_deadline_alerta(self, acoes, *, today, deadline_limite):
+        """Retorna ações vencidas ou vencendo em até 30 dias, pela data de fechamento programada."""
+        resultado = []
+        for a in acoes:
+            deadline = a.get('deadline')
+            if not deadline:
+                continue
+
+            status_key = self._normalize_status_key(a.get('status'))
+            if status_key in {'completa', 'cancelada'}:
+                continue
+
+            if deadline <= deadline_limite:
+                resultado.append(a)
+
+        return sorted(resultado, key=lambda x: (x.get('deadline') is None, x.get('deadline') or today))
     
     def _agrupar_por_responsavel(self, acoes):
         """Agrupa ações por responsável e retorna lista ordenada"""
