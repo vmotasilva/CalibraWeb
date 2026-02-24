@@ -396,6 +396,9 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
             # Normalizar deadline para date (alguns campos podem ser datetime)
             if isinstance(acao['deadline'], datetime):
                 acao['deadline'] = acao['deadline'].date()
+
+        # Remover itens "vazios" (campos sem conteúdo) — não exibir nem contar
+        acoes = [a for a in acoes if not self._is_acao_vazia(a)]
         
         # Ordenação
         if ordenar == 'numero_acao':
@@ -409,6 +412,34 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
         else:
             # Default: deadline mais recente primeiro
             return sorted(acoes, key=lambda x: (x['deadline'] is None, x['deadline'] or ''), reverse=True)
+
+    def _is_acao_vazia(self, acao: dict) -> bool:
+        """Identifica itens sem conteúdo significativo (ex.: tudo '-'), para desconsiderar."""
+
+        def norm(val):
+            if val is None:
+                return ''
+            s = str(val).strip()
+            return '' if s == '-' else s
+
+        # Se nem tem código de registro, já é inválida
+        if not norm(acao.get('numero_registro')):
+            return True
+
+        # Considerar "conteúdo" apenas nos campos que o usuário espera ver preenchidos.
+        content_fields = [
+            'numero_acao',
+            'input_origem',
+            'problema',
+            'descricao',
+            'responsaveis',
+            'comentarios',
+            'laboratorio',
+            'kpi',
+            'classificacao',
+        ]
+
+        return not any(norm(acao.get(f)) for f in content_fields)
     
     def _calcular_estatisticas(self, acoes):
         """Calcula estatísticas gerais das ações"""
