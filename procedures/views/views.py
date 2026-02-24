@@ -382,6 +382,9 @@ def treinamentos_list_view(request):
         return [single] if single else []
 
     status = request.GET.get('status', '')
+    # Compatibilidade: NAO_INICIADO passa a ser considerado PENDENTE
+    if status == 'NAO_INICIADO':
+        status = 'PENDENTE'
     colaborador_id = request.GET.get('colaborador', '')
     procedimento_id = request.GET.get('procedimento', '')
     busca = request.GET.get('q', '')
@@ -451,16 +454,38 @@ def treinamentos_list_view(request):
             if busca:
                 procs_qs = procs_qs.filter(Q(codigo__icontains=busca) | Q(nome__icontains=busca))
 
-            # Buscar último registro por procedimento (quando existir)
-            ultimos_ids = RegistroTreinamento.objects.filter(
-                colaborador_id=colaborador_id,
-                procedimento_id__in=procs_qs.values_list('id', flat=True),
-            ).values('procedimento_id').annotate(ultimo_id=Max('id')).values_list('ultimo_id', flat=True)
+            # Buscar "último" registro por procedimento seguindo a mesma regra do RH:
+            # 1) Preferir o mais recente com data válida (não nula e não 1970-01-01)
+            # 2) Se não houver, cair para o mais recente sem data
+            EPOCH_DATE = date(1970, 1, 1)
+            treinos_por_proc_id = {}
+            treinos_qs = (
+                RegistroTreinamento.objects.filter(
+                    colaborador_id=colaborador_id,
+                    procedimento_id__in=procs_qs.values_list('id', flat=True),
+                    procedimento__isnull=False,
+                )
+                .select_related('colaborador', 'procedimento')
+                .order_by('-data_treinamento', '-id')
+            )
 
-            treinos_por_proc_id = {
-                t.procedimento_id: t
-                for t in RegistroTreinamento.objects.filter(id__in=ultimos_ids).select_related('colaborador', 'procedimento')
-            }
+            for t in treinos_qs:
+                proc_id = t.procedimento_id
+                if proc_id in treinos_por_proc_id:
+                    continue
+                if not t.data_treinamento:
+                    continue
+                if t.data_treinamento == EPOCH_DATE:
+                    continue
+                treinos_por_proc_id[proc_id] = t
+
+            for t in treinos_qs:
+                proc_id = t.procedimento_id
+                if proc_id in treinos_por_proc_id:
+                    continue
+                if t.data_treinamento:
+                    continue
+                treinos_por_proc_id[proc_id] = t
 
             itens = []
             for proc in procs_qs.order_by('codigo'):
@@ -497,7 +522,10 @@ def treinamentos_list_view(request):
                 ativo_bool = (ativo == '1')
                 itens = [t for t in itens if bool(getattr(t, 'ativo', True)) == ativo_bool]
             if status:
-                itens = [t for t in itens if t.status_treinamento == status]
+                if status == 'PENDENTE':
+                    itens = [t for t in itens if t.status_treinamento in {'PENDENTE', 'NAO_INICIADO'}]
+                else:
+                    itens = [t for t in itens if t.status_treinamento == status]
 
             # Filtros de líder/setor/turno (quando presentes) precisam ser respeitados.
             # Como estamos no modo de colaborador único, basta validar o colaborador.
@@ -593,7 +621,10 @@ def treinamentos_list_view(request):
     
     # Se houver filtro de status (property), aplicar em memória
     if status:
-        qs = [t for t in qs if t.status_treinamento == status]
+        if status == 'PENDENTE':
+            qs = [t for t in qs if t.status_treinamento in {'PENDENTE', 'NAO_INICIADO'}]
+        else:
+            qs = [t for t in qs if t.status_treinamento == status]
     
     # Contar total de registros
     total_registros = len(qs) if isinstance(qs, list) else qs.count()
@@ -659,6 +690,9 @@ def treinamentos_exportar_excel_view(request):
         return [single] if single else []
 
     status = request.GET.get('status', '')
+    # Compatibilidade: NAO_INICIADO passa a ser considerado PENDENTE
+    if status == 'NAO_INICIADO':
+        status = 'PENDENTE'
     colaborador_id = request.GET.get('colaborador', '')
     procedimento_id = request.GET.get('procedimento', '')
     busca = request.GET.get('q', '')
@@ -760,15 +794,37 @@ def treinamentos_exportar_excel_view(request):
             if busca:
                 procs_qs = procs_qs.filter(Q(codigo__icontains=busca) | Q(nome__icontains=busca))
 
-            ultimos_ids = RegistroTreinamento.objects.filter(
-                colaborador_id=colaborador_id,
-                procedimento_id__in=procs_qs.values_list('id', flat=True),
-            ).values('procedimento_id').annotate(ultimo_id=Max('id')).values_list('ultimo_id', flat=True)
+            # Mesmo critério do RH para selecionar o "último" registro por procedimento
+            from datetime import date
+            EPOCH_DATE = date(1970, 1, 1)
+            treinos_por_proc_id = {}
+            treinos_qs = (
+                RegistroTreinamento.objects.filter(
+                    colaborador_id=colaborador_id,
+                    procedimento_id__in=procs_qs.values_list('id', flat=True),
+                    procedimento__isnull=False,
+                )
+                .select_related('colaborador', 'procedimento')
+                .order_by('-data_treinamento', '-id')
+            )
 
-            treinos_por_proc_id = {
-                t.procedimento_id: t
-                for t in RegistroTreinamento.objects.filter(id__in=ultimos_ids).select_related('colaborador', 'procedimento')
-            }
+            for t in treinos_qs:
+                proc_id = t.procedimento_id
+                if proc_id in treinos_por_proc_id:
+                    continue
+                if not t.data_treinamento:
+                    continue
+                if t.data_treinamento == EPOCH_DATE:
+                    continue
+                treinos_por_proc_id[proc_id] = t
+
+            for t in treinos_qs:
+                proc_id = t.procedimento_id
+                if proc_id in treinos_por_proc_id:
+                    continue
+                if t.data_treinamento:
+                    continue
+                treinos_por_proc_id[proc_id] = t
 
             itens = []
             for proc in procs_qs.order_by('codigo'):
@@ -788,7 +844,6 @@ def treinamentos_exportar_excel_view(request):
                 itens = [t for t in itens if getattr(t, 'data_treinamento', None)]
             if mes:
                 try:
-                    from datetime import date
                     ano_str, mes_str = mes.split('-', 1)
                     ano = int(ano_str)
                     mes_num = int(mes_str)
@@ -804,7 +859,10 @@ def treinamentos_exportar_excel_view(request):
                 ativo_bool = (ativo == '1')
                 itens = [t for t in itens if bool(getattr(t, 'ativo', True)) == ativo_bool]
             if status:
-                itens = [t for t in itens if t.status_treinamento == status]
+                if status == 'PENDENTE':
+                    itens = [t for t in itens if t.status_treinamento in {'PENDENTE', 'NAO_INICIADO'}]
+                else:
+                    itens = [t for t in itens if t.status_treinamento == status]
 
             itens.sort(key=lambda x: (x.data_treinamento is not None, x.data_treinamento or date.min), reverse=True)
             qs = itens
@@ -834,7 +892,10 @@ def treinamentos_exportar_excel_view(request):
     
     # Filtro de status (aplicar por Python após converter para lista)
     if status:
-        qs = [t for t in qs if t.status_treinamento == status]
+        if status == 'PENDENTE':
+            qs = [t for t in qs if t.status_treinamento in {'PENDENTE', 'NAO_INICIADO'}]
+        else:
+            qs = [t for t in qs if t.status_treinamento == status]
     
     # Exportar
     exporter = PlanejamentoExcelExporter()

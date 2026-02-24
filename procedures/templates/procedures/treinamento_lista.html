@@ -154,7 +154,6 @@
                     <option value="">Todos</option>
                     <option value="OK" {% if status == 'OK' %}selected{% endif %}>Em dias</option>
                     <option value="PENDENTE" {% if status == 'PENDENTE' %}selected{% endif %}>Pendente</option>
-                    <option value="NAO_INICIADO" {% if status == 'NAO_INICIADO' %}selected{% endif %}>Não iniciado</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -230,7 +229,7 @@
                             {% elif t.status_treinamento == 'PENDENTE' %}
                                 <span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Pendente</span>
                             {% else %}
-                                <span class="badge bg-secondary"><i class="bi bi-clock"></i> Não iniciado</span>
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Pendente</span>
                             {% endif %}
                         {% else %}
                             <small class="text-muted">Histórico</small>

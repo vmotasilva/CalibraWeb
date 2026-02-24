@@ -603,12 +603,12 @@ def dashboard_treinamentos_view(request):
         EPOCH_DATE = date(1970, 1, 1)
         ultimo_treinamento_por_procedimento = {}
 
+        # Não filtrar por "ativo" aqui: para bater com Matriz/RH, usamos o histórico real
         treinamentos_qs = RegistroTreinamento.objects.filter(
             colaborador_id=colaborador_obj.id,
             procedimento_id__in=perfil_procedimentos_ids,
-            ativo=True,
             procedimento__isnull=False,
-        ).select_related('procedimento').order_by('-data_treinamento', '-id')
+        ).select_related('procedimento', 'lista_presenca').order_by('-data_treinamento', '-id')
 
         # 1) Preferir registros com data válida (não nula e não 1970-01-01)
         for t in treinamentos_qs:
@@ -634,10 +634,16 @@ def dashboard_treinamentos_view(request):
         pendentes_count = 0
         for proc_id in perfil_procedimentos_ids:
             t = ultimo_treinamento_por_procedimento.get(proc_id)
-            if not t or not t.data_treinamento or t.data_treinamento == EPOCH_DATE:
+            if not t:
                 pendentes_count += 1
                 continue
-            if t.revisao_treinada == t.procedimento.numero_revisao:
+
+            # Se a data é sentinela, tratar como pendente
+            if t.data_treinamento == EPOCH_DATE:
+                pendentes_count += 1
+                continue
+
+            if t.status_treinamento == 'OK':
                 vigentes_count += 1
             else:
                 pendentes_count += 1
@@ -656,6 +662,26 @@ def dashboard_treinamentos_view(request):
             taxa_conformidade = round((treinamentos_vigentes / total_treinamentos) * 100, 1)
         else:
             taxa_conformidade = 0
+
+        # Ajustar gráficos de DEMANDA para refletirem o cálculo por perfil (colaborador único)
+        try:
+            if getattr(colaborador_obj, 'lider', None):
+                parts = str(colaborador_obj.lider.nome_completo or '').split()
+                nome_lider = f"{parts[0]} {parts[-1]}" if len(parts) > 1 else (colaborador_obj.lider.nome_completo or '')
+            else:
+                nome_lider = 'Sem líder'
+            treinamentos_por_lider = [{'nome': nome_lider[:30], 'vigentes': vigentes_count, 'pendentes': pendentes_count}]
+        except Exception:
+            pass
+
+        try:
+            from core.models import TURNOS_CHOICES
+            turno_dict = dict(TURNOS_CHOICES)
+            setor_nome = getattr(getattr(colaborador_obj, 'setor', None), 'nome', None) or 'Desconhecido'
+            turno_label = turno_dict.get(getattr(colaborador_obj, 'turno', None), getattr(colaborador_obj, 'turno', None) or 'N/A')
+            treinamentos_por_setor_turno = [{'nome': f'{setor_nome} - {turno_label}'[:40], 'vigentes': vigentes_count, 'pendentes': pendentes_count}]
+        except Exception:
+            pass
     
     # Taxa de conformidade (treinados vs total)
     if total_treinamentos > 0:
@@ -926,7 +952,7 @@ def dashboard_treinamentos_view(request):
     for registro in page_obj.object_list:
         # Calcular status diretamente
         if not registro['data_treinamento']:
-            status = 'NAO_INICIADO'
+            status = 'PENDENTE'
         elif registro['revisao_treinada'] == registro['procedimento__numero_revisao']:
             status = 'OK'
         else:
@@ -1449,7 +1475,7 @@ def dashboard_treinamentos_exportar_csv_view(request):
     for treinamento in registros:
         # Determinar status
         if not treinamento.data_treinamento:
-            status = 'NÃO INICIADO'
+            status = 'PENDENTE'
         elif treinamento.revisao_treinada == treinamento.procedimento.numero_revisao:
             status = 'VIGENTE'
         else:
