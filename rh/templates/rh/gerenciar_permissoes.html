@@ -131,14 +131,16 @@
             </h1>
             <p class="text-muted mb-0">Gerencie as permissões dos usuários do módulo RH</p>
         </div>
-        <div class="col-md-6 text-end">
-            <span class="saving-indicator me-3" id="savingIndicator">
-                <span class="spinner-border spinner-border-sm"></span>
-                Salvando...
-            </span>
-            <a href="{% url 'modulo_rh' %}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Voltar ao RH
-            </a>
+        <div class="col-md-6">
+            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end align-items-center">
+                <span class="saving-indicator" id="savingIndicator">
+                    <span class="spinner-border spinner-border-sm"></span>
+                    Salvando...
+                </span>
+                <a href="{% url 'modulo_rh' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar ao RH
+                </a>
+            </div>
         </div>
     </div>
 
@@ -150,7 +152,7 @@
                 <input type="text" class="form-control" id="searchUser" placeholder="Buscar usuário...">
             </div>
         </div>
-        <div class="col-md-8 d-flex align-items-center justify-content-end">
+        <div class="col-md-8 d-flex flex-wrap gap-2 align-items-center justify-content-start justify-content-md-end">
             <div class="legend-item">
                 <span class="legend-box" style="background-color: #0d6efd;"></span>
                 Colaborador

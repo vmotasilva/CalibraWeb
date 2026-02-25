@@ -29,18 +29,20 @@
                             <p class="mb-2"><strong>Responsável:</strong> {{ modelo.responsavel.get_full_name|default:modelo.responsavel.username }}</p>
                             {% endif %}
                         </div>
-                        <div class="col-md-6 text-end">
-                            {% if modelo.link_sharepoint %}
-                            <a href="{{ modelo.link_sharepoint }}" target="_blank" class="btn btn-outline-info btn-sm">
-                                <i class="bi bi-link-45deg"></i> SharePoint
-                            </a>
-                            {% endif %}
-                            <a href="{% url 'auditoria:exportar_respostas_excel' modelo.id %}" class="btn btn-outline-success btn-sm">
-                                <i class="bi bi-file-earmark-excel"></i> Exportar Excel
-                            </a>
-                            <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
-                                <i class="bi bi-plus-circle"></i> Novo Registro
-                            </a>
+                        <div class="col-md-6 text-start text-md-end">
+                            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                                {% if modelo.link_sharepoint %}
+                                <a href="{{ modelo.link_sharepoint }}" target="_blank" class="btn btn-outline-info btn-sm">
+                                    <i class="bi bi-link-45deg"></i> SharePoint
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'auditoria:exportar_respostas_excel' modelo.id %}" class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                                </a>
+                                <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
+                                    <i class="bi bi-plus-circle"></i> Novo Registro
+                                </a>
+                            </div>
                         </div>
                     </div>
 

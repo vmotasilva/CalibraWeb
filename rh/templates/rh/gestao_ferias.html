@@ -42,23 +42,25 @@
                 Gestão de Férias
             </h1>
         </div>
-        <div class="col-md-4 text-end">
-            <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#modalSelecionarColaborador">
-                <i class="fas fa-plus"></i> Registrar Férias
-            </button>
-            <a href="{% url 'rh:atualizar_status_ferias' %}" class="btn btn-warning me-2" title="Atualizar status de férias em massa">
-                <i class="fas fa-sync"></i> Atualizar Status
-            </a>
-            <a href="{% url 'rh:importar_ferias' %}" class="btn btn-info" title="Importar férias em massa de um arquivo">
-                <i class="fas fa-file-import"></i> Importar
-            </a>
-            <a href="{% url 'rh:exportar_ferias' %}?status={{ status_filtro }}&aprovada={{ aprovada_filtro }}&colaborador={{ colaborador_filtro }}" 
-               class="btn btn-outline-success" title="Exportar férias para Excel">
-                <i class="fas fa-file-excel"></i> Exportar
-            </a>
-            <a href="{% url 'modulo_rh' %}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Voltar ao RH
-            </a>
+        <div class="col-md-4">
+            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalSelecionarColaborador">
+                    <i class="fas fa-plus"></i> Registrar Férias
+                </button>
+                <a href="{% url 'rh:atualizar_status_ferias' %}" class="btn btn-warning" title="Atualizar status de férias em massa">
+                    <i class="fas fa-sync"></i> Atualizar Status
+                </a>
+                <a href="{% url 'rh:importar_ferias' %}" class="btn btn-info" title="Importar férias em massa de um arquivo">
+                    <i class="fas fa-file-import"></i> Importar
+                </a>
+                <a href="{% url 'rh:exportar_ferias' %}?status={{ status_filtro }}&aprovada={{ aprovada_filtro }}&colaborador={{ colaborador_filtro }}" 
+                   class="btn btn-outline-success" title="Exportar férias para Excel">
+                    <i class="fas fa-file-excel"></i> Exportar
+                </a>
+                <a href="{% url 'modulo_rh' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar ao RH
+                </a>
+            </div>
         </div>
     </div>
 

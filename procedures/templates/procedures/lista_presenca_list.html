@@ -13,8 +13,8 @@
             </h1>
             <p class="text-muted">Total: <strong>{{ total_listas }}</strong> lista(s) | Registros: <strong>{{ total_registros }}</strong></p>
         </div>
-        <div class="col-md-4 text-end">
-            <div class="btn-group" role="group">
+        <div class="col-md-4 text-start text-md-end">
+            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end" role="group">
                 <a href="{% url 'procedures:lista_presenca_create' %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle"></i> Nova Lista
                 </a>

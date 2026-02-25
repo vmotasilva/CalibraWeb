@@ -2,8 +2,8 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Modelos Cadastrados - Consulta por Período</h2>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="mb-0">Modelos Cadastrados - Consulta por Período</h2>
         <a href="{% url 'auditoria:registro_create' %}" class="btn btn-primary">Nova Avaliação</a>
     </div>
 
@@ -25,7 +25,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-3 d-flex align-items-end gap-2">
+        <div class="col-md-3 d-flex flex-wrap align-items-end gap-2">
             <button type="submit" class="btn btn-outline-primary">Filtrar</button>
             <a href="{% url 'auditoria:registros_list' %}" class="btn btn-outline-secondary">Limpar</a>
         </div>
@@ -45,7 +45,8 @@
 
     <div class="card shadow-sm">
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
                 <thead>
                     <tr>
                         <th>Data</th>
@@ -70,7 +71,8 @@
                     <tr><td colspan="5" class="text-center py-3">Nenhum registro encontrado.</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+                </table>
+            </div>
         </div>
     </div>
 </div>

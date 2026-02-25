@@ -116,6 +116,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "shared.context_processors.nav_notifications",
+                "shared.context_processors.template_variants",
             ],
         },
     },

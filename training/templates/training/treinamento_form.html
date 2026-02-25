@@ -2,7 +2,7 @@
 {% block title %}{{ form.instance.pk|yesno:'Editar,Adicionar' }} Treinamento{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h2 class="mb-0">{{ form.instance.pk|yesno:'Editar,Adicionar' }} Treinamento</h2>
     <a href="{% url 'treinamentos_lista' %}" class="btn btn-outline-dark btn-sm">Voltar</a>
   </div>
@@ -34,7 +34,7 @@
         {{ form.observacoes|as_crispy_field }}
       </div>
     </div>
-    <div class="mt-4 d-flex justify-content-end gap-2">
+    <div class="mt-4 d-flex flex-wrap justify-content-end gap-2">
       <button type="submit" class="btn btn-primary">Salvar</button>
       <a href="{% url 'treinamentos_lista' %}" class="btn btn-secondary">Cancelar</a>
     </div>

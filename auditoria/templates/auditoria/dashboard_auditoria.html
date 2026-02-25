@@ -2,8 +2,8 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Dashboard - Dados das Auditorias</h2>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="mb-0">Dashboard - Dados das Auditorias</h2>
         <a href="{% url 'auditoria:modulo' %}" class="btn btn-outline-secondary">Módulo Auditoria</a>
     </div>
 
@@ -36,7 +36,7 @@
             <label class="form-label">Período final</label>
             <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
         </div>
-        <div class="col-md-2 d-flex align-items-end gap-2">
+        <div class="col-md-2 d-flex flex-wrap align-items-end gap-2">
             <button type="submit" class="btn btn-outline-primary">Aplicar Filtro</button>
             <a href="{% url 'auditoria:dashboard' %}" class="btn btn-outline-secondary">Limpar</a>
         </div>
@@ -109,7 +109,8 @@
             <div class="card shadow-sm h-100">
                 <div class="card-header">Registros por Modelo</div>
                 <div class="card-body p-0">
-                    <table class="table table-striped mb-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
                         <thead>
                             <tr>
                                 <th>Modelo</th>
@@ -132,7 +133,8 @@
                             <tr><td colspan="3" class="text-center py-3">Sem dados.</td></tr>
                             {% endfor %}
                         </tbody>
-                    </table>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -140,7 +142,8 @@
             <div class="card shadow-sm h-100">
                 <div class="card-header">Modelos por Periodicidade</div>
                 <div class="card-body p-0">
-                    <table class="table table-striped mb-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
                         <thead>
                             <tr>
                                 <th>Periodicidade</th>
@@ -157,7 +160,8 @@
                             <tr><td colspan="2" class="text-center py-3">Sem dados.</td></tr>
                             {% endfor %}
                         </tbody>
-                    </table>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

@@ -43,7 +43,7 @@
                 </div>
                 <div class="card-body">
                     <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between">
+                        <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
                             <span class="text-muted">Status:</span>
                             {% if alvo.is_active %}
                                 <span class="badge bg-success">ATIVO</span>
@@ -51,11 +51,11 @@
                                 <span class="badge bg-danger">DESLIGADO</span>
                             {% endif %}
                         </li>
-                        <li class="list-group-item d-flex justify-content-between">
+                        <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
                             <span class="text-muted">Setor:</span>
                             <strong>{{ alvo.setor.nome|default:"-" }}</strong>
                         </li>
-                        <li class="list-group-item d-flex justify-content-between">
+                        <li class="list-group-item d-flex flex-wrap justify-content-between gap-2">
                             <span class="text-muted">Centro de Custo:</span>
                             <span>{{ alvo.centro_custo.codigo|default:"-" }}</span>
                         </li>
@@ -106,7 +106,7 @@
                             {% endif %}
                         </li>
                         
-                        <li class="list-group-item d-flex justify-content-between align-items-center bg-light mt-2 border">
+                        <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2 bg-light mt-2 border">
                             <span class="fw-bold text-dark"><i class="bi bi-cash"></i> Salário Base:</span>
                             {% if can_see_salary %}
                                 <span class="text-success fw-bold fs-5">R$ {{ alvo.salario|floatformat:2 }}</span>
@@ -124,7 +124,7 @@
                 </div>
                 <ul class="list-group list-group-flush">
                     {% for doc in documentos %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <div>
                                 <i class="bi bi-file-earmark-text text-primary"></i> {{ doc.tipo }}
                                 <br><small class="text-muted">{{ doc.data_upload|date:"d/m/Y" }}</small>
@@ -143,19 +143,21 @@
         </div>
 
         <!-- COLUNA DA DIREITA -->
-        <div class="col-md-8">
+        <div class="col-12 col-md-8 mt-4 mt-md-0">
             
             <!-- CARD DE FÉRIAS (ATUALIZADO COM DIAS VENDIDOS) -->
             <div class="card shadow-sm mb-4 border-0">
-                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                    <span class="fw-bold"><i class="bi bi-airplane"></i> Gestão de Férias</span>
-                    <div class="d-flex gap-2">
-                        <span class="badge bg-white text-danger fw-bold" title="Períodos Vencidos/Pendentes">
-                            Vencidas: {{ kpi_ferias_vencidas }}
-                        </span>
-                        <span class="badge bg-white text-success fw-bold" title="Períodos Programados">
-                            Programadas: {{ kpi_ferias_programadas }}
-                        </span>
+                <div class="card-header bg-info text-white">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <span class="fw-bold"><i class="bi bi-airplane"></i> Gestão de Férias</span>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-white text-danger fw-bold" title="Períodos Vencidos/Pendentes">
+                                Vencidas: {{ kpi_ferias_vencidas }}
+                            </span>
+                            <span class="badge bg-white text-success fw-bold" title="Períodos Programados">
+                                Programadas: {{ kpi_ferias_programadas }}
+                            </span>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body p-0">

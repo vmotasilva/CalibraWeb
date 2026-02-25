@@ -12,9 +12,9 @@
         </ol>
     </nav>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2><i class="bi bi-file-text"></i> Detalhes do Registro de Auditoria</h2>
-        <div class="btn-group">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="mb-0"><i class="bi bi-file-text"></i> Detalhes do Registro de Auditoria</h2>
+        <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
             <a href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Novo Registro
             </a>
@@ -82,7 +82,8 @@
             <h5 class="mb-0"><i class="bi bi-question-circle"></i> Respostas às Perguntas</h5>
         </div>
         <div class="card-body p-0">
-            <table class="table table-striped mb-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
                 <thead class="table-dark">
                     <tr>
                         <th width="80">Ordem</th>
@@ -128,7 +129,8 @@
                     <tr><td colspan="{% if exibir_dia_semana %}5{% else %}4{% endif %}" class="text-center py-3 text-muted">Sem respostas registradas.</td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+                </table>
+            </div>
         </div>
     </div>
 

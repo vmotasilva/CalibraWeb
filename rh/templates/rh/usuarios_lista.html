@@ -61,21 +61,23 @@
             </h1>
             <p class="text-muted mb-0">Gerencie os usuários e suas permissões no sistema</p>
         </div>
-        <div class="col-md-6 text-end">
-            {% if request.user.is_superuser %}
-            <a href="{% url 'rh:criar_usuario' %}" class="btn btn-success me-2">
-                <i class="bi bi-person-plus-fill"></i> Novo Usuário
-            </a>
-            {% endif %}
-            <a href="{% url 'home' %}" class="btn btn-secondary">
-                <i class="bi bi-house"></i> Voltar ao Início
-            </a>
+        <div class="col-12 col-md-6 mt-3 mt-md-0">
+            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                {% if request.user.is_superuser %}
+                <a href="{% url 'rh:criar_usuario' %}" class="btn btn-success">
+                    <i class="bi bi-person-plus-fill"></i> Novo Usuário
+                </a>
+                {% endif %}
+                <a href="{% url 'home' %}" class="btn btn-secondary">
+                    <i class="bi bi-house"></i> Voltar ao Início
+                </a>
+            </div>
         </div>
     </div>
 
     <!-- Estatísticas -->
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-12 col-md-4 mb-3 mb-md-0">
             <div class="card stats-card users">
                 <div class="card-body py-3">
                     <div class="d-flex justify-content-between align-items-center">
@@ -88,7 +90,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-12 col-md-4 mb-3 mb-md-0">
             <div class="card stats-card superusers">
                 <div class="card-body py-3">
                     <div class="d-flex justify-content-between align-items-center">
@@ -101,7 +103,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-12 col-md-4">
             <div class="card stats-card staff">
                 <div class="card-body py-3">
                     <div class="d-flex justify-content-between align-items-center">
@@ -118,7 +120,7 @@
 
     <!-- Busca -->
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-12 col-md-6 mb-3 mb-md-0">
             <div class="input-group search-box">
                 <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
                 <input type="text" class="form-control" id="searchUser" placeholder="Buscar por nome de usuário ou colaborador...">
@@ -129,18 +131,18 @@
     <!-- Lista de Usuários -->
     <div class="row" id="usersList">
         {% for u in usuarios %}
-        <div class="col-lg-4 col-md-6 mb-4 user-item" 
+        <div class="col-12 col-sm-6 col-lg-4 mb-4 user-item" 
              data-username="{{ u.user.username|lower }}"
              data-colaborador="{{ u.colaborador_nome|default:''|lower }}">
             <a href="{% url 'rh:detalhe_usuario' u.user.id %}" class="text-decoration-none">
                 <div class="card user-card h-100 shadow-sm">
                     <div class="card-body">
-                        <div class="d-flex align-items-start">
+                        <div class="d-flex flex-wrap align-items-start gap-2">
                             <div class="user-avatar bg-{{ u.is_superuser|yesno:'danger,primary' }} bg-opacity-10 text-{{ u.is_superuser|yesno:'danger,primary' }} me-3">
                                 {{ u.user.username|slice:":1"|upper }}
                             </div>
                             <div class="flex-grow-1">
-                                <div class="d-flex align-items-center gap-2 mb-1">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
                                     <h5 class="mb-0 text-dark">{{ u.user.username }}</h5>
                                     {% if u.is_superuser %}
                                         <span class="badge badge-superuser" title="Superusuário">
@@ -173,7 +175,7 @@
                         
                         <hr class="my-2">
                         
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <small class="text-muted">
                                 <i class="bi bi-key"></i>
                                 {% if u.is_superuser %}

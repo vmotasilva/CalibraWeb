@@ -4,7 +4,7 @@
 <div class="container mt-4">
     <h2>Histórico de Reavaliações - {{ fornecedor.empresa }}</h2>
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <div>
             <span class="badge bg-info">Total: {{ total_reavaliacoes }} reavaliação(ões)</span>
         </div>
@@ -69,7 +69,7 @@
                         </div>
                     </div>
                     
-                    <div class="d-flex gap-2">
+                    <div class="d-flex flex-wrap gap-2">
                         <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-sm btn-warning">
                             <i class="bi bi-pencil"></i> Editar
                         </a>

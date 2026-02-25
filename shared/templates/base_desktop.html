@@ -1,0 +1,276 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calibra QMS</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; padding-top: 80px; }
+        .navbar-brand { font-weight: bold; letter-spacing: 1px; }
+        .dropdown-item:active { background-color: #0d6efd; }
+        .nav-icon { font-size: 1.05rem; }
+        .nav-text {
+            display: none;
+            margin-left: 0.35rem;
+        }
+
+        .nav-divider {
+            width: 1px;
+            height: 26px;
+            background-color: rgba(255, 255, 255, 0.2);
+            margin: 0 0.65rem;
+            align-self: center;
+        }
+    </style>
+    
+    {% block extra_css %}
+    {% endblock %}
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow">
+    <div class="container-fluid">
+        <a class="navbar-brand ms-3 d-flex align-items-center gap-2" href="{% url 'home' %}">
+            <img src="{% static 'shared/logo_calibraweb.png' %}" alt="CalibraWeb Logo" height="38" style="max-width:120px;object-fit:contain;">
+            <span class="fw-bold d-none d-md-inline" style="letter-spacing:1px;">CalibraWeb</span>
+        </a>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Metrologia">
+                        <i class="bi bi-tools nav-icon"></i><span class="nav-text">Metrologia</span>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><h6 class="dropdown-header text-muted">VISÃO GERAL</h6></li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'dashboard' %}">
+                                <i class="bi bi-speedometer2"></i> Dashboard Metrologia
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">GESTÃO</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'modulo_metrologia' %}">📋 Lista de Instrumentos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'qms:listar_historicos_calibracao' %}"><i class="bi bi-clock-history"></i> Históricos de Calibração</a></li>
+                        <li><a class="dropdown-item" href="{% url 'metrologia:categorias_list' %}"><i class="bi bi-tags"></i> Categorias</a></li>
+                        <li><a class="dropdown-item" href="{% url 'metrologia:unidades_list' %}"><i class="bi bi-rulers"></i> Unidades de Medida</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">COTAÇÕES</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'metrologia:solicitacao_list' %}">📝 Solicitações de Cotação</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'qms:importar_instrumentos' %}">📥 Importar Instrumentos</a></li>
+                        <li><a class="dropdown-item" href="{% url 'qms:importar_historico' %}">📜 Importar Histórico</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'procedures:procedimentos_list' %}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Procedimentos">
+                        <i class="bi bi-journal-bookmark nav-icon"></i><span class="nav-text">Procedimentos</span>
+                    </a>
+                </li>
+
+                <li class="nav-divider"></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Treinamentos">
+                        <i class="bi bi-mortarboard nav-icon"></i><span class="nav-text">Treinamentos</span>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><h6 class="dropdown-header text-muted">GESTÃO DE TREINAMENTOS</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'procedures:dashboard_treinamentos' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>
+                        <li><a class="dropdown-item" href="{% url 'procedures:treinamentos_list' %}"><i class="bi bi-list-check"></i> Registros de Treinamento</a></li>
+                        <li><a class="dropdown-item" href="{% url 'procedures:lista_presenca_list' %}"><i class="bi bi-clipboard-check"></i> Listas de Presença</a></li>
+                        <li><a class="dropdown-item" href="{% url 'procedures:planejamentos_list' %}"><i class="bi bi-calendar-event"></i> Planejamento</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">MATRIZ DE COMPETÊNCIAS</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'procedures:matrizes_list' %}"><i class="bi bi-grid-3x3"></i> Matrizes</a></li>
+                        <li><a class="dropdown-item" href="{% url 'procedures:disciplinas_list' %}"><i class="bi bi-book"></i> Disciplinas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'procedures:matriz_avaliacoes' %}"><i class="bi bi-clipboard-check"></i> Avaliações de Colaboradores</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">PERFIS DE TREINAMENTO</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'procedures:perfis_list' %}"><i class="bi bi-person-badge"></i> Perfis e Grupos</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-divider"></li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="RH">
+                        <i class="bi bi-people nav-icon"></i><span class="nav-text">RH</span>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><h6 class="dropdown-header text-muted">EQUIPE</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'modulo_rh' %}">👥 Colaboradores</a></li>
+                        <li><a class="dropdown-item" href="{% url 'rh:criar_colaborador' %}"><i class="bi bi-plus-circle text-success"></i> Novo Colaborador</a></li>
+                        <li><a class="dropdown-item" href="{% url 'rh:gestao_ferias' %}">📅 Gestão de Férias</a></li>
+                            <li><a class="dropdown-item" href="{% url 'rh:atualizar_liderancas_em_massa' %}">🛠️ Lideranças</a></li>
+                        <li><a class="dropdown-item" href="{% url 'listar_ocorrencias' %}">⚠️ Ocorrências</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'qms:importar_colaboradores' %}">📥 Importar Pessoas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'qms:importar_hierarquia' %}">🌳 Importar Hierarquia</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-divider"></li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Ações Corretivas">
+                        <i class="bi bi-exclamation-triangle nav-icon"></i><span class="nav-text">Ações Corretivas</span>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><h6 class="dropdown-header text-muted">REGISTRO E SOLUÇÃO</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'acoes:acoes_registradas' %}">📊 Ações Registradas</a></li>
+                        <li><a class="dropdown-item" href="{% url 'acoes:listar_solucoes' %}">📋 Controle de Registros</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">REFERÊNCIA DE DADOS</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'acoes:origem_problema_list' %}">
+                            <i class="bi bi-diagram-3"></i> Origens de Problemas
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'acoes:tipo_solucao_list' %}">
+                            <i class="bi bi-journal-text"></i> Tipos de Solução
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'acoes:kpi_opcao_list' %}">
+                            <i class="bi bi-graph-up"></i> KPIs
+                        </a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-divider"></li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Fornecedores">
+                        <i class="bi bi-truck nav-icon"></i><span class="nav-text">Fornecedores</span>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_list' %}">Lista de Fornecedores</a></li>
+                        <li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_create' %}">Novo Fornecedor</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'fornecedores:pergunta_list' %}">Perguntas de Avaliação</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-divider"></li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Auditoria">
+                        <i class="bi bi-clipboard2-check nav-icon"></i><span class="nav-text">Auditoria</span>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li><a class="dropdown-item fw-bold text-success" href="{% url 'auditoria:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVA AUDITORIA</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">CADASTRO</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'auditoria:modelos_list' %}">Modelos de Auditoria</a></li>
+                        <li><a class="dropdown-item" href="{% url 'auditoria:perguntas_list' %}">Perguntas por Modelo</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">OPERAÇÃO</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'auditoria:registros_list' %}">Modelos Cadastrados / Período</a></li>
+                        <li><a class="dropdown-item" href="{% url 'auditoria:registro_create' %}">Avaliação de Dados</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">ANÁLISE</h6></li>
+                        <li><a class="dropdown-item" href="{% url 'auditoria:dashboard' %}">Dashboard Auditoria</a></li>
+                    </ul>
+                </li>
+
+                {% if user.is_superuser or user.is_staff %}
+                <li class="nav-divider"></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'rh:listar_usuarios' %}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Usuários">
+                        <i class="bi bi-person-gear nav-icon"></i><span class="nav-text">Usuários</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+
+            <div class="d-flex align-items-center border-start border-secondary ps-3 ms-2">
+                <div class="text-white me-3 text-end d-none d-md-block" style="line-height: 1.2;">
+                    {% if colaborador %}
+                        <div class="fw-bold small">{{ colaborador.nome_completo|upper }}</div>
+                        <div class="text-muted" style="font-size: 0.7rem;">{{ colaborador.cargo|default:"Usuário" }}</div>
+                    {% else %}
+                        <div class="fw-bold small">{{ user.username|upper }}</div>
+                        <div class="text-muted" style="font-size: 0.7rem;">Usuário</div>
+                    {% endif %}
+                </div>
+
+                <!-- Segurança 2FA -->
+                <a href="{% url 'two_factor:profile' %}" class="btn btn-sm btn-outline-info me-2" title="Segurança 2FA">
+                    <i class="bi bi-shield-lock"></i>
+                </a>
+
+                <!-- Notificações de cobranças -->
+                <a href="{% url 'home' %}#cobrancas" class="btn btn-sm btn-outline-light me-2 position-relative" title="Notificações">
+                    <i class="bi bi-bell"></i>
+                    {% if nav_notifications_total and nav_notifications_total|add:0 > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ nav_notifications_total }}
+                            <span class="visually-hidden">notificações</span>
+                        </span>
+                    {% endif %}
+                </a>
+
+                {% if user.is_staff or colaborador and colaborador.is_admin %}
+                    <a href="/admin/" target="_blank" class="btn btn-sm btn-outline-warning me-2" title="Admin">⚙️</a>
+                {% endif %}
+
+                <form action="{% url 'logout' %}" method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger">Sair</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid px-4">
+    
+    {% if messages %}
+        <div class="row justify-content-center mt-3">
+            <div class="col-md-8">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% block content %}
+    {% endblock content %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach((tooltipTriggerEl) => {
+            new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        const dropdownTooltipList = [].slice.call(document.querySelectorAll('[data-tooltip]'));
+        dropdownTooltipList.forEach((tooltipTriggerEl) => {
+            new bootstrap.Tooltip(tooltipTriggerEl, {
+                title: tooltipTriggerEl.getAttribute('data-tooltip') || '',
+                placement: 'bottom'
+            });
+        });
+    });
+</script>
+{% block extra_js %}
+{% endblock %}
+</body>
+</html>

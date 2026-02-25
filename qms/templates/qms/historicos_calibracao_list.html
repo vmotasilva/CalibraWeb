@@ -18,11 +18,11 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h1 class="h2 mb-0">
             <i class="bi bi-clock-history"></i> Históricos de Calibração
         </h1>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
             <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#novoRegistroModal">
                 <i class="bi bi-plus-circle"></i> Novo Registro
             </button>
@@ -198,16 +198,16 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <div class="btn-group btn-group-sm" role="group">
+                                <div class="d-flex flex-wrap gap-1 justify-content-center">
                                     <a href="{% url 'visualizar_historico_calibracao' historico.id %}" 
-                                       class="btn btn-outline-secondary" title="Detalhes">
+                                       class="btn btn-sm btn-outline-secondary" title="Detalhes">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     <a href="{% url 'editar_historico_calibracao' historico.id %}" 
-                                       class="btn btn-outline-primary" title="Editar">
+                                       class="btn btn-sm btn-outline-primary" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <button type="button" class="btn btn-outline-danger" title="Excluir"
+                                    <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir"
                                             data-bs-toggle="modal" data-bs-target="#deleteModal{{ historico.id }}">
                                         <i class="bi bi-trash"></i>
                                     </button>
