@@ -60,7 +60,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
     if not getattr(user, "is_authenticated", False):
         return {"total": 0}
 
-    cache_key = f"nav_cobrancas_counts:v1:user:{getattr(user, 'pk', 'anon')}"
+    cache_key = f"nav_cobrancas_counts:v2:user:{getattr(user, 'pk', 'anon')}"
     cached = cache.get(cache_key)
     if isinstance(cached, dict):
         return cached
@@ -169,6 +169,77 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
     except Exception:
         counts["auditoria"] = 0
 
+    # Treinamentos: Matriz de Habilidade, Demanda de Treinamento, Planejamentos (prazos)
+    try:
+        from django.db.models import F, Q
+        from rh.models import Colaborador
+        from procedures.models import PlanejamentoTreinamento, RegistroTreinamento, SolicitacaoValidacaoMatriz
+
+        if colaborador:
+            scope_colabs = Colaborador.objects.filter(
+                Q(pk=colaborador.pk) | Q(lider=colaborador),
+                is_active=True,
+            )
+
+            # Matriz de Habilidade: pendências de validação designadas ao líder/validador
+            counts["trein_matriz"] = SolicitacaoValidacaoMatriz.objects.filter(
+                status="pendente",
+                validador=colaborador,
+            ).count()
+
+            # Demanda de Treinamento: registros pendentes (não iniciado / revisão desatualizada / anterior à última revisão)
+            pendencias_q = (
+                Q(data_treinamento__isnull=True)
+                | (
+                    Q(lista_presenca__isnull=True)
+                    & (
+                        (
+                            Q(procedimento__numero_revisao__isnull=False)
+                            & ~Q(revisao_treinada=F("procedimento__numero_revisao"))
+                        )
+                        | (
+                            Q(procedimento__ultima_revisao__isnull=False)
+                            & Q(data_treinamento__lt=F("procedimento__ultima_revisao"))
+                        )
+                    )
+                )
+                | (
+                    Q(lista_presenca__isnull=False)
+                    & Q(procedimento__ultima_revisao__isnull=False)
+                    & Q(data_treinamento__lt=F("procedimento__ultima_revisao"))
+                )
+            )
+
+            counts["trein_demanda"] = (
+                RegistroTreinamento.objects.filter(
+                    ativo=True,
+                    tipo="PROCEDIMENTO",
+                    procedimento__isnull=False,
+                    colaborador__in=scope_colabs,
+                )
+                .filter(pendencias_q)
+                .count()
+            )
+
+            # Planejamentos: prazos vencidos para treinamentos do escopo (instrutor ou participantes)
+            counts["trein_planejamentos"] = (
+                PlanejamentoTreinamento.objects.filter(
+                    status__in=["PLANEJADO", "CONFIRMADO", "ATRASADO"],
+                    data_prevista__lt=hoje,
+                )
+                .filter(Q(instrutor=colaborador) | Q(colaboradores__in=scope_colabs))
+                .distinct()
+                .count()
+            )
+        else:
+            counts["trein_matriz"] = 0
+            counts["trein_demanda"] = 0
+            counts["trein_planejamentos"] = 0
+    except Exception:
+        counts["trein_matriz"] = 0
+        counts["trein_demanda"] = 0
+        counts["trein_planejamentos"] = 0
+
     counts["total"] = sum(v for k, v in counts.items() if k != "total")
 
     cache.set(cache_key, counts, timeout=60)
@@ -201,5 +272,23 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
             label="Auditoria (a realizar)",
             count=int(counts.get("auditoria", 0) or 0),
             url=_safe_reverse("auditoria:selecionar_modelo_preenchimento"),
+        ),
+        CobrancaItem(
+            key="trein_matriz",
+            label="Matriz de Habilidade (Cobrança ao líder mensalmente)",
+            count=int(counts.get("trein_matriz", 0) or 0),
+            url=_safe_reverse("procedures:validacoes_pendentes"),
+        ),
+        CobrancaItem(
+            key="trein_demanda",
+            label="Demanda de Treinamento (Cobrar as pendências de treinamento)",
+            count=int(counts.get("trein_demanda", 0) or 0),
+            url=_safe_reverse("procedures:dashboard_treinamentos"),
+        ),
+        CobrancaItem(
+            key="trein_planejamentos",
+            label="Planejamentos (Notificações sobre os prazos dos treinamentos planejados)",
+            count=int(counts.get("trein_planejamentos", 0) or 0),
+            url=_safe_reverse("procedures:planejamentos_list"),
         ),
     ]

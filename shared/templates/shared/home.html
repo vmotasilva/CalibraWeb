@@ -18,11 +18,14 @@
         <div class="col-lg-10">
             <div class="card shadow-sm">
                 <div class="card-header d-flex align-items-center justify-content-between">
-                    <div class="fw-semibold">
-                        <i class="bi bi-bell"></i> Cobranças por módulo
-                    </div>
-                    <div class="text-muted small">
-                        Total: <strong>{{ total_cobrancas|default:0 }}</strong>
+                    <div class="fw-semibold d-flex align-items-center gap-2">
+                        <i class="bi bi-bell"></i>
+                        <span>Cobranças por módulo</span>
+                        {% if total_cobrancas %}
+                            <span class="badge bg-danger">{{ total_cobrancas }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">0</span>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="card-body p-0">

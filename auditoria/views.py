@@ -12,6 +12,22 @@ from .forms import ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoria
 from .models import ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
 
 
+def _auditoria_is_admin(user) -> bool:
+    return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+
+
+def _filter_modelos_para_usuario(user, qs):
+    if _auditoria_is_admin(user):
+        return qs
+    return qs.filter(responsavel=user)
+
+
+def _filter_registros_para_usuario(user, qs):
+    if _auditoria_is_admin(user):
+        return qs
+    return qs.filter(modelo__responsavel=user)
+
+
 def _get_next_pergunta_ordem(modelo_id: int) -> int:
     """Retorna a próxima ordem (max+1) para perguntas de um modelo."""
     if not modelo_id:
@@ -35,10 +51,17 @@ def api_next_pergunta_ordem(request):
 
 @login_required
 def modulo_auditoria_view(request):
-    total_modelos = ModeloAuditoria.objects.count()
-    total_perguntas = PerguntaAuditoria.objects.count()
-    total_registros = RegistroAuditoria.objects.count()
-    registros_recentes = RegistroAuditoria.objects.select_related("modelo").order_by("-data_auditoria")[:5]
+    modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
+    total_modelos = modelos_qs.count()
+    total_perguntas = PerguntaAuditoria.objects.filter(modelo__in=modelos_qs).count()
+    total_registros = RegistroAuditoria.objects.filter(modelo__in=modelos_qs).count()
+    registros_recentes = (
+        _filter_registros_para_usuario(
+            request.user,
+            RegistroAuditoria.objects.select_related("modelo"),
+        )
+        .order_by("-data_auditoria")[:5]
+    )
 
     context = {
         "total_modelos": total_modelos,
@@ -165,7 +188,10 @@ def registros_list(request):
     fim = request.GET.get("fim")
     modelo_id = request.GET.get("modelo")
 
-    registros = RegistroAuditoria.objects.select_related("modelo", "avaliador")
+    registros = _filter_registros_para_usuario(
+        request.user,
+        RegistroAuditoria.objects.select_related("modelo", "avaliador"),
+    )
     if inicio:
         registros = registros.filter(data_auditoria__gte=inicio)
     if fim:
@@ -175,7 +201,10 @@ def registros_list(request):
 
     context = {
         "registros": registros.order_by("-data_auditoria", "-id"),
-        "modelos": ModeloAuditoria.objects.filter(ativo=True).order_by("nome"),
+        "modelos": _filter_modelos_para_usuario(
+            request.user,
+            ModeloAuditoria.objects.filter(ativo=True),
+        ).order_by("nome"),
         "inicio": inicio,
         "fim": fim,
         "modelo_id": modelo_id,
@@ -190,7 +219,10 @@ def selecionar_modelo_preenchimento(request):
     responsavel_id = (request.GET.get("responsavel") or "").strip()
     periodicidade = (request.GET.get("periodicidade") or "").strip()
 
-    modelos = ModeloAuditoria.objects.filter(ativo=True)
+    if not _auditoria_is_admin(request.user):
+        responsavel_id = str(request.user.pk)
+
+    modelos = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.filter(ativo=True))
     if q:
         modelos = modelos.filter(models.Q(nome__icontains=q) | models.Q(objeto_auditoria__icontains=q))
     if responsavel_id:
@@ -204,7 +236,10 @@ def selecionar_modelo_preenchimento(request):
 
     User = get_user_model()
     responsaveis_ids = (
-        ModeloAuditoria.objects.filter(ativo=True, responsavel__isnull=False)
+        _filter_modelos_para_usuario(
+            request.user,
+            ModeloAuditoria.objects.filter(ativo=True, responsavel__isnull=False),
+        )
         .values_list("responsavel_id", flat=True)
         .distinct()
     )
@@ -224,12 +259,17 @@ def selecionar_modelo_preenchimento(request):
 @login_required
 def registro_create(request, modelo_id=None):
     """Cria novo registro de auditoria para um modelo específico"""
+    modelos_qs = _filter_modelos_para_usuario(
+        request.user,
+        ModeloAuditoria.objects.filter(ativo=True),
+    )
+
     if modelo_id:
-        modelo = get_object_or_404(ModeloAuditoria, pk=modelo_id, ativo=True)
+        modelo = get_object_or_404(modelos_qs, pk=modelo_id)
     else:
         modelo_id = request.GET.get("modelo")
         if modelo_id:
-            modelo = get_object_or_404(ModeloAuditoria, pk=modelo_id, ativo=True)
+            modelo = get_object_or_404(modelos_qs, pk=modelo_id)
         else:
             return redirect("auditoria:selecionar_modelo_preenchimento")
     
@@ -305,7 +345,13 @@ def registro_create(request, modelo_id=None):
 @login_required
 def registro_edit(request, pk):
     """Edita um registro de auditoria existente"""
-    registro = get_object_or_404(RegistroAuditoria.objects.select_related("modelo"), pk=pk)
+    registro = get_object_or_404(
+        _filter_registros_para_usuario(
+            request.user,
+            RegistroAuditoria.objects.select_related("modelo"),
+        ),
+        pk=pk,
+    )
     perguntas = PerguntaAuditoria.objects.filter(modelo=registro.modelo, ativo=True).order_by("ordem", "id")
     
     dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
@@ -390,7 +436,10 @@ def registro_edit(request, pk):
 @login_required
 def registro_detail(request, pk):
     registro = get_object_or_404(
-        RegistroAuditoria.objects.select_related("modelo", "avaliador"),
+        _filter_registros_para_usuario(
+            request.user,
+            RegistroAuditoria.objects.select_related("modelo", "avaliador"),
+        ),
         pk=pk,
     )
     respostas = registro.respostas.select_related("pergunta").order_by("pergunta__ordem", "id")
@@ -417,7 +466,10 @@ def dashboard_auditoria(request):
     modelo_id = request.GET.get("modelo")
     responsavel_id = request.GET.get("responsavel")
 
-    registros = RegistroAuditoria.objects.select_related("modelo")
+    registros = _filter_registros_para_usuario(
+        request.user,
+        RegistroAuditoria.objects.select_related("modelo"),
+    )
 
     if modelo_id:
         registros = registros.filter(modelo_id=modelo_id)
@@ -459,7 +511,10 @@ def dashboard_auditoria(request):
     chart_periodicidade_values = [item["total"] for item in por_periodicidade]
     
     # Lista de todos os modelos para o filtro
-    todos_modelos = ModeloAuditoria.objects.filter(ativo=True).order_by("nome")
+    todos_modelos = _filter_modelos_para_usuario(
+        request.user,
+        ModeloAuditoria.objects.filter(ativo=True),
+    ).order_by("nome")
     modelo_selecionado = None
     if modelo_id:
         modelo_selecionado = ModeloAuditoria.objects.filter(pk=modelo_id).first()
@@ -467,7 +522,10 @@ def dashboard_auditoria(request):
     # Lista de responsáveis (usuários vinculados aos modelos)
     User = get_user_model()
     responsavel_ids = (
-        ModeloAuditoria.objects.filter(responsavel__isnull=False)
+        _filter_modelos_para_usuario(
+            request.user,
+            ModeloAuditoria.objects.filter(responsavel__isnull=False),
+        )
         .values_list("responsavel_id", flat=True)
         .distinct()
     )
@@ -500,7 +558,10 @@ def dashboard_auditoria(request):
 @login_required
 def registros_por_modelo(request, modelo_id):
     """Lista todos os registros preenchidos de um modelo específico"""
-    modelo = get_object_or_404(ModeloAuditoria, pk=modelo_id)
+    modelo = get_object_or_404(
+        _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
+        pk=modelo_id,
+    )
     registros = RegistroAuditoria.objects.filter(modelo=modelo).select_related("avaliador").order_by("-data_auditoria")
     
     # Buscar perguntas do modelo
@@ -629,7 +690,10 @@ def exportar_respostas_excel(request, modelo_id):
     """Exporta em Excel (.xlsx) as respostas registradas de um modelo específico."""
     from openpyxl import Workbook
 
-    modelo = get_object_or_404(ModeloAuditoria, pk=modelo_id)
+    modelo = get_object_or_404(
+        _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
+        pk=modelo_id,
+    )
 
     perguntas = list(
         PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("ordem", "id")
