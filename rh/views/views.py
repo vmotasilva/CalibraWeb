@@ -451,36 +451,11 @@ def detalhe_colaborador_view(request, colab_id):
             gerente_rh = hierarquia.gerente
 
     # Permissão para ver salário
-    can_see_salary = False
-    if request.user.is_superuser:
-        can_see_salary = True
-    elif usuario_logado:
-        if (
-            "GERENTE" in str(usuario_logado.cargo).upper()
-            or HierarquiaSetor.objects.filter(gerente=usuario_logado).exists()
-            or "DIRETOR" in str(usuario_logado.cargo).upper()
-            or HierarquiaSetor.objects.filter(diretor=usuario_logado).exists()
-        ):
-            can_see_salary = True
-
-    # Permissões para ocorrências
-    can_register_occ = False
-    can_view_occ = False
-    if request.user.is_superuser or request.user.is_staff:
-        can_register_occ = True
-        can_view_occ = True
-    elif usuario_logado:
-        if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
-            can_register_occ = True
-            can_view_occ = True
-        # Gerentes e supervisores podem ver/registrar ocorrências
-        if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
-           HierarquiaSetor.objects.filter(supervisor=usuario_logado).exists():
-            can_register_occ = True
-            can_view_occ = True
-        # Colaboradores com cargo de gerente ou supervisor também podem ver/registrar
-        if ("GERENTE" in str(usuario_logado.cargo).upper() or
             "SUPERVISOR" in str(usuario_logado.cargo).upper() or
+        # Permissão: todos podem visualizar ocorrências
+        can_register_occ = False
+        can_view_occ = True
+        ocorrencias = alvo.ocorrencias.all().order_by("-data_ocorrencia")
             "DIRETOR" in str(usuario_logado.cargo).upper()):
             can_view_occ = True
         # Apenas a própria pessoa NÃO pode ver suas próprias ocorrências (se não for admin)

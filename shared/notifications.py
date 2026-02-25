@@ -256,16 +256,16 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
             url=_safe_reverse("modulo_metrologia"),
         ),
         CobrancaItem(
-            key="acoes",
-            label="Ações (vencidas)",
-            count=int(counts.get("acoes", 0) or 0),
-            url=_safe_reverse("acoes:acoes_registradas"),
-        ),
-        CobrancaItem(
             key="cotacoes",
             label="Cotações (prazo vencido)",
             count=int(counts.get("cotacoes", 0) or 0),
             url=_safe_reverse("procedures:cotacoes_list"),
+        ),
+        CobrancaItem(
+            key="acoes",
+            label="Ações (vencidas)",
+            count=int(counts.get("acoes", 0) or 0),
+            url=_safe_reverse("acoes:acoes_registradas"),
         ),
         CobrancaItem(
             key="auditoria",
