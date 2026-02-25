@@ -35,6 +35,9 @@ sqlparse==0.5.3
 tzdata==2025.2
 packaging==25.0
 
+# Necessário para carregar variáveis de ambiente no manage.py
+python-dotenv==1.0.1
+
 # 2FA Authentication
 django-two-factor-auth==1.18.1
 django-otp==1.7.0
