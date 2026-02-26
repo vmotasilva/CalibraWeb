@@ -40,6 +40,9 @@
                 <div class="col-md-6">
                     <p class="mb-2"><strong>Data da Auditoria:</strong> {{ registro.data_auditoria|date:'d/m/Y' }}</p>
                     <p class="mb-2"><strong>Avaliador:</strong> {{ registro.avaliador.get_full_name|default:registro.avaliador.username }}</p>
+                    {% if registro.item_os %}
+                    <p class="mb-2"><strong>ITEM/O.S.:</strong> {{ registro.item_os }}</p>
+                    {% endif %}
                 </div>
             </div>
             <div class="row g-3 mt-2">
