@@ -132,6 +132,9 @@ def treinamentos_lista_redirect(request):
 urlpatterns = [
     # 0. Favicon
     path("favicon.ico", favicon_view, name="favicon"),
+
+    # Health check (infra)
+    path("healthz/", health_check, name="health_check"),
     
     # Página inicial personalizada (agora padrão)
     path("", home_view, name="home"),
