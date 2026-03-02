@@ -56,6 +56,11 @@ class Procedimento(models.Model):
         verbose_name = "Procedimento"
         verbose_name_plural = "Procedimentos (GED)"
         ordering = ["codigo"]
+        indexes = [
+            models.Index(fields=["criticidade"], name="proc_criticidade_idx"),
+            models.Index(fields=["matriz"], name="proc_matriz_idx"),
+            models.Index(fields=["sub_area"], name="proc_sub_area_idx"),
+        ]
 
 
 class Area(models.Model):
@@ -457,6 +462,10 @@ class RegistroTreinamento(models.Model):
         verbose_name_plural = "Matriz de Treinamentos"
         # Permitir múltiplos registros do mesmo procedimento em datas diferentes
         unique_together = ("colaborador", "procedimento", "data_treinamento")
+        indexes = [
+            models.Index(fields=["ativo", "data_treinamento"], name="regtrein_ativo_data_idx"),
+            models.Index(fields=["ativo", "colaborador", "procedimento"], name="regtrein_ativo_col_proc_idx"),
+        ]
 
 
 # ==============================================================================

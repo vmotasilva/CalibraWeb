@@ -142,6 +142,8 @@ class Colaborador(models.Model):
             models.Index(fields=['lider', '-matricula']),
             models.Index(fields=['em_ferias', 'setor']),
             models.Index(fields=['is_active', '-criado_em']),
+            models.Index(fields=['turno'], name='rh_colaborador_turno_idx'),
+            models.Index(fields=['is_active', 'afastado', 'em_ferias', 'turno', 'setor'], name='rh_colab_dash_filters_idx'),
         ]
 
 
