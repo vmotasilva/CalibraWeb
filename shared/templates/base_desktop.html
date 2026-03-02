@@ -5,7 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calibra QMS</title>
-    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'shared/logo_calibraweb.svg' %}">
+    <link rel="icon" href="{% static 'favicon.ico' %}" sizes="any">
+    <link rel="shortcut icon" href="{% static 'favicon.ico' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon.png' %}">
     <link rel="apple-touch-icon" href="{% static 'favicon.png' %}" sizes="180x180">
     <link rel="manifest" href="{% static 'manifest.json' %}">
     <meta name="theme-color" content="#0d6efd">
@@ -16,10 +19,39 @@
         body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; padding-top: 80px; }
         .navbar-brand { font-weight: bold; letter-spacing: 1px; }
         .dropdown-item:active { background-color: #0d6efd; }
-        .nav-icon { font-size: 1.05rem; }
+        .nav-icon { font-size: 1.1rem; }
         .nav-text {
-            display: none;
-            margin-left: 0.35rem;
+            display: inline;
+            margin-left: 0.45rem;
+            font-size: clamp(0.78rem, 0.85vw, 0.98rem);
+            vertical-align: middle;
+        }
+
+        /* Navbar sempre visível (sem colapsar) */
+        .navbar .navbar-toggler { display: none; }
+        .navbar .navbar-collapse { display: flex !important; flex-basis: auto; flex-grow: 1; flex-wrap: wrap; gap: 0.25rem; }
+        .navbar .navbar-collapse.collapse { display: flex !important; }
+        .navbar .navbar-nav { flex-direction: row; flex-wrap: wrap; align-items: center; }
+        .navbar .nav-link { padding: 0.45rem 0.55rem; white-space: nowrap; }
+        .navbar-actions { flex: 0 0 auto; margin-left: auto; }
+
+        @media (max-width: 1199.98px) {
+            .navbar .nav-link { padding: 0.4rem 0.45rem; }
+            .nav-divider { margin: 0 0.4rem; }
+        }
+
+        @media (max-width: 991.98px) {
+            .nav-text { font-size: 0.9rem; }
+            .navbar .nav-link { padding: 0.38rem 0.4rem; }
+            .nav-divider { display: none; }
+        }
+        @media (max-width: 767.98px) {
+            .nav-text { font-size: 0.85rem; }
+            .navbar .nav-link { padding: 0.34rem 0.36rem; }
+        }
+        @media (max-width: 575.98px) {
+            .nav-text { font-size: 0.8rem; }
+            .navbar .nav-link { padding: 0.3rem 0.32rem; }
         }
 
         .nav-divider {
@@ -40,13 +72,8 @@
     <div class="container-fluid">
         <a class="navbar-brand ms-3 d-flex align-items-center gap-2" href="{% url 'home' %}">
             <img src="{% static 'shared/logo_calibraweb.svg' %}" alt="CalibraWeb Logo" height="38" style="max-width:120px;object-fit:contain;" onerror="this.onerror=null;this.src='{% static 'favicon.png' %}';">
-            <span class="fw-bold d-none d-md-inline" style="letter-spacing:1px;">CalibraWeb</span>
         </a>
         
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-
         <div class="collapse navbar-collapse" id="navbarContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 
@@ -78,10 +105,7 @@
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'procedures:procedimentos_list' %}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Procedimentos">
-                        <i class="bi bi-journal-bookmark nav-icon"></i><span class="nav-text">Procedimentos</span>
-                    </a>
-                </li>
+                <!-- Procedimentos movido para dentro de Treinamentos -->
 
                 <li class="nav-divider"></li>
                 
@@ -103,14 +127,15 @@
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header text-muted">PERFIS DE TREINAMENTO</h6></li>
                         <li><a class="dropdown-item" href="{% url 'procedures:perfis_list' %}"><i class="bi bi-person-badge"></i> Perfis e Grupos</a></li>
+                                            <li><a class="dropdown-item" href="{% url 'procedures:procedimentos_list' %}"><i class="bi bi-journal-bookmark"></i> Procedimentos</a></li>
                     </ul>
                 </li>
 
                 <li class="nav-divider"></li>
 
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="RH">
-                        <i class="bi bi-people nav-icon"></i><span class="nav-text">RH</span>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Pessoas">
+                        <i class="bi bi-people nav-icon"></i><span class="nav-text">Pessoas</span>
                     </a>
                     <ul class="dropdown-menu shadow">
                         <li><h6 class="dropdown-header text-muted">EQUIPE</h6></li>
@@ -196,7 +221,7 @@
                 {% endif %}
             </ul>
 
-            <div class="d-flex align-items-center border-start border-secondary ps-3 ms-2">
+            <div class="navbar-actions d-flex align-items-center border-start border-secondary ps-3 ms-2">
                 <div class="text-white me-3 text-end d-none d-md-block" style="line-height: 1.2;">
                     {% if colaborador %}
                         <div class="fw-bold small">{{ colaborador.nome_completo|upper }}</div>
@@ -259,6 +284,14 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // Ajusta o offset do conteúdo para a altura real da navbar (evita sobreposição em telas menores)
+        const syncBodyOffsetWithNavbar = () => {
+            const navbar = document.querySelector('.navbar.fixed-top');
+            if (!navbar) return;
+            document.body.style.paddingTop = `${navbar.offsetHeight}px`;
+        };
+
+        // Tooltips
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         tooltipTriggerList.forEach((tooltipTriggerEl) => {
             new bootstrap.Tooltip(tooltipTriggerEl);
@@ -271,6 +304,18 @@
                 placement: 'bottom'
             });
         });
+
+        // Fecha dropdowns ao clicar fora
+        document.addEventListener('click', function(event) {
+            document.querySelectorAll('.navbar .dropdown-menu.show').forEach(function(menu) {
+                if (!menu.parentElement.contains(event.target)) {
+                    bootstrap.Dropdown.getOrCreateInstance(menu.parentElement.querySelector('[data-bs-toggle="dropdown"]')).hide();
+                }
+            });
+        });
+
+        syncBodyOffsetWithNavbar();
+        window.addEventListener('resize', syncBodyOffsetWithNavbar);
     });
 </script>
 {% block extra_js %}
