@@ -29,6 +29,10 @@ CACHES = {
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 
+# Ensure local dev never requires a running Redis broker
+CELERY_BROKER_URL = "memory://"
+CELERY_RESULT_BACKEND = "cache+memory://"
+
 # Email console output
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
@@ -48,7 +52,12 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.utils.autoreload': {
+            'handlers': ['console'],
+            'level': 'WARNING',
             'propagate': False,
         },
         'qms': {
@@ -65,3 +74,11 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Disable S3 for local dev
 USE_S3 = False
+
+# Force SQLite locally even if DATABASE_URL is set in your shell/.env
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
+}

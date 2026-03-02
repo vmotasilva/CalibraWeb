@@ -6,16 +6,38 @@ from .models import ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
 class ModeloAuditoriaForm(forms.ModelForm):
     class Meta:
         model = ModeloAuditoria
-        fields = ["nome", "objeto_auditoria", "responsavel", "periodicidade", "dia_semana", "dias_quinzenal", "dia_mes", "link_sharepoint", "ativo"]
+        fields = [
+            "nome",
+            "objeto_auditoria",
+            "responsaveis",
+            "periodicidade",
+            "dia_semana",
+            "dias_quinzenal",
+            "dia_mes",
+            "link_sharepoint",
+            "preenchimento_grid",
+            "grid_rotulo_item",
+            "grid_colunas",
+            "ativo",
+        ]
         widgets = {
             "nome": forms.TextInput(attrs={"class": "form-control"}),
             "objeto_auditoria": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
-            "responsavel": forms.Select(attrs={"class": "form-select"}),
+            "responsaveis": forms.SelectMultiple(attrs={"class": "form-select"}),
             "periodicidade": forms.Select(attrs={"class": "form-select", "id": "id_periodicidade"}),
             "dia_semana": forms.Select(attrs={"class": "form-select", "id": "id_dia_semana"}),
             "dias_quinzenal": forms.TextInput(attrs={"class": "form-control", "id": "id_dias_quinzenal", "placeholder": "Ex: 1,16 ou 5,20"}),
             "dia_mes": forms.NumberInput(attrs={"class": "form-control", "id": "id_dia_mes", "min": "1", "max": "31", "placeholder": "Dia do mês (1-31)"}),
             "link_sharepoint": forms.URLInput(attrs={"class": "form-control", "placeholder": "https://..."}),
+            "preenchimento_grid": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "grid_rotulo_item": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: Equipamento"}),
+            "grid_colunas": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Uma coluna por linha (ex.: EQP-001)\nEQP-002\nEQP-003",
+                }
+            ),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
         
@@ -54,22 +76,50 @@ class ModeloAuditoriaForm(forms.ModelForm):
 class PerguntaAuditoriaForm(forms.ModelForm):
     class Meta:
         model = PerguntaAuditoria
-        fields = ["modelo", "pergunta", "tipo_resposta", "preenchimento_semanal", "ordem", "obrigatoria", "ativo"]
+        fields = [
+            "modelo",
+            "pergunta",
+            "tipo_resposta",
+            "preenchimento_semanal",
+            "opcoes_resposta",
+            "aplicar_no_grid",
+            "ordem",
+            "obrigatoria",
+            "ativo",
+        ]
         widgets = {
             "modelo": forms.Select(attrs={"class": "form-select"}),
             "pergunta": forms.TextInput(attrs={"class": "form-control"}),
             "tipo_resposta": forms.Select(attrs={"class": "form-select"}),
             "preenchimento_semanal": forms.Select(attrs={"class": "form-select"}),
+            "opcoes_resposta": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 4,
+                    "placeholder": "Uma opção por linha (ex.: Conforme)\nNão conforme\nN/A",
+                }
+            ),
+            "aplicar_no_grid": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "ordem": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "obrigatoria": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
+    def clean(self):
+        cleaned_data = super().clean()
+        tipo_resposta = cleaned_data.get("tipo_resposta")
+        opcoes_resposta = (cleaned_data.get("opcoes_resposta") or "").strip()
+        if tipo_resposta == "LISTA":
+            values = [v.strip() for v in opcoes_resposta.replace("\r\n", "\n").split("\n") if v.strip()]
+            if not values:
+                self.add_error("opcoes_resposta", "Informe pelo menos 1 opção para o tipo 'Lista (opções)'.")
+        return cleaned_data
+
 
 class RegistroAuditoriaForm(forms.ModelForm):
     class Meta:
         model = RegistroAuditoria
-        fields = ["data_auditoria", "periodo_inicio", "periodo_fim", "item_os", "observacoes"]
+        fields = ["data_auditoria", "periodo_inicio", "periodo_fim", "item_os", "grid_itens", "observacoes"]
         widgets = {
             "data_auditoria": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "periodo_inicio": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
@@ -79,6 +129,13 @@ class RegistroAuditoriaForm(forms.ModelForm):
                     "class": "form-control",
                     "placeholder": "Ex: OS 12345 / Item 7",
                     "maxlength": 120,
+                }
+            ),
+            "grid_itens": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Um item por linha (ex.: EQP-001)\nEQP-002\nEQP-003",
                 }
             ),
             "observacoes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),

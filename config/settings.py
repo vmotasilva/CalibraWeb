@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 from pathlib import Path
 
 import dj_database_url
@@ -14,8 +15,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Default is False (safer). In dev set DEBUG='True' in the environment.
-# For localhost development, force DEBUG=True to enable CSRF cookie
-IS_LOCAL_ENV = any(h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1") for h in ['localhost', '127.0.0.1'])
+
+DJANGO_ENV = os.environ.get("DJANGO_ENV", "").strip().lower()
+
+
+def _is_platform_runtime() -> bool:
+    # Best-effort detection: prevents accidental local/dev behavior in hosted envs.
+    return any(
+        os.environ.get(key)
+        for key in (
+            "RAILWAY_PROJECT_ID",
+            "RAILWAY_ENVIRONMENT",
+            "RAILWAY_SERVICE_ID",
+            "RAILWAY_STATIC_URL",
+            "RENDER",
+            "RENDER_SERVICE_ID",
+            "DYNO",
+        )
+    )
+
+
+IS_LOCAL_ENV = DJANGO_ENV in {"local", "dev", "development"}
+if not IS_LOCAL_ENV and not _is_platform_runtime():
+    # Convenience fallback for true local runs when DJANGO_ENV isn't set.
+    IS_LOCAL_ENV = any(
+        h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1")
+        for h in ("localhost", "127.0.0.1")
+    )
+
 DEBUG = (os.environ.get("DEBUG", "False") == "True") or IS_LOCAL_ENV
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -140,6 +167,29 @@ DATABASES = {
 import logging
 logger = logging.getLogger(__name__)
 
+
+def _is_railway_runtime() -> bool:
+    """Best-effort detection of Railway runtime."""
+    return any(
+        os.environ.get(key)
+        for key in (
+            "RAILWAY_PROJECT_ID",
+            "RAILWAY_ENVIRONMENT",
+            "RAILWAY_SERVICE_ID",
+            "RAILWAY_STATIC_URL",
+        )
+    )
+
+
+def _is_railway_internal_db_url(url: str) -> bool:
+    """True when DATABASE_URL points to Railway internal network host."""
+    try:
+        hostname = urlparse(url).hostname or ""
+    except Exception:
+        return False
+    hostname = hostname.lower()
+    return hostname.endswith(".railway.internal") or hostname == "railway.internal"
+
 def _build_db_from_pg_env() -> str | None:
     """Build a PostgreSQL URL from Railway-style PG* env vars if present.
     Expected vars: PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE
@@ -172,6 +222,17 @@ database_url = (
     or os.environ.get("POSTGRES_URL")
     or os.environ.get("POSTGRESQL_URL")
 )
+
+# If a Railway-internal hostname leaks into local env, it will break local DNS.
+# In that case, fall back to SQLite unless explicitly forced.
+allow_internal = os.environ.get("ALLOW_RAILWAY_INTERNAL_DB", "").lower() in ("1", "true", "yes")
+if database_url and _is_railway_internal_db_url(database_url) and not _is_railway_runtime() and not allow_internal:
+    logger.warning(
+        "Detected Railway-internal DATABASE_URL outside Railway runtime; "
+        "ignoring it and falling back to SQLite. "
+        "Set ALLOW_RAILWAY_INTERNAL_DB=true to force." 
+    )
+    database_url = None
 
 logger.info(f"DATABASE_URL present: {bool(database_url)}")
 if database_url:
@@ -274,7 +335,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 
 # Onde o Django vai reunir os arquivos estáticos no deploy
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -340,6 +401,10 @@ IS_LOCAL = any(host in ALLOWED_HOSTS for host in ['localhost', '127.0.0.1', '0.0
 
 if not DEBUG and not IS_LOCAL:
     # Production security settings (HTTPS only)
+    # Assume TLS terminates at the platform proxy (Railway/Render) and trust forwarded proto.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "true").lower() in ("1", "true", "yes")
+
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
@@ -352,7 +417,6 @@ if not DEBUG and not IS_LOCAL:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
-    SECURE_SSL_REDIRECT = False
     X_FRAME_OPTIONS = "DENY"
 else:
     # Development/Local settings - allow HTTP

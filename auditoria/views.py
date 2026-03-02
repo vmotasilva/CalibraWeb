@@ -12,20 +12,73 @@ from .forms import ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoria
 from .models import ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
 
 
+def _parse_grid_itens(raw: str) -> list[str]:
+    if not raw:
+        return []
+    itens: list[str] = []
+    seen: set[str] = set()
+    for line in str(raw).splitlines():
+        item = line.strip()
+        if not item:
+            continue
+        if item in seen:
+            continue
+        seen.add(item)
+        itens.append(item)
+    return itens
+
+
+def _get_grid_colunas_modelo(modelo: ModeloAuditoria) -> list[str]:
+    return _parse_grid_itens(getattr(modelo, "grid_colunas", ""))
+
+
+def _get_effective_grid_itens_for_create(modelo: ModeloAuditoria, raw_from_form: str) -> list[str]:
+    """Determina as colunas/itens do GRID no momento de criar um registro."""
+    cols_modelo = _get_grid_colunas_modelo(modelo)
+    if cols_modelo:
+        return cols_modelo
+    return _parse_grid_itens(raw_from_form)
+
+
+def _get_effective_grid_itens_for_edit(registro: RegistroAuditoria, raw_from_form: str) -> list[str]:
+    """Determina as colunas/itens do GRID no momento de editar um registro.
+
+    Quando o modelo tiver colunas pré-definidas, SEMPRE usa as colunas do modelo.
+    Caso contrário, usa as colunas do formulário (se informadas) ou as já salvas no registro.
+    """
+    cols_modelo = _get_grid_colunas_modelo(registro.modelo)
+    if cols_modelo:
+        return cols_modelo
+    from_form = _parse_grid_itens(raw_from_form)
+    if from_form:
+        return from_form
+    return _parse_grid_itens(getattr(registro, "grid_itens", ""))
+
+
 def _auditoria_is_admin(user) -> bool:
     return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+
+
+def _auditoria_can_update_modelo(user, modelo: ModeloAuditoria) -> bool:
+    if _auditoria_is_admin(user):
+        return True
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if getattr(modelo, "responsavel_id", None) == getattr(user, "pk", None):
+        return True
+    return modelo.responsaveis.filter(pk=user.pk).exists()
 
 
 def _filter_modelos_para_usuario(user, qs):
     if _auditoria_is_admin(user):
         return qs
-    return qs.filter(responsavel=user)
+    return qs.filter(models.Q(responsaveis=user) | models.Q(responsavel=user)).distinct()
 
 
 def _filter_registros_para_usuario(user, qs):
     if _auditoria_is_admin(user):
         return qs
-    return qs.filter(modelo__responsavel=user)
+    return qs.filter(models.Q(modelo__responsaveis=user) | models.Q(modelo__responsavel=user)).distinct()
 
 
 def _get_next_pergunta_ordem(modelo_id: int) -> int:
@@ -89,6 +142,9 @@ def modelos_list(request):
 
 @login_required
 def modelo_create(request):
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem criar modelos de auditoria.")
+        return redirect("auditoria:modelos_list")
     if request.method == "POST":
         form = ModeloAuditoriaForm(request.POST)
         if form.is_valid():
@@ -103,6 +159,9 @@ def modelo_create(request):
 @login_required
 def modelo_edit(request, pk):
     modelo = get_object_or_404(ModeloAuditoria, pk=pk)
+    if not _auditoria_can_update_modelo(request.user, modelo):
+        messages.error(request, "Você não tem permissão para atualizar este modelo de auditoria.")
+        return redirect("auditoria:modelos_list")
     if request.method == "POST":
         form = ModeloAuditoriaForm(request.POST, instance=modelo)
         if form.is_valid():
@@ -117,6 +176,9 @@ def modelo_edit(request, pk):
 @login_required
 def modelo_delete(request, pk):
     modelo = get_object_or_404(ModeloAuditoria, pk=pk)
+    if not _auditoria_can_update_modelo(request.user, modelo):
+        messages.error(request, "Você não tem permissão para remover este modelo de auditoria.")
+        return redirect("auditoria:modelos_list")
     if request.method == "POST":
         modelo.delete()
         messages.success(request, "Modelo removido com sucesso.")
@@ -141,6 +203,9 @@ def perguntas_list(request):
 
 @login_required
 def pergunta_create(request):
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
+        return redirect("auditoria:perguntas_list")
     if request.method == "POST":
         form = PerguntaAuditoriaForm(request.POST)
         if form.is_valid():
@@ -160,6 +225,9 @@ def pergunta_create(request):
 
 @login_required
 def pergunta_edit(request, pk):
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
+        return redirect("auditoria:perguntas_list")
     pergunta = get_object_or_404(PerguntaAuditoria, pk=pk)
     if request.method == "POST":
         form = PerguntaAuditoriaForm(request.POST, instance=pergunta)
@@ -174,6 +242,9 @@ def pergunta_edit(request, pk):
 
 @login_required
 def pergunta_delete(request, pk):
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
+        return redirect("auditoria:perguntas_list")
     pergunta = get_object_or_404(PerguntaAuditoria, pk=pk)
     if request.method == "POST":
         pergunta.delete()
@@ -226,7 +297,9 @@ def selecionar_modelo_preenchimento(request):
     if q:
         modelos = modelos.filter(models.Q(nome__icontains=q) | models.Q(objeto_auditoria__icontains=q))
     if responsavel_id:
-        modelos = modelos.filter(responsavel_id=responsavel_id)
+        modelos = modelos.filter(
+            models.Q(responsaveis__id=responsavel_id) | models.Q(responsavel_id=responsavel_id)
+        ).distinct()
     if periodicidade:
         modelos = modelos.filter(periodicidade=periodicidade)
 
@@ -235,14 +308,17 @@ def selecionar_modelo_preenchimento(request):
     ).order_by("nome")
 
     User = get_user_model()
-    responsaveis_ids = (
-        _filter_modelos_para_usuario(
-            request.user,
-            ModeloAuditoria.objects.filter(ativo=True, responsavel__isnull=False),
-        )
-        .values_list("responsavel_id", flat=True)
-        .distinct()
+    modelos_com_responsavel = _filter_modelos_para_usuario(
+        request.user,
+        ModeloAuditoria.objects.filter(
+            ativo=True,
+        ).filter(
+            models.Q(responsaveis__isnull=False) | models.Q(responsavel__isnull=False)
+        ),
     )
+    ids_m2m = list(modelos_com_responsavel.values_list("responsaveis__id", flat=True))
+    ids_fk = list(modelos_com_responsavel.values_list("responsavel_id", flat=True))
+    responsaveis_ids = {i for i in ids_m2m + ids_fk if i}
     responsaveis = User.objects.filter(id__in=responsaveis_ids).order_by("username")
 
     context = {
@@ -278,6 +354,14 @@ def registro_create(request, modelo_id=None):
     dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
     is_semanal = modelo.periodicidade == "SEMANAL"
     is_diaria_ou_unica = modelo.periodicidade in ("DIARIA", "UNICA")
+    grid_enabled = bool(getattr(modelo, "preenchimento_grid", False) or _get_grid_colunas_modelo(modelo))
+
+    perguntas_por_dia = [
+        p for p in perguntas if is_semanal and getattr(p, "preenchimento_semanal", "UNICO") == "POR_DIA"
+    ]
+    # Em modo GRID com colunas/itens definidos, repetimos o conjunto de perguntas por coluna.
+    # (Neste modo, não filtramos por "aplicar_no_grid".)
+    grid_perguntas = [p for p in perguntas if p not in perguntas_por_dia]
 
     if request.method == "POST":
         post_data = request.POST
@@ -294,12 +378,64 @@ def registro_create(request, modelo_id=None):
             registro = form.save(commit=False)
             registro.modelo = modelo
             registro.avaliador = request.user
+
+            grid_itens = []
+            if grid_enabled:
+                grid_itens = _get_effective_grid_itens_for_create(modelo, form.cleaned_data.get("grid_itens") or "")
+                registro.grid_itens = "\n".join(grid_itens)
+
             registro.save()
 
             # Salvar respostas
             erros = []
-            for pergunta in perguntas:
-                if is_semanal and getattr(pergunta, "preenchimento_semanal", "UNICO") == "POR_DIA":
+
+            # Perguntas padrão (não-POR_DIA)
+            if grid_enabled and grid_itens:
+                for pergunta in grid_perguntas:
+                    for idx, item in enumerate(grid_itens):
+                        field_name = f"grid_{pergunta.id}_{idx}"
+                        valor = request.POST.get(field_name, "").strip()
+                        if not valor and pergunta.obrigatoria:
+                            erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória para {item}.")
+                        RespostaAuditoria.objects.create(
+                            registro=registro,
+                            pergunta=pergunta,
+                            dia_semana=None,
+                            grid_item=item,
+                            valor=valor,
+                        )
+            else:
+                for pergunta in grid_perguntas:
+                    valor = request.POST.get(f"resposta_{pergunta.id}", "").strip()
+                    if not valor and pergunta.obrigatoria:
+                        erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
+                    RespostaAuditoria.objects.create(
+                        registro=registro,
+                        pergunta=pergunta,
+                        dia_semana=None,
+                        grid_item="",
+                        valor=valor,
+                    )
+
+            # Perguntas POR_DIA: no GRID, também repetimos por item/coluna.
+            for pergunta in perguntas_por_dia:
+                if grid_enabled and grid_itens:
+                    for idx, item in enumerate(grid_itens):
+                        for dia_key, _dia_label in dias_semana_choices:
+                            field_name = f"griddia_{pergunta.id}_{idx}_{dia_key}"
+                            valor = request.POST.get(field_name, "").strip()
+                            if not valor and pergunta.obrigatoria:
+                                erros.append(
+                                    f"A pergunta '{pergunta.pergunta}' é obrigatória para {item} em {dict(dias_semana_choices).get(dia_key, dia_key)}."
+                                )
+                            RespostaAuditoria.objects.create(
+                                registro=registro,
+                                pergunta=pergunta,
+                                dia_semana=dia_key,
+                                grid_item=item,
+                                valor=valor,
+                            )
+                else:
                     for dia_key, _dia_label in dias_semana_choices:
                         field_name = f"resposta_{pergunta.id}_{dia_key}"
                         valor = request.POST.get(field_name, "").strip()
@@ -311,13 +447,9 @@ def registro_create(request, modelo_id=None):
                             registro=registro,
                             pergunta=pergunta,
                             dia_semana=dia_key,
+                            grid_item="",
                             valor=valor,
                         )
-                else:
-                    valor = request.POST.get(f"resposta_{pergunta.id}", "").strip()
-                    if not valor and pergunta.obrigatoria:
-                        erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
-                    RespostaAuditoria.objects.create(registro=registro, pergunta=pergunta, valor=valor)
             
             if erros:
                 for erro in erros:
@@ -333,10 +465,21 @@ def registro_create(request, modelo_id=None):
             initial["periodo_fim"] = initial["data_auditoria"]
         form = RegistroAuditoriaForm(initial=initial)
 
+    grid_itens = []
+    if grid_enabled:
+        raw_grid_itens = (getattr(form, "data", {}) or {}).get("grid_itens") or ""
+        grid_itens = _get_effective_grid_itens_for_create(modelo, raw_grid_itens)
+    grid_colunas_predefinidas = bool(_get_grid_colunas_modelo(modelo))
+
     context = {
         "form": form,
         "modelo": modelo,
         "perguntas": perguntas,
+        "grid_enabled": grid_enabled,
+        "grid_itens": grid_itens,
+        "grid_colunas_predefinidas": grid_colunas_predefinidas,
+        "grid_perguntas": grid_perguntas,
+        "perguntas_por_dia": perguntas_por_dia,
         "dias_semana_choices": dias_semana_choices,
     }
     return render(request, "auditoria/registro_form.html", context)
@@ -357,6 +500,12 @@ def registro_edit(request, pk):
     dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
     is_semanal = registro.modelo.periodicidade == "SEMANAL"
     is_diaria_ou_unica = registro.modelo.periodicidade in ("DIARIA", "UNICA")
+    grid_enabled = bool(getattr(registro.modelo, "preenchimento_grid", False) or _get_grid_colunas_modelo(registro.modelo))
+
+    perguntas_por_dia = [
+        p for p in perguntas if is_semanal and getattr(p, "preenchimento_semanal", "UNICO") == "POR_DIA"
+    ]
+    grid_perguntas = [p for p in perguntas if p not in perguntas_por_dia]
 
     if request.method == "POST":
         post_data = request.POST
@@ -370,7 +519,14 @@ def registro_edit(request, pk):
         form = RegistroAuditoriaForm(post_data, instance=registro)
         if form.is_valid():
             registro = form.save(commit=False)
+
+            grid_itens = []
+            if grid_enabled:
+                grid_itens = _get_effective_grid_itens_for_edit(registro, form.cleaned_data.get("grid_itens") or "")
+                registro.grid_itens = "\n".join(grid_itens)
+
             registro.save()
+            grid_item_to_index = {item: idx for idx, item in enumerate(grid_itens)}
 
             # Atualizar respostas existentes
             for pergunta in perguntas:
@@ -384,30 +540,86 @@ def registro_edit(request, pk):
                         dia_semana__isnull=True,
                     ).delete()
 
-                    for dia_key, _dia_label in dias_semana_choices:
-                        field_name = f"resposta_{pergunta.id}_{dia_key}"
-                        valor = request.POST.get(field_name, "").strip()
-                        RespostaAuditoria.objects.update_or_create(
+                    if grid_enabled and grid_itens:
+                        # Recriar POR_DIA por item/coluna
+                        RespostaAuditoria.objects.filter(
                             registro=registro,
                             pergunta=pergunta,
-                            dia_semana=dia_key,
-                            defaults={"valor": valor},
-                        )
+                            dia_semana__isnull=False,
+                        ).delete()
+
+                        for idx, item in enumerate(grid_itens):
+                            for dia_key, _dia_label in dias_semana_choices:
+                                field_name = f"griddia_{pergunta.id}_{idx}_{dia_key}"
+                                valor = request.POST.get(field_name, "").strip()
+                                RespostaAuditoria.objects.update_or_create(
+                                    registro=registro,
+                                    pergunta=pergunta,
+                                    dia_semana=dia_key,
+                                    grid_item=item,
+                                    defaults={"valor": valor},
+                                )
+                    else:
+                        # POR_DIA sem GRID
+                        RespostaAuditoria.objects.filter(
+                            registro=registro,
+                            pergunta=pergunta,
+                            dia_semana__isnull=False,
+                        ).exclude(grid_item="").delete()
+
+                        for dia_key, _dia_label in dias_semana_choices:
+                            field_name = f"resposta_{pergunta.id}_{dia_key}"
+                            valor = request.POST.get(field_name, "").strip()
+                            RespostaAuditoria.objects.update_or_create(
+                                registro=registro,
+                                pergunta=pergunta,
+                                dia_semana=dia_key,
+                                grid_item="",
+                                defaults={"valor": valor},
+                            )
                 else:
-                    # Se antes era por dia, remover linhas por dia e manter apenas a resposta única
+                    # Se antes era por dia, remover linhas por dia
                     RespostaAuditoria.objects.filter(
                         registro=registro,
                         pergunta=pergunta,
                         dia_semana__isnull=False,
                     ).delete()
 
-                    valor = request.POST.get(f"resposta_{pergunta.id}", "").strip()
-                    RespostaAuditoria.objects.update_or_create(
-                        registro=registro,
-                        pergunta=pergunta,
-                        dia_semana=None,
-                        defaults={"valor": valor},
-                    )
+                    # GRID
+                    if grid_enabled and grid_itens and pergunta in grid_perguntas:
+                        # Remover itens que não existem mais
+                        RespostaAuditoria.objects.filter(
+                            registro=registro,
+                            pergunta=pergunta,
+                            dia_semana__isnull=True,
+                        ).exclude(grid_item__in=grid_itens).delete()
+
+                        for idx, item in enumerate(grid_itens):
+                            field_name = f"grid_{pergunta.id}_{idx}"
+                            valor = request.POST.get(field_name, "").strip()
+                            RespostaAuditoria.objects.update_or_create(
+                                registro=registro,
+                                pergunta=pergunta,
+                                dia_semana=None,
+                                grid_item=item,
+                                defaults={"valor": valor},
+                            )
+                    else:
+                        # Remover possíveis respostas GRID antigas para esta pergunta
+                        RespostaAuditoria.objects.filter(
+                            registro=registro,
+                            pergunta=pergunta,
+                            dia_semana__isnull=True,
+                        ).exclude(grid_item="").delete()
+
+                        valor = request.POST.get(f"resposta_{pergunta.id}", "").strip()
+                        RespostaAuditoria.objects.update_or_create(
+                            registro=registro,
+                            pergunta=pergunta,
+                            dia_semana=None,
+                            grid_item="",
+                            defaults={"valor": valor},
+                        )
             
             messages.success(request, "Registro de auditoria atualizado com sucesso!")
             return redirect("auditoria:registro_detail", pk=registro.pk)
@@ -415,9 +627,22 @@ def registro_edit(request, pk):
         form = RegistroAuditoriaForm(instance=registro)
         # Preencher valores atuais das respostas
         respostas_atuais = {}
+
+        grid_itens = _get_effective_grid_itens_for_edit(registro, getattr(registro, "grid_itens", "")) if grid_enabled else []
+        grid_item_to_index = {item: idx for idx, item in enumerate(grid_itens)}
+
         for resposta in registro.respostas.all():
             if resposta.dia_semana:
-                respostas_atuais[f"resposta_{resposta.pergunta_id}_{resposta.dia_semana}"] = resposta.valor
+                if grid_enabled and grid_itens and getattr(resposta, "grid_item", ""):
+                    idx = grid_item_to_index.get(resposta.grid_item)
+                    if idx is not None:
+                        respostas_atuais[f"griddia_{resposta.pergunta_id}_{idx}_{resposta.dia_semana}"] = resposta.valor
+                else:
+                    respostas_atuais[f"resposta_{resposta.pergunta_id}_{resposta.dia_semana}"] = resposta.valor
+            elif getattr(resposta, "grid_item", ""):
+                idx = grid_item_to_index.get(resposta.grid_item)
+                if idx is not None:
+                    respostas_atuais[f"grid_{resposta.pergunta_id}_{idx}"] = resposta.valor
             else:
                 respostas_atuais[f"resposta_{resposta.pergunta_id}"] = resposta.valor
 
@@ -425,6 +650,11 @@ def registro_edit(request, pk):
         "form": form,
         "modelo": registro.modelo,
         "perguntas": perguntas,
+        "grid_enabled": grid_enabled,
+        "grid_itens": grid_itens,
+        "grid_colunas_predefinidas": bool(_get_grid_colunas_modelo(registro.modelo)),
+        "grid_perguntas": grid_perguntas,
+        "perguntas_por_dia": perguntas_por_dia,
         "registro": registro,
         "respostas_atuais": respostas_atuais,
         "edicao": True,
@@ -474,7 +704,9 @@ def dashboard_auditoria(request):
     if modelo_id:
         registros = registros.filter(modelo_id=modelo_id)
     if responsavel_id:
-        registros = registros.filter(modelo__responsavel_id=responsavel_id)
+        registros = registros.filter(
+            models.Q(modelo__responsaveis__id=responsavel_id) | models.Q(modelo__responsavel_id=responsavel_id)
+        ).distinct()
     if inicio:
         registros = registros.filter(data_auditoria__gte=inicio)
     if fim:
@@ -521,14 +753,15 @@ def dashboard_auditoria(request):
 
     # Lista de responsáveis (usuários vinculados aos modelos)
     User = get_user_model()
-    responsavel_ids = (
-        _filter_modelos_para_usuario(
-            request.user,
-            ModeloAuditoria.objects.filter(responsavel__isnull=False),
-        )
-        .values_list("responsavel_id", flat=True)
-        .distinct()
+    modelos_com_responsavel = _filter_modelos_para_usuario(
+        request.user,
+        ModeloAuditoria.objects.filter(
+            models.Q(responsaveis__isnull=False) | models.Q(responsavel__isnull=False)
+        ),
     )
+    ids_m2m = list(modelos_com_responsavel.values_list("responsaveis__id", flat=True))
+    ids_fk = list(modelos_com_responsavel.values_list("responsavel_id", flat=True))
+    responsavel_ids = {i for i in ids_m2m + ids_fk if i}
     responsaveis = User.objects.filter(pk__in=responsavel_ids).order_by("username")
     responsavel_selecionado = None
     if responsavel_id:

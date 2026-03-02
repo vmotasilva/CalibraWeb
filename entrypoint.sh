@@ -1,5 +1,4 @@
 ﻿#!/bin/sh
-set -x
+set -e
 echo "[SHELL] Starting..."
-python entrypoint.py
-exit $?
+exec /bin/sh start.sh

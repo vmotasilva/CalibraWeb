@@ -61,6 +61,35 @@ class ModeloAuditoria(models.Model):
         verbose_name="Responsável pela Auditoria",
         help_text="Usuário responsável pela realização da auditoria"
     )
+
+    responsaveis = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="modelos_auditoria_responsaveis",
+        verbose_name="Responsáveis pela Auditoria",
+        help_text="Usuários autorizados a preencher/atualizar auditorias deste modelo.",
+    )
+
+    preenchimento_grid = models.BooleanField(
+        default=False,
+        verbose_name="Preenchimento em GRID",
+        help_text="Habilita preenchimento em tabela para repetir as mesmas perguntas por múltiplos itens/equipamentos/serviços.",
+    )
+
+    grid_rotulo_item = models.CharField(
+        max_length=60,
+        blank=True,
+        default="Item",
+        verbose_name="Rótulo do item (GRID)",
+        help_text="Ex.: Equipamento, Serviço, Item, Ativo.",
+    )
+
+    grid_colunas = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Colunas do GRID",
+        help_text="Uma coluna por linha (ex.: EQP-001). Se vazio, as colunas serão informadas no registro.",
+    )
     
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -92,6 +121,7 @@ class ModeloAuditoria(models.Model):
 class PerguntaAuditoria(models.Model):
     TIPO_RESPOSTA_CHOICES = [
         ("SIM_NAO", "Sim/Não"),
+        ("LISTA", "Lista (opções)"),
         ("NUMERO", "Número inteiro"),
         ("DECIMAL", "Número decimal"),
     ]
@@ -116,6 +146,19 @@ class PerguntaAuditoria(models.Model):
         verbose_name="Preenchimento (semanal)",
         help_text="Apenas para modelos com periodicidade semanal.",
     )
+
+    opcoes_resposta = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Opções de resposta",
+        help_text="Apenas para tipo 'Lista (opções)'. Use uma opção por linha.",
+    )
+
+    aplicar_no_grid = models.BooleanField(
+        default=True,
+        verbose_name="Aplicar no GRID",
+        help_text="Se marcado, esta pergunta aparece no preenchimento em GRID (quando habilitado no modelo).",
+    )
     ordem = models.PositiveIntegerField(default=1)
     obrigatoria = models.BooleanField(default=True)
     ativo = models.BooleanField(default=True)
@@ -127,6 +170,22 @@ class PerguntaAuditoria(models.Model):
 
     def __str__(self):
         return f"{self.modelo.nome} - {self.pergunta}"
+
+    @property
+    def opcoes_resposta_list(self) -> list[str]:
+        raw = (self.opcoes_resposta or "").replace("\r\n", "\n")
+        parts = [p.strip() for p in raw.split("\n")]
+        seen: set[str] = set()
+        values: list[str] = []
+        for p in parts:
+            if not p:
+                continue
+            key = p.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            values.append(p)
+        return values
 
 
 class RegistroAuditoria(models.Model):
@@ -152,6 +211,13 @@ class RegistroAuditoria(models.Model):
         default="",
         verbose_name="ITEM/O.S.",
         help_text="Preencher se necessário para identificar ordens de serviço ou pontos específicos.",
+    )
+
+    grid_itens = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Itens (GRID)",
+        help_text="Use uma linha por item/equipamento/serviço quando o modelo estiver em modo GRID.",
     )
     observacoes = models.TextField(blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -184,13 +250,20 @@ class RespostaAuditoria(models.Model):
         verbose_name="Dia da Semana",
         help_text="Usado quando a pergunta exige resposta por dia (auditoria semanal).",
     )
+    grid_item = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        verbose_name="Item (GRID)",
+        help_text="Identifica o item/equipamento/serviço quando o preenchimento é em GRID.",
+    )
     valor = models.TextField(blank=True)
 
     class Meta:
         verbose_name = "Resposta de Auditoria"
         verbose_name_plural = "Respostas de Auditoria"
         ordering = ["registro", "pergunta__ordem", "dia_semana", "id"]
-        unique_together = ("registro", "pergunta", "dia_semana")
+        unique_together = ("registro", "pergunta", "dia_semana", "grid_item")
 
     def __str__(self):
         return f"{self.registro} - {self.pergunta.pergunta[:60]}"

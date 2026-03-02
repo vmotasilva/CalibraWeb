@@ -2,6 +2,63 @@
 
 {% block title %}{% if edicao %}Editar{% else %}Novo{% endif %} Registro - Auditoria{% endblock %}
 
+{% block extra_css %}
+<style>
+    .weekly-grid .form-label { line-height: 1.1; }
+
+    /* Layout compacto para respostas por dia (semanal/por dia) */
+    .weekly-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem 0.7rem;
+        align-items: flex-start;
+    }
+
+    /* Largura aproximada do texto do dia + o select abaixo */
+    .weekly-grid__item {
+        flex: 0 0 auto;
+        width: clamp(7.25rem, 10.5vw, 8.75rem);
+    }
+
+    .weekly-grid__item .form-label {
+        white-space: nowrap;
+    }
+
+    .weekly-grid__item .form-select,
+    .weekly-grid__item .form-control {
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* Evita que o placeholder force largura grande */
+    .weekly-grid__item .form-select {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Enxuga um pouco o select para caber mais colunas */
+    .weekly-grid__item .form-select.form-select-sm {
+        font-size: 0.85rem;
+        padding-left: 0.5rem;
+        padding-right: 1.75rem;
+    }
+
+    .grid-table th,
+    .grid-table td {
+        vertical-align: top;
+    }
+
+    .grid-table th {
+        white-space: nowrap;
+    }
+
+    .grid-table .grid-q {
+        min-width: 16rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
@@ -82,56 +139,223 @@
                     <span class="badge bg-secondary">{{ perguntas|length }}</span>
                 </h5>
 
-                {% if perguntas %}
-                    {% for pergunta in perguntas %}
-                    <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
-                        <div class="card-body">
-                            <label class="form-label fw-bold mb-2">
-                                <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
-                                {{ pergunta.pergunta }}
-                                {% if pergunta.obrigatoria %}
-                                <span class="text-danger">*</span>
-                                {% endif %}
-                            </label>
-                            <div class="small text-muted mb-2">
-                                <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
+                {% if grid_enabled %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <label class="form-label fw-bold">{{ modelo.grid_rotulo_item|default:"Item" }}(s) (GRID)</label>
+                        {% if grid_colunas_predefinidas %}
+                            <div class="text-muted small mb-2">Colunas definidas no modelo.</div>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for item in grid_itens %}
+                                    <span class="badge bg-secondary">{{ item }}</span>
+                                {% endfor %}
                             </div>
+                        {% else %}
+                            <div class="text-muted small mb-2">Use uma linha por {{ modelo.grid_rotulo_item|default:"item"|lower }} para habilitar o preenchimento em tabela.</div>
+                            {{ form.grid_itens }}
+                            {% if form.grid_itens.errors %}
+                            <div class="invalid-feedback d-block">{{ form.grid_itens.errors }}</div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
 
-                            {% if modelo.periodicidade == 'SEMANAL' and pergunta.preenchimento_semanal == 'POR_DIA' %}
-                                <div class="row g-2">
-                                    {% for dia_key, dia_label in dias_semana_choices %}
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label small text-muted mb-1">{{ dia_label }}</label>
-                                        {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
-                                            <select class="form-select" name="resposta_{{ pergunta.id }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
-                                                <option value="">-- Selecione --</option>
-                                                <option value="Sim">Sim</option>
-                                                <option value="Não">Não</option>
-                                            </select>
-                                        {% elif pergunta.tipo_resposta == 'NUMERO' %}
-                                            <input type="number" class="form-control" name="resposta_{{ pergunta.id }}_{{ dia_key }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
-                                        {% elif pergunta.tipo_resposta == 'DECIMAL' %}
-                                            <input type="number" class="form-control" name="resposta_{{ pergunta.id }}_{{ dia_key }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
-                                        {% endif %}
+                {% if perguntas %}
+
+                    {% if grid_enabled and grid_itens %}
+                    <div class="mb-4">
+                        <ul class="nav nav-tabs" role="tablist">
+                            {% for item in grid_itens %}
+                                <li class="nav-item" role="presentation">
+                                    <button
+                                        class="nav-link {% if forloop.first %}active{% endif %}"
+                                        id="tab-grid-{{ forloop.counter0 }}"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#pane-grid-{{ forloop.counter0 }}"
+                                        type="button"
+                                        role="tab"
+                                        aria-controls="pane-grid-{{ forloop.counter0 }}"
+                                        aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                                        {{ item }}
+                                    </button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+
+                        <div class="tab-content border border-top-0 rounded-bottom p-3">
+                            {% for item in grid_itens %}
+                                <div
+                                    class="tab-pane fade {% if forloop.first %}show active{% endif %}"
+                                    id="pane-grid-{{ forloop.counter0 }}"
+                                    role="tabpanel"
+                                    aria-labelledby="tab-grid-{{ forloop.counter0 }}">
+
+                                    {% for pergunta in grid_perguntas %}
+                                    <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
+                                        <div class="card-body">
+                                            <label class="form-label fw-bold mb-2">
+                                                <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
+                                                {{ pergunta.pergunta }}
+                                                {% if pergunta.obrigatoria %}
+                                                <span class="text-danger">*</span>
+                                                {% endif %}
+                                            </label>
+                                            <div class="small text-muted mb-2">
+                                                <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
+                                            </div>
+
+                                            {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
+                                                <select class="form-select" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                    <option value="">-- Selecione --</option>
+                                                    <option value="Sim">Sim</option>
+                                                    <option value="Não">Não</option>
+                                                </select>
+                                            {% elif pergunta.tipo_resposta == 'LISTA' %}
+                                                <select class="form-select" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                    <option value="">-- Selecione --</option>
+                                                    {% for opt in pergunta.opcoes_resposta_list %}
+                                                        <option value="{{ opt }}">{{ opt }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            {% elif pergunta.tipo_resposta == 'NUMERO' %}
+                                                <input type="number" class="form-control" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
+                                            {% elif pergunta.tipo_resposta == 'DECIMAL' %}
+                                                <input type="number" class="form-control" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                     {% endfor %}
+
+                                    {% for pergunta in perguntas_por_dia %}
+                                    <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
+                                        <div class="card-body">
+                                            <label class="form-label fw-bold mb-2">
+                                                <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
+                                                {{ pergunta.pergunta }}
+                                                {% if pergunta.obrigatoria %}
+                                                <span class="text-danger">*</span>
+                                                {% endif %}
+                                            </label>
+                                            <div class="small text-muted mb-2">
+                                                <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
+                                            </div>
+
+                                            <div class="weekly-grid">
+                                                {% for dia_key, dia_label in dias_semana_choices %}
+                                                <div class="weekly-grid__item">
+                                                    <label class="form-label small text-muted mb-1">{{ dia_label }}</label>
+                                                    {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
+                                                        <select class="form-select form-select-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                            <option value="">-- Selecione --</option>
+                                                            <option value="Sim">Sim</option>
+                                                            <option value="Não">Não</option>
+                                                        </select>
+                                                    {% elif pergunta.tipo_resposta == 'LISTA' %}
+                                                        <select class="form-select form-select-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                            <option value="">-- Selecione --</option>
+                                                            {% for opt in pergunta.opcoes_resposta_list %}
+                                                                <option value="{{ opt }}">{{ opt }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    {% elif pergunta.tipo_resposta == 'NUMERO' %}
+                                                        <input type="number" class="form-control form-control-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                    {% elif pergunta.tipo_resposta == 'DECIMAL' %}
+                                                        <input type="number" class="form-control form-control-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                    {% endif %}
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+
                                 </div>
-                            {% else %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                        {% for pergunta in grid_perguntas %}
+                        <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
+                            <div class="card-body">
+                                <label class="form-label fw-bold mb-2">
+                                    <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
+                                    {{ pergunta.pergunta }}
+                                    {% if pergunta.obrigatoria %}
+                                    <span class="text-danger">*</span>
+                                    {% endif %}
+                                </label>
+                                <div class="small text-muted mb-2">
+                                    <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
+                                </div>
                                 {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
                                     <select class="form-select" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
                                         <option value="">-- Selecione --</option>
                                         <option value="Sim">Sim</option>
                                         <option value="Não">Não</option>
                                     </select>
+                                {% elif pergunta.tipo_resposta == 'LISTA' %}
+                                    <select class="form-select" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                        <option value="">-- Selecione --</option>
+                                        {% for opt in pergunta.opcoes_resposta_list %}
+                                            <option value="{{ opt }}">{{ opt }}</option>
+                                        {% endfor %}
+                                    </select>
                                 {% elif pergunta.tipo_resposta == 'NUMERO' %}
                                     <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
                                 {% elif pergunta.tipo_resposta == 'DECIMAL' %}
                                     <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
                                 {% endif %}
-                            {% endif %}
+                            </div>
                         </div>
-                    </div>
-                    {% endfor %}
+                        {% endfor %}
+                    {% endif %}
+
+                    {% if not grid_enabled or not grid_itens %}
+                        {% for pergunta in perguntas_por_dia %}
+                        <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
+                            <div class="card-body">
+                                <label class="form-label fw-bold mb-2">
+                                    <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
+                                    {{ pergunta.pergunta }}
+                                    {% if pergunta.obrigatoria %}
+                                    <span class="text-danger">*</span>
+                                    {% endif %}
+                                </label>
+                                <div class="small text-muted mb-2">
+                                    <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
+                                </div>
+
+                                <div class="weekly-grid">
+                                    {% for dia_key, dia_label in dias_semana_choices %}
+                                    <div class="weekly-grid__item">
+                                        <label class="form-label small text-muted mb-1">{{ dia_label }}</label>
+                                        {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
+                                            <select class="form-select form-select-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <option value="">-- Selecione --</option>
+                                                <option value="Sim">Sim</option>
+                                                <option value="Não">Não</option>
+                                            </select>
+                                        {% elif pergunta.tipo_resposta == 'LISTA' %}
+                                            <select class="form-select form-select-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <option value="">-- Selecione --</option>
+                                                {% for opt in pergunta.opcoes_resposta_list %}
+                                                    <option value="{{ opt }}">{{ opt }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        {% elif pergunta.tipo_resposta == 'NUMERO' %}
+                                            <input type="number" class="form-control form-control-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
+                                        {% elif pergunta.tipo_resposta == 'DECIMAL' %}
+                                            <input type="number" class="form-control form-control-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+
                 {% else %}
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>

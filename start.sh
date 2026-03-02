@@ -3,8 +3,26 @@
 
 set -e  # Exit on error
 
+export DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings}
+
 echo "==> Checking database connection..."
-python manage.py check --database default
+DB_CHECK_RETRIES=${DB_CHECK_RETRIES:-30}
+DB_CHECK_DELAY=${DB_CHECK_DELAY:-2}
+
+db_ok=false
+for i in $(seq 1 $DB_CHECK_RETRIES); do
+    if python manage.py check --database default; then
+        db_ok=true
+        break
+    fi
+    echo "Database not ready yet ($i/$DB_CHECK_RETRIES). Waiting ${DB_CHECK_DELAY}s..."
+    sleep $DB_CHECK_DELAY
+done
+
+if [ "$db_ok" != "true" ]; then
+    echo "Database connection failed after $DB_CHECK_RETRIES attempts."
+    exit 1
+fi
 
 echo "==> Running database migrations..."
 python manage.py migrate --noinput --fake-initial 2>/dev/null || python manage.py migrate --noinput
@@ -18,8 +36,8 @@ python manage.py ensure_superuser 2>/dev/null || true
 echo "==> Starting Gunicorn server on port $PORT..."
 exec gunicorn config.wsgi:application \
     --bind 0.0.0.0:$PORT \
-    --workers 3 \
-    --timeout 300 \
-    --log-level debug \
+    --workers ${GUNICORN_WORKERS:-3} \
+    --timeout ${GUNICORN_TIMEOUT:-300} \
+    --log-level ${GUNICORN_LOG_LEVEL:-info} \
     --access-logfile - \
     --error-logfile -

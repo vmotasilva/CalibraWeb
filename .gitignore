@@ -30,6 +30,8 @@ Thumbs.db
 # Environment variables / credentials
 .env
 *.env
+.env.local
+.env.*
 
 # Logs
 *.log

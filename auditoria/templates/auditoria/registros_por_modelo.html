@@ -25,7 +25,13 @@
                         <div class="col-md-6">
                             <p class="mb-2"><strong>Objeto de Auditoria:</strong> {{ modelo.objeto_auditoria }}</p>
                             <p class="mb-2"><strong>Periodicidade:</strong> {{ modelo.get_periodicidade_completa }}</p>
-                            {% if modelo.responsavel %}
+                            {% if modelo.responsaveis.all %}
+                            <p class="mb-2"><strong>Responsáveis:</strong>
+                                {% for u in modelo.responsaveis.all %}
+                                    {{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </p>
+                            {% elif modelo.responsavel %}
                             <p class="mb-2"><strong>Responsável:</strong> {{ modelo.responsavel.get_full_name|default:modelo.responsavel.username }}</p>
                             {% endif %}
                         </div>

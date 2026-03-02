@@ -44,12 +44,12 @@ RUN pip install --upgrade pip && \
 COPY . .
 
 # Make entrypoint executable
-RUN chmod +x entrypoint-beat.py
+RUN chmod +x start-beat.sh
 
 # Celery Beat does NOT need HTTP ports
 # No EXPOSE directive needed (background scheduler)
 
 # No HEALTHCHECK needed (not an HTTP service)
 
-# Use Python script as entrypoint for Celery Beat scheduler
-CMD ["python", "entrypoint-beat.py"]
+# Use shell script as entrypoint for Celery Beat scheduler
+CMD ["/bin/sh", "start-beat.sh"]
