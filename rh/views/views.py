@@ -451,6 +451,20 @@ def detalhe_colaborador_view(request, colab_id):
             gerente_rh = hierarquia.gerente
 
     # Permissão para ver salário
+    can_see_salary = False
+    if request.user.is_superuser:
+        can_see_salary = True
+    elif usuario_logado:
+        setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
+        cargo_upper = str(usuario_logado.cargo).upper()
+        if (
+            "GERENTE" in cargo_upper
+            or "DIRETOR" in cargo_upper
+            or HierarquiaSetor.objects.filter(Q(gerente=usuario_logado) | Q(diretor=usuario_logado)).exists()
+            or any(k in setor_nome for k in ["RH", "DP"])
+        ):
+            can_see_salary = True
+
     # Permissão: todos podem visualizar ocorrências
     can_register_occ = False
     can_view_occ = True
