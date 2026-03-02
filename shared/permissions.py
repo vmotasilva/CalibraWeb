@@ -77,6 +77,27 @@ MODULES_PERMISSIONS = {
             'view_respostaauditoria',
         ]
     },
+    'insumos': {
+        'name': 'Insumos',
+        'permissions': [
+            'add_modeloauditoria',
+            'change_modeloauditoria',
+            'delete_modeloauditoria',
+            'view_modeloauditoria',
+            'add_perguntaauditoria',
+            'change_perguntaauditoria',
+            'delete_perguntaauditoria',
+            'view_perguntaauditoria',
+            'add_registroauditoria',
+            'change_registroauditoria',
+            'delete_registroauditoria',
+            'view_registroauditoria',
+            'add_respostaauditoria',
+            'change_respostaauditoria',
+            'delete_respostaauditoria',
+            'view_respostaauditoria',
+        ]
+    },
     'procedures': {
         'name': 'Procedimentos / Treinamentos',
         'permissions': []

@@ -2156,7 +2156,7 @@ def api_atualizar_permissoes_lote(request):
         user = User.objects.get(id=user_id)
         
         # Remover TODAS as permissões atuais dos apps gerenciados
-        apps_gerenciados = ['rh', 'qms', 'procedures', 'fornecedores', 'auditoria', 'acoes']
+        apps_gerenciados = ['rh', 'qms', 'procedures', 'fornecedores', 'auditoria', 'insumos', 'acoes']
         for app_label in apps_gerenciados:
             perms_app = Permission.objects.filter(content_type__app_label=app_label)
             user.user_permissions.remove(*perms_app)
@@ -2346,6 +2346,7 @@ def detalhe_usuario_view(request, user_id):
     user_perms_procedures = set(user.user_permissions.filter(content_type__app_label='procedures').values_list('codename', flat=True))
     user_perms_fornecedores = set(user.user_permissions.filter(content_type__app_label='fornecedores').values_list('codename', flat=True))
     user_perms_auditoria = set(user.user_permissions.filter(content_type__app_label='auditoria').values_list('codename', flat=True))
+    user_perms_insumos = set(user.user_permissions.filter(content_type__app_label='insumos').values_list('codename', flat=True))
     user_perms_acoes = set(user.user_permissions.filter(content_type__app_label='acoes').values_list('codename', flat=True))
     
     # Definir módulos com seus grupos de permissões
@@ -2704,17 +2705,71 @@ def detalhe_usuario_view(request, user_id):
                 },
             ]
         },
+        {
+            'nome': 'Insumos',
+            'cor': 'info',
+            'icone': 'bi-box-seam',
+            'app_label': 'insumos',
+            'grupos': [
+                {
+                    'nome': 'Modelos',
+                    'icone': 'bi-files',
+                    'permissoes': [
+                        ('view_modeloauditoria', 'Visualizar'),
+                        ('add_modeloauditoria', 'Adicionar'),
+                        ('change_modeloauditoria', 'Editar'),
+                        ('delete_modeloauditoria', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Perguntas',
+                    'icone': 'bi-question-circle',
+                    'permissoes': [
+                        ('view_perguntaauditoria', 'Visualizar'),
+                        ('add_perguntaauditoria', 'Adicionar'),
+                        ('change_perguntaauditoria', 'Editar'),
+                        ('delete_perguntaauditoria', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Registros',
+                    'icone': 'bi-journal-check',
+                    'permissoes': [
+                        ('view_registroauditoria', 'Visualizar'),
+                        ('add_registroauditoria', 'Adicionar'),
+                        ('change_registroauditoria', 'Editar'),
+                        ('delete_registroauditoria', 'Excluir'),
+                    ]
+                },
+                {
+                    'nome': 'Respostas',
+                    'icone': 'bi-check2-square',
+                    'permissoes': [
+                        ('view_respostaauditoria', 'Visualizar'),
+                        ('add_respostaauditoria', 'Adicionar'),
+                        ('change_respostaauditoria', 'Editar'),
+                        ('delete_respostaauditoria', 'Excluir'),
+                    ]
+                },
+            ]
+        },
     ]
     
-    # Combinar todas as permissões do usuário
-    all_user_perms = (
-        user_perms_rh
-        | user_perms_qms
-        | user_perms_procedures
-        | user_perms_fornecedores
-        | user_perms_auditoria
-        | user_perms_acoes
-    )
+    # Combinar todas as permissões do usuário (com app_label) para evitar colisões de codename
+    user_perms_by_app = {
+        'rh': user_perms_rh,
+        'qms': user_perms_qms,
+        'procedures': user_perms_procedures,
+        'fornecedores': user_perms_fornecedores,
+        'auditoria': user_perms_auditoria,
+        'insumos': user_perms_insumos,
+        'acoes': user_perms_acoes,
+    }
+    all_user_perms = {
+        f"{app_label}.{codename}"
+        for app_label, perms in user_perms_by_app.items()
+        for codename in perms
+    }
     
     context = {
         'usuario': user,

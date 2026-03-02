@@ -27,6 +27,9 @@ fi
 echo "==> Running database migrations..."
 python manage.py migrate --noinput --fake-initial 2>/dev/null || python manage.py migrate --noinput
 
+echo "==> Syncing module permission groups..."
+python manage.py setup_module_permissions 2>/dev/null || python manage.py setup_module_permissions || true
+
 echo "==> Collecting static files..."
 python manage.py collectstatic --noinput --clear
 

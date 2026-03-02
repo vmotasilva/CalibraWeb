@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="mb-0">Modelos Cadastrados</h2>
+        <a href="{% url 'insumos:modelo_create' %}" class="btn btn-primary">Novo Modelo</a>
+    </div>
+
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-3">
+            <label class="form-label">De</label>
+            <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Até</label>
+            <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
+        </div>
+        <div class="col-md-3 d-flex flex-wrap align-items-end gap-2">
+            <button type="submit" class="btn btn-outline-primary">Consultar por Período</button>
+            <a href="{% url 'insumos:modelos_list' %}" class="btn btn-outline-secondary">Limpar</a>
+        </div>
+    </form>
+
+    {% if inicio or fim %}
+    <div class="alert alert-info py-2">
+        {% if inicio and fim %}
+            Exibindo dados de <strong>{{ inicio|date:'d/m/Y' }}</strong> até <strong>{{ fim|date:'d/m/Y' }}</strong>.
+        {% elif inicio %}
+            Exibindo dados a partir de <strong>{{ inicio|date:'d/m/Y' }}</strong>.
+        {% else %}
+            Exibindo dados até <strong>{{ fim|date:'d/m/Y' }}</strong>.
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0 table-striped">
+                <thead>
+                    <tr>
+                        <th>Modelo</th>
+                        <th>Periodicidade</th>
+                        <th>Perguntas</th>
+                        <th>Link SharePoint</th>
+                        <th>Ativo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for modelo in modelos %}
+                    <tr>
+                        <td>{{ modelo.nome }}</td>
+                        <td>{{ modelo.get_periodicidade_completa }}</td>
+                        <td>{{ modelo.total_perguntas }}</td>
+                        <td>
+                            {% if modelo.link_sharepoint %}
+                                <a href="{{ modelo.link_sharepoint }}" target="_blank">Abrir</a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{% if modelo.ativo %}Sim{% else %}Não{% endif %}</td>
+                        <td>
+                            <a href="{% url 'insumos:registros_por_modelo' modelo.id %}" class="btn btn-sm btn-info" title="Ver resumo de registros">
+                                <i class="bi bi-list-check"></i> Registros
+                            </a>
+                            <a href="{% url 'insumos:modelo_edit' modelo.id %}" class="btn btn-sm btn-warning" title="Editar modelo">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'insumos:perguntas_list' %}?modelo={{ modelo.id }}" class="btn btn-sm btn-outline-primary" title="Gerenciar perguntas">
+                                <i class="bi bi-question-circle"></i>
+                            </a>
+                            <a href="{% url 'insumos:modelo_delete' modelo.id %}" class="btn btn-sm btn-danger" title="Excluir modelo">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center py-3">Nenhum modelo encontrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

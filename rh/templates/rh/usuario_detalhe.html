@@ -402,16 +402,18 @@
                                         </div>
                                         {% for codename, label in grupo.permissoes %}
                                         <div class="perm-item">
-                                            <label class="form-check-label mb-0 small" for="perm_{{ codename }}">
+                                            <label class="form-check-label mb-0 small" for="perm_{{ modulo.app_label }}_{{ codename }}">
                                                 {{ label }}
                                             </label>
                                             <input type="checkbox" 
                                                    class="form-check-input perm-checkbox"
-                                                   id="perm_{{ codename }}"
+                                                   id="perm_{{ modulo.app_label }}_{{ codename }}"
                                                    data-codename="{{ codename }}"
                                                    data-user-id="{{ usuario.id }}"
                                                    data-app-label="{{ modulo.app_label }}"
-                                                   {% if codename in user_perms or usuario.is_superuser %}checked{% endif %}
+                                                   {% with perm_key=modulo.app_label|add:"."|add:codename %}
+                                                   {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                                   {% endwith %}
                                                    {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
                                         </div>
                                         {% endfor %}

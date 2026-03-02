@@ -26,6 +26,7 @@ class ModuleAccessMiddleware:
         '/fornecedores/': 'fornecedores',
         '/acoes/': 'acoes',
         '/auditoria/': 'auditoria',
+        '/insumos/': 'insumos',
         '/procurements/': 'procurements',
         '/admin/': 'admin',  # Admin não é restringido
     }

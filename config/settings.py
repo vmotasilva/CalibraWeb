@@ -76,7 +76,7 @@ if not ALLOWED_HOSTS:
 # Configuração necessária para o formulário de login funcionar no Railway (HTTPS) e em desenvolvimento
 csrf_origins = os.environ.get(
     "CSRF_TRUSTED_ORIGINS", 
-    "https://*.railway.app,http://localhost:8000,http://127.0.0.1:8000,http://localhost:18000,http://127.0.0.1:18000"
+    "https://*.railway.app,https://*.up.railway.app,http://localhost:8000,http://127.0.0.1:8000,http://localhost:18000,http://127.0.0.1:18000"
 ).split(",")
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_origins if origin.strip()]
 
@@ -109,6 +109,7 @@ INSTALLED_APPS = [
     "fornecedores.apps.FornecedoresConfig",
     "acoes.apps.AcoesConfig",  # Ações Corretivas/Preventivas
     "auditoria.apps.AuditoriaConfig",
+    "insumos.apps.InsumosConfig",
     # Módulo legado (compatibilidade - mantém 3 cross-app models: SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob)
     "qms",
     "training",  # Adicionado para compatibilidade com dashboard de gráficos
