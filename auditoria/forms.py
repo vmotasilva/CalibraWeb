@@ -18,6 +18,7 @@ class ModeloAuditoriaForm(forms.ModelForm):
             "preenchimento_grid",
             "grid_rotulo_item",
             "grid_colunas",
+            "subcategorias",
             "ativo",
         ]
         widgets = {
@@ -36,6 +37,13 @@ class ModeloAuditoriaForm(forms.ModelForm):
                     "class": "form-control",
                     "rows": 3,
                     "placeholder": "Uma coluna por linha (ex.: EQP-001)\nEQP-002\nEQP-003",
+                }
+            ),
+            "subcategorias": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Uma sub-categoria por linha (ex.: Segurança)\nQualidade\n5S",
                 }
             ),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
@@ -78,6 +86,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         model = PerguntaAuditoria
         fields = [
             "modelo",
+            "subcategoria",
             "pergunta",
             "tipo_resposta",
             "preenchimento_semanal",
@@ -89,6 +98,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         ]
         widgets = {
             "modelo": forms.Select(attrs={"class": "form-select"}),
+            "subcategoria": forms.Select(attrs={"class": "form-select"}),
             "pergunta": forms.TextInput(attrs={"class": "form-control"}),
             "tipo_resposta": forms.Select(attrs={"class": "form-select"}),
             "preenchimento_semanal": forms.Select(attrs={"class": "form-select"}),
@@ -105,10 +115,45 @@ class PerguntaAuditoriaForm(forms.ModelForm):
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        modelo_id = None
+        if self.is_bound:
+            modelo_id = (self.data.get("modelo") or "").strip()
+        if not modelo_id:
+            initial_modelo = (self.initial.get("modelo") if hasattr(self, "initial") else None)
+            modelo_id = str(initial_modelo).strip() if initial_modelo else ""
+        if not modelo_id and getattr(self.instance, "modelo_id", None):
+            modelo_id = str(self.instance.modelo_id)
+
+        choices = [("", "—")] 
+        if modelo_id and str(modelo_id).isdigit():
+            try:
+                modelo = ModeloAuditoria.objects.get(pk=int(modelo_id))
+                choices += [(c, c) for c in modelo.subcategorias_list]
+            except ModeloAuditoria.DoesNotExist:
+                pass
+
+        self.fields["subcategoria"].choices = choices
+
     def clean(self):
         cleaned_data = super().clean()
+        modelo = cleaned_data.get("modelo")
+        subcategoria = (cleaned_data.get("subcategoria") or "").strip()
         tipo_resposta = cleaned_data.get("tipo_resposta")
         opcoes_resposta = (cleaned_data.get("opcoes_resposta") or "").strip()
+
+        if modelo and subcategoria:
+            allowed = getattr(modelo, "subcategorias_list", []) or []
+            if allowed:
+                allowed_lower = {a.lower() for a in allowed}
+                if subcategoria.lower() not in allowed_lower:
+                    self.add_error(
+                        "subcategoria",
+                        "Sub-categoria inválida para este modelo. Cadastre a sub-categoria no modelo e selecione-a aqui.",
+                    )
+
         if tipo_resposta == "LISTA":
             values = [v.strip() for v in opcoes_resposta.replace("\r\n", "\n").split("\n") if v.strip()]
             if not values:

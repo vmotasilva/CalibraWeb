@@ -90,6 +90,13 @@ class ModeloAuditoria(models.Model):
         verbose_name="Colunas do GRID",
         help_text="Uma coluna por linha (ex.: EQP-001). Se vazio, as colunas serão informadas no registro.",
     )
+
+    subcategorias = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Sub-categorias",
+        help_text="Uma sub-categoria por linha (ex.: Segurança, Qualidade, 5S).",
+    )
     
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -116,6 +123,22 @@ class ModeloAuditoria(models.Model):
             return f"{base} (dia {self.dia_mes})"
         
         return base
+
+    @property
+    def subcategorias_list(self) -> list[str]:
+        raw = (self.subcategorias or "").replace("\r\n", "\n")
+        parts = [p.strip() for p in raw.split("\n")]
+        seen: set[str] = set()
+        values: list[str] = []
+        for p in parts:
+            if not p:
+                continue
+            key = p.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            values.append(p)
+        return values
 
 
 class PerguntaAuditoria(models.Model):
@@ -160,6 +183,13 @@ class PerguntaAuditoria(models.Model):
         help_text="Se marcado, esta pergunta aparece no preenchimento em GRID (quando habilitado no modelo).",
     )
     ordem = models.PositiveIntegerField(default=1)
+    subcategoria = models.CharField(
+        max_length=80,
+        blank=True,
+        default="",
+        verbose_name="Sub-categoria",
+        help_text="Opcional. Deve existir nas sub-categorias do modelo (quando definidas).",
+    )
     obrigatoria = models.BooleanField(default=True)
     ativo = models.BooleanField(default=True)
 

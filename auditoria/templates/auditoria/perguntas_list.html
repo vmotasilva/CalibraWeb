@@ -4,7 +4,7 @@
 <div class="container mt-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h2 class="mb-0">Perguntas dos Modelos</h2>
-        <a href="{% url 'auditoria:pergunta_create' %}{% if modelo_id %}?modelo={{ modelo_id }}{% endif %}" class="btn btn-primary" id="btnNovaPergunta" data-base-href="{% url 'auditoria:pergunta_create' %}">Nova Pergunta</a>
+        <a href="{% url 'auditoria:pergunta_create' %}{% if modelo_id %}?modelo={{ modelo_id }}{% if subcategoria %}&subcategoria={{ subcategoria|urlencode }}{% endif %}{% endif %}" class="btn btn-primary" id="btnNovaPergunta" data-base-href="{% url 'auditoria:pergunta_create' %}">Nova Pergunta</a>
     </div>
 
     <form method="get" class="row g-2 mb-3">
@@ -16,6 +16,18 @@
                 <option value="{{ modelo.id }}" {% if modelo_id == modelo.id|stringformat:'s' %}selected{% endif %}>{{ modelo.nome }}</option>
                 {% endfor %}
             </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Filtrar por sub-categoria</label>
+            <select name="subcategoria" class="form-select" id="filterSubcategoriaSelect" {% if not modelo_id %}disabled{% endif %}>
+                <option value="">Todas</option>
+                {% for sc in subcategorias %}
+                <option value="{{ sc }}" {% if subcategoria == sc %}selected{% endif %}>{{ sc }}</option>
+                {% endfor %}
+            </select>
+            {% if not modelo_id %}
+                <div class="form-text">Selecione um modelo para ver as sub-categorias.</div>
+            {% endif %}
         </div>
         <div class="col-md-3 d-flex flex-wrap align-items-end gap-2">
             <button type="submit" class="btn btn-outline-primary">Filtrar</button>
@@ -30,6 +42,7 @@
                 <thead>
                     <tr>
                         <th>Modelo</th>
+                        <th>Sub-categoria</th>
                         <th>Ordem</th>
                         <th>Pergunta</th>
                         <th>Tipo de Resposta</th>
@@ -41,6 +54,7 @@
                     {% for pergunta in perguntas %}
                     <tr>
                         <td>{{ pergunta.modelo.nome }}</td>
+                        <td>{{ pergunta.subcategoria|default:'-' }}</td>
                         <td>{{ pergunta.ordem }}</td>
                         <td>{{ pergunta.pergunta }}</td>
                         <td>{{ pergunta.get_tipo_resposta_display }}</td>
@@ -55,7 +69,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6" class="text-center py-3">Nenhuma pergunta cadastrada.</td></tr>
+                    <tr><td colspan="7" class="text-center py-3">Nenhuma pergunta cadastrada.</td></tr>
                     {% endfor %}
                 </tbody>
                 </table>
@@ -67,6 +81,7 @@
 <script>
     (function() {
         const select = document.getElementById('filterModeloSelect');
+        const subSelect = document.getElementById('filterSubcategoriaSelect');
         const btn = document.getElementById('btnNovaPergunta');
         if (!select || !btn) return;
 
@@ -74,11 +89,21 @@
 
         const updateHref = () => {
             const modeloId = (select.value || '').trim();
-            btn.setAttribute('href', modeloId ? `${baseHref}?modelo=${encodeURIComponent(modeloId)}` : baseHref);
+            const subVal = subSelect ? (subSelect.value || '').trim() : '';
+            if (!modeloId) {
+                btn.setAttribute('href', baseHref);
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.set('modelo', modeloId);
+            if (subVal) params.set('subcategoria', subVal);
+            btn.setAttribute('href', `${baseHref}?${params.toString()}`);
         };
 
         updateHref();
         select.addEventListener('change', updateHref);
+        if (subSelect) subSelect.addEventListener('change', updateHref);
         btn.addEventListener('click', updateHref);
     })();
 </script>

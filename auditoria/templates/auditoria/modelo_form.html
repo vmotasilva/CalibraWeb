@@ -116,6 +116,15 @@
                 <small class="form-text text-muted">Uma coluna por linha. Se deixar vazio, as colunas poderão ser informadas no registro.</small>
             </div>
         </div>
+
+        <div class="mb-3">
+            <label class="form-label">Sub-categorias</label>
+            {{ form.subcategorias }}
+            {% if form.subcategorias.errors %}
+                <div class="text-danger">{{ form.subcategorias.errors }}</div>
+            {% endif %}
+            <small class="form-text text-muted">Uma sub-categoria por linha. Essas opções ficam disponíveis para associar nas perguntas.</small>
+        </div>
         
         <!-- Campos de Referência de Periodicidade -->
         <div id="campo-semanal" class="mb-3" style="display: none;">

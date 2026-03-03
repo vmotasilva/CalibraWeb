@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from io import BytesIO
 import json
+from urllib.parse import urlencode
 
 from .forms import ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
 from .models import ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
@@ -201,14 +202,27 @@ def modelo_delete(request, pk):
 @login_required
 def perguntas_list(request):
     modelo_id = request.GET.get("modelo")
+    subcategoria = (request.GET.get("subcategoria") or "").strip()
     perguntas = PerguntaAuditoria.objects.select_related("modelo")
     if modelo_id:
         perguntas = perguntas.filter(modelo_id=modelo_id)
+    if subcategoria:
+        perguntas = perguntas.filter(subcategoria=subcategoria)
+
+    subcategorias = []
+    if modelo_id and str(modelo_id).isdigit():
+        try:
+            modelo = ModeloAuditoria.objects.get(pk=int(modelo_id))
+            subcategorias = modelo.subcategorias_list
+        except ModeloAuditoria.DoesNotExist:
+            subcategorias = []
 
     context = {
-        "perguntas": perguntas.order_by("modelo__nome", "ordem", "id"),
+        "perguntas": perguntas.order_by("modelo__nome", "subcategoria", "ordem", "id"),
         "modelos": ModeloAuditoria.objects.filter(ativo=True).order_by("nome"),
         "modelo_id": modelo_id,
+        "subcategoria": subcategoria,
+        "subcategorias": subcategorias,
     }
     return render(request, "auditoria/perguntas_list.html", context)
 
@@ -224,15 +238,24 @@ def pergunta_create(request):
             form.save()
             messages.success(request, "Pergunta cadastrada com sucesso.")
             modelo_id = getattr(form.instance, "modelo_id", None)
-            url = reverse("auditoria:perguntas_list")
+            params = {}
             if modelo_id:
-                url = f"{url}?modelo={modelo_id}"
+                params["modelo"] = modelo_id
+            subcategoria = (getattr(form.instance, "subcategoria", "") or "").strip()
+            if subcategoria:
+                params["subcategoria"] = subcategoria
+            url = reverse("auditoria:perguntas_list")
+            if params:
+                url = f"{url}?{urlencode(params)}"
             return redirect(url)
     else:
         initial = {}
         modelo_id = request.GET.get("modelo")
         if modelo_id:
             initial["modelo"] = modelo_id
+            subcategoria = (request.GET.get("subcategoria") or "").strip()
+            if subcategoria:
+                initial["subcategoria"] = subcategoria
             if str(modelo_id).isdigit():
                 initial["ordem"] = _get_next_pergunta_ordem(int(modelo_id))
         form = PerguntaAuditoriaForm(initial=initial)
@@ -257,15 +280,22 @@ def pergunta_duplicate(request, pk):
             opcoes_resposta=pergunta.opcoes_resposta,
             aplicar_no_grid=pergunta.aplicar_no_grid,
             ordem=_get_next_pergunta_ordem(pergunta.modelo_id),
+            subcategoria=pergunta.subcategoria,
             obrigatoria=pergunta.obrigatoria,
             ativo=pergunta.ativo,
         )
         nova.save()
 
     messages.success(request, "Pergunta duplicada com sucesso.")
-    url = reverse("auditoria:perguntas_list")
+    params = {}
     if pergunta.modelo_id:
-        url = f"{url}?modelo={pergunta.modelo_id}"
+        params["modelo"] = pergunta.modelo_id
+    subcategoria = (pergunta.subcategoria or "").strip()
+    if subcategoria:
+        params["subcategoria"] = subcategoria
+    url = reverse("auditoria:perguntas_list")
+    if params:
+        url = f"{url}?{urlencode(params)}"
     return redirect(url)
 
 
@@ -292,6 +322,7 @@ def modelo_duplicate(request, pk):
             preenchimento_grid=modelo.preenchimento_grid,
             grid_rotulo_item=modelo.grid_rotulo_item,
             grid_colunas=modelo.grid_colunas,
+            subcategorias=modelo.subcategorias,
             ativo=modelo.ativo,
         )
         novo_modelo.save()
@@ -307,6 +338,7 @@ def modelo_duplicate(request, pk):
                 opcoes_resposta=p.opcoes_resposta,
                 aplicar_no_grid=p.aplicar_no_grid,
                 ordem=p.ordem,
+                subcategoria=p.subcategoria,
                 obrigatoria=p.obrigatoria,
                 ativo=p.ativo,
             )
@@ -331,9 +363,15 @@ def pergunta_edit(request, pk):
             form.save()
             messages.success(request, "Pergunta atualizada com sucesso.")
             modelo_id = getattr(form.instance, "modelo_id", None)
-            url = reverse("auditoria:perguntas_list")
+            params = {}
             if modelo_id:
-                url = f"{url}?modelo={modelo_id}"
+                params["modelo"] = modelo_id
+            subcategoria = (getattr(form.instance, "subcategoria", "") or "").strip()
+            if subcategoria:
+                params["subcategoria"] = subcategoria
+            url = reverse("auditoria:perguntas_list")
+            if params:
+                url = f"{url}?{urlencode(params)}"
             return redirect(url)
     else:
         form = PerguntaAuditoriaForm(instance=pergunta)
@@ -449,7 +487,7 @@ def registro_create(request, modelo_id=None):
         else:
             return redirect("auditoria:selecionar_modelo_preenchimento")
     
-    perguntas = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("ordem", "id")
+    perguntas = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("subcategoria", "ordem", "id")
     
     dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
     is_semanal = modelo.periodicidade == "SEMANAL"
@@ -595,7 +633,7 @@ def registro_edit(request, pk):
         ),
         pk=pk,
     )
-    perguntas = PerguntaAuditoria.objects.filter(modelo=registro.modelo, ativo=True).order_by("ordem", "id")
+    perguntas = PerguntaAuditoria.objects.filter(modelo=registro.modelo, ativo=True).order_by("subcategoria", "ordem", "id")
     
     dias_semana_choices = list(ModeloAuditoria.DIA_SEMANA_CHOICES)
     is_semanal = registro.modelo.periodicidade == "SEMANAL"

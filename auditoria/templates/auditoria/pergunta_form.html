@@ -10,6 +10,16 @@
             {{ form.modelo }}
         </div>
         <div class="mb-3">
+            <label class="form-label">Sub-categoria</label>
+            {{ form.subcategoria }}
+            {% if form.subcategoria.help_text %}
+                <div class="form-text">{{ form.subcategoria.help_text }}</div>
+            {% endif %}
+            {% if form.subcategoria.errors %}
+                <div class="text-danger">{{ form.subcategoria.errors }}</div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
             <label class="form-label">Pergunta</label>
             {{ form.pergunta }}
         </div>

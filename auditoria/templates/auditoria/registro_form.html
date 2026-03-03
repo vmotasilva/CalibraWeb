@@ -192,6 +192,13 @@
                                     aria-labelledby="tab-grid-{{ forloop.counter0 }}">
 
                                     {% for pergunta in grid_perguntas %}
+                                    {% ifchanged pergunta.subcategoria %}
+                                        {% if pergunta.subcategoria %}
+                                            <div class="alert alert-secondary py-2">
+                                                <strong>{{ pergunta.subcategoria }}</strong>
+                                            </div>
+                                        {% endif %}
+                                    {% endifchanged %}
                                     <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
                                         <div class="card-body">
                                             <label class="form-label fw-bold mb-2">
@@ -228,6 +235,13 @@
                                     {% endfor %}
 
                                     {% for pergunta in perguntas_por_dia %}
+                                    {% ifchanged pergunta.subcategoria %}
+                                        {% if pergunta.subcategoria %}
+                                            <div class="alert alert-secondary py-2">
+                                                <strong>{{ pergunta.subcategoria }}</strong>
+                                            </div>
+                                        {% endif %}
+                                    {% endifchanged %}
                                     <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
                                         <div class="card-body">
                                             <label class="form-label fw-bold mb-2">
@@ -276,6 +290,13 @@
                     </div>
                     {% else %}
                         {% for pergunta in grid_perguntas %}
+                        {% ifchanged pergunta.subcategoria %}
+                            {% if pergunta.subcategoria %}
+                                <div class="alert alert-secondary py-2">
+                                    <strong>{{ pergunta.subcategoria }}</strong>
+                                </div>
+                            {% endif %}
+                        {% endifchanged %}
                         <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
                             <div class="card-body">
                                 <label class="form-label fw-bold mb-2">
@@ -313,6 +334,13 @@
 
                     {% if not grid_enabled or not grid_itens %}
                         {% for pergunta in perguntas_por_dia %}
+                        {% ifchanged pergunta.subcategoria %}
+                            {% if pergunta.subcategoria %}
+                                <div class="alert alert-secondary py-2">
+                                    <strong>{{ pergunta.subcategoria }}</strong>
+                                </div>
+                            {% endif %}
+                        {% endifchanged %}
                         <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
                             <div class="card-body">
                                 <label class="form-label fw-bold mb-2">
