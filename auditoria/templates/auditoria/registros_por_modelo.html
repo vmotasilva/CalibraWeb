@@ -285,16 +285,33 @@ document.addEventListener('DOMContentLoaded', function() {
         const labels = q.current.labels || [];
         const datasets = q.current.datasets || null;
 
-        // Fallback antigo (quando vier apenas values)
+        // Formato "antigo" (por pergunta): { labels: [...], values: [...] }
         if (!datasets && Array.isArray(q.current.values)) {
             const values = q.current.values || [];
+            const safeLabels = Array.isArray(labels) && labels.length ? labels : values.map((_v, idx) => String(idx + 1));
+            const safeValues = Array.isArray(values) ? values : [];
+
             return {
                 type: 'bar',
                 data: {
-                    labels: ['Total'],
-                    datasets: [{ label: 'Total', data: [values[0] ?? 0] }]
+                    labels: safeLabels,
+                    datasets: [
+                        {
+                            label: (tipo === 'SIM_NAO') ? '' : 'Respostas',
+                            data: safeValues,
+                            borderWidth: 1,
+                        }
+                    ]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                }
             };
         }
 
