@@ -2169,19 +2169,46 @@ def api_atualizar_permissoes_lote(request):
         
         user = User.objects.get(id=user_id)
         
-        # Remover TODAS as permissões atuais dos apps gerenciados
-        apps_gerenciados = ['rh', 'qms', 'procedures', 'fornecedores', 'auditoria', 'insumos', 'acoes']
-        for app_label in apps_gerenciados:
-            perms_app = Permission.objects.filter(content_type__app_label=app_label)
-            user.user_permissions.remove(*perms_app)
-        
-        # Adicionar as permissões selecionadas por app
+        # Segurança: somente apps conhecidos
+        allowed_apps = {
+            'core',
+            'rh',
+            'qms',
+            'metrologia',
+            'procedures',
+            'fornecedores',
+            'auditoria',
+            'insumos',
+            'acoes',
+        }
+
         total_adicionadas = 0
-        for app_label, codenames in permissoes_dict.items():
+
+        # Atualizar permissões por app presente no payload (não apagar o restante)
+        for app_label, codenames in (permissoes_dict or {}).items():
+            if app_label not in allowed_apps:
+                continue
+
+            # Remoção controlada por app
+            if app_label == 'core':
+                # Não remover permissões core que não são de navegação
+                perms_to_remove = Permission.objects.filter(
+                    content_type__app_label='core',
+                    codename__startswith='nav_'
+                )
+            else:
+                perms_to_remove = Permission.objects.filter(content_type__app_label=app_label)
+
+            user.user_permissions.remove(*perms_to_remove)
+
+            # Adição
             if codenames:
+                if app_label == 'core':
+                    codenames = [c for c in codenames if str(c).startswith('nav_')]
+
                 perms_to_add = Permission.objects.filter(
-                    codename__in=codenames,
-                    content_type__app_label=app_label
+                    content_type__app_label=app_label,
+                    codename__in=codenames
                 )
                 user.user_permissions.add(*perms_to_add)
                 total_adicionadas += perms_to_add.count()
@@ -2355,435 +2382,48 @@ def detalhe_usuario_view(request, user_id):
         colaborador = None
     
     # Permissões do usuário - separar por app
-    user_perms_rh = set(user.user_permissions.filter(content_type__app_label='rh').values_list('codename', flat=True))
-    user_perms_qms = set(user.user_permissions.filter(content_type__app_label='qms').values_list('codename', flat=True))
-    user_perms_procedures = set(user.user_permissions.filter(content_type__app_label='procedures').values_list('codename', flat=True))
-    user_perms_fornecedores = set(user.user_permissions.filter(content_type__app_label='fornecedores').values_list('codename', flat=True))
-    user_perms_auditoria = set(user.user_permissions.filter(content_type__app_label='auditoria').values_list('codename', flat=True))
-    user_perms_insumos = set(user.user_permissions.filter(content_type__app_label='insumos').values_list('codename', flat=True))
-    user_perms_acoes = set(user.user_permissions.filter(content_type__app_label='acoes').values_list('codename', flat=True))
+    user_perms_core = set(user.user_permissions.filter(content_type__app_label='core').values_list('codename', flat=True))
+
+    # Nova estrutura de permissões (Módulo -> Blocos -> Funções) baseada em core.nav_*
+    from shared.permissions import get_nav_structure
+
+    def _perm_parts(full_perm: str | None):
+        if not full_perm or "." not in str(full_perm):
+            return {"app_label": "core", "codename": "", "full": ""}
+        app_label, codename = str(full_perm).split(".", 1)
+        return {"app_label": app_label, "codename": codename, "full": f"{app_label}.{codename}"}
+
+    raw_modulos = get_nav_structure()
+    modulos = []
+    for modulo in raw_modulos:
+        modulos.append(
+            {
+                "key": modulo.get("key"),
+                "nome": modulo.get("nome"),
+                "cor": modulo.get("cor"),
+                "icone": modulo.get("icone"),
+                "module_perm": _perm_parts(modulo.get("module_perm")),
+                "blocos": [
+                    {
+                        "key": bloco.get("key"),
+                        "nome": bloco.get("nome"),
+                        "perm": _perm_parts(bloco.get("perm")),
+                        "funcoes": [
+                            {
+                                "nome": func.get("nome"),
+                                "view_name": func.get("view_name"),
+                                "perm": _perm_parts(func.get("perm")),
+                            }
+                            for func in (bloco.get("funcoes") or [])
+                        ],
+                    }
+                    for bloco in (modulo.get("blocos") or [])
+                ],
+            }
+        )
     
-    # Definir módulos com seus grupos de permissões
-    modulos = [
-        {
-            'nome': 'Metrologia',
-            'cor': 'success',
-            'icone': 'bi-rulers',
-            'app_label': 'qms',
-            'grupos': [
-                {
-                    'nome': 'Instrumento',
-                    'icone': 'bi-tools',
-                    'permissoes': [
-                        ('view_instrumento', 'Visualizar'),
-                        ('add_instrumento', 'Adicionar'),
-                        ('change_instrumento', 'Editar'),
-                        ('delete_instrumento', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Calibração',
-                    'icone': 'bi-speedometer2',
-                    'permissoes': [
-                        ('view_calibracao', 'Visualizar'),
-                        ('add_calibracao', 'Adicionar'),
-                        ('change_calibracao', 'Editar'),
-                        ('delete_calibracao', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Certificado',
-                    'icone': 'bi-award',
-                    'permissoes': [
-                        ('view_certificado', 'Visualizar'),
-                        ('add_certificado', 'Adicionar'),
-                        ('change_certificado', 'Editar'),
-                        ('delete_certificado', 'Excluir'),
-                    ]
-                },
-            ]
-        },
-        {
-            'nome': 'Procedimentos',
-            'cor': 'info',
-            'icone': 'bi-file-earmark-text',
-            'app_label': 'procedures',
-            'grupos': [
-                {
-                    'nome': 'Procedimento',
-                    'icone': 'bi-file-earmark-ruled',
-                    'permissoes': [
-                        ('view_procedimento', 'Visualizar'),
-                        ('add_procedimento', 'Adicionar'),
-                        ('change_procedimento', 'Editar'),
-                        ('delete_procedimento', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Revisão',
-                    'icone': 'bi-clock-history',
-                    'permissoes': [
-                        ('view_procedimentorevisao', 'Visualizar'),
-                        ('add_procedimentorevisao', 'Adicionar'),
-                        ('change_procedimentorevisao', 'Editar'),
-                        ('delete_procedimentorevisao', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Disciplina',
-                    'icone': 'bi-book',
-                    'permissoes': [
-                        ('view_disciplina', 'Visualizar'),
-                        ('add_disciplina', 'Adicionar'),
-                        ('change_disciplina', 'Editar'),
-                        ('delete_disciplina', 'Excluir'),
-                    ]
-                },
-            ]
-        },
-        {
-            'nome': 'Treinamentos',
-            'cor': 'warning',
-            'icone': 'bi-mortarboard-fill',
-            'app_label': 'procedures',
-            'grupos': [
-                {
-                    'nome': 'Planejamento',
-                    'icone': 'bi-calendar-event',
-                    'permissoes': [
-                        ('view_planejamentotreinamento', 'Visualizar'),
-                        ('add_planejamentotreinamento', 'Adicionar'),
-                        ('change_planejamentotreinamento', 'Editar'),
-                        ('delete_planejamentotreinamento', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Registro',
-                    'icone': 'bi-journal-check',
-                    'permissoes': [
-                        ('view_registrotreinamento', 'Visualizar'),
-                        ('add_registrotreinamento', 'Adicionar'),
-                        ('change_registrotreinamento', 'Editar'),
-                        ('delete_registrotreinamento', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Lista de Presença',
-                    'icone': 'bi-list-check',
-                    'permissoes': [
-                        ('view_listapresenca', 'Visualizar'),
-                        ('add_listapresenca', 'Adicionar'),
-                        ('change_listapresenca', 'Editar'),
-                        ('delete_listapresenca', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Matriz de Habilidades',
-                    'icone': 'bi-grid-3x3',
-                    'permissoes': [
-                        ('view_matrizhabilidade', 'Visualizar'),
-                        ('add_matrizhabilidade', 'Adicionar'),
-                        ('change_matrizhabilidade', 'Editar'),
-                        ('delete_matrizhabilidade', 'Excluir'),
-                    ]
-                },
-            ]
-        },
-        {
-            'nome': 'Avaliação de Colaboradores',
-            'cor': 'danger',
-            'icone': 'bi-clipboard-check',
-            'app_label': 'procedures',
-            'grupos': [
-                {
-                    'nome': 'Avaliação de Habilidade',
-                    'icone': 'bi-star-fill',
-                    'permissoes': [
-                        ('view_avaliacaohabilidade', 'Visualizar'),
-                        ('add_avaliacaohabilidade', 'Adicionar'),
-                        ('change_avaliacaohabilidade', 'Editar'),
-                        ('delete_avaliacaohabilidade', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Histórico de Avaliação',
-                    'icone': 'bi-clock-history',
-                    'permissoes': [
-                        ('view_historicoavaliacaohabilidade', 'Visualizar'),
-                        ('add_historicoavaliacaohabilidade', 'Adicionar'),
-                        ('change_historicoavaliacaohabilidade', 'Editar'),
-                        ('delete_historicoavaliacaohabilidade', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Validação de Matriz',
-                    'icone': 'bi-check-circle',
-                    'permissoes': [
-                        ('view_solicitacaovalidacaomatriz', 'Visualizar'),
-                        ('add_solicitacaovalidacaomatriz', 'Adicionar'),
-                        ('change_solicitacaovalidacaomatriz', 'Editar'),
-                        ('delete_solicitacaovalidacaomatriz', 'Excluir'),
-                    ]
-                },
-            ]
-        },
-        {
-            'nome': 'RH',
-            'cor': 'primary',
-            'icone': 'bi-people-fill',
-            'app_label': 'rh',
-            'grupos': [
-                {
-                    'nome': 'Colaborador',
-                    'icone': 'bi-person',
-                    'permissoes': [
-                        ('view_colaborador', 'Visualizar'),
-                        ('add_colaborador', 'Adicionar'),
-                        ('change_colaborador', 'Editar'),
-                        ('delete_colaborador', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Documento Pessoal',
-                    'icone': 'bi-file-earmark-text',
-                    'permissoes': [
-                        ('view_documentopessoal', 'Visualizar'),
-                        ('add_documentopessoal', 'Adicionar'),
-                        ('change_documentopessoal', 'Editar'),
-                        ('delete_documentopessoal', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Férias',
-                    'icone': 'bi-calendar-check',
-                    'permissoes': [
-                        ('view_ferias', 'Visualizar'),
-                        ('add_ferias', 'Adicionar'),
-                        ('change_ferias', 'Editar'),
-                        ('delete_ferias', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Ocorrência',
-                    'icone': 'bi-exclamation-triangle',
-                    'permissoes': [
-                        ('view_ocorrencia', 'Visualizar'),
-                        ('add_ocorrencia', 'Adicionar'),
-                        ('change_ocorrencia', 'Editar'),
-                        ('delete_ocorrencia', 'Excluir'),
-                    ]
-                },
-            ]
-        },
-        {
-            'nome': 'Fornecedores',
-            'cor': 'secondary',
-            'icone': 'bi-truck',
-            'app_label': 'fornecedores',
-            'grupos': [
-                {
-                    'nome': 'Fornecedor',
-                    'icone': 'bi-building',
-                    'permissoes': [
-                        ('view_fornecedor', 'Visualizar'),
-                        ('add_fornecedor', 'Adicionar'),
-                        ('change_fornecedor', 'Editar'),
-                        ('delete_fornecedor', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Avaliação',
-                    'icone': 'bi-star',
-                    'permissoes': [
-                        ('view_avaliacaofornecedor', 'Visualizar'),
-                        ('add_avaliacaofornecedor', 'Adicionar'),
-                        ('change_avaliacaofornecedor', 'Editar'),
-                        ('delete_avaliacaofornecedor', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Documento',
-                    'icone': 'bi-file-earmark',
-                    'permissoes': [
-                        ('view_documentofornecedor', 'Visualizar'),
-                        ('add_documentofornecedor', 'Adicionar'),
-                        ('change_documentofornecedor', 'Editar'),
-                        ('delete_documentofornecedor', 'Excluir'),
-                    ]
-                },
-            ]
-        },
-        {
-            'nome': 'Ações Corretivas',
-            'cor': 'danger',
-            'icone': 'bi-exclamation-triangle',
-            'app_label': 'acoes',
-            'grupos': [
-                {
-                    'nome': 'Ação Corretiva',
-                    'icone': 'bi-clipboard2-check',
-                    'permissoes': [
-                        ('view_acaocorretiva', 'Visualizar'),
-                        ('add_acaocorretiva', 'Adicionar'),
-                        ('change_acaocorretiva', 'Editar'),
-                        ('delete_acaocorretiva', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Solução',
-                    'icone': 'bi-lightbulb',
-                    'permissoes': [
-                        ('view_solucao', 'Visualizar'),
-                        ('add_solucao', 'Adicionar'),
-                        ('change_solucao', 'Editar'),
-                        ('delete_solucao', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Origem do Problema',
-                    'icone': 'bi-diagram-3',
-                    'permissoes': [
-                        ('view_origemproblema', 'Visualizar'),
-                        ('add_origemproblema', 'Adicionar'),
-                        ('change_origemproblema', 'Editar'),
-                        ('delete_origemproblema', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Tipo de Solução',
-                    'icone': 'bi-journal-text',
-                    'permissoes': [
-                        ('view_tiposolucao', 'Visualizar'),
-                        ('add_tiposolucao', 'Adicionar'),
-                        ('change_tiposolucao', 'Editar'),
-                        ('delete_tiposolucao', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'KPI',
-                    'icone': 'bi-graph-up',
-                    'permissoes': [
-                        ('view_kpiopcao', 'Visualizar'),
-                        ('add_kpiopcao', 'Adicionar'),
-                        ('change_kpiopcao', 'Editar'),
-                        ('delete_kpiopcao', 'Excluir'),
-                    ]
-                },
-            ]
-        },
-        {
-            'nome': 'Auditoria',
-            'cor': 'info',
-            'icone': 'bi-clipboard2-check',
-            'app_label': 'auditoria',
-            'grupos': [
-                {
-                    'nome': 'Modelos',
-                    'icone': 'bi-files',
-                    'permissoes': [
-                        ('view_modeloauditoria', 'Visualizar'),
-                        ('add_modeloauditoria', 'Adicionar'),
-                        ('change_modeloauditoria', 'Editar'),
-                        ('delete_modeloauditoria', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Perguntas',
-                    'icone': 'bi-question-circle',
-                    'permissoes': [
-                        ('view_perguntaauditoria', 'Visualizar'),
-                        ('add_perguntaauditoria', 'Adicionar'),
-                        ('change_perguntaauditoria', 'Editar'),
-                        ('delete_perguntaauditoria', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Registros',
-                    'icone': 'bi-journal-check',
-                    'permissoes': [
-                        ('view_registroauditoria', 'Visualizar'),
-                        ('add_registroauditoria', 'Adicionar'),
-                        ('change_registroauditoria', 'Editar'),
-                        ('delete_registroauditoria', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Respostas',
-                    'icone': 'bi-check2-square',
-                    'permissoes': [
-                        ('view_respostaauditoria', 'Visualizar'),
-                        ('add_respostaauditoria', 'Adicionar'),
-                        ('change_respostaauditoria', 'Editar'),
-                        ('delete_respostaauditoria', 'Excluir'),
-                    ]
-                },
-            ]
-        },
-        {
-            'nome': 'Insumos',
-            'cor': 'info',
-            'icone': 'bi-box-seam',
-            'app_label': 'insumos',
-            'grupos': [
-                {
-                    'nome': 'Modelos',
-                    'icone': 'bi-files',
-                    'permissoes': [
-                        ('view_modeloauditoria', 'Visualizar'),
-                        ('add_modeloauditoria', 'Adicionar'),
-                        ('change_modeloauditoria', 'Editar'),
-                        ('delete_modeloauditoria', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Perguntas',
-                    'icone': 'bi-question-circle',
-                    'permissoes': [
-                        ('view_perguntaauditoria', 'Visualizar'),
-                        ('add_perguntaauditoria', 'Adicionar'),
-                        ('change_perguntaauditoria', 'Editar'),
-                        ('delete_perguntaauditoria', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Registros',
-                    'icone': 'bi-journal-check',
-                    'permissoes': [
-                        ('view_registroauditoria', 'Visualizar'),
-                        ('add_registroauditoria', 'Adicionar'),
-                        ('change_registroauditoria', 'Editar'),
-                        ('delete_registroauditoria', 'Excluir'),
-                    ]
-                },
-                {
-                    'nome': 'Respostas',
-                    'icone': 'bi-check2-square',
-                    'permissoes': [
-                        ('view_respostaauditoria', 'Visualizar'),
-                        ('add_respostaauditoria', 'Adicionar'),
-                        ('change_respostaauditoria', 'Editar'),
-                        ('delete_respostaauditoria', 'Excluir'),
-                    ]
-                },
-            ]
-        },
-    ]
-    
-    # Combinar todas as permissões do usuário (com app_label) para evitar colisões de codename
-    user_perms_by_app = {
-        'rh': user_perms_rh,
-        'qms': user_perms_qms,
-        'procedures': user_perms_procedures,
-        'fornecedores': user_perms_fornecedores,
-        'auditoria': user_perms_auditoria,
-        'insumos': user_perms_insumos,
-        'acoes': user_perms_acoes,
-    }
-    all_user_perms = {
-        f"{app_label}.{codename}"
-        for app_label, perms in user_perms_by_app.items()
-        for codename in perms
-    }
+    # Combinar permissões do usuário para checar checkboxes no template
+    all_user_perms = {f"core.{codename}" for codename in user_perms_core}
     
     context = {
         'usuario': user,

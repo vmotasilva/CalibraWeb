@@ -7,7 +7,8 @@ decorators individuais em cada view.
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.urls import resolve
-from shared.permissions import has_module_access, MODULES_PERMISSIONS
+
+from shared.permissions import has_module_access, has_view_access
 
 
 class ModuleAccessMiddleware:
@@ -68,16 +69,30 @@ class ModuleAccessMiddleware:
         
         # Encontrar o módulo pela URL
         module_key = self._get_module_from_url(request.path)
-        
+
         if module_key and module_key != 'admin':
-            # Verificar acesso
+            # 1) Acesso ao módulo
             if not has_module_access(request.user, module_key):
-                # Armazenar mensagem na sessão
                 messages.error(
                     request,
                     f"❌ Acesso negado! Você não tem permissão para acessar o módulo '{module_key}'."
                 )
-                # Redirecionar para página de acesso negado
+                request.session.save()
+                request.access_denied_redirect = redirect('access_denied', module=module_key)
+                return
+
+            # 2) Acesso à função (quando estiver mapeada em nav_*)
+            try:
+                match = resolve(request.path)
+                view_name = getattr(match, 'view_name', None)
+            except Exception:
+                view_name = None
+
+            if view_name and not has_view_access(request.user, view_name):
+                messages.error(
+                    request,
+                    "❌ Acesso negado! Você não tem permissão para acessar esta função."
+                )
                 request.session.save()
                 request.access_denied_redirect = redirect('access_denied', module=module_key)
 

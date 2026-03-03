@@ -1,4 +1,4 @@
-{% load static %}
+{% load static nav_access %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -77,60 +77,125 @@
         <div class="collapse navbar-collapse" id="navbarContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 
+                {% can_nav_module user 'metrologia' as nav_metrologia %}
+                {% if nav_metrologia %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Metrologia">
                         <i class="bi bi-tools nav-icon"></i><span class="nav-text">Metrologia</span>
                     </a>
                     <ul class="dropdown-menu shadow">
-                        <li><h6 class="dropdown-header text-muted">VISÃO GERAL</h6></li>
-                        <li>
-                            <a class="dropdown-item" href="{% url 'dashboard' %}">
-                                <i class="bi bi-speedometer2"></i> Dashboard Metrologia
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">GESTÃO</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'modulo_metrologia' %}">📋 Lista de Instrumentos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'qms:listar_historicos_calibracao' %}"><i class="bi bi-clock-history"></i> Históricos de Calibração</a></li>
-                        <li><a class="dropdown-item" href="{% url 'metrologia:categorias_list' %}"><i class="bi bi-tags"></i> Categorias</a></li>
-                        <li><a class="dropdown-item" href="{% url 'metrologia:unidades_list' %}"><i class="bi bi-rulers"></i> Unidades de Medida</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">COTAÇÕES</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'metrologia:solicitacao_list' %}">📝 Solicitações de Cotação</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'qms:importar_instrumentos' %}">📥 Importar Instrumentos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'qms:importar_historico' %}">📜 Importar Histórico</a></li>
+                        {% can_nav_block user 'metrologia' 'visao_geral' as nav_met_visao %}
+                        {% if nav_met_visao %}
+                            {% can_nav_view user 'dashboard' 'metrologia' as nav_met_dashboard %}
+                            {% if nav_met_dashboard %}
+                                <li><h6 class="dropdown-header text-muted">VISÃO GERAL</h6></li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'dashboard' %}">
+                                        <i class="bi bi-speedometer2"></i> Dashboard Metrologia
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'metrologia' 'gestao' as nav_met_gestao %}
+                        {% if nav_met_gestao %}
+                            {% can_nav_view user 'modulo_metrologia' 'metrologia' as nav_met_lista %}
+                            {% can_nav_view user 'qms:listar_historicos_calibracao' 'metrologia' as nav_met_hist %}
+                            {% can_nav_view user 'metrologia:categorias_list' 'metrologia' as nav_met_cat %}
+                            {% can_nav_view user 'metrologia:unidades_list' 'metrologia' as nav_met_uni %}
+                            {% if nav_met_lista or nav_met_hist or nav_met_cat or nav_met_uni %}
+                                <li><h6 class="dropdown-header text-muted">GESTÃO</h6></li>
+                                {% if nav_met_lista %}<li><a class="dropdown-item" href="{% url 'modulo_metrologia' %}">📋 Lista de Instrumentos</a></li>{% endif %}
+                                {% if nav_met_hist %}<li><a class="dropdown-item" href="{% url 'qms:listar_historicos_calibracao' %}"><i class="bi bi-clock-history"></i> Históricos de Calibração</a></li>{% endif %}
+                                {% if nav_met_cat %}<li><a class="dropdown-item" href="{% url 'metrologia:categorias_list' %}"><i class="bi bi-tags"></i> Categorias</a></li>{% endif %}
+                                {% if nav_met_uni %}<li><a class="dropdown-item" href="{% url 'metrologia:unidades_list' %}"><i class="bi bi-rulers"></i> Unidades de Medida</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'metrologia' 'cotacoes' as nav_met_cotacoes %}
+                        {% if nav_met_cotacoes %}
+                            {% can_nav_view user 'metrologia:solicitacao_list' 'metrologia' as nav_met_sol %}
+                            {% if nav_met_sol %}
+                                <li><h6 class="dropdown-header text-muted">COTAÇÕES</h6></li>
+                                <li><a class="dropdown-item" href="{% url 'metrologia:solicitacao_list' %}">📝 Solicitações de Cotação</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'metrologia' 'importacao' as nav_met_import %}
+                        {% if nav_met_import %}
+                            {% can_nav_view user 'qms:importar_instrumentos' 'metrologia' as nav_met_imp_inst %}
+                            {% can_nav_view user 'qms:importar_historico' 'metrologia' as nav_met_imp_hist %}
+                            {% if nav_met_imp_inst or nav_met_imp_hist %}
+                                <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
+                                {% if nav_met_imp_inst %}<li><a class="dropdown-item" href="{% url 'qms:importar_instrumentos' %}">📥 Importar Instrumentos</a></li>{% endif %}
+                                {% if nav_met_imp_hist %}<li><a class="dropdown-item" href="{% url 'qms:importar_historico' %}">📜 Importar Histórico</a></li>{% endif %}
+                            {% endif %}
+                        {% endif %}
                     </ul>
                 </li>
+                {% endif %}
 
                 <li class="nav-item">
                 <!-- Procedimentos movido para dentro de Treinamentos -->
 
+                {% can_nav_module user 'procedures' as nav_treinamentos %}
+                {% if nav_treinamentos %}
                 <li class="nav-divider"></li>
-                
+
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Treinamentos">
                         <i class="bi bi-mortarboard nav-icon"></i><span class="nav-text">Treinamentos</span>
                     </a>
                     <ul class="dropdown-menu shadow">
-                        <li><h6 class="dropdown-header text-muted">GESTÃO DE TREINAMENTOS</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'procedures:dashboard_treinamentos' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>
-                        <li><a class="dropdown-item" href="{% url 'procedures:treinamentos_list' %}"><i class="bi bi-list-check"></i> Registros de Treinamento</a></li>
-                        <li><a class="dropdown-item" href="{% url 'procedures:lista_presenca_list' %}"><i class="bi bi-clipboard-check"></i> Listas de Presença</a></li>
-                        <li><a class="dropdown-item" href="{% url 'procedures:planejamentos_list' %}"><i class="bi bi-calendar-event"></i> Planejamento</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">MATRIZ DE COMPETÊNCIAS</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'procedures:matrizes_list' %}"><i class="bi bi-grid-3x3"></i> Matrizes</a></li>
-                        <li><a class="dropdown-item" href="{% url 'procedures:disciplinas_list' %}"><i class="bi bi-book"></i> Disciplinas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'procedures:matriz_avaliacoes' %}"><i class="bi bi-clipboard-check"></i> Avaliações de Colaboradores</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">PERFIS DE TREINAMENTO</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'procedures:perfis_list' %}"><i class="bi bi-person-badge"></i> Perfis e Grupos</a></li>
-                                            <li><a class="dropdown-item" href="{% url 'procedures:procedimentos_list' %}"><i class="bi bi-journal-bookmark"></i> Procedimentos</a></li>
+                        {% can_nav_block user 'procedures' 'gestao' as nav_tr_gestao %}
+                        {% if nav_tr_gestao %}
+                            {% can_nav_view user 'procedures:dashboard_treinamentos' 'procedures' as nav_tr_dash %}
+                            {% can_nav_view user 'procedures:treinamentos_list' 'procedures' as nav_tr_reg %}
+                            {% can_nav_view user 'procedures:lista_presenca_list' 'procedures' as nav_tr_lp %}
+                            {% can_nav_view user 'procedures:planejamentos_list' 'procedures' as nav_tr_plan %}
+                            {% if nav_tr_dash or nav_tr_reg or nav_tr_lp or nav_tr_plan %}
+                                <li><h6 class="dropdown-header text-muted">GESTÃO DE TREINAMENTOS</h6></li>
+                                {% if nav_tr_dash %}<li><a class="dropdown-item" href="{% url 'procedures:dashboard_treinamentos' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
+                                {% if nav_tr_reg %}<li><a class="dropdown-item" href="{% url 'procedures:treinamentos_list' %}"><i class="bi bi-list-check"></i> Registros de Treinamento</a></li>{% endif %}
+                                {% if nav_tr_lp %}<li><a class="dropdown-item" href="{% url 'procedures:lista_presenca_list' %}"><i class="bi bi-clipboard-check"></i> Listas de Presença</a></li>{% endif %}
+                                {% if nav_tr_plan %}<li><a class="dropdown-item" href="{% url 'procedures:planejamentos_list' %}"><i class="bi bi-calendar-event"></i> Planejamento</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'procedures' 'matriz' as nav_tr_matriz %}
+                        {% if nav_tr_matriz %}
+                            {% can_nav_view user 'procedures:matrizes_list' 'procedures' as nav_tr_mat %}
+                            {% can_nav_view user 'procedures:disciplinas_list' 'procedures' as nav_tr_disc %}
+                            {% can_nav_view user 'procedures:matriz_avaliacoes' 'procedures' as nav_tr_av %}
+                            {% if nav_tr_mat or nav_tr_disc or nav_tr_av %}
+                                <li><h6 class="dropdown-header text-muted">MATRIZ DE COMPETÊNCIAS</h6></li>
+                                {% if nav_tr_mat %}<li><a class="dropdown-item" href="{% url 'procedures:matrizes_list' %}"><i class="bi bi-grid-3x3"></i> Matrizes</a></li>{% endif %}
+                                {% if nav_tr_disc %}<li><a class="dropdown-item" href="{% url 'procedures:disciplinas_list' %}"><i class="bi bi-book"></i> Disciplinas</a></li>{% endif %}
+                                {% if nav_tr_av %}<li><a class="dropdown-item" href="{% url 'procedures:matriz_avaliacoes' %}"><i class="bi bi-clipboard-check"></i> Avaliações de Colaboradores</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'procedures' 'perfis' as nav_tr_perfis %}
+                        {% if nav_tr_perfis %}
+                            {% can_nav_view user 'procedures:perfis_list' 'procedures' as nav_tr_per %}
+                            {% can_nav_view user 'procedures:procedimentos_list' 'procedures' as nav_tr_proc %}
+                            {% if nav_tr_per or nav_tr_proc %}
+                                <li><h6 class="dropdown-header text-muted">PERFIS DE TREINAMENTO</h6></li>
+                                {% if nav_tr_per %}<li><a class="dropdown-item" href="{% url 'procedures:perfis_list' %}"><i class="bi bi-person-badge"></i> Perfis e Grupos</a></li>{% endif %}
+                                {% if nav_tr_proc %}<li><a class="dropdown-item" href="{% url 'procedures:procedimentos_list' %}"><i class="bi bi-journal-bookmark"></i> Procedimentos</a></li>{% endif %}
+                            {% endif %}
+                        {% endif %}
                     </ul>
                 </li>
+                {% endif %}
 
+                {% can_nav_module user 'rh' as nav_pessoas %}
+                {% if nav_pessoas %}
                 <li class="nav-divider"></li>
 
                 <li class="nav-item dropdown">
@@ -138,19 +203,40 @@
                         <i class="bi bi-people nav-icon"></i><span class="nav-text">Pessoas</span>
                     </a>
                     <ul class="dropdown-menu shadow">
-                        <li><h6 class="dropdown-header text-muted">EQUIPE</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'modulo_rh' %}">👥 Colaboradores</a></li>
-                        <li><a class="dropdown-item" href="{% url 'rh:criar_colaborador' %}"><i class="bi bi-plus-circle text-success"></i> Novo Colaborador</a></li>
-                        <li><a class="dropdown-item" href="{% url 'rh:gestao_ferias' %}">📅 Gestão de Férias</a></li>
-                            <li><a class="dropdown-item" href="{% url 'rh:atualizar_liderancas_em_massa' %}">🛠️ Lideranças</a></li>
-                        <li><a class="dropdown-item" href="{% url 'listar_ocorrencias' %}">⚠️ Ocorrências</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'qms:importar_colaboradores' %}">📥 Importar Pessoas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'qms:importar_hierarquia' %}">🌳 Importar Hierarquia</a></li>
+                        {% can_nav_block user 'rh' 'equipe' as nav_pe_equipe %}
+                        {% if nav_pe_equipe %}
+                            {% can_nav_view user 'modulo_rh' 'rh' as nav_pe_colab %}
+                            {% can_nav_view user 'rh:criar_colaborador' 'rh' as nav_pe_novo %}
+                            {% can_nav_view user 'rh:gestao_ferias' 'rh' as nav_pe_ferias %}
+                            {% can_nav_view user 'rh:atualizar_liderancas_em_massa' 'rh' as nav_pe_lid %}
+                            {% can_nav_view user 'listar_ocorrencias' 'rh' as nav_pe_oco %}
+                            {% if nav_pe_colab or nav_pe_novo or nav_pe_ferias or nav_pe_lid or nav_pe_oco %}
+                                <li><h6 class="dropdown-header text-muted">EQUIPE</h6></li>
+                                {% if nav_pe_colab %}<li><a class="dropdown-item" href="{% url 'modulo_rh' %}">👥 Colaboradores</a></li>{% endif %}
+                                {% if nav_pe_novo %}<li><a class="dropdown-item" href="{% url 'rh:criar_colaborador' %}"><i class="bi bi-plus-circle text-success"></i> Novo Colaborador</a></li>{% endif %}
+                                {% if nav_pe_ferias %}<li><a class="dropdown-item" href="{% url 'rh:gestao_ferias' %}">📅 Gestão de Férias</a></li>{% endif %}
+                                {% if nav_pe_lid %}<li><a class="dropdown-item" href="{% url 'rh:atualizar_liderancas_em_massa' %}">🛠️ Lideranças</a></li>{% endif %}
+                                {% if nav_pe_oco %}<li><a class="dropdown-item" href="{% url 'listar_ocorrencias' %}">⚠️ Ocorrências</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'rh' 'importacao' as nav_pe_import %}
+                        {% if nav_pe_import %}
+                            {% can_nav_view user 'qms:importar_colaboradores' 'rh' as nav_pe_imp_p %}
+                            {% can_nav_view user 'qms:importar_hierarquia' 'rh' as nav_pe_imp_h %}
+                            {% if nav_pe_imp_p or nav_pe_imp_h %}
+                                <li><h6 class="dropdown-header text-muted">IMPORTAÇÃO</h6></li>
+                                {% if nav_pe_imp_p %}<li><a class="dropdown-item" href="{% url 'qms:importar_colaboradores' %}">📥 Importar Pessoas</a></li>{% endif %}
+                                {% if nav_pe_imp_h %}<li><a class="dropdown-item" href="{% url 'qms:importar_hierarquia' %}">🌳 Importar Hierarquia</a></li>{% endif %}
+                            {% endif %}
+                        {% endif %}
                     </ul>
                 </li>
+                {% endif %}
 
+                {% can_nav_module user 'acoes' as nav_acoes %}
+                {% if nav_acoes %}
                 <li class="nav-divider"></li>
 
                 <li class="nav-item dropdown">
@@ -158,23 +244,36 @@
                         <i class="bi bi-exclamation-triangle nav-icon"></i><span class="nav-text">Ações Corretivas</span>
                     </a>
                     <ul class="dropdown-menu shadow">
-                        <li><h6 class="dropdown-header text-muted">REGISTRO E SOLUÇÃO</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'acoes:acoes_registradas' %}">📊 Ações Registradas</a></li>
-                        <li><a class="dropdown-item" href="{% url 'acoes:listar_solucoes' %}">📋 Controle de Registros</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">REFERÊNCIA DE DADOS</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'acoes:origem_problema_list' %}">
-                            <i class="bi bi-diagram-3"></i> Origens de Problemas
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'acoes:tipo_solucao_list' %}">
-                            <i class="bi bi-journal-text"></i> Tipos de Solução
-                        </a></li>
-                        <li><a class="dropdown-item" href="{% url 'acoes:kpi_opcao_list' %}">
-                            <i class="bi bi-graph-up"></i> KPIs
-                        </a></li>
+                        {% can_nav_block user 'acoes' 'registro' as nav_ac_reg %}
+                        {% if nav_ac_reg %}
+                            {% can_nav_view user 'acoes:acoes_registradas' 'acoes' as nav_ac_registradas %}
+                            {% can_nav_view user 'acoes:listar_solucoes' 'acoes' as nav_ac_controle %}
+                            {% if nav_ac_registradas or nav_ac_controle %}
+                                <li><h6 class="dropdown-header text-muted">REGISTRO E SOLUÇÃO</h6></li>
+                                {% if nav_ac_registradas %}<li><a class="dropdown-item" href="{% url 'acoes:acoes_registradas' %}">📊 Ações Registradas</a></li>{% endif %}
+                                {% if nav_ac_controle %}<li><a class="dropdown-item" href="{% url 'acoes:listar_solucoes' %}">📋 Controle de Registros</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'acoes' 'referencia' as nav_ac_ref %}
+                        {% if nav_ac_ref %}
+                            {% can_nav_view user 'acoes:origem_problema_list' 'acoes' as nav_ac_origem %}
+                            {% can_nav_view user 'acoes:tipo_solucao_list' 'acoes' as nav_ac_tipo %}
+                            {% can_nav_view user 'acoes:kpi_opcao_list' 'acoes' as nav_ac_kpi %}
+                            {% if nav_ac_origem or nav_ac_tipo or nav_ac_kpi %}
+                                <li><h6 class="dropdown-header text-muted">REFERÊNCIA DE DADOS</h6></li>
+                                {% if nav_ac_origem %}<li><a class="dropdown-item" href="{% url 'acoes:origem_problema_list' %}"><i class="bi bi-diagram-3"></i> Origens de Problemas</a></li>{% endif %}
+                                {% if nav_ac_tipo %}<li><a class="dropdown-item" href="{% url 'acoes:tipo_solucao_list' %}"><i class="bi bi-journal-text"></i> Tipos de Solução</a></li>{% endif %}
+                                {% if nav_ac_kpi %}<li><a class="dropdown-item" href="{% url 'acoes:kpi_opcao_list' %}"><i class="bi bi-graph-up"></i> KPIs</a></li>{% endif %}
+                            {% endif %}
+                        {% endif %}
                     </ul>
                 </li>
+                {% endif %}
 
+                {% can_nav_module user 'fornecedores' as nav_forn %}
+                {% if nav_forn %}
                 <li class="nav-divider"></li>
 
                 <li class="nav-item dropdown">
@@ -182,13 +281,30 @@
                         <i class="bi bi-truck nav-icon"></i><span class="nav-text">Fornecedores</span>
                     </a>
                     <ul class="dropdown-menu shadow">
-                        <li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_list' %}">Lista de Fornecedores</a></li>
-                        <li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_create' %}">Novo Fornecedor</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{% url 'fornecedores:pergunta_list' %}">Perguntas de Avaliação</a></li>
+                        {% can_nav_block user 'fornecedores' 'gestao' as nav_forn_gestao %}
+                        {% if nav_forn_gestao %}
+                            {% can_nav_view user 'fornecedores:fornecedor_list' 'fornecedores' as nav_forn_lista %}
+                            {% can_nav_view user 'fornecedores:fornecedor_create' 'fornecedores' as nav_forn_novo %}
+                            {% if nav_forn_lista or nav_forn_novo %}
+                                {% if nav_forn_lista %}<li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_list' %}">Lista de Fornecedores</a></li>{% endif %}
+                                {% if nav_forn_novo %}<li><a class="dropdown-item" href="{% url 'fornecedores:fornecedor_create' %}">Novo Fornecedor</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'fornecedores' 'avaliacao' as nav_forn_av %}
+                        {% if nav_forn_av %}
+                            {% can_nav_view user 'fornecedores:pergunta_list' 'fornecedores' as nav_forn_perg %}
+                            {% if nav_forn_perg %}
+                                <li><a class="dropdown-item" href="{% url 'fornecedores:pergunta_list' %}">Perguntas de Avaliação</a></li>
+                            {% endif %}
+                        {% endif %}
                     </ul>
                 </li>
+                {% endif %}
 
+                {% can_nav_module user 'auditoria' as nav_auditoria %}
+                {% if nav_auditoria %}
                 <li class="nav-divider"></li>
 
                 <li class="nav-item dropdown">
@@ -196,21 +312,50 @@
                         <i class="bi bi-clipboard2-check nav-icon"></i><span class="nav-text">Auditoria</span>
                     </a>
                     <ul class="dropdown-menu shadow">
-                        <li><a class="dropdown-item fw-bold text-success" href="{% url 'auditoria:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVA AUDITORIA</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">CADASTRO</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'auditoria:modelos_list' %}">Modelos de Auditoria</a></li>
-                        <li><a class="dropdown-item" href="{% url 'auditoria:perguntas_list' %}">Perguntas por Modelo</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">OPERAÇÃO</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'auditoria:registros_list' %}">Modelos Cadastrados / Período</a></li>
-                        <li><a class="dropdown-item" href="{% url 'auditoria:registro_create' %}">Avaliação de Dados</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">ANÁLISE</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'auditoria:dashboard' %}">Dashboard Auditoria</a></li>
+                        {% can_nav_view user 'auditoria:selecionar_modelo_preenchimento' 'auditoria' as nav_aud_nova %}
+                        {% if nav_aud_nova %}
+                            <li><a class="dropdown-item fw-bold text-success" href="{% url 'auditoria:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVA AUDITORIA</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                        {% endif %}
+
+                        {% can_nav_block user 'auditoria' 'cadastro' as nav_aud_cad %}
+                        {% if nav_aud_cad %}
+                            {% can_nav_view user 'auditoria:modelos_list' 'auditoria' as nav_aud_modelos %}
+                            {% can_nav_view user 'auditoria:perguntas_list' 'auditoria' as nav_aud_perg %}
+                            {% if nav_aud_modelos or nav_aud_perg %}
+                                <li><h6 class="dropdown-header text-muted">CADASTRO</h6></li>
+                                {% if nav_aud_modelos %}<li><a class="dropdown-item" href="{% url 'auditoria:modelos_list' %}">Modelos de Auditoria</a></li>{% endif %}
+                                {% if nav_aud_perg %}<li><a class="dropdown-item" href="{% url 'auditoria:perguntas_list' %}">Perguntas por Modelo</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'auditoria' 'operacao' as nav_aud_op %}
+                        {% if nav_aud_op %}
+                            {% can_nav_view user 'auditoria:registros_list' 'auditoria' as nav_aud_regs %}
+                            {% can_nav_view user 'auditoria:registro_create' 'auditoria' as nav_aud_av %}
+                            {% if nav_aud_regs or nav_aud_av %}
+                                <li><h6 class="dropdown-header text-muted">OPERAÇÃO</h6></li>
+                                {% if nav_aud_regs %}<li><a class="dropdown-item" href="{% url 'auditoria:registros_list' %}">Modelos Cadastrados / Período</a></li>{% endif %}
+                                {% if nav_aud_av %}<li><a class="dropdown-item" href="{% url 'auditoria:registro_create' %}">Avaliação de Dados</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'auditoria' 'analise' as nav_aud_an %}
+                        {% if nav_aud_an %}
+                            {% can_nav_view user 'auditoria:dashboard' 'auditoria' as nav_aud_dash %}
+                            {% if nav_aud_dash %}
+                                <li><h6 class="dropdown-header text-muted">ANÁLISE</h6></li>
+                                <li><a class="dropdown-item" href="{% url 'auditoria:dashboard' %}">Dashboard Auditoria</a></li>
+                            {% endif %}
+                        {% endif %}
                     </ul>
                 </li>
+                {% endif %}
 
+                {% can_nav_module user 'insumos' as nav_insumos %}
+                {% if nav_insumos %}
                 <li class="nav-divider"></li>
 
                 <li class="nav-item dropdown">
@@ -218,20 +363,47 @@
                         <i class="bi bi-box-seam nav-icon"></i><span class="nav-text">Insumos</span>
                     </a>
                     <ul class="dropdown-menu shadow">
-                        <li><a class="dropdown-item fw-bold text-success" href="{% url 'insumos:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVO REGISTRO</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">CADASTRO</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'insumos:modelos_list' %}">Modelos de Insumos</a></li>
-                        <li><a class="dropdown-item" href="{% url 'insumos:perguntas_list' %}">Perguntas por Modelo</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">OPERAÇÃO</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'insumos:registros_list' %}">Modelos Cadastrados / Período</a></li>
-                        <li><a class="dropdown-item" href="{% url 'insumos:registro_create' %}">Avaliação de Dados</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><h6 class="dropdown-header text-muted">ANÁLISE</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'insumos:dashboard' %}">Dashboard Insumos</a></li>
+                        {% can_nav_view user 'insumos:selecionar_modelo_preenchimento' 'insumos' as nav_ins_novo %}
+                        {% if nav_ins_novo %}
+                            <li><a class="dropdown-item fw-bold text-success" href="{% url 'insumos:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVO REGISTRO</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                        {% endif %}
+
+                        {% can_nav_block user 'insumos' 'cadastro' as nav_ins_cad %}
+                        {% if nav_ins_cad %}
+                            {% can_nav_view user 'insumos:modelos_list' 'insumos' as nav_ins_modelos %}
+                            {% can_nav_view user 'insumos:perguntas_list' 'insumos' as nav_ins_perg %}
+                            {% if nav_ins_modelos or nav_ins_perg %}
+                                <li><h6 class="dropdown-header text-muted">CADASTRO</h6></li>
+                                {% if nav_ins_modelos %}<li><a class="dropdown-item" href="{% url 'insumos:modelos_list' %}">Modelos de Insumos</a></li>{% endif %}
+                                {% if nav_ins_perg %}<li><a class="dropdown-item" href="{% url 'insumos:perguntas_list' %}">Perguntas por Modelo</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'insumos' 'operacao' as nav_ins_op %}
+                        {% if nav_ins_op %}
+                            {% can_nav_view user 'insumos:registros_list' 'insumos' as nav_ins_regs %}
+                            {% can_nav_view user 'insumos:registro_create' 'insumos' as nav_ins_av %}
+                            {% if nav_ins_regs or nav_ins_av %}
+                                <li><h6 class="dropdown-header text-muted">OPERAÇÃO</h6></li>
+                                {% if nav_ins_regs %}<li><a class="dropdown-item" href="{% url 'insumos:registros_list' %}">Modelos Cadastrados / Período</a></li>{% endif %}
+                                {% if nav_ins_av %}<li><a class="dropdown-item" href="{% url 'insumos:registro_create' %}">Avaliação de Dados</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'insumos' 'analise' as nav_ins_an %}
+                        {% if nav_ins_an %}
+                            {% can_nav_view user 'insumos:dashboard' 'insumos' as nav_ins_dash %}
+                            {% if nav_ins_dash %}
+                                <li><h6 class="dropdown-header text-muted">ANÁLISE</h6></li>
+                                <li><a class="dropdown-item" href="{% url 'insumos:dashboard' %}">Dashboard Insumos</a></li>
+                            {% endif %}
+                        {% endif %}
                     </ul>
                 </li>
+                {% endif %}
 
                 {% if user.is_superuser or user.is_staff %}
                 <li class="nav-divider"></li>

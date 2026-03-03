@@ -379,44 +379,86 @@
             <div class="accordion" id="modulosAccordion">
                 {% for modulo in modulos %}
                 <div class="card module-card border-{{ modulo.cor }} shadow-sm mb-3">
-                    <div class="card-header bg-{{ modulo.cor }} text-white module-header p-0" 
+                    <div class="card-header bg-{{ modulo.cor }} text-white module-header collapsed p-0" 
                          data-bs-toggle="collapse" 
                          data-bs-target="#collapse{{ forloop.counter }}"
-                         aria-expanded="true">
+                        aria-expanded="false">
                         <div class="d-flex align-items-center justify-content-between p-3">
-                            <div class="d-flex align-items-center">
-                                <i class="{{ modulo.icone }} me-2 fs-5"></i>
+                            <div class="d-flex align-items-center gap-3">
+                                <i class="{{ modulo.icone }} fs-5"></i>
                                 <h5 class="mb-0">{{ modulo.nome }}</h5>
                             </div>
-                            <i class="bi bi-chevron-down collapse-icon"></i>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check form-switch mb-0" onclick="event.stopPropagation()">
+                                    <input type="checkbox"
+                                           class="form-check-input perm-checkbox"
+                                           id="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}"
+                                           data-codename="{{ modulo.module_perm.codename }}"
+                                           data-user-id="{{ usuario.id }}"
+                                           data-app-label="{{ modulo.module_perm.app_label }}"
+                                           {% with perm_key=modulo.module_perm.full %}
+                                           {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                           {% endwith %}
+                                           {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                    <label class="form-check-label text-white small" for="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}">No menu</label>
+                                </div>
+                                <i class="bi bi-chevron-down collapse-icon"></i>
+                            </div>
                         </div>
                     </div>
-                    <div id="collapse{{ forloop.counter }}" class="collapse show" data-bs-parent="#modulosAccordion">
+                    <div id="collapse{{ forloop.counter }}" class="collapse" data-bs-parent="#modulosAccordion">
                         <div class="card-body">
-                            <div class="row">
-                                {% for grupo in modulo.grupos %}
-                                <div class="col-md-6 col-lg-3">
-                                    <div class="perm-group">
-                                        <div class="perm-group-header">
-                                            <i class="{{ grupo.icone }} me-1"></i> {{ grupo.nome }}
+                            <div class="accordion" id="blocosAccordion{{ forloop.counter }}">
+                                {% for bloco in modulo.blocos %}
+                                <div class="card border mb-2">
+                                     <div class="card-header bg-light block-header collapsed p-0"
+                                         data-bs-toggle="collapse"
+                                         data-bs-target="#collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
+                                         aria-expanded="false">
+                                        <div class="d-flex align-items-center justify-content-between px-3 py-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="bi bi-folder2-open text-muted"></i>
+                                                <strong class="small text-uppercase">{{ bloco.nome }}</strong>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="form-check form-switch mb-0" onclick="event.stopPropagation()">
+                                                    <input type="checkbox"
+                                                           class="form-check-input perm-checkbox"
+                                                           id="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}"
+                                                           data-codename="{{ bloco.perm.codename }}"
+                                                           data-user-id="{{ usuario.id }}"
+                                                           data-app-label="{{ bloco.perm.app_label }}"
+                                                           {% with perm_key=bloco.perm.full %}
+                                                           {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                                           {% endwith %}
+                                                           {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                                    <label class="form-check-label small" for="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}">Exibir bloco</label>
+                                                </div>
+                                                <i class="bi bi-chevron-down collapse-icon text-muted"></i>
+                                            </div>
                                         </div>
-                                        {% for codename, label in grupo.permissoes %}
-                                        <div class="perm-item">
-                                            <label class="form-check-label mb-0 small" for="perm_{{ modulo.app_label }}_{{ codename }}">
-                                                {{ label }}
-                                            </label>
-                                            <input type="checkbox" 
-                                                   class="form-check-input perm-checkbox"
-                                                   id="perm_{{ modulo.app_label }}_{{ codename }}"
-                                                   data-codename="{{ codename }}"
-                                                   data-user-id="{{ usuario.id }}"
-                                                   data-app-label="{{ modulo.app_label }}"
-                                                   {% with perm_key=modulo.app_label|add:"."|add:codename %}
-                                                   {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
-                                                   {% endwith %}
-                                                   {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                    </div>
+                                    <div id="collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="collapse" data-bs-parent="#blocosAccordion{{ forloop.parentloop.counter }}">
+                                        <div class="list-group list-group-flush">
+                                            {% for funcao in bloco.funcoes %}
+                                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div class="small">{{ funcao.nome }}</div>
+                                                <div class="form-check form-switch mb-0">
+                                                    <input type="checkbox"
+                                                           class="form-check-input perm-checkbox"
+                                                           id="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}"
+                                                           data-codename="{{ funcao.perm.codename }}"
+                                                           data-user-id="{{ usuario.id }}"
+                                                           data-app-label="{{ funcao.perm.app_label }}"
+                                                           {% with perm_key=funcao.perm.full %}
+                                                           {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                                           {% endwith %}
+                                                           {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                                    <label class="form-check-label small" for="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}">Acessar</label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
                                         </div>
-                                        {% endfor %}
                                     </div>
                                 </div>
                                 {% endfor %}
@@ -988,8 +1030,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Expandir/Recolher módulos - atualizar ícone
-    document.querySelectorAll('.module-header').forEach(header => {
+    // Expandir/Recolher módulos e blocos - atualizar ícone
+    document.querySelectorAll('.module-header, .block-header').forEach(header => {
         const target = document.querySelector(header.dataset.bsTarget);
         if (target) {
             target.addEventListener('hidden.bs.collapse', () => {
