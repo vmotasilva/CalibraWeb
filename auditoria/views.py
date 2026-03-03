@@ -330,7 +330,11 @@ def pergunta_edit(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, "Pergunta atualizada com sucesso.")
-            return redirect("auditoria:perguntas_list")
+            modelo_id = getattr(form.instance, "modelo_id", None)
+            url = reverse("auditoria:perguntas_list")
+            if modelo_id:
+                url = f"{url}?modelo={modelo_id}"
+            return redirect(url)
     else:
         form = PerguntaAuditoriaForm(instance=pergunta)
     return render(request, "auditoria/pergunta_form.html", {"form": form, "modo": "edicao", "pergunta": pergunta})
