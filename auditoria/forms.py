@@ -127,13 +127,27 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         if not modelo_id and getattr(self.instance, "modelo_id", None):
             modelo_id = str(self.instance.modelo_id)
 
-        choices = [("", "—")] 
+        current_value = (getattr(self.instance, "subcategoria", "") or "").strip()
+
+        choices = [("", "—")]
         if modelo_id and str(modelo_id).isdigit():
             try:
                 modelo = ModeloAuditoria.objects.get(pk=int(modelo_id))
                 choices += [(c, c) for c in modelo.subcategorias_list]
             except ModeloAuditoria.DoesNotExist:
                 pass
+
+        # Preserve current value even if it's not in the model list
+        if current_value:
+            existing_lower = {str(v or "").strip().lower() for (v, _label) in choices if v}
+            if current_value.lower() not in existing_lower:
+                choices.insert(1, (current_value, current_value))
+
+        # Expose the current value to the template/JS to avoid losing it on dynamic refresh
+        try:
+            self.fields["subcategoria"].widget.attrs["data-current"] = current_value
+        except Exception:
+            pass
 
         self.fields["subcategoria"].choices = choices
 

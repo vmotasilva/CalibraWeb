@@ -170,7 +170,7 @@
 
         async function refresh() {
             const modeloId = (modeloSelect.value || '').trim();
-            const current = (subSelect.value || '').trim();
+            const current = (subSelect.value || subSelect.getAttribute('data-current') || '').trim();
             if (!modeloId) {
                 setOptions([], current);
                 subSelect.disabled = true;
