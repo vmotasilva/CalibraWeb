@@ -109,20 +109,6 @@
                                     </div>
                                     <div id="collapse-{{ card.key }}" class="collapse">
                                         <div class="card-body">
-                                            <div class="row g-2 align-items-end mb-3">
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Filtrar por pergunta</label>
-                                                    <select class="form-select" id="select-pergunta-{{ card.key }}">
-                                                        <option value="__all__">Todas</option>
-                                                        {% for p in card.perguntas %}
-                                                        {% if p.id != '__all__' %}
-                                                        <option value="{{ p.id }}">{{ p.texto }}</option>
-                                                        {% endif %}
-                                                        {% endfor %}
-                                                    </select>
-                                                </div>
-                                            </div>
-
                                             <ul class="nav nav-tabs" id="tabs-{{ card.key }}" role="tablist">
                                                 <li class="nav-item" role="presentation">
                                                     <button class="nav-link active" id="tab-current-btn-{{ card.key }}" data-bs-toggle="tab" data-bs-target="#tab-current-{{ card.key }}" type="button" role="tab" aria-controls="tab-current-{{ card.key }}" aria-selected="true">Geral</button>
@@ -258,10 +244,13 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {{ chart_data|json_script:"auditoria-chart-data" }}
+{{ chart_cards|json_script:"auditoria-chart-cards" }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const raw = document.getElementById('auditoria-chart-data');
     const chartsData = raw ? JSON.parse(raw.textContent || '{}') : {};
+    const rawCards = document.getElementById('auditoria-chart-cards');
+    const cardsData = rawCards ? JSON.parse(rawCards.textContent || '[]') : [];
     const chartInstances = {};
 
     function isoToBr(iso) {
@@ -374,9 +363,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const card = chartsData[key];
         if (!card) return;
         const tipo = card.tipo;
-        const select = document.getElementById(`select-pergunta-${key}`);
-        if (!select) return;
-        const perguntaId = String(select.value || '').trim();
+        const globalTipo = document.getElementById('globalTipoSelect');
+        const globalPergunta = document.getElementById('globalPerguntaSelect');
+        if (!globalTipo || !globalPergunta) return;
+        if (String(globalTipo.value || '').trim() !== String(key || '').trim()) return;
+        const perguntaId = String(globalPergunta.value || '').trim();
         const q = (card.perguntas && card.perguntas[perguntaId]) ? card.perguntas[perguntaId] : null;
 
         const tabsEl = document.getElementById(`tabs-${key}`);
@@ -421,16 +412,26 @@ document.addEventListener('DOMContentLoaded', function() {
     function setGlobalPerguntasForKey(key) {
         const globalPergunta = document.getElementById('globalPerguntaSelect');
         if (!globalPergunta) return;
-        const cardSelect = document.getElementById(`select-pergunta-${key}`);
+        const found = (cardsData || []).find(c => String(c.key || '') === String(key || ''));
+        const perguntas = (found && found.perguntas) ? found.perguntas : [];
+
+        const previous = String(globalPergunta.value || '').trim();
         globalPergunta.innerHTML = '';
-        if (!cardSelect) return;
-        Array.from(cardSelect.options || []).forEach(opt => {
+        (perguntas || []).forEach(p => {
             const o = document.createElement('option');
-            o.value = opt.value;
-            o.textContent = opt.textContent;
+            o.value = String(p.id);
+            o.textContent = String(p.texto || '');
             globalPergunta.appendChild(o);
         });
-        globalPergunta.value = cardSelect.value || (globalPergunta.options[0] ? globalPergunta.options[0].value : '');
+
+        const values = Array.from(globalPergunta.options || []).map(o => o.value);
+        if (previous && values.includes(previous)) {
+            globalPergunta.value = previous;
+        } else if (values.includes('__all__')) {
+            globalPergunta.value = '__all__';
+        } else {
+            globalPergunta.value = (globalPergunta.options[0] ? globalPergunta.options[0].value : '');
+        }
     }
 
     function showCard(key) {
@@ -447,19 +448,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Bind events for each card key present in JSON
     Object.keys(chartsData || {}).forEach(key => {
         const collapseEl = document.getElementById(`collapse-${key}`);
-        const select = document.getElementById(`select-pergunta-${key}`);
-        if (select) {
-            select.addEventListener('change', () => {
+        if (collapseEl) {
+            collapseEl.addEventListener('shown.bs.collapse', () => {
                 const globalTipo = document.getElementById('globalTipoSelect');
                 if (globalTipo) globalTipo.value = key;
                 setGlobalPerguntasForKey(key);
-                const globalPergunta = document.getElementById('globalPerguntaSelect');
-                if (globalPergunta) globalPergunta.value = select.value;
                 renderCharts(key);
             });
-        }
-        if (collapseEl) {
-            collapseEl.addEventListener('shown.bs.collapse', () => renderCharts(key));
         }
         const tabs = document.getElementById(`tabs-${key}`);
         if (tabs) {
@@ -480,23 +475,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const key = String(globalTipo.value || '').trim();
             if (!key) return;
             setGlobalPerguntasForKey(key);
-            const cardSelect = document.getElementById(`select-pergunta-${key}`);
-            if (cardSelect) {
-                cardSelect.value = globalPergunta.value || (cardSelect.options[0] ? cardSelect.options[0].value : '');
-            }
             showCard(key);
-            renderCharts(key);
         });
 
         globalPergunta.addEventListener('change', function() {
             const key = String(globalTipo.value || '').trim();
             if (!key) return;
-            const cardSelect = document.getElementById(`select-pergunta-${key}`);
-            if (cardSelect) {
-                cardSelect.value = globalPergunta.value;
-            }
             showCard(key);
-            renderCharts(key);
+            const collapseEl = document.getElementById(`collapse-${key}`);
+            if (collapseEl && collapseEl.classList.contains('show')) {
+                renderCharts(key);
+            }
         });
     }
 
