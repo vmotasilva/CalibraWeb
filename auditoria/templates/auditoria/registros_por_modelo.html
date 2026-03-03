@@ -64,6 +64,26 @@
                         <div class="card-body">
                             {% if chart_cards %}
                             <div class="mb-4">
+                                <div class="card shadow-sm mb-3">
+                                    <div class="card-body">
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Tipo de campo</label>
+                                                <select class="form-select" id="globalTipoSelect">
+                                                    {% for card in chart_cards %}
+                                                    <option value="{{ card.key }}">{{ card.label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <label class="form-label">Pergunta</label>
+                                                <select class="form-select" id="globalPerguntaSelect"></select>
+                                            </div>
+                                        </div>
+                                        <div class="form-text mt-2">Selecione o tipo e a pergunta para abrir o card e ver os gráficos.</div>
+                                    </div>
+                                </div>
+
                                 {% for card in chart_cards %}
                                 <div class="card shadow-sm mb-3">
                                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -380,12 +400,45 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function setGlobalPerguntasForKey(key) {
+        const globalPergunta = document.getElementById('globalPerguntaSelect');
+        if (!globalPergunta) return;
+        const cardSelect = document.getElementById(`select-pergunta-${key}`);
+        globalPergunta.innerHTML = '';
+        if (!cardSelect) return;
+        Array.from(cardSelect.options || []).forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt.value;
+            o.textContent = opt.textContent;
+            globalPergunta.appendChild(o);
+        });
+        globalPergunta.value = cardSelect.value || (globalPergunta.options[0] ? globalPergunta.options[0].value : '');
+    }
+
+    function showCard(key) {
+        const collapseEl = document.getElementById(`collapse-${key}`);
+        if (!collapseEl) return;
+        try {
+            const instance = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+            instance.show();
+        } catch (e) {
+            // sem bootstrap
+        }
+    }
+
     // Bind events for each card key present in JSON
     Object.keys(chartsData || {}).forEach(key => {
         const collapseEl = document.getElementById(`collapse-${key}`);
         const select = document.getElementById(`select-pergunta-${key}`);
         if (select) {
-            select.addEventListener('change', () => renderCharts(key));
+            select.addEventListener('change', () => {
+                const globalTipo = document.getElementById('globalTipoSelect');
+                if (globalTipo) globalTipo.value = key;
+                setGlobalPerguntasForKey(key);
+                const globalPergunta = document.getElementById('globalPerguntaSelect');
+                if (globalPergunta) globalPergunta.value = select.value;
+                renderCharts(key);
+            });
         }
         if (collapseEl) {
             collapseEl.addEventListener('shown.bs.collapse', () => renderCharts(key));
@@ -395,5 +448,40 @@ document.addEventListener('DOMContentLoaded', function() {
             tabs.addEventListener('shown.bs.tab', () => renderCharts(key));
         }
     });
+
+    // Global selectors (tipo + pergunta)
+    const globalTipo = document.getElementById('globalTipoSelect');
+    const globalPergunta = document.getElementById('globalPerguntaSelect');
+    if (globalTipo && globalPergunta) {
+        const initialKey = String(globalTipo.value || '').trim();
+        if (initialKey) {
+            setGlobalPerguntasForKey(initialKey);
+        }
+
+        globalTipo.addEventListener('change', function() {
+            const key = String(globalTipo.value || '').trim();
+            if (!key) return;
+            setGlobalPerguntasForKey(key);
+            const cardSelect = document.getElementById(`select-pergunta-${key}`);
+            if (cardSelect) {
+                cardSelect.value = globalPergunta.value || (cardSelect.options[0] ? cardSelect.options[0].value : '');
+            }
+            showCard(key);
+            renderCharts(key);
+        });
+
+        globalPergunta.addEventListener('change', function() {
+            const key = String(globalTipo.value || '').trim();
+            if (!key) return;
+            const cardSelect = document.getElementById(`select-pergunta-${key}`);
+            if (cardSelect) {
+                cardSelect.value = globalPergunta.value;
+            }
+            showCard(key);
+            renderCharts(key);
+        });
+    }
+
+});
 </script>
 {% endblock %}
