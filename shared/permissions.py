@@ -586,7 +586,18 @@ def setup_module_groups():
     Execute esto com: python manage.py shell < setup_permissions.py
     ou via comando customizado: python manage.py setup_module_groups
     """
+    from django.apps import apps
+
     for module_key, module_info in MODULES_PERMISSIONS.items():
+        # Evita poluir logs (e criar grupos vazios) para apps que não estão instalados.
+        # Ex.: o módulo legado `procurements` pode não existir após a unificação em `procedures`.
+        if not apps.is_installed(module_key):
+            print(
+                f"⚠️  Módulo não instalado: {module_key}. "
+                f"Pulando criação/atualização do grupo '{module_info['name']}'."
+            )
+            continue
+
         group, created = Group.objects.get_or_create(name=module_info['name'])
         
         # Limpar permissões antigas
@@ -596,7 +607,6 @@ def setup_module_groups():
         for perm_codename in module_info['permissions']:
             try:
                 # Tentar obter a permissão
-                app_label, permission = perm_codename.split('_', 1)
                 perm = Permission.objects.get(
                     content_type__app_label=module_key,
                     codename=perm_codename
