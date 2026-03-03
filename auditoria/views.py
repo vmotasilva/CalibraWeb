@@ -1004,125 +1004,196 @@ def registros_por_modelo(request, modelo_id):
         _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
         pk=modelo_id,
     )
-    registros = RegistroAuditoria.objects.filter(modelo=modelo).select_related("avaliador").order_by("-data_auditoria")
-    
-    # Buscar perguntas do modelo
-    perguntas = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("ordem")
-    
-    # Estatísticas por pergunta
-    estatisticas_perguntas = []
-    
-    # Dados separados por tipo de gráfico
-    # Gráfico 1: Sim/Não (barras agrupadas)
-    simnao_labels = []
-    simnao_sim = []
-    simnao_nao = []
-    
-    # Gráfico 2: Números (linhas - evolução temporal)
-    # Vamos coletar dados por registro e pergunta para mostrar evolução
-    numero_perguntas = []
-    numero_datasets = []
-    
-    for pergunta in perguntas:
-        respostas = RespostaAuditoria.objects.filter(pergunta=pergunta, registro__in=registros).select_related('registro')
-        total_respostas = respostas.count()
-        
-        estatistica = {
-            "pergunta": pergunta.pergunta,
-            "tipo": pergunta.get_tipo_resposta_display(),
-            "total_respostas": total_respostas,
-        }
-        
-        if pergunta.tipo_resposta in ["SIM_NAO", "BOOLEANO"]:
-            # Contar respostas Sim e Não
-            sim_count = respostas.filter(valor__in=["True", "true", "Sim", "sim", "1"]).count()
-            nao_count = respostas.filter(valor__in=["False", "false", "Não", "não", "Nao", "nao", "0"]).count()
-            estatistica["sim"] = sim_count
-            estatistica["nao"] = nao_count
-            
-            # Adicionar aos dados do gráfico de barras
-            label = pergunta.pergunta[:30] + "..." if len(pergunta.pergunta) > 30 else pergunta.pergunta
-            simnao_labels.append(label)
-            simnao_sim.append(sim_count)
-            simnao_nao.append(nao_count)
-            
-        elif pergunta.tipo_resposta in ["NUMERO", "DECIMAL"]:
-            # Coletar valores para gráfico de linhas (evolução)
-            valores_resposta = []
-            datas_resposta = []
-            
-            for resposta in respostas.order_by('registro__data_auditoria'):
-                try:
-                    valor = float(resposta.valor) if resposta.valor else None
-                    if valor is not None:
-                        valores_resposta.append(valor)
-                        datas_resposta.append(resposta.registro.data_auditoria.strftime('%d/%m/%Y'))
-                except (ValueError, TypeError):
-                    pass
-            
-            if valores_resposta:
-                media = sum(valores_resposta) / len(valores_resposta)
-                estatistica["media"] = round(media, 2)
-                estatistica["valores"] = valores_resposta
-                
-                # Adicionar dataset para este pergunta no gráfico de linhas
-                label = pergunta.pergunta[:30] + "..." if len(pergunta.pergunta) > 30 else pergunta.pergunta
-                numero_perguntas.append({
-                    "label": label,
-                    "valores": valores_resposta,
-                    "datas": datas_resposta
-                })
-                
-        estatisticas_perguntas.append(estatistica)
-    
-    # Preparar dados para gráfico de linhas (números)
-    # Agrupar por data para mostrar evolução temporal
-    numero_chart_labels = []
-    numero_chart_datasets = []
-    
-    if numero_perguntas:
-        # Coletar todas as datas únicas (ordenadas)
-        todas_datas = set()
-        for perg in numero_perguntas:
-            todas_datas.update(perg['datas'])
-        numero_chart_labels = sorted(list(todas_datas), key=lambda x: tuple(reversed(x.split('/'))))
-        
-        # Criar um dataset para cada pergunta
-        cores = [
-            {"bg": "rgba(255, 99, 132, 0.2)", "border": "rgba(255, 99, 132, 1)"},
-            {"bg": "rgba(54, 162, 235, 0.2)", "border": "rgba(54, 162, 235, 1)"},
-            {"bg": "rgba(255, 206, 86, 0.2)", "border": "rgba(255, 206, 86, 1)"},
-            {"bg": "rgba(75, 192, 192, 0.2)", "border": "rgba(75, 192, 192, 1)"},
-            {"bg": "rgba(153, 102, 255, 0.2)", "border": "rgba(153, 102, 255, 1)"},
-        ]
-        
-        for idx, perg in enumerate(numero_perguntas):
-            # Mapear valores para as datas correspondentes
-            data_valor_map = dict(zip(perg['datas'], perg['valores']))
-            valores_ordenados = [data_valor_map.get(data, None) for data in numero_chart_labels]
-            
-            cor = cores[idx % len(cores)]
-            numero_chart_datasets.append({
-                "label": perg['label'],
-                "data": valores_ordenados,
-                "borderColor": cor['border'],
-                "backgroundColor": cor['bg'],
-                "tension": 0.3,
-                "fill": False
-            })
+    registros = (
+        RegistroAuditoria.objects.filter(modelo=modelo)
+        .select_related("avaliador")
+        .order_by("-data_auditoria")
+    )
+
+    perguntas = list(PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("ordem", "id"))
+    pergunta_map = {p.id: p for p in perguntas}
+
+    respostas_qs = (
+        RespostaAuditoria.objects.filter(pergunta__in=perguntas, registro__in=registros)
+        .select_related("registro", "pergunta")
+        .order_by("registro__data_auditoria", "id")
+    )
+
+    respostas_por_pergunta: dict[int, list[RespostaAuditoria]] = {}
+    for r in respostas_qs:
+        respostas_por_pergunta.setdefault(r.pergunta_id, []).append(r)
+
+    def _normalize_sim_nao(value: str) -> str:
+        if value is None:
+            return ""
+        raw = str(value).strip()
+        if raw in {"True", "true", "Sim", "sim", "1", "SIM"}:
+            return "Sim"
+        if raw in {"False", "false", "Não", "não", "Nao", "nao", "0", "NAO", "NÃO"}:
+            return "Não"
+        return raw
+
+    # Estatísticas (tabela) e dados dos gráficos por tipo/pergunta
+    estatisticas_perguntas: list[dict] = []
+    chart_cards: list[dict] = []
+    chart_data: dict[str, dict] = {}
+
+    tipo_cards_def = [
+        {"tipo": "SIM_NAO", "key": "sim_nao", "label": "Sim/Não"},
+        {"tipo": "LISTA", "key": "lista", "label": "Lista (opções)"},
+        {"tipo": "NUMERO", "key": "numero", "label": "Número inteiro"},
+        {"tipo": "DECIMAL", "key": "decimal", "label": "Número decimal"},
+    ]
+
+    perguntas_por_tipo: dict[str, list[PerguntaAuditoria]] = {d["tipo"]: [] for d in tipo_cards_def}
+    for p in perguntas:
+        if p.tipo_resposta in perguntas_por_tipo:
+            perguntas_por_tipo[p.tipo_resposta].append(p)
+
+    for d in tipo_cards_def:
+        tipo = d["tipo"]
+        key = d["key"]
+        label = d["label"]
+        perguntas_tipo = perguntas_por_tipo.get(tipo) or []
+        if not perguntas_tipo:
+            continue
+
+        chart_cards.append({
+            "key": key,
+            "label": label,
+            "tipo": tipo,
+            "perguntas": [{"id": p.id, "texto": p.pergunta} for p in perguntas_tipo],
+        })
+        chart_data[key] = {"tipo": tipo, "perguntas": {}}
+
+        for pergunta in perguntas_tipo:
+            respostas = respostas_por_pergunta.get(pergunta.id, [])
+            total_respostas = len(respostas)
+            estatistica = {
+                "pergunta": pergunta.pergunta,
+                "tipo": pergunta.get_tipo_resposta_display(),
+                "total_respostas": total_respostas,
+            }
+
+            if pergunta.tipo_resposta == "SIM_NAO":
+                sim_total = 0
+                nao_total = 0
+                por_data: dict[str, dict[str, int]] = {}
+                for r in respostas:
+                    val = _normalize_sim_nao(r.valor)
+                    if val not in {"Sim", "Não"}:
+                        continue
+                    date_key = r.registro.data_auditoria.strftime("%Y-%m-%d") if r.registro.data_auditoria else ""
+                    if not date_key:
+                        continue
+                    por_data.setdefault(date_key, {"Sim": 0, "Não": 0})
+                    por_data[date_key][val] += 1
+                    if val == "Sim":
+                        sim_total += 1
+                    else:
+                        nao_total += 1
+
+                estatistica["sim"] = sim_total
+                estatistica["nao"] = nao_total
+
+                labels_date = sorted(por_data.keys())
+                chart_data[key]["perguntas"][str(pergunta.id)] = {
+                    "current": {"labels": ["Sim", "Não"], "values": [sim_total, nao_total]},
+                    "by_date": {
+                        "labels": labels_date,
+                        "datasets": [
+                            {"label": "Sim", "data": [por_data[d]["Sim"] for d in labels_date]},
+                            {"label": "Não", "data": [por_data[d]["Não"] for d in labels_date]},
+                        ],
+                    },
+                }
+
+            elif pergunta.tipo_resposta == "LISTA":
+                counts: dict[str, int] = {}
+                por_data_opt: dict[str, dict[str, int]] = {}
+                for r in respostas:
+                    opt = (str(r.valor).strip() if r.valor is not None else "")
+                    if not opt:
+                        continue
+                    counts[opt] = counts.get(opt, 0) + 1
+                    date_key = r.registro.data_auditoria.strftime("%Y-%m-%d") if r.registro.data_auditoria else ""
+                    if not date_key:
+                        continue
+                    por_data_opt.setdefault(date_key, {})
+                    por_data_opt[date_key][opt] = por_data_opt[date_key].get(opt, 0) + 1
+
+                options_sorted = sorted(counts.items(), key=lambda x: (-x[1], x[0].lower()))
+                opt_labels = [k for (k, _v) in options_sorted]
+                opt_values = [v for (_k, v) in options_sorted]
+                labels_date = sorted(por_data_opt.keys())
+
+                datasets = []
+                for opt in opt_labels:
+                    datasets.append({
+                        "label": opt,
+                        "data": [por_data_opt.get(d, {}).get(opt, 0) for d in labels_date],
+                    })
+
+                chart_data[key]["perguntas"][str(pergunta.id)] = {
+                    "current": {"labels": opt_labels, "values": opt_values},
+                    "by_date": {"labels": labels_date, "datasets": datasets},
+                }
+
+            elif pergunta.tipo_resposta in {"NUMERO", "DECIMAL"}:
+                values: list[float] = []
+                por_data_vals: dict[str, list[float]] = {}
+                for r in respostas:
+                    raw = (r.valor or "").strip() if isinstance(r.valor, str) else ("" if r.valor is None else str(r.valor))
+                    if not raw:
+                        continue
+                    try:
+                        num = float(raw.replace(",", "."))
+                    except (ValueError, TypeError):
+                        continue
+                    values.append(num)
+                    date_key = r.registro.data_auditoria.strftime("%Y-%m-%d") if r.registro.data_auditoria else ""
+                    if not date_key:
+                        continue
+                    por_data_vals.setdefault(date_key, []).append(num)
+
+                if values:
+                    min_v = min(values)
+                    max_v = max(values)
+                    avg_v = sum(values) / len(values)
+                    estatistica["media"] = round(avg_v, 2)
+                else:
+                    min_v = None
+                    max_v = None
+                    avg_v = None
+
+                labels_date = sorted(por_data_vals.keys())
+                avg_by_date = []
+                for dte in labels_date:
+                    arr = por_data_vals.get(dte) or []
+                    avg_by_date.append((sum(arr) / len(arr)) if arr else None)
+
+                chart_data[key]["perguntas"][str(pergunta.id)] = {
+                    "current": {
+                        "labels": ["Mín", "Média", "Máx"],
+                        "values": [min_v, avg_v, max_v],
+                    },
+                    "by_date": {
+                        "labels": labels_date,
+                        "datasets": [
+                            {"label": pergunta.pergunta, "data": avg_by_date},
+                        ],
+                    },
+                }
+
+            estatisticas_perguntas.append(estatistica)
     
     context = {
         "modelo": modelo,
         "registros": registros,
         "perguntas": perguntas,
         "estatisticas_perguntas": estatisticas_perguntas,
-        # Gráfico Sim/Não
-        "simnao_labels": json.dumps(simnao_labels),
-        "simnao_sim": json.dumps(simnao_sim),
-        "simnao_nao": json.dumps(simnao_nao),
-        # Gráfico Números
-        "numero_labels": json.dumps(numero_chart_labels),
-        "numero_datasets": json.dumps(numero_chart_datasets),
+        "chart_cards": chart_cards,
+        "chart_data": chart_data,
     }
     return render(request, "auditoria/registros_por_modelo.html", context)
 

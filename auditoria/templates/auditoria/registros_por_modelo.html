@@ -62,22 +62,53 @@
                             <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Análise das Respostas</h5>
                         </div>
                         <div class="card-body">
-                            {% if simnao_labels or numero_labels %}
-                            
-                            {% if simnao_labels %}
+                            {% if chart_cards %}
                             <div class="mb-4">
-                                <h6 class="text-center mb-3 text-primary"><i class="bi bi-check-circle"></i> Perguntas do tipo Sim/Não</h6>
-                                <canvas id="chartSimNao" height="100"></canvas>
+                                {% for card in chart_cards %}
+                                <div class="card shadow-sm mb-3">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <div class="fw-semibold">{{ card.label }}</div>
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ card.key }}" aria-expanded="false" aria-controls="collapse-{{ card.key }}">
+                                            Expandir/Recolher
+                                        </button>
+                                    </div>
+                                    <div id="collapse-{{ card.key }}" class="collapse">
+                                        <div class="card-body">
+                                            <div class="row g-2 align-items-end mb-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Filtrar por pergunta</label>
+                                                    <select class="form-select" id="select-pergunta-{{ card.key }}">
+                                                        {% for p in card.perguntas %}
+                                                        <option value="{{ p.id }}">{{ p.texto }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <ul class="nav nav-tabs" id="tabs-{{ card.key }}" role="tablist">
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link active" id="tab-current-btn-{{ card.key }}" data-bs-toggle="tab" data-bs-target="#tab-current-{{ card.key }}" type="button" role="tab" aria-controls="tab-current-{{ card.key }}" aria-selected="true">Gráfico atual</button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link" id="tab-date-btn-{{ card.key }}" data-bs-toggle="tab" data-bs-target="#tab-date-{{ card.key }}" type="button" role="tab" aria-controls="tab-date-{{ card.key }}" aria-selected="false">Gráfico por data</button>
+                                                </li>
+                                            </ul>
+
+                                            <div class="tab-content pt-3">
+                                                <div class="tab-pane fade show active" id="tab-current-{{ card.key }}" role="tabpanel" aria-labelledby="tab-current-btn-{{ card.key }}">
+                                                    <canvas id="canvas-current-{{ card.key }}" height="110"></canvas>
+                                                    <div id="fallback-current-{{ card.key }}" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
+                                                </div>
+                                                <div class="tab-pane fade" id="tab-date-{{ card.key }}" role="tabpanel" aria-labelledby="tab-date-btn-{{ card.key }}">
+                                                    <canvas id="canvas-date-{{ card.key }}" height="110"></canvas>
+                                                    <div id="fallback-date-{{ card.key }}" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
                             </div>
-                            {% endif %}
-                            
-                            {% if numero_labels %}
-                            <div class="mb-4">
-                                <h6 class="text-center mb-3 text-success"><i class="bi bi-graph-up"></i> Perguntas Numéricas - Evolução Temporal</h6>
-                                <canvas id="chartNumeros" height="100"></canvas>
-                            </div>
-                            {% endif %}
-                            
                             {% else %}
                             <div class="alert alert-warning">
                                 <i class="bi bi-info-circle"></i> Este modelo ainda não possui perguntas ou respostas registradas para análise.
@@ -184,198 +215,185 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{{ chart_data|json_script:"auditoria-chart-data" }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Gráfico 1: Sim/Não (Barras Empilhadas)
-    {% if simnao_labels %}
-    const ctxSimNao = document.getElementById('chartSimNao');
-    if (ctxSimNao) {
-        new Chart(ctxSimNao, {
+    const raw = document.getElementById('auditoria-chart-data');
+    const chartsData = raw ? JSON.parse(raw.textContent || '{}') : {};
+    const chartInstances = {};
+
+    function isoToBr(iso) {
+        const s = String(iso || '').trim();
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return s;
+        return `${m[3]}/${m[2]}/${m[1]}`;
+    }
+
+    function destroyChart(key, which) {
+        if (chartInstances[key] && chartInstances[key][which]) {
+            chartInstances[key][which].destroy();
+            chartInstances[key][which] = null;
+        }
+    }
+
+    function showFallback(canvasId, fallbackId, show) {
+        const canvas = document.getElementById(canvasId);
+        const fallback = document.getElementById(fallbackId);
+        if (!canvas || !fallback) return;
+        if (show) {
+            canvas.classList.add('d-none');
+            fallback.classList.remove('d-none');
+        } else {
+            canvas.classList.remove('d-none');
+            fallback.classList.add('d-none');
+        }
+    }
+
+    function buildCurrentConfig(tipo, q) {
+        if (!q || !q.current) return null;
+        if (tipo === 'SIM_NAO') {
+            return {
+                type: 'doughnut',
+                data: {
+                    labels: q.current.labels || [],
+                    datasets: [{
+                        label: 'Respostas',
+                        data: q.current.values || [],
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'top' } } }
+            };
+        }
+        if (tipo === 'LISTA') {
+            return {
+                type: 'bar',
+                data: {
+                    labels: q.current.labels || [],
+                    datasets: [{
+                        label: 'Respostas',
+                        data: q.current.values || [],
+                        borderWidth: 1,
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+            };
+        }
+        // NUMERO / DECIMAL
+        return {
             type: 'bar',
             data: {
-                labels: {{ simnao_labels|safe }},
-                datasets: [
-                    {
-                        label: 'Sim',
-                        data: {{ simnao_sim|safe }},
-                        backgroundColor: 'rgba(40, 167, 69, 0.8)',
-                        borderColor: 'rgba(40, 167, 69, 1)',
-                        borderWidth: 2
-                    },
-                    {
-                        label: 'Não',
-                        data: {{ simnao_nao|safe }},
-                        backgroundColor: 'rgba(220, 53, 69, 0.8)',
-                        borderColor: 'rgba(220, 53, 69, 1)',
-                        borderWidth: 2
-                    }
-                ]
+                labels: q.current.labels || [],
+                datasets: [{
+                    label: 'Valor',
+                    data: q.current.values || [],
+                    borderWidth: 1,
+                }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 13,
-                                weight: 'bold'
-                            },
-                            padding: 15
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Distribuição de Respostas',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        },
-                        padding: {
-                            bottom: 20
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.parsed.y + ' respostas';
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        ticks: {
-                            autoSkip: false,
-                            maxRotation: 45,
-                            minRotation: 45,
-                            font: {
-                                size: 11
-                            }
-                        },
-                        grid: {
-                            display: false
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        stacked: true,
-                        ticks: {
-                            stepSize: 1
-                        },
-                        title: {
-                            display: true,
-                            text: 'Número de Respostas',
-                            font: {
-                                size: 12
-                            }
-                        }
-                    }
-                }
-            }
-        });
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        };
     }
-    {% endif %}
-    
-    // Gráfico 2: Números (Linhas - Evolução Temporal)
-    {% if numero_labels %}
-    const ctxNumeros = document.getElementById('chartNumeros');
-    if (ctxNumeros) {
-        const datasets = {{ numero_datasets|safe }};
-        new Chart(ctxNumeros, {
-            type: 'line',
+
+    function buildDateConfig(tipo, q) {
+        if (!q || !q.by_date) return null;
+        const labels = (q.by_date.labels || []).map(isoToBr);
+        const datasetsIn = q.by_date.datasets || [];
+
+        if (tipo === 'NUMERO' || tipo === 'DECIMAL') {
+            return {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: (datasetsIn || []).map(ds => ({
+                        label: ds.label || 'Valor',
+                        data: ds.data || [],
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        fill: false,
+                        tension: 0.3,
+                    }))
+                },
+                options: { responsive: true, plugins: { legend: { position: 'top' } }, interaction: { mode: 'nearest', axis: 'x', intersect: false }, scales: { y: { beginAtZero: true } } }
+            };
+        }
+
+        // SIM_NAO / LISTA: barras empilhadas
+        return {
+            type: 'bar',
             data: {
-                labels: {{ numero_labels|safe }},
-                datasets: datasets.map(ds => ({
-                    ...ds,
-                    borderWidth: 3,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    fill: false
+                labels,
+                datasets: (datasetsIn || []).map(ds => ({
+                    label: ds.label || '',
+                    data: ds.data || [],
+                    borderWidth: 1,
                 }))
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 13,
-                                weight: 'bold'
-                            },
-                            padding: 15,
-                            usePointStyle: true
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Evolução dos Valores ao Longo do Tempo',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        },
-                        padding: {
-                            bottom: 20
-                        }
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += context.parsed.y.toFixed(2);
-                                }
-                                return label;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Data da Auditoria',
-                            font: {
-                                size: 12
-                            }
-                        },
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 45,
-                            font: {
-                                size: 10
-                            }
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Valor',
-                            font: {
-                                size: 12
-                            }
-                        }
-                    }
-                },
-                interaction: {
-                    mode: 'nearest',
-                    axis: 'x',
-                    intersect: false
+            options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
+        };
+    }
+
+    function renderCharts(key) {
+        const card = chartsData[key];
+        if (!card) return;
+        const tipo = card.tipo;
+        const select = document.getElementById(`select-pergunta-${key}`);
+        if (!select) return;
+        const perguntaId = String(select.value || '').trim();
+        const q = (card.perguntas && card.perguntas[perguntaId]) ? card.perguntas[perguntaId] : null;
+
+        const tabsEl = document.getElementById(`tabs-${key}`);
+        let active = 'current';
+        if (tabsEl) {
+            const activeBtn = tabsEl.querySelector('.nav-link.active');
+            const target = activeBtn ? (activeBtn.getAttribute('data-bs-target') || '') : '';
+            if (target && target.indexOf(`#tab-date-${key}`) === 0) active = 'date';
+        }
+
+        if (active === 'current') {
+            destroyChart(key, 'date');
+            destroyChart(key, 'current');
+            const currentCfg = buildCurrentConfig(tipo, q);
+            if (!currentCfg || !currentCfg.data || !currentCfg.data.labels || currentCfg.data.labels.length === 0) {
+                showFallback(`canvas-current-${key}`, `fallback-current-${key}`, true);
+            } else {
+                showFallback(`canvas-current-${key}`, `fallback-current-${key}`, false);
+                const ctx = document.getElementById(`canvas-current-${key}`);
+                if (ctx) {
+                    chartInstances[key] = chartInstances[key] || {};
+                    chartInstances[key].current = new Chart(ctx, currentCfg);
                 }
             }
-        });
+        } else {
+            destroyChart(key, 'current');
+            destroyChart(key, 'date');
+            const dateCfg = buildDateConfig(tipo, q);
+            if (!dateCfg || !dateCfg.data || !dateCfg.data.labels || dateCfg.data.labels.length === 0) {
+                showFallback(`canvas-date-${key}`, `fallback-date-${key}`, true);
+            } else {
+                showFallback(`canvas-date-${key}`, `fallback-date-${key}`, false);
+                const ctx2 = document.getElementById(`canvas-date-${key}`);
+                if (ctx2) {
+                    chartInstances[key] = chartInstances[key] || {};
+                    chartInstances[key].date = new Chart(ctx2, dateCfg);
+                }
+            }
+        }
     }
-    {% endif %}
-});
+
+    // Bind events for each card key present in JSON
+    Object.keys(chartsData || {}).forEach(key => {
+        const collapseEl = document.getElementById(`collapse-${key}`);
+        const select = document.getElementById(`select-pergunta-${key}`);
+        if (select) {
+            select.addEventListener('change', () => renderCharts(key));
+        }
+        if (collapseEl) {
+            collapseEl.addEventListener('shown.bs.collapse', () => renderCharts(key));
+        }
+        const tabs = document.getElementById(`tabs-${key}`);
+        if (tabs) {
+            tabs.addEventListener('shown.bs.tab', () => renderCharts(key));
+        }
+    });
 </script>
 {% endblock %}
