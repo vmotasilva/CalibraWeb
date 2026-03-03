@@ -62,6 +62,21 @@
                             <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Análise das Respostas</h5>
                         </div>
                         <div class="card-body">
+                            <form method="get" class="row g-2 mb-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Período inicial</label>
+                                    <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Período final</label>
+                                    <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
+                                </div>
+                                <div class="col-md-6 d-flex flex-wrap align-items-end gap-2">
+                                    <button type="submit" class="btn btn-outline-primary">Aplicar período</button>
+                                    <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-outline-secondary">Limpar</a>
+                                </div>
+                            </form>
+
                             {% if chart_cards %}
                             <div class="mb-4">
                                 <div class="card shadow-sm mb-3">
@@ -98,8 +113,11 @@
                                                 <div class="col-md-6">
                                                     <label class="form-label">Filtrar por pergunta</label>
                                                     <select class="form-select" id="select-pergunta-{{ card.key }}">
+                                                        <option value="__all__">Todas</option>
                                                         {% for p in card.perguntas %}
+                                                        {% if p.id != '__all__' %}
                                                         <option value="{{ p.id }}">{{ p.texto }}</option>
+                                                        {% endif %}
                                                         {% endfor %}
                                                     </select>
                                                 </div>
@@ -107,7 +125,7 @@
 
                                             <ul class="nav nav-tabs" id="tabs-{{ card.key }}" role="tablist">
                                                 <li class="nav-item" role="presentation">
-                                                    <button class="nav-link active" id="tab-current-btn-{{ card.key }}" data-bs-toggle="tab" data-bs-target="#tab-current-{{ card.key }}" type="button" role="tab" aria-controls="tab-current-{{ card.key }}" aria-selected="true">Gráfico atual</button>
+                                                    <button class="nav-link active" id="tab-current-btn-{{ card.key }}" data-bs-toggle="tab" data-bs-target="#tab-current-{{ card.key }}" type="button" role="tab" aria-controls="tab-current-{{ card.key }}" aria-selected="true">Geral</button>
                                                 </li>
                                                 <li class="nav-item" role="presentation">
                                                     <button class="nav-link" id="tab-date-btn-{{ card.key }}" data-bs-toggle="tab" data-bs-target="#tab-date-{{ card.key }}" type="button" role="tab" aria-controls="tab-date-{{ card.key }}" aria-selected="false">Gráfico por data</button>
@@ -272,44 +290,39 @@ document.addEventListener('DOMContentLoaded', function() {
     function buildCurrentConfig(tipo, q) {
         if (!q || !q.current) return null;
         if (tipo === 'SIM_NAO') {
-            return {
-                type: 'doughnut',
-                data: {
-                    labels: q.current.labels || [],
-                    datasets: [{
-                        label: 'Respostas',
-                        data: q.current.values || [],
-                    }]
-                },
-                options: { responsive: true, plugins: { legend: { position: 'top' } } }
-            };
-        }
-        if (tipo === 'LISTA') {
+            const values = q.current.values || [];
+            const sim = values[0] ?? 0;
+            const nao = values[1] ?? 0;
             return {
                 type: 'bar',
                 data: {
-                    labels: q.current.labels || [],
-                    datasets: [{
-                        label: 'Respostas',
-                        data: q.current.values || [],
-                        borderWidth: 1,
-                    }]
+                    labels: ['Total'],
+                    datasets: [
+                        { label: 'Sim', data: [sim], backgroundColor: 'rgba(40, 167, 69, 0.6)' },
+                        { label: 'Não', data: [nao], backgroundColor: 'rgba(220, 53, 69, 0.6)' },
+                    ]
                 },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+                options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
+            };
+        }
+        if (tipo === 'LISTA') {
+            const labels = q.current.labels || [];
+            const values = q.current.values || [];
+            const datasets = labels.map((lab, idx) => ({ label: lab, data: [values[idx] ?? 0] }));
+            return {
+                type: 'bar',
+                data: { labels: ['Total'], datasets },
+                options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
             };
         }
         // NUMERO / DECIMAL
+        const labels = q.current.labels || [];
+        const values = q.current.values || [];
+        const datasets = labels.map((lab, idx) => ({ label: lab, data: [values[idx] ?? null] }));
         return {
             type: 'bar',
-            data: {
-                labels: q.current.labels || [],
-                datasets: [{
-                    label: 'Valor',
-                    data: q.current.values || [],
-                    borderWidth: 1,
-                }]
-            },
-            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            data: { labels: ['Total'], datasets },
+            options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
         };
     }
 
