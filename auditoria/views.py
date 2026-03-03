@@ -116,6 +116,19 @@ def api_next_pergunta_ordem(request):
 
 
 @login_required
+def api_modelo_subcategorias(request):
+    """API: devolve as sub-categorias cadastradas para o modelo selecionado."""
+    modelo_id = (request.GET.get("modelo") or "").strip()
+    if not (modelo_id and modelo_id.isdigit()):
+        return JsonResponse({"subcategorias": []})
+    try:
+        modelo = ModeloAuditoria.objects.get(pk=int(modelo_id))
+    except ModeloAuditoria.DoesNotExist:
+        return JsonResponse({"subcategorias": []})
+    return JsonResponse({"subcategorias": modelo.subcategorias_list})
+
+
+@login_required
 def modulo_auditoria_view(request):
     modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
     total_modelos = modelos_qs.count()

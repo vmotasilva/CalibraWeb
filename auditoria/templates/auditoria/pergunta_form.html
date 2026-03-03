@@ -132,6 +132,70 @@
 
 <script>
     (function() {
+        const modeloSelect = document.getElementById('id_modelo');
+        const subSelect = document.getElementById('id_subcategoria');
+        if (!modeloSelect || !subSelect) return;
+
+        const endpoint = '{% url "auditoria:api_modelo_subcategorias" %}';
+
+        function setOptions(values, current) {
+            const cur = (current || '').trim();
+            const normalized = (values || []).map(v => String(v || '').trim()).filter(Boolean);
+
+            // Preserve current value if it's not in the list (to avoid losing legacy data)
+            const lowerSet = new Set(normalized.map(v => v.toLowerCase()));
+            const options = [];
+            options.push({ value: '', label: '—' });
+            if (cur && !lowerSet.has(cur.toLowerCase())) {
+                options.push({ value: cur, label: cur });
+            }
+            normalized.forEach(v => options.push({ value: v, label: v }));
+
+            const selectedBefore = cur || (subSelect.value || '');
+            subSelect.innerHTML = '';
+            options.forEach(o => {
+                const opt = document.createElement('option');
+                opt.value = o.value;
+                opt.textContent = o.label;
+                subSelect.appendChild(opt);
+            });
+
+            // Restore selection if possible
+            const trySelect = (selectedBefore || '').trim();
+            if (trySelect) {
+                const match = Array.prototype.find.call(subSelect.options, o => (o.value || '') === trySelect);
+                if (match) subSelect.value = trySelect;
+            }
+        }
+
+        async function refresh() {
+            const modeloId = (modeloSelect.value || '').trim();
+            const current = (subSelect.value || '').trim();
+            if (!modeloId) {
+                setOptions([], current);
+                subSelect.disabled = true;
+                return;
+            }
+
+            subSelect.disabled = false;
+            try {
+                const url = `${endpoint}?modelo=${encodeURIComponent(modeloId)}`;
+                const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                setOptions((data && data.subcategorias) || [], current);
+            } catch (e) {
+                // silencioso
+            }
+        }
+
+        refresh();
+        modeloSelect.addEventListener('change', refresh);
+    })();
+</script>
+
+<script>
+    (function() {
         const tipoSelect = document.getElementById('id_tipo_resposta');
         const wrap = document.getElementById('opcoes-resposta-wrap');
         const textarea = document.getElementById('id_opcoes_resposta');
