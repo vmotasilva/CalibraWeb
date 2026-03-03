@@ -157,9 +157,44 @@ NAV_STRUCTURE = [
                         "perm": "core.nav_metrologia_lista_instrumentos",
                     },
                     {
+                        "nome": "Novo Instrumento",
+                        "view_name": ["metrologia:novo_instrumento", "novo_instrumento"],
+                        "perm": "core.nav_metrologia_novo_instrumento",
+                    },
+                    {
+                        "nome": "Detalhe do Instrumento",
+                        "view_name": ["detalhe_instrumento", "visualizar_instrumento"],
+                        "perm": "core.nav_metrologia_detalhe_instrumento",
+                    },
+                    {
+                        "nome": "Editar Instrumento",
+                        "view_name": "editar_instrumento_custom",
+                        "perm": "core.nav_metrologia_editar_instrumento",
+                    },
+                    {
                         "nome": "Históricos de Calibração",
                         "view_name": "qms:listar_historicos_calibracao",
                         "perm": "core.nav_metrologia_historicos_calibracao",
+                    },
+                    {
+                        "nome": "Registrar Histórico de Calibração",
+                        "view_name": "registrar_historico_calibracao",
+                        "perm": "core.nav_metrologia_registrar_historico",
+                    },
+                    {
+                        "nome": "Visualizar Histórico de Calibração",
+                        "view_name": "visualizar_historico_calibracao",
+                        "perm": "core.nav_metrologia_visualizar_historico",
+                    },
+                    {
+                        "nome": "Editar Histórico de Calibração",
+                        "view_name": "editar_historico_calibracao",
+                        "perm": "core.nav_metrologia_editar_historico",
+                    },
+                    {
+                        "nome": "Remover Histórico de Calibração",
+                        "view_name": "remover_historico",
+                        "perm": "core.nav_metrologia_remover_historico",
                     },
                     {
                         "nome": "Categorias",
@@ -218,6 +253,12 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Dashboard", "view_name": "procedures:dashboard_treinamentos", "perm": "core.nav_treinamentos_dashboard"},
                     {"nome": "Registros de Treinamento", "view_name": "procedures:treinamentos_list", "perm": "core.nav_treinamentos_registros"},
+                    {"nome": "Novo Treinamento", "view_name": "procedures:novo_treinamento", "perm": "core.nav_treinamentos_novo_treinamento"},
+                    {"nome": "Detalhe do Treinamento", "view_name": "procedures:treinamentos_detalhe", "perm": "core.nav_treinamentos_detalhe_treinamento"},
+                    {"nome": "Editar Treinamento", "view_name": "procedures:editar_treinamento", "perm": "core.nav_treinamentos_editar_treinamento"},
+                    {"nome": "Importar Lista de Presença", "view_name": "procedures:treinamentos_importar", "perm": "core.nav_treinamentos_importar_treinamentos"},
+                    {"nome": "Template Importação (Download)", "view_name": "procedures:treinamentos_template_download", "perm": "core.nav_treinamentos_download_template"},
+                    {"nome": "Exportar Treinamentos (Excel)", "view_name": "procedures:treinamentos_exportar_excel", "perm": "core.nav_treinamentos_exportar_treinamentos"},
                     {"nome": "Listas de Presença", "view_name": "procedures:lista_presenca_list", "perm": "core.nav_treinamentos_listas_presenca"},
                     {"nome": "Planejamento", "view_name": "procedures:planejamentos_list", "perm": "core.nav_treinamentos_planejamento"},
                 ],
@@ -239,6 +280,10 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Perfis e Grupos", "view_name": "procedures:perfis_list", "perm": "core.nav_treinamentos_perfis"},
                     {"nome": "Procedimentos", "view_name": "procedures:procedimentos_list", "perm": "core.nav_treinamentos_procedimentos"},
+                    {"nome": "Novo Procedimento", "view_name": "procedures:novo_procedimento", "perm": "core.nav_treinamentos_novo_procedimento"},
+                    {"nome": "Editar Procedimento", "view_name": "procedures:editar_procedimento", "perm": "core.nav_treinamentos_editar_procedimento"},
+                    {"nome": "Importar Procedimentos", "view_name": "procedures:importar_procedimentos", "perm": "core.nav_treinamentos_importar_procedimentos"},
+                    {"nome": "Exportar Procedimentos (Excel)", "view_name": "procedures:export_procedimentos_excel", "perm": "core.nav_treinamentos_exportar_procedimentos"},
                 ],
             },
         ],
@@ -257,7 +302,14 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Colaboradores", "view_name": "modulo_rh", "perm": "core.nav_pessoas_colaboradores"},
                     {"nome": "Novo Colaborador", "view_name": "rh:criar_colaborador", "perm": "core.nav_pessoas_novo_colaborador"},
+                    {"nome": "Detalhe do Colaborador", "view_name": ["rh:detalhe_colaborador", "detalhe_colaborador"], "perm": "core.nav_pessoas_detalhe_colaborador"},
+                    {"nome": "Editar Colaborador", "view_name": "editar_colaborador", "perm": "core.nav_pessoas_editar_colaborador"},
                     {"nome": "Gestão de Férias", "view_name": "rh:gestao_ferias", "perm": "core.nav_pessoas_gestao_ferias"},
+                    {"nome": "Registrar Férias", "view_name": ["rh:criar_ferias", "registrar_ferias"], "perm": "core.nav_pessoas_registrar_ferias"},
+                    {"nome": "Editar Férias", "view_name": ["rh:editar_ferias", "editar_ferias"], "perm": "core.nav_pessoas_editar_ferias"},
+                    {"nome": "Excluir Férias", "view_name": ["rh:excluir_ferias", "excluir_ferias"], "perm": "core.nav_pessoas_excluir_ferias"},
+                    {"nome": "Importar Férias", "view_name": "rh:importar_ferias", "perm": "core.nav_pessoas_importar_ferias"},
+                    {"nome": "Exportar Férias", "view_name": "rh:exportar_ferias", "perm": "core.nav_pessoas_exportar_ferias"},
                     {"nome": "Lideranças", "view_name": "rh:atualizar_liderancas_em_massa", "perm": "core.nav_pessoas_liderancas"},
                     {"nome": "Ocorrências", "view_name": "listar_ocorrencias", "perm": "core.nav_pessoas_ocorrencias"},
                 ],
@@ -453,7 +505,15 @@ def get_view_permission_map() -> dict[str, dict[str, str]]:
             for func in bloco.get("funcoes") or []:
                 view_name = func.get("view_name")
                 perm = func.get("perm")
-                if view_name and perm:
+                if not view_name or not perm:
+                    continue
+
+                # Suporta aliases: view_name pode ser uma lista/tupla/set de nomes.
+                if isinstance(view_name, (list, tuple, set)):
+                    for vn in view_name:
+                        if vn:
+                            result[vn] = {"perm": perm, "module": module_key}
+                else:
                     result[view_name] = {"perm": perm, "module": module_key}
     return result
 
