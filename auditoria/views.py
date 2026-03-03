@@ -1,10 +1,11 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Count, Max
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from io import BytesIO
 import json
 
@@ -57,6 +58,17 @@ def _get_effective_grid_itens_for_edit(registro: RegistroAuditoria, raw_from_for
 
 def _auditoria_is_admin(user) -> bool:
     return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+
+
+def _make_unique_modelo_copy_nome(orig_nome: str) -> str:
+    orig_nome = (orig_nome or "").strip() or "Modelo"
+    base = f"{orig_nome} (Cópia)"
+    nome = base
+    i = 2
+    while ModeloAuditoria.objects.filter(nome=nome).exists():
+        nome = f"{orig_nome} (Cópia {i})"
+        i += 1
+    return nome
 
 
 def _auditoria_can_update_modelo(user, modelo: ModeloAuditoria) -> bool:
@@ -211,7 +223,11 @@ def pergunta_create(request):
         if form.is_valid():
             form.save()
             messages.success(request, "Pergunta cadastrada com sucesso.")
-            return redirect("auditoria:perguntas_list")
+            modelo_id = getattr(form.instance, "modelo_id", None)
+            url = reverse("auditoria:perguntas_list")
+            if modelo_id:
+                url = f"{url}?modelo={modelo_id}"
+            return redirect(url)
     else:
         initial = {}
         modelo_id = request.GET.get("modelo")
@@ -221,6 +237,86 @@ def pergunta_create(request):
                 initial["ordem"] = _get_next_pergunta_ordem(int(modelo_id))
         form = PerguntaAuditoriaForm(initial=initial)
     return render(request, "auditoria/pergunta_form.html", {"form": form, "modo": "novo"})
+
+
+@login_required
+def pergunta_duplicate(request, pk):
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
+        return redirect("auditoria:perguntas_list")
+    if request.method != "POST":
+        return redirect("auditoria:perguntas_list")
+
+    pergunta = get_object_or_404(PerguntaAuditoria, pk=pk)
+    with transaction.atomic():
+        nova = PerguntaAuditoria(
+            modelo_id=pergunta.modelo_id,
+            pergunta=pergunta.pergunta,
+            tipo_resposta=pergunta.tipo_resposta,
+            preenchimento_semanal=pergunta.preenchimento_semanal,
+            opcoes_resposta=pergunta.opcoes_resposta,
+            aplicar_no_grid=pergunta.aplicar_no_grid,
+            ordem=_get_next_pergunta_ordem(pergunta.modelo_id),
+            obrigatoria=pergunta.obrigatoria,
+            ativo=pergunta.ativo,
+        )
+        nova.save()
+
+    messages.success(request, "Pergunta duplicada com sucesso.")
+    url = reverse("auditoria:perguntas_list")
+    if pergunta.modelo_id:
+        url = f"{url}?modelo={pergunta.modelo_id}"
+    return redirect(url)
+
+
+@login_required
+def modelo_duplicate(request, pk):
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem criar modelos de auditoria.")
+        return redirect("auditoria:modelos_list")
+    if request.method != "POST":
+        return redirect("auditoria:modelos_list")
+
+    modelo = get_object_or_404(ModeloAuditoria, pk=pk)
+
+    with transaction.atomic():
+        novo_modelo = ModeloAuditoria(
+            nome=_make_unique_modelo_copy_nome(modelo.nome),
+            objeto_auditoria=modelo.objeto_auditoria,
+            link_sharepoint=modelo.link_sharepoint,
+            periodicidade=modelo.periodicidade,
+            dia_semana=modelo.dia_semana,
+            dias_quinzenal=modelo.dias_quinzenal,
+            dia_mes=modelo.dia_mes,
+            responsavel_id=modelo.responsavel_id,
+            preenchimento_grid=modelo.preenchimento_grid,
+            grid_rotulo_item=modelo.grid_rotulo_item,
+            grid_colunas=modelo.grid_colunas,
+            ativo=modelo.ativo,
+        )
+        novo_modelo.save()
+        novo_modelo.responsaveis.set(modelo.responsaveis.all())
+
+        perguntas = list(modelo.perguntas.all().order_by("ordem", "id"))
+        novas_perguntas = [
+            PerguntaAuditoria(
+                modelo=novo_modelo,
+                pergunta=p.pergunta,
+                tipo_resposta=p.tipo_resposta,
+                preenchimento_semanal=p.preenchimento_semanal,
+                opcoes_resposta=p.opcoes_resposta,
+                aplicar_no_grid=p.aplicar_no_grid,
+                ordem=p.ordem,
+                obrigatoria=p.obrigatoria,
+                ativo=p.ativo,
+            )
+            for p in perguntas
+        ]
+        if novas_perguntas:
+            PerguntaAuditoria.objects.bulk_create(novas_perguntas)
+
+    messages.success(request, "Modelo duplicado com sucesso.")
+    return redirect("auditoria:modelos_list")
 
 
 @login_required

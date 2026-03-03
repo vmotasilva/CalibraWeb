@@ -47,6 +47,10 @@
                         <td>{% if pergunta.obrigatoria %}Sim{% else %}Não{% endif %}</td>
                         <td>
                             <a href="{% url 'auditoria:pergunta_edit' pergunta.id %}" class="btn btn-sm btn-warning">Editar</a>
+                            <form method="post" action="{% url 'auditoria:pergunta_duplicate' pergunta.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-secondary">Duplicar</button>
+                            </form>
                             <a href="{% url 'auditoria:pergunta_delete' pergunta.id %}" class="btn btn-sm btn-danger">Excluir</a>
                         </td>
                     </tr>

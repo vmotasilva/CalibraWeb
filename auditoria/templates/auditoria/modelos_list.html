@@ -69,6 +69,10 @@
                             <a href="{% url 'auditoria:modelo_edit' modelo.id %}" class="btn btn-sm btn-warning" title="Editar modelo">
                                 <i class="bi bi-pencil"></i>
                             </a>
+                            <form method="post" action="{% url 'auditoria:modelo_duplicate' modelo.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-secondary" title="Duplicar modelo">Duplicar</button>
+                            </form>
                             <a href="{% url 'auditoria:perguntas_list' %}?modelo={{ modelo.id }}" class="btn btn-sm btn-outline-primary" title="Gerenciar perguntas">
                                 <i class="bi bi-question-circle"></i>
                             </a>
