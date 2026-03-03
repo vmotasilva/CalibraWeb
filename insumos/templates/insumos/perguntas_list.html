@@ -46,6 +46,16 @@
                         <td>{{ pergunta.get_tipo_resposta_display }}</td>
                         <td>{% if pergunta.obrigatoria %}Sim{% else %}Não{% endif %}</td>
                         <td>
+                            <form method="post" action="{% url 'insumos:pergunta_move_up' pergunta.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="return_to" value="{{ request.get_full_path }}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Mover para cima">↑</button>
+                            </form>
+                            <form method="post" action="{% url 'insumos:pergunta_move_down' pergunta.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="return_to" value="{{ request.get_full_path }}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Mover para baixo">↓</button>
+                            </form>
                             <a href="{% url 'insumos:pergunta_edit' pergunta.id %}" class="btn btn-sm btn-warning">Editar</a>
                             <a href="{% url 'insumos:pergunta_delete' pergunta.id %}" class="btn btn-sm btn-danger">Excluir</a>
                         </td>

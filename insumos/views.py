@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Count, Max
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -200,6 +200,110 @@ def perguntas_list(request):
         "modelo_id": modelo_id,
     }
     return render(request, "insumos/perguntas_list.html", context)
+
+
+def _normalize_perguntas_ordem(modelo_id: int) -> None:
+    """Garante que as perguntas de um modelo tenham ordem sequencial (1..n)."""
+    qs = (
+        PerguntaAuditoria.objects.filter(modelo_id=modelo_id)
+        .only("id", "ordem")
+        .order_by("ordem", "id")
+    )
+    to_update = []
+    expected = 1
+    for p in qs:
+        if p.ordem != expected:
+            p.ordem = expected
+            to_update.append(p)
+        expected += 1
+    if to_update:
+        PerguntaAuditoria.objects.bulk_update(to_update, ["ordem"])
+
+
+def _safe_return_to(raw: str | None) -> str:
+    if raw and isinstance(raw, str) and raw.startswith("/") and not raw.startswith("//"):
+        return raw
+    return redirect("insumos:perguntas_list").url
+
+
+@login_required
+def pergunta_move_up(request, pk):
+    if request.method != "POST":
+        return redirect("insumos:perguntas_list")
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem reordenar perguntas.")
+        return redirect("insumos:perguntas_list")
+
+    return_to = _safe_return_to(request.POST.get("return_to"))
+
+    with transaction.atomic():
+        try:
+            pergunta = PerguntaAuditoria.objects.select_for_update().select_related("modelo").get(pk=pk)
+        except PerguntaAuditoria.DoesNotExist:
+            return redirect(return_to)
+        _normalize_perguntas_ordem(pergunta.modelo_id)
+
+        prev_q = (
+            PerguntaAuditoria.objects.select_for_update()
+            .filter(modelo_id=pergunta.modelo_id)
+            .filter(
+                models.Q(ordem__lt=pergunta.ordem)
+                | (models.Q(ordem=pergunta.ordem) & models.Q(id__lt=pergunta.id))
+            )
+            .order_by("-ordem", "-id")
+            .first()
+        )
+
+        if not prev_q:
+            return redirect(return_to)
+
+        pergunta_ordem = pergunta.ordem
+        pergunta.ordem = prev_q.ordem
+        prev_q.ordem = pergunta_ordem
+        PerguntaAuditoria.objects.bulk_update([pergunta, prev_q], ["ordem"])
+        _normalize_perguntas_ordem(pergunta.modelo_id)
+
+    return redirect(return_to)
+
+
+@login_required
+def pergunta_move_down(request, pk):
+    if request.method != "POST":
+        return redirect("insumos:perguntas_list")
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem reordenar perguntas.")
+        return redirect("insumos:perguntas_list")
+
+    return_to = _safe_return_to(request.POST.get("return_to"))
+
+    with transaction.atomic():
+        try:
+            pergunta = PerguntaAuditoria.objects.select_for_update().select_related("modelo").get(pk=pk)
+        except PerguntaAuditoria.DoesNotExist:
+            return redirect(return_to)
+        _normalize_perguntas_ordem(pergunta.modelo_id)
+
+        next_q = (
+            PerguntaAuditoria.objects.select_for_update()
+            .filter(modelo_id=pergunta.modelo_id)
+            .filter(
+                models.Q(ordem__gt=pergunta.ordem)
+                | (models.Q(ordem=pergunta.ordem) & models.Q(id__gt=pergunta.id))
+            )
+            .order_by("ordem", "id")
+            .first()
+        )
+
+        if not next_q:
+            return redirect(return_to)
+
+        pergunta_ordem = pergunta.ordem
+        pergunta.ordem = next_q.ordem
+        next_q.ordem = pergunta_ordem
+        PerguntaAuditoria.objects.bulk_update([pergunta, next_q], ["ordem"])
+        _normalize_perguntas_ordem(pergunta.modelo_id)
+
+    return redirect(return_to)
 
 
 @login_required
