@@ -35,12 +35,41 @@
         </div>
     </form>
 
+    <form method="post" action="{% url 'auditoria:perguntas_bulk_set_subcategoria' %}" class="card shadow-sm mb-3" id="bulkSubcategoriaForm">
+        {% csrf_token %}
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label mb-0">Aplicar sub-categoria (selecionadas)</label>
+                    <input type="hidden" name="modelo" value="{{ modelo_id|default:'' }}" id="bulkModeloId">
+                    <select name="subcategoria" class="form-select" id="bulkSubcategoriaSelect" {% if not modelo_id %}disabled{% endif %}>
+                        <option value="">(Limpar sub-categoria)</option>
+                        {% for sc in subcategorias %}
+                        <option value="{{ sc }}">{{ sc }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if not modelo_id %}
+                        <div class="form-text">Selecione um modelo para aplicar em lote.</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-outline-primary" id="bulkApplyBtn" {% if not modelo_id %}disabled{% endif %}>Aplicar</button>
+                    <button type="button" class="btn btn-outline-secondary" id="bulkClearSelectionBtn">Limpar seleção</button>
+                </div>
+            </div>
+            <div class="form-text mt-2">Marque as perguntas na tabela abaixo e clique em “Aplicar”.</div>
+        </div>
+    </form>
+
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped mb-0">
+                <table class="table table-striped mb-0" id="perguntasTable">
                 <thead>
                     <tr>
+                        <th style="width: 1%;">
+                            <input type="checkbox" class="form-check-input" id="selectAllPerguntas" {% if not modelo_id %}disabled{% endif %}>
+                        </th>
                         <th>Modelo</th>
                         <th>Sub-categoria</th>
                         <th>Ordem</th>
@@ -53,6 +82,9 @@
                 <tbody>
                     {% for pergunta in perguntas %}
                     <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input pergunta-checkbox" value="{{ pergunta.id }}" {% if not modelo_id %}disabled{% endif %}>
+                        </td>
                         <td>{{ pergunta.modelo.nome }}</td>
                         <td>{{ pergunta.subcategoria|default:'-' }}</td>
                         <td>{{ pergunta.ordem }}</td>
@@ -69,7 +101,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="text-center py-3">Nenhuma pergunta cadastrada.</td></tr>
+                    <tr><td colspan="8" class="text-center py-3">Nenhuma pergunta cadastrada.</td></tr>
                     {% endfor %}
                 </tbody>
                 </table>
@@ -105,6 +137,84 @@
         select.addEventListener('change', updateHref);
         if (subSelect) subSelect.addEventListener('change', updateHref);
         btn.addEventListener('click', updateHref);
+    })();
+</script>
+
+<script>
+    (function() {
+        const table = document.getElementById('perguntasTable');
+        const selectAll = document.getElementById('selectAllPerguntas');
+        const bulkForm = document.getElementById('bulkSubcategoriaForm');
+        const applyBtn = document.getElementById('bulkApplyBtn');
+        const clearBtn = document.getElementById('bulkClearSelectionBtn');
+        if (!table || !bulkForm || !applyBtn || !clearBtn) return;
+
+        const serverDisabled = applyBtn.disabled;
+
+        const getCheckboxes = () => Array.from(table.querySelectorAll('input.pergunta-checkbox'));
+        const getChecked = () => getCheckboxes().filter(cb => cb.checked);
+
+        function clearHiddenIds() {
+            Array.from(bulkForm.querySelectorAll('input[name="pergunta_ids"]')).forEach(el => el.remove());
+        }
+
+        function sync() {
+            const boxes = getCheckboxes();
+            const checked = getChecked();
+
+            if (selectAll) {
+                selectAll.checked = boxes.length > 0 && checked.length === boxes.length;
+                selectAll.indeterminate = checked.length > 0 && checked.length < boxes.length;
+            }
+
+            if (!serverDisabled) {
+                applyBtn.disabled = checked.length === 0;
+            }
+        }
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                const boxes = getCheckboxes();
+                boxes.forEach(cb => { if (!cb.disabled) cb.checked = selectAll.checked; });
+                sync();
+            });
+        }
+
+        table.addEventListener('change', function(e) {
+            const t = e.target;
+            if (t && t.classList && t.classList.contains('pergunta-checkbox')) {
+                sync();
+            }
+        });
+
+        clearBtn.addEventListener('click', function() {
+            getCheckboxes().forEach(cb => { cb.checked = false; });
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+            clearHiddenIds();
+            sync();
+        });
+
+        bulkForm.addEventListener('submit', function(e) {
+            clearHiddenIds();
+            const checked = getChecked();
+            if (!checked.length) {
+                e.preventDefault();
+                sync();
+                return;
+            }
+            checked.forEach(cb => {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'pergunta_ids';
+                hidden.value = cb.value;
+                bulkForm.appendChild(hidden);
+            });
+        });
+
+        sync();
     })();
 </script>
 {% endblock %}

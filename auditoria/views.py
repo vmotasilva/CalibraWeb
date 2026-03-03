@@ -241,6 +241,64 @@ def perguntas_list(request):
 
 
 @login_required
+def perguntas_bulk_set_subcategoria(request):
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
+        return redirect("auditoria:perguntas_list")
+    if request.method != "POST":
+        return redirect("auditoria:perguntas_list")
+
+    modelo_id = (request.POST.get("modelo") or "").strip()
+    subcategoria = (request.POST.get("subcategoria") or "").strip()
+    pergunta_ids = request.POST.getlist("pergunta_ids")
+
+    if not (modelo_id and modelo_id.isdigit()):
+        messages.error(request, "Selecione um modelo para aplicar sub-categoria em lote.")
+        return redirect("auditoria:perguntas_list")
+    if not pergunta_ids:
+        messages.error(request, "Selecione pelo menos 1 pergunta.")
+        url = reverse("auditoria:perguntas_list")
+        return redirect(f"{url}?{urlencode({'modelo': modelo_id})}")
+
+    modelo = get_object_or_404(ModeloAuditoria, pk=int(modelo_id))
+
+    # Se o modelo tiver subcategorias cadastradas, validamos a escolha.
+    if subcategoria:
+        allowed = modelo.subcategorias_list
+        if allowed:
+            allowed_lower = {a.lower() for a in allowed}
+            if subcategoria.lower() not in allowed_lower:
+                messages.error(request, "Sub-categoria inválida para este modelo.")
+                url = reverse("auditoria:perguntas_list")
+                return redirect(f"{url}?{urlencode({'modelo': modelo_id})}")
+
+    # Converte IDs e limita atualização apenas às perguntas do modelo.
+    ids_int: list[int] = []
+    for raw in pergunta_ids:
+        s = str(raw).strip()
+        if not s.isdigit():
+            continue
+        ids_int.append(int(s))
+
+    if not ids_int:
+        messages.error(request, "Selecione pelo menos 1 pergunta válida.")
+        url = reverse("auditoria:perguntas_list")
+        return redirect(f"{url}?{urlencode({'modelo': modelo_id})}")
+
+    updated = (
+        PerguntaAuditoria.objects.filter(id__in=ids_int, modelo_id=int(modelo_id))
+        .update(subcategoria=subcategoria)
+    )
+
+    messages.success(request, f"Sub-categoria aplicada em {updated} pergunta(s).")
+    params = {"modelo": modelo_id}
+    if subcategoria:
+        params["subcategoria"] = subcategoria
+    url = reverse("auditoria:perguntas_list")
+    return redirect(f"{url}?{urlencode(params)}")
+
+
+@login_required
 def pergunta_create(request):
     if not _auditoria_is_admin(request.user):
         messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")

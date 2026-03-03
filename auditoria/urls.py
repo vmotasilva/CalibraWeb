@@ -14,6 +14,7 @@ urlpatterns = [
     path("perguntas/", views.perguntas_list, name="perguntas_list"),
     path("perguntas/next-ordem/", views.api_next_pergunta_ordem, name="api_next_pergunta_ordem"),
     path("modelos/subcategorias/", views.api_modelo_subcategorias, name="api_modelo_subcategorias"),
+    path("perguntas/bulk-subcategoria/", views.perguntas_bulk_set_subcategoria, name="perguntas_bulk_set_subcategoria"),
     path("perguntas/nova/", views.pergunta_create, name="pergunta_create"),
     path("perguntas/<int:pk>/editar/", views.pergunta_edit, name="pergunta_edit"),
     path("perguntas/<int:pk>/duplicar/", views.pergunta_duplicate, name="pergunta_duplicate"),
