@@ -1007,6 +1007,9 @@ def registros_por_modelo(request, modelo_id):
     )
     inicio_raw = (request.GET.get("inicio") or "").strip()
     fim_raw = (request.GET.get("fim") or "").strip()
+    subcategorias = list(modelo.subcategorias_list)
+    subcategoria_raw = (request.GET.get("subcategoria") or "").strip()
+    subcategoria = subcategoria_raw if (subcategoria_raw and subcategoria_raw in subcategorias) else ""
     inicio = parse_date(inicio_raw) if inicio_raw else None
     fim = parse_date(fim_raw) if fim_raw else None
 
@@ -1018,7 +1021,10 @@ def registros_por_modelo(request, modelo_id):
 
     registros = registros.select_related("avaliador").order_by("-data_auditoria")
 
-    perguntas = list(PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("ordem", "id"))
+    perguntas_qs = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True)
+    if subcategoria:
+        perguntas_qs = perguntas_qs.filter(subcategoria=subcategoria)
+    perguntas = list(perguntas_qs.order_by("ordem", "id"))
     pergunta_map = {p.id: p for p in perguntas}
 
     respostas_qs = (
@@ -1030,6 +1036,59 @@ def registros_por_modelo(request, modelo_id):
     respostas_por_pergunta: dict[int, list[RespostaAuditoria]] = {}
     for r in respostas_qs:
         respostas_por_pergunta.setdefault(r.pergunta_id, []).append(r)
+
+    # Gráfico agregado: situações por subcategoria
+    subcat_chart: dict | None = None
+    if subcategorias:
+        subcats_to_show = [subcategoria] if subcategoria else subcategorias
+
+        def _normalize_situacao(value: str) -> str:
+            if value is None:
+                return ""
+            raw = str(value).strip()
+            if not raw:
+                return ""
+            low = raw.lower()
+            if low in {"conforme", "conf."}:
+                return "Conforme"
+            if low in {"não conforme", "nao conforme", "n/conforme", "nconforme", "nc"}:
+                return "Não conforme"
+            if low in {"n/a", "na", "n.a", "não aplicável", "nao aplicavel"}:
+                return "N/A"
+            if low in {"sim", "true", "1"}:
+                return "Sim"
+            if low in {"não", "nao", "false", "0"}:
+                return "Não"
+            return raw
+
+        situations_order = ["Conforme", "Não conforme", "N/A", "Sim", "Não", "Outros"]
+        counts_by_subcat: dict[str, dict[str, int]] = {sc: {s: 0 for s in situations_order} for sc in subcats_to_show}
+
+        for r in respostas_qs:
+            p = pergunta_map.get(r.pergunta_id)
+            if not p:
+                continue
+            sc = (p.subcategoria or "").strip()
+            if not sc:
+                continue
+            if sc not in counts_by_subcat:
+                continue
+            val = _normalize_situacao(r.valor)
+            if not val:
+                continue
+            if val not in situations_order:
+                val = "Outros"
+            counts_by_subcat[sc][val] += 1
+
+        labels_sc = subcats_to_show
+        datasets_sc = []
+        for sit in situations_order:
+            datasets_sc.append({
+                "label": sit,
+                "data": [counts_by_subcat.get(sc, {}).get(sit, 0) for sc in labels_sc],
+            })
+
+        subcat_chart = {"labels": labels_sc, "datasets": datasets_sc}
 
     def _normalize_sim_nao(value: str) -> str:
         if value is None:
@@ -1382,6 +1441,9 @@ def registros_por_modelo(request, modelo_id):
         "estatisticas_perguntas": estatisticas_perguntas,
         "chart_cards": chart_cards,
         "chart_data": chart_data,
+        "subcategorias": subcategorias,
+        "subcategoria": subcategoria,
+        "subcat_chart": subcat_chart,
         "inicio": inicio_raw,
         "fim": fim_raw,
     }

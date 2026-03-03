@@ -71,7 +71,20 @@
                                     <label class="form-label">Período final</label>
                                     <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
                                 </div>
+                                {% if subcategorias %}
+                                <div class="col-md-4">
+                                    <label class="form-label">Sub-categoria</label>
+                                    <select name="subcategoria" class="form-select">
+                                        <option value="">Todas</option>
+                                        {% for sc in subcategorias %}
+                                        <option value="{{ sc }}" {% if subcategoria == sc %}selected{% endif %}>{{ sc }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2 d-flex flex-wrap align-items-end gap-2">
+                                {% else %}
                                 <div class="col-md-6 d-flex flex-wrap align-items-end gap-2">
+                                {% endif %}
                                     <button type="submit" class="btn btn-outline-primary">Aplicar período</button>
                                     <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-outline-secondary">Limpar</a>
                                 </div>
@@ -79,6 +92,19 @@
 
                             {% if chart_cards %}
                             <div class="mb-4">
+                                {% if subcategorias %}
+                                <ul class="nav nav-tabs mb-3" id="tabs-analise" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="tab-analise-pergunta-btn" data-bs-toggle="tab" data-bs-target="#tab-analise-pergunta" type="button" role="tab" aria-controls="tab-analise-pergunta" aria-selected="true">Por Pergunta</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="tab-analise-subcat-btn" data-bs-toggle="tab" data-bs-target="#tab-analise-subcat" type="button" role="tab" aria-controls="tab-analise-subcat" aria-selected="false">Sub-categorias</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content">
+                                    <div class="tab-pane fade show active" id="tab-analise-pergunta" role="tabpanel" aria-labelledby="tab-analise-pergunta-btn">
+                                {% endif %}
+
                                 <div class="card shadow-sm mb-3">
                                     <div class="card-body">
                                         <div class="row g-2 align-items-end">
@@ -136,6 +162,22 @@
                                     </div>
                                 </div>
                                 {% endfor %}
+
+                                {% if subcategorias %}
+                                    </div>
+                                    <div class="tab-pane fade" id="tab-analise-subcat" role="tabpanel" aria-labelledby="tab-analise-subcat-btn">
+                                        <div class="card shadow-sm">
+                                            <div class="card-body">
+                                                <div class="form-text mb-2">Distribuição de respostas (“situações”) agregada por sub-categoria.</div>
+                                                <div style="height: 280px;">
+                                                    <canvas id="canvas-subcat"></canvas>
+                                                </div>
+                                                <div id="fallback-subcat" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
                             {% else %}
                             <div class="alert alert-warning">
@@ -245,6 +287,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {{ chart_data|json_script:"auditoria-chart-data" }}
 {{ chart_cards|json_script:"auditoria-chart-cards" }}
+{% if subcat_chart %}
+{{ subcat_chart|json_script:"auditoria-subcat-chart" }}
+{% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const raw = document.getElementById('auditoria-chart-data');
@@ -252,6 +297,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const rawCards = document.getElementById('auditoria-chart-cards');
     const cardsData = rawCards ? JSON.parse(rawCards.textContent || '[]') : [];
     const chartInstances = {};
+    const rawSubcat = document.getElementById('auditoria-subcat-chart');
+    const subcatData = rawSubcat ? JSON.parse(rawSubcat.textContent || '{}') : null;
+    let subcatInstance = null;
 
     function isoToBr(iso) {
         const s = String(iso || '').trim();
@@ -264,6 +312,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (chartInstances[key] && chartInstances[key][which]) {
             chartInstances[key][which].destroy();
             chartInstances[key][which] = null;
+        }
+    }
+
+    function destroySubcat() {
+        if (subcatInstance) {
+            subcatInstance.destroy();
+            subcatInstance = null;
         }
     }
 
@@ -374,6 +429,51 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
         };
+    }
+
+    function buildSubcatConfig(data) {
+        if (!data) return null;
+        const labels = data.labels || [];
+        const datasets = data.datasets || [];
+        return {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: (datasets || []).map(ds => ({
+                    label: ds.label || '',
+                    data: ds.data || [],
+                    borderWidth: 1,
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { stacked: true, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        };
+    }
+
+    function renderSubcatChart() {
+        if (!subcatData) return;
+        const labels = subcatData.labels || [];
+        const datasets = subcatData.datasets || [];
+        const hasAny = (datasets || []).some(ds => (ds.data || []).some(v => (Number(v) || 0) > 0));
+        if (!labels.length || !hasAny) {
+            showFallback('canvas-subcat', 'fallback-subcat', true);
+            destroySubcat();
+            return;
+        }
+        showFallback('canvas-subcat', 'fallback-subcat', false);
+        destroySubcat();
+        const ctx = document.getElementById('canvas-subcat');
+        if (!ctx) return;
+        const cfg = buildSubcatConfig(subcatData);
+        if (!cfg) return;
+        subcatInstance = new Chart(ctx, cfg);
     }
 
     function renderCharts(key) {
@@ -504,6 +604,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderCharts(key);
             }
         });
+    }
+
+    // Renderiza o gráfico de subcategorias ao abrir a aba
+    const subcatTabBtn = document.getElementById('tab-analise-subcat-btn');
+    if (subcatTabBtn) {
+        subcatTabBtn.addEventListener('shown.bs.tab', () => renderSubcatChart());
     }
 
 });
