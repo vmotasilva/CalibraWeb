@@ -134,11 +134,15 @@
 
                                             <div class="tab-content pt-3">
                                                 <div class="tab-pane fade show active" id="tab-current-{{ card.key }}" role="tabpanel" aria-labelledby="tab-current-btn-{{ card.key }}">
-                                                    <canvas id="canvas-current-{{ card.key }}" height="110"></canvas>
+                                                    <div style="height: 280px;">
+                                                        <canvas id="canvas-current-{{ card.key }}"></canvas>
+                                                    </div>
                                                     <div id="fallback-current-{{ card.key }}" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
                                                 </div>
                                                 <div class="tab-pane fade" id="tab-date-{{ card.key }}" role="tabpanel" aria-labelledby="tab-date-btn-{{ card.key }}">
-                                                    <canvas id="canvas-date-{{ card.key }}" height="110"></canvas>
+                                                    <div style="height: 280px;">
+                                                        <canvas id="canvas-date-{{ card.key }}"></canvas>
+                                                    </div>
                                                     <div id="fallback-date-{{ card.key }}" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
                                                 </div>
                                             </div>
@@ -289,40 +293,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function buildCurrentConfig(tipo, q) {
         if (!q || !q.current) return null;
-        if (tipo === 'SIM_NAO') {
+        const labels = q.current.labels || [];
+        const datasets = q.current.datasets || null;
+
+        // Fallback antigo (quando vier apenas values)
+        if (!datasets && Array.isArray(q.current.values)) {
             const values = q.current.values || [];
-            const sim = values[0] ?? 0;
-            const nao = values[1] ?? 0;
             return {
                 type: 'bar',
                 data: {
                     labels: ['Total'],
-                    datasets: [
-                        { label: 'Sim', data: [sim], backgroundColor: 'rgba(40, 167, 69, 0.6)' },
-                        { label: 'Não', data: [nao], backgroundColor: 'rgba(220, 53, 69, 0.6)' },
-                    ]
+                    datasets: [{ label: 'Total', data: [values[0] ?? 0] }]
                 },
-                options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
             };
         }
-        if (tipo === 'LISTA') {
-            const labels = q.current.labels || [];
-            const values = q.current.values || [];
-            const datasets = labels.map((lab, idx) => ({ label: lab, data: [values[idx] ?? 0] }));
-            return {
-                type: 'bar',
-                data: { labels: ['Total'], datasets },
-                options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
-            };
-        }
-        // NUMERO / DECIMAL
-        const labels = q.current.labels || [];
-        const values = q.current.values || [];
-        const datasets = labels.map((lab, idx) => ({ label: lab, data: [values[idx] ?? null] }));
+
         return {
             type: 'bar',
-            data: { labels: ['Total'], datasets },
-            options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+            data: {
+                labels,
+                datasets: (datasets || []).map(ds => ({
+                    label: ds.label || '',
+                    data: ds.data || [],
+                    borderWidth: 1,
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { stacked: true, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
         };
     }
 
@@ -346,7 +351,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         tension: 0.3,
                     }))
                 },
-                options: { responsive: true, plugins: { legend: { position: 'top' } }, interaction: { mode: 'nearest', axis: 'x', intersect: false }, scales: { y: { beginAtZero: true } } }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, interaction: { mode: 'nearest', axis: 'x', intersect: false }, scales: { y: { beginAtZero: true } } }
             };
         }
 
@@ -361,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     borderWidth: 1,
                 }))
             },
-            options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
         };
     }
 

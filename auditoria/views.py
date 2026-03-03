@@ -1041,6 +1041,12 @@ def registros_por_modelo(request, modelo_id):
             return "Não"
         return raw
 
+    def _short(text: str, limit: int = 42) -> str:
+        raw = (text or "").strip()
+        if len(raw) <= limit:
+            return raw
+        return raw[: max(0, limit - 3)].rstrip() + "..."
+
     # Estatísticas (tabela) e dados dos gráficos por tipo/pergunta
     estatisticas_perguntas: list[dict] = []
     chart_cards: list[dict] = []
@@ -1080,6 +1086,23 @@ def registros_por_modelo(request, modelo_id):
             all_respostas.extend(respostas_por_pergunta.get(p.id, []))
 
         if tipo == "SIM_NAO":
+            # Geral por pergunta (barras empilhadas)
+            labels_q = [_short(p.pergunta) for p in perguntas_tipo]
+            sim_by_q: list[int] = []
+            nao_by_q: list[int] = []
+            for p in perguntas_tipo:
+                respostas_p = respostas_por_pergunta.get(p.id, [])
+                sim_count = 0
+                nao_count = 0
+                for r in respostas_p:
+                    val = _normalize_sim_nao(r.valor)
+                    if val == "Sim":
+                        sim_count += 1
+                    elif val == "Não":
+                        nao_count += 1
+                sim_by_q.append(sim_count)
+                nao_by_q.append(nao_count)
+
             sim_total = 0
             nao_total = 0
             por_data: dict[str, dict[str, int]] = {}
@@ -1099,7 +1122,13 @@ def registros_por_modelo(request, modelo_id):
 
             labels_date = sorted(por_data.keys())
             chart_data[key]["perguntas"]["__all__"] = {
-                "current": {"labels": ["Sim", "Não"], "values": [sim_total, nao_total]},
+                "current": {
+                    "labels": labels_q,
+                    "datasets": [
+                        {"label": "Sim", "data": sim_by_q},
+                        {"label": "Não", "data": nao_by_q},
+                    ],
+                },
                 "by_date": {
                     "labels": labels_date,
                     "datasets": [
@@ -1110,6 +1139,18 @@ def registros_por_modelo(request, modelo_id):
             }
 
         elif tipo == "LISTA":
+            # Geral por pergunta: total de respostas por pergunta (uma barra por pergunta)
+            labels_q = [_short(p.pergunta) for p in perguntas_tipo]
+            total_by_q: list[int] = []
+            for p in perguntas_tipo:
+                respostas_p = respostas_por_pergunta.get(p.id, [])
+                count = 0
+                for r in respostas_p:
+                    opt = (str(r.valor).strip() if r.valor is not None else "")
+                    if opt:
+                        count += 1
+                total_by_q.append(count)
+
             counts: dict[str, int] = {}
             por_data_opt: dict[str, dict[str, int]] = {}
             for r in all_respostas:
@@ -1136,11 +1177,40 @@ def registros_por_modelo(request, modelo_id):
                 })
 
             chart_data[key]["perguntas"]["__all__"] = {
-                "current": {"labels": opt_labels, "values": opt_values},
+                "current": {
+                    "labels": labels_q,
+                    "datasets": [
+                        {"label": "Respostas", "data": total_by_q},
+                    ],
+                },
                 "by_date": {"labels": labels_date, "datasets": datasets},
             }
 
         elif tipo in {"NUMERO", "DECIMAL"}:
+            # Geral por pergunta (Min/Média/Máx por pergunta)
+            labels_q = [_short(p.pergunta) for p in perguntas_tipo]
+            mins_q: list[float | None] = []
+            avgs_q: list[float | None] = []
+            maxs_q: list[float | None] = []
+            for p in perguntas_tipo:
+                vals: list[float] = []
+                for r in respostas_por_pergunta.get(p.id, []):
+                    raw = (r.valor or "").strip() if isinstance(r.valor, str) else ("" if r.valor is None else str(r.valor))
+                    if not raw:
+                        continue
+                    try:
+                        vals.append(float(raw.replace(",", ".")))
+                    except (ValueError, TypeError):
+                        continue
+                if vals:
+                    mins_q.append(min(vals))
+                    maxs_q.append(max(vals))
+                    avgs_q.append(sum(vals) / len(vals))
+                else:
+                    mins_q.append(None)
+                    maxs_q.append(None)
+                    avgs_q.append(None)
+
             values: list[float] = []
             por_data_vals: dict[str, list[float]] = {}
             for r in all_respostas:
@@ -1173,7 +1243,14 @@ def registros_por_modelo(request, modelo_id):
                 avg_by_date.append((sum(arr) / len(arr)) if arr else None)
 
             chart_data[key]["perguntas"]["__all__"] = {
-                "current": {"labels": ["Mín", "Média", "Máx"], "values": [min_v, avg_v, max_v]},
+                "current": {
+                    "labels": labels_q,
+                    "datasets": [
+                        {"label": "Mín", "data": mins_q},
+                        {"label": "Média", "data": avgs_q},
+                        {"label": "Máx", "data": maxs_q},
+                    ],
+                },
                 "by_date": {"labels": labels_date, "datasets": [{"label": "Média", "data": avg_by_date}]},
             }
 
