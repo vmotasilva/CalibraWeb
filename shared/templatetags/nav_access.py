@@ -4,6 +4,7 @@ from django import template
 
 from shared.permissions import (
     has_block_nav_flag,
+    has_module_nav_flag,
     has_module_access,
     has_view_access,
     user_has_any_nav_perm_for_module,
@@ -15,6 +16,21 @@ register = template.Library()
 @register.simple_tag
 def can_nav_module(user, module_key: str) -> bool:
     """True se o módulo deve aparecer no navbar para o usuário."""
+    # Staff/superuser sempre enxergam o navbar completo.
+    if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
+        return True
+
+    # Se o usuário já tem alguma permissão core.nav_* (novo modelo ativo),
+    # a aparição do módulo no navbar deve ser controlada SOMENTE pelo flag do módulo.
+    try:
+        all_perms = user.get_all_permissions()
+    except Exception:
+        all_perms = set()
+
+    if any(str(p).startswith("core.nav_") for p in (all_perms or [])):
+        return bool(has_module_nav_flag(user, module_key))
+
+    # Legado: enquanto o usuário não tiver nenhum core.nav_*, mantém comportamento por grupo.
     return bool(has_module_access(user, module_key))
 
 
