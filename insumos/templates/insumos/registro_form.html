@@ -95,7 +95,17 @@
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Data do Insumo <span class="text-danger">*</span></label>
-                        {{ form.data_auditoria }}
+                        <div class="input-group">
+                            {{ form.data_auditoria }}
+                            <button
+                                class="btn btn-outline-secondary px-2"
+                                type="button"
+                                id="btn-copy-data-insumo"
+                                title="Aplicar a data aos campos de Período Inicial e Período Final"
+                                aria-label="Aplicar a data aos campos de Período Inicial e Período Final">
+                                <i class="bi bi-arrow-right" style="font-size: 0.8rem; line-height: 1;"></i>
+                            </button>
+                        </div>
                         {% if form.data_auditoria.errors %}
                         <div class="invalid-feedback d-block">{{ form.data_auditoria.errors }}</div>
                         {% endif %}
@@ -436,5 +446,23 @@
         dataInput.addEventListener('blur', syncPeriodo);
     })();
     {% endif %}
+
+    // Botão: copiar Data do Insumo -> Período Inicial/Final
+    (function() {
+        const btn = document.getElementById('btn-copy-data-insumo');
+        const dataInput = document.getElementById('id_data_auditoria');
+        const inicioInput = document.getElementById('id_periodo_inicio');
+        const fimInput = document.getElementById('id_periodo_fim');
+        if (!btn || !dataInput || !inicioInput || !fimInput) return;
+
+        btn.addEventListener('click', function() {
+            const dt = String(dataInput.value || '').trim();
+            if (!dt) return;
+            inicioInput.value = dt;
+            fimInput.value = dt;
+            inicioInput.dispatchEvent(new Event('change', { bubbles: true }));
+            fimInput.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    })();
 </script>
 {% endblock %}
