@@ -1264,36 +1264,33 @@ def registros_por_modelo(request, modelo_id):
                 else:
                     avgs_q.append(None)
 
-            values: list[float] = []
-            por_data_vals: dict[str, list[float]] = {}
-            for r in all_respostas:
-                raw = (r.valor or "").strip() if isinstance(r.valor, str) else ("" if r.valor is None else str(r.valor))
-                if not raw:
-                    continue
-                try:
-                    num = float(raw.replace(",", "."))
-                except (ValueError, TypeError):
-                    continue
-                values.append(num)
-                date_key = r.registro.data_auditoria.strftime("%Y-%m-%d") if r.registro.data_auditoria else ""
-                if not date_key:
-                    continue
-                por_data_vals.setdefault(date_key, []).append(num)
+            # Por data (todas): uma série por pergunta (média por dia, se houver múltiplos registros)
+            values_by_q_by_date: dict[int, dict[str, list[float]]] = {}
+            all_dates: set[str] = set()
+            for p in perguntas_tipo:
+                for r in respostas_por_pergunta.get(p.id, []):
+                    raw = (r.valor or "").strip() if isinstance(r.valor, str) else ("" if r.valor is None else str(r.valor))
+                    if not raw:
+                        continue
+                    try:
+                        num = float(raw.replace(",", "."))
+                    except (ValueError, TypeError):
+                        continue
+                    date_key = r.registro.data_auditoria.strftime("%Y-%m-%d") if r.registro.data_auditoria else ""
+                    if not date_key:
+                        continue
+                    all_dates.add(date_key)
+                    values_by_q_by_date.setdefault(p.id, {}).setdefault(date_key, []).append(num)
 
-            if values:
-                min_v = min(values)
-                max_v = max(values)
-                avg_v = sum(values) / len(values)
-            else:
-                min_v = None
-                max_v = None
-                avg_v = None
-
-            labels_date = sorted(por_data_vals.keys())
-            avg_by_date = []
-            for dte in labels_date:
-                arr = por_data_vals.get(dte) or []
-                avg_by_date.append((sum(arr) / len(arr)) if arr else None)
+            labels_date = sorted(all_dates)
+            datasets_by_date: list[dict] = []
+            for p in perguntas_tipo:
+                per_date = values_by_q_by_date.get(p.id, {})
+                data_points: list[float | None] = []
+                for dte in labels_date:
+                    arr = per_date.get(dte) or []
+                    data_points.append((sum(arr) / len(arr)) if arr else None)
+                datasets_by_date.append({"label": _short(p.pergunta), "data": data_points})
 
             chart_data[key]["perguntas"]["__all__"] = {
                 "current": {
@@ -1302,7 +1299,7 @@ def registros_por_modelo(request, modelo_id):
                         {"label": "Valor", "data": avgs_q},
                     ],
                 },
-                "by_date": {"labels": labels_date, "datasets": [{"label": "Média", "data": avg_by_date}]},
+                "by_date": {"labels": labels_date, "datasets": datasets_by_date},
             }
 
         for pergunta in perguntas_tipo:

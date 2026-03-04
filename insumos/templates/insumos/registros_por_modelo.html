@@ -145,6 +145,25 @@
                             
                             <div class="table-responsive">
                                 <table class="table table-sm table-bordered">
+    
+                                    function cssVar(name, fallback) {
+                                        try {
+                                            const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+                                            const s = String(v || '').trim();
+                                            return s || fallback;
+                                        } catch (e) {
+                                            return fallback;
+                                        }
+                                    }
+    
+                                    const seriesColors = [
+                                        cssVar('--bs-primary', '#0d6efd'),
+                                        cssVar('--bs-success', '#198754'),
+                                        cssVar('--bs-danger', '#dc3545'),
+                                        cssVar('--bs-warning', '#ffc107'),
+                                        cssVar('--bs-info', '#0dcaf0'),
+                                        cssVar('--bs-secondary', '#6c757d'),
+                                    ];
                                     <thead class="table-light">
                                         <tr>
                                             <th>Pergunta</th>
@@ -243,6 +262,9 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+                                                        borderColor: seriesColors[idx % seriesColors.length],
+                                                        pointBackgroundColor: seriesColors[idx % seriesColors.length],
+                                                        pointBorderColor: seriesColors[idx % seriesColors.length],
 {{ chart_data|json_script:"insumos-chart-data" }}
 {{ chart_cards|json_script:"insumos-chart-cards" }}
 <script>

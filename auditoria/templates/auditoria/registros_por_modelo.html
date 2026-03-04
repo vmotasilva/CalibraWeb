@@ -301,6 +301,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const subcatData = rawSubcat ? JSON.parse(rawSubcat.textContent || '{}') : null;
     let subcatInstance = null;
 
+    function cssVar(name, fallback) {
+        try {
+            const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+            const s = String(v || '').trim();
+            return s || fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    const seriesColors = [
+        cssVar('--bs-primary', '#0d6efd'),
+        cssVar('--bs-success', '#198754'),
+        cssVar('--bs-danger', '#dc3545'),
+        cssVar('--bs-warning', '#ffc107'),
+        cssVar('--bs-info', '#0dcaf0'),
+        cssVar('--bs-secondary', '#6c757d'),
+    ];
+
     function isoToBr(iso) {
         const s = String(iso || '').trim();
         const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -403,9 +422,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 type: 'line',
                 data: {
                     labels,
-                    datasets: (datasetsIn || []).map(ds => ({
+                    datasets: (datasetsIn || []).map((ds, idx) => ({
                         label: ds.label || 'Valor',
                         data: ds.data || [],
+                        borderColor: seriesColors[idx % seriesColors.length],
+                        pointBackgroundColor: seriesColors[idx % seriesColors.length],
+                        pointBorderColor: seriesColors[idx % seriesColors.length],
                         borderWidth: 2,
                         pointRadius: 4,
                         pointHoverRadius: 6,
