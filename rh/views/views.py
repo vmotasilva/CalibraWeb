@@ -2184,6 +2184,42 @@ def api_atualizar_permissoes_lote(request):
 
         total_adicionadas = 0
 
+        # Regras de hierarquia para permissões core.nav_* (módulo -> bloco -> função)
+        # Se marcar uma função, garantir que o bloco e o módulo estejam marcados.
+        # Se marcar um bloco, garantir que o módulo esteja marcado.
+        from shared.permissions import get_nav_structure
+
+        nav_structure = get_nav_structure()
+        core_func_requires: dict[str, set[str]] = {}
+        core_block_requires: dict[str, set[str]] = {}
+
+        def _core_codename(full_perm: str | None) -> str | None:
+            if not full_perm or "." not in str(full_perm):
+                return None
+            app_label, codename = str(full_perm).split(".", 1)
+            if app_label != "core":
+                return None
+            return codename
+
+        for module in nav_structure:
+            module_codename = _core_codename(module.get("module_perm"))
+            if not module_codename:
+                continue
+
+            for bloco in module.get("blocos") or []:
+                block_codename = _core_codename(bloco.get("perm"))
+                if block_codename:
+                    core_block_requires.setdefault(block_codename, set()).add(module_codename)
+
+                for func in bloco.get("funcoes") or []:
+                    func_codename = _core_codename(func.get("perm"))
+                    if not func_codename:
+                        continue
+                    required = core_func_requires.setdefault(func_codename, set())
+                    required.add(module_codename)
+                    if block_codename:
+                        required.add(block_codename)
+
         # Atualizar permissões por app presente no payload (não apagar o restante)
         for app_label, codenames in (permissoes_dict or {}).items():
             if app_label not in allowed_apps:
@@ -2204,7 +2240,16 @@ def api_atualizar_permissoes_lote(request):
             # Adição
             if codenames:
                 if app_label == 'core':
-                    codenames = [c for c in codenames if str(c).startswith('nav_')]
+                    # Somente permissões de navegação
+                    codenames_set = {str(c) for c in codenames if str(c).startswith('nav_')}
+
+                    # Aplicar hierarquia: função -> bloco -> módulo; bloco -> módulo
+                    # (não depende do frontend marcar o módulo manualmente)
+                    expanded = set(codenames_set)
+                    for codename in list(codenames_set):
+                        expanded.update(core_func_requires.get(codename, set()))
+                        expanded.update(core_block_requires.get(codename, set()))
+                    codenames = sorted(expanded)
 
                 perms_to_add = Permission.objects.filter(
                     content_type__app_label=app_label,
