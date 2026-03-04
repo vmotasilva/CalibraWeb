@@ -1078,11 +1078,9 @@ def registros_por_modelo(request, modelo_id):
             }
 
         elif tipo in {"NUMERO", "DECIMAL"}:
-            # Geral por pergunta (Min/Média/Máx por pergunta)
+            # Geral por pergunta (apenas Valor por pergunta)
             labels_q = [_short(p.pergunta) for p in perguntas_tipo]
-            mins_q: list[float | None] = []
             avgs_q: list[float | None] = []
-            maxs_q: list[float | None] = []
             for p in perguntas_tipo:
                 vals: list[float] = []
                 for r in respostas_por_pergunta.get(p.id, []):
@@ -1094,12 +1092,8 @@ def registros_por_modelo(request, modelo_id):
                     except (ValueError, TypeError):
                         continue
                 if vals:
-                    mins_q.append(min(vals))
-                    maxs_q.append(max(vals))
                     avgs_q.append(sum(vals) / len(vals))
                 else:
-                    mins_q.append(None)
-                    maxs_q.append(None)
                     avgs_q.append(None)
 
             por_data_vals: dict[str, list[float]] = {}
@@ -1126,9 +1120,7 @@ def registros_por_modelo(request, modelo_id):
                 "current": {
                     "labels": labels_q,
                     "datasets": [
-                        {"label": "Mín", "data": mins_q},
-                        {"label": "Média", "data": avgs_q},
-                        {"label": "Máx", "data": maxs_q},
+                        {"label": "Valor", "data": avgs_q},
                     ],
                 },
                 "by_date": {"labels": labels_date, "datasets": [{"label": "Média", "data": avg_by_date}]},
@@ -1225,13 +1217,9 @@ def registros_por_modelo(request, modelo_id):
                     por_data_vals.setdefault(date_key, []).append(num)
 
                 if values:
-                    min_v = min(values)
-                    max_v = max(values)
                     avg_v = sum(values) / len(values)
                     estatistica["media"] = round(avg_v, 2)
                 else:
-                    min_v = None
-                    max_v = None
                     avg_v = None
 
                 labels_date = sorted(por_data_vals.keys())
@@ -1242,8 +1230,8 @@ def registros_por_modelo(request, modelo_id):
 
                 chart_data[key]["perguntas"][str(pergunta.id)] = {
                     "current": {
-                        "labels": ["Mín", "Média", "Máx"],
-                        "values": [min_v, avg_v, max_v],
+                        "labels": ["Valor"],
+                        "values": [avg_v],
                     },
                     "by_date": {
                         "labels": labels_date,
