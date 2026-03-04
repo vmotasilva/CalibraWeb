@@ -159,9 +159,21 @@ class NavigationPermission(models.Model):
             # --- AUDITORIA: funções ---
             ("nav_auditoria_nova", "NAV: Auditoria / Nova Auditoria"),
             ("nav_auditoria_modelos", "NAV: Auditoria / Modelos de Auditoria"),
+            ("nav_auditoria_novo_modelo", "NAV: Auditoria / Novo Modelo"),
+            ("nav_auditoria_editar_modelo", "NAV: Auditoria / Editar Modelo"),
+            ("nav_auditoria_duplicar_modelo", "NAV: Auditoria / Duplicar Modelo"),
+            ("nav_auditoria_remover_modelo", "NAV: Auditoria / Remover Modelo"),
             ("nav_auditoria_perguntas", "NAV: Auditoria / Perguntas por Modelo"),
+            ("nav_auditoria_nova_pergunta", "NAV: Auditoria / Nova Pergunta"),
+            ("nav_auditoria_editar_pergunta", "NAV: Auditoria / Editar Pergunta"),
+            ("nav_auditoria_duplicar_pergunta", "NAV: Auditoria / Duplicar Pergunta"),
+            ("nav_auditoria_remover_pergunta", "NAV: Auditoria / Remover Pergunta"),
             ("nav_auditoria_registros", "NAV: Auditoria / Modelos Cadastrados / Período"),
             ("nav_auditoria_avaliacao", "NAV: Auditoria / Avaliação de Dados"),
+            ("nav_auditoria_editar_registro", "NAV: Auditoria / Editar Registro"),
+            ("nav_auditoria_detalhe_registro", "NAV: Auditoria / Detalhe do Registro"),
+            ("nav_auditoria_registros_por_modelo", "NAV: Auditoria / Registros por Modelo"),
+            ("nav_auditoria_exportar_excel", "NAV: Auditoria / Exportar Respostas (Excel)"),
             ("nav_auditoria_dashboard", "NAV: Auditoria / Dashboard"),
 
             # --- INSUMOS: blocos ---
@@ -172,9 +184,19 @@ class NavigationPermission(models.Model):
             # --- INSUMOS: funções ---
             ("nav_insumos_novo", "NAV: Insumos / Novo Registro"),
             ("nav_insumos_modelos", "NAV: Insumos / Modelos"),
+            ("nav_insumos_novo_modelo", "NAV: Insumos / Novo Modelo"),
+            ("nav_insumos_editar_modelo", "NAV: Insumos / Editar Modelo"),
+            ("nav_insumos_remover_modelo", "NAV: Insumos / Remover Modelo"),
             ("nav_insumos_perguntas", "NAV: Insumos / Perguntas"),
+            ("nav_insumos_nova_pergunta", "NAV: Insumos / Nova Pergunta"),
+            ("nav_insumos_editar_pergunta", "NAV: Insumos / Editar Pergunta"),
+            ("nav_insumos_remover_pergunta", "NAV: Insumos / Remover Pergunta"),
             ("nav_insumos_registros", "NAV: Insumos / Registros"),
             ("nav_insumos_avaliacao", "NAV: Insumos / Avaliação de Dados"),
+            ("nav_insumos_editar_registro", "NAV: Insumos / Editar Registro"),
+            ("nav_insumos_detalhe_registro", "NAV: Insumos / Detalhe do Registro"),
+            ("nav_insumos_registros_por_modelo", "NAV: Insumos / Registros por Modelo"),
+            ("nav_insumos_exportar_excel", "NAV: Insumos / Exportar Respostas (Excel)"),
             ("nav_insumos_dashboard", "NAV: Insumos / Dashboard"),
 
             # --- USUÁRIOS: funções ---

@@ -392,7 +392,15 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_auditoria_cadastro",
                 "funcoes": [
                     {"nome": "Modelos de Auditoria", "view_name": "auditoria:modelos_list", "perm": "core.nav_auditoria_modelos"},
+                    {"nome": "Novo Modelo", "view_name": "auditoria:modelo_create", "perm": "core.nav_auditoria_novo_modelo"},
+                    {"nome": "Editar Modelo", "view_name": "auditoria:modelo_edit", "perm": "core.nav_auditoria_editar_modelo"},
+                    {"nome": "Duplicar Modelo", "view_name": "auditoria:modelo_duplicate", "perm": "core.nav_auditoria_duplicar_modelo"},
+                    {"nome": "Remover Modelo", "view_name": "auditoria:modelo_delete", "perm": "core.nav_auditoria_remover_modelo"},
                     {"nome": "Perguntas por Modelo", "view_name": "auditoria:perguntas_list", "perm": "core.nav_auditoria_perguntas"},
+                    {"nome": "Nova Pergunta", "view_name": "auditoria:pergunta_create", "perm": "core.nav_auditoria_nova_pergunta"},
+                    {"nome": "Editar Pergunta", "view_name": "auditoria:pergunta_edit", "perm": "core.nav_auditoria_editar_pergunta"},
+                    {"nome": "Duplicar Pergunta", "view_name": "auditoria:pergunta_duplicate", "perm": "core.nav_auditoria_duplicar_pergunta"},
+                    {"nome": "Remover Pergunta", "view_name": "auditoria:pergunta_delete", "perm": "core.nav_auditoria_remover_pergunta"},
                 ],
             },
             {
@@ -402,6 +410,11 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Modelos Cadastrados / Período", "view_name": "auditoria:registros_list", "perm": "core.nav_auditoria_registros"},
                     {"nome": "Avaliação de Dados", "view_name": "auditoria:registro_create", "perm": "core.nav_auditoria_avaliacao"},
+                    {"nome": "Avaliação de Dados (com Modelo)", "view_name": "auditoria:registro_create_modelo", "perm": "core.nav_auditoria_avaliacao"},
+                    {"nome": "Editar Registro", "view_name": "auditoria:registro_edit", "perm": "core.nav_auditoria_editar_registro"},
+                    {"nome": "Detalhe do Registro", "view_name": "auditoria:registro_detail", "perm": "core.nav_auditoria_detalhe_registro"},
+                    {"nome": "Registros por Modelo", "view_name": "auditoria:registros_por_modelo", "perm": "core.nav_auditoria_registros_por_modelo"},
+                    {"nome": "Exportar Respostas (Excel)", "view_name": "auditoria:exportar_respostas_excel", "perm": "core.nav_auditoria_exportar_excel"},
                 ],
             },
             {
@@ -435,7 +448,13 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_insumos_cadastro",
                 "funcoes": [
                     {"nome": "Modelos de Insumos", "view_name": "insumos:modelos_list", "perm": "core.nav_insumos_modelos"},
+                    {"nome": "Novo Modelo", "view_name": "insumos:modelo_create", "perm": "core.nav_insumos_novo_modelo"},
+                    {"nome": "Editar Modelo", "view_name": "insumos:modelo_edit", "perm": "core.nav_insumos_editar_modelo"},
+                    {"nome": "Remover Modelo", "view_name": "insumos:modelo_delete", "perm": "core.nav_insumos_remover_modelo"},
                     {"nome": "Perguntas por Modelo", "view_name": "insumos:perguntas_list", "perm": "core.nav_insumos_perguntas"},
+                    {"nome": "Nova Pergunta", "view_name": "insumos:pergunta_create", "perm": "core.nav_insumos_nova_pergunta"},
+                    {"nome": "Editar Pergunta", "view_name": "insumos:pergunta_edit", "perm": "core.nav_insumos_editar_pergunta"},
+                    {"nome": "Remover Pergunta", "view_name": "insumos:pergunta_delete", "perm": "core.nav_insumos_remover_pergunta"},
                 ],
             },
             {
@@ -445,6 +464,11 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Modelos Cadastrados / Período", "view_name": "insumos:registros_list", "perm": "core.nav_insumos_registros"},
                     {"nome": "Avaliação de Dados", "view_name": "insumos:registro_create", "perm": "core.nav_insumos_avaliacao"},
+                    {"nome": "Avaliação de Dados (com Modelo)", "view_name": "insumos:registro_create_modelo", "perm": "core.nav_insumos_avaliacao"},
+                    {"nome": "Editar Registro", "view_name": "insumos:registro_edit", "perm": "core.nav_insumos_editar_registro"},
+                    {"nome": "Detalhe do Registro", "view_name": "insumos:registro_detail", "perm": "core.nav_insumos_detalhe_registro"},
+                    {"nome": "Registros por Modelo", "view_name": "insumos:registros_por_modelo", "perm": "core.nav_insumos_registros_por_modelo"},
+                    {"nome": "Exportar Respostas (Excel)", "view_name": "insumos:exportar_respostas_excel", "perm": "core.nav_insumos_exportar_excel"},
                 ],
             },
             {
