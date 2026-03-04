@@ -62,17 +62,17 @@
                             <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Análise das Respostas</h5>
                         </div>
                         <div class="card-body">
-                            <form method="get" class="row g-2 mb-3">
-                                <div class="col-md-3">
+                            <form method="get" class="row g-2 mb-3 align-items-end">
+                                <div class="col-lg-2 col-md-3">
                                     <label class="form-label">Período inicial</label>
                                     <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-lg-2 col-md-3">
                                     <label class="form-label">Período final</label>
                                     <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
                                 </div>
                                 {% if subcategorias %}
-                                <div class="col-md-4">
+                                <div class="col-lg-2 col-md-4">
                                     <label class="form-label">Sub-categoria</label>
                                     <select name="subcategoria" class="form-select">
                                         <option value="">Todas</option>
@@ -81,13 +81,33 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-2 d-flex flex-wrap align-items-end gap-2">
-                                {% else %}
-                                <div class="col-md-6 d-flex flex-wrap align-items-end gap-2">
                                 {% endif %}
+
+                                {% if chart_cards %}
+                                <div class="col-lg-2 col-md-6">
+                                    <label class="form-label">Tipo de campo</label>
+                                    <select class="form-select" id="globalTipoSelect">
+                                        {% for card in chart_cards %}
+                                        <option value="{{ card.key }}">{{ card.label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-lg-2 col-md-6">
+                                    <label class="form-label">Pergunta</label>
+                                    <select class="form-select" id="globalPerguntaSelect"></select>
+                                </div>
+                                {% endif %}
+
+                                <div class="col-lg-2 col-md-12 d-flex flex-wrap gap-2">
                                     <button type="submit" class="btn btn-outline-primary">Aplicar período</button>
                                     <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-outline-secondary">Limpar</a>
                                 </div>
+
+                                {% if chart_cards %}
+                                <div class="col-12">
+                                    <div class="form-text">Selecione o tipo e a pergunta para abrir o card e ver os gráficos.</div>
+                                </div>
+                                {% endif %}
                             </form>
 
                             {% if chart_cards %}
@@ -104,26 +124,6 @@
                                 <div class="tab-content">
                                     <div class="tab-pane fade show active" id="tab-analise-pergunta" role="tabpanel" aria-labelledby="tab-analise-pergunta-btn">
                                 {% endif %}
-
-                                <div class="card shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <div class="row g-2 align-items-end">
-                                            <div class="col-md-4">
-                                                <label class="form-label">Tipo de campo</label>
-                                                <select class="form-select" id="globalTipoSelect">
-                                                    {% for card in chart_cards %}
-                                                    <option value="{{ card.key }}">{{ card.label }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                            </div>
-                                            <div class="col-md-8">
-                                                <label class="form-label">Pergunta</label>
-                                                <select class="form-select" id="globalPerguntaSelect"></select>
-                                            </div>
-                                        </div>
-                                        <div class="form-text mt-2">Selecione o tipo e a pergunta para abrir o card e ver os gráficos.</div>
-                                    </div>
-                                </div>
 
                                 {% for card in chart_cards %}
                                 <div class="card shadow-sm mb-3">

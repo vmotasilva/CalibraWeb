@@ -62,42 +62,42 @@
                             <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Análise das Respostas</h5>
                         </div>
                         <div class="card-body">
-                            <form method="get" class="row g-2 mb-3">
-                                <div class="col-md-3">
+                            <form method="get" class="row g-2 mb-3 align-items-end">
+                                <div class="col-lg-2 col-md-3">
                                     <label class="form-label">Período inicial</label>
                                     <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-lg-2 col-md-3">
                                     <label class="form-label">Período final</label>
                                     <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
                                 </div>
-                                <div class="col-md-6 d-flex flex-wrap align-items-end gap-2">
+                                {% if chart_cards %}
+                                <div class="col-lg-3 col-md-6">
+                                    <label class="form-label">Tipo de campo</label>
+                                    <select class="form-select" id="globalTipoSelect">
+                                        {% for card in chart_cards %}
+                                        <option value="{{ card.key }}">{{ card.label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-lg-3 col-md-6">
+                                    <label class="form-label">Pergunta</label>
+                                    <select class="form-select" id="globalPerguntaSelect"></select>
+                                </div>
+                                {% endif %}
+                                <div class="col-lg-2 col-md-12 d-flex flex-wrap gap-2">
                                     <button type="submit" class="btn btn-outline-primary">Aplicar período</button>
                                     <a href="{% url 'insumos:registros_por_modelo' modelo.id %}" class="btn btn-outline-secondary">Limpar</a>
                                 </div>
+                                {% if chart_cards %}
+                                <div class="col-12">
+                                    <div class="form-text">Selecione o tipo e a pergunta para abrir o card e ver os gráficos.</div>
+                                </div>
+                                {% endif %}
                             </form>
 
                             {% if chart_cards %}
                             <div class="mb-4">
-                                <div class="card shadow-sm mb-3">
-                                    <div class="card-body">
-                                        <div class="row g-2 align-items-end">
-                                            <div class="col-md-4">
-                                                <label class="form-label">Tipo de campo</label>
-                                                <select class="form-select" id="globalTipoSelect">
-                                                    {% for card in chart_cards %}
-                                                    <option value="{{ card.key }}">{{ card.label }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                            </div>
-                                            <div class="col-md-8">
-                                                <label class="form-label">Pergunta</label>
-                                                <select class="form-select" id="globalPerguntaSelect"></select>
-                                            </div>
-                                        </div>
-                                        <div class="form-text mt-2">Selecione o tipo e a pergunta para abrir o card e ver os gráficos.</div>
-                                    </div>
-                                </div>
 
                                 {% for card in chart_cards %}
                                 <div class="card shadow-sm mb-3">
@@ -145,25 +145,6 @@
                             
                             <div class="table-responsive">
                                 <table class="table table-sm table-bordered">
-    
-                                    function cssVar(name, fallback) {
-                                        try {
-                                            const v = getComputedStyle(document.documentElement).getPropertyValue(name);
-                                            const s = String(v || '').trim();
-                                            return s || fallback;
-                                        } catch (e) {
-                                            return fallback;
-                                        }
-                                    }
-    
-                                    const seriesColors = [
-                                        cssVar('--bs-primary', '#0d6efd'),
-                                        cssVar('--bs-success', '#198754'),
-                                        cssVar('--bs-danger', '#dc3545'),
-                                        cssVar('--bs-warning', '#ffc107'),
-                                        cssVar('--bs-info', '#0dcaf0'),
-                                        cssVar('--bs-secondary', '#6c757d'),
-                                    ];
                                     <thead class="table-light">
                                         <tr>
                                             <th>Pergunta</th>
@@ -262,9 +243,6 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-                                                        borderColor: seriesColors[idx % seriesColors.length],
-                                                        pointBackgroundColor: seriesColors[idx % seriesColors.length],
-                                                        pointBorderColor: seriesColors[idx % seriesColors.length],
 {{ chart_data|json_script:"insumos-chart-data" }}
 {{ chart_cards|json_script:"insumos-chart-cards" }}
 <script>
@@ -274,6 +252,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const rawCards = document.getElementById('insumos-chart-cards');
     const cardsData = rawCards ? JSON.parse(rawCards.textContent || '[]') : [];
     const chartInstances = {};
+
+    function cssVar(name, fallback) {
+        try {
+            const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+            const s = String(v || '').trim();
+            return s || fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    const seriesColors = [
+        cssVar('--bs-primary', '#0d6efd'),
+        cssVar('--bs-success', '#198754'),
+        cssVar('--bs-danger', '#dc3545'),
+        cssVar('--bs-warning', '#ffc107'),
+        cssVar('--bs-info', '#0dcaf0'),
+        cssVar('--bs-secondary', '#6c757d'),
+    ];
 
     function isoToBr(iso) {
         const s = String(iso || '').trim();
