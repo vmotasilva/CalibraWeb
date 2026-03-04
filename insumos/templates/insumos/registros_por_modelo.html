@@ -62,22 +62,81 @@
                             <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Análise das Respostas</h5>
                         </div>
                         <div class="card-body">
-                            {% if simnao_labels or numero_labels %}
-                            
-                            {% if simnao_labels %}
+                            <form method="get" class="row g-2 mb-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Período inicial</label>
+                                    <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Período final</label>
+                                    <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
+                                </div>
+                                <div class="col-md-6 d-flex flex-wrap align-items-end gap-2">
+                                    <button type="submit" class="btn btn-outline-primary">Aplicar período</button>
+                                    <a href="{% url 'insumos:registros_por_modelo' modelo.id %}" class="btn btn-outline-secondary">Limpar</a>
+                                </div>
+                            </form>
+
+                            {% if chart_cards %}
                             <div class="mb-4">
-                                <h6 class="text-center mb-3 text-primary"><i class="bi bi-check-circle"></i> Perguntas do tipo Sim/Não</h6>
-                                <canvas id="chartSimNao" height="100"></canvas>
+                                <div class="card shadow-sm mb-3">
+                                    <div class="card-body">
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Tipo de campo</label>
+                                                <select class="form-select" id="globalTipoSelect">
+                                                    {% for card in chart_cards %}
+                                                    <option value="{{ card.key }}">{{ card.label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <label class="form-label">Pergunta</label>
+                                                <select class="form-select" id="globalPerguntaSelect"></select>
+                                            </div>
+                                        </div>
+                                        <div class="form-text mt-2">Selecione o tipo e a pergunta para abrir o card e ver os gráficos.</div>
+                                    </div>
+                                </div>
+
+                                {% for card in chart_cards %}
+                                <div class="card shadow-sm mb-3">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <div class="fw-semibold">{{ card.label }}</div>
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ card.key }}" aria-expanded="false" aria-controls="collapse-{{ card.key }}">
+                                            Expandir/Recolher
+                                        </button>
+                                    </div>
+                                    <div id="collapse-{{ card.key }}" class="collapse">
+                                        <div class="card-body">
+                                            <ul class="nav nav-tabs" id="tabs-{{ card.key }}" role="tablist">
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link active" id="tab-current-btn-{{ card.key }}" data-bs-toggle="tab" data-bs-target="#tab-current-{{ card.key }}" type="button" role="tab" aria-controls="tab-current-{{ card.key }}" aria-selected="true">Geral</button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link" id="tab-date-btn-{{ card.key }}" data-bs-toggle="tab" data-bs-target="#tab-date-{{ card.key }}" type="button" role="tab" aria-controls="tab-date-{{ card.key }}" aria-selected="false">Gráfico por data</button>
+                                                </li>
+                                            </ul>
+
+                                            <div class="tab-content pt-3">
+                                                <div class="tab-pane fade show active" id="tab-current-{{ card.key }}" role="tabpanel" aria-labelledby="tab-current-btn-{{ card.key }}">
+                                                    <div style="height: 280px;">
+                                                        <canvas id="canvas-current-{{ card.key }}"></canvas>
+                                                    </div>
+                                                    <div id="fallback-current-{{ card.key }}" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
+                                                </div>
+                                                <div class="tab-pane fade" id="tab-date-{{ card.key }}" role="tabpanel" aria-labelledby="tab-date-btn-{{ card.key }}">
+                                                    <div style="height: 280px;">
+                                                        <canvas id="canvas-date-{{ card.key }}"></canvas>
+                                                    </div>
+                                                    <div id="fallback-date-{{ card.key }}" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
                             </div>
-                            {% endif %}
-                            
-                            {% if numero_labels %}
-                            <div class="mb-4">
-                                <h6 class="text-center mb-3 text-success"><i class="bi bi-graph-up"></i> Perguntas Numéricas - Evolução Temporal</h6>
-                                <canvas id="chartNumeros" height="100"></canvas>
-                            </div>
-                            {% endif %}
-                            
                             {% else %}
                             <div class="alert alert-warning">
                                 <i class="bi bi-info-circle"></i> Este modelo ainda não possui perguntas ou respostas registradas para análise.
@@ -184,198 +243,266 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{{ chart_data|json_script:"insumos-chart-data" }}
+{{ chart_cards|json_script:"insumos-chart-cards" }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Gráfico 1: Sim/Não (Barras Empilhadas)
-    {% if simnao_labels %}
-    const ctxSimNao = document.getElementById('chartSimNao');
-    if (ctxSimNao) {
-        new Chart(ctxSimNao, {
-            type: 'bar',
-            data: {
-                labels: {{ simnao_labels|safe }},
-                datasets: [
-                    {
-                        label: 'Sim',
-                        data: {{ simnao_sim|safe }},
-                        backgroundColor: 'rgba(40, 167, 69, 0.8)',
-                        borderColor: 'rgba(40, 167, 69, 1)',
-                        borderWidth: 2
-                    },
-                    {
-                        label: 'Não',
-                        data: {{ simnao_nao|safe }},
-                        backgroundColor: 'rgba(220, 53, 69, 0.8)',
-                        borderColor: 'rgba(220, 53, 69, 1)',
-                        borderWidth: 2
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 13,
-                                weight: 'bold'
-                            },
-                            padding: 15
+    const raw = document.getElementById('insumos-chart-data');
+    const chartsData = raw ? JSON.parse(raw.textContent || '{}') : {};
+    const rawCards = document.getElementById('insumos-chart-cards');
+    const cardsData = rawCards ? JSON.parse(rawCards.textContent || '[]') : [];
+    const chartInstances = {};
+
+    function isoToBr(iso) {
+        const s = String(iso || '').trim();
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return s;
+        return `${m[3]}/${m[2]}/${m[1]}`;
+    }
+
+    function destroyChart(key, which) {
+        if (chartInstances[key] && chartInstances[key][which]) {
+            chartInstances[key][which].destroy();
+            chartInstances[key][which] = null;
+        }
+    }
+
+    function showFallback(canvasId, fallbackId, show) {
+        const canvas = document.getElementById(canvasId);
+        const fallback = document.getElementById(fallbackId);
+        if (!canvas || !fallback) return;
+        if (show) {
+            canvas.classList.add('d-none');
+            fallback.classList.remove('d-none');
+        } else {
+            canvas.classList.remove('d-none');
+            fallback.classList.add('d-none');
+        }
+    }
+
+    function buildCurrentConfig(tipo, q) {
+        if (!q || !q.current) return null;
+        const labels = q.current.labels || [];
+        const datasets = q.current.datasets || null;
+
+        // Formato "antigo" (por pergunta): { labels: [...], values: [...] }
+        if (!datasets && Array.isArray(q.current.values)) {
+            const values = q.current.values || [];
+            const safeLabels = Array.isArray(labels) && labels.length ? labels : values.map((_v, idx) => String(idx + 1));
+            const safeValues = Array.isArray(values) ? values : [];
+
+            return {
+                type: 'bar',
+                data: {
+                    labels: safeLabels,
+                    datasets: [
+                        {
+                            label: (tipo === 'SIM_NAO') ? '' : 'Respostas',
+                            data: safeValues,
+                            borderWidth: 1,
                         }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Distribuição de Respostas',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        },
-                        padding: {
-                            bottom: 20
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.parsed.y + ' respostas';
-                            }
-                        }
-                    }
+                    ]
                 },
-                scales: {
-                    x: {
-                        stacked: true,
-                        ticks: {
-                            autoSkip: false,
-                            maxRotation: 45,
-                            minRotation: 45,
-                            font: {
-                                size: 11
-                            }
-                        },
-                        grid: {
-                            display: false
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        stacked: true,
-                        ticks: {
-                            stepSize: 1
-                        },
-                        title: {
-                            display: true,
-                            text: 'Número de Respostas',
-                            font: {
-                                size: 12
-                            }
-                        }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
                     }
                 }
-            }
-        });
-    }
-    {% endif %}
-    
-    // Gráfico 2: Números (Linhas - Evolução Temporal)
-    {% if numero_labels %}
-    const ctxNumeros = document.getElementById('chartNumeros');
-    if (ctxNumeros) {
-        const datasets = {{ numero_datasets|safe }};
-        new Chart(ctxNumeros, {
-            type: 'line',
+            };
+        }
+
+        return {
+            type: 'bar',
             data: {
-                labels: {{ numero_labels|safe }},
-                datasets: datasets.map(ds => ({
-                    ...ds,
-                    borderWidth: 3,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    fill: false
+                labels,
+                datasets: (datasets || []).map(ds => ({
+                    label: ds.label || '',
+                    data: ds.data || [],
+                    borderWidth: 1,
                 }))
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 13,
-                                weight: 'bold'
-                            },
-                            padding: 15,
-                            usePointStyle: true
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Evolução dos Valores ao Longo do Tempo',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        },
-                        padding: {
-                            bottom: 20
-                        }
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += context.parsed.y.toFixed(2);
-                                }
-                                return label;
-                            }
-                        }
-                    }
-                },
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
                 scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Data do Insumo',
-                            font: {
-                                size: 12
-                            }
-                        },
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 45,
-                            font: {
-                                size: 10
-                            }
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Valor',
-                            font: {
-                                size: 12
-                            }
-                        }
-                    }
-                },
-                interaction: {
-                    mode: 'nearest',
-                    axis: 'x',
-                    intersect: false
+                    x: { stacked: true, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
                 }
+            }
+        };
+    }
+
+    function buildDateConfig(tipo, q) {
+        if (!q || !q.by_date) return null;
+        const labels = (q.by_date.labels || []).map(isoToBr);
+        const datasetsIn = q.by_date.datasets || [];
+
+        if (tipo === 'NUMERO' || tipo === 'DECIMAL') {
+            return {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: (datasetsIn || []).map(ds => ({
+                        label: ds.label || 'Valor',
+                        data: ds.data || [],
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        fill: false,
+                        tension: 0.3,
+                    }))
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, interaction: { mode: 'nearest', axis: 'x', intersect: false }, scales: { y: { beginAtZero: true } } }
+            };
+        }
+
+        // SIM_NAO / LISTA: barras empilhadas
+        return {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: (datasetsIn || []).map(ds => ({
+                    label: ds.label || '',
+                    data: ds.data || [],
+                    borderWidth: 1,
+                }))
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
+        };
+    }
+
+    function renderCharts(key) {
+        const card = chartsData[key];
+        if (!card) return;
+        const tipo = card.tipo;
+        const globalTipo = document.getElementById('globalTipoSelect');
+        const globalPergunta = document.getElementById('globalPerguntaSelect');
+        if (!globalTipo || !globalPergunta) return;
+        if (String(globalTipo.value || '').trim() !== String(key || '').trim()) return;
+        const perguntaId = String(globalPergunta.value || '').trim();
+        const q = (card.perguntas && card.perguntas[perguntaId]) ? card.perguntas[perguntaId] : null;
+
+        const tabsEl = document.getElementById(`tabs-${key}`);
+        let active = 'current';
+        if (tabsEl) {
+            const activeBtn = tabsEl.querySelector('.nav-link.active');
+            const target = activeBtn ? (activeBtn.getAttribute('data-bs-target') || '') : '';
+            if (target && target.indexOf(`#tab-date-${key}`) === 0) active = 'date';
+        }
+
+        if (active === 'current') {
+            destroyChart(key, 'date');
+            destroyChart(key, 'current');
+            const currentCfg = buildCurrentConfig(tipo, q);
+            if (!currentCfg || !currentCfg.data || !currentCfg.data.labels || currentCfg.data.labels.length === 0) {
+                showFallback(`canvas-current-${key}`, `fallback-current-${key}`, true);
+            } else {
+                showFallback(`canvas-current-${key}`, `fallback-current-${key}`, false);
+                const ctx = document.getElementById(`canvas-current-${key}`);
+                if (ctx) {
+                    chartInstances[key] = chartInstances[key] || {};
+                    chartInstances[key].current = new Chart(ctx, currentCfg);
+                }
+            }
+        } else {
+            destroyChart(key, 'current');
+            destroyChart(key, 'date');
+            const dateCfg = buildDateConfig(tipo, q);
+            if (!dateCfg || !dateCfg.data || !dateCfg.data.labels || dateCfg.data.labels.length === 0) {
+                showFallback(`canvas-date-${key}`, `fallback-date-${key}`, true);
+            } else {
+                showFallback(`canvas-date-${key}`, `fallback-date-${key}`, false);
+                const ctx2 = document.getElementById(`canvas-date-${key}`);
+                if (ctx2) {
+                    chartInstances[key] = chartInstances[key] || {};
+                    chartInstances[key].date = new Chart(ctx2, dateCfg);
+                }
+            }
+        }
+    }
+
+    function setGlobalPerguntasForKey(key) {
+        const globalPergunta = document.getElementById('globalPerguntaSelect');
+        if (!globalPergunta) return;
+        const found = (cardsData || []).find(c => String(c.key || '') === String(key || ''));
+        const perguntas = (found && found.perguntas) ? found.perguntas : [];
+
+        const previous = String(globalPergunta.value || '').trim();
+        globalPergunta.innerHTML = '';
+        (perguntas || []).forEach(p => {
+            const o = document.createElement('option');
+            o.value = String(p.id);
+            o.textContent = String(p.texto || '');
+            globalPergunta.appendChild(o);
+        });
+
+        const values = Array.from(globalPergunta.options || []).map(o => o.value);
+        if (previous && values.includes(previous)) {
+            globalPergunta.value = previous;
+        } else if (values.includes('__all__')) {
+            globalPergunta.value = '__all__';
+        } else {
+            globalPergunta.value = (globalPergunta.options[0] ? globalPergunta.options[0].value : '');
+        }
+    }
+
+    function showCard(key) {
+        const collapseEl = document.getElementById(`collapse-${key}`);
+        if (!collapseEl) return;
+        try {
+            const instance = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+            instance.show();
+        } catch (e) {
+            // sem bootstrap
+        }
+    }
+
+    Object.keys(chartsData || {}).forEach(key => {
+        const collapseEl = document.getElementById(`collapse-${key}`);
+        if (collapseEl) {
+            collapseEl.addEventListener('shown.bs.collapse', () => {
+                const globalTipo = document.getElementById('globalTipoSelect');
+                if (globalTipo) globalTipo.value = key;
+                setGlobalPerguntasForKey(key);
+                renderCharts(key);
+            });
+        }
+        const tabs = document.getElementById(`tabs-${key}`);
+        if (tabs) {
+            tabs.addEventListener('shown.bs.tab', () => renderCharts(key));
+        }
+    });
+
+    const globalTipo = document.getElementById('globalTipoSelect');
+    const globalPergunta = document.getElementById('globalPerguntaSelect');
+    if (globalTipo && globalPergunta) {
+        const initialKey = String(globalTipo.value || '').trim();
+        if (initialKey) {
+            setGlobalPerguntasForKey(initialKey);
+        }
+
+        globalTipo.addEventListener('change', function() {
+            const key = String(globalTipo.value || '').trim();
+            if (!key) return;
+            setGlobalPerguntasForKey(key);
+            showCard(key);
+        });
+
+        globalPergunta.addEventListener('change', function() {
+            const key = String(globalTipo.value || '').trim();
+            if (!key) return;
+            showCard(key);
+            const collapseEl = document.getElementById(`collapse-${key}`);
+            if (collapseEl && collapseEl.classList.contains('show')) {
+                renderCharts(key);
             }
         });
     }
-    {% endif %}
 });
 </script>
 {% endblock %}
