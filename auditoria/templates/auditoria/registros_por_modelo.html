@@ -396,6 +396,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!q || !q.by_date) return null;
         const labels = (q.by_date.labels || []).map(isoToBr);
         const datasetsIn = q.by_date.datasets || [];
+        const singlePoint = (labels || []).length <= 1;
 
         if (tipo === 'NUMERO' || tipo === 'DECIMAL') {
             return {
@@ -412,7 +413,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         tension: 0.3,
                     }))
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, interaction: { mode: 'nearest', axis: 'x', intersect: false }, scales: { y: { beginAtZero: true } } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                    scales: {
+                        x: { offset: singlePoint },
+                        y: { beginAtZero: true }
+                    }
+                }
             };
         }
 
@@ -427,7 +437,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     borderWidth: 1,
                 }))
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { stacked: true, offset: singlePoint },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
         };
     }
 
