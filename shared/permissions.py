@@ -660,13 +660,13 @@ def has_module_access(user, module_key):
     # Novo modelo: permissão nav do módulo
     module = _nav_module_config(module_key)
     if module:
-        module_perm = module.get("module_perm")
-        if module_perm and user.has_perm(module_perm):
-            return True
-
-        # Também considerar qualquer permissão de função/bloco como acesso ao módulo
+        # Se o usuário já está no novo modelo para este módulo (tem algum nav_* do módulo),
+        # considerar acesso ao módulo SOMENTE quando o flag do módulo (nav_mod_*) estiver ativo.
         if user_has_any_nav_perm_for_module(user, module_key):
-            return True
+            module_perm = module.get("module_perm")
+            return bool(module_perm and user.has_perm(module_perm))
+
+        # Caso contrário (ainda não configurado no novo modelo), segue fallback legado via grupo.
 
     # Legado: acesso via grupo
     module_info = MODULES_PERMISSIONS.get(module_key)

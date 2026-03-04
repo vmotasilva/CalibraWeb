@@ -2185,13 +2185,14 @@ def api_atualizar_permissoes_lote(request):
         total_adicionadas = 0
 
         # Regras de hierarquia para permissões core.nav_* (módulo -> bloco -> função)
-        # Se marcar uma função, garantir que o bloco e o módulo estejam marcados.
-        # Se marcar um bloco, garantir que o módulo esteja marcado.
+        # O flag do MÓDULO (nav_mod_*) é a chave mestra ("No menu").
+        # Se o módulo estiver desmarcado, ignorar/remover quaisquer nav_* de blocos/funções
+        # desse módulo no payload (evita estado inconsistente: bloco/função ativa sem módulo).
         from shared.permissions import get_nav_structure
 
         nav_structure = get_nav_structure()
-        core_func_requires: dict[str, set[str]] = {}
-        core_block_requires: dict[str, set[str]] = {}
+        module_codenames: set[str] = set()
+        codename_to_module: dict[str, str] = {}
 
         def _core_codename(full_perm: str | None) -> str | None:
             if not full_perm or "." not in str(full_perm):
@@ -2206,19 +2207,17 @@ def api_atualizar_permissoes_lote(request):
             if not module_codename:
                 continue
 
+            module_codenames.add(module_codename)
+
             for bloco in module.get("blocos") or []:
                 block_codename = _core_codename(bloco.get("perm"))
                 if block_codename:
-                    core_block_requires.setdefault(block_codename, set()).add(module_codename)
+                    codename_to_module[block_codename] = module_codename
 
                 for func in bloco.get("funcoes") or []:
                     func_codename = _core_codename(func.get("perm"))
-                    if not func_codename:
-                        continue
-                    required = core_func_requires.setdefault(func_codename, set())
-                    required.add(module_codename)
-                    if block_codename:
-                        required.add(block_codename)
+                    if func_codename:
+                        codename_to_module[func_codename] = module_codename
 
         # Atualizar permissões por app presente no payload (não apagar o restante)
         for app_label, codenames in (permissoes_dict or {}).items():
@@ -2243,13 +2242,18 @@ def api_atualizar_permissoes_lote(request):
                     # Somente permissões de navegação
                     codenames_set = {str(c) for c in codenames if str(c).startswith('nav_')}
 
-                    # Aplicar hierarquia: função -> bloco -> módulo; bloco -> módulo
-                    # (não depende do frontend marcar o módulo manualmente)
-                    expanded = set(codenames_set)
-                    for codename in list(codenames_set):
-                        expanded.update(core_func_requires.get(codename, set()))
-                        expanded.update(core_block_requires.get(codename, set()))
-                    codenames = sorted(expanded)
+                    # Módulo (nav_mod_*) como mestre: se o módulo não estiver selecionado,
+                    # descartar permissões de bloco/função do módulo.
+                    selected_modules = {c for c in codenames_set if c in module_codenames}
+                    filtered: set[str] = set()
+                    for codename in codenames_set:
+                        if codename in module_codenames:
+                            filtered.add(codename)
+                            continue
+                        module_owner = codename_to_module.get(codename)
+                        if module_owner is None or module_owner in selected_modules:
+                            filtered.add(codename)
+                    codenames = sorted(filtered)
 
                 perms_to_add = Permission.objects.filter(
                     content_type__app_label=app_label,
