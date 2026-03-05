@@ -124,10 +124,20 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
-    
-    - name: Deploy to production
-      run: |
-        echo "Deployment step - Configure your deployment here"
-        # Example: Deploy to Railway, Render, or your hosting platform
+
+    - name: Set up Node.js (Railway CLI)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Railway CLI
+      run: npm i -g @railway/cli
+
+    - name: Deploy to Railway (production)
       env:
-        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+        RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+      run: |
+        railway link --project "$RAILWAY_PROJECT_ID" --service "$RAILWAY_SERVICE_ID"
+        railway up --service "$RAILWAY_SERVICE_ID" --detach

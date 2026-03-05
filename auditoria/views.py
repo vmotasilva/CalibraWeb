@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import models, transaction
 from django.db.models import Count, Max
+from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -12,7 +13,7 @@ import json
 from urllib.parse import urlencode
 
 from .forms import ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
-from .models import ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
+from .models import ComentarioAuditoria, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
 
 
 def _parse_grid_itens(raw: str) -> list[str]:
@@ -991,6 +992,27 @@ def registros_por_modelo(request, modelo_id):
         _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
         pk=modelo_id,
     )
+
+    if request.method == "POST" and (request.POST.get("action") or "").strip() == "add_comment":
+        texto = (request.POST.get("comentario") or "").strip()
+        if not texto:
+            messages.error(request, "Informe um comentário.")
+        elif len(texto) > 8000:
+            messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
+        else:
+            ComentarioAuditoria.objects.create(modelo=modelo, autor=request.user, texto=texto)
+            messages.success(request, "Comentário adicionado com sucesso.")
+
+        redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
+        preserved = {}
+        for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+            v = (request.GET.get(k) or "").strip()
+            if v:
+                preserved[k] = v
+        if preserved:
+            redirect_url = f"{redirect_url}?{urlencode(preserved)}"
+        return redirect(redirect_url)
+
     inicio_raw = (request.GET.get("inicio") or "").strip()
     fim_raw = (request.GET.get("fim") or "").strip()
     subcategorias = list(modelo.subcategorias_list)
@@ -999,13 +1021,42 @@ def registros_por_modelo(request, modelo_id):
     inicio = parse_date(inicio_raw) if inicio_raw else None
     fim = parse_date(fim_raw) if fim_raw else None
 
-    registros = RegistroAuditoria.objects.filter(modelo=modelo)
-    if inicio:
-        registros = registros.filter(data_auditoria__gte=inicio)
-    if fim:
-        registros = registros.filter(data_auditoria__lte=fim)
+    per_page_raw = (request.GET.get("per_page") or "").strip()
+    allowed_per_page = {10, 25, 50, 100}
+    try:
+        per_page = int(per_page_raw) if per_page_raw else 25
+    except (TypeError, ValueError):
+        per_page = 25
+    if per_page not in allowed_per_page:
+        per_page = 25
 
-    registros = registros.select_related("avaliador").order_by("-criado_em", "-id")
+    registros_qs = RegistroAuditoria.objects.filter(modelo=modelo)
+    if inicio:
+        registros_qs = registros_qs.filter(data_auditoria__gte=inicio)
+    if fim:
+        registros_qs = registros_qs.filter(data_auditoria__lte=fim)
+
+    registros_qs = registros_qs.select_related("avaliador").order_by("-criado_em", "-id")
+
+    paginator = Paginator(registros_qs, per_page)
+    page_obj = paginator.get_page((request.GET.get("page") or "").strip() or 1)
+
+    base_params = {}
+    if inicio_raw:
+        base_params["inicio"] = inicio_raw
+    if fim_raw:
+        base_params["fim"] = fim_raw
+    if subcategoria:
+        base_params["subcategoria"] = subcategoria
+    base_params["per_page"] = str(per_page)
+    querystring_base = urlencode(base_params)
+
+    comentarios_qs = ComentarioAuditoria.objects.filter(modelo=modelo).select_related("autor")
+    if inicio:
+        comentarios_qs = comentarios_qs.filter(criado_em__date__gte=inicio)
+    if fim:
+        comentarios_qs = comentarios_qs.filter(criado_em__date__lte=fim)
+    comentarios = list(comentarios_qs.order_by("-criado_em", "-id"))
 
     perguntas_qs = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True)
     if subcategoria:
@@ -1014,7 +1065,7 @@ def registros_por_modelo(request, modelo_id):
     pergunta_map = {p.id: p for p in perguntas}
 
     respostas_qs = (
-        RespostaAuditoria.objects.filter(pergunta__in=perguntas, registro__in=registros)
+        RespostaAuditoria.objects.filter(pergunta__in=perguntas, registro__in=registros_qs)
         .select_related("registro", "pergunta")
         .order_by("registro__data_auditoria", "id")
     )
@@ -1407,7 +1458,13 @@ def registros_por_modelo(request, modelo_id):
     
     context = {
         "modelo": modelo,
-        "registros": registros,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "querystring_base": querystring_base,
+        "per_page": per_page,
+        "per_page_options": sorted(allowed_per_page),
+        "registros_count": paginator.count,
+        "comentarios": comentarios,
         "perguntas": perguntas,
         "estatisticas_perguntas": estatisticas_perguntas,
         "chart_cards": chart_cards,

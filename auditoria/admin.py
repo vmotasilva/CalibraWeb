@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
+from .models import ComentarioAuditoria, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
 
 
 @admin.register(ModeloAuditoria)
@@ -20,6 +20,13 @@ class PerguntaAuditoriaAdmin(admin.ModelAdmin):
 class RespostaAuditoriaInline(admin.TabularInline):
     model = RespostaAuditoria
     extra = 0
+
+
+@admin.register(ComentarioAuditoria)
+class ComentarioAuditoriaAdmin(admin.ModelAdmin):
+    list_display = ("modelo", "autor", "criado_em")
+    list_filter = ("modelo", "criado_em")
+    search_fields = ("modelo__nome", "autor__username", "texto")
 
 
 @admin.register(RegistroAuditoria)
