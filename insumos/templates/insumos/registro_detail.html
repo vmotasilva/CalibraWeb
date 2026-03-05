@@ -24,7 +24,7 @@
             <a href="{% url 'insumos:registro_edit' registro.pk %}" class="btn btn-warning">
                 <i class="bi bi-pencil"></i> Editar
             </a>
-            <a href="{% url 'insumos:registros_list' %}" class="btn btn-secondary">
+            <a href="{% url 'insumos:registros_por_modelo' registro.modelo.id %}" class="btn btn-secondary">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
         </div>
