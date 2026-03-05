@@ -254,7 +254,6 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_treinamentos_acompanhamento",
                 "funcoes": [
                     {"nome": "Dashboard", "view_name": "procedures:dashboard_treinamentos", "perm": "core.nav_treinamentos_dashboard"},
-                    {"nome": "Calendário", "view_name": "procedures:treinamentos_calendario", "perm": "core.nav_treinamentos_calendario"},
                 ],
             },
             {

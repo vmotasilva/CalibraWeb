@@ -361,13 +361,30 @@ if os.environ.get('PERSIST_MEDIA_PATH'):
     logger = __import__('logging').getLogger(__name__)
     logger.info(f"✅ Usando volume persistente em: {MEDIA_ROOT}")
 else:
-    MEDIA_ROOT = BASE_DIR / "media"
-    MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
     logger = __import__('logging').getLogger(__name__)
-    if not DEBUG:
-        logger.warning("⚠️ AVISO: Usando armazenamento local em produção. Arquivos podem ser perdidos!")
-        logger.warning("Configure PERSIST_MEDIA_PATH para produção.")
+
+    # Railway default volume mount used in this repo (see railway.toml): /data/media
+    # If the volume is mounted, prefer it automatically even if PERSIST_MEDIA_PATH is not set.
+    railway_media_root = Path("/data/media")
+    if (not DEBUG) and (railway_media_root.exists() or railway_media_root.parent.exists()):
+        try:
+            railway_media_root.mkdir(parents=True, exist_ok=True)
+            MEDIA_ROOT = railway_media_root
+            DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+            logger.info(f"✅ Usando volume persistente (Railway) em: {MEDIA_ROOT}")
+        except Exception:
+            MEDIA_ROOT = BASE_DIR / "media"
+            MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+            DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+            logger.warning("⚠️ AVISO: Usando armazenamento local em produção. Arquivos podem ser perdidos!")
+            logger.warning("Configure PERSIST_MEDIA_PATH para produção.")
+    else:
+        MEDIA_ROOT = BASE_DIR / "media"
+        MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+        DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+        if not DEBUG:
+            logger.warning("⚠️ AVISO: Usando armazenamento local em produção. Arquivos podem ser perdidos!")
+            logger.warning("Configure PERSIST_MEDIA_PATH para produção.")
 
 # Algoritmo de compressão e cache do WhiteNoise
 # Use manifest storage only in production; in development, use regular storage
