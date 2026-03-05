@@ -64,7 +64,7 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'auditoria:modulo' %}">Auditoria</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'auditoria:registros_list' %}">Registros</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:registros_por_modelo' modelo.id %}">Registros</a></li>
             <li class="breadcrumb-item active" aria-current="page">{% if edicao %}Editar{% else %}Novo{% endif %}</li>
         </ol>
     </nav>
@@ -395,7 +395,7 @@
                     <button type="submit" class="btn btn-success">
                         <i class="bi bi-check-circle"></i> {% if edicao %}Atualizar{% else %}Salvar{% endif %} Registro
                     </button>
-                    <a href="{% url 'auditoria:registros_list' %}" class="btn btn-secondary">
+                    <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-secondary">
                         <i class="bi bi-x-circle"></i> Cancelar
                     </a>
                 </div>

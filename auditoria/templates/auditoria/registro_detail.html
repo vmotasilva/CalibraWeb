@@ -7,7 +7,7 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'auditoria:modulo' %}">Auditoria</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'auditoria:registros_list' %}">Registros</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}">Registros</a></li>
             <li class="breadcrumb-item active" aria-current="page">Detalhes</li>
         </ol>
     </nav>
@@ -21,7 +21,7 @@
             <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn btn-warning">
                 <i class="bi bi-pencil"></i> Editar
             </a>
-            <a href="{% url 'auditoria:registros_list' %}" class="btn btn-secondary">
+            <a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}" class="btn btn-secondary">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
         </div>

@@ -149,11 +149,9 @@
 
                         {% can_nav_block user 'auditoria' 'operacao' as nav_aud_op %}
                         {% if nav_aud_op %}
-                            {% can_nav_view user 'auditoria:registros_list' 'auditoria' as nav_aud_regs %}
                             {% can_nav_view user 'auditoria:registro_create' 'auditoria' as nav_aud_av %}
-                            {% if nav_aud_regs or nav_aud_av %}
+                            {% if nav_aud_av %}
                                 <li><h6 class="dropdown-header text-muted">OPERAÇÃO</h6></li>
-                                {% if nav_aud_regs %}<li><a class="dropdown-item" href="{% url 'auditoria:registros_list' %}">Modelos Cadastrados / Período</a></li>{% endif %}
                                 {% if nav_aud_av %}<li><a class="dropdown-item" href="{% url 'auditoria:registro_create' %}">Avaliação de Dados</a></li>{% endif %}
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}

@@ -465,32 +465,18 @@ def pergunta_delete(request, pk):
 
 @login_required
 def registros_list(request):
-    inicio = request.GET.get("inicio")
-    fim = request.GET.get("fim")
-    modelo_id = request.GET.get("modelo")
+    # Tela geral de "Registros" não é mais necessária.
+    # Mantemos a URL por compatibilidade e redirecionamos para o Dashboard.
+    params = {}
+    for k in ("inicio", "fim", "modelo"):
+        v = (request.GET.get(k) or "").strip()
+        if v:
+            params[k] = v
 
-    registros = _filter_registros_para_usuario(
-        request.user,
-        RegistroAuditoria.objects.select_related("modelo", "avaliador"),
-    )
-    if inicio:
-        registros = registros.filter(data_auditoria__gte=inicio)
-    if fim:
-        registros = registros.filter(data_auditoria__lte=fim)
-    if modelo_id:
-        registros = registros.filter(modelo_id=modelo_id)
-
-    context = {
-        "registros": registros.order_by("-data_auditoria", "-id"),
-        "modelos": _filter_modelos_para_usuario(
-            request.user,
-            ModeloAuditoria.objects.filter(ativo=True),
-        ).order_by("nome"),
-        "inicio": inicio,
-        "fim": fim,
-        "modelo_id": modelo_id,
-    }
-    return render(request, "auditoria/registros_list.html", context)
+    url = reverse("auditoria:dashboard")
+    if params:
+        url = f"{url}?{urlencode(params)}"
+    return redirect(url)
 
 
 @login_required
@@ -1019,7 +1005,7 @@ def registros_por_modelo(request, modelo_id):
     if fim:
         registros = registros.filter(data_auditoria__lte=fim)
 
-    registros = registros.select_related("avaliador").order_by("-data_auditoria")
+    registros = registros.select_related("avaliador").order_by("-criado_em", "-id")
 
     perguntas_qs = PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True)
     if subcategoria:
