@@ -1240,18 +1240,7 @@ def registros_por_modelo(request, modelo_id):
             }
 
         elif tipo == "LISTA":
-            # Geral por pergunta: total de respostas por pergunta (uma barra por pergunta)
-            labels_q = [_short(p.pergunta) for p in perguntas_tipo]
-            total_by_q: list[int] = []
-            for p in perguntas_tipo:
-                respostas_p = respostas_por_pergunta.get(p.id, [])
-                count = 0
-                for r in respostas_p:
-                    opt = (str(r.valor).strip() if r.valor is not None else "")
-                    if opt:
-                        count += 1
-                total_by_q.append(count)
-
+            # Agregado (todas): uma barra por OPÇÃO (somando todas as perguntas do tipo)
             counts: dict[str, int] = {}
             por_data_opt: dict[str, dict[str, int]] = {}
             for r in all_respostas:
@@ -1279,9 +1268,9 @@ def registros_por_modelo(request, modelo_id):
 
             chart_data[key]["perguntas"]["__all__"] = {
                 "current": {
-                    "labels": labels_q,
+                    "labels": opt_labels,
                     "datasets": [
-                        {"label": "Respostas", "data": total_by_q},
+                        {"label": "Respostas", "data": opt_values},
                     ],
                 },
                 "by_date": {"labels": labels_date, "datasets": datasets},
