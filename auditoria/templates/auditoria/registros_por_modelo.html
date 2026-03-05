@@ -225,6 +225,9 @@
                             <div class="fw-semibold"><i class="bi bi-chat-left-text"></i> Comentários</div>
                             <div class="d-flex align-items-center gap-2">
                                 <div class="text-muted small">Filtrados pelo período selecionado</div>
+                                <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#modal-novo-comentario">
+                                    <i class="bi bi-plus-circle"></i> Novo Comentário
+                                </button>
                                 <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#comentarios-body" aria-expanded="true" aria-controls="comentarios-body">
                                     <i class="bi bi-arrows-collapse"></i>
                                 </button>
@@ -232,17 +235,6 @@
                         </div>
                         <div id="comentarios-body" class="collapse show">
                             <div class="card-body">
-                                <form method="post" class="mb-3">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="add_comment">
-                                    <div class="mb-2">
-                                        <textarea name="comentario" class="form-control" rows="3" placeholder="Adicionar comentário sobre esta auditoria..."></textarea>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        <i class="bi bi-plus-circle"></i> Adicionar comentário
-                                    </button>
-                                </form>
-
                                 {% if comentarios %}
                                     <div class="list-group">
                                         {% for c in comentarios %}
@@ -274,6 +266,34 @@
                                 {% else %}
                                     <div class="text-muted">Nenhum comentário no período selecionado.</div>
                                 {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade" id="modal-novo-comentario" tabindex="-1" aria-labelledby="modal-novo-comentario-label" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_comment">
+
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modal-novo-comentario-label">Novo Comentário</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-2">
+                                            <label class="form-label fw-semibold">Comentário</label>
+                                            <textarea name="comentario" class="form-control" rows="5" placeholder="Digite seu comentário..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-plus-circle"></i> Adicionar
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
