@@ -45,9 +45,6 @@
                                 <a href="{% url 'auditoria:exportar_respostas_excel' modelo.id %}" class="btn btn-outline-success btn-sm">
                                     <i class="bi bi-file-earmark-excel"></i> Exportar Excel
                                 </a>
-                                <button class="btn btn-outline-secondary btn-sm {% if not comentarios %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-comentarios" aria-expanded="{% if comentarios %}true{% else %}false{% endif %}" aria-controls="collapse-comentarios">
-                                    <i class="bi bi-chat-left-text"></i> Comentários
-                                </button>
                                 <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
                                     <i class="bi bi-plus-circle"></i> Novo Registro
                                 </a>
@@ -223,12 +220,17 @@
                     </div>
                     {% endif %}
 
-                    <div class="collapse{% if comentarios %} show{% endif %}" id="collapse-comentarios">
-                        <div class="card shadow-sm mb-3">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div class="fw-semibold"><i class="bi bi-chat-left-text"></i> Comentários</div>
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="fw-semibold"><i class="bi bi-chat-left-text"></i> Comentários</div>
+                            <div class="d-flex align-items-center gap-2">
                                 <div class="text-muted small">Filtrados pelo período selecionado</div>
+                                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#comentarios-body" aria-expanded="true" aria-controls="comentarios-body">
+                                    <i class="bi bi-arrows-collapse"></i>
+                                </button>
                             </div>
+                        </div>
+                        <div id="comentarios-body" class="collapse show">
                             <div class="card-body">
                                 <form method="post" class="mb-3">
                                     {% csrf_token %}
