@@ -23,6 +23,9 @@ media/
 .vscode/
 *.sublime-workspace
 
+# Local tooling
+.tools/
+
 # OS files
 .DS_Store
 Thumbs.db

@@ -1483,6 +1483,53 @@ function renderProcedimentos() {
     hiddenContainer.innerHTML = hiddenInputsHtml;
 }
 
+// Pré-carregar seleções existentes ao editar
+(function hydrateInitialSelections() {
+    {% if planejamento %}
+    try {
+        const colaboradoresIniciais = [
+            {% for c in planejamento.colaboradores.all %}
+            {
+                id: {{ c.id }},
+                nome: "{{ c.nome_completo|default:''|escapejs }}",
+                matricula: "{{ c.matricula|default:''|escapejs }}",
+                setor: "{{ c.setor.nome|default:''|escapejs }}",
+            },
+            {% endfor %}
+        ];
+
+        colaboradoresIniciais.forEach(c => {
+            if (c && c.id) {
+                colaboradoresSelecionados[c.id] = c;
+            }
+        });
+
+        const procedimentosIniciais = [
+            {% for p in planejamento.procedimentos.all %}
+            {
+                id: {{ p.id }},
+                codigo: "{{ p.codigo|default:''|escapejs }}",
+                nome: "{{ p.nome|default:''|escapejs }}",
+                matriz: "{{ p.matriz|default:''|escapejs }}",
+                sub_area: "{{ p.sub_area|default:''|escapejs }}",
+            },
+            {% endfor %}
+        ];
+
+        procedimentosIniciais.forEach(p => {
+            if (p && p.id) {
+                procedimentosSelecionados[p.id] = p;
+            }
+        });
+
+        renderColaboradores();
+        renderProcedimentos();
+    } catch (e) {
+        console.error('[ERRO] Falha ao hidratar seleções iniciais:', e);
+    }
+    {% endif %}
+})();
+
 // Carregar matrizes
 async function carregarMatrizes() {
     try {

@@ -247,20 +247,28 @@ def editar_planejamento_view(request, planejamento_id):
     if request.method == 'POST':
         # Processar múltiplos procedimentos - usar getlist
         procedimentos_ids = request.POST.getlist('procedimentos')
+        colaboradores_ids = request.POST.getlist('colaboradores')
         
         form = PlanejamentoTreinamentoForm(request.POST, instance=planejamento)
         if form.is_valid():
-            planejamento = form.save(commit=False)
-            planejamento.save()
-            
-            # Atualizar procedimentos
-            if procedimentos_ids:
-                planejamento.procedimentos.set(procedimentos_ids)
-            
-            form.save_m2m()  # Salvar colaboradores M2M
-            
-            messages.success(request, 'Planejamento atualizado com sucesso!')
-            return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+            # Validar se há colaboradores selecionados (evita zerar a relação no editar)
+            if not colaboradores_ids:
+                mensagem = 'Selecione pelo menos um colaborador.'
+                form.add_error('colaboradores', mensagem)
+                messages.error(request, f'Erro ao atualizar planejamento: {mensagem}')
+            else:
+                planejamento = form.save(commit=False)
+                planejamento.save()
+                
+                # Atualizar procedimentos
+                if procedimentos_ids:
+                    planejamento.procedimentos.set(procedimentos_ids)
+
+                # Atualizar colaboradores
+                planejamento.colaboradores.set(colaboradores_ids)
+
+                messages.success(request, 'Planejamento atualizado com sucesso!')
+                return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
     else:
         form = PlanejamentoTreinamentoForm(instance=planejamento)
     

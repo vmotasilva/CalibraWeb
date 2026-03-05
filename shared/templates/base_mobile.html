@@ -356,9 +356,11 @@
                         {% can_nav_block user 'procedures' 'acompanhamento' as nav_tr_acompanhamento %}
                         {% if nav_tr_acompanhamento %}
                             {% can_nav_view user 'procedures:dashboard_treinamentos' 'procedures' as nav_tr_dash %}
-                            {% if nav_tr_dash %}
+                            {% can_nav_view user 'procedures:treinamentos_calendario' 'procedures' as nav_tr_cal %}
+                            {% if nav_tr_dash or nav_tr_cal %}
                                 <li><h6 class="dropdown-header text-muted">ACOMPANHAMENTO</h6></li>
                                 {% if nav_tr_dash %}<li><a class="dropdown-item" href="{% url 'procedures:dashboard_treinamentos' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
+                                {% if nav_tr_cal %}<li><a class="dropdown-item" href="{% url 'procedures:treinamentos_calendario' %}"><i class="bi bi-calendar3"></i> Calendário</a></li>{% endif %}
                                 <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}

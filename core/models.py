@@ -86,12 +86,14 @@ class NavigationPermission(models.Model):
             ("nav_metrologia_importar_historico", "NAV: Metrologia / Importar Histórico"),
 
             # --- TREINAMENTOS: blocos ---
+            ("nav_treinamentos_acompanhamento", "NAV: Treinamentos / Bloco Acompanhamento"),
             ("nav_treinamentos_gestao", "NAV: Treinamentos / Bloco Gestão de Treinamentos"),
             ("nav_treinamentos_matriz", "NAV: Treinamentos / Bloco Matriz de Competências"),
             ("nav_treinamentos_perfis_bloco", "NAV: Treinamentos / Bloco Perfis de Treinamento"),
 
             # --- TREINAMENTOS: funções ---
             ("nav_treinamentos_dashboard", "NAV: Treinamentos / Dashboard"),
+            ("nav_treinamentos_calendario", "NAV: Treinamentos / Calendário"),
             ("nav_treinamentos_registros", "NAV: Treinamentos / Registros de Treinamento"),
             ("nav_treinamentos_novo_treinamento", "NAV: Treinamentos / Novo Treinamento"),
             ("nav_treinamentos_detalhe_treinamento", "NAV: Treinamentos / Detalhe do Treinamento"),
