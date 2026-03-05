@@ -204,6 +204,76 @@ def can_user_access_colaborador(request_user, target_colaborador):
     return False
 
 
+def _is_admin_setor(colaborador):
+    setor_nome = (colaborador.setor.nome.upper() if getattr(colaborador, 'setor', None) else "")
+    return any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"])
+
+
+def can_user_register_ocorrencia(request_user, target_colaborador=None):
+    """Define se o usuário pode registrar ocorrência.
+
+    Regra (alinhada ao solicitado):
+    - Superuser/staff sempre pode.
+    - Quem tem permissão Django `rh.add_ocorrencia` pode.
+    - RH/DP/Qualidade pode.
+    - Liderança (líder imediato/supervisor/gerente) pode registrar para subordinados.
+    """
+    if request_user.is_superuser or request_user.is_staff:
+        return True
+
+    if request_user.has_perm('rh.add_ocorrencia'):
+        return True
+
+    try:
+        usuario_logado = get_colaborador_for_user(request_user)
+    except Exception:
+        usuario_logado = None
+
+    if not usuario_logado:
+        return False
+
+    if _is_admin_setor(usuario_logado):
+        return True
+
+    # Se não há alvo específico, permitir apenas se for liderança (tem subordinados) ou hierarquia
+    if target_colaborador is None:
+        if HierarquiaSetor.objects.filter(
+            Q(gerente=usuario_logado) | Q(supervisor=usuario_logado) | Q(diretor=usuario_logado)
+        ).exists():
+            return True
+
+        if Colaborador.objects.filter(
+            Q(lider=usuario_logado) | Q(supervisor=usuario_logado) | Q(gerente=usuario_logado)
+        ).exists():
+            return True
+
+        cargo_upper = str(getattr(usuario_logado, 'cargo', '')).upper()
+        if any(k in cargo_upper for k in ["LIDER", "LÍDER", "SUPERVISOR", "GERENTE"]):
+            return True
+
+        return False
+
+    # Com alvo: não liberar para auto-registro (exceto admins acima)
+    if usuario_logado.id == target_colaborador.id:
+        return False
+
+    # Subordinação direta
+    if (
+        getattr(target_colaborador, 'lider_id', None) == usuario_logado.id
+        or getattr(target_colaborador, 'supervisor_id', None) == usuario_logado.id
+        or getattr(target_colaborador, 'gerente_id', None) == usuario_logado.id
+    ):
+        return True
+
+    # Subordinação indireta
+    try:
+        subordinados = get_all_subordinates(usuario_logado)
+    except Exception:
+        subordinados = set()
+
+    return target_colaborador.id in subordinados
+
+
 def get_colaboradores_acessiveis(request_user):
     """
     Retorna queryset de colaboradores que o usuário tem permissão de acesso.
@@ -466,7 +536,12 @@ def detalhe_colaborador_view(request, colab_id):
             can_see_salary = True
 
     # Permissão: todos podem visualizar ocorrências
-    can_register_occ = False
+    can_register_occ = can_user_register_ocorrencia(request.user, alvo)
+    can_register_ferias = False
+    if request.user.is_superuser or request.user.is_staff or request.user.has_perm('rh.add_ferias'):
+        can_register_ferias = True
+    elif usuario_logado and _is_admin_setor(usuario_logado):
+        can_register_ferias = True
     can_view_occ = True
     ocorrencias = alvo.ocorrencias.all().order_by("-data_ocorrencia")
 
@@ -635,6 +710,7 @@ def detalhe_colaborador_view(request, colab_id):
         "alvo": alvo,
         "can_see_salary": can_see_salary,
         "can_register_occ": can_register_occ,
+        "can_register_ferias": can_register_ferias,
         "can_view_occ": can_view_occ,
         "ocorrencias": ocorrencias,
         "matriz_treinamentos": matriz_treinamentos,
@@ -728,20 +804,8 @@ def registrar_ocorrencia_view(request):
     except Exception:
         pass
     
-    # Verificar permissão geral de acesso ao módulo
-    # Permitir se tem permissão Django de adicionar ocorrências
-    permitido = False
-    if request.user.is_superuser or request.user.is_staff:
-        permitido = True
-    elif request.user.has_perm('rh.add_ocorrencia'):
-        # Usuário tem permissão Django para adicionar ocorrências
-        permitido = True
-    elif usuario_logado:
-        if usuario_logado.setor and "RH" in usuario_logado.setor.nome.upper():
-            permitido = True
-        if HierarquiaSetor.objects.filter(gerente=usuario_logado).exists() or \
-           HierarquiaSetor.objects.filter(supervisor=usuario_logado).exists():
-            permitido = True
+    # Verificar permissão geral para registrar ocorrências
+    permitido = can_user_register_ocorrencia(request.user)
     
     if not permitido:
         messages.error(request, "Você não tem permissão para registrar ocorrências.")
@@ -761,6 +825,16 @@ def registrar_ocorrencia_view(request):
     
     if request.method == "POST":
         form = OcorrenciaForm(request.POST, request.FILES)
+
+        # Restringir choices de colaborador para não expor lista completa
+        try:
+            qs_colabs = get_colaboradores_acessiveis(request.user).order_by('nome_completo')
+            if usuario_logado and not (request.user.is_superuser or request.user.is_staff or _is_admin_setor(usuario_logado) or request.user.has_perm('rh.add_ocorrencia')):
+                qs_colabs = qs_colabs.exclude(id=usuario_logado.id)
+            form.fields['colaborador'].queryset = qs_colabs
+        except Exception:
+            pass
+
         if form.is_valid():
             oc = form.save(commit=False)
             
@@ -784,6 +858,15 @@ def registrar_ocorrencia_view(request):
             initial["colaborador"] = preselect_id
         initial["condutor"] = request.user.id
         form = OcorrenciaForm(initial=initial)
+
+        # Restringir choices de colaborador para não expor lista completa
+        try:
+            qs_colabs = get_colaboradores_acessiveis(request.user).order_by('nome_completo')
+            if usuario_logado and not (request.user.is_superuser or request.user.is_staff or _is_admin_setor(usuario_logado) or request.user.has_perm('rh.add_ocorrencia')):
+                qs_colabs = qs_colabs.exclude(id=usuario_logado.id)
+            form.fields['colaborador'].queryset = qs_colabs
+        except Exception:
+            pass
     
     return render(
         request,

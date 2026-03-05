@@ -24,6 +24,8 @@
                 <a href="{% url 'registrar_ocorrencia' %}?colab_id={{ alvo.id }}" class="btn btn-outline-primary ms-2">
                     <i class="bi bi-exclamation-triangle"></i> Nova Ocorrência
                 </a>
+            {% endif %}
+            {% if can_register_ferias %}
                 <a href="/rh/colaborador/{{ alvo.id }}/ferias/registrar/" class="btn btn-outline-success ms-2">
                     <i class="bi bi-calendar-check"></i> Registrar Férias
                 </a>
