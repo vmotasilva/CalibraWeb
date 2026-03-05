@@ -424,7 +424,7 @@
     })();
     {% endif %}
 
-    // Auto-preencher período para auditorias DIÁRIA ou APLICAÇÃO ÚNICA
+    // Auto-preencher período para Insumos DIÁRIA ou APLICAÇÃO ÚNICA
     {% if modelo and modelo.periodicidade == 'DIARIA' or modelo and modelo.periodicidade == 'UNICA' %}
     (function() {
         const dataInput = document.getElementById('id_data_auditoria');

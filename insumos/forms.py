@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
+from .models import ComentarioInsumos, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
 
 
 class ModeloAuditoriaForm(forms.ModelForm):
@@ -162,4 +162,27 @@ class RegistroAuditoriaForm(forms.ModelForm):
         if periodo_inicio and periodo_fim and periodo_fim < periodo_inicio:
             self.add_error("periodo_fim", "O período final deve ser maior ou igual ao período inicial.")
         return cleaned_data
+
+
+class ComentarioInsumosForm(forms.ModelForm):
+    class Meta:
+        model = ComentarioInsumos
+        fields = ["texto"]
+        widgets = {
+            "texto": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 6,
+                    "placeholder": "Digite seu comentário...",
+                }
+            )
+        }
+
+    def clean_texto(self):
+        texto = (self.cleaned_data.get("texto") or "").strip()
+        if not texto:
+            raise forms.ValidationError("Informe um comentário.")
+        if len(texto) > 8000:
+            raise forms.ValidationError("Comentário muito longo (máx. 8000 caracteres).")
+        return texto
 

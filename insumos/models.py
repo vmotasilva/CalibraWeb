@@ -268,3 +268,33 @@ class RespostaAuditoria(models.Model):
     def __str__(self):
         return f"{self.registro} - {self.pergunta.pergunta[:60]}"
 
+
+class ComentarioInsumos(models.Model):
+    modelo = models.ForeignKey(
+        ModeloAuditoria,
+        on_delete=models.CASCADE,
+        related_name="comentarios",
+        verbose_name="Modelo",
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comentarios_insumos",
+        verbose_name="Autor",
+    )
+    texto = models.TextField(verbose_name="Comentário")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Comentário de Insumos"
+        verbose_name_plural = "Comentários de Insumos"
+        ordering = ["-criado_em", "-id"]
+
+    def __str__(self) -> str:
+        who = "-"
+        if getattr(self, "autor", None):
+            who = self.autor.get_full_name() or getattr(self.autor, "username", "-")
+        return f"{self.modelo.nome} - {who}"
+

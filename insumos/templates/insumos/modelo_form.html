@@ -49,7 +49,7 @@
                 </div>
             </div>
 
-            <small class="form-text text-muted">Usuários autorizados a preencher/atualizar auditorias deste modelo</small>
+            <small class="form-text text-muted">Usuários autorizados a preencher/atualizar insumos deste modelo</small>
             {% if form.responsaveis.errors %}
                 <div class="text-danger">{{ form.responsaveis.errors }}</div>
             {% endif %}
@@ -121,7 +121,7 @@
         <div id="campo-semanal" class="mb-3" style="display: none;">
             <label class="form-label">Dia da Semana <span class="text-danger">*</span></label>
             {{ form.dia_semana }}
-            <small class="form-text text-muted">Dia da semana em que a auditoria deve ser realizada</small>
+            <small class="form-text text-muted">Dia da semana em que o insumo deve ser realizado</small>
             {% if form.dia_semana.errors %}
                 <div class="text-danger">{{ form.dia_semana.errors }}</div>
             {% endif %}
@@ -139,7 +139,7 @@
         <div id="campo-dia-mes" class="mb-3" style="display: none;">
             <label class="form-label">Dia do Mês <span class="text-danger">*</span></label>
             {{ form.dia_mes }}
-            <small class="form-text text-muted">Dia do mês em que a auditoria deve ser realizada (1-31)</small>
+            <small class="form-text text-muted">Dia do mês em que o insumo deve ser realizado (1-31)</small>
             {% if form.dia_mes.errors %}
                 <div class="text-danger">{{ form.dia_mes.errors }}</div>
             {% endif %}
@@ -393,19 +393,19 @@
                     break;
                 case 'MENSAL':
                     campoDiaMes.style.display = 'block';
-                    infoPeriodicidade.textContent = 'A auditoria será realizada mensalmente no dia especificado.';
+                    infoPeriodicidade.textContent = 'O insumo será realizado mensalmente no dia especificado.';
                     break;
                 case 'TRIMESTRAL':
                     campoDiaMes.style.display = 'block';
-                    infoPeriodicidade.textContent = 'A auditoria será realizada a cada 3 meses no dia especificado.';
+                    infoPeriodicidade.textContent = 'O insumo será realizado a cada 3 meses no dia especificado.';
                     break;
                 case 'SEMESTRAL':
                     campoDiaMes.style.display = 'block';
-                    infoPeriodicidade.textContent = 'A auditoria será realizada a cada 6 meses no dia especificado.';
+                    infoPeriodicidade.textContent = 'O insumo será realizado a cada 6 meses no dia especificado.';
                     break;
                 case 'ANUAL':
                     campoDiaMes.style.display = 'block';
-                    infoPeriodicidade.textContent = 'A auditoria será realizada anualmente no dia especificado.';
+                    infoPeriodicidade.textContent = 'O insumo será realizado anualmente no dia especificado.';
                     break;
             }
         }

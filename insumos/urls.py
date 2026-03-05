@@ -29,6 +29,16 @@ urlpatterns = [
     path("registros/<int:pk>/", views.registro_detail, name="registro_detail"),
     path("modelos/<int:modelo_id>/registros/", views.registros_por_modelo, name="registros_por_modelo"),
     path(
+        "modelos/<int:modelo_id>/comentarios/<int:pk>/editar/",
+        views.comentario_edit,
+        name="comentario_edit",
+    ),
+    path(
+        "modelos/<int:modelo_id>/comentarios/<int:pk>/remover/",
+        views.comentario_delete,
+        name="comentario_delete",
+    ),
+    path(
         "modelos/<int:modelo_id>/registros/exportar-excel/",
         views.exportar_respostas_excel,
         name="exportar_respostas_excel",

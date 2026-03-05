@@ -53,7 +53,7 @@
                     </div>
 
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> Total de registros preenchidos: <strong>{{ registros|length }}</strong>
+                        <i class="bi bi-info-circle"></i> Total de registros preenchidos: <strong>{{ registros_count }}</strong>
                     </div>
 
                     {% if estatisticas_perguntas %}
@@ -178,52 +178,177 @@
                     </div>
                     {% endif %}
 
-                    {% if registros %}
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Data do Insumo</th>
-                                    <th>Período</th>
-                                    <th>Avaliador</th>
-                                    <th>Criado em</th>
-                                    <th class="text-center">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for registro in registros %}
-                                <tr>
-                                    <td>{{ registro.data_auditoria|date:"d/m/Y" }}</td>
-                                    <td>
-                                        {% if registro.periodo_inicio and registro.periodo_fim %}
-                                        {{ registro.periodo_inicio|date:"d/m/Y" }} a {{ registro.periodo_fim|date:"d/m/Y" }}
-                                        {% elif registro.periodo_inicio %}
-                                        A partir de {{ registro.periodo_inicio|date:"d/m/Y" }}
-                                        {% elif registro.periodo_fim %}
-                                        Até {{ registro.periodo_fim|date:"d/m/Y" }}
-                                        {% else %}
-                                        <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ registro.avaliador.get_full_name|default:registro.avaliador.username }}</td>
-                                    <td>{{ registro.criado_em|date:"d/m/Y H:i" }}</td>
-                                    <td class="text-center">
-                                        <a href="{% url 'insumos:registro_detail' registro.pk %}" class="btn btn-sm btn-info" title="Visualizar">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        <a href="{% url 'insumos:registro_edit' registro.pk %}" class="btn btn-sm btn-warning" title="Editar">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="fw-semibold"><i class="bi bi-chat-left-text"></i> Comentários</div>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="text-muted small">Filtrados pelo período selecionado</div>
+                                <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#modal-novo-comentario">
+                                    <i class="bi bi-plus-circle"></i> Novo Comentário
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#comentarios-body" aria-expanded="true" aria-controls="comentarios-body">
+                                    <i class="bi bi-arrows-collapse"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="comentarios-body" class="collapse show">
+                            <div class="card-body">
+                                {% if comentarios %}
+                                    <div class="list-group">
+                                        {% for c in comentarios %}
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                    <div class="fw-semibold">
+                                                        {% if c.autor %}
+                                                            {{ c.autor.get_full_name|default:c.autor.username }}
+                                                        {% else %}
+                                                            <span class="text-muted">-</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="text-muted small">{{ c.criado_em|date:"d/m/Y H:i" }}</div>
+                                                        {% if is_insumos_admin or c.autor_id == request.user.id %}
+                                                            <a class="btn btn-outline-secondary btn-sm" href="{% url 'insumos:comentario_edit' modelo.id c.id %}?{{ querystring_with_page }}" title="Editar">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </a>
+                                                            <a class="btn btn-outline-danger btn-sm" href="{% url 'insumos:comentario_delete' modelo.id c.id %}?{{ querystring_with_page }}" title="Remover">
+                                                                <i class="bi bi-trash"></i>
+                                                            </a>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="mt-2" style="white-space: pre-wrap;">{{ c.texto }}</div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="text-muted">Nenhum comentário no período selecionado.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade" id="modal-novo-comentario" tabindex="-1" aria-labelledby="modal-novo-comentario-label" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_comment">
+
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modal-novo-comentario-label">Novo Comentário</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-2">
+                                            <label class="form-label fw-semibold">Comentário</label>
+                                            <textarea name="comentario" class="form-control" rows="5" placeholder="Digite seu comentário..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-plus-circle"></i> Adicionar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if registros_count %}
+                    <div class="card shadow-sm">
+                        <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                            <div class="fw-semibold"><i class="bi bi-list-ul"></i> Registros</div>
+                            <form method="get" class="d-flex flex-wrap gap-2 align-items-center mb-0">
+                                <input type="hidden" name="inicio" value="{{ inicio|default:'' }}">
+                                <input type="hidden" name="fim" value="{{ fim|default:'' }}">
+                                <label class="form-label mb-0 small text-muted">Itens por página</label>
+                                <select name="per_page" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    {% for opt in per_page_options %}
+                                        <option value="{{ opt }}" {% if per_page == opt %}selected{% endif %}>{{ opt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover mb-0">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Data do Insumo</th>
+                                            <th>Período</th>
+                                            <th>Avaliador</th>
+                                            <th>Criado em</th>
+                                            <th class="text-center">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for registro in page_obj %}
+                                        <tr>
+                                            <td>{{ registro.data_auditoria|date:"d/m/Y" }}</td>
+                                            <td>
+                                                {% if registro.periodo_inicio and registro.periodo_fim %}
+                                                {{ registro.periodo_inicio|date:"d/m/Y" }} a {{ registro.periodo_fim|date:"d/m/Y" }}
+                                                {% elif registro.periodo_inicio %}
+                                                A partir de {{ registro.periodo_inicio|date:"d/m/Y" }}
+                                                {% elif registro.periodo_fim %}
+                                                Até {{ registro.periodo_fim|date:"d/m/Y" }}
+                                                {% else %}
+                                                <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if registro.avaliador %}
+                                                    {{ registro.avaliador.get_full_name|default:registro.avaliador.username }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ registro.criado_em|date:"d/m/Y H:i" }}</td>
+                                            <td class="text-center">
+                                                <a href="{% url 'insumos:registro_detail' registro.pk %}" class="btn btn-sm btn-info" title="Visualizar">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a href="{% url 'insumos:registro_edit' registro.pk %}" class="btn btn-sm btn-warning" title="Editar">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                            <div class="text-muted small">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} — {{ registros_count }} registro(s)
+                            </div>
+                            <nav aria-label="Paginação">
+                                <ul class="pagination pagination-sm mb-0">
+                                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                                        <a class="page-link" href="?{% if querystring_base %}{{ querystring_base }}&{% endif %}page=1">Primeira</a>
+                                    </li>
+                                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                                        <a class="page-link" href="?{% if querystring_base %}{{ querystring_base }}&{% endif %}page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% else %}1{% endif %}">Anterior</a>
+                                    </li>
+                                    <li class="page-item disabled">
+                                        <span class="page-link">{{ page_obj.number }}</span>
+                                    </li>
+                                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                                        <a class="page-link" href="?{% if querystring_base %}{{ querystring_base }}&{% endif %}page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% else %}{{ page_obj.number }}{% endif %}">Próxima</a>
+                                    </li>
+                                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                                        <a class="page-link" href="?{% if querystring_base %}{{ querystring_base }}&{% endif %}page={{ page_obj.paginator.num_pages }}">Última</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
                     </div>
                     {% else %}
                     <div class="alert alert-warning">
                         <i class="bi bi-exclamation-triangle"></i>
-                        Nenhum registro preenchido para este modelo ainda.
+                        Nenhum registro encontrado para o período selecionado.
                     </div>
                     {% endif %}
                 </div>

@@ -1,16 +1,19 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import models, transaction
 from django.db.models import Count, Max
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
+from django.urls import reverse
+from urllib.parse import urlencode
 from io import BytesIO
 import json
 
-from .forms import ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
-from .models import ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
+from .forms import ComentarioInsumosForm, ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
+from .models import ComentarioInsumos, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
 
 
 def _parse_grid_itens(raw: str) -> list[str]:
@@ -906,21 +909,75 @@ def registros_por_modelo(request, modelo_id):
         _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
         pk=modelo_id,
     )
+
+    if request.method == "POST" and (request.POST.get("action") or "").strip() == "add_comment":
+        texto = (request.POST.get("comentario") or "").strip()
+        if not texto:
+            messages.error(request, "Informe um comentário.")
+        elif len(texto) > 8000:
+            messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
+        else:
+            ComentarioInsumos.objects.create(modelo=modelo, autor=request.user, texto=texto)
+            messages.success(request, "Comentário adicionado com sucesso.")
+
+        redirect_url = reverse("insumos:registros_por_modelo", args=[modelo.id])
+        preserved = {}
+        for k in ("inicio", "fim", "page", "per_page"):
+            v = (request.GET.get(k) or "").strip()
+            if v:
+                preserved[k] = v
+        if preserved:
+            redirect_url = f"{redirect_url}?{urlencode(preserved)}"
+        return redirect(redirect_url)
+
     inicio_raw = (request.GET.get("inicio") or "").strip()
     fim_raw = (request.GET.get("fim") or "").strip()
     inicio = parse_date(inicio_raw) if inicio_raw else None
     fim = parse_date(fim_raw) if fim_raw else None
 
-    registros = RegistroAuditoria.objects.filter(modelo=modelo)
+    per_page_raw = (request.GET.get("per_page") or "").strip()
+    allowed_per_page = {10, 25, 50, 100}
+    try:
+        per_page = int(per_page_raw) if per_page_raw else 25
+    except (TypeError, ValueError):
+        per_page = 25
+    if per_page not in allowed_per_page:
+        per_page = 25
+
+    registros_qs = RegistroAuditoria.objects.filter(modelo=modelo)
     if inicio:
-        registros = registros.filter(data_auditoria__gte=inicio)
+        registros_qs = registros_qs.filter(data_auditoria__gte=inicio)
     if fim:
-        registros = registros.filter(data_auditoria__lte=fim)
-    registros = registros.select_related("avaliador").order_by("-data_auditoria")
+        registros_qs = registros_qs.filter(data_auditoria__lte=fim)
+
+    registros_qs = registros_qs.select_related("avaliador").order_by("-criado_em", "-id")
+
+    paginator = Paginator(registros_qs, per_page)
+    page_obj = paginator.get_page((request.GET.get("page") or "").strip() or 1)
+
+    base_params = {}
+    if inicio_raw:
+        base_params["inicio"] = inicio_raw
+    if fim_raw:
+        base_params["fim"] = fim_raw
+    base_params["per_page"] = str(per_page)
+    querystring_base = urlencode(base_params)
+    querystring_with_page = querystring_base
+    if querystring_with_page:
+        querystring_with_page = f"{querystring_with_page}&page={page_obj.number}"
+    else:
+        querystring_with_page = f"page={page_obj.number}"
+
+    comentarios_qs = ComentarioInsumos.objects.filter(modelo=modelo).select_related("autor")
+    if inicio:
+        comentarios_qs = comentarios_qs.filter(criado_em__date__gte=inicio)
+    if fim:
+        comentarios_qs = comentarios_qs.filter(criado_em__date__lte=fim)
+    comentarios = list(comentarios_qs.order_by("-criado_em", "-id"))
 
     perguntas = list(PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("ordem", "id"))
     respostas_qs = (
-        RespostaAuditoria.objects.filter(pergunta__in=perguntas, registro__in=registros)
+        RespostaAuditoria.objects.filter(pergunta__in=perguntas, registro__in=registros_qs)
         .select_related("registro", "pergunta")
         .order_by("registro__data_auditoria", "id")
     )
@@ -1253,7 +1310,15 @@ def registros_por_modelo(request, modelo_id):
 
     context = {
         "modelo": modelo,
-        "registros": registros,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "querystring_base": querystring_base,
+        "querystring_with_page": querystring_with_page,
+        "per_page": per_page,
+        "per_page_options": sorted(allowed_per_page),
+        "registros_count": paginator.count,
+        "comentarios": comentarios,
+        "is_insumos_admin": _auditoria_is_admin(request.user),
         "perguntas": perguntas,
         "estatisticas_perguntas": estatisticas_perguntas,
         "chart_cards": chart_cards,
@@ -1262,6 +1327,87 @@ def registros_por_modelo(request, modelo_id):
         "fim": fim_raw,
     }
     return render(request, "insumos/registros_por_modelo.html", context)
+
+
+@login_required
+def comentario_edit(request, modelo_id, pk):
+    modelo = get_object_or_404(
+        _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
+        pk=modelo_id,
+    )
+    comentario = get_object_or_404(ComentarioInsumos, pk=pk, modelo=modelo)
+    can_manage = _auditoria_is_admin(request.user) or (comentario.autor_id == request.user.id)
+
+    preserved = {}
+    for k in ("inicio", "fim", "page", "per_page"):
+        v = (request.GET.get(k) or "").strip()
+        if v:
+            preserved[k] = v
+    back_url = reverse("insumos:registros_por_modelo", args=[modelo.id])
+    if preserved:
+        back_url = f"{back_url}?{urlencode(preserved)}"
+
+    if not can_manage:
+        messages.error(request, "Você não tem permissão para editar este comentário.")
+        return redirect(back_url)
+
+    if request.method == "POST":
+        form = ComentarioInsumosForm(request.POST, instance=comentario)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Comentário atualizado com sucesso.")
+            return redirect(back_url)
+    else:
+        form = ComentarioInsumosForm(instance=comentario)
+
+    return render(
+        request,
+        "insumos/comentario_form.html",
+        {
+            "modelo": modelo,
+            "comentario": comentario,
+            "form": form,
+            "back_url": back_url,
+        },
+    )
+
+
+@login_required
+def comentario_delete(request, modelo_id, pk):
+    modelo = get_object_or_404(
+        _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
+        pk=modelo_id,
+    )
+    comentario = get_object_or_404(ComentarioInsumos, pk=pk, modelo=modelo)
+    can_manage = _auditoria_is_admin(request.user) or (comentario.autor_id == request.user.id)
+
+    preserved = {}
+    for k in ("inicio", "fim", "page", "per_page"):
+        v = (request.GET.get(k) or "").strip()
+        if v:
+            preserved[k] = v
+    back_url = reverse("insumos:registros_por_modelo", args=[modelo.id])
+    if preserved:
+        back_url = f"{back_url}?{urlencode(preserved)}"
+
+    if not can_manage:
+        messages.error(request, "Você não tem permissão para remover este comentário.")
+        return redirect(back_url)
+
+    if request.method == "POST":
+        comentario.delete()
+        messages.success(request, "Comentário removido com sucesso.")
+        return redirect(back_url)
+
+    return render(
+        request,
+        "insumos/comentario_confirm_delete.html",
+        {
+            "modelo": modelo,
+            "comentario": comentario,
+            "back_url": back_url,
+        },
+    )
 
 
 @login_required
