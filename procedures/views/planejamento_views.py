@@ -85,10 +85,17 @@ def planejamentos_list_view(request):
     # Buscar procedimentos para filtro
     procedimentos = Procedimento.objects.all().order_by('codigo')[:100]
     
-    # Buscar instrutores (colaboradores que já foram instrutores)
-    instrutores = Colaborador.objects.filter(
-        treinamentos_planejados__isnull=False
-    ).distinct().order_by('nome_completo')
+    # Buscar instrutores (apenas os que aparecem nos planejamentos)
+    instrutor_ids = (
+        PlanejamentoTreinamento.objects.exclude(instrutor__isnull=True)
+        .values_list('instrutor_id', flat=True)
+        .distinct()
+    )
+    instrutores = (
+        Colaborador.objects.filter(id__in=instrutor_ids, is_active=True)
+        .distinct()
+        .order_by('nome_completo')
+    )
     
     # Buscar todos colaboradores para filtro de treinandos
     colaboradores = Colaborador.objects.filter(is_active=True).order_by('nome_completo')[:200]
