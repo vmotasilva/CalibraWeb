@@ -2,6 +2,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Account / Password APIs
+    path('api/account/change-password/', views.api_change_password, name='api_change_password'),
+    path('api/account/reset-password-totp/', views.api_reset_password_totp, name='api_reset_password_totp'),
+
     # Import Jobs
     path('imports/jobs/', views.import_jobs_view, name='import_jobs'),
     path('imports/jobs/json/', views.import_jobs_json_view, name='import_jobs_json'),

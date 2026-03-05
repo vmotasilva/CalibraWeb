@@ -68,6 +68,12 @@
             <i class="bi bi-box-arrow-in-right me-2"></i>Entrar
         </button>
     </div>
+
+    <div class="text-center mt-3">
+        <button type="button" class="btn btn-link" data-bs-toggle="modal" data-bs-target="#resetPasswordTotpModal">
+            Redefinir senha com código do autenticador
+        </button>
+    </div>
 </form>
 
 {% elif wizard.steps.current == 'token' %}
@@ -166,6 +172,50 @@
 </form>
 {% endif %}
 
+<!-- Modal Reset de senha via Autenticador (TOTP) -->
+<div class="modal fade" id="resetPasswordTotpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-shield-lock me-2"></i>Redefinir senha</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Informe seu <strong>usuário</strong> (ou e-mail), o <strong>código de 6 dígitos</strong> do autenticador e escolha a nova senha.
+                </div>
+
+                <div id="resetTotpAlert" class="alert d-none" role="alert"></div>
+
+                <div class="mb-3">
+                    <label class="form-label">Usuário ou e-mail</label>
+                    <input type="text" class="form-control" id="resetTotpUsername" autocomplete="username">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Código do autenticador</label>
+                    <input type="text" class="form-control text-center" id="resetTotpCode" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Nova senha</label>
+                    <input type="password" class="form-control" id="resetTotpNewPassword" autocomplete="new-password">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Confirmar nova senha</label>
+                    <input type="password" class="form-control" id="resetTotpConfirmPassword" autocomplete="new-password">
+                    <div class="invalid-feedback">As senhas não conferem.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnResetTotpPassword">Concluir troca de senha</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const toggleBtn = document.getElementById('togglePassword');
@@ -180,6 +230,103 @@ document.addEventListener('DOMContentLoaded', function() {
             eyeIcon.classList.toggle('bi-eye-slash');
         });
     }
+
+    // Reset de senha via TOTP (autenticador)
+    const resetModalEl = document.getElementById('resetPasswordTotpModal');
+    const resetAlertEl = document.getElementById('resetTotpAlert');
+    const resetUserEl = document.getElementById('resetTotpUsername');
+    const resetCodeEl = document.getElementById('resetTotpCode');
+    const resetNewEl = document.getElementById('resetTotpNewPassword');
+    const resetConfEl = document.getElementById('resetTotpConfirmPassword');
+    const resetBtnEl = document.getElementById('btnResetTotpPassword');
+    const loginUserEl = document.getElementById('id_auth-username');
+
+    const resetSetAlert = (msg, ok) => {
+        if (!resetAlertEl) return;
+        resetAlertEl.classList.remove('d-none', 'alert-success', 'alert-danger');
+        resetAlertEl.classList.add(ok ? 'alert-success' : 'alert-danger');
+        resetAlertEl.textContent = msg;
+    };
+
+    const resetClearAlert = () => {
+        if (!resetAlertEl) return;
+        resetAlertEl.classList.add('d-none');
+        resetAlertEl.textContent = '';
+        resetAlertEl.classList.remove('alert-success', 'alert-danger');
+    };
+
+    const resetValidateMatch = () => {
+        if (!resetConfEl) return true;
+        const match = String(resetNewEl?.value || '') === String(resetConfEl.value || '');
+        resetConfEl.classList.toggle('is-invalid', !match && (resetConfEl.value || '').length > 0);
+        return match;
+    };
+
+    resetNewEl?.addEventListener('input', resetValidateMatch);
+    resetConfEl?.addEventListener('input', resetValidateMatch);
+
+    resetModalEl?.addEventListener('show.bs.modal', () => {
+        resetClearAlert();
+        if (resetUserEl) resetUserEl.value = String(loginUserEl?.value || '').trim();
+        if (resetCodeEl) resetCodeEl.value = '';
+        if (resetNewEl) resetNewEl.value = '';
+        if (resetConfEl) {
+            resetConfEl.value = '';
+            resetConfEl.classList.remove('is-invalid');
+        }
+    });
+
+    resetBtnEl?.addEventListener('click', async () => {
+        resetClearAlert();
+        if (!resetValidateMatch()) {
+            resetSetAlert('As senhas novas não conferem.', false);
+            return;
+        }
+
+        const identifier = String(resetUserEl?.value || '').trim();
+        const otpCode = String(resetCodeEl?.value || '').trim();
+        const newPassword = String(resetNewEl?.value || '');
+        const confirmPassword = String(resetConfEl?.value || '');
+
+        if (!identifier || !otpCode || !newPassword || !confirmPassword) {
+            resetSetAlert('Preencha todos os campos.', false);
+            return;
+        }
+
+        const originalText = resetBtnEl.textContent;
+        resetBtnEl.disabled = true;
+        resetBtnEl.textContent = 'Processando...';
+
+        try {
+            const response = await fetch("{% url 'api_reset_password_totp' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    username: identifier,
+                    otp_code: otpCode,
+                    new_password: newPassword,
+                    confirm_password: confirmPassword
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                resetSetAlert(data.message || 'Senha redefinida com sucesso.', true);
+                const instance = bootstrap.Modal.getInstance(resetModalEl);
+                setTimeout(() => instance?.hide(), 700);
+            } else {
+                resetSetAlert(data.error || 'Não foi possível redefinir a senha.', false);
+            }
+        } catch (e) {
+            resetSetAlert('Erro de conexão.', false);
+        } finally {
+            resetBtnEl.disabled = false;
+            resetBtnEl.textContent = originalText;
+        }
+    });
 });
 </script>
 {% endblock %}

@@ -452,6 +452,11 @@
                     <a href="/admin/" target="_blank" class="btn btn-sm btn-outline-warning me-2" title="Admin">⚙️</a>
                 {% endif %}
 
+                <!-- Trocar senha -->
+                <button type="button" class="btn btn-sm btn-outline-light me-2" data-bs-toggle="modal" data-bs-target="#changePasswordModal" title="Trocar senha">
+                    <i class="bi bi-key"></i>
+                </button>
+
                 <form action="{% url 'logout' %}" method="post" class="d-inline">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-danger">Sair</button>
@@ -479,6 +484,41 @@
     {% block content %}
     {% endblock content %}
 
+</div>
+
+<!-- Modal Trocar Senha (usuário logado) -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-key me-2"></i>Trocar senha</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="changePasswordAlert" class="alert d-none" role="alert"></div>
+
+                <div class="mb-3">
+                    <label class="form-label">Senha atual</label>
+                    <input type="password" class="form-control" id="currentPassword" autocomplete="current-password">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nova senha</label>
+                    <input type="password" class="form-control" id="newPassword" autocomplete="new-password">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Confirmar nova senha</label>
+                    <input type="password" class="form-control" id="confirmNewPassword" autocomplete="new-password">
+                    <div class="invalid-feedback">As senhas não conferem.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnChangePassword">
+                    Concluir troca de senha
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -516,6 +556,98 @@
 
         syncBodyOffsetWithNavbar();
         window.addEventListener('resize', syncBodyOffsetWithNavbar);
+
+        // Troca de senha (usuário logado)
+        const changeModalEl = document.getElementById('changePasswordModal');
+        const alertEl = document.getElementById('changePasswordAlert');
+        const currentEl = document.getElementById('currentPassword');
+        const newEl = document.getElementById('newPassword');
+        const confirmEl = document.getElementById('confirmNewPassword');
+        const btnEl = document.getElementById('btnChangePassword');
+
+        const setAlert = (msg, ok) => {
+            if (!alertEl) return;
+            alertEl.classList.remove('d-none', 'alert-success', 'alert-danger');
+            alertEl.classList.add(ok ? 'alert-success' : 'alert-danger');
+            alertEl.textContent = msg;
+        };
+
+        const clearAlert = () => {
+            if (!alertEl) return;
+            alertEl.classList.add('d-none');
+            alertEl.textContent = '';
+            alertEl.classList.remove('alert-success', 'alert-danger');
+        };
+
+        const validateMatch = () => {
+            if (!confirmEl) return true;
+            const match = String(newEl?.value || '') === String(confirmEl.value || '');
+            confirmEl.classList.toggle('is-invalid', !match && (confirmEl.value || '').length > 0);
+            return match;
+        };
+
+        newEl?.addEventListener('input', validateMatch);
+        confirmEl?.addEventListener('input', validateMatch);
+
+        changeModalEl?.addEventListener('show.bs.modal', () => {
+            clearAlert();
+            if (currentEl) currentEl.value = '';
+            if (newEl) newEl.value = '';
+            if (confirmEl) {
+                confirmEl.value = '';
+                confirmEl.classList.remove('is-invalid');
+            }
+        });
+
+        btnEl?.addEventListener('click', async () => {
+            clearAlert();
+            if (!validateMatch()) {
+                setAlert('As senhas novas não conferem.', false);
+                return;
+            }
+
+            const currentPassword = String(currentEl?.value || '').trim();
+            const newPassword = String(newEl?.value || '');
+            const confirmPassword = String(confirmEl?.value || '');
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                setAlert('Preencha todos os campos.', false);
+                return;
+            }
+
+            const originalText = btnEl.textContent;
+            btnEl.disabled = true;
+            btnEl.textContent = 'Processando...';
+
+            try {
+                const response = await fetch("{% url 'api_change_password' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    setAlert(data.message || 'Senha alterada com sucesso.', true);
+                    const instance = bootstrap.Modal.getInstance(changeModalEl);
+                    setTimeout(() => instance?.hide(), 600);
+                } else {
+                    setAlert(data.error || 'Erro ao alterar senha.', false);
+                }
+            } catch (e) {
+                setAlert('Erro de conexão.', false);
+            } finally {
+                btnEl.disabled = false;
+                btnEl.textContent = originalText;
+            }
+        });
     });
 </script>
 {% block extra_js %}
