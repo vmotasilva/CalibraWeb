@@ -574,7 +574,39 @@ document.addEventListener('DOMContentLoaded', function() {
             };
         }
 
-        // SIM_NAO: barras empilhadas | LISTA: barras agrupadas
+        // LISTA: exibir total no período (uma barra por opção)
+        if (tipo === 'LISTA') {
+            const optLabels = (datasetsIn || []).map(ds => String(ds.label || '').trim()).filter(Boolean);
+            const optTotals = (datasetsIn || []).map(ds => {
+                const arr = Array.isArray(ds.data) ? ds.data : [];
+                return arr.reduce((acc, v) => acc + (Number(v) || 0), 0);
+            });
+
+            return {
+                type: 'bar',
+                data: {
+                    labels: optLabels,
+                    datasets: [
+                        {
+                            label: 'Respostas',
+                            data: optTotals,
+                            borderWidth: 1,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { stacked: false, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                        y: { stacked: false, beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                }
+            };
+        }
+
+        // SIM_NAO: barras empilhadas por data
         const stackedBars = (tipo === 'SIM_NAO');
         return {
             type: 'bar',
