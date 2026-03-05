@@ -499,15 +499,30 @@
 
                 <div class="mb-3">
                     <label class="form-label">Senha atual</label>
-                    <input type="password" class="form-control" id="currentPassword" autocomplete="current-password">
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="changePasswordCurrent" autocomplete="current-password">
+                        <button class="btn btn-outline-secondary" type="button" id="toggleChangePasswordCurrent" aria-label="Mostrar/ocultar senha atual">
+                            <i class="bi bi-eye" id="iconChangePasswordCurrent"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Nova senha</label>
-                    <input type="password" class="form-control" id="newPassword" autocomplete="new-password">
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="changePasswordNew" autocomplete="new-password">
+                        <button class="btn btn-outline-secondary" type="button" id="toggleChangePasswordNew" aria-label="Mostrar/ocultar nova senha">
+                            <i class="bi bi-eye" id="iconChangePasswordNew"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="mb-2">
                     <label class="form-label">Confirmar nova senha</label>
-                    <input type="password" class="form-control" id="confirmNewPassword" autocomplete="new-password">
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="changePasswordConfirm" autocomplete="new-password">
+                        <button class="btn btn-outline-secondary" type="button" id="toggleChangePasswordConfirm" aria-label="Mostrar/ocultar confirmação da senha">
+                            <i class="bi bi-eye" id="iconChangePasswordConfirm"></i>
+                        </button>
+                    </div>
                     <div class="invalid-feedback">As senhas não conferem.</div>
                 </div>
             </div>
@@ -560,10 +575,26 @@
         // Troca de senha (usuário logado)
         const changeModalEl = document.getElementById('changePasswordModal');
         const alertEl = document.getElementById('changePasswordAlert');
-        const currentEl = document.getElementById('currentPassword');
-        const newEl = document.getElementById('newPassword');
-        const confirmEl = document.getElementById('confirmNewPassword');
+        const currentEl = document.getElementById('changePasswordCurrent');
+        const newEl = document.getElementById('changePasswordNew');
+        const confirmEl = document.getElementById('changePasswordConfirm');
         const btnEl = document.getElementById('btnChangePassword');
+
+        const wireToggle = (toggleId, inputEl, iconId) => {
+            const btn = document.getElementById(toggleId);
+            const icon = document.getElementById(iconId);
+            if (!btn || !inputEl || !icon) return;
+            btn.addEventListener('click', () => {
+                const nextType = inputEl.getAttribute('type') === 'password' ? 'text' : 'password';
+                inputEl.setAttribute('type', nextType);
+                icon.classList.toggle('bi-eye');
+                icon.classList.toggle('bi-eye-slash');
+            });
+        };
+
+        wireToggle('toggleChangePasswordCurrent', currentEl, 'iconChangePasswordCurrent');
+        wireToggle('toggleChangePasswordNew', newEl, 'iconChangePasswordNew');
+        wireToggle('toggleChangePasswordConfirm', confirmEl, 'iconChangePasswordConfirm');
 
         const setAlert = (msg, ok) => {
             if (!alertEl) return;
