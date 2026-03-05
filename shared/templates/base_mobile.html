@@ -204,18 +204,6 @@
                             {% endif %}
                         {% endif %}
 
-                        {% can_nav_block user 'insumos' 'operacao' as nav_ins_op %}
-                        {% if nav_ins_op %}
-                            {% can_nav_view user 'insumos:registros_list' 'insumos' as nav_ins_regs %}
-                            {% can_nav_view user 'insumos:registro_create' 'insumos' as nav_ins_av %}
-                            {% if nav_ins_regs or nav_ins_av %}
-                                <li><h6 class="dropdown-header text-muted">OPERAÇÃO</h6></li>
-                                {% if nav_ins_regs %}<li><a class="dropdown-item" href="{% url 'insumos:registros_list' %}">Modelos Cadastrados / Período</a></li>{% endif %}
-                                {% if nav_ins_av %}<li><a class="dropdown-item" href="{% url 'insumos:registro_create' %}">Avaliação de Dados</a></li>{% endif %}
-                                <li><hr class="dropdown-divider"></li>
-                            {% endif %}
-                        {% endif %}
-
                         {% can_nav_block user 'insumos' 'analise' as nav_ins_an %}
                         {% if nav_ins_an %}
                             {% can_nav_view user 'insumos:dashboard' 'insumos' as nav_ins_dash %}
