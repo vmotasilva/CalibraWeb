@@ -245,14 +245,25 @@ def editar_planejamento_view(request, planejamento_id):
     planejamento = get_object_or_404(PlanejamentoTreinamento, id=planejamento_id)
     
     if request.method == 'POST':
-        # Processar múltiplos procedimentos - usar getlist
-        procedimentos_ids = request.POST.getlist('procedimentos')
-        colaboradores_ids = request.POST.getlist('colaboradores')
+        def _normalize_id_list(values):
+            normalized = []
+            for value in values:
+                value = str(value).strip()
+                if value.isdigit():
+                    normalized.append(value)
+            return normalized
+
+        # Processar múltiplos procedimentos/colaboradores (evita limpar M2M com valores vazios)
+        procedimentos_posted = 'procedimentos' in request.POST
+        colaboradores_posted = 'colaboradores' in request.POST
+
+        procedimentos_ids = _normalize_id_list(request.POST.getlist('procedimentos'))
+        colaboradores_ids = _normalize_id_list(request.POST.getlist('colaboradores'))
         
         form = PlanejamentoTreinamentoForm(request.POST, instance=planejamento)
         if form.is_valid():
             # Validar se há colaboradores selecionados (evita zerar a relação no editar)
-            if not colaboradores_ids:
+            if colaboradores_posted and not colaboradores_ids:
                 mensagem = 'Selecione pelo menos um colaborador.'
                 form.add_error('colaboradores', mensagem)
                 messages.error(request, f'Erro ao atualizar planejamento: {mensagem}')
@@ -261,11 +272,12 @@ def editar_planejamento_view(request, planejamento_id):
                 planejamento.save()
                 
                 # Atualizar procedimentos
-                if procedimentos_ids:
+                if procedimentos_posted and procedimentos_ids:
                     planejamento.procedimentos.set(procedimentos_ids)
 
                 # Atualizar colaboradores
-                planejamento.colaboradores.set(colaboradores_ids)
+                if colaboradores_posted and colaboradores_ids:
+                    planejamento.colaboradores.set(colaboradores_ids)
 
                 messages.success(request, 'Planejamento atualizado com sucesso!')
                 return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)

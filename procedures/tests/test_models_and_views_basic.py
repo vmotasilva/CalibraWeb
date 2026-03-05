@@ -106,6 +106,18 @@ class PlanejamentoTreinamentoEditViewTest(TestCase):
         )
         self.planejamento.colaboradores.set([self.colab1, self.colab2])
 
+        self.proc1 = Procedimento.objects.create(
+            codigo='POP.101',
+            nome='Procedimento 101',
+            numero_revisao='01',
+        )
+        self.proc2 = Procedimento.objects.create(
+            codigo='POP.102',
+            nome='Procedimento 102',
+            numero_revisao='01',
+        )
+        self.planejamento.procedimentos.set([self.proc1, self.proc2])
+
     def test_editar_nao_desassocia_colaboradores_quando_post_sem_colaboradores(self):
         request = self.rf.post(
             reverse('procedures:editar_planejamento', args=[self.planejamento.id]),
@@ -125,7 +137,7 @@ class PlanejamentoTreinamentoEditViewTest(TestCase):
 
         response = editar_planejamento_view(request, planejamento_id=self.planejamento.id)
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
         self.planejamento.refresh_from_db()
         self.assertEqual(self.planejamento.colaboradores.count(), 2)
 
@@ -151,4 +163,54 @@ class PlanejamentoTreinamentoEditViewTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.planejamento.refresh_from_db()
         self.assertEqual(self.planejamento.titulo, 'Treinamento X (edit ok)')
+        self.assertEqual(self.planejamento.colaboradores.count(), 2)
+
+    def test_editar_nao_limpa_procedimentos_quando_post_com_valor_em_branco(self):
+        request = self.rf.post(
+            reverse('procedures:editar_planejamento', args=[self.planejamento.id]),
+            data={
+                'titulo': 'Treinamento X (edit proc blank)',
+                'data_prevista': self.planejamento.data_prevista.isoformat(),
+                'status': 'PLANEJADO',
+                'colaboradores': [str(self.colab1.id), str(self.colab2.id)],
+                # Simula hidden input quebrado/sem valor
+                'procedimentos': [''],
+            },
+        )
+        request.user = self.user
+
+        session_middleware = SessionMiddleware(lambda req: None)
+        session_middleware.process_request(request)
+        request.session.save()
+        setattr(request, '_messages', FallbackStorage(request))
+
+        response = editar_planejamento_view(request, planejamento_id=self.planejamento.id)
+
+        self.assertEqual(response.status_code, 200)
+        self.planejamento.refresh_from_db()
+        self.assertEqual(self.planejamento.procedimentos.count(), 2)
+
+    def test_editar_nao_limpa_colaboradores_quando_post_com_valor_em_branco(self):
+        request = self.rf.post(
+            reverse('procedures:editar_planejamento', args=[self.planejamento.id]),
+            data={
+                'titulo': 'Treinamento X (edit colab blank)',
+                'data_prevista': self.planejamento.data_prevista.isoformat(),
+                'status': 'PLANEJADO',
+                # Simula hidden input quebrado/sem valor
+                'colaboradores': [''],
+                'procedimentos': [str(self.proc1.id), str(self.proc2.id)],
+            },
+        )
+        request.user = self.user
+
+        session_middleware = SessionMiddleware(lambda req: None)
+        session_middleware.process_request(request)
+        request.session.save()
+        setattr(request, '_messages', FallbackStorage(request))
+
+        response = editar_planejamento_view(request, planejamento_id=self.planejamento.id)
+
+        self.assertEqual(response.status_code, 200)
+        self.planejamento.refresh_from_db()
         self.assertEqual(self.planejamento.colaboradores.count(), 2)
