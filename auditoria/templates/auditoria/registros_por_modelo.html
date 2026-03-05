@@ -513,6 +513,8 @@ document.addEventListener('DOMContentLoaded', function() {
             };
         }
 
+        const stackedBars = (tipo === 'SIM_NAO');
+
         return {
             type: 'bar',
             data: {
@@ -528,8 +530,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 maintainAspectRatio: false,
                 plugins: { legend: { position: 'top' } },
                 scales: {
-                    x: { stacked: true, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
-                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                    x: { stacked: stackedBars, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                    y: { stacked: stackedBars, beginAtZero: true, ticks: { precision: 0 } }
                 }
             }
         };
@@ -572,7 +574,8 @@ document.addEventListener('DOMContentLoaded', function() {
             };
         }
 
-        // SIM_NAO / LISTA: barras empilhadas
+        // SIM_NAO: barras empilhadas | LISTA: barras agrupadas
+        const stackedBars = (tipo === 'SIM_NAO');
         return {
             type: 'bar',
             data: {
@@ -588,8 +591,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 maintainAspectRatio: false,
                 plugins: { legend: { position: 'top' } },
                 scales: {
-                    x: { stacked: true, offset: singlePoint },
-                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                    x: { stacked: stackedBars, offset: singlePoint },
+                    y: { stacked: stackedBars, beginAtZero: true, ticks: { precision: 0 } }
                 }
             }
         };
