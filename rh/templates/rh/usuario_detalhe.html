@@ -598,7 +598,7 @@
             <div class="modal-body">
                 <div class="alert alert-secondary mb-3">
                     <small>
-                        Selecione um usuário abaixo e clique em <strong>Aplicar</strong> para igualar <strong>somente os módulos (No menu)</strong> de <strong>{{ usuario.username }}</strong>.
+                        Selecione um usuário abaixo e clique em <strong>Aplicar</strong> para igualar as permissões de <strong>módulos, blocos e funções</strong> de <strong>{{ usuario.username }}</strong>.
                     </small>
                 </div>
                 <div class="mb-3">
@@ -1110,7 +1110,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('confirmCopyPerms')?.addEventListener('click', async function() {
         if (!selectedUsuarioPermId) return;
 
-        if (!confirm('Tem certeza que deseja substituir as permissões de MÓDULOS (No menu) deste usuário pelas do usuário selecionado?')) {
+        if (!confirm('Tem certeza que deseja substituir as permissões de MÓDULOS, BLOCOS e FUNÇÕES deste usuário pelas do usuário selecionado?')) {
             return;
         }
 
@@ -1137,16 +1137,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 showToast(data.message || 'Permissões copiadas com sucesso!', true);
 
-                // Atualizar UI (somente módulos) sem reload
-                const appliedModules = new Set((data.modules || []).map(String));
+                // Atualizar UI (core.nav_*) sem reload
+                const appliedNav = new Set(((data.core_nav || data.modules) || []).map(String));
                 document.querySelectorAll('.perm-checkbox[data-app-label="core"]').forEach(cb => {
                     if (cb.disabled) return;
                     const codename = String(cb.dataset.codename || '');
-                    if (codename.startsWith('nav_mod_')) {
-                        cb.checked = appliedModules.has(codename);
-                    } else {
-                        cb.checked = false;
-                    }
+                    if (!codename.startsWith('nav_')) return;
+                    cb.checked = appliedNav.has(codename);
                 });
 
                 // Fechar modal

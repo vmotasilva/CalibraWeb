@@ -2347,7 +2347,7 @@ def api_listar_usuarios_permissoes(request):
 @login_required
 @require_http_methods(["POST"])
 def api_copiar_permissoes(request):
-    """Copia apenas as permissões de MÓDULO (core.nav_mod_*) de um usuário para outro.
+    """Copia permissões de navegação do CORE (módulos, blocos e funções: core.nav_*).
 
     Espera JSON:
     - target_user_id: usuário em análise (destino)
@@ -2378,7 +2378,7 @@ def api_copiar_permissoes(request):
                 status=400,
             )
 
-        # Estrutura de navegação para mapear apenas permissões de MÓDULO (nav_mod_*)
+        # Estrutura de navegação para mapear permissões CORE (nav_*), respeitando hierarquia
         from shared.permissions import get_nav_structure
 
         nav_structure = get_nav_structure()
@@ -2392,27 +2392,66 @@ def api_copiar_permissoes(request):
             return codename
 
         module_codenames: set[str] = set()
+        codename_to_module: dict[str, str] = {}
+
         for module in nav_structure:
             module_codename = _core_codename(module.get("module_perm"))
-            if module_codename and str(module_codename).startswith('nav_mod_'):
-                module_codenames.add(module_codename)
+            if not module_codename:
+                continue
 
-        # Determinar quais módulos a origem possui
+            module_codenames.add(module_codename)
+
+            for bloco in module.get("blocos") or []:
+                block_codename = _core_codename(bloco.get("perm"))
+                if block_codename:
+                    codename_to_module[block_codename] = module_codename
+                for func in bloco.get("funcoes") or []:
+                    func_codename = _core_codename(func.get("perm"))
+                    if func_codename:
+                        codename_to_module[func_codename] = module_codename
+
+        # Determinar permissões core.nav_* de origem
         if source.is_superuser:
-            selected_modules = set(module_codenames)
+            source_core_nav = set()
+            for module in nav_structure:
+                mc = _core_codename(module.get('module_perm'))
+                if mc:
+                    source_core_nav.add(mc)
+                for bloco in module.get('blocos') or []:
+                    bc = _core_codename(bloco.get('perm'))
+                    if bc:
+                        source_core_nav.add(bc)
+                    for func in bloco.get('funcoes') or []:
+                        fc = _core_codename(func.get('perm'))
+                        if fc:
+                            source_core_nav.add(fc)
         else:
-            source_core_codenames = set(
-                source.user_permissions.filter(content_type__app_label='core').values_list('codename', flat=True)
+            source_core_nav = set(
+                source.user_permissions.filter(
+                    content_type__app_label='core',
+                    codename__startswith='nav_'
+                ).values_list('codename', flat=True)
             )
-            selected_modules = {c for c in source_core_codenames if c in module_codenames}
 
-        # Aplicar no destino: substituir TODAS as permissões core.nav_* por apenas os módulos selecionados
+        # Mestre: módulos (nav_mod_*) controlam blocos/funções
+        selected_modules = {c for c in source_core_nav if c in module_codenames}
+
+        filtered_nav: set[str] = set()
+        for codename in source_core_nav:
+            if codename in module_codenames:
+                filtered_nav.add(codename)
+                continue
+            module_owner = codename_to_module.get(codename)
+            if module_owner is None or module_owner in selected_modules:
+                filtered_nav.add(codename)
+
+        # Aplicar no destino: substituir TODAS as permissões core.nav_*
         core_nav_remove = Permission.objects.filter(content_type__app_label='core', codename__startswith='nav_')
         target.user_permissions.remove(*core_nav_remove)
 
         perms_to_add = Permission.objects.filter(
             content_type__app_label='core',
-            codename__in=sorted(selected_modules),
+            codename__in=sorted(filtered_nav),
         )
         target.user_permissions.add(*perms_to_add)
         total_adicionadas = perms_to_add.count()
@@ -2427,7 +2466,8 @@ def api_copiar_permissoes(request):
                 'success': True,
                 'total': total_adicionadas,
                 'modules': sorted(selected_modules),
-                'message': f'Permissões de módulos copiadas com sucesso ({total_adicionadas}).',
+                'core_nav': sorted(filtered_nav),
+                'message': f'Permissões copiadas com sucesso ({total_adicionadas}).',
             }
         )
 
