@@ -147,16 +147,6 @@
                             {% endif %}
                         {% endif %}
 
-                        {% can_nav_block user 'auditoria' 'operacao' as nav_aud_op %}
-                        {% if nav_aud_op %}
-                            {% can_nav_view user 'auditoria:registro_create' 'auditoria' as nav_aud_av %}
-                            {% if nav_aud_av %}
-                                <li><h6 class="dropdown-header text-muted">OPERAÇÃO</h6></li>
-                                {% if nav_aud_av %}<li><a class="dropdown-item" href="{% url 'auditoria:registro_create' %}">Avaliação de Dados</a></li>{% endif %}
-                                <li><hr class="dropdown-divider"></li>
-                            {% endif %}
-                        {% endif %}
-
                         {% can_nav_block user 'auditoria' 'analise' as nav_aud_an %}
                         {% if nav_aud_an %}
                             {% can_nav_view user 'auditoria:dashboard' 'auditoria' as nav_aud_dash %}
