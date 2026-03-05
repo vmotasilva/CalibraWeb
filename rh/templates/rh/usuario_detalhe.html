@@ -478,9 +478,14 @@
                         <strong>Dica:</strong> Marque as permissões desejadas e clique em "Salvar Permissões" para aplicar as alterações.
                     </small>
                 </div>
-                <button type="button" class="btn btn-success btn-lg" id="btnSalvarPermissoes" style="min-width: 200px;">
-                    <i class="bi bi-save me-2"></i>Salvar Permissões
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-lg" data-bs-toggle="modal" data-bs-target="#copyPermissoesModal" style="min-width: 200px;">
+                        <i class="bi bi-copy me-2"></i>Copiar permissões
+                    </button>
+                    <button type="button" class="btn btn-success btn-lg" id="btnSalvarPermissoes" style="min-width: 200px;">
+                        <i class="bi bi-save me-2"></i>Salvar Permissões
+                    </button>
+                </div>
             </div>
             {% elif request.user.is_staff %}
             <div class="alert alert-info mb-0">
@@ -580,6 +585,44 @@
     </div>
 </div>
 
+<!-- Modal Copiar Permissões -->
+<div class="modal fade" id="copyPermissoesModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-copy me-2"></i>Copiar permissões
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-secondary mb-3">
+                    <small>
+                        Selecione um usuário abaixo e clique em <strong>Aplicar</strong> para igualar <strong>somente os módulos (No menu)</strong> de <strong>{{ usuario.username }}</strong>.
+                    </small>
+                </div>
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="searchUsuarioPerm" placeholder="Buscar usuário por nome, username ou e-mail...">
+                </div>
+                <div id="usuariosPermList" style="max-height: 420px; overflow-y: auto;">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Carregando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Carregando usuários...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmCopyPerms" disabled>
+                    <i class="bi bi-check2-circle me-1"></i> Aplicar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast de notificação -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
     <div id="toastNotification" class="toast align-items-center border-0" role="alert">
@@ -602,6 +645,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const toastMessage = document.getElementById('toastMessage');
     
     let selectedColaboradorId = null;
+    let selectedUsuarioPermId = null;
     
     function showToast(message, isSuccess = true) {
         toastEl.classList.remove('text-bg-success', 'text-bg-danger');
@@ -844,6 +888,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('searchColaborador').value = '';
         loadColaboradores('');
     });
+
+    // Carregar usuários quando abrir modal de copiar permissões
+    document.getElementById('copyPermissoesModal')?.addEventListener('show.bs.modal', function() {
+        selectedUsuarioPermId = null;
+        document.getElementById('confirmCopyPerms').disabled = true;
+        document.getElementById('searchUsuarioPerm').value = '';
+        loadUsuariosPermissoes('');
+    });
     
     let searchTimeout = null;
     
@@ -877,6 +929,93 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Erro:', error);
             listEl.innerHTML = '<div class="alert alert-danger">Erro de conexão</div>';
         }
+    }
+
+    async function loadUsuariosPermissoes(search = '') {
+        const listEl = document.getElementById('usuariosPermList');
+        listEl.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mt-2 text-muted">Carregando usuários...</p>
+            </div>
+        `;
+
+        try {
+            const url = new URL("{% url 'rh:api_listar_usuarios_permissoes' %}", window.location.origin);
+            url.searchParams.set('exclude_user_id', '{{ usuario.id }}');
+            if (search) {
+                url.searchParams.set('search', search);
+            }
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.success) {
+                renderUsuariosPermissoes(data.usuarios || []);
+            } else {
+                listEl.innerHTML = '<div class="alert alert-danger">Erro ao carregar usuários</div>';
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            listEl.innerHTML = '<div class="alert alert-danger">Erro de conexão</div>';
+        }
+    }
+
+    function renderUsuariosPermissoes(usuarios) {
+        const listEl = document.getElementById('usuariosPermList');
+
+        if (!usuarios || usuarios.length === 0) {
+            listEl.innerHTML = '<div class="alert alert-info">Nenhum usuário encontrado. Tente outra busca.</div>';
+            return;
+        }
+
+        listEl.innerHTML = usuarios.map(u => {
+            const badges = [
+                `<span class="badge bg-dark ms-2">${u.username}</span>`,
+                u.is_superuser ? '<span class="badge badge-superuser ms-2"><i class="bi bi-crown-fill"></i> Superusuário</span>' : '',
+                (!u.is_superuser && u.is_staff) ? '<span class="badge badge-staff ms-2"><i class="bi bi-gear-fill"></i> Staff</span>' : ''
+            ].join('');
+
+            return `
+                <div class="usuario-perm-item card mb-2" data-id="${u.id}" data-is-superuser="${u.is_superuser}">
+                    <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${u.nome}</strong>
+                            ${badges}
+                            <br>
+                            <small class="text-muted">${u.setor} • ${u.cargo}</small>
+                        </div>
+                        <i class="bi bi-circle"></i>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        listEl.querySelectorAll('.usuario-perm-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const isSuper = this.dataset.isSuperuser === 'true';
+                if (isSuper) {
+                    if (!confirm('O usuário selecionado é SUPERUSUÁRIO. Ele tem acesso total automaticamente e pode não ter permissões individuais configuradas. Deseja continuar?')) {
+                        return;
+                    }
+                }
+
+                listEl.querySelectorAll('.usuario-perm-item').forEach(i => {
+                    i.classList.remove('selected', 'border-primary');
+                    const iconEl = i.querySelector('i');
+                    if (iconEl) iconEl.className = 'bi bi-circle';
+                });
+
+                this.classList.add('selected', 'border-primary');
+                const iconEl = this.querySelector('i');
+                if (iconEl) iconEl.className = 'bi bi-check-circle-fill text-primary';
+
+                selectedUsuarioPermId = this.dataset.id;
+                document.getElementById('confirmCopyPerms').disabled = false;
+            });
+        });
     }
     
     function renderColaboradores(colaboradores) {
@@ -952,6 +1091,81 @@ document.addEventListener('DOMContentLoaded', function() {
         searchTimeout = setTimeout(() => {
             loadColaboradores(search);
         }, 300);
+    });
+
+    // Busca de usuários para copiar permissões (debounce)
+    document.getElementById('searchUsuarioPerm')?.addEventListener('input', function() {
+        const search = this.value.trim();
+
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+
+        searchTimeout = setTimeout(() => {
+            loadUsuariosPermissoes(search);
+        }, 300);
+    });
+
+    // Confirmar cópia de permissões
+    document.getElementById('confirmCopyPerms')?.addEventListener('click', async function() {
+        if (!selectedUsuarioPermId) return;
+
+        if (!confirm('Tem certeza que deseja substituir as permissões de MÓDULOS (No menu) deste usuário pelas do usuário selecionado?')) {
+            return;
+        }
+
+        const btn = this;
+        btn.disabled = true;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Aplicando...';
+        showSaving(true);
+
+        try {
+            const response = await fetch("{% url 'rh:api_copiar_permissoes' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    target_user_id: {{ usuario.id }},
+                    source_user_id: Number(selectedUsuarioPermId)
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                showToast(data.message || 'Permissões copiadas com sucesso!', true);
+
+                // Atualizar UI (somente módulos) sem reload
+                const appliedModules = new Set((data.modules || []).map(String));
+                document.querySelectorAll('.perm-checkbox[data-app-label="core"]').forEach(cb => {
+                    if (cb.disabled) return;
+                    const codename = String(cb.dataset.codename || '');
+                    if (codename.startsWith('nav_mod_')) {
+                        cb.checked = appliedModules.has(codename);
+                    } else {
+                        cb.checked = false;
+                    }
+                });
+
+                // Fechar modal
+                const modalEl = document.getElementById('copyPermissoesModal');
+                const modalInstance = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+                modalInstance?.hide();
+            } else {
+                showToast(data.error || 'Erro ao copiar permissões', false);
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            showToast('Erro de conexão', false);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        } finally {
+            showSaving(false);
+        }
     });
     
     // Confirmar vinculação

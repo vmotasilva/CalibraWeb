@@ -30,6 +30,8 @@ from rh.views.views import (
     api_vincular_colaborador,
     api_colaboradores_sem_vinculo,
     api_criar_usuario,
+    api_listar_usuarios_permissoes,
+    api_copiar_permissoes,
     atualizar_liderancas_em_massa,
 )
 
@@ -72,6 +74,8 @@ urlpatterns = [
     path('usuarios/<int:user_id>/', detalhe_usuario_view, name='detalhe_usuario'),
     path('api/permissoes/atualizar/', api_atualizar_permissao, name='api_atualizar_permissao'),
     path('api/permissoes/atualizar-lote/', api_atualizar_permissoes_lote, name='api_atualizar_permissoes_lote'),
+    path('api/usuarios/listar/', api_listar_usuarios_permissoes, name='api_listar_usuarios_permissoes'),
+    path('api/permissoes/copiar/', api_copiar_permissoes, name='api_copiar_permissoes'),
     path('api/permissoes/toggle-staff/', api_toggle_staff, name='api_toggle_staff'),
     path('api/permissoes/toggle-superuser/', api_toggle_superuser, name='api_toggle_superuser'),
     path('api/usuarios/toggle-active/', api_toggle_user_active, name='api_toggle_user_active'),

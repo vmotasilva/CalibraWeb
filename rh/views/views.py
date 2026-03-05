@@ -2280,6 +2280,167 @@ def api_atualizar_permissoes_lote(request):
 
 
 @login_required
+def api_listar_usuarios_permissoes(request):
+    """Lista usuários (ativos) para seleção no modal de cópia de permissões.
+
+    Query params:
+    - exclude_user_id: id do usuário em análise (para não listar ele mesmo)
+    - search: termo para filtrar por username/nome/email
+
+    Apenas superusuários podem acessar.
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem listar usuários'}, status=403)
+
+    exclude_user_id = request.GET.get('exclude_user_id')
+    search = (request.GET.get('search') or '').strip()
+
+    usuarios_qs = User.objects.filter(is_active=True).order_by('username')
+    if exclude_user_id:
+        try:
+            usuarios_qs = usuarios_qs.exclude(id=int(exclude_user_id))
+        except (TypeError, ValueError):
+            pass
+
+    if search:
+        usuarios_qs = usuarios_qs.filter(
+            Q(username__icontains=search)
+            | Q(first_name__icontains=search)
+            | Q(last_name__icontains=search)
+            | Q(email__icontains=search)
+        )
+
+    usuarios = list(usuarios_qs[:200])
+
+    colabs = (
+        Colaborador.objects.filter(user_django__in=usuarios)
+        .select_related('setor')
+        .only('id', 'user_django_id', 'nome_completo', 'cargo', 'setor__nome')
+    )
+    colab_by_user_id = {c.user_django_id: c for c in colabs}
+
+    def _display_name(u: User, colab: Colaborador | None) -> str:
+        if colab and getattr(colab, 'nome_completo', None):
+            return colab.nome_completo
+        full = f"{u.first_name or ''} {u.last_name or ''}".strip()
+        return full or u.username
+
+    usuarios_data = []
+    for u in usuarios:
+        c = colab_by_user_id.get(u.id)
+        usuarios_data.append(
+            {
+                'id': u.id,
+                'username': u.username,
+                'nome': _display_name(u, c),
+                'email': u.email or '',
+                'setor': (c.setor.nome if c and c.setor else '-') if c else '-',
+                'cargo': (c.cargo or '-') if c else '-',
+                'is_superuser': bool(u.is_superuser),
+                'is_staff': bool(u.is_staff),
+            }
+        )
+
+    return JsonResponse({'success': True, 'usuarios': usuarios_data})
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_copiar_permissoes(request):
+    """Copia apenas as permissões de MÓDULO (core.nav_mod_*) de um usuário para outro.
+
+    Espera JSON:
+    - target_user_id: usuário em análise (destino)
+    - source_user_id: usuário selecionado no pop-up (origem)
+
+    Apenas superusuários podem executar.
+    """
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'error': 'Apenas superusuários podem copiar permissões'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        target_user_id = data.get('target_user_id')
+        source_user_id = data.get('source_user_id')
+
+        if not target_user_id or not source_user_id:
+            return JsonResponse(
+                {'success': False, 'error': 'target_user_id e source_user_id são obrigatórios'},
+                status=400,
+            )
+
+        target = User.objects.get(id=int(target_user_id))
+        source = User.objects.get(id=int(source_user_id))
+
+        if target.is_superuser:
+            return JsonResponse(
+                {'success': False, 'error': 'Não é necessário copiar permissões para um superusuário'},
+                status=400,
+            )
+
+        # Estrutura de navegação para mapear apenas permissões de MÓDULO (nav_mod_*)
+        from shared.permissions import get_nav_structure
+
+        nav_structure = get_nav_structure()
+
+        def _core_codename(full_perm: str | None) -> str | None:
+            if not full_perm or "." not in str(full_perm):
+                return None
+            app_label, codename = str(full_perm).split(".", 1)
+            if app_label != "core":
+                return None
+            return codename
+
+        module_codenames: set[str] = set()
+        for module in nav_structure:
+            module_codename = _core_codename(module.get("module_perm"))
+            if module_codename and str(module_codename).startswith('nav_mod_'):
+                module_codenames.add(module_codename)
+
+        # Determinar quais módulos a origem possui
+        if source.is_superuser:
+            selected_modules = set(module_codenames)
+        else:
+            source_core_codenames = set(
+                source.user_permissions.filter(content_type__app_label='core').values_list('codename', flat=True)
+            )
+            selected_modules = {c for c in source_core_codenames if c in module_codenames}
+
+        # Aplicar no destino: substituir TODAS as permissões core.nav_* por apenas os módulos selecionados
+        core_nav_remove = Permission.objects.filter(content_type__app_label='core', codename__startswith='nav_')
+        target.user_permissions.remove(*core_nav_remove)
+
+        perms_to_add = Permission.objects.filter(
+            content_type__app_label='core',
+            codename__in=sorted(selected_modules),
+        )
+        target.user_permissions.add(*perms_to_add)
+        total_adicionadas = perms_to_add.count()
+
+        target.refresh_from_db()
+
+        logger.info(
+            f"{request.user.username} copiou permissões de módulos de {source.username} para {target.username} ({total_adicionadas} módulos)"
+        )
+        return JsonResponse(
+            {
+                'success': True,
+                'total': total_adicionadas,
+                'modules': sorted(selected_modules),
+                'message': f'Permissões de módulos copiadas com sucesso ({total_adicionadas}).',
+            }
+        )
+
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Usuário não encontrado'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+    except Exception as e:
+        logger.error(f'Erro ao copiar permissões: {str(e)}', exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
 @require_http_methods(["POST"])
 def api_toggle_staff(request):
     """
