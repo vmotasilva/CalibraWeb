@@ -11,6 +11,8 @@ Compatibilidade:
 - Se o usuário ainda estiver usando grupos legados, o acesso continua funcionando.
 """
 
+import unicodedata
+
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 
@@ -247,11 +249,19 @@ NAV_STRUCTURE = [
         "module_perm": "core.nav_mod_treinamentos",
         "blocos": [
             {
+                "key": "acompanhamento",
+                "nome": "ACOMPANHAMENTO",
+                "perm": "core.nav_treinamentos_acompanhamento",
+                "funcoes": [
+                    {"nome": "Dashboard", "view_name": "procedures:dashboard_treinamentos", "perm": "core.nav_treinamentos_dashboard"},
+                    {"nome": "Calendário", "view_name": "procedures:treinamentos_calendario", "perm": "core.nav_treinamentos_calendario"},
+                ],
+            },
+            {
                 "key": "gestao",
                 "nome": "GESTÃO DE TREINAMENTOS",
                 "perm": "core.nav_treinamentos_gestao",
                 "funcoes": [
-                    {"nome": "Dashboard", "view_name": "procedures:dashboard_treinamentos", "perm": "core.nav_treinamentos_dashboard"},
                     {"nome": "Registros de Treinamento", "view_name": "procedures:treinamentos_list", "perm": "core.nav_treinamentos_registros"},
                     {"nome": "Novo Treinamento", "view_name": "procedures:novo_treinamento", "perm": "core.nav_treinamentos_novo_treinamento"},
                     {"nome": "Detalhe do Treinamento", "view_name": "procedures:treinamentos_detalhe", "perm": "core.nav_treinamentos_detalhe_treinamento"},
@@ -510,7 +520,13 @@ NAV_STRUCTURE = [
 
 
 def get_nav_structure():
-    return NAV_STRUCTURE
+    def _sort_key(text: str | None) -> str:
+        value = str(text or "")
+        value = unicodedata.normalize("NFKD", value)
+        value = "".join(ch for ch in value if not unicodedata.combining(ch))
+        return value.casefold()
+
+    return sorted(NAV_STRUCTURE, key=lambda m: _sort_key(m.get("nome")))
 
 
 def _nav_module_config(module_key: str):
