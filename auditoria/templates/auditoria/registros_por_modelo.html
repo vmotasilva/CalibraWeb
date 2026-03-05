@@ -45,7 +45,7 @@
                                 <a href="{% url 'auditoria:exportar_respostas_excel' modelo.id %}" class="btn btn-outline-success btn-sm">
                                     <i class="bi bi-file-earmark-excel"></i> Exportar Excel
                                 </a>
-                                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-comentarios" aria-expanded="false" aria-controls="collapse-comentarios">
+                                <button class="btn btn-outline-secondary btn-sm {% if not comentarios %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-comentarios" aria-expanded="{% if comentarios %}true{% else %}false{% endif %}" aria-controls="collapse-comentarios">
                                     <i class="bi bi-chat-left-text"></i> Comentários
                                 </button>
                                 <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
@@ -57,59 +57,6 @@
 
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle"></i> Total de registros preenchidos: <strong>{{ registros_count }}</strong>
-                    </div>
-
-                    <div class="collapse" id="collapse-comentarios">
-                        <div class="card shadow-sm mb-3">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <div class="fw-semibold"><i class="bi bi-chat-left-text"></i> Comentários</div>
-                                <div class="text-muted small">Filtrados pelo período selecionado</div>
-                            </div>
-                            <div class="card-body">
-                                <form method="post" class="mb-3">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="add_comment">
-                                    <div class="mb-2">
-                                        <textarea name="comentario" class="form-control" rows="3" placeholder="Adicionar comentário sobre esta auditoria..."></textarea>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        <i class="bi bi-plus-circle"></i> Adicionar comentário
-                                    </button>
-                                </form>
-
-                                {% if comentarios %}
-                                    <div class="list-group">
-                                        {% for c in comentarios %}
-                                            <div class="list-group-item">
-                                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                                    <div class="fw-semibold">
-                                                        {% if c.autor %}
-                                                            {{ c.autor.get_full_name|default:c.autor.username }}
-                                                        {% else %}
-                                                            <span class="text-muted">-</span>
-                                                        {% endif %}
-                                                    </div>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <div class="text-muted small">{{ c.criado_em|date:"d/m/Y H:i" }}</div>
-                                                        {% if is_auditoria_admin or c.autor_id == request.user.id %}
-                                                            <a class="btn btn-outline-secondary btn-sm" href="{% url 'auditoria:comentario_edit' modelo.id c.id %}?{{ querystring_with_page }}" title="Editar">
-                                                                <i class="bi bi-pencil"></i>
-                                                            </a>
-                                                            <a class="btn btn-outline-danger btn-sm" href="{% url 'auditoria:comentario_delete' modelo.id c.id %}?{{ querystring_with_page }}" title="Remover">
-                                                                <i class="bi bi-trash"></i>
-                                                            </a>
-                                                        {% endif %}
-                                                    </div>
-                                                </div>
-                                                <div class="mt-2" style="white-space: pre-wrap;">{{ c.texto }}</div>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                {% else %}
-                                    <div class="text-muted">Nenhum comentário no período selecionado.</div>
-                                {% endif %}
-                            </div>
-                        </div>
                     </div>
 
                     {% if estatisticas_perguntas %}
@@ -275,6 +222,59 @@
                         </div>
                     </div>
                     {% endif %}
+
+                    <div class="collapse{% if comentarios %} show{% endif %}" id="collapse-comentarios">
+                        <div class="card shadow-sm mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div class="fw-semibold"><i class="bi bi-chat-left-text"></i> Comentários</div>
+                                <div class="text-muted small">Filtrados pelo período selecionado</div>
+                            </div>
+                            <div class="card-body">
+                                <form method="post" class="mb-3">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_comment">
+                                    <div class="mb-2">
+                                        <textarea name="comentario" class="form-control" rows="3" placeholder="Adicionar comentário sobre esta auditoria..."></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-plus-circle"></i> Adicionar comentário
+                                    </button>
+                                </form>
+
+                                {% if comentarios %}
+                                    <div class="list-group">
+                                        {% for c in comentarios %}
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                    <div class="fw-semibold">
+                                                        {% if c.autor %}
+                                                            {{ c.autor.get_full_name|default:c.autor.username }}
+                                                        {% else %}
+                                                            <span class="text-muted">-</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="text-muted small">{{ c.criado_em|date:"d/m/Y H:i" }}</div>
+                                                        {% if is_auditoria_admin or c.autor_id == request.user.id %}
+                                                            <a class="btn btn-outline-secondary btn-sm" href="{% url 'auditoria:comentario_edit' modelo.id c.id %}?{{ querystring_with_page }}" title="Editar">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </a>
+                                                            <a class="btn btn-outline-danger btn-sm" href="{% url 'auditoria:comentario_delete' modelo.id c.id %}?{{ querystring_with_page }}" title="Remover">
+                                                                <i class="bi bi-trash"></i>
+                                                            </a>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="mt-2" style="white-space: pre-wrap;">{{ c.texto }}</div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="text-muted">Nenhum comentário no período selecionado.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
 
                     {% if registros_count %}
                     <div class="card shadow-sm">
