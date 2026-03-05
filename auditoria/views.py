@@ -12,7 +12,7 @@ from io import BytesIO
 import json
 from urllib.parse import urlencode
 
-from .forms import ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
+from .forms import ComentarioAuditoriaForm, ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
 from .models import ComentarioAuditoria, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
 
 
@@ -1050,6 +1050,11 @@ def registros_por_modelo(request, modelo_id):
         base_params["subcategoria"] = subcategoria
     base_params["per_page"] = str(per_page)
     querystring_base = urlencode(base_params)
+    querystring_with_page = querystring_base
+    if querystring_with_page:
+        querystring_with_page = f"{querystring_with_page}&page={page_obj.number}"
+    else:
+        querystring_with_page = f"page={page_obj.number}"
 
     comentarios_qs = ComentarioAuditoria.objects.filter(modelo=modelo).select_related("autor")
     if inicio:
@@ -1465,6 +1470,8 @@ def registros_por_modelo(request, modelo_id):
         "per_page_options": sorted(allowed_per_page),
         "registros_count": paginator.count,
         "comentarios": comentarios,
+        "is_auditoria_admin": _auditoria_is_admin(request.user),
+        "querystring_with_page": querystring_with_page,
         "perguntas": perguntas,
         "estatisticas_perguntas": estatisticas_perguntas,
         "chart_cards": chart_cards,
@@ -1476,6 +1483,87 @@ def registros_por_modelo(request, modelo_id):
         "fim": fim_raw,
     }
     return render(request, "auditoria/registros_por_modelo.html", context)
+
+
+@login_required
+def comentario_edit(request, modelo_id, pk):
+    modelo = get_object_or_404(
+        _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
+        pk=modelo_id,
+    )
+    comentario = get_object_or_404(ComentarioAuditoria, pk=pk, modelo=modelo)
+    can_manage = _auditoria_is_admin(request.user) or (comentario.autor_id == request.user.id)
+
+    preserved = {}
+    for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+        v = (request.GET.get(k) or "").strip()
+        if v:
+            preserved[k] = v
+    back_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
+    if preserved:
+        back_url = f"{back_url}?{urlencode(preserved)}"
+
+    if not can_manage:
+        messages.error(request, "Você não tem permissão para editar este comentário.")
+        return redirect(back_url)
+
+    if request.method == "POST":
+        form = ComentarioAuditoriaForm(request.POST, instance=comentario)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Comentário atualizado com sucesso.")
+            return redirect(back_url)
+    else:
+        form = ComentarioAuditoriaForm(instance=comentario)
+
+    return render(
+        request,
+        "auditoria/comentario_form.html",
+        {
+            "modelo": modelo,
+            "comentario": comentario,
+            "form": form,
+            "back_url": back_url,
+        },
+    )
+
+
+@login_required
+def comentario_delete(request, modelo_id, pk):
+    modelo = get_object_or_404(
+        _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
+        pk=modelo_id,
+    )
+    comentario = get_object_or_404(ComentarioAuditoria, pk=pk, modelo=modelo)
+    can_manage = _auditoria_is_admin(request.user) or (comentario.autor_id == request.user.id)
+
+    preserved = {}
+    for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+        v = (request.GET.get(k) or "").strip()
+        if v:
+            preserved[k] = v
+    back_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
+    if preserved:
+        back_url = f"{back_url}?{urlencode(preserved)}"
+
+    if not can_manage:
+        messages.error(request, "Você não tem permissão para remover este comentário.")
+        return redirect(back_url)
+
+    if request.method == "POST":
+        comentario.delete()
+        messages.success(request, "Comentário removido com sucesso.")
+        return redirect(back_url)
+
+    return render(
+        request,
+        "auditoria/comentario_confirm_delete.html",
+        {
+            "modelo": modelo,
+            "comentario": comentario,
+            "back_url": back_url,
+        },
+    )
 
 
 @login_required

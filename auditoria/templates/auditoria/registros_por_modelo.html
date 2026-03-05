@@ -89,7 +89,17 @@
                                                             <span class="text-muted">-</span>
                                                         {% endif %}
                                                     </div>
-                                                    <div class="text-muted small">{{ c.criado_em|date:"d/m/Y H:i" }}</div>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="text-muted small">{{ c.criado_em|date:"d/m/Y H:i" }}</div>
+                                                        {% if is_auditoria_admin or c.autor_id == request.user.id %}
+                                                            <a class="btn btn-outline-secondary btn-sm" href="{% url 'auditoria:comentario_edit' modelo.id c.id %}?{{ querystring_with_page }}" title="Editar">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </a>
+                                                            <a class="btn btn-outline-danger btn-sm" href="{% url 'auditoria:comentario_delete' modelo.id c.id %}?{{ querystring_with_page }}" title="Remover">
+                                                                <i class="bi bi-trash"></i>
+                                                            </a>
+                                                        {% endif %}
+                                                    </div>
                                                 </div>
                                                 <div class="mt-2" style="white-space: pre-wrap;">{{ c.texto }}</div>
                                             </div>
