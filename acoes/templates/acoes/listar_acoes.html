@@ -11,26 +11,35 @@
                     <p class="text-muted small mt-1">Gerenciar ações corretivas e preventivas</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAcao">
-                        <i class="bi bi-plus-circle me-1"></i>Nova Ação
-                    </button>
-                    <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Opcoes de importacao">
-                            <i class="bi bi-upload"></i> Importar
+                    {% if perms.core.nav_acoes_salvar_acao %}
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAcao">
+                            <i class="bi bi-plus-circle me-1"></i>Nova Ação
                         </button>
-                        <ul class="dropdown-menu">
-                            <li>
-                                <a class="dropdown-item" href="{% url 'acoes:importar_controle_registros' %}">
-                                    <i class="bi bi-file-earmark"></i> Importar Ações
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'acoes:importar_plano_acao' %}">
-                                    <i class="bi bi-file-earmark"></i> Atribuir Plano + Ações
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
+                    {% endif %}
+
+                    {% if perms.core.nav_acoes_importar_controle_registros or perms.core.nav_acoes_importar_plano_acao %}
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Opcoes de importacao">
+                                <i class="bi bi-upload"></i> Importar
+                            </button>
+                            <ul class="dropdown-menu">
+                                {% if perms.core.nav_acoes_importar_controle_registros %}
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'acoes:importar_controle_registros' %}">
+                                            <i class="bi bi-file-earmark"></i> Importar Ações
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                {% if perms.core.nav_acoes_importar_plano_acao %}
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'acoes:importar_plano_acao' %}">
+                                            <i class="bi bi-file-earmark"></i> Atribuir Plano + Ações
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -224,12 +233,16 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="{% url 'acoes:detalhe_acao' acao.id %}" class="btn btn-sm btn-primary" title="Visualizar">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-warning" title="Editar" data-bs-toggle="modal" data-bs-target="#modalAcao" onclick="editarAcao({{ acao.id }})">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
+                                    {% if perms.core.nav_acoes_detalhe_acao %}
+                                        <a href="{% url 'acoes:detalhe_acao' acao.id %}" class="btn btn-sm btn-primary" title="Visualizar">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.core.nav_acoes_salvar_acao %}
+                                        <button type="button" class="btn btn-sm btn-warning" title="Editar" data-bs-toggle="modal" data-bs-target="#modalAcao" onclick="editarAcao({{ acao.id }})">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% empty %}
