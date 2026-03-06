@@ -389,14 +389,8 @@
                     <span class="badge bg-secondary bg-opacity-10 text-secondary border">
                         <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ total_colaboradores_filtrados }}/{{ total_colaboradores }}</span> colaboradores
                     </span>
-                    <span class="badge bg-info bg-opacity-10 text-info border d-none" id="selectedBadge">
-                        <i class="bi bi-check-circle"></i> <span id="selectedCount">0</span> selecionados
-                    </span>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-danger d-none" id="deleteSelectedBtn" onclick="deleteSelected()">
-                        <i class="bi bi-trash"></i> Deletar Selecionados
-                    </button>
                     <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
                         <i class="bi bi-arrow-counterclockwise"></i> Limpar Filtros
                     </button>
@@ -409,16 +403,12 @@
                         <table class="table table-hover align-middle mb-0" id="rhTable">
                     <thead class="small text-uppercase text-muted font-monospace">
                         <tr>
-                            <th class="ps-4 py-3" style="width: 40px;">
-                                <input type="checkbox" id="selectAllCheckbox" class="form-check-input" onchange="toggleSelectAll()" title="Selecionar todos">
-                            </th>
                             <th class="py-3" style="min-width: 250px;">Colaborador</th>
                             <th class="py-3">Cargo</th>
                             <th class="py-3">Setor / CC</th>
                             <th class="py-3">Turno</th>
                             <th class="py-3">Líder</th>
                             <th class="py-3">Treinamentos</th>
-                            <th class="text-end pe-4 py-3">Ações</th>
                         </tr>
                     </thead>
                     <tbody class="border-top-0 bg-white">
@@ -500,18 +490,10 @@
                                     {% endif %}
                                 </div>
                             </td>
-                            
-                            
-                            
-                            <td class="text-end pe-4 py-2">
-                                <a href="{% url 'detalhe_colaborador' f.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill" style="font-size: 0.75rem;">
-                                    Perfil
-                                </a>
-                            </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center py-5 text-muted bg-light">
+                            <td colspan="6" class="text-center py-5 text-muted bg-light">
                                 <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
                                 <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
                             </td>
@@ -674,7 +656,7 @@ function renderTable(colaboradores) {
     if (colaboradores.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="text-center py-5 text-muted bg-light">
+                <td colspan="6" class="text-center py-5 text-muted bg-light">
                     <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
                     <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
                 </td>
@@ -685,9 +667,6 @@ function renderTable(colaboradores) {
     
     tbody.innerHTML = colaboradores.map(c => `
         <tr class="rh-row border-bottom">
-            <td class="ps-3 py-2">
-                <input type="checkbox" class="form-check-input row-checkbox" data-id="${c.id}" onchange="updateSelectionBadge()">
-            </td>
             <td class="py-2">
                 <div class="d-flex align-items-center">
                     <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
@@ -730,16 +709,6 @@ function renderTable(colaboradores) {
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge bg-success bg-opacity-10 text-success border small">Vigentes: ${c.vigentes}</span>
                     <span class="badge bg-danger bg-opacity-10 text-danger border small">Pendentes: ${c.pendentes}</span>
-                </div>
-            </td>
-            <td class="text-end pe-4 py-2">
-                <div class="d-flex flex-wrap gap-1 justify-content-end" role="group">
-                    <a href="/rh/colaborador/${c.id}/" class="btn btn-sm btn-outline-primary py-0 px-3" style="font-size: 0.75rem;">
-                        <i class="bi bi-person"></i> Perfil
-                    </a>
-                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteColaborador(${c.id}, '${c.nome}')" title="Deletar perfil">
-                        <i class="bi bi-trash"></i>
-                    </button>
                 </div>
             </td>
         </tr>
@@ -854,123 +823,12 @@ function showErrorMessage(message) {
     const tbody = document.querySelector('#rhTable tbody');
     tbody.innerHTML = `
         <tr>
-            <td colspan="8" class="text-center py-5 text-danger">
+            <td colspan="6" class="text-center py-5 text-danger">
                 <i class="bi bi-exclamation-circle fs-1 d-block mb-2"></i>
                 <p class="mb-0">${message}</p>
             </td>
         </tr>
     `;
-}
-
-// Atualizar badge de seleção
-function updateSelectionBadge() {
-    const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
-    const badge = document.getElementById('selectedBadge');
-    const deleteBtn = document.getElementById('deleteSelectedBtn');
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    
-    document.getElementById('selectedCount').textContent = selectedCount;
-    
-    if (selectedCount > 0) {
-        badge.classList.remove('d-none');
-        deleteBtn.classList.remove('d-none');
-    } else {
-        badge.classList.add('d-none');
-        deleteBtn.classList.add('d-none');
-        selectAllCheckbox.checked = false;
-    }
-}
-
-// Selecionar/Desselecionar todos
-function toggleSelectAll() {
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
-    
-    rowCheckboxes.forEach(cb => {
-        cb.checked = selectAllCheckbox.checked;
-    });
-    
-    updateSelectionBadge();
-}
-
-// Deletar colaborador individual
-async function deleteColaborador(id, nome) {
-    if (!confirm(`Tem certeza que deseja deletar o perfil de ${nome}?\n\nEsta ação não pode ser desfeita!`)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/rh/api/colaborador/${id}/delete/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            alert(`Colaborador ${nome} deletado com sucesso!`);
-            loadAndApplyFilters();
-        } else {
-            alert('Erro ao deletar colaborador. Tente novamente.');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('Erro ao deletar colaborador. Tente novamente.');
-    }
-}
-
-// Deletar colaboradores selecionados
-async function deleteSelected() {
-    const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.dataset.id);
-    
-    if (selectedIds.length === 0) {
-        alert('Nenhum colaborador selecionado.');
-        return;
-    }
-    
-    if (!confirm(`Tem certeza que deseja deletar ${selectedIds.length} colaborador(es)?\n\nEsta ação não pode ser desfeita!`)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch('/rh/api/colaboradores/delete-multiple/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({ ids: selectedIds })
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            alert(`${selectedIds.length} colaborador(es) deletado(s) com sucesso!`);
-            loadAndApplyFilters();
-        } else {
-            alert('Erro ao deletar colaboradores. Tente novamente.');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('Erro ao deletar colaboradores. Tente novamente.');
-    }
-}
-
-// Obter cookie CSRF
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
 }
 
 // FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS
