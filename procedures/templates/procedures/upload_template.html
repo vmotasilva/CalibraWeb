@@ -1,9 +1,10 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static nav_access %}
 
 {% block title %}Upload de Template - Lista de Presença{% endblock %}
 
 {% block content %}
+{% can_nav_view user 'procedures:upload_template_lista_presenca' 'procedures' as can_upload_template %}
 <div class="container-fluid mt-4">
     <div class="row">
         <div class="col-md-10 offset-md-1">
@@ -224,9 +225,11 @@
                             <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Voltar
                             </a>
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-cloud-upload-alt"></i> Fazer Upload do PDF
-                            </button>
+                            {% if can_upload_template %}
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-cloud-upload-alt"></i> Fazer Upload do PDF
+                                </button>
+                            {% endif %}
                         </div>
                     </form>
                 </div>

@@ -330,7 +330,8 @@ document.addEventListener('keydown', function(event) {
     if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault();
         const form = document.getElementById('form-mapeamento');
-        if (form) {
+        const btnSubmit = document.getElementById('btn-submit');
+        if (form && btnSubmit) {
             form.submit();
         }
     }

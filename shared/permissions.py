@@ -170,7 +170,13 @@ NAV_STRUCTURE = [
                     },
                     {
                         "nome": "Editar Instrumento",
-                        "view_name": ["editar_instrumento_custom", "qms:editar_instrumento"],
+                        "view_name": [
+                            "editar_instrumento_custom",
+                            "qms:editar_instrumento",
+                            "gerenciar_faixas_instrumento",
+                            "substituir_instrumento",
+                            "atualizar_datas_calibracao",
+                        ],
                         "perm": "core.nav_metrologia_editar_instrumento",
                     },
                     {
@@ -190,7 +196,7 @@ NAV_STRUCTURE = [
                     },
                     {
                         "nome": "Editar Histórico de Calibração",
-                        "view_name": "editar_historico_calibracao",
+                        "view_name": ["editar_historico_calibracao", "anexar_certificado_historico"],
                         "perm": "core.nav_metrologia_editar_historico",
                     },
                     {
@@ -291,7 +297,7 @@ NAV_STRUCTURE = [
                     },
                     {
                         "nome": "Certificado (Download)",
-                        "view_name": "download_certificado",
+                        "view_name": ["download_certificado", "get_certificado_bytes"],
                         "perm": "core.nav_metrologia_download_certificado",
                     },
                     {
@@ -442,7 +448,15 @@ NAV_STRUCTURE = [
                     {"nome": "Download Erros Importação", "view_name": "procedures:lista_presenca_erros_download", "perm": "core.nav_treinamentos_lista_presenca_erros_download"},
                     {"nome": "Upload Lista Assinada", "view_name": "procedures:upload_lista_presenca_assinada", "perm": "core.nav_treinamentos_lista_presenca_upload_assinada"},
                     {"nome": "Remover Lista Assinada", "view_name": "procedures:remover_lista_presenca_assinada", "perm": "core.nav_treinamentos_lista_presenca_remover_assinada"},
-                    {"nome": "Upload Template Lista de Presença", "view_name": "procedures:upload_template_lista_presenca", "perm": "core.nav_treinamentos_lista_presenca_template_upload"},
+                    {
+                        "nome": "Upload Template Lista de Presença",
+                        "view_name": [
+                            "procedures:upload_template_lista_presenca",
+                            "procedures:mapear_template_fields",
+                            "procedures:serve_pdf_template",
+                        ],
+                        "perm": "core.nav_treinamentos_lista_presenca_template_upload",
+                    },
                     {"nome": "Planejamento", "view_name": "procedures:planejamentos_list", "perm": "core.nav_treinamentos_planejamento"},
                     {"nome": "Novo Planejamento", "view_name": ["procedures:novo_planejamento", "procedures:novo_planejamento_com_tipo"], "perm": "core.nav_treinamentos_planejamento"},
                     {"nome": "Editar Planejamento", "view_name": "procedures:editar_planejamento", "perm": "core.nav_treinamentos_planejamento"},
@@ -498,7 +512,18 @@ NAV_STRUCTURE = [
                     {"nome": "Exportar Estrutura", "view_name": "procedures:exportar_estrutura", "perm": "core.nav_treinamentos_perfis_export_estrutura"},
                     {"nome": "Exportar Erros Importação", "view_name": "procedures:exportar_erros_importacao", "perm": "core.nav_treinamentos_perfis_export_erros"},
                     {"nome": "Template Importação (Download)", "view_name": "procedures:download_template_importacao", "perm": "core.nav_treinamentos_perfis_template_importacao"},
-                    {"nome": "Upload Template Excel", "view_name": "procedures:upload_excel_template", "perm": "core.nav_treinamentos_perfis_upload_template"},
+                    {
+                        "nome": "Upload Template Excel",
+                        "view_name": [
+                            "procedures:upload_excel_template",
+                            "procedures:mapear_campos_template",
+                            "procedures:preview_excel_abas_api",
+                            "procedures:preview_excel_celulas_api",
+                            "procedures:atualizar_mapeamento_campo_api",
+                            "procedures:status_mapeamento_api",
+                        ],
+                        "perm": "core.nav_treinamentos_perfis_upload_template",
+                    },
                     {"nome": "Upload Template PDF", "view_name": "procedures:upload_pdf_template", "perm": "core.nav_treinamentos_perfis_upload_template"},
                     {"nome": "Remover Template PDF", "view_name": "procedures:remove_pdf_template", "perm": "core.nav_treinamentos_perfis_delete_template"},
                     {"nome": "Remover Mapeamento Campo (API)", "view_name": "procedures:remover_mapeamento_campo_api", "perm": "core.nav_treinamentos_perfis_delete_template"},
@@ -520,7 +545,7 @@ NAV_STRUCTURE = [
                     {"nome": "Novo Procedimento", "view_name": ["procedures:novo_procedimento", "qms:novo_procedimento"], "perm": "core.nav_treinamentos_novo_procedimento"},
                     {"nome": "Editar Procedimento", "view_name": ["procedures:editar_procedimento", "qms:editar_procedimento"], "perm": "core.nav_treinamentos_editar_procedimento"},
                     {"nome": "Procedimentos", "view_name": "procedures:procedimentos_list", "perm": "core.nav_treinamentos_procedimentos"},
-                    {"nome": "Importar Procedimentos", "view_name": "procedures:importar_procedimentos", "perm": "core.nav_treinamentos_importar_procedimentos"},
+                    {"nome": "Importar Procedimentos", "view_name": ["procedures:importar_procedimentos", "procedures:dl_template_procedimentos"], "perm": "core.nav_treinamentos_importar_procedimentos"},
                     {"nome": "Exportar Procedimentos (Excel)", "view_name": "procedures:export_procedimentos_excel", "perm": "core.nav_treinamentos_exportar_procedimentos"},
                 ],
             },

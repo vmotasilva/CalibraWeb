@@ -1,6 +1,6 @@
 <!-- Upload do arquivo Excel template -->
 {% extends "admin/base_site.html" %}
-{% load static %}
+{% load static nav_access %}
 
 {% block title %}Upload de Template de Lista de Presença{% endblock %}
 
@@ -72,6 +72,7 @@
 
 {% block content %}
 <div class="upload-container">
+    {% can_nav_view user 'procedures:upload_excel_template' 'procedures' as can_upload_excel_template %}
     <h1>Upload de Template de Lista de Presença</h1>
     
     {% if messages %}
@@ -111,7 +112,9 @@
         </div>
         
         <div class="btn-group">
-            <button type="submit" class="button default">Fazer Upload</button>
+            {% if can_upload_excel_template %}
+                <button type="submit" class="button default">Fazer Upload</button>
+            {% endif %}
             <a href="{% url 'admin:procedures_templatelistapresenca_changelist' %}" class="button">Cancelar</a>
         </div>
     </form>

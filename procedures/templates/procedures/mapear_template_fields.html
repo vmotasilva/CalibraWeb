@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static nav_access %}
 
 {% block title %}Mapear Placeholders - {{ template.nome }}{% endblock %}
 
@@ -8,6 +8,9 @@
 {% endblock %}
 
 {% block content %}
+{% can_nav_view user 'procedures:mapear_template_fields' 'procedures' as can_salvar_mapeamento %}
+{% can_nav_view user 'procedures:upload_pdf_template' 'procedures' as can_upload_pdf %}
+{% can_nav_view user 'procedures:remove_pdf_template' 'procedures' as can_remove_pdf %}
 
 <div class="container-fluid mt-4">
     <!-- Breadcrumb -->
@@ -60,12 +63,16 @@
                     <h5><i class="fas fa-file-pdf icon-pdf-red"></i> Preview do PDF</h5>
                     {% if template.arquivo_pdf_template %}
                         <div class="pdf-actions">
-                            <label for="pdf-upload" class="btn-icon" title="Carregar novo PDF">
-                                <i class="fas fa-upload"></i>
-                            </label>
-                            <button type="button" class="btn-icon btn-danger" id="btn-remove-pdf" title="Remover PDF">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                            {% if can_upload_pdf %}
+                                <label for="pdf-upload" class="btn-icon" title="Carregar novo PDF">
+                                    <i class="fas fa-upload"></i>
+                                </label>
+                            {% endif %}
+                            {% if can_remove_pdf %}
+                                <button type="button" class="btn-icon btn-danger" id="btn-remove-pdf" title="Remover PDF">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            {% endif %}
                         </div>
                     {% endif %}
                 </div>
@@ -104,9 +111,11 @@
                         <i class="fas fa-file-pdf"></i>
                         <p><strong>Nenhum PDF carregado</strong></p>
                         <p class="empty-state-text">Faça upload de um arquivo PDF para visualizar</p>
-                        <label for="pdf-upload" class="btn btn-primary">
-                            <i class="fas fa-upload"></i> Carregar PDF
-                        </label>
+                        {% if can_upload_pdf %}
+                            <label for="pdf-upload" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Carregar PDF
+                            </label>
+                        {% endif %}
                         <input type="file" id="pdf-upload" accept=".pdf" style="display: none;" class="pdf-file-input">
                     </div>
                 {% endif %}
@@ -160,9 +169,11 @@
             <a href="{% url 'procedures:gerenciar_templates_presenca' %}" class="btn btn-secondary btn-small">
                 <i class="fas fa-arrow-left"></i> Voltar
             </a>
-            <button type="submit" class="btn btn-success btn-small" id="btn-submit">
-                <i class="fas fa-check"></i> Salvar Mapeamento
-            </button>
+            {% if can_salvar_mapeamento %}
+                <button type="submit" class="btn btn-success btn-small" id="btn-submit">
+                    <i class="fas fa-check"></i> Salvar Mapeamento
+                </button>
+            {% endif %}
         </div>
     </form>
 </div>

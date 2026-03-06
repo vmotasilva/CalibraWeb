@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load static %}
+{% load static nav_access %}
 
 {% block title %}Mapear Campos - {{ template.nome }}{% endblock %}
 
@@ -323,6 +323,7 @@
 {% endblock %}
 
 {% block content %}
+{% can_nav_view user 'procedures:mapear_campos_template' 'procedures' as can_salvar_mapeamento %}
 <div style="max-width: 1400px; margin: 0 auto; padding: 20px;">
     <h2 style="margin-top: 0; color: #333;">Mapear Campos do Excel - {{ template.nome }}</h2>
     
@@ -453,9 +454,11 @@
         </div>
         
         <div class="btn-group">
-            <button type="submit" class="btn btn-primary">
-                <i class="fa fa-save" style="margin-right: 8px;"></i> Salvar Mapeamento
-            </button>
+            {% if can_salvar_mapeamento %}
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-save" style="margin-right: 8px;"></i> Salvar Mapeamento
+                </button>
+            {% endif %}
             <a href="{% url 'procedures:gerenciar_templates_presenca' %}" class="btn btn-secondary">
                 <i class="fa fa-arrow-left" style="margin-right: 8px;"></i> Voltar
             </a>
