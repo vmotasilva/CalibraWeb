@@ -2035,6 +2035,12 @@ def api_delete_colaboradores_multiple(request):
     API para deletar múltiplos colaboradores
     """
     try:
+        if not request.user.is_superuser:
+            return JsonResponse({
+                'success': False,
+                'error': 'Sem permissão para deletar colaboradores em massa.'
+            }, status=403)
+
         data = json.loads(request.body)
         ids = data.get('ids', [])
         

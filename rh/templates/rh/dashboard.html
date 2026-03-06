@@ -389,8 +389,18 @@
                     <span class="badge bg-secondary bg-opacity-10 text-secondary border">
                         <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ total_colaboradores_filtrados }}/{{ total_colaboradores }}</span> colaboradores
                     </span>
+                    {% if user.is_superuser %}
+                    <span class="badge bg-info bg-opacity-10 text-info border d-none" id="selectedBadge">
+                        <i class="bi bi-check-circle"></i> <span id="selectedCount">0</span> selecionados
+                    </span>
+                    {% endif %}
                 </div>
                 <div class="d-flex gap-2">
+                    {% if user.is_superuser %}
+                    <button class="btn btn-sm btn-outline-danger d-none" id="deleteSelectedBtn" onclick="deleteSelected()">
+                        <i class="bi bi-trash"></i> Deletar Selecionados
+                    </button>
+                    {% endif %}
                     <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
                         <i class="bi bi-arrow-counterclockwise"></i> Limpar Filtros
                     </button>
@@ -403,6 +413,11 @@
                         <table class="table table-hover align-middle mb-0" id="rhTable">
                     <thead class="small text-uppercase text-muted font-monospace">
                         <tr>
+                            {% if user.is_superuser %}
+                            <th class="ps-4 py-3" style="width: 40px;">
+                                <input type="checkbox" id="selectAllCheckbox" class="form-check-input" onchange="toggleSelectAll()" title="Selecionar todos">
+                            </th>
+                            {% endif %}
                             <th class="py-3" style="min-width: 250px;">Colaborador</th>
                             <th class="py-3">Cargo</th>
                             <th class="py-3">Setor / CC</th>
@@ -423,6 +438,11 @@
                             data-turno="{{ f.turno|default:'' }}"
                             data-treino="{% if f.trein_pendentes %}PENDENTE{% else %}EM_DIA{% endif %}">
                             
+                            {% if user.is_superuser %}
+                            <td class="ps-3 py-2">
+                                <input type="checkbox" class="form-check-input row-checkbox" data-id="{{ f.id }}" onchange="updateSelectionBadge()">
+                            </td>
+                            {% endif %}
                             <td class="ps-4 py-2">
                                 <div class="d-flex align-items-center">
                                     <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
@@ -493,7 +513,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center py-5 text-muted bg-light">
+                            <td colspan="{% if user.is_superuser %}7{% else %}6{% endif %}" class="text-center py-5 text-muted bg-light">
                                 <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
                                 <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
                             </td>
@@ -545,6 +565,9 @@
 </div>
 
 <script>
+const IS_SUPERUSER = {% if user.is_superuser %}true{% else %}false{% endif %};
+const TABLE_COLSPAN = IS_SUPERUSER ? 7 : 6;
+
 let allColaboradores = [];
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -656,7 +679,7 @@ function renderTable(colaboradores) {
     if (colaboradores.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-5 text-muted bg-light">
+                <td colspan="${TABLE_COLSPAN}" class="text-center py-5 text-muted bg-light">
                     <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
                     <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
                 </td>
@@ -667,6 +690,11 @@ function renderTable(colaboradores) {
     
     tbody.innerHTML = colaboradores.map(c => `
         <tr class="rh-row border-bottom">
+            ${IS_SUPERUSER ? `
+            <td class="ps-3 py-2">
+                <input type="checkbox" class="form-check-input row-checkbox" data-id="${c.id}" onchange="updateSelectionBadge()">
+            </td>
+            ` : ''}
             <td class="py-2">
                 <div class="d-flex align-items-center">
                     <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
@@ -816,6 +844,12 @@ function renderTableWithPagination() {
     
     renderTable(paginatedData);
     renderPagination(allColaboradores.length);
+
+    if (IS_SUPERUSER) {
+        const selectAll = document.getElementById('selectAllCheckbox');
+        if (selectAll) selectAll.checked = false;
+        updateSelectionBadge();
+    }
 }
 
 // Mostrar mensagem de erro
@@ -823,12 +857,106 @@ function showErrorMessage(message) {
     const tbody = document.querySelector('#rhTable tbody');
     tbody.innerHTML = `
         <tr>
-            <td colspan="6" class="text-center py-5 text-danger">
+            <td colspan="${TABLE_COLSPAN}" class="text-center py-5 text-danger">
                 <i class="bi bi-exclamation-circle fs-1 d-block mb-2"></i>
                 <p class="mb-0">${message}</p>
             </td>
         </tr>
     `;
+}
+
+// Atualizar badge de seleção (apenas superuser)
+function updateSelectionBadge() {
+    if (!IS_SUPERUSER) return;
+
+    const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+    const badge = document.getElementById('selectedBadge');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const selectedCountSpan = document.getElementById('selectedCount');
+
+    if (selectedCountSpan) selectedCountSpan.textContent = selectedCount;
+
+    if (badge && deleteBtn) {
+        if (selectedCount > 0) {
+            badge.classList.remove('d-none');
+            deleteBtn.classList.remove('d-none');
+        } else {
+            badge.classList.add('d-none');
+            deleteBtn.classList.add('d-none');
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+        }
+    }
+}
+
+// Selecionar/Desselecionar todos (apenas superuser)
+function toggleSelectAll() {
+    if (!IS_SUPERUSER) return;
+
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (!selectAllCheckbox) return;
+
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    rowCheckboxes.forEach(cb => {
+        cb.checked = selectAllCheckbox.checked;
+    });
+
+    updateSelectionBadge();
+}
+
+// Deletar colaboradores selecionados (apenas superuser)
+async function deleteSelected() {
+    if (!IS_SUPERUSER) return;
+
+    const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.dataset.id);
+
+    if (selectedIds.length === 0) {
+        alert('Nenhum colaborador selecionado.');
+        return;
+    }
+
+    if (!confirm(`Tem certeza que deseja deletar ${selectedIds.length} colaborador(es)?\n\nEsta ação não pode ser desfeita!`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/rh/api/colaboradores/delete-multiple/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ ids: selectedIds })
+        });
+
+        if (response.ok) {
+            alert(`${selectedIds.length} colaborador(es) deletado(s) com sucesso!`);
+            loadAndApplyFilters();
+        } else if (response.status === 403) {
+            alert('Sem permissão para deletar colaboradores.');
+        } else {
+            alert('Erro ao deletar colaboradores. Tente novamente.');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao deletar colaboradores. Tente novamente.');
+    }
+}
+
+// Obter cookie CSRF
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS
