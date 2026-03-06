@@ -69,6 +69,14 @@
                             <a href="{% url 'insumos:modelo_edit' modelo.id %}" class="btn btn-sm btn-warning" title="Editar modelo">
                                 <i class="bi bi-pencil"></i>
                             </a>
+                            {% if request.user.is_staff or request.user.is_superuser %}
+                            <form method="post" action="{% url 'insumos:modelo_duplicate' modelo.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Duplicar modelo (inclui perguntas)">
+                                    <i class="bi bi-files"></i>
+                                </button>
+                            </form>
+                            {% endif %}
                             <a href="{% url 'insumos:perguntas_list' %}?modelo={{ modelo.id }}" class="btn btn-sm btn-outline-primary" title="Gerenciar perguntas">
                                 <i class="bi bi-question-circle"></i>
                             </a>

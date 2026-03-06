@@ -8,6 +8,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 from django.urls import reverse
+from django.views.decorators.http import require_POST
 from urllib.parse import urlencode
 from io import BytesIO
 import json
@@ -230,6 +231,73 @@ def _safe_return_to(raw: str | None) -> str:
     return redirect("insumos:perguntas_list").url
 
 
+def _unique_modelo_nome(base_nome: str) -> str:
+    """Gera um nome único para ModeloAuditoria respeitando max_length=150 (nome é unique)."""
+    raw = (base_nome or "").strip() or "Modelo"
+    suffix = " (Cópia)"
+
+    candidate = f"{raw}{suffix}"[:150]
+    if not ModeloAuditoria.objects.filter(nome=candidate).exists():
+        return candidate
+
+    idx = 2
+    while True:
+        tail = f"{suffix} {idx}"
+        candidate = f"{raw[: max(0, 150 - len(tail))]}{tail}".strip()
+        if not ModeloAuditoria.objects.filter(nome=candidate).exists():
+            return candidate
+        idx += 1
+
+
+@login_required
+@require_POST
+def modelo_duplicate(request, pk):
+    modelo = get_object_or_404(ModeloAuditoria, pk=pk)
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem duplicar modelos de insumos.")
+        return redirect("insumos:modelos_list")
+
+    with transaction.atomic():
+        novo = ModeloAuditoria.objects.create(
+            nome=_unique_modelo_nome(modelo.nome),
+            objeto_auditoria=modelo.objeto_auditoria,
+            link_sharepoint=modelo.link_sharepoint,
+            periodicidade=modelo.periodicidade,
+            dia_semana=modelo.dia_semana,
+            dias_quinzenal=modelo.dias_quinzenal,
+            dia_mes=modelo.dia_mes,
+            responsavel=modelo.responsavel,
+            preenchimento_grid=modelo.preenchimento_grid,
+            grid_rotulo_item=modelo.grid_rotulo_item,
+            grid_colunas=modelo.grid_colunas,
+            ativo=modelo.ativo,
+        )
+
+        novo.responsaveis.set(modelo.responsaveis.all())
+
+        perguntas_src = list(PerguntaAuditoria.objects.filter(modelo=modelo).order_by("ordem", "id"))
+        perguntas_new = [
+            PerguntaAuditoria(
+                modelo=novo,
+                pergunta=p.pergunta,
+                tipo_resposta=p.tipo_resposta,
+                preenchimento_semanal=p.preenchimento_semanal,
+                opcoes_resposta=p.opcoes_resposta,
+                aplicar_no_grid=p.aplicar_no_grid,
+                ordem=p.ordem,
+                obrigatoria=p.obrigatoria,
+                ativo=p.ativo,
+            )
+            for p in perguntas_src
+        ]
+        if perguntas_new:
+            PerguntaAuditoria.objects.bulk_create(perguntas_new)
+            _normalize_perguntas_ordem(novo.id)
+
+    messages.success(request, "Modelo duplicado com sucesso (incluindo perguntas).")
+    return redirect("insumos:modelo_edit", pk=novo.id)
+
+
 @login_required
 def pergunta_move_up(request, pk):
     if request.method != "POST":
@@ -360,6 +428,40 @@ def pergunta_delete(request, pk):
         messages.success(request, "Pergunta removida com sucesso.")
         return redirect("insumos:perguntas_list")
     return render(request, "insumos/pergunta_confirm_delete.html", {"pergunta": pergunta})
+
+
+@login_required
+@require_POST
+def pergunta_duplicate(request, pk):
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem duplicar perguntas.")
+        return redirect("insumos:perguntas_list")
+
+    return_to = _safe_return_to(request.POST.get("return_to"))
+    pergunta = get_object_or_404(PerguntaAuditoria, pk=pk)
+
+    base_text = (pergunta.pergunta or "").strip()
+    suffix = " (Cópia)"
+    if len(base_text) + len(suffix) <= 255:
+        new_text = f"{base_text}{suffix}"
+    else:
+        new_text = f"{base_text[: max(0, 255 - len(suffix))]}{suffix}".strip()
+
+    PerguntaAuditoria.objects.create(
+        modelo=pergunta.modelo,
+        pergunta=new_text,
+        tipo_resposta=pergunta.tipo_resposta,
+        preenchimento_semanal=pergunta.preenchimento_semanal,
+        opcoes_resposta=pergunta.opcoes_resposta,
+        aplicar_no_grid=pergunta.aplicar_no_grid,
+        ordem=_get_next_pergunta_ordem(pergunta.modelo_id),
+        obrigatoria=pergunta.obrigatoria,
+        ativo=pergunta.ativo,
+    )
+    _normalize_perguntas_ordem(pergunta.modelo_id)
+
+    messages.success(request, "Pergunta duplicada com sucesso.")
+    return redirect(return_to)
 
 
 @login_required

@@ -56,6 +56,15 @@
                                 <input type="hidden" name="return_to" value="{{ request.get_full_path }}">
                                 <button type="submit" class="btn btn-sm btn-outline-secondary" title="Mover para baixo">↓</button>
                             </form>
+                            {% if request.user.is_staff or request.user.is_superuser %}
+                            <form method="post" action="{% url 'insumos:pergunta_duplicate' pergunta.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="return_to" value="{{ request.get_full_path }}">
+                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Duplicar">
+                                    <i class="bi bi-files"></i>
+                                </button>
+                            </form>
+                            {% endif %}
                             <a href="{% url 'insumos:pergunta_edit' pergunta.id %}" class="btn btn-sm btn-warning">Editar</a>
                             <a href="{% url 'insumos:pergunta_delete' pergunta.id %}" class="btn btn-sm btn-danger">Excluir</a>
                         </td>
