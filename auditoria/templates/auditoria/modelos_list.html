@@ -63,20 +63,23 @@
                         </td>
                         <td>{% if modelo.ativo %}Sim{% else %}Não{% endif %}</td>
                         <td>
-                            <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-sm btn-info" title="Ver resumo de registros">
-                                <i class="bi bi-list-check"></i> Registros
+                            <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-sm btn-info" title="Ver resumo de registros" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Registros">
+                                <i class="bi bi-list-check"></i>
                             </a>
-                            <a href="{% url 'auditoria:modelo_edit' modelo.id %}" class="btn btn-sm btn-warning" title="Editar modelo">
+                            <a href="{% url 'auditoria:modelo_edit' modelo.id %}" class="btn btn-sm btn-warning" title="Editar modelo" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Editar">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             <form method="post" action="{% url 'auditoria:modelo_duplicate' modelo.id %}" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-secondary" title="Duplicar modelo">Duplicar</button>
+                                <button type="submit" class="btn btn-sm btn-secondary" title="Duplicar modelo" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Duplicar">
+                                    <i class="bi bi-copy"></i>
+                                    <span class="visually-hidden">Duplicar</span>
+                                </button>
                             </form>
-                            <a href="{% url 'auditoria:perguntas_list' %}?modelo={{ modelo.id }}" class="btn btn-sm btn-outline-primary" title="Gerenciar perguntas">
+                            <a href="{% url 'auditoria:perguntas_list' %}?modelo={{ modelo.id }}" class="btn btn-sm btn-outline-primary" title="Gerenciar perguntas" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Perguntas">
                                 <i class="bi bi-question-circle"></i>
                             </a>
-                            <a href="{% url 'auditoria:modelo_delete' modelo.id %}" class="btn btn-sm btn-danger" title="Excluir modelo">
+                            <a href="{% url 'auditoria:modelo_delete' modelo.id %}" class="btn btn-sm btn-danger" title="Excluir modelo" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Excluir">
                                 <i class="bi bi-trash"></i>
                             </a>
                         </td>
