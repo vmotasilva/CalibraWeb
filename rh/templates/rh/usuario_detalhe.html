@@ -389,18 +389,54 @@
                                 <h5 class="mb-0">{{ modulo.nome }}</h5>
                             </div>
                             <div class="d-flex align-items-center gap-3">
-                                <div class="form-check form-switch mb-0" onclick="event.stopPropagation()">
-                                    <input type="checkbox"
-                                           class="form-check-input perm-checkbox"
-                                           id="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}"
-                                           data-codename="{{ modulo.module_perm.codename }}"
-                                           data-user-id="{{ usuario.id }}"
-                                           data-app-label="{{ modulo.module_perm.app_label }}"
-                                           {% with perm_key=modulo.module_perm.full %}
-                                           {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
-                                           {% endwith %}
-                                           {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
-                                    <label class="form-check-label text-white small" for="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}">No menu</label>
+                                <div class="d-flex align-items-center gap-3" onclick="event.stopPropagation()">
+                                    <div class="form-check form-switch mb-0">
+                                        <input type="checkbox"
+                                               class="form-check-input perm-checkbox"
+                                               id="perm_{{ modulo.module_perms.view.app_label }}_{{ modulo.module_perms.view.codename }}_view"
+                                               data-codename="{{ modulo.module_perms.view.codename }}"
+                                               data-user-id="{{ usuario.id }}"
+                                               data-app-label="{{ modulo.module_perms.view.app_label }}"
+                                               data-action="view"
+                                               data-row="module"
+                                               {% with perm_key=modulo.module_perms.view.full %}
+                                               {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                               {% endwith %}
+                                               {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                        <label class="form-check-label text-white small" for="perm_{{ modulo.module_perms.view.app_label }}_{{ modulo.module_perms.view.codename }}_view">No menu</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input type="checkbox"
+                                               class="form-check-input perm-checkbox"
+                                               id="perm_{{ modulo.module_perms.edit.app_label }}_{{ modulo.module_perms.edit.codename }}_edit"
+                                               data-codename="{{ modulo.module_perms.edit.codename }}"
+                                               data-user-id="{{ usuario.id }}"
+                                               data-app-label="{{ modulo.module_perms.edit.app_label }}"
+                                               data-action="edit"
+                                               data-row="module"
+                                               data-base="{{ modulo.module_perms.view.codename }}"
+                                               {% with perm_key=modulo.module_perms.edit.full %}
+                                               {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                               {% endwith %}
+                                               {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                        <label class="form-check-label text-white small" for="perm_{{ modulo.module_perms.edit.app_label }}_{{ modulo.module_perms.edit.codename }}_edit">Editar</label>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input type="checkbox"
+                                               class="form-check-input perm-checkbox"
+                                               id="perm_{{ modulo.module_perms.delete.app_label }}_{{ modulo.module_perms.delete.codename }}_delete"
+                                               data-codename="{{ modulo.module_perms.delete.codename }}"
+                                               data-user-id="{{ usuario.id }}"
+                                               data-app-label="{{ modulo.module_perms.delete.app_label }}"
+                                               data-action="delete"
+                                               data-row="module"
+                                               data-base="{{ modulo.module_perms.view.codename }}"
+                                               {% with perm_key=modulo.module_perms.delete.full %}
+                                               {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                               {% endwith %}
+                                               {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                        <label class="form-check-label text-white small" for="perm_{{ modulo.module_perms.delete.app_label }}_{{ modulo.module_perms.delete.codename }}_delete">Deletar</label>
+                                    </div>
                                 </div>
                                 <i class="bi bi-chevron-down collapse-icon"></i>
                             </div>
@@ -421,18 +457,54 @@
                                                 <strong class="small text-uppercase">{{ bloco.nome }}</strong>
                                             </div>
                                             <div class="d-flex align-items-center gap-3">
-                                                <div class="form-check form-switch mb-0" onclick="event.stopPropagation()">
-                                                    <input type="checkbox"
-                                                           class="form-check-input perm-checkbox"
-                                                           id="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}"
-                                                           data-codename="{{ bloco.perm.codename }}"
-                                                           data-user-id="{{ usuario.id }}"
-                                                           data-app-label="{{ bloco.perm.app_label }}"
-                                                           {% with perm_key=bloco.perm.full %}
-                                                           {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
-                                                           {% endwith %}
-                                                           {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
-                                                    <label class="form-check-label small" for="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}">Exibir bloco</label>
+                                                <div class="d-flex align-items-center gap-3" onclick="event.stopPropagation()">
+                                                    <div class="form-check form-switch mb-0">
+                                                        <input type="checkbox"
+                                                               class="form-check-input perm-checkbox"
+                                                               id="perm_{{ bloco.perms.view.app_label }}_{{ bloco.perms.view.codename }}_view"
+                                                               data-codename="{{ bloco.perms.view.codename }}"
+                                                               data-user-id="{{ usuario.id }}"
+                                                               data-app-label="{{ bloco.perms.view.app_label }}"
+                                                               data-action="view"
+                                                               data-row="block"
+                                                               {% with perm_key=bloco.perms.view.full %}
+                                                               {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                                               {% endwith %}
+                                                               {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                                        <label class="form-check-label small" for="perm_{{ bloco.perms.view.app_label }}_{{ bloco.perms.view.codename }}_view">Visualizar</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-0">
+                                                        <input type="checkbox"
+                                                               class="form-check-input perm-checkbox"
+                                                               id="perm_{{ bloco.perms.edit.app_label }}_{{ bloco.perms.edit.codename }}_edit"
+                                                               data-codename="{{ bloco.perms.edit.codename }}"
+                                                               data-user-id="{{ usuario.id }}"
+                                                               data-app-label="{{ bloco.perms.edit.app_label }}"
+                                                               data-action="edit"
+                                                               data-row="block"
+                                                               data-base="{{ bloco.perms.view.codename }}"
+                                                               {% with perm_key=bloco.perms.edit.full %}
+                                                               {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                                               {% endwith %}
+                                                               {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                                        <label class="form-check-label small" for="perm_{{ bloco.perms.edit.app_label }}_{{ bloco.perms.edit.codename }}_edit">Editar</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-0">
+                                                        <input type="checkbox"
+                                                               class="form-check-input perm-checkbox"
+                                                               id="perm_{{ bloco.perms.delete.app_label }}_{{ bloco.perms.delete.codename }}_delete"
+                                                               data-codename="{{ bloco.perms.delete.codename }}"
+                                                               data-user-id="{{ usuario.id }}"
+                                                               data-app-label="{{ bloco.perms.delete.app_label }}"
+                                                               data-action="delete"
+                                                               data-row="block"
+                                                               data-base="{{ bloco.perms.view.codename }}"
+                                                               {% with perm_key=bloco.perms.delete.full %}
+                                                               {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                                               {% endwith %}
+                                                               {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                                        <label class="form-check-label small" for="perm_{{ bloco.perms.delete.app_label }}_{{ bloco.perms.delete.codename }}_delete">Deletar</label>
+                                                    </div>
                                                 </div>
                                                 <i class="bi bi-chevron-down collapse-icon text-muted"></i>
                                             </div>
@@ -443,18 +515,54 @@
                                             {% for funcao in bloco.funcoes %}
                                             <div class="list-group-item d-flex justify-content-between align-items-center">
                                                 <div class="small">{{ funcao.nome }}</div>
-                                                <div class="form-check form-switch mb-0">
-                                                    <input type="checkbox"
-                                                           class="form-check-input perm-checkbox"
-                                                           id="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}"
-                                                           data-codename="{{ funcao.perm.codename }}"
-                                                           data-user-id="{{ usuario.id }}"
-                                                           data-app-label="{{ funcao.perm.app_label }}"
-                                                           {% with perm_key=funcao.perm.full %}
-                                                           {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
-                                                           {% endwith %}
-                                                           {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
-                                                    <label class="form-check-label small" for="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}">Acessar</label>
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <div class="form-check form-switch mb-0">
+                                                        <input type="checkbox"
+                                                               class="form-check-input perm-checkbox"
+                                                               id="perm_{{ funcao.perms.view.app_label }}_{{ funcao.perms.view.codename }}_view"
+                                                               data-codename="{{ funcao.perms.view.codename }}"
+                                                               data-user-id="{{ usuario.id }}"
+                                                               data-app-label="{{ funcao.perms.view.app_label }}"
+                                                               data-action="view"
+                                                               data-row="func"
+                                                               {% with perm_key=funcao.perms.view.full %}
+                                                               {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                                               {% endwith %}
+                                                               {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                                        <label class="form-check-label small" for="perm_{{ funcao.perms.view.app_label }}_{{ funcao.perms.view.codename }}_view">Visualizar</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-0">
+                                                        <input type="checkbox"
+                                                               class="form-check-input perm-checkbox"
+                                                               id="perm_{{ funcao.perms.edit.app_label }}_{{ funcao.perms.edit.codename }}_edit"
+                                                               data-codename="{{ funcao.perms.edit.codename }}"
+                                                               data-user-id="{{ usuario.id }}"
+                                                               data-app-label="{{ funcao.perms.edit.app_label }}"
+                                                               data-action="edit"
+                                                               data-row="func"
+                                                               data-base="{{ funcao.perms.view.codename }}"
+                                                               {% with perm_key=funcao.perms.edit.full %}
+                                                               {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                                               {% endwith %}
+                                                               {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                                        <label class="form-check-label small" for="perm_{{ funcao.perms.edit.app_label }}_{{ funcao.perms.edit.codename }}_edit">Editar</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-0">
+                                                        <input type="checkbox"
+                                                               class="form-check-input perm-checkbox"
+                                                               id="perm_{{ funcao.perms.delete.app_label }}_{{ funcao.perms.delete.codename }}_delete"
+                                                               data-codename="{{ funcao.perms.delete.codename }}"
+                                                               data-user-id="{{ usuario.id }}"
+                                                               data-app-label="{{ funcao.perms.delete.app_label }}"
+                                                               data-action="delete"
+                                                               data-row="func"
+                                                               data-base="{{ funcao.perms.view.codename }}"
+                                                               {% with perm_key=funcao.perms.delete.full %}
+                                                               {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}
+                                                               {% endwith %}
+                                                               {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                                                        <label class="form-check-label small" for="perm_{{ funcao.perms.delete.app_label }}_{{ funcao.perms.delete.codename }}_delete">Deletar</label>
+                                                    </div>
                                                 </div>
                                             </div>
                                             {% endfor %}
@@ -646,6 +754,72 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let selectedColaboradorId = null;
     let selectedUsuarioPermId = null;
+
+    // --- Regras locais (UI) para hierarquia de ações ---
+    // - Editar/Deletar dependem de Visualizar no mesmo item.
+    // - Ao desligar Visualizar de um MÓDULO/BLOCO, limpar permissões filhas no DOM
+    //   (a API também filtra, mas isso evita confusão visual antes de recarregar).
+    function initPermInitialState() {
+        document.querySelectorAll('input.perm-checkbox').forEach(cb => {
+            cb.dataset.initialDisabled = cb.disabled ? '1' : '0';
+        });
+    }
+
+    function syncDerivedForBase(baseCodename, enabled, root) {
+        if (!baseCodename) return;
+        const selector = `input.perm-checkbox[data-base="${CSS.escape(baseCodename)}"]`;
+        root.querySelectorAll(selector).forEach(cb => {
+            if (cb.dataset.initialDisabled === '1') return;
+            cb.disabled = !enabled;
+            if (!enabled) cb.checked = false;
+        });
+    }
+
+    function syncAllDerived(root = document) {
+        root.querySelectorAll('input.perm-checkbox[data-action="view"]').forEach(viewCb => {
+            // Se este checkbox já vem desabilitado do servidor, não forçar nada.
+            const base = viewCb.dataset.codename;
+            syncDerivedForBase(base, !!viewCb.checked, root);
+        });
+    }
+
+    function clearDescendants(container, exceptEl) {
+        container.querySelectorAll('input.perm-checkbox').forEach(cb => {
+            if (cb === exceptEl) return;
+            if (cb.disabled) return;
+            cb.checked = false;
+        });
+    }
+
+    initPermInitialState();
+    syncAllDerived();
+
+    document.addEventListener('change', function(e) {
+        const target = e.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        if (!target.classList.contains('perm-checkbox')) return;
+
+        const action = target.dataset.action;
+        const row = target.dataset.row;
+        if (action !== 'view') return;
+
+        // Sincroniza ações do mesmo item
+        syncDerivedForBase(target.dataset.codename, !!target.checked, document);
+
+        // Se o usuário desligou o módulo/bloco, limpar permissões filhas
+        if (!target.checked) {
+            if (row === 'module') {
+                const moduleCard = target.closest('.module-card');
+                if (moduleCard) clearDescendants(moduleCard, target);
+            } else if (row === 'block') {
+                const blockCard = target.closest('.card.border.mb-2');
+                if (blockCard) clearDescendants(blockCard, target);
+            }
+        }
+
+        // Reaplica regra global (garante consistência)
+        syncAllDerived();
+    });
     
     function showToast(message, isSuccess = true) {
         toastEl.classList.remove('text-bg-success', 'text-bg-danger');
