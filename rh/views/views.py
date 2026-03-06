@@ -2275,7 +2275,9 @@ def api_atualizar_permissoes_lote(request):
 
         nav_structure = get_nav_structure()
         module_codenames: set[str] = set()
+        block_codenames: set[str] = set()
         codename_to_module: dict[str, str] = {}
+        codename_to_block: dict[str, str] = {}
 
         def _core_codename(full_perm: str | None) -> str | None:
             if not full_perm or "." not in str(full_perm):
@@ -2297,11 +2299,14 @@ def api_atualizar_permissoes_lote(request):
                 block_codename = _core_codename(bloco.get("perm"))
                 if block_codename:
                     codename_to_module[block_codename] = module_codename
+                    block_codenames.add(block_codename)
 
                 for func in bloco.get("funcoes") or []:
                     func_codename = _core_codename(func.get("perm"))
                     if func_codename:
                         codename_to_module[func_codename] = module_codename
+                        if block_codename:
+                            codename_to_block[func_codename] = block_codename
 
         # Atualizar permissões por app presente no payload (não apagar o restante)
         for app_label, codenames in (permissoes_dict or {}).items():
@@ -2335,14 +2340,32 @@ def api_atualizar_permissoes_lote(request):
                     # Módulo (nav_mod_*) como mestre: se o módulo não estiver selecionado,
                     # descartar permissões de bloco/função do módulo.
                     selected_modules = {c for c in codenames_set if c in module_codenames}
+                    selected_blocks = {
+                        c
+                        for c in codenames_set
+                        if (c in block_codenames) and (codename_to_module.get(c) in selected_modules)
+                    }
                     filtered: set[str] = set()
                     for codename in codenames_set:
                         if codename in module_codenames:
                             filtered.add(codename)
                             continue
+
                         module_owner = codename_to_module.get(codename)
-                        if module_owner is None or module_owner in selected_modules:
+                        if module_owner is not None and module_owner not in selected_modules:
+                            continue
+
+                        # Se for um bloco, precisa do módulo ligado
+                        if codename in block_codenames:
                             filtered.add(codename)
+                            continue
+
+                        # Se for função: precisa do bloco ligado (se mapeado)
+                        block_owner = codename_to_block.get(codename)
+                        if block_owner is not None and block_owner not in selected_blocks:
+                            continue
+
+                        filtered.add(codename)
                     codenames = sorted(filtered)
 
                 perms_to_add = Permission.objects.filter(
@@ -2482,7 +2505,9 @@ def api_copiar_permissoes(request):
             return codename
 
         module_codenames: set[str] = set()
+        block_codenames: set[str] = set()
         codename_to_module: dict[str, str] = {}
+        codename_to_block: dict[str, str] = {}
 
         for module in nav_structure:
             module_codename = _core_codename(module.get("module_perm"))
@@ -2495,10 +2520,13 @@ def api_copiar_permissoes(request):
                 block_codename = _core_codename(bloco.get("perm"))
                 if block_codename:
                     codename_to_module[block_codename] = module_codename
+                    block_codenames.add(block_codename)
                 for func in bloco.get("funcoes") or []:
                     func_codename = _core_codename(func.get("perm"))
                     if func_codename:
                         codename_to_module[func_codename] = module_codename
+                        if block_codename:
+                            codename_to_block[func_codename] = block_codename
 
         # Determinar permissões core.nav_* de origem
         if source.is_superuser:
@@ -2528,15 +2556,31 @@ def api_copiar_permissoes(request):
 
         # Mestre: módulos (nav_mod_*) controlam blocos/funções
         selected_modules = {c for c in source_core_nav if c in module_codenames}
+        selected_blocks = {
+            c
+            for c in source_core_nav
+            if (c in block_codenames) and (codename_to_module.get(c) in selected_modules)
+        }
 
         filtered_nav: set[str] = set()
         for codename in source_core_nav:
             if codename in module_codenames:
                 filtered_nav.add(codename)
                 continue
+
             module_owner = codename_to_module.get(codename)
-            if module_owner is None or module_owner in selected_modules:
+            if module_owner is not None and module_owner not in selected_modules:
+                continue
+
+            if codename in block_codenames:
                 filtered_nav.add(codename)
+                continue
+
+            block_owner = codename_to_block.get(codename)
+            if block_owner is not None and block_owner not in selected_blocks:
+                continue
+
+            filtered_nav.add(codename)
 
         # Aplicar no destino: substituir TODAS as permissões core.nav_*
         core_nav_remove = Permission.objects.filter(content_type__app_label='core', codename__startswith='nav_')
