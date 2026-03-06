@@ -537,78 +537,34 @@ def _nav_module_config(module_key: str):
 
 
 def get_view_permission_map() -> dict[str, dict[str, str]]:
-    """Retorna um mapa: view_name -> metadados de permissão.
+    """Retorna um mapa: view_name -> {perm, module}.
 
-    Estrutura:
-    - perm: permissão da função (core.nav_*)
-    - block_perm: permissão do bloco (core.nav_*)
-    - module_perm: permissão do módulo (core.nav_mod_*)
-    - module: chave do módulo (ex.: metrologia)
-
-    Observação: module_perm/block_perm permitem herança (módulo/bloco liberam ações
-    para as funções internas), reduzindo necessidade de marcar função a função.
+    Modelo caso-a-caso:
+    - Cada função (view) tem sua própria permissão `core.nav_*`.
+    - Módulo/bloco controlam visibilidade no menu; não concedem automaticamente
+      permissão de acessar funções.
     """
     result: dict[str, dict[str, str]] = {}
     for module in NAV_STRUCTURE:
         module_key = module.get("key")
-        module_perm = module.get("module_perm")
         for bloco in module.get("blocos") or []:
-            block_perm = bloco.get("perm")
             for func in bloco.get("funcoes") or []:
                 view_name = func.get("view_name")
                 perm = func.get("perm")
                 if not view_name or not perm:
                     continue
 
-                payload = {
-                    "perm": perm,
-                    "block_perm": block_perm,
-                    "module_perm": module_perm,
-                    "module": module_key,
-                }
-
                 # Suporta aliases: view_name pode ser uma lista/tupla/set de nomes.
                 if isinstance(view_name, (list, tuple, set)):
                     for vn in view_name:
                         if vn:
-                            result[vn] = payload
+                            result[vn] = {"perm": perm, "module": module_key}
                 else:
-                    result[view_name] = payload
+                    result[view_name] = {"perm": perm, "module": module_key}
     return result
 
 
 VIEW_NAME_TO_PERMISSION = get_view_permission_map()
-
-
-def _infer_action_from_view_name(view_name: str) -> str:
-    """Inferência simples do tipo de ação para controle view/edit/delete.
-
-    Regras:
-    - nomes contendo termos de exclusão => delete
-    - nomes contendo termos de edição/atualização => edit
-    - caso contrário => view
-
-    Observação: isso permite enforcement sem ter que anotar toda NAV_STRUCTURE.
-    """
-    value = (view_name or "").casefold()
-
-    delete_terms = ("delete", "remover", "excluir", "apagar", "remove")
-    if any(t in value for t in delete_terms):
-        return "delete"
-
-    edit_terms = ("edit", "editar", "update", "alterar", "change")
-    if any(t in value for t in edit_terms):
-        return "edit"
-
-    return "view"
-
-
-def _action_suffix(action: str | None) -> str:
-    if action == "edit":
-        return "_edit"
-    if action == "delete":
-        return "_delete"
-    return ""
 
 
 def user_has_any_nav_perm_for_module(user, module_key: str) -> bool:
@@ -617,15 +573,15 @@ def user_has_any_nav_perm_for_module(user, module_key: str) -> bool:
     if not module:
         return False
     module_perm = module.get("module_perm")
-    if module_perm and (user.has_perm(module_perm) or user.has_perm(f"{module_perm}_edit") or user.has_perm(f"{module_perm}_delete")):
+    if module_perm and user.has_perm(module_perm):
         return True
     for bloco in module.get("blocos") or []:
         block_perm = bloco.get("perm")
-        if block_perm and (user.has_perm(block_perm) or user.has_perm(f"{block_perm}_edit") or user.has_perm(f"{block_perm}_delete")):
+        if block_perm and user.has_perm(block_perm):
             return True
         for func in bloco.get("funcoes") or []:
             func_perm = func.get("perm")
-            if func_perm and (user.has_perm(func_perm) or user.has_perm(f"{func_perm}_edit") or user.has_perm(f"{func_perm}_delete")):
+            if func_perm and user.has_perm(func_perm):
                 return True
     return False
 
@@ -647,14 +603,14 @@ def has_block_nav_flag(user, module_key: str, block_key: str) -> bool:
     return False
 
 
-def has_view_access(user, view_name: str, *, action: str | None = None, method: str | None = None) -> bool:
-    """Valida acesso a uma função (view_name) com ações view/edit/delete.
+def has_view_access(user, view_name: str) -> bool:
+    """Valida acesso a uma função (view_name).
 
     Regras:
     - Superuser/staff: True
     - Se view não estiver mapeada: True (não controlamos)
     - Se usuário está em modo legado (grupo do módulo) e não tem nenhum nav_* do módulo: True
-    - Caso contrário: exige permissão nav_* da função (ou *_edit/*_delete conforme ação)
+    - Caso contrário: exige permissão nav_* da função
     """
     if user.is_superuser or user.is_staff:
         return True
@@ -665,24 +621,14 @@ def has_view_access(user, view_name: str, *, action: str | None = None, method: 
 
     module_key = data.get("module")
     required_perm = data.get("perm")
-    block_perm = data.get("block_perm")
-    module_perm = data.get("module_perm")
 
-    inferred_action = action or _infer_action_from_view_name(view_name)
-    # Se o handler é "view" mas veio como método unsafe (ex.: POST), tratar como edição por padrão.
-    if (inferred_action == "view") and method and str(method).upper() not in {"GET", "HEAD", "OPTIONS"}:
-        inferred_action = "edit"
-    suffix = _action_suffix(inferred_action)
 
     # Legado: se o usuário tem acesso ao módulo via grupo e ainda não tem nenhum nav_* no módulo,
     # não bloquear as funções (transição suave).
     if module_key and has_module_access(user, module_key) and not user_has_any_nav_perm_for_module(user, module_key):
         return True
 
-    # Ação view usa o próprio required_perm; edit/delete usam derivados.
-    candidates = [required_perm, block_perm, module_perm]
-    candidates = [p for p in candidates if p]
-    return any(user.has_perm(f"{p}{suffix}") for p in candidates)
+    return bool(required_perm and user.has_perm(required_perm))
 
 def setup_module_groups():
     """

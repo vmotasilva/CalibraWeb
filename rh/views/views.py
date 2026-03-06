@@ -2277,21 +2277,6 @@ def api_atualizar_permissoes_lote(request):
         module_codenames: set[str] = set()
         codename_to_module: dict[str, str] = {}
 
-        def _register_with_actions(codename: str, module_owner: str | None = None):
-            """Registra o codename base e os derivados _edit/_delete na hierarquia."""
-            if not codename:
-                return
-            if module_owner:
-                codename_to_module[codename] = module_owner
-                codename_to_module[f"{codename}_edit"] = module_owner
-                codename_to_module[f"{codename}_delete"] = module_owner
-
-        def _register_module_actions(module_codename: str):
-            if not module_codename:
-                return
-            codename_to_module[f"{module_codename}_edit"] = module_codename
-            codename_to_module[f"{module_codename}_delete"] = module_codename
-
         def _core_codename(full_perm: str | None) -> str | None:
             if not full_perm or "." not in str(full_perm):
                 return None
@@ -2306,18 +2291,17 @@ def api_atualizar_permissoes_lote(request):
                 continue
 
             module_codenames.add(module_codename)
-            # O módulo é o mestre; blocos/funções (incl. _edit/_delete) devem apontar para ele
-            _register_module_actions(module_codename)
+            # O módulo é o mestre; blocos/funções devem apontar para ele
 
             for bloco in module.get("blocos") or []:
                 block_codename = _core_codename(bloco.get("perm"))
                 if block_codename:
-                    _register_with_actions(block_codename, module_codename)
+                    codename_to_module[block_codename] = module_codename
 
                 for func in bloco.get("funcoes") or []:
                     func_codename = _core_codename(func.get("perm"))
                     if func_codename:
-                        _register_with_actions(func_codename, module_codename)
+                        codename_to_module[func_codename] = module_codename
 
         # Atualizar permissões por app presente no payload (não apagar o restante)
         for app_label, codenames in (permissoes_dict or {}).items():
@@ -2340,20 +2324,12 @@ def api_atualizar_permissoes_lote(request):
             if codenames:
                 if app_label == 'core':
                     # Somente permissões de navegação
-                    codenames_set = {str(c) for c in codenames if str(c).startswith('nav_')}
-
-                    # Ações dependem do base: não permitir *_edit/*_delete sem o codename base.
-                    def _base_of_action(code: str) -> str | None:
-                        if code.endswith('_edit'):
-                            return code[:-5]
-                        if code.endswith('_delete'):
-                            return code[:-7]
-                        return None
-
                     codenames_set = {
-                        c
-                        for c in codenames_set
-                        if (_base_of_action(c) is None) or (_base_of_action(c) in codenames_set)
+                        str(c)
+                        for c in codenames
+                        if str(c).startswith('nav_')
+                        and (not str(c).endswith('_edit'))
+                        and (not str(c).endswith('_delete'))
                     }
 
                     # Módulo (nav_mod_*) como mestre: se o módulo não estiver selecionado,
@@ -2508,36 +2484,21 @@ def api_copiar_permissoes(request):
         module_codenames: set[str] = set()
         codename_to_module: dict[str, str] = {}
 
-        def _register_with_actions(codename: str, module_owner: str | None = None):
-            if not codename:
-                return
-            if module_owner:
-                codename_to_module[codename] = module_owner
-                codename_to_module[f"{codename}_edit"] = module_owner
-                codename_to_module[f"{codename}_delete"] = module_owner
-
-        def _register_module_actions(module_codename: str):
-            if not module_codename:
-                return
-            codename_to_module[f"{module_codename}_edit"] = module_codename
-            codename_to_module[f"{module_codename}_delete"] = module_codename
-
         for module in nav_structure:
             module_codename = _core_codename(module.get("module_perm"))
             if not module_codename:
                 continue
 
             module_codenames.add(module_codename)
-            _register_module_actions(module_codename)
 
             for bloco in module.get("blocos") or []:
                 block_codename = _core_codename(bloco.get("perm"))
                 if block_codename:
-                    _register_with_actions(block_codename, module_codename)
+                    codename_to_module[block_codename] = module_codename
                 for func in bloco.get("funcoes") or []:
                     func_codename = _core_codename(func.get("perm"))
                     if func_codename:
-                        _register_with_actions(func_codename, module_codename)
+                        codename_to_module[func_codename] = module_codename
 
         # Determinar permissões core.nav_* de origem
         if source.is_superuser:
@@ -2562,20 +2523,11 @@ def api_copiar_permissoes(request):
                 ).values_list('codename', flat=True)
             )
 
+        # Não copiar permissões derivadas (modelo caso-a-caso)
+        source_core_nav = {c for c in source_core_nav if (not c.endswith('_edit')) and (not c.endswith('_delete'))}
+
         # Mestre: módulos (nav_mod_*) controlam blocos/funções
         selected_modules = {c for c in source_core_nav if c in module_codenames}
-
-        # Ações dependem do base
-        def _base_of_action(code: str) -> str | None:
-            if code.endswith('_edit'):
-                return code[:-5]
-            if code.endswith('_delete'):
-                return code[:-7]
-            return None
-
-        source_core_nav = {
-            c for c in source_core_nav if (_base_of_action(c) is None) or (_base_of_action(c) in source_core_nav)
-        }
 
         filtered_nav: set[str] = set()
         for codename in source_core_nav:
@@ -2784,14 +2736,6 @@ def detalhe_usuario_view(request, user_id):
         app_label, codename = str(full_perm).split(".", 1)
         return {"app_label": app_label, "codename": codename, "full": f"{app_label}.{codename}"}
 
-    def _perm_with_suffix(full_perm: str | None, suffix: str) -> str | None:
-        if not full_perm or "." not in str(full_perm):
-            return None
-        app_label, codename = str(full_perm).split(".", 1)
-        if not codename:
-            return None
-        return f"{app_label}.{codename}{suffix}"
-
     raw_modulos = get_nav_structure()
     modulos = []
     for modulo in raw_modulos:
@@ -2801,29 +2745,17 @@ def detalhe_usuario_view(request, user_id):
                 "nome": modulo.get("nome"),
                 "cor": modulo.get("cor"),
                 "icone": modulo.get("icone"),
-                "module_perms": {
-                    "view": _perm_parts(modulo.get("module_perm")),
-                    "edit": _perm_parts(_perm_with_suffix(modulo.get("module_perm"), "_edit")),
-                    "delete": _perm_parts(_perm_with_suffix(modulo.get("module_perm"), "_delete")),
-                },
+                "module_perm": _perm_parts(modulo.get("module_perm")),
                 "blocos": [
                     {
                         "key": bloco.get("key"),
                         "nome": bloco.get("nome"),
-                        "perms": {
-                            "view": _perm_parts(bloco.get("perm")),
-                            "edit": _perm_parts(_perm_with_suffix(bloco.get("perm"), "_edit")),
-                            "delete": _perm_parts(_perm_with_suffix(bloco.get("perm"), "_delete")),
-                        },
+                        "perm": _perm_parts(bloco.get("perm")),
                         "funcoes": [
                             {
                                 "nome": func.get("nome"),
                                 "view_name": func.get("view_name"),
-                                "perms": {
-                                    "view": _perm_parts(func.get("perm")),
-                                    "edit": _perm_parts(_perm_with_suffix(func.get("perm"), "_edit")),
-                                    "delete": _perm_parts(_perm_with_suffix(func.get("perm"), "_delete")),
-                                },
+                                "perm": _perm_parts(func.get("perm")),
                             }
                             for func in (bloco.get("funcoes") or [])
                         ],

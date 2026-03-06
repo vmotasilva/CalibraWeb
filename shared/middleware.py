@@ -88,7 +88,7 @@ class ModuleAccessMiddleware:
             except Exception:
                 view_name = None
 
-            if view_name and not has_view_access(request.user, view_name, method=request.method):
+            if view_name and not has_view_access(request.user, view_name):
                 messages.error(
                     request,
                     "❌ Acesso negado! Você não tem permissão para acessar esta função."
