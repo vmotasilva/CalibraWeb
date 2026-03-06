@@ -694,7 +694,7 @@ function renderTable(colaboradores) {
                         ${(c.nome[0] || 'C').toUpperCase()}
                     </div>
                     <div>
-                        <div class="fw-bold text-dark small text-uppercase">${c.nome}</div>
+                        <a href="/rh/colaborador/${c.id}/" class="fw-bold text-primary small text-uppercase text-decoration-none" style="cursor: pointer; display: block; transition: all 0.2s;">${c.nome}</a>
                         <div class="text-muted d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
                             <i class="bi bi-person-vcard me-1"></i> ${c.matricula} 
                             <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#${c.id}</span>
