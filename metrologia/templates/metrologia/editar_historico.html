@@ -1,8 +1,12 @@
 {% extends 'base.html' %}
-{% load widget_tweaks custom_tags %}
+{% load widget_tweaks custom_tags nav_access %}
 
 {% block content %}
 <div class="container-fluid py-4">
+    {% can_nav_view user 'download_certificado' 'metrologia' as can_cert_download %}
+    {% can_nav_view user 'remover_certificado_historico' 'metrologia' as can_cert_remove %}
+    {% can_nav_view user 'remover_carimbo_certificado' 'metrologia' as can_carimbo_remove %}
+    {% can_nav_view user 'editar_historico_calibracao' 'metrologia' as can_editar_historico %}
     <!-- CABEÇALHO -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -451,18 +455,22 @@
                                     <small class="text-muted">{{ historico.certificado|safe_filesize }}</small>
                                 </div>
                                 <div class="btn-group btn-group-sm ms-2">
+                                    {% if can_cert_download %}
                                     <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('original', '{% url 'get_certificado_bytes' historico.id %}?tipo=original')">
                                         <i class="bi bi-eye"></i> Visualizar
                                     </button>
                                     <a href="{% url 'download_certificado' historico.id %}?tipo=original" class="btn btn-outline-success btn-sm">
                                         <i class="bi bi-download"></i> Download
                                     </a>
+                                    {% endif %}
+                                    {% if can_cert_remove %}
                                     <form method="post" style="display: inline;">
                                         {% csrf_token %}
                                         <button type="submit" name="acao" value="remover_certificado_original" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover o certificado original?')">
                                             <i class="bi bi-trash"></i> Remover
                                         </button>
                                     </form>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endif %}
@@ -479,18 +487,22 @@
                                     <small class="text-muted">{{ historico.certificado_carimbado|safe_filesize }}</small>
                                 </div>
                                 <div class="btn-group btn-group-sm ms-2">
+                                    {% if can_cert_download %}
                                     <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('carimbado', '{% url 'get_certificado_bytes' historico.id %}?tipo=carimbado')">
                                         <i class="bi bi-eye"></i> Visualizar
                                     </button>
                                     <a href="{% url 'download_certificado' historico.id %}?tipo=carimbado" class="btn btn-outline-success btn-sm">
                                         <i class="bi bi-download"></i> Download
                                     </a>
+                                    {% endif %}
+                                    {% if can_cert_remove %}
                                     <form method="post" style="display: inline;">
                                         {% csrf_token %}
                                         <button type="submit" name="acao" value="remover_certificado_carimbado" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover o certificado carimbado?')">
                                             <i class="bi bi-trash"></i> Remover
                                         </button>
                                     </form>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endif %}
@@ -515,6 +527,7 @@
                             <i class="bi bi-info-circle"></i> Preencha os dados abaixo e clique no PDF (direita) para posicionar o carimbo.
                         </div>
 
+                        {% if can_editar_historico %}
                         <form method="post" action="{% url 'aplicar_carimbo_certificado' historico.id %}" id="carimboForm" class="mt-2" novalidate>
                             {% csrf_token %}
                             
@@ -558,15 +571,18 @@
                                 </button>
                             </div>
                         </form>
+                        {% endif %}
 
                         <!-- Formulário para Remover Carimbo -->
                         {% if historico.certificado_carimbado %}
-                        <form method="post" action="{% url 'remover_carimbo_certificado' historico.id %}" class="d-inline" onsubmit="return confirm('Tem certeza? Isso removerá o carimbo atual.');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-danger btn-sm mt-2 ms-2" title="Remover carimbo para poder aplicar novamente">
-                                <i class="bi bi-trash"></i> Remover Carimbo
-                            </button>
-                        </form>
+                            {% if can_carimbo_remove %}
+                            <form method="post" action="{% url 'remover_carimbo_certificado' historico.id %}" class="d-inline" onsubmit="return confirm('Tem certeza? Isso removerá o carimbo atual.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm mt-2 ms-2" title="Remover carimbo para poder aplicar novamente">
+                                    <i class="bi bi-trash"></i> Remover Carimbo
+                                </button>
+                            </form>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -581,6 +597,7 @@
                 <div class="card-body p-2 flex-grow-1 d-flex flex-column">
                     <!-- Visualização do PDF Real ou Template -->
                     {% if historico.certificado_carimbado or historico.certificado %}
+                        {% if can_cert_download %}
                         <!-- Visualizador PDF com PDF.js -->
                         <div id="pdf-viewer" class="pdf-viewer-container flex-grow-1 d-flex flex-column mb-2">
                             <div class="pdf-toolbar">
@@ -1013,6 +1030,11 @@
                                 });
                             };
                         </script>
+                        {% else %}
+                            <div class="alert alert-warning mb-0">
+                                <i class="bi bi-lock"></i> Você não tem permissão para visualizar/download do certificado.
+                            </div>
+                        {% endif %}
                     {% else %}
                         <!-- Template Simulado (fallback) -->
                         <div class="cert-preview">

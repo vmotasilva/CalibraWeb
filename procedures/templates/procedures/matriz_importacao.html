@@ -1,4 +1,5 @@
 {% extends "procedures/procedimento_base.html" %}
+{% load nav_access %}
 
 {% block title %}Importação em Massa - Matrizes de Habilidades{% endblock %}
 {% block header_title %}Importação em Massa - Matrizes de Habilidades{% endblock %}
@@ -104,6 +105,8 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+    {% can_nav_view user 'procedures:importacao_matriz' 'procedures' as can_importar_matriz %}
+    {% can_nav_view user 'procedures:baixar_template_importacao' 'procedures' as can_baixar_template %}
     <!-- Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
@@ -161,14 +164,16 @@
                         <div class="mb-4">
                             <label class="form-label"><strong>2. Download do Template</strong></label>
                             <p class="text-muted mb-3">Baixe um template pré-formatado para começar:</p>
-                            <div class="d-flex gap-2">
-                                <a href="{% url 'procedures:baixar_template_importacao' 'csv' %}" class="btn btn-outline-info btn-sm" download>
-                                    <i class="bi bi-file-earmark-text"></i> Template CSV
-                                </a>
-                                <a href="{% url 'procedures:baixar_template_importacao' 'excel' %}" class="btn btn-outline-success btn-sm" download>
-                                    <i class="bi bi-file-earmark-spreadsheet"></i> Template Excel
-                                </a>
-                            </div>
+                            {% if can_baixar_template %}
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'procedures:baixar_template_importacao' 'csv' %}" class="btn btn-outline-info btn-sm" download>
+                                        <i class="bi bi-file-earmark-text"></i> Template CSV
+                                    </a>
+                                    <a href="{% url 'procedures:baixar_template_importacao' 'excel' %}" class="btn btn-outline-success btn-sm" download>
+                                        <i class="bi bi-file-earmark-spreadsheet"></i> Template Excel
+                                    </a>
+                                </div>
+                            {% endif %}
                         </div>
 
                         <!-- Upload do Arquivo -->
@@ -224,9 +229,11 @@
 
                         <!-- Botões -->
                         <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-play-fill"></i> Processar Importação
-                            </button>
+                            {% if can_importar_matriz %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-play-fill"></i> Processar Importação
+                                </button>
+                            {% endif %}
                             <a href="{% url 'procedures:matrizes_list' %}" class="btn btn-outline-secondary">
                                 <i class="bi bi-x-circle"></i> Cancelar
                             </a>

@@ -1,4 +1,12 @@
 {% extends 'base.html' %}
+{% load nav_access %}
+
+{% can_nav_view user 'fornecedores:fornecedor_update' 'fornecedores' as can_fornecedor_update %}
+{% can_nav_view user 'fornecedores:documento_create' 'fornecedores' as can_documento_create %}
+{% can_nav_view user 'fornecedores:documento_delete' 'fornecedores' as can_documento_delete %}
+{% can_nav_view user 'fornecedores:avaliacao_matriz_create' 'fornecedores' as can_avaliacao_matriz_create %}
+{% can_nav_view user 'fornecedores:avaliacao_selecao_create' 'fornecedores' as can_avaliacao_selecao_create %}
+{% can_nav_view user 'fornecedores:avaliacao_reavaliacao_create' 'fornecedores' as can_avaliacao_reavaliacao_create %}
 {% block content %}
 <h2>Detalhes do Fornecedor</h2>
 <table class="table">
@@ -16,11 +24,15 @@
     <tr><th>Autorização de funcionamento</th><td>{{ fornecedor.autorizacao_funcionamento|yesno:"Sim,Não" }}</td></tr>
     <tr><th>Certificado ISO 9001, ISO 13485 ou ISO 17025</th><td>{{ fornecedor.certificado_iso|yesno:"Sim,Não" }}</td></tr>
 </table>
+{% if can_fornecedor_update %}
 <a href="{% url 'fornecedores:fornecedor_update' fornecedor.pk %}" class="btn btn-warning">Editar</a>
+{% endif %}
 <a href="{% url 'fornecedores:fornecedor_list' %}" class="btn btn-secondary">Voltar</a>
 
 <h3>Documentos</h3>
+{% if can_documento_create %}
 <a href="{% url 'fornecedores:documento_create' fornecedor.pk %}" class="btn btn-sm btn-primary mb-2">Novo Documento</a>
+{% endif %}
 <table class="table table-bordered">
     <thead>
         <tr>
@@ -39,7 +51,9 @@
             <td>{{ doc.data_validade|date:'d/m/Y' }}</td>
             <td>{{ doc.observacao }}</td>
             <td>
-                <a href="{% url 'fornecedores:documento_delete' fornecedor.pk doc.pk %}" class="btn btn-sm btn-danger">Remover</a>
+                {% if can_documento_delete %}
+                    <a href="{% url 'fornecedores:documento_delete' fornecedor.pk doc.pk %}" class="btn btn-sm btn-danger">Remover</a>
+                {% endif %}
             </td>
         </tr>
         {% empty %}
@@ -52,9 +66,11 @@
 
 <h3>Avaliação
     <span class="badge bg-success">Pontuação: {{ percentual_avaliacao|floatformat:1 }}</span>
-    <a href="{% url 'fornecedores:avaliacao_matriz_create' fornecedor.pk %}" class="btn btn-sm btn-info ms-2">
-        <i class="bi bi-table"></i> Matriz
-    </a>
+    {% if can_avaliacao_matriz_create %}
+        <a href="{% url 'fornecedores:avaliacao_matriz_create' fornecedor.pk %}" class="btn btn-sm btn-info ms-2">
+            <i class="bi bi-table"></i> Matriz
+        </a>
+    {% endif %}
 </h3>
 <div class="accordion" id="avaliacaoAccordion">
     <div class="accordion-item">
@@ -119,9 +135,11 @@
                     </div>
                     {% endif %}
                     
-                    <a href="{% url 'fornecedores:avaliacao_selecao_create' fornecedor.pk %}" class="btn btn-primary">
-                        {% if ultima_avaliacao_selecao %}Responder Novamente{% else %}Responder Avaliação{% endif %}
-                    </a>
+                    {% if can_avaliacao_selecao_create %}
+                        <a href="{% url 'fornecedores:avaliacao_selecao_create' fornecedor.pk %}" class="btn btn-primary">
+                            {% if ultima_avaliacao_selecao %}Responder Novamente{% else %}Responder Avaliação{% endif %}
+                        </a>
+                    {% endif %}
                 {% else %}
                 <p class="text-muted"><em>Nenhuma pergunta de avaliação cadastrada.</em></p>
                 {% endif %}
@@ -279,9 +297,11 @@
                     {% endif %}
                     
                     <div class="d-flex gap-2">
-                        <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-primary">
-                            {% if ultima_reavaliacao %}Responder Novamente{% else %}Responder Reavaliação{% endif %}
-                        </a>
+                        {% if can_avaliacao_reavaliacao_create %}
+                            <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-primary">
+                                {% if ultima_reavaliacao %}Responder Novamente{% else %}Responder Reavaliação{% endif %}
+                            </a>
+                        {% endif %}
                         <a href="{% url 'fornecedores:reavaliacao_list' fornecedor.pk %}" class="btn btn-outline-primary">
                             <i class="bi bi-list-check"></i> Ver Histórico
                         </a>

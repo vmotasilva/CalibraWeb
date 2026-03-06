@@ -1,8 +1,14 @@
 {% extends 'base.html' %}
+{% load nav_access %}
+
+{% can_nav_view user 'fornecedores:fornecedor_create' 'fornecedores' as can_fornecedor_create %}
+{% can_nav_view user 'fornecedores:fornecedor_update' 'fornecedores' as can_fornecedor_update %}
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h2 class="mb-0">Fornecedores</h2>
-    <a href="{% url 'fornecedores:fornecedor_create' %}" class="btn btn-primary">Novo Fornecedor</a>
+    {% if can_fornecedor_create %}
+        <a href="{% url 'fornecedores:fornecedor_create' %}" class="btn btn-primary">Novo Fornecedor</a>
+    {% endif %}
 </div>
 
 <form method="get" class="row g-2 mb-3">
@@ -105,7 +111,9 @@
                 <td>
                     <div class="d-flex flex-wrap gap-2">
                         <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-sm btn-info">Detalhes</a>
-                        <a href="{% url 'fornecedores:fornecedor_update' fornecedor.pk %}" class="btn btn-sm btn-warning">Editar</a>
+                        {% if can_fornecedor_update %}
+                            <a href="{% url 'fornecedores:fornecedor_update' fornecedor.pk %}" class="btn btn-sm btn-warning">Editar</a>
+                        {% endif %}
                     </div>
                 </td>
             </tr>

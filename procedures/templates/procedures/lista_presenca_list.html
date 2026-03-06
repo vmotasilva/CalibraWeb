@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load nav_access %}
 
 {% block title %}Listas de Presença{% endblock %}
 
@@ -15,15 +16,26 @@
         </div>
         <div class="col-md-4 text-start text-md-end">
             <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end" role="group">
-                <a href="{% url 'procedures:lista_presenca_create' %}" class="btn btn-primary">
-                    <i class="bi bi-plus-circle"></i> Nova Lista
-                </a>
-                <a href="{% url 'procedures:lista_presenca_importar' %}" class="btn btn-success">
-                    <i class="bi bi-upload"></i> Importar
-                </a>
-                <a href="{% url 'procedures:lista_presenca_export' %}" class="btn btn-info" title="Exportar para Excel">
-                    <i class="bi bi-download"></i> Exportar
-                </a>
+                {% can_nav_view user 'procedures:lista_presenca_create' 'procedures' as can_lista_create %}
+                {% can_nav_view user 'procedures:lista_presenca_importar' 'procedures' as can_lista_import %}
+                {% can_nav_view user 'procedures:lista_presenca_export' 'procedures' as can_lista_export %}
+                {% can_nav_view user 'procedures:lista_presenca_delete' 'procedures' as can_lista_delete %}
+
+                {% if can_lista_create %}
+                    <a href="{% url 'procedures:lista_presenca_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Nova Lista
+                    </a>
+                {% endif %}
+                {% if can_lista_import %}
+                    <a href="{% url 'procedures:lista_presenca_importar' %}" class="btn btn-success">
+                        <i class="bi bi-upload"></i> Importar
+                    </a>
+                {% endif %}
+                {% if can_lista_export %}
+                    <a href="{% url 'procedures:lista_presenca_export' %}" class="btn btn-info" title="Exportar para Excel">
+                        <i class="bi bi-download"></i> Exportar
+                    </a>
+                {% endif %}
                 <a href="{% url 'procedures:gerenciar_templates_presenca' %}" class="btn btn-secondary">
                     <i class="bi bi-file-earmark-excel"></i> Templates
                 </a>
@@ -91,27 +103,29 @@
         <form method="post" id="formExclusaoMassa">
             {% csrf_token %}
             
-            <!-- Controles de Seleção -->
-            <div class="card shadow-sm mb-3">
-                <div class="card-body d-flex justify-content-between align-items-center gap-3">
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-primary" id="btnSelecionarTodos" title="Selecionar todas as listas">
-                            <i class="bi bi-check-square"></i> Selecionar Todos
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" id="btnDesmarcarTodos" title="Desmarcar todas as listas">
-                            <i class="bi bi-square"></i> Desmarcar Todos
+            {% if can_lista_delete %}
+                <!-- Controles de Seleção -->
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body d-flex justify-content-between align-items-center gap-3">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-primary" id="btnSelecionarTodos" title="Selecionar todas as listas">
+                                <i class="bi bi-check-square"></i> Selecionar Todos
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnDesmarcarTodos" title="Desmarcar todas as listas">
+                                <i class="bi bi-square"></i> Desmarcar Todos
+                            </button>
+                        </div>
+                        
+                        <span id="contagemSelecionados" class="text-muted small">
+                            <i class="bi bi-info-circle"></i> Nenhuma lista selecionada
+                        </span>
+                        
+                        <button type="button" class="btn btn-danger" id="btnExcluirSelecionados" disabled>
+                            <i class="bi bi-trash"></i> Excluir Selecionados
                         </button>
                     </div>
-                    
-                    <span id="contagemSelecionados" class="text-muted small">
-                        <i class="bi bi-info-circle"></i> Nenhuma lista selecionada
-                    </span>
-                    
-                    <button type="button" class="btn btn-danger" id="btnExcluirSelecionados" disabled>
-                        <i class="bi bi-trash"></i> Excluir Selecionados
-                    </button>
                 </div>
-            </div>
+            {% endif %}
 
             <!-- Tabela -->
             <div class="card shadow-sm">
@@ -120,7 +134,9 @@
                         <thead class="table-light">
                             <tr>
                                 <th style="width: 3%" class="text-center">
-                                    <input type="checkbox" id="checkAll" class="form-check-input">
+                                    {% if can_lista_delete %}
+                                        <input type="checkbox" id="checkAll" class="form-check-input">
+                                    {% endif %}
                                 </th>
                                 <th style="width: 9%">Código</th>
                                 <th style="width: 24%">Título / Procedimento</th>
@@ -140,7 +156,9 @@
                             <tr id="row-{{ lista.id }}" class="lista-row">
                                 <!-- Checkbox -->
                                 <td class="text-center">
-                                    <input type="checkbox" name="lista_ids" value="{{ lista.id }}" class="form-check-input checkbox-lista">
+                                    {% if can_lista_delete %}
+                                        <input type="checkbox" name="lista_ids" value="{{ lista.id }}" class="form-check-input checkbox-lista">
+                                    {% endif %}
                                 </td>
 
                                 <!-- Código -->
@@ -220,15 +238,20 @@
                                        class="btn btn-outline-primary" title="Visualizar">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <a href="{% url 'procedures:lista_presenca_edit' lista.id %}" 
-                                       class="btn btn-outline-warning" title="Editar">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <a href="{% url 'procedures:lista_presenca_delete' lista.id %}" 
-                                       class="btn btn-outline-danger" title="Excluir"
-                                       onclick="return confirm('Tem certeza que deseja excluir a lista {{ lista.codigo }}?')">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
+                                    {% can_nav_view user 'procedures:lista_presenca_edit' 'procedures' as can_lista_edit %}
+                                    {% if can_lista_edit %}
+                                        <a href="{% url 'procedures:lista_presenca_edit' lista.id %}" 
+                                           class="btn btn-outline-warning" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if can_lista_delete %}
+                                        <a href="{% url 'procedures:lista_presenca_delete' lista.id %}" 
+                                           class="btn btn-outline-danger" title="Excluir"
+                                           onclick="return confirm('Tem certeza que deseja excluir a lista {{ lista.codigo }}?')">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
@@ -246,13 +269,16 @@
             {% if filtros %}
                 Tente ajustar os filtros acima.
             {% else %}
-                <a href="{% url 'procedures:lista_presenca_create' %}">Criar nova lista</a>
+                {% if can_lista_create %}
+                    <a href="{% url 'procedures:lista_presenca_create' %}">Criar nova lista</a>
+                {% endif %}
             {% endif %}
         </div>
     {% endif %}
 </div>
 
 <!-- Modal de Confirmação de Exclusão em Massa -->
+{% if can_lista_delete %}
 <div class="modal fade" id="modalExclusaoMassa" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -277,6 +303,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 {% endblock %}
 
@@ -290,8 +317,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnExcluirSelecionados = document.getElementById('btnExcluirSelecionados');
     const contagemSelecionados = document.getElementById('contagemSelecionados');
     const formExclusaoMassa = document.getElementById('formExclusaoMassa');
-    const modalExclusaoMassa = new bootstrap.Modal(document.getElementById('modalExclusaoMassa'));
+    const modalEl = document.getElementById('modalExclusaoMassa');
     const btnConfirmarExclusao = document.getElementById('btnConfirmarExclusao');
+
+    // Se UI de exclusão em massa estiver oculta por permissão, não inicializar handlers.
+    if (!checkAll || !btnSelecionarTodos || !btnDesmarcarTodos || !btnExcluirSelecionados || !contagemSelecionados || !formExclusaoMassa || !modalEl || !btnConfirmarExclusao) {
+        return;
+    }
+
+    const modalExclusaoMassa = new bootstrap.Modal(modalEl);
     
     // Atualizar contagem de selecionados
     function atualizarContagem() {

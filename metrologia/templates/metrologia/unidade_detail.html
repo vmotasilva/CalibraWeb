@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load nav_access %}
+
+{% can_nav_view user 'metrologia:unidade_update' 'metrologia' as can_unidade_update %}
+{% can_nav_view user 'metrologia:unidade_delete' 'metrologia' as can_unidade_delete %}
 
 {% block title %}{{ unidade.nome }} - CalibraWeb{% endblock %}
 
@@ -19,12 +23,16 @@
             {% endif %}
         </div>
         <div class="col-md-4 text-end">
-            <a href="{% url 'metrologia:unidade_update' unidade.id %}" class="btn btn-warning btn-lg">
-                <i class="bi bi-pencil-square"></i> Editar
-            </a>
-            <a href="{% url 'metrologia:unidade_delete' unidade.id %}" class="btn btn-danger btn-lg">
-                <i class="bi bi-trash"></i> Deletar
-            </a>
+            {% if can_unidade_update %}
+                <a href="{% url 'metrologia:unidade_update' unidade.id %}" class="btn btn-warning btn-lg">
+                    <i class="bi bi-pencil-square"></i> Editar
+                </a>
+            {% endif %}
+            {% if can_unidade_delete %}
+                <a href="{% url 'metrologia:unidade_delete' unidade.id %}" class="btn btn-danger btn-lg">
+                    <i class="bi bi-trash"></i> Deletar
+                </a>
+            {% endif %}
         </div>
     </div>
 

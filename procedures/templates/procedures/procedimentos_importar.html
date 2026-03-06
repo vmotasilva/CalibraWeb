@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load nav_access %}
 
 {% block content %}
 <div class="container-fluid py-4">
@@ -7,6 +8,8 @@
             <h3 class="mb-1">📤 Importação em Massa de Procedimentos</h3>
             <small class="text-muted">Importe múltiplos procedimentos através de arquivo Excel ou CSV</small>
         </div>
+        {% can_nav_view user 'procedures:importar_procedimentos' 'procedures' as can_importar_procedimentos %}
+        {% can_nav_view user 'procedures:dl_template_procedimentos' 'procedures' as can_baixar_template %}
         <div>
             <a href="{% url 'procedures:procedimentos_list' %}" class="btn btn-sm btn-outline-secondary">← Voltar</a>
         </div>
@@ -33,38 +36,42 @@
                 <div class="card-body">
                     <!-- Botão Template -->
                     <div class="mb-4">
-                        <a href="{% url 'procedures:dl_template_procedimentos' %}" class="btn btn-outline-primary">
-                            📥 Baixar Template
-                        </a>
-                        <small class="text-muted d-block mt-2">Baixe o template com todas as colunas necessárias</small>
+                        {% if can_baixar_template %}
+                            <a href="{% url 'procedures:dl_template_procedimentos' %}" class="btn btn-outline-primary">
+                                📥 Baixar Template
+                            </a>
+                            <small class="text-muted d-block mt-2">Baixe o template com todas as colunas necessárias</small>
+                        {% endif %}
                     </div>
 
                     <!-- Formulário de Upload -->
-                    <form method="post" enctype="multipart/form-data" id="importacao-form">
-                        {% csrf_token %}
-                        
-                        <!-- Input de Arquivo -->
-                        <div class="mb-3">
-                            <label class="form-label">Selecionar Arquivo</label>
-                            <div class="input-group">
-                                <input type="file" 
-                                       class="form-control" 
-                                       name="arquivo_excel" 
-                                       id="arquivo_excel"
-                                       accept=".xlsx,.xls,.csv"
-                                       required>
-                                <span class="input-group-text">.xlsx, .xls, .csv</span>
+                    {% if can_importar_procedimentos %}
+                        <form method="post" enctype="multipart/form-data" id="importacao-form">
+                            {% csrf_token %}
+                            
+                            <!-- Input de Arquivo -->
+                            <div class="mb-3">
+                                <label class="form-label">Selecionar Arquivo</label>
+                                <div class="input-group">
+                                    <input type="file" 
+                                           class="form-control" 
+                                           name="arquivo_excel" 
+                                           id="arquivo_excel"
+                                           accept=".xlsx,.xls,.csv"
+                                           required>
+                                    <span class="input-group-text">.xlsx, .xls, .csv</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    ✓ Suporta: Excel (.xlsx, .xls) e CSV
+                                </small>
                             </div>
-                            <small class="text-muted d-block mt-1">
-                                ✓ Suporta: Excel (.xlsx, .xls) e CSV
-                            </small>
-                        </div>
 
-                        <!-- Botão Submit -->
-                        <button type="submit" class="btn btn-success w-100 btn-lg" id="btn-importar">
-                            ▶ Processar Importação
-                        </button>
-                    </form>
+                            <!-- Botão Submit -->
+                            <button type="submit" class="btn btn-success w-100 btn-lg" id="btn-importar">
+                                ▶ Processar Importação
+                            </button>
+                        </form>
+                    {% endif %}
                 </div>
             </div>
         </div>

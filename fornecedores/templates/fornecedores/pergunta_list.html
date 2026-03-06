@@ -1,11 +1,18 @@
 {% extends 'base.html' %}
 {% load fornecedor_extras %}
+{% load nav_access %}
+
+{% can_nav_view user 'fornecedores:pergunta_create' 'fornecedores' as can_pergunta_create %}
+{% can_nav_view user 'fornecedores:pergunta_edit' 'fornecedores' as can_pergunta_edit %}
+{% can_nav_view user 'fornecedores:pergunta_delete' 'fornecedores' as can_pergunta_delete %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h2 class="mb-0">Perguntas de Avaliação</h2>
-        <a href="{% url 'fornecedores:pergunta_create' %}" class="btn btn-primary">Nova Pergunta</a>
+        {% if can_pergunta_create %}
+            <a href="{% url 'fornecedores:pergunta_create' %}" class="btn btn-primary">Nova Pergunta</a>
+        {% endif %}
     </div>
     <div class="table-responsive">
         <table class="table table-bordered table-striped">
@@ -28,8 +35,12 @@
                 <td>{{ pergunta.ordem }}</td>
                 <td>{% if pergunta.ativo %}Sim{% else %}Não{% endif %}</td>
                 <td>
-                    <a href="{% url 'fornecedores:pergunta_edit' pergunta.pk %}" class="btn btn-sm btn-warning">Editar</a>
-                    <a href="{% url 'fornecedores:pergunta_delete' pergunta.pk %}" class="btn btn-sm btn-danger">Remover</a>
+                    {% if can_pergunta_edit %}
+                        <a href="{% url 'fornecedores:pergunta_edit' pergunta.pk %}" class="btn btn-sm btn-warning">Editar</a>
+                    {% endif %}
+                    {% if can_pergunta_delete %}
+                        <a href="{% url 'fornecedores:pergunta_delete' pergunta.pk %}" class="btn btn-sm btn-danger">Remover</a>
+                    {% endif %}
                 </td>
             </tr>
             {% empty %}

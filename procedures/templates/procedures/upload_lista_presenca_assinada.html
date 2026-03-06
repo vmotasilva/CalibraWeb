@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static nav_access %}
 
 {% block title %}Upload de Lista Assinada - {{ lista.codigo }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
+    {% can_nav_view user 'procedures:upload_lista_presenca_assinada' 'procedures' as can_upload_lista_assinada %}
     <div class="row">
         <div class="col-md-8 offset-md-2">
             <!-- Breadcrumb -->
@@ -117,9 +118,11 @@
                             <a href="{% url 'procedures:lista_presenca_detail' lista.id %}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Voltar
                             </a>
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-cloud-upload-alt"></i> Enviar Como Evidência
-                            </button>
+                            {% if can_upload_lista_assinada %}
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-cloud-upload-alt"></i> Enviar Como Evidência
+                                </button>
+                            {% endif %}
                         </div>
                     </form>
                 </div>

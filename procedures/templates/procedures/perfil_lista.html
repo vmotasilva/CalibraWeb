@@ -1,5 +1,15 @@
 {% extends "procedures/procedimento_base.html" %}
 
+{% load nav_access %}
+
+{% can_nav_view user 'procedures:importar_estrutura' 'procedures' as can_importar_estrutura %}
+{% can_nav_view user 'procedures:importar_perfis' 'procedures' as can_importar_perfis %}
+{% can_nav_view user 'procedures:exportar_estrutura' 'procedures' as can_exportar_estrutura %}
+{% can_nav_view user 'procedures:novo_perfil' 'procedures' as can_novo_perfil %}
+{% can_nav_view user 'procedures:editar_perfil' 'procedures' as can_editar_perfil %}
+{% can_nav_view user 'procedures:api_delete_perfil' 'procedures' as can_deletar_perfil %}
+{% can_nav_view user 'procedures:api_delete_perfis_multiple' 'procedures' as can_deletar_perfis_em_massa %}
+
 {% block title %}Perfis de Treinamento{% endblock %}
 {% block header_title %}Perfis de Treinamento{% endblock %}
 
@@ -9,32 +19,44 @@
         <div>
             <h4 class="mb-0">Perfis de Treinamento</h4>
             <small class="text-muted" id="countDisplay">Total: {{ perfis_total|default:0 }} perfis</small>
+            {% if can_deletar_perfis_em_massa %}
             <span class="badge bg-info bg-opacity-10 text-info border d-none ms-2" id="selectedBadge">
                 <i class="bi bi-check-circle"></i> <span id="selectedCount">0</span> selecionados
             </span>
+            {% endif %}
         </div>
         <div>
             <div class="btn-group me-2" role="group">
+                {% if can_importar_estrutura %}
                 <a href="{% url 'procedures:importar_estrutura' %}" class="btn btn-success" title="Importação completa de perfis, grupos, subgrupos e colaboradores">
                     <i class="bi bi-file-earmark-excel"></i> Importar Estrutura
                 </a>
+                {% endif %}
+                {% if can_importar_perfis %}
                 <a href="{% url 'procedures:importar_perfis' %}" class="btn btn-outline-success" title="Importação simples - apenas perfis">
                     <i class="bi bi-upload"></i> Importar Perfis
                 </a>
+                {% endif %}
+                {% if can_exportar_estrutura %}
                 <a href="{% url 'procedures:exportar_estrutura' %}" class="btn btn-outline-info" title="Exporta todos os perfis, grupos, subgrupos e procedimentos">
                     <i class="bi bi-download"></i> Exportar Estrutura
                 </a>
+                {% endif %}
             </div>
             <div class="btn-group" role="group">
+                {% if can_deletar_perfis_em_massa %}
                 <button class="btn btn-sm btn-outline-danger d-none" id="deleteSelectedBtn" onclick="deleteSelected()">
                     <i class="bi bi-trash"></i> Deletar Selecionados
                 </button>
+                {% endif %}
                 <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
                     <i class="bi bi-arrow-counterclockwise"></i> Limpar
                 </button>
+                {% if can_novo_perfil %}
                 <a href="{% url 'procedures:novo_perfil' %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle"></i> Novo Perfil
                 </a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -67,7 +89,9 @@
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center gap-2">
+                        {% if can_deletar_perfis_em_massa %}
                         <input type="checkbox" class="form-check-input perfil-checkbox" data-id="{{ perfil.id }}" onchange="updateSelectionBadge()">
+                        {% endif %}
                         <div>
                             <h6 class="mb-0"><strong>{{ perfil.codigo }}</strong> - {{ perfil.nome }}</h6>
                         </div>
@@ -89,12 +113,16 @@
                         <a href="{% url 'procedures:detalhe_perfil' perfil.id %}" class="btn btn-sm btn-outline-info flex-grow-1">
                             <i class="bi bi-eye"></i> Detalhes
                         </a>
+                        {% if can_editar_perfil %}
                         <a href="{% url 'procedures:editar_perfil' perfil.id %}" class="btn btn-sm btn-outline-warning flex-grow-1">
                             <i class="bi bi-pencil"></i> Editar
                         </a>
+                        {% endif %}
+                        {% if can_deletar_perfil %}
                         <button class="btn btn-sm btn-outline-danger" onclick="deletePerfil({{ perfil.id }}, '{{ perfil.codigo }}')" title="Deletar perfil">
                             <i class="bi bi-trash"></i>
                         </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -143,15 +171,23 @@ function updateSelectionBadge() {
     const selectedCount = document.querySelectorAll('.perfil-checkbox:checked').length;
     const badge = document.getElementById('selectedBadge');
     const deleteBtn = document.getElementById('deleteSelectedBtn');
+
+    if (!badge) {
+        return;
+    }
     
     document.getElementById('selectedCount').textContent = selectedCount;
     
     if (selectedCount > 0) {
         badge.classList.remove('d-none');
-        deleteBtn.classList.remove('d-none');
+        if (deleteBtn) {
+            deleteBtn.classList.remove('d-none');
+        }
     } else {
         badge.classList.add('d-none');
-        deleteBtn.classList.add('d-none');
+        if (deleteBtn) {
+            deleteBtn.classList.add('d-none');
+        }
     }
 }
 

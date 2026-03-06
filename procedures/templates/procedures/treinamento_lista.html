@@ -1,18 +1,27 @@
 {% extends "procedures/procedimento_base.html" %}
+{% load nav_access %}
 
 {% block title %}Treinamentos{% endblock %}
 {% block header_title %}Matriz de Treinamentos{% endblock %}
 
 {% block header_actions %}
+    {% can_nav_view user 'procedures:novo_treinamento' 'procedures' as can_novo_treinamento %}
+    {% can_nav_view user 'procedures:treinamentos_importar' 'procedures' as can_importar_treinamentos %}
+
     <div class="d-flex gap-2">
-        <a href="{% url 'procedures:novo_treinamento' %}" class="btn btn-primary btn-sm">+ Novo Treinamento</a>
-        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
-            <i class="bi bi-upload"></i> Importar
-        </button>
+        {% if can_novo_treinamento %}
+            <a href="{% url 'procedures:novo_treinamento' %}" class="btn btn-primary btn-sm">+ Novo Treinamento</a>
+        {% endif %}
+        {% if can_importar_treinamentos %}
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
+                <i class="bi bi-upload"></i> Importar
+            </button>
+        {% endif %}
     </div>
 {% endblock %}
 
 {# Import modal (form posts to procedures:treinamentos_importar) #}
+{% if can_importar_treinamentos %}
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -28,7 +37,16 @@
             <label class="form-label">Arquivo Excel</label>
             <input type="file" name="arquivo" accept=".xlsx,.xls" class="form-control" required />
             <input type="hidden" name="next" value="{% url 'procedures:treinamentos_list' %}" />
-            <small class="form-text text-muted">Use o <a href="{% url 'procedures:treinamentos_template_download' %}">template</a> se necessário.</small>
+            {% can_nav_view user 'procedures:treinamentos_template_download' 'procedures' as can_download_template_import %}
+            <small class="form-text text-muted">
+                Use o
+                {% if can_download_template_import %}
+                    <a href="{% url 'procedures:treinamentos_template_download' %}">template</a>
+                {% else %}
+                    template
+                {% endif %}
+                se necessário.
+            </small>
           </div>
 
           <div class="form-check mb-2">
@@ -56,6 +74,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 {% block main_content %}
 <div class="card">
@@ -186,9 +205,12 @@
                 Registros 
                 <span class="badge bg-info">{{ total_registros }} total</span>
             </h6>
-            <a href="{% url 'procedures:treinamentos_exportar_excel' %}{% if query_string %}?{{ query_string }}{% endif %}" class="btn btn-success btn-sm" title="Exportar para Excel">
-                <i class="bi bi-file-earmark-excel"></i> Exportar Excel
-            </a>
+            {% can_nav_view user 'procedures:treinamentos_exportar_excel' 'procedures' as can_exportar_excel %}
+            {% if can_exportar_excel %}
+                <a href="{% url 'procedures:treinamentos_exportar_excel' %}{% if query_string %}?{{ query_string }}{% endif %}" class="btn btn-success btn-sm" title="Exportar para Excel">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                </a>
+            {% endif %}
             {% if treinamentos.paginator.num_pages > 1 %}
                 <small class="text-muted">
                     Página {{ treinamentos.number }} de {{ treinamentos.paginator.num_pages }}
@@ -236,7 +258,10 @@
                         {% endif %}
                     </td>
                     <td>
-                        <a href="{% url 'procedures:editar_treinamento' t.id %}" class="btn btn-sm btn-warning">Editar</a>
+                        {% can_nav_view user 'procedures:editar_treinamento' 'procedures' as can_editar_treinamento %}
+                        {% if can_editar_treinamento %}
+                            <a href="{% url 'procedures:editar_treinamento' t.id %}" class="btn btn-sm btn-warning">Editar</a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% empty %}

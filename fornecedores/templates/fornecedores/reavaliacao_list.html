@@ -1,5 +1,11 @@
 {% extends 'base.html' %}
 
+{% load nav_access %}
+
+{% can_nav_view user 'fornecedores:reavaliacao_create' 'fornecedores' as can_reavaliacao_create %}
+{% can_nav_view user 'fornecedores:avaliacao_reavaliacao_create' 'fornecedores' as can_avaliacao_reavaliacao_create %}
+{% can_nav_view user 'fornecedores:reavaliacao_delete' 'fornecedores' as can_reavaliacao_delete %}
+
 {% block content %}
 <div class="container mt-4">
     <h2>Histórico de Reavaliações - {{ fornecedor.empresa }}</h2>
@@ -8,9 +14,11 @@
         <div>
             <span class="badge bg-info">Total: {{ total_reavaliacoes }} reavaliação(ões)</span>
         </div>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#novaReavaliacao">
-            <i class="bi bi-plus-circle"></i> Adicionar Nova Reavaliação
-        </button>
+        {% if can_reavaliacao_create %}
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#novaReavaliacao">
+                <i class="bi bi-plus-circle"></i> Adicionar Nova Reavaliação
+            </button>
+        {% endif %}
     </div>
     
     {% if reavaliacoes_detalhes %}
@@ -70,16 +78,20 @@
                     </div>
                     
                     <div class="d-flex flex-wrap gap-2">
-                        <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-sm btn-warning">
-                            <i class="bi bi-pencil"></i> Editar
-                        </a>
-                        <form method="get" action="{% url 'fornecedores:reavaliacao_delete' fornecedor.pk %}" style="display: inline;">
-                            {% with data_formatada=item.reavaliacao.data|date:"d/m/Y" %}
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja deletar a última reavaliação de {{ data_formatada }}? Esta ação não pode ser desfeita.')">
-                                <i class="bi bi-trash"></i> Deletar Última
-                            </button>
-                            {% endwith %}
-                        </form>
+                        {% if can_avaliacao_reavaliacao_create %}
+                            <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                        {% endif %}
+                        {% if can_reavaliacao_delete %}
+                            <form method="get" action="{% url 'fornecedores:reavaliacao_delete' fornecedor.pk %}" style="display: inline;">
+                                {% with data_formatada=item.reavaliacao.data|date:"d/m/Y" %}
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja deletar a última reavaliação de {{ data_formatada }}? Esta ação não pode ser desfeita.')">
+                                    <i class="bi bi-trash"></i> Deletar Última
+                                </button>
+                                {% endwith %}
+                            </form>
+                        {% endif %}
                         <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-sm btn-secondary">
                             <i class="bi bi-arrow-left"></i> Voltar
                         </a>
@@ -92,9 +104,11 @@
     {% else %}
     <div class="alert alert-info" role="alert">
         <strong>Nenhuma reavaliação registrada ainda.</strong>
-        <button type="button" class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#novaReavaliacao">
-            Realizar Primeira Reavaliação
-        </button>
+        {% if can_reavaliacao_create %}
+            <button type="button" class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#novaReavaliacao">
+                Realizar Primeira Reavaliação
+            </button>
+        {% endif %}
     </div>
     {% endif %}
     
@@ -106,6 +120,7 @@
 </div>
 
 <!-- Modal para Nova Reavaliação -->
+{% if can_reavaliacao_create %}
 <div class="modal fade" id="novaReavaliacao" tabindex="-1" aria-labelledby="novaReavaliacaoLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -152,5 +167,6 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 {% endblock %}

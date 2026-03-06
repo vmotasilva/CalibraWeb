@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load widget_tweaks %}
+{% load widget_tweaks nav_access %}
 
 {% block content %}
 
@@ -11,6 +11,17 @@
 </style>
 
 <div class="container py-4">
+    {% can_nav_view user 'editar_instrumento_custom' 'metrologia' as can_editar_instrumento %}
+    {% can_nav_view user 'gerenciar_faixas_instrumento' 'metrologia' as can_gerenciar_faixas %}
+    {% can_nav_view user 'substituir_instrumento' 'metrologia' as can_substituir_instrumento %}
+    {% can_nav_view user 'atualizar_datas_calibracao' 'metrologia' as can_atualizar_datas %}
+    {% can_nav_view user 'registrar_historico_calibracao' 'metrologia' as can_registrar_historico %}
+
+    {% can_nav_view user 'editar_historico_calibracao' 'metrologia' as can_editar_historico %}
+    {% can_nav_view user 'download_certificado' 'metrologia' as can_download_certificado %}
+    {% can_nav_view user 'anexar_certificado_historico' 'metrologia' as can_anexar_certificado %}
+    {% can_nav_view user 'remover_certificado_historico' 'metrologia' as can_remover_certificado %}
+    {% can_nav_view user 'remover_historico' 'metrologia' as can_remover_historico %}
     
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -24,22 +35,27 @@
             <a href="{% url 'modulo_metrologia' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary me-2">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
-            </a>
             {% if instrumento.ativo %}
                 <span class="badge bg-success fs-6 px-3 py-2">ATIVO</span>
             {% else %}
                 <span class="badge bg-secondary fs-6 px-3 py-2">INATIVO</span>
             {% endif %}
             
-            <a href="{{ edit_url }}" class="btn btn-outline-secondary ms-2">
-                <i class="bi bi-pencil"></i> Editar Instrumento
-            </a>
-            <a href="{% url 'gerenciar_faixas_instrumento' instrumento.id %}" class="btn btn-outline-info ms-2">
-                <i class="bi bi-plus-circle"></i> Gerenciar Faixas
-            </a>
-            <a href="{% url 'substituir_instrumento' instrumento.id %}" class="btn btn-outline-warning ms-2">
-                <i class="bi bi-arrow-repeat"></i> Substituição
-            </a>
+            {% if can_editar_instrumento %}
+                <a href="{{ edit_url }}" class="btn btn-outline-secondary ms-2">
+                    <i class="bi bi-pencil"></i> Editar Instrumento
+                </a>
+            {% endif %}
+            {% if can_gerenciar_faixas %}
+                <a href="{% url 'gerenciar_faixas_instrumento' instrumento.id %}" class="btn btn-outline-info ms-2">
+                    <i class="bi bi-plus-circle"></i> Gerenciar Faixas
+                </a>
+            {% endif %}
+            {% if can_substituir_instrumento %}
+                <a href="{% url 'substituir_instrumento' instrumento.id %}" class="btn btn-outline-warning ms-2">
+                    <i class="bi bi-arrow-repeat"></i> Substituição
+                </a>
+            {% endif %}
         </div>
     </div>
 
@@ -66,12 +82,14 @@
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                     <span><i class="bi bi-calendar-check"></i> Status da Calibração</span>
-                    <form method="post" action="{% url 'atualizar_datas_calibracao' instrumento.id %}" style="margin: 0;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-light" title="Atualizar datas baseado no histórico mais recente">
-                            <i class="bi bi-arrow-clockwise"></i> Atualizar Datas
-                        </button>
-                    </form>
+                    {% if can_atualizar_datas %}
+                        <form method="post" action="{% url 'atualizar_datas_calibracao' instrumento.id %}" style="margin: 0;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-light" title="Atualizar datas baseado no histórico mais recente">
+                                <i class="bi bi-arrow-clockwise"></i> Atualizar Datas
+                            </button>
+                        </form>
+                    {% endif %}
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -168,12 +186,14 @@
             </div>
 
             <div class="d-flex justify-content-end mb-2">
-                <form method="post" action="{% url 'registrar_historico_calibracao' instrumento.id %}" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="bi bi-plus-circle"></i> Registrar novo histórico
-                    </button>
-                </form>
+                {% if can_registrar_historico %}
+                    <form method="post" action="{% url 'registrar_historico_calibracao' instrumento.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus-circle"></i> Registrar novo histórico
+                        </button>
+                    </form>
+                {% endif %}
             </div>
             <ul class="nav nav-tabs" id="myTab" role="tablist">
                 <li class="nav-item">
@@ -234,28 +254,38 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        <a href="{% url 'editar_historico_calibracao' item.id %}" class="btn btn-sm btn-primary" title="Editar histórico"><i class="bi bi-pencil-square"></i> Editar</a>
+                                        {% if can_editar_historico %}
+                                            <a href="{% url 'editar_historico_calibracao' item.id %}" class="btn btn-sm btn-primary" title="Editar histórico"><i class="bi bi-pencil-square"></i> Editar</a>
+                                        {% endif %}
                                         {% if item.certificado %}
-                                            <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary" title="Baixar PDF"><i class="bi bi-download"></i></a>
-                                            <form method="post" action="/metrologia/historico/{{ item.id }}/remover-certificado/" class="d-inline" onsubmit="return confirm('Remover apenas o PDF deste registro?');">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-outline-warning ms-1" title="Remover PDF"><i class="bi bi-trash"></i></button>
-                                            </form>
+                                            {% if can_download_certificado %}
+                                                <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary" title="Baixar PDF"><i class="bi bi-download"></i></a>
+                                            {% endif %}
+                                            {% if can_remover_certificado %}
+                                                <form method="post" action="/metrologia/historico/{{ item.id }}/remover-certificado/" class="d-inline" onsubmit="return confirm('Remover apenas o PDF deste registro?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning ms-1" title="Remover PDF"><i class="bi bi-trash"></i></button>
+                                                </form>
+                                            {% endif %}
                                         {% else %}
-                                            <form method="post" action="/metrologia/historico/{{ item.id }}/anexar-certificado/" enctype="multipart/form-data" class="d-inline">
+                                            {% if can_anexar_certificado %}
+                                                <form method="post" action="/metrologia/historico/{{ item.id }}/anexar-certificado/" enctype="multipart/form-data" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <input type="file" name="certificado_pdf" accept="application/pdf" class="form-control form-control-sm d-inline" style="width: 220px; display:inline-block;" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-success ms-1" title="Anexar PDF">
+                                                        <i class="bi bi-paperclip"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        {% endif %}
+                                        {% if can_remover_historico %}
+                                            <form method="post" action="/metrologia/historico/{{ item.id }}/remover/" class="d-inline" onsubmit="return confirm('Tem certeza que deseja remover este registro do histórico? Esta ação não pode ser desfeita.');">
                                                 {% csrf_token %}
-                                                <input type="file" name="certificado_pdf" accept="application/pdf" class="form-control form-control-sm d-inline" style="width: 220px; display:inline-block;" />
-                                                <button type="submit" class="btn btn-sm btn-outline-success ms-1" title="Anexar PDF">
-                                                    <i class="bi bi-paperclip"></i>
+                                                <button type="submit" class="btn btn-sm btn-outline-danger ms-1" title="Apagar registro">
+                                                    <i class="bi bi-x-circle"></i>
                                                 </button>
                                             </form>
                                         {% endif %}
-                                        <form method="post" action="/metrologia/historico/{{ item.id }}/remover/" class="d-inline" onsubmit="return confirm('Tem certeza que deseja remover este registro do histórico? Esta ação não pode ser desfeita.');">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-outline-danger ms-1" title="Apagar registro">
-                                                <i class="bi bi-x-circle"></i>
-                                            </button>
-                                        </form>
                                     </td>
                                 </tr>
                                 {% empty %}

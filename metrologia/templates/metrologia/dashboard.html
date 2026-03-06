@@ -1,5 +1,11 @@
 {% extends 'base.html' %}
 
+{% load nav_access %}
+
+{% can_nav_view user 'exportar_instrumentos' 'metrologia' as can_exportar_instrumentos %}
+{% can_nav_view user 'metrologia:export_etiquetas' 'metrologia' as can_exportar_etiquetas %}
+{% can_nav_view user 'novo_instrumento' 'metrologia' as can_novo_instrumento %}
+
 {% block content %}
 <style>
     /* Estilos de "App" (Rolagem Independente) */
@@ -60,18 +66,23 @@
         
         <div class="d-flex gap-2 align-items-center flex-wrap">
             <button id="btnCopyFilters" type="button" class="btn btn-outline-secondary btn-sm shadow-sm" title="Copiar link com filtros">🔗 Copiar Link</button>
-            <a id="btnExport" href="#" class="btn btn-outline-success btn-sm shadow-sm" title="Exportar Excel">
-                <i class="bi bi-download"></i> Exportar
-            </a>
+            {% if can_exportar_instrumentos %}
+                <a id="btnExport" href="#" class="btn btn-outline-success btn-sm shadow-sm" title="Exportar Excel">
+                    <i class="bi bi-download"></i> Exportar
+                </a>
+            {% endif %}
             <button class="btn btn-outline-info btn-sm shadow-sm" title="Atualizar todas as datas de calibração" onclick="atualizarTodasDatas()">
                 <i class="bi bi-arrow-clockwise"></i> Atualizar Datas
             </button>
-            <button class="btn btn-outline-primary btn-sm shadow-sm" title="Exportar Etiquetas PDF" data-bs-toggle="modal" data-bs-target="#etqModal">
-                🏷️ Etiquetas
-            </button>
+            {% if can_exportar_etiquetas %}
+                <button class="btn btn-outline-primary btn-sm shadow-sm" title="Exportar Etiquetas PDF" data-bs-toggle="modal" data-bs-target="#etqModal">
+                    🏷️ Etiquetas
+                </button>
+            {% endif %}
             </div>
 
             <!-- Modal compacto para Etiquetas -->
+            {% if can_exportar_etiquetas %}
             <div class="modal fade" id="etqModal" tabindex="-1" aria-labelledby="etqModalLabel" aria-hidden="true">
                 <div class="modal-dialog">
                     <div class="modal-content">
@@ -116,6 +127,7 @@
                     </div>
                 </div>
             }
+            {% endif %}
             <!-- Importação de instrumentos via QMS
             <a href="#" class="btn btn-success btn-sm shadow-sm" disabled>
                 <i class="bi bi-file-earmark-spreadsheet"></i> Importar
@@ -129,9 +141,11 @@
                 <i class="bi bi-clock-history"></i> Ver Importações
             </a>
             -->
-            <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm">
-                <i class="bi bi-plus-lg"></i> Novo
-            </a>
+            {% if can_novo_instrumento %}
+                <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm">
+                    <i class="bi bi-plus-lg"></i> Novo
+                </a>
+            {% endif %}
         </div>
     </div>
 

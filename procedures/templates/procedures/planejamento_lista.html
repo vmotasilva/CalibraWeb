@@ -1,5 +1,13 @@
 {% extends "procedures/procedimento_base.html" %}
 
+{% load nav_access %}
+
+{% can_nav_view user 'procedures:selecionar_tipo_planejamento' 'procedures' as can_novo_planejamento %}
+{% can_nav_view user 'procedures:exportar_lista_planejamentos_excel' 'procedures' as can_exportar_planejamentos %}
+{% can_nav_view user 'procedures:excluir_planejamentos_massa' 'procedures' as can_excluir_planejamentos_massa %}
+{% can_nav_view user 'procedures:detalhe_planejamento' 'procedures' as can_ver_planejamento %}
+{% can_nav_view user 'procedures:editar_planejamento' 'procedures' as can_editar_planejamento %}
+
 {% block title %}Planejamento de Treinamentos{% endblock %}
 {% block header_title %}Planejamento de Treinamentos{% endblock %}
 
@@ -115,9 +123,11 @@
             </div>
         </div>
         <div class="col-md-2">
-            <a href="{% url 'procedures:selecionar_tipo_planejamento' %}" class="btn btn-primary btn-lg w-100 h-100 d-flex align-items-center justify-content-center">
-                <i class="bi bi-plus-circle me-2"></i> Novo Planejamento
-            </a>
+            {% if can_novo_planejamento %}
+                <a href="{% url 'procedures:selecionar_tipo_planejamento' %}" class="btn btn-primary btn-lg w-100 h-100 d-flex align-items-center justify-content-center">
+                    <i class="bi bi-plus-circle me-2"></i> Novo Planejamento
+                </a>
+            {% endif %}
         </div>
     </div>
 
@@ -179,27 +189,31 @@
     <!-- Botão de Export (antes da tabela) -->
     {% if planejamentos %}
     <div class="d-flex justify-content-end mb-3 mt-2">
-        <form method="get" action="{% url 'procedures:exportar_lista_planejamentos_excel' %}">
-            {% for key, value in request.GET.items %}
-                {% if key != 'page' %}
-                    <input type="hidden" name="{{ key }}" value="{{ value }}">
-                {% endif %}
-            {% endfor %}
-            <button type="submit" class="btn btn-success btn-sm" title="Baixar como Excel">
-                <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel
-            </button>
-        </form>
+        {% if can_exportar_planejamentos %}
+            <form method="get" action="{% url 'procedures:exportar_lista_planejamentos_excel' %}">
+                {% for key, value in request.GET.items %}
+                    {% if key != 'page' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
+                {% endfor %}
+                <button type="submit" class="btn btn-success btn-sm" title="Baixar como Excel">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel
+                </button>
+            </form>
+        {% endif %}
     </div>
     {% endif %}
     <div class="card">
-        <div class="card-header bulk-actions" id="bulk-actions" style="display: none;">
-            <div class="d-flex align-items-center justify-content-between">
-                <span id="selected-count">0 selecionado(s)</span>
-                <button type="button" class="btn btn-danger btn-sm" id="btn-delete-selected" disabled>
-                    <i class="bi bi-trash"></i> Excluir Selecionados
-                </button>
+        {% if can_excluir_planejamentos_massa %}
+            <div class="card-header bulk-actions" id="bulk-actions" style="display: none;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span id="selected-count">0 selecionado(s)</span>
+                    <button type="button" class="btn btn-danger btn-sm" id="btn-delete-selected" disabled>
+                        <i class="bi bi-trash"></i> Excluir Selecionados
+                    </button>
+                </div>
             </div>
-        </div>
+        {% endif %}
         <div class="card-body p-0">
             {% if planejamentos %}
             <form id="form-bulk-delete" method="post" action="{% url 'procedures:excluir_planejamentos_massa' %}">
@@ -208,9 +222,11 @@
                     <table class="table table-hover mb-0">
                         <thead class="bg-light">
                             <tr>
-                                <th width="40">
-                                    <input type="checkbox" id="select-all" class="form-check-input">
-                                </th>
+                                {% if can_excluir_planejamentos_massa %}
+                                    <th width="40">
+                                        <input type="checkbox" id="select-all" class="form-check-input">
+                                    </th>
+                                {% endif %}
                                 <th>Título</th>
                                 <th>Procedimento</th>
                                 <th>Data Prevista</th>
@@ -223,9 +239,11 @@
                     <tbody>
                         {% for p in planejamentos %}
                         <tr>
-                            <td>
-                                <input type="checkbox" name="planejamentos_ids" value="{{ p.id }}" class="form-check-input select-item">
-                            </td>
+                            {% if can_excluir_planejamentos_massa %}
+                                <td>
+                                    <input type="checkbox" name="planejamentos_ids" value="{{ p.id }}" class="form-check-input select-item">
+                                </td>
+                            {% endif %}
                             <td>
                                 <strong>{{ p.titulo }}</strong>
                                 {% if p.descricao %}
@@ -278,12 +296,16 @@
                                 {% endif %}
                             </td>
                             <td class="text-center">
-                                <a href="{% url 'procedures:detalhe_planejamento' p.id %}" class="btn btn-sm btn-outline-info" title="Ver detalhes">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="{% url 'procedures:editar_planejamento' p.id %}" class="btn btn-sm btn-outline-warning" title="Editar">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
+                                {% if can_ver_planejamento %}
+                                    <a href="{% url 'procedures:detalhe_planejamento' p.id %}" class="btn btn-sm btn-outline-info" title="Ver detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                {% endif %}
+                                {% if can_editar_planejamento %}
+                                    <a href="{% url 'procedures:editar_planejamento' p.id %}" class="btn btn-sm btn-outline-warning" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -295,9 +317,11 @@
             <div class="p-4 text-center text-muted">
                 <i class="bi bi-calendar-x"></i>
                 <p>Nenhum planejamento encontrado.</p>
-                <a href="{% url 'procedures:novo_planejamento' %}" class="btn btn-primary">
-                    Criar Primeiro Planejamento
-                </a>
+                {% if can_novo_planejamento %}
+                    <a href="{% url 'procedures:novo_planejamento' %}" class="btn btn-primary">
+                        Criar Primeiro Planejamento
+                    </a>
+                {% endif %}
             </div>
             {% endif %}
         </div>

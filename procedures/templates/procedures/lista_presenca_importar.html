@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load nav_access %}
 
 {% block title %}Importar Treinamentos{% endblock %}
 
@@ -20,6 +21,8 @@
 
 {% block content %}
 <div class="container mt-4">
+    {% can_nav_view user 'procedures:lista_presenca_importar' 'procedures' as can_importar %}
+    {% can_nav_view user 'procedures:lista_presenca_download_template' 'procedures' as can_download_template %}
     <div class="row mb-4">
         <div class="col">
             <h2><i class="bi bi-upload"></i> Importar Treinamentos em Massa</h2>
@@ -89,9 +92,11 @@
                             <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-secondary">
                                 <i class="bi bi-arrow-left"></i> Cancelar
                             </a>
-                            <button type="submit" class="btn btn-success">
-                                <i class="bi bi-upload"></i> Importar Arquivo
-                            </button>
+                            {% if can_importar %}
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-upload"></i> Importar Arquivo
+                                </button>
+                            {% endif %}
                         </div>
                     </form>
                 </div>
@@ -106,9 +111,11 @@
                 </div>
                 <div class="card-body">
                     <p>Baixe o template Excel para facilitar a importação:</p>
-                    <a href="{% url 'procedures:lista_presenca_download_template' %}" class="btn btn-success w-100">
-                        <i class="bi bi-file-earmark-excel"></i> Baixar Template
-                    </a>
+                    {% if can_download_template %}
+                        <a href="{% url 'procedures:lista_presenca_download_template' %}" class="btn btn-success w-100">
+                            <i class="bi bi-file-earmark-excel"></i> Baixar Template
+                        </a>
+                    {% endif %}
                 </div>
             </div>
 

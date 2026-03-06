@@ -1,5 +1,14 @@
 {% extends "procedures/procedimento_base.html" %}
 
+{% load nav_access %}
+
+{% can_nav_view user 'procedures:editar_matriz' 'procedures' as can_editar_matriz %}
+{% can_nav_view user 'procedures:deletar_matriz' 'procedures' as can_deletar_matriz %}
+{% can_nav_view user 'procedures:nova_disciplina' 'procedures' as can_nova_disciplina %}
+{% can_nav_view user 'procedures:editar_disciplina' 'procedures' as can_editar_disciplina %}
+{% can_nav_view user 'procedures:deletar_disciplina' 'procedures' as can_deletar_disciplina %}
+{% can_nav_view user 'procedures:remover_colaborador_matriz' 'procedures' as can_remover_colaborador_matriz %}
+
 {% block title %}{{ matriz.codigo }}{% endblock %}
 {% block header_title %}{{ matriz.codigo }} - {{ matriz.nome }}{% endblock %}
 
@@ -9,12 +18,16 @@
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Matriz de Habilidades</h5>
             <div>
-                <a href="{% url 'procedures:editar_matriz' matriz.id %}" class="btn btn-warning btn-sm">
-                    <i class="bi bi-pencil"></i> Editar
-                </a>
-                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalDeleteMatriz" onclick="abrirModalDeleteMatriz({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
-                    <i class="bi bi-trash"></i> Deletar Matriz
-                </button>
+                {% if can_editar_matriz %}
+                    <a href="{% url 'procedures:editar_matriz' matriz.id %}" class="btn btn-warning btn-sm">
+                        <i class="bi bi-pencil"></i> Editar
+                    </a>
+                {% endif %}
+                {% if can_deletar_matriz %}
+                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalDeleteMatriz" onclick="abrirModalDeleteMatriz({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
+                        <i class="bi bi-trash"></i> Deletar Matriz
+                    </button>
+                {% endif %}
                 <a href="{% url 'procedures:matrizes_list' %}" class="btn btn-light btn-sm">
                     <i class="bi bi-arrow-left"></i> Voltar
                 </a>
@@ -45,9 +58,11 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h6 class="mb-0"><i class="bi bi-book"></i> Disciplinas da Matriz</h6>
-            <a href="{% url 'procedures:nova_disciplina' %}?matriz={{ matriz.id }}" class="btn btn-sm btn-success">
-                <i class="bi bi-plus-circle"></i> Adicionar Disciplina
-            </a>
+            {% if can_nova_disciplina %}
+                <a href="{% url 'procedures:nova_disciplina' %}?matriz={{ matriz.id }}" class="btn btn-sm btn-success">
+                    <i class="bi bi-plus-circle"></i> Adicionar Disciplina
+                </a>
+            {% endif %}
         </div>
         <div class="card-body">
             {% if disciplinas %}
@@ -86,12 +101,16 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{% url 'procedures:editar_disciplina' disc.id %}" class="btn btn-sm btn-warning" title="Editar">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <button type="button" class="btn btn-sm btn-danger" onclick="abrirModalDeleteDisciplina({{ disc.id }}, '{{ disc.codigo }}', '{{ disc.nome }}')" title="Deletar">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                {% if can_editar_disciplina %}
+                                    <a href="{% url 'procedures:editar_disciplina' disc.id %}" class="btn btn-sm btn-warning" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                {% endif %}
+                                {% if can_deletar_disciplina %}
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="abrirModalDeleteDisciplina({{ disc.id }}, '{{ disc.codigo }}', '{{ disc.nome }}')" title="Deletar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -102,7 +121,9 @@
             <div class="alert alert-info text-center">
                 <i class="bi bi-info-circle"></i>
                 Nenhuma disciplina cadastrada ainda. 
-                <a href="{% url 'procedures:nova_disciplina' %}?matriz={{ matriz.id }}" class="alert-link">Clique aqui para adicionar a primeira disciplina</a>.
+                {% if can_nova_disciplina %}
+                    <a href="{% url 'procedures:nova_disciplina' %}?matriz={{ matriz.id }}" class="alert-link">Clique aqui para adicionar a primeira disciplina</a>.
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -148,9 +169,11 @@
                             <td>{{ assoc.colaborador.setor|default:"-" }}</td>
                             <td>{{ assoc.data_atribuicao|date:"d/m/Y" }}</td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-danger" onclick="removerColaboradorMatriz({{ assoc.id }}, '{{ assoc.colaborador.nome_completo }}')">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                {% if can_remover_colaborador_matriz %}
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="removerColaboradorMatriz({{ assoc.id }}, '{{ assoc.colaborador.nome_completo }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}

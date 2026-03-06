@@ -1,4 +1,5 @@
 {% extends "procedures/procedimento_base.html" %}
+{% load nav_access %}
 
 {% block title %}Matrizes de Habilidades{% endblock %}
 {% block header_title %}Matrizes de Habilidades{% endblock %}
@@ -20,25 +21,35 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">Matrizes de Habilidades</h4>
         <div class="d-flex gap-2">
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-warning dropdown-toggle" data-bs-toggle="dropdown">
-                    <i class="bi bi-download"></i> Exportar
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'csv' %}">
-                        <i class="bi bi-filetype-csv"></i> Exportar como CSV
-                    </a></li>
-                    <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'excel' %}">
-                        <i class="bi bi-file-earmark-excel"></i> Exportar como Excel
-                    </a></li>
-                </ul>
-            </div>
-            <a href="{% url 'procedures:importacao_matriz' %}" class="btn btn-success">
-                <i class="bi bi-cloud-upload"></i> Importação em Massa
-            </a>
-            <a href="{% url 'procedures:nova_matriz' %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Nova Matriz
-            </a>
+            {% can_nav_view user 'procedures:exportar_matrizes' 'procedures' as can_exportar %}
+            {% can_nav_view user 'procedures:importacao_matriz' 'procedures' as can_importar %}
+            {% can_nav_view user 'procedures:editar_matriz' 'procedures' as can_editar_matriz %}
+
+            {% if can_exportar %}
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-warning dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-download"></i> Exportar
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'csv' %}">
+                            <i class="bi bi-filetype-csv"></i> Exportar como CSV
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'excel' %}">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar como Excel
+                        </a></li>
+                    </ul>
+                </div>
+            {% endif %}
+            {% if can_importar %}
+                <a href="{% url 'procedures:importacao_matriz' %}" class="btn btn-success">
+                    <i class="bi bi-cloud-upload"></i> Importação em Massa
+                </a>
+            {% endif %}
+            {% if can_editar_matriz %}
+                <a href="{% url 'procedures:nova_matriz' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Nova Matriz
+                </a>
+            {% endif %}
         </div>
     </div>
 
@@ -91,16 +102,21 @@
                     <a href="{% url 'procedures:detalhe_matriz' matriz.id %}" class="btn btn-sm btn-outline-info">
                         <i class="bi bi-eye"></i> Ver
                     </a>
-                    <a href="{% url 'procedures:editar_matriz' matriz.id %}" class="btn btn-sm btn-outline-warning">
-                        <i class="bi bi-pencil"></i> Editar
-                    </a>
+                    {% if can_editar_matriz %}
+                        <a href="{% url 'procedures:editar_matriz' matriz.id %}" class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                    {% endif %}
                     <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalAssociarColaboradores" onclick="abrirModalAssociacoes({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
                         <i class="bi bi-people"></i> Colaboradores 
                         <span class="badge bg-success colab-count-{{ matriz.id }}">{{ matriz.colaboradores.count }}</span>
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalDeleteMatriz" onclick="abrirModalDeleteMatriz({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
-                        <i class="bi bi-trash"></i> Deletar
-                    </button>
+                    {% can_nav_view user 'procedures:deletar_matriz' 'procedures' as can_deletar_matriz %}
+                    {% if can_deletar_matriz %}
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalDeleteMatriz" onclick="abrirModalDeleteMatriz({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
+                            <i class="bi bi-trash"></i> Deletar
+                        </button>
+                    {% endif %}
                 </div>
             </div>
         </div>
