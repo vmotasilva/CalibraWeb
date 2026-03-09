@@ -304,27 +304,40 @@ def dl_template_hierarquia(request):
 
 @login_required
 def dl_template_historico(request):
-    """Template para importação de históricos de calibração."""
-    return dl_generic(
-        [
-            "TAG",
-            "FAIXA",
-            "UNIDADE DE MEDIDA",
-            "DATA CALIBRAÇÃO",
-            "DATA APROVAÇÃO",
-            "N CERTIFICADO",
-            "CAMINHO DO CERTIFICADO",
-            "ERRO ENCONTRADO",
-            "INCERTEZA",
-            "TOLERANCIA PROCESSO (+/-)",
-            "RBC (SIM/NAO)",
-            "RESULTADO",
-            "FORNECEDOR",
-            "RESPONSÁVEL",
-            "OBSERVAÇÕES",
-        ],
-        "template_historico.xlsx",
+    """Template para importação de históricos de calibração com exemplos."""
+    hoje = date.today()
+    df = pd.DataFrame(
+        {
+            "TAG": ["INS-001", "INS-002", "INS-003"],
+            "FAIXA": ["0-100", "0-50", "-10 a 50"],
+            "UNIDADE DE MEDIDA": ["mm", "°C", "mV"],
+            "DATA CALIBRAÇÃO": [
+                (hoje - timedelta(days=30)).strftime("%d/%m/%Y"),
+                (hoje - timedelta(days=60)).strftime("%d/%m/%Y"),
+                (hoje - timedelta(days=90)).strftime("%d/%m/%Y"),
+            ],
+            "DATA APROVAÇÃO": [
+                (hoje - timedelta(days=29)).strftime("%d/%m/%Y"),
+                (hoje - timedelta(days=59)).strftime("%d/%m/%Y"),
+                (hoje - timedelta(days=89)).strftime("%d/%m/%Y"),
+            ],
+            "N CERTIFICADO": ["CERT-2025-001", "CERT-2025-002", "CERT-2025-003"],
+            "CAMINHO DO CERTIFICADO": ["", "", ""],
+            "ERRO ENCONTRADO": ["0,50", "0,30", "0,80"],
+            "INCERTEZA": ["0,20", "0,15", "0,40"],
+            "TOLERANCIA PROCESSO (+/-)": ["1,00", "0,50", "2,00"],
+            "RBC (SIM/NAO)": ["SIM", "NAO", "SIM"],
+            "RESULTADO": ["APROVADO", "CONDICIONAL", "REPROVADO"],
+            "FORNECEDOR": ["Laboratório XYZ", "Laboratório ABC", "Laboratório XYZ"],
+            "RESPONSÁVEL": ["João Silva", "Maria Santos", "Pedro Costa"],
+            "OBSERVAÇÕES": [
+                "Calibração OK",
+                "Atenção à próxima data",
+                "Fora da tolerância",
+            ],
+        }
     )
+    return dl_df(df, "template_historico.xlsx")
 
 
 @login_required

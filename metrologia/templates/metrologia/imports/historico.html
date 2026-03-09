@@ -52,6 +52,38 @@
                         <small class="text-muted">Se existir, o registro será ignorado (não duplicado).</small>
                     </div>
 
+                    <div class="alert alert-light border mb-4">
+                        <strong><i class="bi bi-table"></i> Exemplo de preenchimento:</strong>
+                        <div class="table-responsive mt-2">
+                            <table class="table table-sm table-striped mb-2">
+                                <thead>
+                                    <tr>
+                                        <th>TAG</th>
+                                        <th>DATA CALIBRAÇÃO</th>
+                                        <th>DATA APROVAÇÃO</th>
+                                        <th>N CERTIFICADO</th>
+                                        <th>RESULTADO</th>
+                                        <th>RBC (SIM/NAO)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>INS-001</td>
+                                        <td>15/02/2026</td>
+                                        <td>16/02/2026</td>
+                                        <td>CERT-2026-001</td>
+                                        <td>APROVADO</td>
+                                        <td>SIM</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <small class="text-muted">
+                            Datas podem ser digitadas como <strong>dd/mm/aaaa</strong>. Para <strong>RESULTADO</strong>, use
+                            <strong>APROVADO</strong>, <strong>CONDICIONAL</strong> ou <strong>REPROVADO</strong>.
+                        </small>
+                    </div>
+
                     <div class="mb-4">
                         <a href="{% url 'dl_template_historico' %}" class="btn btn-outline-secondary">
                             <i class="bi bi-download"></i> Baixar Modelo de Planilha
