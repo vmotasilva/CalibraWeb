@@ -175,7 +175,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-start align-items-md-center gap-2 mb-3 border-bottom pb-2 flex-shrink-0">
         <div class="d-flex align-items-center gap-3">
             <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Expandir/Recolher Filtros">
-                <i class="bi bi-layout-sidebar" id="sidebarIcon"></i>
+                <i class="bi bi-layout-sidebar-inset" id="sidebarIcon"></i>
             </button>
             <div>
                 <h4 class="fw-bold text-primary mb-0">Gestão de Pessoas</h4>
@@ -206,7 +206,7 @@
     <div style="display: flex; gap: 1rem; height: calc(100vh - 180px); width: 100%;">
         
         <!-- SIDEBAR COM FILTROS -->
-        <div id="sidebar-col" style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden;">
+        <div id="sidebar-col" class="d-none" style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden;">
             
             <div class="card filter-card" style="border-box; box-sizing: border-box;">
                 <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
@@ -382,7 +382,7 @@
         </div><!-- fecha sidebar-col -->
 
         <!-- NOVA BARRA COM TABELA -->
-        <div id="table-col" style="flex: 1; display: flex; flex-direction: column; overflow: visible; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 1rem;">
+        <div id="table-col" style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: visible; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 1rem;">
             
             <div class="d-flex justify-content-between align-items-center flex-shrink-0" style="padding: 0.75rem 0;">
                 <div class="d-flex align-items-center gap-2">
@@ -979,18 +979,18 @@ function limparFiltros() {
 // Alternar sidebar
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar-col');
-    const content = document.getElementById('content-col');
+    const content = document.getElementById('table-col');
     const icon = document.getElementById('sidebarIcon');
 
     if (sidebar.classList.contains('d-none')) {
         // MOSTRAR SIDEBAR
         sidebar.classList.remove('d-none');
-        content.style.flex = '1';  // Content volta a ocupar espaço restante
+        if (content) content.style.flex = '1';
         icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
     } else {
         // OCULTAR SIDEBAR
         sidebar.classList.add('d-none');
-        content.style.flex = '1';  // Content continua ocupando todo espaço
+        if (content) content.style.flex = '1';
         icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
     }
 }
