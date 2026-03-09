@@ -18,6 +18,7 @@ from rh.models import Colaborador
 
 from procedures.models import (
     Fornecedor,
+    ListaPresenca,
     PlanejamentoTreinamento,
     ProcessoCotacao,
     Procedimento,
@@ -214,3 +215,59 @@ class PlanejamentoTreinamentoEditViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.planejamento.refresh_from_db()
         self.assertEqual(self.planejamento.colaboradores.count(), 2)
+
+
+class CalendarioTreinamentosViewTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='cal-tester', password='pass12345')
+
+        self.instrutor = Colaborador.objects.create(
+            matricula='I2',
+            nome_completo='Instrutor Calendário',
+            grupo='GRUPO',
+            setor=None,
+        )
+        self.colab = Colaborador.objects.create(
+            matricula='C3',
+            nome_completo='Colab Calendário',
+            grupo='GRUPO',
+            setor=None,
+        )
+
+        self.ref_date = date(2026, 3, 9)
+
+        self.planejamento = PlanejamentoTreinamento.objects.create(
+            titulo='Planejado Calendário',
+            origem='LIVRE',
+            instrutor=self.instrutor,
+            data_prevista=self.ref_date,
+            status='CONFIRMADO',
+        )
+        self.planejamento.colaboradores.set([self.colab])
+
+        self.lista = ListaPresenca.objects.create(
+            titulo='Registrado Calendário',
+            instrutor=self.instrutor,
+            data_sessao=self.ref_date,
+        )
+
+    def test_calendario_mes_mostra_planejado_e_registrado(self):
+        self.client.force_login(self.user)
+        url = reverse('procedures:treinamentos_calendario')
+        resp = self.client.get(url, {'view': 'month', 'year': 2026, 'month': 3})
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode('utf-8')
+        self.assertIn('Planejado Calendário', content)
+        self.assertIn('Registrado Calendário', content)
+
+    def test_calendario_semana_nao_quebra(self):
+        self.client.force_login(self.user)
+        url = reverse('procedures:treinamentos_calendario')
+        resp = self.client.get(url, {'view': 'week', 'date': self.ref_date.isoformat()})
+        self.assertEqual(resp.status_code, 200)
+
+    def test_calendario_dia_nao_quebra(self):
+        self.client.force_login(self.user)
+        url = reverse('procedures:treinamentos_calendario')
+        resp = self.client.get(url, {'view': 'day', 'date': self.ref_date.isoformat()})
+        self.assertEqual(resp.status_code, 200)
