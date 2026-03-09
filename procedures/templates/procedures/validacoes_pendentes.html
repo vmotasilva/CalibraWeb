@@ -26,10 +26,9 @@
                                 <thead style="background-color: #f8f9fa; border-bottom: 2px solid #667eea;">
                                     <tr>
                                         <th><i class="fas fa-cube"></i> Matriz</th>
-                                        <th><i class="fas fa-user"></i> Solicitante</th>
+                                        <th><i class="fas fa-user"></i> Responsável</th>
                                         <th><i class="fas fa-calendar-alt"></i> Data da Solicitação</th>
-                                        <th><i class="fas fa-comment"></i> Motivo</th>
-                                        <th></th>
+                                        <th class="text-end">Validar</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -39,8 +38,8 @@
                                                 <strong style="color: #667eea;">{{ validacao.matriz.nome }}</strong>
                                             </td>
                                             <td>
-                                                {% if validacao.solicitante %}
-                                                    {{ validacao.solicitante.nome_completo }}
+                                                {% if validacao.validador %}
+                                                    {{ validacao.validador.nome_completo }}
                                                 {% else %}
                                                     <span class="text-muted">-</span>
                                                 {% endif %}
@@ -49,15 +48,6 @@
                                                 <small class="text-muted">
                                                     {{ validacao.criado_em|date:"d/m/Y H:i" }}
                                                 </small>
-                                            </td>
-                                            <td>
-                                                {% if validacao.motivo_solicitacao %}
-                                                    <small class="text-muted">
-                                                        {{ validacao.motivo_solicitacao|truncatewords:10 }}
-                                                    </small>
-                                                {% else %}
-                                                    <span class="text-muted">-</span>
-                                                {% endif %}
                                             </td>
                                             <td class="text-end">
                                                 <a href="{% url 'procedures:validar_matriz' validacao.id %}" 
