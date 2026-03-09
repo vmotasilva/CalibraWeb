@@ -53,7 +53,11 @@ def planejamentos_list_view(request):
         ).distinct()
     
     if status:
-        planejamentos = planejamentos.filter(status=status)
+        status_norm = status.strip().lower()
+        if status_norm in {'pendentes', 'pendente', 'abertos', 'aberto', 'abertas', 'aberta'}:
+            planejamentos = planejamentos.filter(status__in=['PLANEJADO', 'CONFIRMADO', 'ATRASADO'])
+        else:
+            planejamentos = planejamentos.filter(status=status)
     
     if procedimento_id:
         planejamentos = planejamentos.filter(procedimentos__id=procedimento_id)

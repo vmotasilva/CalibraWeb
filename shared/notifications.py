@@ -6,6 +6,7 @@ from typing import Any
 
 from django.core.cache import cache
 from django.urls import reverse
+from urllib.parse import quote_plus
 
 
 @dataclass(frozen=True)
@@ -60,7 +61,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
     if not getattr(user, "is_authenticated", False):
         return {"total": 0}
 
-    cache_key = f"nav_cobrancas_counts:v4:user:{getattr(user, 'pk', 'anon')}"
+    cache_key = f"nav_cobrancas_counts:v5:user:{getattr(user, 'pk', 'anon')}"
     cached = cache.get(cache_key)
     if isinstance(cached, dict):
         return cached
@@ -134,51 +135,41 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
 
     # Auditoria: modelos atribuídos ao usuário que estão "em atraso" pela periodicidade
     try:
-        from auditoria.models import ModeloAuditoria
-        from django.db.models import Max
+        from auditoria.models import ModeloAuditoria, RegistroAuditoria
+        from django.db.models import Exists, OuterRef, Q
 
-        modelos = (
-            ModeloAuditoria.objects.filter(ativo=True, responsavel=user)
-            .annotate(ultima_data=Max("registros__data_auditoria"))
-            .only("id", "periodicidade")
+        month_start = _first_day_of_month(hoje)
+        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+
+        modelos = ModeloAuditoria.objects.filter(ativo=True)
+        if not is_global_viewer:
+            modelos = modelos.filter(Q(responsavel=user) | Q(responsaveis=user)).distinct()
+
+        registro_mes_qs = RegistroAuditoria.objects.filter(
+            modelo_id=OuterRef("pk"),
+            data_auditoria__gte=month_start,
+            data_auditoria__lt=next_month,
+        )
+        registro_algum_qs = RegistroAuditoria.objects.filter(modelo_id=OuterRef("pk"))
+
+        modelos = modelos.annotate(
+            _tem_registro_mes=Exists(registro_mes_qs),
+            _tem_registro_algum=Exists(registro_algum_qs),
         )
 
-        due = 0
-        monday = _monday_of_week(hoje)
-        month_start = _first_day_of_month(hoje)
-        quarter_start = _first_day_of_quarter(hoje)
-        semester_start = _first_day_of_semester(hoje)
-        year_start = hoje.replace(month=1, day=1)
-
-        for m in modelos:
-            last = getattr(m, "ultima_data", None)
-            p = getattr(m, "periodicidade", None)
-
-            if p == "UNICA":
-                if last is None:
-                    due += 1
-                continue
-
-            if last is None:
-                due += 1
-                continue
-
-            if p == "DIARIA" and last < hoje:
-                due += 1
-            elif p == "SEMANAL" and last < monday:
-                due += 1
-            elif p == "QUINZENAL" and last < (hoje - timedelta(days=14)):
-                due += 1
-            elif p == "MENSAL" and last < month_start:
-                due += 1
-            elif p == "TRIMESTRAL" and last < quarter_start:
-                due += 1
-            elif p == "SEMESTRAL" and last < semester_start:
-                due += 1
-            elif p == "ANUAL" and last < year_start:
-                due += 1
-
-        counts["auditoria"] = due
+        counts["auditoria"] = modelos.filter(
+            Q(periodicidade="UNICA", _tem_registro_algum=False)
+            | (Q(periodicidade__in=[
+                "DIARIA",
+                "SEMANAL",
+                "QUINZENAL",
+                "MENSAL",
+                "TRIMESTRAL",
+                "SEMESTRAL",
+                "ANUAL",
+            ])
+            & Q(_tem_registro_mes=False))
+        ).count()
     except Exception:
         counts["auditoria"] = 0
 
@@ -190,7 +181,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
 
         if colaborador:
             scope_colabs = Colaborador.objects.filter(
-                Q(pk=colaborador.pk) | Q(lider=colaborador),
+                Q(pk=colaborador.pk) | Q(lider=colaborador) | Q(supervisor=colaborador) | Q(gerente=colaborador),
                 is_active=True,
             )
 
@@ -235,15 +226,13 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
             )
 
             # Planejamentos: prazos vencidos para treinamentos do escopo (instrutor ou participantes)
-            counts["trein_planejamentos"] = (
-                PlanejamentoTreinamento.objects.filter(
-                    status__in=["PLANEJADO", "CONFIRMADO", "ATRASADO"],
-                    data_prevista__lt=hoje,
-                )
-                .filter(Q(instrutor=colaborador) | Q(colaboradores__in=scope_colabs))
-                .distinct()
-                .count()
+            planejamento_base = PlanejamentoTreinamento.objects.filter(
+                status__in=["PLANEJADO", "CONFIRMADO", "ATRASADO"],
             )
+            if is_global_viewer:
+                counts["trein_planejamentos"] = planejamento_base.count()
+            else:
+                counts["trein_planejamentos"] = planejamento_base.filter(instrutor=colaborador).count()
         else:
             counts["trein_matriz"] = 0
             counts["trein_demanda"] = 0
@@ -261,30 +250,85 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
 
 def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
     counts = get_user_cobrancas_counts(user)
+    is_global_viewer = bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+    colaborador = _get_colaborador_for_user(user)
+
+    def with_qs(base: str, qs: str) -> str:
+        if is_global_viewer or not qs:
+            return base
+        joiner = "&" if "?" in base else "?"
+        return base + joiner + qs
+
+    acoes_responsavel = ""
+    try:
+        if colaborador and getattr(colaborador, "nome_completo", ""):
+            acoes_responsavel = str(colaborador.nome_completo)
+        elif getattr(user, "get_full_name", None):
+            acoes_responsavel = user.get_full_name() or ""
+        else:
+            acoes_responsavel = getattr(user, "username", "") or ""
+    except Exception:
+        acoes_responsavel = ""
+
+    def qs_param(key: str, value: str) -> str:
+        if not value:
+            return ""
+        return f"{key}={quote_plus(str(value))}"
+
+    # Dashboard de Treinamentos: priorizar o escopo do usuário conforme hierarquia.
+    treinamentos_scope_qs = ""
+    try:
+        if not is_global_viewer and colaborador:
+            from rh.models import Colaborador as RhColaborador
+
+            if RhColaborador.objects.filter(lider=colaborador, is_active=True).exists():
+                treinamentos_scope_qs = f"lider={colaborador.pk}"
+            elif RhColaborador.objects.filter(supervisor=colaborador, is_active=True).exists():
+                treinamentos_scope_qs = f"supervisor={colaborador.pk}"
+            elif RhColaborador.objects.filter(gerente=colaborador, is_active=True).exists():
+                treinamentos_scope_qs = f"gerente={colaborador.pk}"
+            else:
+                treinamentos_scope_qs = f"colaborador_id={colaborador.pk}"
+    except Exception:
+        treinamentos_scope_qs = ""
+
+    planejamentos_qs = ""
+    if not is_global_viewer and colaborador:
+        planejamentos_qs = f"instrutor={colaborador.pk}&status=pendentes"
+
     return [
         CobrancaItem(
             key="metrologia",
             label="Metrologia (calibrações vencidas)",
             count=int(counts.get("metrologia", 0) or 0),
-            url=_safe_reverse("modulo_metrologia") + "?status=vencidos",
+            url=with_qs(_safe_reverse("modulo_metrologia"), "status=vencidos"),
         ),
         CobrancaItem(
             key="cotacoes",
             label="Cotações (prazo vencido)",
             count=int(counts.get("cotacoes", 0) or 0),
-            url=_safe_reverse("metrologia:solicitacao_list"),
+            url=with_qs(_safe_reverse("metrologia:solicitacao_list"), "cobranca=prazo_vencido"),
         ),
         CobrancaItem(
             key="acoes",
             label="Ações (vencidas)",
             count=int(counts.get("acoes", 0) or 0),
-            url=_safe_reverse("acoes:acoes_registradas"),
+            url=with_qs(
+                _safe_reverse("acoes:acoes_registradas"),
+                "&".join(
+                    [p for p in [
+                        "status=pendentes",
+                        qs_param("responsavel", acoes_responsavel),
+                        "ordenar=deadline",
+                    ] if p]
+                ),
+            ),
         ),
         CobrancaItem(
             key="auditoria",
             label="Auditoria (a realizar)",
             count=int(counts.get("auditoria", 0) or 0),
-            url=_safe_reverse("auditoria:selecionar_modelo_preenchimento"),
+            url=with_qs(_safe_reverse("auditoria:selecionar_modelo_preenchimento"), "pendentes=mes"),
         ),
         CobrancaItem(
             key="trein_matriz",
@@ -296,12 +340,12 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
             key="trein_demanda",
             label="Demanda de Treinamento (Cobrar as pendências de treinamento)",
             count=int(counts.get("trein_demanda", 0) or 0),
-            url=_safe_reverse("procedures:dashboard_treinamentos"),
+            url=with_qs(_safe_reverse("procedures:dashboard_treinamentos"), treinamentos_scope_qs),
         ),
         CobrancaItem(
             key="trein_planejamentos",
             label="Planejamentos (Notificações sobre os prazos dos treinamentos planejados)",
             count=int(counts.get("trein_planejamentos", 0) or 0),
-            url=_safe_reverse("procedures:planejamentos_list"),
+            url=with_qs(_safe_reverse("procedures:planejamentos_list"), planejamentos_qs),
         ),
     ]

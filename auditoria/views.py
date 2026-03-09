@@ -486,6 +486,7 @@ def selecionar_modelo_preenchimento(request):
     q = (request.GET.get("q") or "").strip()
     responsavel_id = (request.GET.get("responsavel") or "").strip()
     periodicidade = (request.GET.get("periodicidade") or "").strip()
+    pendentes = (request.GET.get("pendentes") or "").strip().lower()
 
     if not _auditoria_is_admin(request.user):
         responsavel_id = str(request.user.pk)
@@ -499,6 +500,41 @@ def selecionar_modelo_preenchimento(request):
         ).distinct()
     if periodicidade:
         modelos = modelos.filter(periodicidade=periodicidade)
+
+    if pendentes == "mes":
+        from datetime import timedelta
+        from django.db.models import Exists, OuterRef, Q
+        from django.utils import timezone
+
+        from auditoria.models import RegistroAuditoria
+
+        hoje = timezone.localdate()
+        month_start = hoje.replace(day=1)
+        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+
+        registro_mes_qs = RegistroAuditoria.objects.filter(
+            modelo_id=OuterRef("pk"),
+            data_auditoria__gte=month_start,
+            data_auditoria__lt=next_month,
+        )
+        registro_algum_qs = RegistroAuditoria.objects.filter(modelo_id=OuterRef("pk"))
+
+        modelos = modelos.annotate(
+            _tem_registro_mes=Exists(registro_mes_qs),
+            _tem_registro_algum=Exists(registro_algum_qs),
+        ).filter(
+            Q(periodicidade="UNICA", _tem_registro_algum=False)
+            | (Q(periodicidade__in=[
+                "DIARIA",
+                "SEMANAL",
+                "QUINZENAL",
+                "MENSAL",
+                "TRIMESTRAL",
+                "SEMESTRAL",
+                "ANUAL",
+            ])
+            & Q(_tem_registro_mes=False))
+        )
 
     modelos = modelos.annotate(
         total_perguntas=Count("perguntas", filter=models.Q(perguntas__ativo=True))
@@ -523,6 +559,7 @@ def selecionar_modelo_preenchimento(request):
         "q": q,
         "responsavel_id": responsavel_id,
         "periodicidade": periodicidade,
+        "pendentes": pendentes,
         "periodicidade_choices": ModeloAuditoria.PERIODICIDADE_CHOICES,
         "responsaveis": responsaveis,
     }

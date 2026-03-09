@@ -24,6 +24,9 @@
 
     <form method="get" class="card shadow-sm p-3 mb-4">
         <div class="row g-2">
+            {% if pendentes %}
+                <input type="hidden" name="pendentes" value="{{ pendentes }}">
+            {% endif %}
             <div class="col-md-4">
                 <label class="form-label">Buscar</label>
                 <input type="text" name="q" class="form-control" value="{{ q|default:'' }}" placeholder="Nome ou objeto...">

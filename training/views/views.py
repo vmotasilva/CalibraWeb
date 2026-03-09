@@ -375,6 +375,8 @@ def dashboard_treinamentos_view(request):
     filtro_setor_list = request.GET.getlist('setor')
     filtro_turno_list = request.GET.getlist('turno')
     filtro_lider_list = request.GET.getlist('lider')
+    filtro_supervisor_list = request.GET.getlist('supervisor')
+    filtro_gerente_list = request.GET.getlist('gerente')
     filtro_criticidade_list = request.GET.getlist('criticidade')
     filtro_matriz_list = request.GET.getlist('matriz')
     filtro_sub_area_list = request.GET.getlist('sub_area')
@@ -401,6 +403,8 @@ def dashboard_treinamentos_view(request):
     filtro_setor = filtro_setor_list[0] if filtro_setor_list else ''
     filtro_turno = filtro_turno_list[0] if filtro_turno_list else ''
     filtro_lider = filtro_lider_list[0] if filtro_lider_list else ''
+    filtro_supervisor = filtro_supervisor_list[0] if filtro_supervisor_list else ''
+    filtro_gerente = filtro_gerente_list[0] if filtro_gerente_list else ''
     filtro_criticidade = filtro_criticidade_list[0] if filtro_criticidade_list else ''
     filtro_matriz = filtro_matriz_list[0] if filtro_matriz_list else ''
     filtro_sub_area = filtro_sub_area_list[0] if filtro_sub_area_list else ''
@@ -410,6 +414,8 @@ def dashboard_treinamentos_view(request):
         filtro_setor_list
         or filtro_turno_list
         or filtro_lider_list
+        or filtro_supervisor_list
+        or filtro_gerente_list
         or filtro_criticidade_list
         or filtro_matriz_list
         or filtro_sub_area_list
@@ -452,6 +458,12 @@ def dashboard_treinamentos_view(request):
     
     if filtro_lider_list:
         valid_registros = valid_registros.filter(colaborador__lider_id__in=filtro_lider_list)
+
+    if filtro_supervisor_list:
+        valid_registros = valid_registros.filter(colaborador__supervisor_id__in=filtro_supervisor_list)
+
+    if filtro_gerente_list:
+        valid_registros = valid_registros.filter(colaborador__gerente_id__in=filtro_gerente_list)
 
     if filtro_criticidade_list:
         valid_registros = valid_registros.filter(procedimento__criticidade__in=filtro_criticidade_list)

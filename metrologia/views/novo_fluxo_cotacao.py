@@ -10,6 +10,7 @@ Fluxo:
 """
 
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Prefetch
@@ -42,6 +43,15 @@ def solicitacao_list(request):
         'atendimentos'
     )
     
+    # Cobrança do home: prazo vencido (não concluída/cancelada)
+    cobranca = (request.GET.get('cobranca') or '').strip().lower()
+    if cobranca == 'prazo_vencido':
+        hoje = timezone.localdate()
+        solicitacoes = solicitacoes.exclude(status__in=["CONCLUIDA", "CANCELADA"]).filter(
+            data_solicitacao_orcamento__isnull=False,
+            data_solicitacao_orcamento__lte=hoje,
+        )
+
     # Filtros
     status = request.GET.get('status')
     if status:
@@ -50,6 +60,8 @@ def solicitacao_list(request):
     context = {
         'solicitacoes': solicitacoes,
         'status_choices': SolicitacaoCotacao._meta.get_field('status').choices,
+        'status': status,
+        'cobranca': cobranca,
     }
     return render(request, 'metrologia/novo_fluxo/solicitacao_list.html', context)
 

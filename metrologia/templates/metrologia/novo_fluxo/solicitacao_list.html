@@ -22,6 +22,9 @@
     <div class="card mb-4">
         <div class="card-body">
             <form method="get" class="row g-3">
+                {% if cobranca %}
+                    <input type="hidden" name="cobranca" value="{{ cobranca }}">
+                {% endif %}
                 <div class="col-md-6">
                     <label for="status" class="form-label">Status</label>
                     <select name="status" id="status" class="form-select">

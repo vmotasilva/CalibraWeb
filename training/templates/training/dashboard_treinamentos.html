@@ -770,8 +770,20 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log('Selected Filters:', selectedFilters);
         
-        // Construir URL com parâmetros
-        const params = new URLSearchParams();
+        // Construir URL com parâmetros, preservando parâmetros invisíveis
+        // (ex.: supervisor/gerente usados pelo atalho do Home)
+        const params = new URLSearchParams(window.location.search);
+
+        // Remover apenas categorias controladas pelos checkboxes
+        ['setor', 'turno', 'lider', 'criticidade', 'matriz', 'sub_area'].forEach(category => {
+            params.delete(category);
+        });
+
+        // Remover filtros de colaborador (controlados pelos inputs)
+        params.delete('colaborador_id');
+        params.delete('colaborador_q');
+
+        // Aplicar seleção atual
         Object.keys(selectedFilters).forEach(category => {
             selectedFilters[category].forEach(value => {
                 params.append(category, value);

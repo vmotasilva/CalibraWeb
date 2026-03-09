@@ -614,11 +614,18 @@ class AcoesRegistradasView(LoginRequiredMixin, View):
     def _aplicar_filtros(self, queryset, status, prioridade, responsavel, busca, campo_descricao='descricao', campo_problema='problema', campo_status='status'):
         """Aplica filtros ao queryset"""
         if status:
-            try:
-                queryset = queryset.filter(**{campo_status: status})
-            except FieldError:
-                # Modelo não possui o campo de status indicado
-                queryset = queryset.none()
+            status_norm = str(status).strip().lower()
+            if status_norm in {"pendentes", "pendente", "abertas", "aberta"}:
+                try:
+                    queryset = queryset.exclude(**{f"{campo_status}__in": ["completa", "cancelada"]})
+                except Exception:
+                    queryset = queryset
+            else:
+                try:
+                    queryset = queryset.filter(**{campo_status: status})
+                except FieldError:
+                    # Modelo não possui o campo de status indicado
+                    queryset = queryset.none()
         
         if prioridade:
             prioridade_bool = prioridade.lower() == 'sim'
