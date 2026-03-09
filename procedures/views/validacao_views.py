@@ -69,20 +69,23 @@ def validacoes_pendentes_view(request):
     """
     Mostra validações pendentes para o usuário atual
     """
-    # Permitir superusers mesmo sem perfil de colaborador
-    if not request.user.is_superuser:
+    # Superuser pode acessar mesmo sem perfil de colaborador.
+    # Nesse caso, deve enxergar todas as pendências (não apenas as sem validador).
+    if request.user.is_superuser:
+        validacoes = SolicitacaoValidacaoMatriz.objects.filter(
+            status='pendente'
+        ).select_related('matriz', 'solicitante', 'validador').order_by('-criado_em')
+    else:
         try:
             colaborador = request.user.colaborador
-        except:
+        except Exception:
             messages.error(request, 'Usuário não tem perfil de colaborador!')
             return redirect('home')
-    else:
-        colaborador = None
-    
-    validacoes = SolicitacaoValidacaoMatriz.objects.filter(
-        validador=colaborador,
-        status='pendente'
-    ).select_related('matriz', 'solicitante').order_by('-criado_em')
+
+        validacoes = SolicitacaoValidacaoMatriz.objects.filter(
+            validador=colaborador,
+            status='pendente'
+        ).select_related('matriz', 'solicitante', 'validador').order_by('-criado_em')
     
     context = {
         'validacoes': validacoes,
