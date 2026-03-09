@@ -9,6 +9,9 @@ from django.urls import reverse
 from urllib.parse import quote_plus
 
 
+SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
+
+
 @dataclass(frozen=True)
 class CobrancaItem:
     key: str
@@ -52,6 +55,17 @@ def _get_colaborador_for_user(user: Any):
         return None
 
 
+def _is_global_viewer(user: Any) -> bool:
+    try:
+        return bool(
+            getattr(user, "is_staff", False)
+            or getattr(user, "is_superuser", False)
+            or user.has_perm(SPECIAL_VIEW_ALL_COLABORADORES_PERM)
+        )
+    except Exception:
+        return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+
+
 def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
     """Retorna contagens de cobranças por módulo para o usuário ativo.
 
@@ -69,7 +83,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
     hoje = date.today()
     counts: dict[str, int] = {}
 
-    is_global_viewer = bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+    is_global_viewer = _is_global_viewer(user)
 
     colaborador = _get_colaborador_for_user(user)
 
@@ -250,7 +264,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
 
 def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
     counts = get_user_cobrancas_counts(user)
-    is_global_viewer = bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+    is_global_viewer = _is_global_viewer(user)
     colaborador = _get_colaborador_for_user(user)
 
     def with_qs(base: str, qs: str) -> str:

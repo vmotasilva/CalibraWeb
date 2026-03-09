@@ -17,6 +17,13 @@ from .forms import ComentarioInsumosForm, ModeloAuditoriaForm, PerguntaAuditoria
 from .models import ComentarioInsumos, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
 
 
+SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
+
+
+def _has_special_view_all_colaboradores_perm(user) -> bool:
+    return bool(user and user.has_perm(SPECIAL_VIEW_ALL_COLABORADORES_PERM))
+
+
 def _parse_grid_itens(raw: str) -> list[str]:
     if not raw:
         return []
@@ -62,7 +69,11 @@ def _get_effective_grid_itens_for_edit(registro: RegistroAuditoria, raw_from_for
 
 
 def _auditoria_is_admin(user) -> bool:
-    return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+    return bool(
+        getattr(user, "is_staff", False)
+        or getattr(user, "is_superuser", False)
+        or _has_special_view_all_colaboradores_perm(user)
+    )
 
 
 def _auditoria_can_update_modelo(user, modelo: ModeloAuditoria) -> bool:

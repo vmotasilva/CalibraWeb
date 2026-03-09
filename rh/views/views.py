@@ -176,7 +176,7 @@ def can_user_access_colaborador(request_user, target_colaborador):
     - É o próprio colaborador
     - É lider/supervisor/gerente do colaborador (direto ou indireto)
     """
-    if request_user.is_superuser:
+    if request_user.is_superuser or request_user.is_staff:
         return True
 
     if _has_special_view_all_colaboradores_perm(request_user):
@@ -288,7 +288,7 @@ def get_colaboradores_acessiveis(request_user):
     """
     Retorna queryset de colaboradores que o usuário tem permissão de acesso.
     """
-    if request_user.is_superuser:
+    if request_user.is_superuser or request_user.is_staff:
         return Colaborador.objects.all()
 
     if _has_special_view_all_colaboradores_perm(request_user):
@@ -341,7 +341,7 @@ def modulo_rh_view(request):
 
     # Verificar se é superusuário (mesmo sem Colaborador associado)
     # SUPERUSERS SEMPRE VÊM TODOS SEM LIMITAÇÕES
-    if request.user.is_superuser:
+    if request.user.is_superuser or request.user.is_staff:
         can_view_all = True
         can_see_salary = True  # Também ver salários
     elif _has_special_view_all_colaboradores_perm(request.user):
@@ -1926,29 +1926,10 @@ def api_colaboradores_filtrados(request):
     API para retornar colaboradores com filtros em tempo real (AJAX).
     Suporta filtros: status, lider, supervisor, gerente, setor, turno, busca
     """
-    # Obter colaborador do usuário logado
-    colab = None
-    try:
-        colab = get_colaborador_for_user(request.user)
-    except Exception:
-        pass
-
-    # 1. VISIBILIDADE - Quem pode ver todos vs sua árvore
-    ids_permitidos = set()
-    
-    if request.user.is_superuser:
-        ids_permitidos = set(Colaborador.objects.all().values_list("id", flat=True))
-    elif colab:
-        # Ver apenas subordinados diretos e a si mesmo
-        ids_permitidos.add(colab.id)
-        diretos = Colaborador.objects.filter(
-            Q(lider=colab) | Q(supervisor=colab) | Q(gerente=colab)
-        ).values_list('id', flat=True)
-        ids_permitidos.update(diretos)
-        subordinados_indiretos = get_all_subordinates(colab)
-        ids_permitidos.update(subordinados_indiretos)
-    else:
-        ids_permitidos = set()
+    # 1. VISIBILIDADE - reutilizar regra centralizada (superuser/staff/permissão especial)
+    ids_permitidos = set(
+        get_colaboradores_acessiveis(request.user).values_list("id", flat=True)
+    )
 
     # 2. Aplicar filtros
     funcionarios = Colaborador.objects.filter(
