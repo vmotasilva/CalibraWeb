@@ -5,8 +5,8 @@
 {% can_nav_view user 'procedures:selecionar_tipo_planejamento' 'procedures' as can_novo_planejamento %}
 {% can_nav_view user 'procedures:exportar_lista_planejamentos_excel' 'procedures' as can_exportar_planejamentos %}
 {% can_nav_view user 'procedures:excluir_planejamentos_massa' 'procedures' as can_excluir_planejamentos_massa %}
-{% can_nav_view user 'procedures:detalhe_planejamento' 'procedures' as can_ver_planejamento %}
-{% can_nav_view user 'procedures:editar_planejamento' 'procedures' as can_editar_planejamento %}
+{% can_nav_view user 'procedures:detalhe_planejamento' as can_ver_planejamento %}
+{% can_nav_view user 'procedures:editar_planejamento' as can_editar_planejamento %}
 
 {% block title %}Planejamento de Treinamentos{% endblock %}
 {% block header_title %}Planejamento de Treinamentos{% endblock %}
