@@ -402,9 +402,12 @@
                 </div>
 
                 <div class="d-flex align-items-center flex-wrap gap-2">
-                    <a href="{% url 'two_factor:profile' %}" class="btn btn-sm btn-outline-info" title="Segurança 2FA">
-                        <i class="bi bi-shield-lock"></i>
-                    </a>
+                    {% url 'two_factor:profile' as two_factor_profile_url %}
+                    {% if two_factor_profile_url %}
+                        <a href="{{ two_factor_profile_url }}" class="btn btn-sm btn-outline-info" title="Segurança 2FA">
+                            <i class="bi bi-shield-lock"></i>
+                        </a>
+                    {% endif %}
 
                     <a href="{% url 'home' %}#cobrancas" class="btn btn-sm btn-outline-light position-relative" title="Notificações">
                         <i class="bi bi-bell"></i>

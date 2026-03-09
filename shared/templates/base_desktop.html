@@ -409,9 +409,12 @@
                 </div>
 
                 <!-- Segurança 2FA -->
-                <a href="{% url 'two_factor:profile' %}" class="btn btn-sm btn-outline-info me-2" title="Segurança 2FA">
-                    <i class="bi bi-shield-lock"></i>
-                </a>
+                {% url 'two_factor:profile' as two_factor_profile_url %}
+                {% if two_factor_profile_url %}
+                    <a href="{{ two_factor_profile_url }}" class="btn btn-sm btn-outline-info me-2" title="Segurança 2FA">
+                        <i class="bi bi-shield-lock"></i>
+                    </a>
+                {% endif %}
 
                 <!-- Notificações de cobranças -->
                 <a href="{% url 'home' %}#cobrancas" class="btn btn-sm btn-outline-light me-2 position-relative" title="Notificações">

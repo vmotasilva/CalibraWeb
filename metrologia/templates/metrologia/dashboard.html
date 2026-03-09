@@ -79,60 +79,6 @@
                     🏷️ Etiquetas
                 </button>
             {% endif %}
-            </div>
-
-            <!-- Modal compacto para Etiquetas -->
-            {% if can_exportar_etiquetas %}
-            <div class="modal fade" id="etqModal" tabindex="-1" aria-labelledby="etqModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="etqModalLabel">Configurar Etiquetas</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <label class="form-label">Orientação</label>
-                                    <select id="etq_orient" class="form-select">
-                                        <option value="portrait" selected>Retrato</option>
-                                        <option value="landscape">Paisagem</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label">Colunas</label>
-                                    <input id="etq_cols" type="number" min="1" max="5" value="2" class="form-control">
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label">Linhas</label>
-                                    <input id="etq_rows" type="number" min="1" max="10" value="5" class="form-control">
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label">Margem (mm)</label>
-                                    <input id="etq_margin" type="number" min="0" max="30" value="10" class="form-control">
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label">Espaço (mm)</label>
-                                    <input id="etq_pad" type="number" min="0" max="30" value="5" class="form-control">
-                                </div>
-                            </div>
-                            <div id="etqSummary" class="mt-3 p-2 bg-light border rounded small text-muted">
-                                Serão geradas etiquetas para 0 instrumentos. Ajuste filtros e configurações.
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <a id="btnEtiquetas" href="#" class="btn btn-primary" target="_blank">Gerar PDF</a>
-                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
-                        </div>
-                    </div>
-                </div>
-            }
-            {% endif %}
-            <!-- Importação de instrumentos via QMS
-            <a href="#" class="btn btn-success btn-sm shadow-sm" disabled>
-                <i class="bi bi-file-earmark-spreadsheet"></i> Importar
-            </a>
-            -->
             <a href="/admin/qms/categoriainstrumento/" target="_blank" class="btn btn-outline-primary btn-sm shadow-sm" title="Gerenciar Categorias">
                 <i class="bi bi-tags"></i> Categorias
             </a>
@@ -148,6 +94,54 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Modal compacto para Etiquetas -->
+    {% if can_exportar_etiquetas %}
+    <div class="modal fade" id="etqModal" tabindex="-1" aria-labelledby="etqModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="etqModalLabel">Configurar Etiquetas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Orientação</label>
+                            <select id="etq_orient" class="form-select">
+                                <option value="portrait" selected>Retrato</option>
+                                <option value="landscape">Paisagem</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Colunas</label>
+                            <input id="etq_cols" type="number" min="1" max="5" value="2" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Linhas</label>
+                            <input id="etq_rows" type="number" min="1" max="10" value="5" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Margem (mm)</label>
+                            <input id="etq_margin" type="number" min="0" max="30" value="10" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Espaço (mm)</label>
+                            <input id="etq_pad" type="number" min="0" max="30" value="5" class="form-control">
+                        </div>
+                    </div>
+                    <div id="etqSummary" class="mt-3 p-2 bg-light border rounded small text-muted">
+                        Serão geradas etiquetas para 0 instrumentos. Ajuste filtros e configurações.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a id="btnEtiquetas" href="#" class="btn btn-primary" target="_blank">Gerar PDF</a>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="row h-100 overflow-hidden">
         

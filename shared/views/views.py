@@ -20,6 +20,7 @@ from django.db.models import Q
 from django.views.decorators.http import require_POST
 import pandas as pd
 import logging
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,17 @@ from rh.models import Colaborador
 from organization.models import CentroCusto
 from qms.models import SolicitacaoInstrumento, ImportJob
 
-from django_otp.plugins.otp_totp.models import TOTPDevice
+try:
+    _otp_installed = any(
+        (app == 'django_otp' or app.startswith('django_otp.') or app.startswith('otp_'))
+        for app in getattr(settings, 'INSTALLED_APPS', [])
+    )
+    if _otp_installed:
+        from django_otp.plugins.otp_totp.models import TOTPDevice  # type: ignore
+    else:
+        TOTPDevice = None
+except Exception:
+    TOTPDevice = None
 
 # Imports dos helpers
 from qms.views_helpers import dl_df, dl_generic, parse_date
@@ -182,6 +193,9 @@ def api_reset_password_totp(request):
         user = User.objects.filter(username__iexact=identifier, is_active=True).first()
 
     if user is None:
+        return JsonResponse({'success': False, 'error': 'Dados inválidos.'}, status=400)
+
+    if TOTPDevice is None:
         return JsonResponse({'success': False, 'error': 'Dados inválidos.'}, status=400)
 
     devices = TOTPDevice.objects.filter(user=user, confirmed=True)
