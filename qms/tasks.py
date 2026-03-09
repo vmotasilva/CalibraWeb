@@ -752,6 +752,7 @@ def import_hierarquia_task(job_id, filepath):
 @shared_task
 def import_ferias_task(job_id, filepath):
     """Importa férias (RH) a partir de planilha."""
+    import os
     import pandas as pd
     from django.db import transaction
     from .models import ImportJob
@@ -785,13 +786,30 @@ def import_ferias_task(job_id, filepath):
             return None
 
     try:
-        if filepath.endswith('.csv'):
+        path_lower = (filepath or '').lower()
+        ext = os.path.splitext(path_lower)[1]
+
+        if ext == '.csv':
             try:
                 df = pd.read_csv(filepath, sep=None, engine='python', encoding='latin1')
             except Exception:
                 df = pd.read_csv(filepath, sep=None, engine='python', encoding='utf-8')
+        elif ext == '.xls':
+            try:
+                df = pd.read_excel(filepath, engine='xlrd')
+            except ImportError:
+                raise ValueError('Arquivo .xls não suportado no servidor. Salve como .xlsx e tente novamente.')
         else:
-            df = pd.read_excel(filepath)
+            # ImportJobs frequentemente salvam em arquivo temporário sem extensão;
+            # nesse caso o pandas não consegue inferir o formato sem engine explícito.
+            try:
+                df = pd.read_excel(filepath, engine='openpyxl')
+            except Exception:
+                # Fallback: pode ser CSV mesmo sem extensão
+                try:
+                    df = pd.read_csv(filepath, sep=None, engine='python', encoding='latin1')
+                except Exception:
+                    df = pd.read_csv(filepath, sep=None, engine='python', encoding='utf-8')
 
         df.columns = df.columns.str.strip().str.upper()
 

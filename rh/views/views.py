@@ -1720,7 +1720,7 @@ def importar_ferias_view(request):
             return redirect("rh:importar_ferias")
         
         try:
-            import csv
+            import os
             from io import StringIO
             import pandas as pd
             from rh.models import Ferias, Colaborador
@@ -1735,14 +1735,68 @@ def importar_ferias_view(request):
             registros_erro = 0
             erros_detalhes = []
             
+            def _read_tabular_upload(uploaded_file, filename_lower: str) -> pd.DataFrame:
+                # Garantir leitura sempre do início
+                try:
+                    uploaded_file.seek(0)
+                except Exception:
+                    pass
+
+                size = getattr(uploaded_file, 'size', None)
+                if size == 0:
+                    raise ValueError('Arquivo vazio.')
+
+                ext = os.path.splitext(filename_lower)[1]
+                if ext in {'.csv', '.txt'}:
+                    raw = uploaded_file.read()
+                    text = None
+                    for enc in ('utf-8-sig', 'utf-8', 'latin1'):
+                        try:
+                            text = raw.decode(enc)
+                            break
+                        except UnicodeDecodeError:
+                            continue
+                    if text is None:
+                        raise ValueError('Não foi possível ler o CSV (encoding inválido).')
+                    return pd.read_csv(StringIO(text), sep=None, engine='python')
+
+                # Excel (xlsx/xlsm) com engine explícito
+                try:
+                    uploaded_file.seek(0)
+                except Exception:
+                    pass
+
+                if ext in {'.xlsx', '.xlsm'}:
+                    return pd.read_excel(uploaded_file, engine='openpyxl')
+
+                if ext == '.xls':
+                    try:
+                        return pd.read_excel(uploaded_file, engine='xlrd')
+                    except ImportError:
+                        raise ValueError('Arquivo .xls não suportado no servidor. Salve como .xlsx e tente novamente.')
+
+                # Extensão desconhecida: tentar Excel primeiro, depois CSV
+                try:
+                    uploaded_file.seek(0)
+                except Exception:
+                    pass
+                try:
+                    return pd.read_excel(uploaded_file, engine='openpyxl')
+                except Exception:
+                    try:
+                        uploaded_file.seek(0)
+                    except Exception:
+                        pass
+                    raw = uploaded_file.read()
+                    for enc in ('utf-8-sig', 'utf-8', 'latin1'):
+                        try:
+                            return pd.read_csv(StringIO(raw.decode(enc)), sep=None, engine='python')
+                        except Exception:
+                            continue
+                    raise
+
             try:
-                # Tentar ler como Excel ou CSV
-                if arquivo_nome.endswith(('.xlsx', '.xls')):
-                    df = pd.read_excel(arquivo)
-                else:
-                    # Ler como CSV
-                    conteudo = arquivo.read().decode('utf-8')
-                    df = pd.read_csv(StringIO(conteudo))
+                df = _read_tabular_upload(arquivo, arquivo_nome)
                 
                 # Remover espaços em branco das colunas
                 df.columns = df.columns.str.strip()
