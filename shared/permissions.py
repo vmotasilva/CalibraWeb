@@ -564,6 +564,7 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_pessoas_equipe",
                 "funcoes": [
                     {"nome": "Colaboradores", "view_name": "modulo_rh", "perm": "core.nav_pessoas_colaboradores"},
+                    {"nome": "Permissão Especial: Ver Todos os Colaboradores", "perm": "core.nav_pessoas_ver_todos_colaboradores"},
                     {"nome": "Novo Colaborador", "view_name": "rh:criar_colaborador", "perm": "core.nav_pessoas_novo_colaborador"},
                     {"nome": "Detalhe do Colaborador", "view_name": ["rh:detalhe_colaborador", "detalhe_colaborador"], "perm": "core.nav_pessoas_detalhe_colaborador"},
                     {"nome": "Editar Colaborador", "view_name": "editar_colaborador", "perm": "core.nav_pessoas_editar_colaborador"},

@@ -31,6 +31,13 @@ from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
 from qms.views_helpers import get_all_subordinates, get_colaborador_for_user
 
 
+SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
+
+
+def _has_special_view_all_colaboradores_perm(user):
+    return bool(user and user.has_perm(SPECIAL_VIEW_ALL_COLABORADORES_PERM))
+
+
 def _get_status_colaborador(colab):
     """
     Determina o status de um colaborador baseado em seus campos.
@@ -171,6 +178,9 @@ def can_user_access_colaborador(request_user, target_colaborador):
     """
     if request_user.is_superuser:
         return True
+
+    if _has_special_view_all_colaboradores_perm(request_user):
+        return True
     
     usuario_logado = get_colaborador_for_user(request_user)
     if not usuario_logado:
@@ -280,6 +290,9 @@ def get_colaboradores_acessiveis(request_user):
     """
     if request_user.is_superuser:
         return Colaborador.objects.all()
+
+    if _has_special_view_all_colaboradores_perm(request_user):
+        return Colaborador.objects.all()
     
     usuario_logado = get_colaborador_for_user(request_user)
     if not usuario_logado:
@@ -331,6 +344,9 @@ def modulo_rh_view(request):
     if request.user.is_superuser:
         can_view_all = True
         can_see_salary = True  # Também ver salários
+    elif _has_special_view_all_colaboradores_perm(request.user):
+        can_view_all = True
+        can_see_salary = True
     elif colab:
         # Verificar se está em setor administrativo (RH, DP, QUALIDADE)
         setor_nome = (colab.setor.nome.upper() if colab.setor else "")
