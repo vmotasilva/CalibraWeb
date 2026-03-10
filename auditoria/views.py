@@ -11,6 +11,7 @@ from django.utils.dateparse import parse_date
 from io import BytesIO
 import json
 from urllib.parse import urlencode
+from shared.permissions import has_view_access
 
 from .forms import ComentarioAuditoriaForm, ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
 from .models import ComentarioAuditoria, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
@@ -72,6 +73,13 @@ def _auditoria_is_admin(user) -> bool:
         or getattr(user, "is_superuser", False)
         or _has_special_view_all_colaboradores_perm(user)
     )
+
+
+def _has_nav_view_access(user, view_name: str) -> bool:
+    try:
+        return bool(has_view_access(user, view_name))
+    except Exception:
+        return True
 
 
 def _make_unique_modelo_copy_nome(orig_nome: str) -> str:
@@ -930,8 +938,36 @@ def registro_detail(request, pk):
         "total_respostas": total_respostas,
         "preenchidas": preenchidas,
         "percentual_preenchimento": percentual_preenchimento,
+        "can_delete_registro": _has_nav_view_access(request.user, "auditoria:registro_delete"),
     }
     return render(request, "auditoria/registro_detail.html", context)
+
+
+@login_required
+def registro_delete(request, pk):
+    if request.method != "POST":
+        return redirect("auditoria:registro_detail", pk=pk)
+
+    if not _has_nav_view_access(request.user, "auditoria:registro_delete"):
+        messages.error(request, "Acesso negado. Você não tem permissão para excluir registros de auditoria.")
+        return redirect("auditoria:registro_detail", pk=pk)
+
+    registro = get_object_or_404(
+        _filter_registros_para_usuario(
+            request.user,
+            RegistroAuditoria.objects.select_related("modelo"),
+        ),
+        pk=pk,
+    )
+
+    if not _auditoria_can_update_modelo(request.user, registro.modelo):
+        messages.error(request, "Acesso negado. Você não pode excluir este registro.")
+        return redirect("auditoria:registro_detail", pk=pk)
+
+    modelo_id = registro.modelo_id
+    registro.delete()
+    messages.success(request, "Registro de auditoria excluído com sucesso.")
+    return redirect("auditoria:registros_por_modelo", modelo_id=modelo_id)
 
 
 @login_required

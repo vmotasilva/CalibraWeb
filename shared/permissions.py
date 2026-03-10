@@ -775,6 +775,7 @@ NAV_STRUCTURE = [
                     {"nome": "Avaliação de Dados", "view_name": "auditoria:registro_create", "perm": "core.nav_auditoria_avaliacao"},
                     {"nome": "Avaliação de Dados (com Modelo)", "view_name": "auditoria:registro_create_modelo", "perm": "core.nav_auditoria_avaliacao"},
                     {"nome": "Editar Registro", "view_name": "auditoria:registro_edit", "perm": "core.nav_auditoria_editar_registro"},
+                    {"nome": "Excluir Registro", "view_name": "auditoria:registro_delete", "perm": "core.nav_auditoria_excluir_registro"},
                     {"nome": "Detalhe do Registro", "view_name": "auditoria:registro_detail", "perm": "core.nav_auditoria_detalhe_registro"},
                     {"nome": "Registros por Modelo", "view_name": "auditoria:registros_por_modelo", "perm": "core.nav_auditoria_registros_por_modelo"},
                     {"nome": "Exportar Respostas (Excel)", "view_name": "auditoria:exportar_respostas_excel", "perm": "core.nav_auditoria_exportar_excel"},
