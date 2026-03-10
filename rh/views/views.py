@@ -333,56 +333,27 @@ def modulo_rh_view(request):
     except Exception:
         pass
 
-    # 1. VISIBILIDADE - Quem pode ver todos vs sua árvore (otimizado com cache)
-    ids_permitidos = set()
+    # 1. VISIBILIDADE - usar regra centralizada (mesma da API/paginação)
+    ids_permitidos = set(
+        get_colaboradores_acessiveis(request.user).values_list("id", flat=True)
+    )
     can_see_salary = False
-    can_view_all = False
 
     # Verificar se é superusuário (mesmo sem Colaborador associado)
     # SUPERUSERS SEMPRE VÊM TODOS SEM LIMITAÇÕES
     if request.user.is_superuser or request.user.is_staff:
-        can_view_all = True
         can_see_salary = True  # Também ver salários
     elif _has_special_view_all_colaboradores_perm(request.user):
-        can_view_all = True
         can_see_salary = True
     elif colab:
-        # Verificar se é gerente - fazer uma única query
         setor_nome = (colab.setor.nome.upper() if colab.setor else "")
-        if (
-            "GERENTE" in str(colab.cargo).upper()
-            or HierarquiaSetor.objects.filter(Q(gerente=colab) | Q(diretor=colab)).exists()
-        ):
-            can_view_all = True
-        
+
         # Permissão para ver salário - gerentes, diretores e RH
         if ("GERENTE" in str(colab.cargo).upper() or
             "DIRETOR" in str(colab.cargo).upper() or
             HierarquiaSetor.objects.filter(Q(gerente=colab) | Q(diretor=colab)).exists() or
             any(k in setor_nome for k in ["RH", "DP"])):
             can_see_salary = True
-
-    # Definir IDs permitidos baseado em permissão
-    if can_view_all:
-        # Ver TODOS os colaboradores - sem filtro de is_active
-        ids_permitidos = set(Colaborador.objects.all().values_list("id", flat=True))
-    elif colab:
-        # Ver apenas subordinados diretos e a si mesmo
-        # Sempre pode ver a si mesmo
-        ids_permitidos.add(colab.id)
-        
-        # Subordinados diretos (como lider, supervisor, gerente)
-        diretos = Colaborador.objects.filter(
-            Q(lider=colab) | Q(supervisor=colab) | Q(gerente=colab)
-        ).values_list('id', flat=True)
-        ids_permitidos.update(diretos)
-        
-        # Subordinados indiretos (função auxiliar para líderes/supervisores)
-        subordinados_indiretos = get_all_subordinates(colab)
-        ids_permitidos.update(subordinados_indiretos)
-    else:
-        # Usuário não tem colaborador associado
-        ids_permitidos = set()
 
     # Pré-carregar férias ativas usando Prefetch
     prefetch_ferias = Prefetch(
