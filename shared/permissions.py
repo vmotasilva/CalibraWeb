@@ -832,6 +832,7 @@ NAV_STRUCTURE = [
                     {"nome": "Avaliação de Dados", "view_name": "insumos:registro_create", "perm": "core.nav_insumos_avaliacao"},
                     {"nome": "Avaliação de Dados (com Modelo)", "view_name": "insumos:registro_create_modelo", "perm": "core.nav_insumos_avaliacao"},
                     {"nome": "Editar Registro", "view_name": "insumos:registro_edit", "perm": "core.nav_insumos_editar_registro"},
+                    {"nome": "Excluir Registro", "view_name": "insumos:registro_delete", "perm": "core.nav_insumos_excluir_registro"},
                     {"nome": "Detalhe do Registro", "view_name": "insumos:registro_detail", "perm": "core.nav_insumos_detalhe_registro"},
                     {"nome": "Registros por Modelo", "view_name": "insumos:registros_por_modelo", "perm": "core.nav_insumos_registros_por_modelo"},
                     {"nome": "Exportar Respostas (Excel)", "view_name": "insumos:exportar_respostas_excel", "perm": "core.nav_insumos_exportar_excel"},
