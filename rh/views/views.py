@@ -16,6 +16,7 @@ from django.core.paginator import Paginator
 from django.core.cache import cache
 import logging
 import json
+import secrets
 
 logger = logging.getLogger(__name__)
 
@@ -186,11 +187,6 @@ def can_user_access_colaborador(request_user, target_colaborador):
     if not usuario_logado:
         return False
     
-    # Verificar se está em setor administrativo
-    setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
-    if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
-        return True
-    
     # Verificar se é gerente ou diretor (hierarquia)
     if HierarquiaSetor.objects.filter(Q(gerente=usuario_logado) | Q(diretor=usuario_logado)).exists():
         return True
@@ -298,11 +294,6 @@ def get_colaboradores_acessiveis(request_user):
     if not usuario_logado:
         return Colaborador.objects.none()
     
-    # Se é staff (RH/DP/Qualidade), pode ver todos
-    setor_nome = (usuario_logado.setor.nome.upper() if usuario_logado.setor else "")
-    if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
-        return Colaborador.objects.all()
-    
     # ✅ NOVO: Se é gerente, diretor, LÍDER ou SUPERVISOR, pode ver seus subordinados
     if HierarquiaSetor.objects.filter(Q(gerente=usuario_logado) | Q(diretor=usuario_logado)).exists():
         subordinados_ids = get_all_subordinates(usuario_logado)
@@ -348,12 +339,9 @@ def modulo_rh_view(request):
         can_view_all = True
         can_see_salary = True
     elif colab:
-        # Verificar se está em setor administrativo (RH, DP, QUALIDADE)
-        setor_nome = (colab.setor.nome.upper() if colab.setor else "")
-        if any(k in setor_nome for k in ["RH", "DP", "QUALIDADE"]):
-            can_view_all = True
         # Verificar se é gerente - fazer uma única query
-        elif (
+        setor_nome = (colab.setor.nome.upper() if colab.setor else "")
+        if (
             "GERENTE" in str(colab.cargo).upper()
             or HierarquiaSetor.objects.filter(Q(gerente=colab) | Q(diretor=colab)).exists()
         ):
@@ -746,9 +734,16 @@ def detalhe_colaborador_view(request, colab_id):
 
 
 @login_required
+@login_required
 def editar_colaborador_view(request, colab_id):
     """Edita dados de um colaborador com permissões de RH."""
     alvo = get_object_or_404(Colaborador, id=colab_id)
+
+    # Permissão de navegação (Pessoas -> Equipe -> Editar Colaborador)
+    from shared.permissions import has_view_access
+    if not has_view_access(request.user, 'editar_colaborador'):
+        messages.error(request, "Acesso Negado. Você não tem permissão para editar colaboradores.")
+        return redirect("modulo_rh")
 
     # Verificação de acesso usando função auxiliar
     if not can_user_access_colaborador(request.user, alvo):
