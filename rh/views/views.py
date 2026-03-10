@@ -30,6 +30,7 @@ from rh.forms import ColaboradorForm, OcorrenciaForm, FeriasForm
 
 # Imports dos helpers
 from qms.views_helpers import get_all_subordinates, get_colaborador_for_user
+from shared.permissions import has_view_access
 
 
 SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
@@ -37,6 +38,13 @@ SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
 
 def _has_special_view_all_colaboradores_perm(user):
     return bool(user and user.has_perm(SPECIAL_VIEW_ALL_COLABORADORES_PERM))
+
+
+def _has_nav_view_access(user, view_name: str) -> bool:
+    try:
+        return bool(has_view_access(user, view_name))
+    except Exception:
+        return True
 
 
 def _get_status_colaborador(colab):
@@ -493,6 +501,10 @@ def modulo_rh_view(request):
 @login_required
 def detalhe_colaborador_view(request, colab_id):
     """Visualiza detalhes completos do colaborador com permissões granulares."""
+    if not (_has_nav_view_access(request.user, 'detalhe_colaborador') or _has_nav_view_access(request.user, 'rh:detalhe_colaborador')):
+        messages.error(request, "Acesso Negado. Você não tem permissão para acessar detalhe de colaborador.")
+        return redirect("modulo_rh")
+
     alvo = get_object_or_404(Colaborador, id=colab_id)
     
     # Verificar permissão de acesso
@@ -541,14 +553,15 @@ def detalhe_colaborador_view(request, colab_id):
 
     # Permissão: todos podem visualizar ocorrências
     can_register_occ = can_user_register_ocorrencia(request.user, alvo)
+    can_edit_colaborador = _has_nav_view_access(request.user, 'editar_colaborador')
     can_register_ferias = False
     if request.user.is_superuser or request.user.is_staff or request.user.has_perm('rh.add_ferias'):
         can_register_ferias = True
     elif usuario_logado and _is_admin_setor(usuario_logado):
         can_register_ferias = True
-    can_view_occ = True
-    ocorrencias = alvo.ocorrencias.all().order_by("-data_ocorrencia")
-
+    can_view_occ = _has_nav_view_access(request.user, 'listar_ocorrencias')
+    can_edit_occ = _has_nav_view_access(request.user, 'editar_ocorrencia')
+    can_delete_occ = _has_nav_view_access(request.user, 'deletar_ocorrencia')
     ocorrencias = alvo.ocorrencias.all().order_by("-data_ocorrencia") if can_view_occ else []
     
     # Organizar treinamentos em cascata: Perfil > Grupo > Subgrupo > Procedimento
@@ -714,8 +727,11 @@ def detalhe_colaborador_view(request, colab_id):
         "alvo": alvo,
         "can_see_salary": can_see_salary,
         "can_register_occ": can_register_occ,
+        "can_edit_colaborador": can_edit_colaborador,
         "can_register_ferias": can_register_ferias,
         "can_view_occ": can_view_occ,
+        "can_edit_occ": can_edit_occ,
+        "can_delete_occ": can_delete_occ,
         "ocorrencias": ocorrencias,
         "matriz_treinamentos": matriz_treinamentos,
         "total_treinamentos": total_treinamentos,
@@ -740,8 +756,7 @@ def editar_colaborador_view(request, colab_id):
     alvo = get_object_or_404(Colaborador, id=colab_id)
 
     # Permissão de navegação (Pessoas -> Equipe -> Editar Colaborador)
-    from shared.permissions import has_view_access
-    if not has_view_access(request.user, 'editar_colaborador'):
+    if not _has_nav_view_access(request.user, 'editar_colaborador'):
         messages.error(request, "Acesso Negado. Você não tem permissão para editar colaboradores.")
         return redirect("modulo_rh")
 
@@ -891,6 +906,10 @@ def registrar_ocorrencia_view(request):
 def editar_ocorrencia_view(request, occ_id):
     """Edita uma ocorrência existente."""
     from django.shortcuts import get_object_or_404
+
+    if not _has_nav_view_access(request.user, 'editar_ocorrencia'):
+        messages.error(request, "Acesso Negado. Você não tem permissão para editar ocorrências.")
+        return redirect("modulo_rh")
     
     ocorrencia = get_object_or_404(Ocorrencia, id=occ_id)
     
@@ -946,6 +965,10 @@ def editar_ocorrencia_view(request, occ_id):
 @require_http_methods(["POST"])
 def deletar_ocorrencia_view(request, occ_id):
     """Exclui uma ocorrência."""
+    if not _has_nav_view_access(request.user, 'deletar_ocorrencia'):
+        messages.error(request, "Acesso Negado. Você não tem permissão para excluir ocorrências.")
+        return redirect("modulo_rh")
+
     ocorrencia = get_object_or_404(Ocorrencia, id=occ_id)
     
     # Verificar permissão ao colaborador da ocorrência
@@ -983,6 +1006,10 @@ def deletar_ocorrencia_view(request, occ_id):
 @login_required
 def listar_ocorrencias_view(request):
     """Lista todas as ocorrências registradas, ordenadas por mais recentes primeiro."""
+    if not _has_nav_view_access(request.user, 'listar_ocorrencias'):
+        messages.error(request, "Acesso Negado. Você não tem permissão para visualizar ocorrências.")
+        return redirect("modulo_rh")
+
     usuario_logado = None
     try:
         usuario_logado = get_colaborador_for_user(request.user)

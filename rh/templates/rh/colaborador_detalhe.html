@@ -15,7 +15,7 @@
         </div>
         
         <div>
-            {% if can_edit %}
+            {% if can_edit_colaborador %}
             <a href="/rh/colaborador/{{ alvo.id }}/editar/" class="btn btn-outline-secondary">
                 <i class="bi bi-pencil"></i> Editar Dados
             </a>
@@ -488,9 +488,19 @@
                                                 {% endif %}
                                             </div>
                                             <div class="modal-footer">
+                                                {% if can_delete_occ %}
+                                                <form method="post" action="{% url 'deletar_ocorrencia' o.id %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta ocorrência?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-outline-danger">
+                                                        <i class="bi bi-trash"></i> Excluir
+                                                    </button>
+                                                </form>
+                                                {% endif %}
+                                                {% if can_edit_occ %}
                                                 <a href="/rh/ocorrencia/{{ o.id }}/editar/" class="btn btn-primary">
                                                     <i class="bi bi-pencil"></i> Editar
                                                 </a>
+                                                {% endif %}
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                                             </div>
                                         </div>
