@@ -924,21 +924,59 @@ def get_view_permission_map() -> dict[str, dict[str, str]]:
 VIEW_NAME_TO_PERMISSION = get_view_permission_map()
 
 
+def _user_has_direct_perm(user, full_perm: str | None) -> bool:
+    """Checa permissão APENAS nas permissões diretas do usuário (não considera grupos).
+
+    Usado para permissões `core.nav_*`, pois o painel de permissões manipula
+    `user.user_permissions` (e não permissões de grupos). Assim, evita o cenário
+    em que o toggle está desligado mas um grupo ainda concede acesso.
+    """
+    if not user or not full_perm or "." not in str(full_perm):
+        return False
+
+    app_label, codename = str(full_perm).split(".", 1)
+    if not app_label or not codename:
+        return False
+
+    try:
+        return user.user_permissions.filter(
+            content_type__app_label=app_label,
+            codename=codename,
+        ).exists()
+    except Exception:
+        return False
+
+
+def _user_has_nav_perm(user, full_perm: str | None) -> bool:
+    """Checa permissões de navegação (core.nav_*) de forma consistente.
+
+    Regra:
+    - core.nav_*: somente permissões diretas do usuário (não grupos)
+    - demais: usar user.has_perm (inclui grupos)
+    """
+    if not full_perm or "." not in str(full_perm):
+        return False
+    app_label, codename = str(full_perm).split(".", 1)
+    if app_label == "core" and str(codename).startswith("nav_"):
+        return _user_has_direct_perm(user, full_perm)
+    return bool(user and user.has_perm(full_perm))
+
+
 def user_has_any_nav_perm_for_module(user, module_key: str) -> bool:
     """Indica se o usuário já está 'configurado' no novo modelo para o módulo."""
     module = _nav_module_config(module_key)
     if not module:
         return False
     module_perm = module.get("module_perm")
-    if module_perm and user.has_perm(module_perm):
+    if module_perm and _user_has_nav_perm(user, module_perm):
         return True
     for bloco in module.get("blocos") or []:
         block_perm = bloco.get("perm")
-        if block_perm and user.has_perm(block_perm):
+        if block_perm and _user_has_nav_perm(user, block_perm):
             return True
         for func in bloco.get("funcoes") or []:
             func_perm = func.get("perm")
-            if func_perm and user.has_perm(func_perm):
+            if func_perm and _user_has_nav_perm(user, func_perm):
                 return True
     return False
 
@@ -947,7 +985,7 @@ def has_module_nav_flag(user, module_key: str) -> bool:
     module = _nav_module_config(module_key)
     if not module:
         return False
-    return user.has_perm(module.get("module_perm"))
+    return bool(_user_has_nav_perm(user, module.get("module_perm")))
 
 
 def has_block_nav_flag(user, module_key: str, block_key: str) -> bool:
@@ -956,7 +994,7 @@ def has_block_nav_flag(user, module_key: str, block_key: str) -> bool:
         return False
     for bloco in module.get("blocos") or []:
         if bloco.get("key") == block_key:
-            return user.has_perm(bloco.get("perm"))
+            return bool(_user_has_nav_perm(user, bloco.get("perm")))
     return False
 
 
@@ -969,6 +1007,9 @@ def has_view_access(user, view_name: str) -> bool:
     - Se usuário está em modo legado (grupo do módulo) e não tem nenhum nav_* do módulo: True
     - Caso contrário: exige permissão nav_* da função
     """
+    if not user:
+        return False
+
     if user.is_superuser or user.is_staff:
         return True
 
@@ -1001,7 +1042,7 @@ def has_view_access(user, view_name: str) -> bool:
             return bool(required_perm and user.has_perm(required_perm))
         return True
 
-    return bool(required_perm and user.has_perm(required_perm))
+    return bool(required_perm and _user_has_nav_perm(user, required_perm))
 
 def setup_module_groups():
     """
@@ -1063,7 +1104,7 @@ def has_module_access(user, module_key):
         # considerar acesso ao módulo SOMENTE quando o flag do módulo (nav_mod_*) estiver ativo.
         if user_has_any_nav_perm_for_module(user, module_key):
             module_perm = module.get("module_perm")
-            return bool(module_perm and user.has_perm(module_perm))
+            return bool(module_perm and _user_has_nav_perm(user, module_perm))
 
         # Caso contrário (ainda não configurado no novo modelo), segue fallback legado via grupo.
 

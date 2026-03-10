@@ -346,10 +346,23 @@ def treinamentos_list_view(request):
     # Obs: por padrão esta tela mostra apenas o registro mais recente por colaborador+procedimento.
     # Quando vier do dashboard (ocorridos=1 e/ou mes=YYYY-MM), precisamos listar TODOS os registros
     # ocorridos no período para bater com o gráfico.
-    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
+    # Alinhar o escopo base com o Dashboard de Treinamentos:
+    # - somente colaboradores ativos (não afastados / não em férias)
+    # - apenas registros com colaborador+procedimento vinculados
+    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').filter(
+        colaborador__isnull=False,
+        procedimento__isnull=False,
+        colaborador__is_active=True,
+        colaborador__afastado=False,
+        colaborador__em_ferias=False,
+    )
     from organization.models import Setor
 
-    colaboradores = Colaborador.objects.order_by('nome_completo')
+    colaboradores = Colaborador.objects.filter(
+        is_active=True,
+        afastado=False,
+        em_ferias=False,
+    ).order_by('nome_completo')
     procedimentos = Procedimento.objects.order_by('codigo')
     lideres = Colaborador.objects.filter(
         id__in=RegistroTreinamento.objects.values_list('colaborador__lider_id', flat=True).distinct()
@@ -388,8 +401,17 @@ def treinamentos_list_view(request):
     colaborador_id = request.GET.get('colaborador', '')
     procedimento_id = request.GET.get('procedimento', '')
     busca = request.GET.get('q', '')
-    ativo = request.GET.get('ativo', '')
-    perfil_assoc = (request.GET.get('perfil_assoc') or '').strip()
+    ativo_raw = request.GET.get('ativo', None)
+    ativo = (ativo_raw or '').strip()
+    # Padrão: mesma regra do dashboard (apenas registros ativos)
+    if ativo_raw is None:
+        ativo = '1'
+    perfil_assoc_raw = request.GET.get('perfil_assoc', None)
+    perfil_assoc = (perfil_assoc_raw or '').strip()
+    # Padrão: marcar/aplicar "Somente associados a perfil" quando o parâmetro não vier.
+    # Observação: quando o usuário desmarca, o form envia perfil_assoc=0.
+    if perfil_assoc_raw is None:
+        perfil_assoc = '1'
 
     lider_ids = _getlist_or_single('lider')
     setor_ids = _getlist_or_single('setor')
@@ -411,16 +433,9 @@ def treinamentos_list_view(request):
 
     modo_ocorridos = (ocorridos in {'1', 'true', 'True', 'sim', 'SIM'}) or bool(mes)
 
-    if not modo_ocorridos:
-        # Subquery para pegar o ID do registro mais recente para cada colaborador+procedimento
-        ultimos_registros_ids = RegistroTreinamento.objects.filter(
-            colaborador__isnull=False,
-            procedimento__isnull=False
-        ).values('colaborador_id', 'procedimento_id').annotate(
-            ultimo_id=Max('id')
-        ).values_list('ultimo_id', flat=True)
-
-        qs = qs.filter(id__in=ultimos_registros_ids)
+    # Aplicar filtro de ativo no QuerySet (alinha com dashboard)
+    if ativo:
+        qs = qs.filter(ativo=ativo == '1')
 
     # Se solicitado, listar SOMENTE procedimentos associados a perfil.
     # Quando há colaborador definido, a fonte de verdade passa a ser a lista de procedimentos do(s) perfil(is)
@@ -432,6 +447,15 @@ def treinamentos_list_view(request):
             colaborador_obj = Colaborador.objects.get(id=colaborador_id)
         except Exception:
             colaborador_obj = None
+
+        # Alinhar com dashboard: ignorar colaborador inativo/afastado/em férias
+        if colaborador_obj:
+            if not getattr(colaborador_obj, 'is_active', False):
+                colaborador_obj = None
+            if getattr(colaborador_obj, 'afastado', False):
+                colaborador_obj = None
+            if getattr(colaborador_obj, 'em_ferias', False):
+                colaborador_obj = None
 
         procedimentos_ids = set()
         if colaborador_obj:
@@ -565,8 +589,6 @@ def treinamentos_list_view(request):
             qs = qs.filter(procedimento__matriz__in=matrizes_filtro)
         if sub_areas_filtro:
             qs = qs.filter(procedimento__sub_area__in=sub_areas_filtro)
-        if ativo:
-            qs = qs.filter(ativo=ativo == '1')
         if busca:
             qs = qs.filter(
                 Q(colaborador__nome_completo__icontains=busca) |
@@ -614,6 +636,14 @@ def treinamentos_list_view(request):
                 perfil__grupos__subgrupos__procedimentos=OuterRef('procedimento_id'),
             )
             qs = qs.annotate(_associado_perfil=Exists(perfil_exists_qs)).filter(_associado_perfil=True)
+
+    # Reduzir para o registro mais recente por colaborador+procedimento APÓS aplicar filtros,
+    # para bater com o Dashboard.
+    if (not qs_is_list) and (not modo_ocorridos):
+        ultimos_registros_ids = qs.values('colaborador_id', 'procedimento_id').annotate(
+            ultimo_id=Max('id')
+        ).values_list('ultimo_id', flat=True)
+        qs = qs.filter(id__in=ultimos_registros_ids)
     
     # Ordenar
     if not qs_is_list:
@@ -642,6 +672,10 @@ def treinamentos_list_view(request):
 
     query_params = request.GET.copy()
     query_params.pop('page', None)
+    if 'ativo' not in query_params and ativo == '1':
+        query_params['ativo'] = '1'
+    if 'perfil_assoc' not in query_params and perfil_assoc == '1':
+        query_params['perfil_assoc'] = '1'
     query_string = query_params.urlencode()
     
     return render(request, "procedures/treinamento_lista.html", {
@@ -679,8 +713,16 @@ def treinamentos_exportar_excel_view(request):
     from procedures.utils.export_utils import PlanejamentoExcelExporter
     from django.db.models import Exists, OuterRef
     
-    # Aplicar os mesmos filtros da lista
-    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').all()
+    # Aplicar os mesmos filtros da lista (alinhado ao Dashboard):
+    # - somente colaboradores ativos (não afastados / não em férias)
+    # - apenas registros com colaborador+procedimento vinculados
+    qs = RegistroTreinamento.objects.select_related('colaborador', 'procedimento').filter(
+        colaborador__isnull=False,
+        procedimento__isnull=False,
+        colaborador__is_active=True,
+        colaborador__afastado=False,
+        colaborador__em_ferias=False,
+    )
     
     def _getlist_or_single(param_name: str):
         values = [v for v in request.GET.getlist(param_name) if str(v).strip()]
@@ -696,8 +738,14 @@ def treinamentos_exportar_excel_view(request):
     colaborador_id = request.GET.get('colaborador', '')
     procedimento_id = request.GET.get('procedimento', '')
     busca = request.GET.get('q', '')
-    ativo = request.GET.get('ativo', '')
-    perfil_assoc = (request.GET.get('perfil_assoc') or '').strip()
+    ativo_raw = request.GET.get('ativo', None)
+    ativo = (ativo_raw or '').strip()
+    if ativo_raw is None:
+        ativo = '1'
+    perfil_assoc_raw = request.GET.get('perfil_assoc', None)
+    perfil_assoc = (perfil_assoc_raw or '').strip()
+    if perfil_assoc_raw is None:
+        perfil_assoc = '1'
 
     lider_ids = _getlist_or_single('lider')
     setor_ids = _getlist_or_single('setor')
@@ -711,16 +759,8 @@ def treinamentos_exportar_excel_view(request):
 
     modo_ocorridos = (ocorridos in {'1', 'true', 'True', 'sim', 'SIM'}) or bool(mes)
 
-    if not modo_ocorridos:
-        # Export padrão acompanha a lista (1 por colaborador+procedimento)
-        from django.db.models import Max
-        ultimos_registros_ids = qs.filter(
-            colaborador__isnull=False,
-            procedimento__isnull=False
-        ).values('colaborador_id', 'procedimento_id').annotate(
-            ultimo_id=Max('id')
-        ).values_list('ultimo_id', flat=True)
-        qs = qs.filter(id__in=ultimos_registros_ids)
+    if ativo:
+        qs = qs.filter(ativo=ativo == '1')
 
     # Filtros por QuerySet (aplicar antes de filtro por status)
     if colaborador_id:
@@ -739,8 +779,7 @@ def treinamentos_exportar_excel_view(request):
         qs = qs.filter(procedimento__matriz__in=matrizes_filtro)
     if sub_areas_filtro:
         qs = qs.filter(procedimento__sub_area__in=sub_areas_filtro)
-    if ativo:
-        qs = qs.filter(ativo=ativo == '1')
+    # "ativo" já foi aplicado antes do modo "último registro" (para evitar inconsistência)
     if busca:
         qs = qs.filter(
             Q(colaborador__nome_completo__icontains=busca) |
@@ -773,6 +812,15 @@ def treinamentos_exportar_excel_view(request):
             colaborador_obj = Colaborador.objects.get(id=colaborador_id)
         except Exception:
             colaborador_obj = None
+
+        # Alinhar com dashboard: ignorar colaborador inativo/afastado/em férias
+        if colaborador_obj:
+            if not getattr(colaborador_obj, 'is_active', False):
+                colaborador_obj = None
+            if getattr(colaborador_obj, 'afastado', False):
+                colaborador_obj = None
+            if getattr(colaborador_obj, 'em_ferias', False):
+                colaborador_obj = None
 
         procedimentos_ids = set()
         if colaborador_obj:
@@ -867,8 +915,10 @@ def treinamentos_exportar_excel_view(request):
             itens.sort(key=lambda x: (x.data_treinamento is not None, x.data_treinamento or date.min), reverse=True)
             qs = itens
 
+    qs_is_list = isinstance(qs, list)
+
     # Somente treinamentos associados a algum Perfil atribuído
-    if perfil_assoc in {'1', 'true', 'True', 'sim', 'SIM'}:
+    if (not qs_is_list) and perfil_assoc in {'1', 'true', 'True', 'sim', 'SIM'}:
         from procedures.models import ColaboradorPerfil
 
         if colaborador_id:
@@ -886,9 +936,18 @@ def treinamentos_exportar_excel_view(request):
                 perfil__grupos__subgrupos__procedimentos=OuterRef('procedimento_id'),
             )
             qs = qs.annotate(_associado_perfil=Exists(perfil_exists_qs)).filter(_associado_perfil=True)
-    
+
+    # Reduzir para o registro mais recente por colaborador+procedimento APÓS aplicar filtros
+    if (not qs_is_list) and (not modo_ocorridos):
+        from django.db.models import Max
+        ultimos_registros_ids = qs.values('colaborador_id', 'procedimento_id').annotate(
+            ultimo_id=Max('id')
+        ).values_list('ultimo_id', flat=True)
+        qs = qs.filter(id__in=ultimos_registros_ids)
+
     # Ordenar
-    qs = qs.order_by('-data_treinamento')
+    if not qs_is_list:
+        qs = qs.order_by('-data_treinamento')
     
     # Filtro de status (aplicar por Python após converter para lista)
     if status:
