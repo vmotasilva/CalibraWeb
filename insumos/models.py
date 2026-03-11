@@ -327,7 +327,6 @@ class ComentarioRespostaInsumos(models.Model):
         verbose_name = "Comentário da Resposta (Insumos)"
         verbose_name_plural = "Comentários das Respostas (Insumos)"
         ordering = ["-atualizado_em", "-id"]
-        unique_together = ("registro", "pergunta")
 
     def __str__(self):
         base = (self.texto or "").strip().replace("\n", " ")

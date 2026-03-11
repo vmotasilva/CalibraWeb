@@ -15,7 +15,14 @@ import json
 from shared.permissions import has_view_access
 
 from .forms import ComentarioInsumosForm, ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
-from .models import ComentarioInsumos, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
+from .models import (
+    ComentarioInsumos,
+    ComentarioRespostaInsumos,
+    ModeloAuditoria,
+    PerguntaAuditoria,
+    RegistroAuditoria,
+    RespostaAuditoria,
+)
 
 
 SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
@@ -67,6 +74,75 @@ def _get_effective_grid_itens_for_edit(registro: RegistroAuditoria, raw_from_for
     if from_form:
         return from_form
     return _parse_grid_itens(getattr(registro, "grid_itens", ""))
+
+
+def _parse_comentarios_payload(raw_payload: str) -> dict[int, list[str]]:
+    if not raw_payload:
+        return {}
+    try:
+        data = json.loads(raw_payload)
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+
+    parsed: dict[int, list[str]] = {}
+    for raw_key, raw_values in data.items():
+        try:
+            pergunta_id = int(str(raw_key).strip())
+        except Exception:
+            continue
+        if not isinstance(raw_values, list):
+            continue
+        values: list[str] = []
+        for item in raw_values:
+            texto = str(item or "").strip()
+            if texto:
+                values.append(texto)
+        if values:
+            parsed[pergunta_id] = values
+    return parsed
+
+
+def _replace_comentarios_resposta(
+    registro: RegistroAuditoria,
+    perguntas,
+    raw_payload: str,
+    autor,
+) -> None:
+    payload = _parse_comentarios_payload(raw_payload)
+    allowed_ids = {int(p.id) for p in perguntas}
+
+    ComentarioRespostaInsumos.objects.filter(registro=registro).delete()
+
+    novos = []
+    for pergunta_id, textos in payload.items():
+        if pergunta_id not in allowed_ids:
+            continue
+        for texto in textos:
+            novos.append(
+                ComentarioRespostaInsumos(
+                    registro=registro,
+                    pergunta_id=pergunta_id,
+                    autor=autor,
+                    texto=texto,
+                )
+            )
+    if novos:
+        ComentarioRespostaInsumos.objects.bulk_create(novos)
+
+
+def _build_comentarios_por_pergunta(registro: RegistroAuditoria) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {}
+    comentarios = (
+        ComentarioRespostaInsumos.objects.filter(registro=registro)
+        .only("pergunta_id", "texto")
+        .order_by("criado_em", "id")
+    )
+    for comentario in comentarios:
+        key = str(comentario.pergunta_id)
+        result.setdefault(key, []).append((comentario.texto or "").strip())
+    return result
 
 
 def _auditoria_is_admin(user) -> bool:
@@ -592,6 +668,7 @@ def registro_create(request, modelo_id=None):
     # Em modo GRID com colunas/itens definidos, repetimos o conjunto de perguntas por coluna.
     # (Neste modo, não filtramos por "aplicar_no_grid".)
     grid_perguntas = [p for p in perguntas if p not in perguntas_por_dia]
+    comentarios_atuais = {}
 
     if request.method == "POST":
         post_data = request.POST
@@ -685,6 +762,13 @@ def registro_create(request, modelo_id=None):
                 for erro in erros:
                     messages.warning(request, erro)
 
+            _replace_comentarios_resposta(
+                registro=registro,
+                perguntas=perguntas,
+                raw_payload=request.POST.get("comentarios_payload", ""),
+                autor=request.user,
+            )
+
             messages.success(request, "Formulário preenchido com sucesso!")
             return redirect("insumos:registro_detail", pk=registro.pk)
     else:
@@ -712,6 +796,7 @@ def registro_create(request, modelo_id=None):
         "grid_perguntas": grid_perguntas,
         "perguntas_por_dia": perguntas_por_dia,
         "dias_semana_choices": dias_semana_choices,
+        "comentarios_atuais": comentarios_atuais,
     }
     return render(request, "insumos/registro_form.html", context)
 
@@ -739,6 +824,8 @@ def registro_edit(request, pk):
         p for p in perguntas if is_semanal and getattr(p, "preenchimento_semanal", "UNICO") == "POR_DIA"
     ]
     grid_perguntas = [p for p in perguntas if p not in perguntas_por_dia]
+    respostas_atuais = {}
+    comentarios_atuais = {}
 
     if request.method == "POST":
         post_data = request.POST
@@ -854,12 +941,22 @@ def registro_edit(request, pk):
                             defaults={"valor": valor},
                         )
 
+            _replace_comentarios_resposta(
+                registro=registro,
+                perguntas=perguntas,
+                raw_payload=request.POST.get("comentarios_payload", ""),
+                autor=request.user,
+            )
+
             messages.success(request, "Registro atualizado com sucesso!")
             return redirect("insumos:registro_detail", pk=registro.pk)
+        else:
+            comentarios_atuais = {
+                str(k): v for (k, v) in _parse_comentarios_payload(request.POST.get("comentarios_payload", "")).items()
+            }
     else:
         form = RegistroAuditoriaForm(instance=registro)
         # Preencher valores atuais das respostas
-        respostas_atuais = {}
 
         grid_itens = (
             _get_effective_grid_itens_for_edit(registro, getattr(registro, "grid_itens", "")) if grid_enabled else []
@@ -880,6 +977,7 @@ def registro_edit(request, pk):
                     respostas_atuais[f"grid_{resposta.pergunta_id}_{idx}"] = resposta.valor
             else:
                 respostas_atuais[f"resposta_{resposta.pergunta_id}"] = resposta.valor
+        comentarios_atuais = _build_comentarios_por_pergunta(registro)
 
     context = {
         "form": form,
@@ -892,6 +990,7 @@ def registro_edit(request, pk):
         "perguntas_por_dia": perguntas_por_dia,
         "registro": registro,
         "respostas_atuais": respostas_atuais,
+        "comentarios_atuais": comentarios_atuais,
         "edicao": True,
         "dias_semana_choices": dias_semana_choices,
     }
