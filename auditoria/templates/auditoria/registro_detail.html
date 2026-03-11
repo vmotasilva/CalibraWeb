@@ -104,6 +104,7 @@
                         {% endif %}
                         <th width="150">Tipo</th>
                         <th width="250">Resposta</th>
+                        <th width="170" class="text-center">Comentários</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -113,7 +114,15 @@
                             <span class="badge bg-secondary">{{ resposta.pergunta.ordem }}</span>
                         </td>
                         <td>
-                            {{ resposta.pergunta.pergunta }}
+                            <span
+                                {% if resposta.pergunta.descricao_detalhada %}
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="{{ resposta.pergunta.descricao_detalhada }}"
+                                style="cursor: help;"
+                                {% endif %}>
+                                {{ resposta.pergunta.pergunta }}
+                            </span>
                             {% if resposta.pergunta.obrigatoria %}
                             <span class="text-danger">*</span>
                             {% endif %}
@@ -135,9 +144,20 @@
                             <span class="text-muted fst-italic">Não respondido</span>
                             {% endif %}
                         </td>
+                        <td class="text-center">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-primary comment-open-btn"
+                                data-pergunta-id="{{ resposta.pergunta_id }}"
+                                data-pergunta-texto="{{ resposta.pergunta.pergunta|escape }}"
+                                title="Ver comentários">
+                                <i class="bi bi-chat-left-text"></i>
+                                <span class="badge text-bg-primary ms-1 comment-count">0</span>
+                            </button>
+                        </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="{% if exibir_dia_semana %}5{% else %}4{% endif %}" class="text-center py-3 text-muted">Sem respostas registradas.</td></tr>
+                    <tr><td colspan="{% if exibir_dia_semana %}6{% else %}5{% endif %}" class="text-center py-3 text-muted">Sem respostas registradas.</td></tr>
                     {% endfor %}
                 </tbody>
                 </table>
@@ -151,4 +171,99 @@
         </a>
     </div>
 </div>
+
+<div class="modal fade" id="modalComentariosPergunta" tabindex="-1" aria-labelledby="modalComentariosPerguntaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_question_comment">
+                <input type="hidden" name="pergunta_id" id="modal-pergunta-id" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalComentariosPerguntaLabel">Comentários da Pergunta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2 small text-muted" id="modal-pergunta-texto"></div>
+                    <div id="modal-comentarios-lista" class="mb-3"></div>
+                    <label class="form-label" for="modal-comentario-texto">Novo comentário</label>
+                    <textarea class="form-control" id="modal-comentario-texto" name="comentario" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar esta resposta..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Adicionar comentário
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ comentarios_por_pergunta|json_script:"comentarios-por-pergunta" }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggers = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggers.forEach(function(el) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            bootstrap.Tooltip.getOrCreateInstance(el);
+        }
+    });
+
+    const scriptEl = document.getElementById('comentarios-por-pergunta');
+    let comentarios = {};
+    try {
+        comentarios = JSON.parse(scriptEl ? scriptEl.textContent : '{}') || {};
+    } catch (e) {
+        comentarios = {};
+    }
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderList(items) {
+        if (!items || !items.length) {
+            return '<div class="text-muted">Nenhum comentário nesta pergunta.</div>';
+        }
+        const rows = items.map(function(texto) {
+            return '<li class="mb-1">' + escapeHtml(texto) + '</li>';
+        }).join('');
+        return '<ol class="mb-0 ps-3">' + rows + '</ol>';
+    }
+
+    const modalEl = document.getElementById('modalComentariosPergunta');
+    const modal = (typeof bootstrap !== 'undefined' && bootstrap.Modal) ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+    const idInput = document.getElementById('modal-pergunta-id');
+    const perguntaTextoEl = document.getElementById('modal-pergunta-texto');
+    const listaEl = document.getElementById('modal-comentarios-lista');
+
+    document.querySelectorAll('.comment-open-btn').forEach(function(btn) {
+        const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
+        const itens = comentarios[perguntaId] || [];
+        const countEl = btn.querySelector('.comment-count');
+        if (countEl) {
+            countEl.textContent = String(itens.length || 0);
+        }
+
+        btn.addEventListener('click', function() {
+            const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
+            const perguntaTexto = String(btn.getAttribute('data-pergunta-texto') || '');
+            const itens = comentarios[perguntaId] || [];
+
+            idInput.value = perguntaId;
+            perguntaTextoEl.textContent = perguntaTexto;
+            listaEl.innerHTML = renderList(itens);
+            if (modal) modal.show();
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -143,6 +143,14 @@ def _build_comentarios_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
     return result
 
 
+def _build_comentarios_por_pergunta_qs(comentarios_qs) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {}
+    for comentario in comentarios_qs:
+        key = str(comentario.pergunta_id)
+        result.setdefault(key, []).append((comentario.texto or "").strip())
+    return result
+
+
 def _auditoria_is_admin(user) -> bool:
     return bool(
         getattr(user, "is_staff", False)
@@ -1024,11 +1032,44 @@ def registro_detail(request, pk):
         ),
         pk=pk,
     )
+    if request.method == "POST" and (request.POST.get("action") or "").strip() == "add_question_comment":
+        pergunta_id_raw = (request.POST.get("pergunta_id") or "").strip()
+        texto = (request.POST.get("comentario") or "").strip()
+        if not pergunta_id_raw.isdigit():
+            messages.error(request, "Pergunta inválida para comentário.")
+            return redirect("auditoria:registro_detail", pk=registro.pk)
+
+        pergunta = PerguntaAuditoria.objects.filter(
+            id=int(pergunta_id_raw),
+            modelo_id=registro.modelo_id,
+            ativo=True,
+        ).first()
+        if not pergunta:
+            messages.error(request, "Pergunta não encontrada para este registro.")
+            return redirect("auditoria:registro_detail", pk=registro.pk)
+
+        if not texto:
+            messages.error(request, "Informe um comentário.")
+            return redirect("auditoria:registro_detail", pk=registro.pk)
+        if len(texto) > 8000:
+            messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
+            return redirect("auditoria:registro_detail", pk=registro.pk)
+
+        ComentarioRespostaAuditoria.objects.create(
+            registro=registro,
+            pergunta=pergunta,
+            autor=request.user,
+            texto=texto,
+        )
+        messages.success(request, "Comentário adicionado com sucesso.")
+        return redirect("auditoria:registro_detail", pk=registro.pk)
+
     respostas = registro.respostas.select_related("pergunta").order_by("pergunta__ordem", "id")
     exibir_dia_semana = respostas.filter(dia_semana__isnull=False).exists()
     total_respostas = respostas.count()
     preenchidas = respostas.exclude(valor="").count()
     percentual_preenchimento = round((preenchidas / total_respostas) * 100, 1) if total_respostas else 0
+    comentarios_por_pergunta = _build_comentarios_por_pergunta(registro)
 
     context = {
         "registro": registro,
@@ -1037,6 +1078,7 @@ def registro_detail(request, pk):
         "total_respostas": total_respostas,
         "preenchidas": preenchidas,
         "percentual_preenchimento": percentual_preenchimento,
+        "comentarios_por_pergunta": comentarios_por_pergunta,
         "can_delete_registro": _has_nav_view_access(request.user, "auditoria:registro_delete"),
     }
     return render(request, "auditoria/registro_detail.html", context)
@@ -1196,6 +1238,63 @@ def registros_por_modelo(request, modelo_id):
             redirect_url = f"{redirect_url}?{urlencode(preserved)}"
         return redirect(redirect_url)
 
+    if request.method == "POST" and (request.POST.get("action") or "").strip() == "add_question_comment":
+        pergunta_id_raw = (request.POST.get("pergunta_id") or "").strip()
+        texto = (request.POST.get("comentario") or "").strip()
+
+        redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
+        preserved = {}
+        for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+            v = (request.GET.get(k) or "").strip()
+            if v:
+                preserved[k] = v
+        if preserved:
+            redirect_url = f"{redirect_url}?{urlencode(preserved)}"
+
+        if not pergunta_id_raw.isdigit():
+            messages.error(request, "Pergunta inválida para comentário.")
+            return redirect(redirect_url)
+        if not texto:
+            messages.error(request, "Informe um comentário.")
+            return redirect(redirect_url)
+        if len(texto) > 8000:
+            messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
+            return redirect(redirect_url)
+
+        pergunta = PerguntaAuditoria.objects.filter(
+            id=int(pergunta_id_raw),
+            modelo_id=modelo.id,
+            ativo=True,
+        ).first()
+        if not pergunta:
+            messages.error(request, "Pergunta não encontrada para este modelo.")
+            return redirect(redirect_url)
+
+        inicio_raw = (request.GET.get("inicio") or "").strip()
+        fim_raw = (request.GET.get("fim") or "").strip()
+        inicio = parse_date(inicio_raw) if inicio_raw else None
+        fim = parse_date(fim_raw) if fim_raw else None
+
+        registros_para_comentario = RegistroAuditoria.objects.filter(modelo=modelo)
+        if inicio:
+            registros_para_comentario = registros_para_comentario.filter(data_auditoria__gte=inicio)
+        if fim:
+            registros_para_comentario = registros_para_comentario.filter(data_auditoria__lte=fim)
+
+        registro_alvo = registros_para_comentario.order_by("-data_auditoria", "-id").first()
+        if not registro_alvo:
+            messages.error(request, "Não há registros no período selecionado para associar o comentário.")
+            return redirect(redirect_url)
+
+        ComentarioRespostaAuditoria.objects.create(
+            registro=registro_alvo,
+            pergunta=pergunta,
+            autor=request.user,
+            texto=texto,
+        )
+        messages.success(request, "Comentário da pergunta adicionado com sucesso.")
+        return redirect(redirect_url)
+
     inicio_raw = (request.GET.get("inicio") or "").strip()
     fim_raw = (request.GET.get("fim") or "").strip()
     subcategorias = list(modelo.subcategorias_list)
@@ -1261,6 +1360,13 @@ def registros_por_modelo(request, modelo_id):
     respostas_por_pergunta: dict[int, list[RespostaAuditoria]] = {}
     for r in respostas_qs:
         respostas_por_pergunta.setdefault(r.pergunta_id, []).append(r)
+
+    comentarios_resposta_qs = (
+        ComentarioRespostaAuditoria.objects.filter(pergunta__in=perguntas, registro__in=registros_qs)
+        .select_related("registro")
+        .order_by("criado_em", "id")
+    )
+    comentarios_resposta_por_pergunta = _build_comentarios_por_pergunta_qs(comentarios_resposta_qs)
 
     # Gráfico agregado: situações por subcategoria
     subcat_chart: dict | None = None
@@ -1520,7 +1626,9 @@ def registros_por_modelo(request, modelo_id):
             respostas = respostas_por_pergunta.get(pergunta.id, [])
             total_respostas = len(respostas)
             estatistica = {
+                "pergunta_id": pergunta.id,
                 "pergunta": pergunta.pergunta,
+                "descricao_detalhada": (pergunta.descricao_detalhada or "").strip(),
                 "tipo": pergunta.get_tipo_resposta_display(),
                 "total_respostas": total_respostas,
             }
@@ -1645,6 +1753,7 @@ def registros_por_modelo(request, modelo_id):
         "is_auditoria_admin": _auditoria_is_admin(request.user),
         "querystring_with_page": querystring_with_page,
         "perguntas": perguntas,
+        "comentarios_resposta_por_pergunta": comentarios_resposta_por_pergunta,
         "estatisticas_perguntas": estatisticas_perguntas,
         "chart_cards": chart_cards,
         "chart_data": chart_data,
