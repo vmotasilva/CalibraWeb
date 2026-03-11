@@ -7,6 +7,7 @@ from typing import Any
 from django.core.cache import cache
 from django.urls import reverse
 from urllib.parse import quote_plus
+from shared.permissions import has_module_access, has_view_access
 
 
 SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
@@ -351,70 +352,113 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
     if not is_global_viewer and colaborador:
         planejamentos_qs = f"instrutor={colaborador.pk}&status=pendentes"
 
-    return [
-        CobrancaItem(
-            key="metrologia",
-            label="Metrologia (calibrações vencidas)",
-            count=int(counts.get("metrologia", 0) or 0),
-            url=with_qs(_safe_reverse("modulo_metrologia"), "status=vencidos"),
-            section="Metrologia",
-        ),
-        CobrancaItem(
-            key="cotacoes",
-            label="Cotações (prazo vencido)",
-            count=int(counts.get("cotacoes", 0) or 0),
-            url=with_qs(_safe_reverse("metrologia:solicitacao_list"), "cobranca=prazo_vencido"),
-            section="Metrologia",
-        ),
-        CobrancaItem(
-            key="acoes",
-            label="Ações (vencidas)",
-            count=int(counts.get("acoes", 0) or 0),
-            url=with_qs(
-                _safe_reverse("acoes:acoes_registradas"),
-                "&".join(
-                    [p for p in [
-                        "status=pendentes",
-                        qs_param("responsavel", acoes_responsavel),
-                        "ordenar=deadline",
-                    ] if p]
+    def can_show(module_key: str, view_name: str) -> bool:
+        try:
+            return bool(has_module_access(user, module_key) and has_view_access(user, view_name))
+        except Exception:
+            return False
+
+    items: list[CobrancaItem] = []
+
+    if can_show("metrologia", "modulo_metrologia"):
+        items.append(
+            CobrancaItem(
+                key="metrologia",
+                label="Metrologia (calibrações vencidas)",
+                count=int(counts.get("metrologia", 0) or 0),
+                url=with_qs(_safe_reverse("modulo_metrologia"), "status=vencidos"),
+                section="Metrologia",
+            )
+        )
+
+    if can_show("metrologia", "metrologia:solicitacao_list"):
+        items.append(
+            CobrancaItem(
+                key="cotacoes",
+                label="Cotações (prazo vencido)",
+                count=int(counts.get("cotacoes", 0) or 0),
+                url=with_qs(_safe_reverse("metrologia:solicitacao_list"), "cobranca=prazo_vencido"),
+                section="Metrologia",
+            )
+        )
+
+    if can_show("acoes", "acoes:acoes_registradas"):
+        items.append(
+            CobrancaItem(
+                key="acoes",
+                label="Ações (vencidas)",
+                count=int(counts.get("acoes", 0) or 0),
+                url=with_qs(
+                    _safe_reverse("acoes:acoes_registradas"),
+                    "&".join(
+                        [
+                            p
+                            for p in [
+                                "status=pendentes",
+                                qs_param("responsavel", acoes_responsavel),
+                                "ordenar=deadline",
+                            ]
+                            if p
+                        ]
+                    ),
                 ),
-            ),
-            section="Ações",
-        ),
-        CobrancaItem(
-            key="auditoria",
-            label="Auditoria (a realizar)",
-            count=int(counts.get("auditoria", 0) or 0),
-            url=with_qs(_safe_reverse("auditoria:selecionar_modelo_preenchimento"), "pendentes=mes"),
-            section="Auditoria e Insumos",
-        ),
-        CobrancaItem(
-            key="insumos",
-            label="Insumos (a realizar)",
-            count=int(counts.get("insumos", 0) or 0),
-            url=with_qs(_safe_reverse("insumos:selecionar_modelo_preenchimento"), "pendentes=mes"),
-            section="Auditoria e Insumos",
-        ),
-        CobrancaItem(
-            key="trein_matriz",
-            label="Matriz de Habilidade (Cobrança ao líder mensalmente)",
-            count=int(counts.get("trein_matriz", 0) or 0),
-            url=_safe_reverse("procedures:validacoes_pendentes"),
-            section="Treinamentos",
-        ),
-        CobrancaItem(
-            key="trein_demanda",
-            label="Demanda de Treinamento (Cobrar as pendências de treinamento)",
-            count=int(counts.get("trein_demanda", 0) or 0),
-            url=with_qs(_safe_reverse("procedures:dashboard_treinamentos"), treinamentos_scope_qs),
-            section="Treinamentos",
-        ),
-        CobrancaItem(
-            key="trein_planejamentos",
-            label="Planejamentos (Notificações sobre os prazos dos treinamentos planejados)",
-            count=int(counts.get("trein_planejamentos", 0) or 0),
-            url=with_qs(_safe_reverse("procedures:planejamentos_list"), planejamentos_qs),
-            section="Treinamentos",
-        ),
-    ]
+                section="Ações",
+            )
+        )
+
+    if can_show("auditoria", "auditoria:selecionar_modelo_preenchimento"):
+        items.append(
+            CobrancaItem(
+                key="auditoria",
+                label="Auditoria (a realizar)",
+                count=int(counts.get("auditoria", 0) or 0),
+                url=with_qs(_safe_reverse("auditoria:selecionar_modelo_preenchimento"), "pendentes=mes"),
+                section="Auditoria e Insumos",
+            )
+        )
+
+    if can_show("insumos", "insumos:selecionar_modelo_preenchimento"):
+        items.append(
+            CobrancaItem(
+                key="insumos",
+                label="Insumos (a realizar)",
+                count=int(counts.get("insumos", 0) or 0),
+                url=with_qs(_safe_reverse("insumos:selecionar_modelo_preenchimento"), "pendentes=mes"),
+                section="Auditoria e Insumos",
+            )
+        )
+
+    if can_show("procedures", "procedures:validacoes_pendentes"):
+        items.append(
+            CobrancaItem(
+                key="trein_matriz",
+                label="Matriz de Habilidade (Cobrança ao líder mensalmente)",
+                count=int(counts.get("trein_matriz", 0) or 0),
+                url=_safe_reverse("procedures:validacoes_pendentes"),
+                section="Treinamentos",
+            )
+        )
+
+    if can_show("procedures", "procedures:dashboard_treinamentos"):
+        items.append(
+            CobrancaItem(
+                key="trein_demanda",
+                label="Demanda de Treinamento (Cobrar as pendências de treinamento)",
+                count=int(counts.get("trein_demanda", 0) or 0),
+                url=with_qs(_safe_reverse("procedures:dashboard_treinamentos"), treinamentos_scope_qs),
+                section="Treinamentos",
+            )
+        )
+
+    if can_show("procedures", "procedures:planejamentos_list"):
+        items.append(
+            CobrancaItem(
+                key="trein_planejamentos",
+                label="Planejamentos (Notificações sobre os prazos dos treinamentos planejados)",
+                count=int(counts.get("trein_planejamentos", 0) or 0),
+                url=with_qs(_safe_reverse("procedures:planejamentos_list"), planejamentos_qs),
+                section="Treinamentos",
+            )
+        )
+
+    return items
