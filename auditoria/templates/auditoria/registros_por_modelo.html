@@ -340,6 +340,17 @@
                                             Exibindo comentários dos registros dentro do período filtrado.
                                         </div>
                                         <div id="modal-comentarios-lista" class="mb-3"></div>
+                                        <div class="mb-3">
+                                            <label class="form-label" for="modal-comentario-data">Data do comentário</label>
+                                            <input
+                                                type="date"
+                                                class="form-control"
+                                                id="modal-comentario-data"
+                                                name="comentario_data"
+                                                value="{{ comentario_data_default|default:'' }}"
+                                                required>
+                                            <div class="form-text">Esta data será usada para vincular o comentário ao período/registro correspondente.</div>
+                                        </div>
                                         <label class="form-label" for="modal-comentario-texto">Novo comentário</label>
                                         <textarea name="comentario" id="modal-comentario-texto" class="form-control" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar as respostas desta pergunta..."></textarea>
                                     </div>

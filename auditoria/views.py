@@ -1241,6 +1241,7 @@ def registros_por_modelo(request, modelo_id):
     if request.method == "POST" and (request.POST.get("action") or "").strip() == "add_question_comment":
         pergunta_id_raw = (request.POST.get("pergunta_id") or "").strip()
         texto = (request.POST.get("comentario") or "").strip()
+        comentario_data_raw = (request.POST.get("comentario_data") or "").strip()
 
         redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
         preserved = {}
@@ -1259,6 +1260,14 @@ def registros_por_modelo(request, modelo_id):
             return redirect(redirect_url)
         if len(texto) > 8000:
             messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
+            return redirect(redirect_url)
+        if not comentario_data_raw:
+            messages.error(request, "Informe a data do comentário para vincular ao período.")
+            return redirect(redirect_url)
+
+        comentario_data = parse_date(comentario_data_raw)
+        if not comentario_data:
+            messages.error(request, "Data do comentário inválida. Use o formato ANO-MÊS-DIA.")
             return redirect(redirect_url)
 
         pergunta = PerguntaAuditoria.objects.filter(
@@ -1281,9 +1290,18 @@ def registros_por_modelo(request, modelo_id):
         if fim:
             registros_para_comentario = registros_para_comentario.filter(data_auditoria__lte=fim)
 
+        if inicio and comentario_data < inicio:
+            messages.error(request, "A data do comentário está fora do período inicial filtrado.")
+            return redirect(redirect_url)
+        if fim and comentario_data > fim:
+            messages.error(request, "A data do comentário está fora do período final filtrado.")
+            return redirect(redirect_url)
+
+        registros_para_comentario = registros_para_comentario.filter(data_auditoria=comentario_data)
+
         registro_alvo = registros_para_comentario.order_by("-data_auditoria", "-id").first()
         if not registro_alvo:
-            messages.error(request, "Não há registros no período selecionado para associar o comentário.")
+            messages.error(request, "Não há registro na data informada para associar o comentário.")
             return redirect(redirect_url)
 
         ComentarioRespostaAuditoria.objects.create(
@@ -1762,6 +1780,7 @@ def registros_por_modelo(request, modelo_id):
         "subcat_chart": subcat_chart,
         "inicio": inicio_raw,
         "fim": fim_raw,
+        "comentario_data_default": fim_raw or inicio_raw,
     }
     return render(request, "auditoria/registros_por_modelo.html", context)
 
