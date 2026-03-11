@@ -1044,6 +1044,13 @@ def has_view_access(user, view_name: str) -> bool:
             return bool(required_perm and user.has_perm(required_perm))
         return True
 
+    # Novo modelo (usuário já está "configurado" no nav_*):
+    # Se o flag do módulo estiver ativo (nav_mod_*), permitir acesso às funções NÃO destrutivas,
+    # mesmo sem permissão granular por função. Isso atende ao caso de "acesso total" por módulo,
+    # mantendo exigência explícita para ações destrutivas.
+    if module_key and has_module_nav_flag(user, module_key) and not _is_destructive_nav_perm(required_perm):
+        return True
+
     return bool(required_perm and _user_has_nav_perm(user, required_perm))
 
 def setup_module_groups():

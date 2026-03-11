@@ -2,7 +2,7 @@
 
 {% load nav_access %}
 
-{% can_nav_view user 'procedures:selecionar_tipo_planejamento' 'procedures' as can_novo_planejamento %}
+{% can_nav_view user 'procedures:novo_planejamento' 'procedures' as can_novo_planejamento %}
 {% can_nav_view user 'procedures:exportar_lista_planejamentos_excel' 'procedures' as can_exportar_planejamentos %}
 {% can_nav_view user 'procedures:excluir_planejamentos_massa' 'procedures' as can_excluir_planejamentos_massa %}
 {% can_nav_view user 'procedures:planejamentos_list' 'procedures' as can_ver_planejamento %}
@@ -124,7 +124,7 @@
         </div>
         <div class="col-md-2">
             {% if can_novo_planejamento %}
-                <a href="{% url 'procedures:selecionar_tipo_planejamento' %}" class="btn btn-primary btn-lg w-100 h-100 d-flex align-items-center justify-content-center">
+                <a href="{% url 'procedures:novo_planejamento' %}" class="btn btn-primary btn-lg w-100 h-100 d-flex align-items-center justify-content-center">
                     <i class="bi bi-plus-circle me-2"></i> Novo Planejamento
                 </a>
             {% endif %}

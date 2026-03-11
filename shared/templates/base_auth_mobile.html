@@ -75,10 +75,16 @@
         /* Evita zoom no iOS e melhora legibilidade */
         input, select, textarea { font-size: 16px; }
         .btn { min-height: 40px; }
+
+        @media (max-width: 576px) {
+            body { padding: 12px 10px; }
+            .auth-card { padding: 16px; margin-top: 12px; border-radius: 12px; }
+            .form-label { margin-bottom: 6px; }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body class="is-mobile">
     <div class="auth-card">
         {% block auth_content %}{% endblock %}
     </div>

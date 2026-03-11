@@ -9,8 +9,13 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 from datetime import datetime, timedelta
 from decimal import Decimal
+from django.utils import timezone
+
+from organization.models import Setor
+from rh.models import Colaborador
 
 from acoes.models import (
+    AcaoCorretiva,
     PlanoAcao,
     SolucaoA3,
     Solucao8D,
@@ -63,6 +68,27 @@ def solucao_a3_data():
         'resultado': 'Redução alcançada de 10%',
         'indicador': 'Taxa de reprocessamento',
     }
+
+
+@pytest.fixture
+def setor(db):
+    import uuid
+    return Setor.objects.create(nome=f"Setor Teste {uuid.uuid4().hex[:8]}")
+
+
+@pytest.fixture
+def colaborador_factory(db, setor):
+    import uuid
+
+    def _create(nome_completo: str) -> Colaborador:
+        return Colaborador.objects.create(
+            matricula=f"T{uuid.uuid4().hex[:10]}",
+            nome_completo=nome_completo,
+            grupo="Teste",
+            setor=setor,
+        )
+
+    return _create
 
 
 @pytest.fixture
@@ -197,9 +223,31 @@ class TestSolucaoA3ListeView:
         response = client.get(reverse('acoes:a3_list'))
         assert response.status_code == 200
     
-    def test_a3_list_shows_entries(self, client, user, solucao_a3_data):
+    def test_a3_list_shows_entries(self, client, user, colaborador_factory):
         """Test that A3 list shows entries"""
-        SolucaoA3.objects.create(**solucao_a3_data)
+        lider = colaborador_factory("Maria Santos")
+        acao = AcaoCorretiva.objects.create(
+            titulo="Ação teste A3",
+            descricao="Descrição teste",
+            data_vencimento=timezone.now().date() + timedelta(days=30),
+            criado_por=lider,
+            responsavel=lider,
+        )
+        solucao = Solucao.objects.create(
+            acao_corretiva=acao,
+            tipo="a3",
+            titulo="Solução A3 teste",
+            descricao="Descrição solução",
+            responsavel=lider,
+        )
+        SolucaoA3.objects.create(
+            solucao=solucao,
+            a3_numero="A3-TESTE-001",
+            data_criacao=timezone.now().date(),
+            laboratorio="Lab",
+            lider_projeto=lider,
+            problema="Problema teste",
+        )
         client.force_login(user)
         response = client.get(reverse('acoes:a3_list'))
         assert len(response.context['object_list']) == 1
@@ -247,9 +295,31 @@ class TestSolucao8DListView:
         response = client.get(reverse('acoes:8d_list'))
         assert response.status_code == 200
     
-    def test_8d_list_shows_entries(self, client, user, solucao_8d_data):
+    def test_8d_list_shows_entries(self, client, user, colaborador_factory):
         """Test that 8D list shows entries"""
-        Solucao8D.objects.create(**solucao_8d_data)
+        lider = colaborador_factory("Carlos Mendes")
+        acao = AcaoCorretiva.objects.create(
+            titulo="Ação teste 8D",
+            descricao="Descrição teste",
+            data_vencimento=timezone.now().date() + timedelta(days=30),
+            criado_por=lider,
+            responsavel=lider,
+        )
+        solucao = Solucao.objects.create(
+            acao_corretiva=acao,
+            tipo="8d",
+            titulo="Solução 8D teste",
+            descricao="Descrição solução",
+            responsavel=lider,
+        )
+        Solucao8D.objects.create(
+            solucao=solucao,
+            numero_formulario="8D-TESTE-001",
+            data_abertura=timezone.now(),
+            lider_8d=lider,
+            departamento="Qualidade",
+            problema_identificado="Problema 8D teste",
+        )
         client.force_login(user)
         response = client.get(reverse('acoes:8d_list'))
         assert len(response.context['object_list']) == 1
@@ -297,9 +367,32 @@ class TestSolucaoRNCListView:
         response = client.get(reverse('acoes:rnc_list'))
         assert response.status_code == 200
     
-    def test_rnc_list_shows_entries(self, client, user, solucao_rnc_data):
+    def test_rnc_list_shows_entries(self, client, user, colaborador_factory):
         """Test that RNC list shows entries"""
-        SolucaoRNC.objects.create(**solucao_rnc_data)
+        responsavel = colaborador_factory("Ana Costa")
+        acao = AcaoCorretiva.objects.create(
+            titulo="Ação teste RNC",
+            descricao="Descrição teste",
+            data_vencimento=timezone.now().date() + timedelta(days=30),
+            criado_por=responsavel,
+            responsavel=responsavel,
+        )
+        solucao = Solucao.objects.create(
+            acao_corretiva=acao,
+            tipo="rnc",
+            titulo="Solução RNC teste",
+            descricao="Descrição solução",
+            responsavel=responsavel,
+        )
+        SolucaoRNC.objects.create(
+            solucao=solucao,
+            numero_rnc="RNC-TESTE-001",
+            data_abertura=timezone.now(),
+            origem="processo",
+            risco="alto",
+            descricao_nc="Descrição NC teste",
+            responsavel=responsavel,
+        )
         client.force_login(user)
         response = client.get(reverse('acoes:rnc_list'))
         assert len(response.context['object_list']) == 1

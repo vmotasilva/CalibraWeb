@@ -23,6 +23,42 @@
         .nav-text { display: inline; margin-left: 0.5rem; }
         .nav-divider { display: none; }
 
+        /* Layout compacto no mobile (evita desperdício de espaço) */
+        body.is-mobile .container,
+        body.is-mobile .container-sm,
+        body.is-mobile .container-md,
+        body.is-mobile .container-lg,
+        body.is-mobile .container-xl,
+        body.is-mobile .container-xxl {
+            max-width: 100% !important;
+        }
+
+        body.is-mobile .container {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        body.is-mobile .card-body { padding: 0.75rem; }
+        body.is-mobile .card-header,
+        body.is-mobile .card-footer { padding: 0.5rem 0.75rem; }
+
+        body.is-mobile .display-1,
+        body.is-mobile .display-2,
+        body.is-mobile .display-3,
+        body.is-mobile .display-4 { font-size: 1.75rem; }
+        body.is-mobile h1, body.is-mobile .h1 { font-size: 1.35rem; }
+        body.is-mobile h2, body.is-mobile .h2 { font-size: 1.2rem; }
+        body.is-mobile h3, body.is-mobile .h3 { font-size: 1.1rem; }
+
+        body.is-mobile .table { font-size: 0.875rem; }
+        body.is-mobile .table > :not(caption) > * > * { padding: 0.4rem 0.5rem; }
+
+        body.is-mobile form .mb-3 { margin-bottom: 0.6rem !important; }
+        body.is-mobile .mt-5 { margin-top: 1.25rem !important; }
+        body.is-mobile .mt-4 { margin-top: 0.9rem !important; }
+        body.is-mobile .mb-4 { margin-bottom: 0.9rem !important; }
+        body.is-mobile .my-4 { margin-top: 0.9rem !important; margin-bottom: 0.9rem !important; }
+
         /* Melhora usabilidade no mobile: menus dentro do collapse viram "lista" rolável */
         @media (max-width: 991.98px) {
             .navbar-collapse {
@@ -55,7 +91,7 @@
     {% block extra_css %}
     {% endblock %}
 </head>
-<body>
+<body class="is-mobile">
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow">
     <div class="container-fluid">
