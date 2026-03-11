@@ -340,6 +340,7 @@
                                             Exibindo comentários dos registros dentro do período filtrado.
                                         </div>
                                         <div id="modal-comentarios-lista" class="mb-3"></div>
+                                        <div id="modal-novo-comentario-fields" class="d-none">
                                         <div class="mb-3">
                                             <label class="form-label" for="modal-comentario-data">Data do comentário</label>
                                             <input
@@ -353,10 +354,14 @@
                                         </div>
                                         <label class="form-label" for="modal-comentario-texto">Novo comentário</label>
                                         <textarea name="comentario" id="modal-comentario-texto" class="form-control" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar as respostas desta pergunta..."></textarea>
+                                        </div>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                                        <button type="submit" class="btn btn-primary">
+                                        <button type="button" class="btn btn-outline-primary" id="btn-novo-comentario-modal">
+                                            <i class="bi bi-plus-circle"></i> Novo Comentário
+                                        </button>
+                                        <button type="submit" class="btn btn-primary d-none" id="btn-salvar-comentario-modal">
                                             <i class="bi bi-plus-circle"></i> Adicionar comentário
                                         </button>
                                     </div>
@@ -523,6 +528,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalPerguntaId = document.getElementById('modal-pergunta-id');
     const modalPerguntaTexto = document.getElementById('modal-pergunta-texto');
     const modalLista = document.getElementById('modal-comentarios-lista');
+    const btnNovoComentario = document.getElementById('btn-novo-comentario-modal');
+    const btnSalvarComentario = document.getElementById('btn-salvar-comentario-modal');
+    const novoComentarioFields = document.getElementById('modal-novo-comentario-fields');
+    const comentarioDataInput = document.getElementById('modal-comentario-data');
+    const comentarioTextoInput = document.getElementById('modal-comentario-texto');
+
+    function hideNovoComentarioForm() {
+        if (!novoComentarioFields || !btnSalvarComentario || !btnNovoComentario) return;
+        novoComentarioFields.classList.add('d-none');
+        btnSalvarComentario.classList.add('d-none');
+        btnNovoComentario.classList.remove('d-none');
+    }
+
+    function showNovoComentarioForm() {
+        if (!novoComentarioFields || !btnSalvarComentario || !btnNovoComentario) return;
+        novoComentarioFields.classList.remove('d-none');
+        btnSalvarComentario.classList.remove('d-none');
+        btnNovoComentario.classList.add('d-none');
+        if (comentarioDataInput && !comentarioDataInput.value) {
+            comentarioDataInput.focus();
+        } else if (comentarioTextoInput) {
+            comentarioTextoInput.focus();
+        }
+    }
+
+    if (btnNovoComentario) {
+        btnNovoComentario.addEventListener('click', showNovoComentarioForm);
+    }
+
+    hideNovoComentarioForm();
 
     document.querySelectorAll('.comment-open-btn').forEach(function(btn) {
         const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
@@ -538,6 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
             modalPerguntaId.value = perguntaId;
             modalPerguntaTexto.textContent = perguntaTexto;
             modalLista.innerHTML = renderList(list);
+            hideNovoComentarioForm();
             if (modal) modal.show();
         });
     });
