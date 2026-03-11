@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import models, transaction
+from django.db.models.deletion import ProtectedError
 from django.db.models import Count, Max
 from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
@@ -311,8 +312,15 @@ def modelo_delete(request, pk):
         messages.error(request, "Você não tem permissão para remover este modelo de auditoria.")
         return redirect("auditoria:modelos_list")
     if request.method == "POST":
-        modelo.delete()
-        messages.success(request, "Modelo removido com sucesso.")
+        try:
+            modelo.delete()
+            messages.success(request, "Modelo removido com sucesso.")
+        except ProtectedError:
+            # RegistroAuditoria usa PROTECT para preservar histórico e impedir exclusões acidentais.
+            messages.error(
+                request,
+                "Não foi possível remover este modelo porque ele possui registros de auditoria vinculados.",
+            )
         return redirect("auditoria:modelos_list")
     return render(request, "auditoria/modelo_confirm_delete.html", {"modelo": modelo})
 
