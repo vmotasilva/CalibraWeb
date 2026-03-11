@@ -88,6 +88,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
             "modelo",
             "subcategoria",
             "pergunta",
+            "descricao_detalhada",
             "tipo_resposta",
             "preenchimento_semanal",
             "opcoes_resposta",
@@ -100,6 +101,13 @@ class PerguntaAuditoriaForm(forms.ModelForm):
             "modelo": forms.Select(attrs={"class": "form-select"}),
             "subcategoria": forms.Select(attrs={"class": "form-select"}),
             "pergunta": forms.TextInput(attrs={"class": "form-control"}),
+            "descricao_detalhada": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Descreva detalhadamente como responder esta pergunta...",
+                }
+            ),
             "tipo_resposta": forms.Select(attrs={"class": "form-select"}),
             "preenchimento_semanal": forms.Select(attrs={"class": "form-select"}),
             "opcoes_resposta": forms.Textarea(

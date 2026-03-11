@@ -18,6 +18,7 @@ class ModeloAuditoriaForm(forms.ModelForm):
             "preenchimento_grid",
             "grid_rotulo_item",
             "grid_colunas",
+            "subcategorias",
             "ativo",
         ]
         widgets = {
@@ -50,6 +51,13 @@ class ModeloAuditoriaForm(forms.ModelForm):
                     "class": "form-control",
                     "rows": 3,
                     "placeholder": "Uma coluna por linha (ex.: EQP-001)\nEQP-002\nEQP-003",
+                }
+            ),
+            "subcategorias": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Uma sub-categoria por linha (ex.: Segurança)\nQualidade\n5S",
                 }
             ),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
@@ -93,6 +101,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         fields = [
             "modelo",
             "pergunta",
+            "descricao_detalhada",
             "tipo_resposta",
             "preenchimento_semanal",
             "opcoes_resposta",
@@ -104,6 +113,13 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         widgets = {
             "modelo": forms.Select(attrs={"class": "form-select"}),
             "pergunta": forms.TextInput(attrs={"class": "form-control"}),
+            "descricao_detalhada": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Descreva detalhadamente como responder esta pergunta...",
+                }
+            ),
             "tipo_resposta": forms.Select(attrs={"class": "form-select"}),
             "preenchimento_semanal": forms.Select(attrs={"class": "form-select"}),
             "opcoes_resposta": forms.Textarea(

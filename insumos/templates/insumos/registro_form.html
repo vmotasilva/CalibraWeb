@@ -207,6 +207,20 @@
                                             <label class="form-label fw-bold mb-2">
                                                 <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
                                                 {{ pergunta.pergunta }}
+                                                {% if pergunta.descricao_detalhada %}
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-link p-0 ms-2 align-baseline text-decoration-none"
+                                                        aria-label="Ver descrição detalhada"
+                                                        data-bs-toggle="popover"
+                                                        data-bs-trigger="focus"
+                                                        data-bs-placement="auto"
+                                                        data-bs-container="body"
+                                                        data-popover-content-id="pergunta-desc-{{ pergunta.id }}-tab-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}">
+                                                        <i class="bi bi-info-circle"></i>
+                                                    </button>
+                                                    <div id="pergunta-desc-{{ pergunta.id }}-tab-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}" class="d-none">{{ pergunta.descricao_detalhada|linebreaksbr }}</div>
+                                                {% endif %}
                                                 {% if pergunta.obrigatoria %}
                                                 <span class="text-danger">*</span>
                                                 {% endif %}
@@ -243,6 +257,20 @@
                                             <label class="form-label fw-bold mb-2">
                                                 <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
                                                 {{ pergunta.pergunta }}
+                                                {% if pergunta.descricao_detalhada %}
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-link p-0 ms-2 align-baseline text-decoration-none"
+                                                        aria-label="Ver descrição detalhada"
+                                                        data-bs-toggle="popover"
+                                                        data-bs-trigger="focus"
+                                                        data-bs-placement="auto"
+                                                        data-bs-container="body"
+                                                        data-popover-content-id="pergunta-desc-{{ pergunta.id }}-tabdia-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}">
+                                                        <i class="bi bi-info-circle"></i>
+                                                    </button>
+                                                    <div id="pergunta-desc-{{ pergunta.id }}-tabdia-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}" class="d-none">{{ pergunta.descricao_detalhada|linebreaksbr }}</div>
+                                                {% endif %}
                                                 {% if pergunta.obrigatoria %}
                                                 <span class="text-danger">*</span>
                                                 {% endif %}
@@ -291,6 +319,20 @@
                                 <label class="form-label fw-bold mb-2">
                                     <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
                                     {{ pergunta.pergunta }}
+                                    {% if pergunta.descricao_detalhada %}
+                                        <button
+                                            type="button"
+                                            class="btn btn-link p-0 ms-2 align-baseline text-decoration-none"
+                                            aria-label="Ver descrição detalhada"
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="focus"
+                                            data-bs-placement="auto"
+                                            data-bs-container="body"
+                                            data-popover-content-id="pergunta-desc-{{ pergunta.id }}-grid-{{ forloop.counter0 }}">
+                                            <i class="bi bi-info-circle"></i>
+                                        </button>
+                                        <div id="pergunta-desc-{{ pergunta.id }}-grid-{{ forloop.counter0 }}" class="d-none">{{ pergunta.descricao_detalhada|linebreaksbr }}</div>
+                                    {% endif %}
                                     {% if pergunta.obrigatoria %}
                                     <span class="text-danger">*</span>
                                     {% endif %}
@@ -328,6 +370,20 @@
                                 <label class="form-label fw-bold mb-2">
                                     <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
                                     {{ pergunta.pergunta }}
+                                    {% if pergunta.descricao_detalhada %}
+                                        <button
+                                            type="button"
+                                            class="btn btn-link p-0 ms-2 align-baseline text-decoration-none"
+                                            aria-label="Ver descrição detalhada"
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="focus"
+                                            data-bs-placement="auto"
+                                            data-bs-container="body"
+                                            data-popover-content-id="pergunta-desc-{{ pergunta.id }}-dia-{{ forloop.counter0 }}">
+                                            <i class="bi bi-info-circle"></i>
+                                        </button>
+                                        <div id="pergunta-desc-{{ pergunta.id }}-dia-{{ forloop.counter0 }}" class="d-none">{{ pergunta.descricao_detalhada|linebreaksbr }}</div>
+                                    {% endif %}
                                     {% if pergunta.obrigatoria %}
                                     <span class="text-danger">*</span>
                                     {% endif %}
@@ -462,6 +518,18 @@
             fimInput.value = dt;
             inicioInput.dispatchEvent(new Event('change', { bubbles: true }));
             fimInput.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    })();
+
+    // Popovers (descrição detalhada por pergunta)
+    (function() {
+        if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
+        const triggers = document.querySelectorAll('[data-bs-toggle="popover"][data-popover-content-id]');
+        triggers.forEach(function(el) {
+            const contentId = el.getAttribute('data-popover-content-id');
+            const contentEl = contentId ? document.getElementById(contentId) : null;
+            const contentHtml = contentEl ? contentEl.innerHTML : '';
+            new bootstrap.Popover(el, { html: true, content: contentHtml });
         });
     })();
 </script>

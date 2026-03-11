@@ -66,10 +66,12 @@
                                 <div class="col-lg-2 col-md-3">
                                     <label class="form-label">Período inicial</label>
                                     <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
+                                    <div class="form-text">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
                                 </div>
                                 <div class="col-lg-2 col-md-3">
                                     <label class="form-label">Período final</label>
                                     <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
+                                    <div class="form-text">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
                                 </div>
                                 {% if chart_cards %}
                                 <div class="col-lg-3 col-md-6">

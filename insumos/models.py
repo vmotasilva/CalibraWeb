@@ -91,6 +91,13 @@ class ModeloAuditoria(models.Model):
         help_text="Uma coluna por linha. Se vazio, as colunas serão informadas no registro.",
     )
 
+    subcategorias = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Sub-categorias",
+        help_text="Uma sub-categoria por linha (ex.: Segurança, Qualidade, 5S).",
+    )
+
     ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -117,6 +124,22 @@ class ModeloAuditoria(models.Model):
 
         return base
 
+    @property
+    def subcategorias_list(self) -> list[str]:
+        raw = (self.subcategorias or "").replace("\r\n", "\n")
+        parts = [p.strip() for p in raw.split("\n")]
+        seen: set[str] = set()
+        values: list[str] = []
+        for p in parts:
+            if not p:
+                continue
+            key = p.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            values.append(p)
+        return values
+
 
 class PerguntaAuditoria(models.Model):
     TIPO_RESPOSTA_CHOICES = [
@@ -138,6 +161,12 @@ class PerguntaAuditoria(models.Model):
         verbose_name="Modelo",
     )
     pergunta = models.CharField(max_length=255)
+    descricao_detalhada = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Descrição detalhada",
+        help_text="Texto exibido no ícone informativo durante o preenchimento do registro.",
+    )
     tipo_resposta = models.CharField(max_length=20, choices=TIPO_RESPOSTA_CHOICES, default="SIM_NAO")
     preenchimento_semanal = models.CharField(
         max_length=10,
@@ -267,6 +296,43 @@ class RespostaAuditoria(models.Model):
 
     def __str__(self):
         return f"{self.registro} - {self.pergunta.pergunta[:60]}"
+
+
+class ComentarioRespostaInsumos(models.Model):
+    registro = models.ForeignKey(
+        "RegistroAuditoria",
+        on_delete=models.CASCADE,
+        related_name="comentarios_resposta",
+        verbose_name="Registro",
+    )
+    pergunta = models.ForeignKey(
+        "PerguntaAuditoria",
+        on_delete=models.CASCADE,
+        related_name="comentarios_resposta",
+        verbose_name="Pergunta",
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="insumos_comentarios_resposta",
+        verbose_name="Autor",
+    )
+    texto = models.TextField(verbose_name="Comentário")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Comentário da Resposta (Insumos)"
+        verbose_name_plural = "Comentários das Respostas (Insumos)"
+        ordering = ["-atualizado_em", "-id"]
+        unique_together = ("registro", "pergunta")
+
+    def __str__(self):
+        base = (self.texto or "").strip().replace("\n", " ")
+        base = base[:60] + ("..." if len(base) > 60 else "")
+        return f"{self.registro} - {self.pergunta.pergunta[:40]} - {base}"
 
 
 class ComentarioInsumos(models.Model):

@@ -11,10 +11,12 @@
         <div class="col-md-3">
             <label class="form-label">De</label>
             <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
+            <div class="form-text">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
         </div>
         <div class="col-md-3">
             <label class="form-label">Até</label>
             <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
+            <div class="form-text">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
         </div>
         <div class="col-md-3 d-flex flex-wrap align-items-end gap-2">
             <button type="submit" class="btn btn-outline-primary">Consultar por Período</button>

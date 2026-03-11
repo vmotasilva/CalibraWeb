@@ -456,6 +456,38 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        const applyIsoDateHelpers = () => {
+            const formatIsoDate = (value) => {
+                const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+                if (digits.length <= 4) return digits;
+                if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+                return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+            };
+
+            document.querySelectorAll('input[type="date"]').forEach((input) => {
+                if (!input.getAttribute('placeholder')) {
+                    input.setAttribute('placeholder', 'AAAA-MM-DD');
+                }
+                if (!input.getAttribute('title')) {
+                    input.setAttribute('title', 'Formato: ANO-MÊS-DIA (AAAA-MM-DD)');
+                }
+
+                if (input.type === 'text' && !input.dataset.isoDateMaskWired) {
+                    input.dataset.isoDateMaskWired = '1';
+                    input.setAttribute('inputmode', 'numeric');
+                    input.setAttribute('maxlength', '10');
+
+                    const normalize = () => {
+                        const next = formatIsoDate(input.value);
+                        if (next !== input.value) input.value = next;
+                    };
+
+                    input.addEventListener('input', normalize);
+                    input.addEventListener('paste', () => setTimeout(normalize, 0));
+                }
+            });
+        };
+
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         tooltipTriggerList.forEach((tooltipTriggerEl) => {
             new bootstrap.Tooltip(tooltipTriggerEl);
@@ -468,6 +500,8 @@
                 placement: 'bottom'
             });
         });
+
+        applyIsoDateHelpers();
     });
 </script>
 {% block extra_js %}

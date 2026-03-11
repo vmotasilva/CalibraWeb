@@ -161,6 +161,12 @@ class PerguntaAuditoria(models.Model):
         verbose_name="Modelo",
     )
     pergunta = models.CharField(max_length=255)
+    descricao_detalhada = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Descrição detalhada",
+        help_text="Texto exibido no ícone informativo durante o preenchimento do registro.",
+    )
     tipo_resposta = models.CharField(max_length=20, choices=TIPO_RESPOSTA_CHOICES, default="SIM_NAO")
     preenchimento_semanal = models.CharField(
         max_length=10,
@@ -326,3 +332,40 @@ class ComentarioAuditoria(models.Model):
         base = (self.texto or "").strip().replace("\n", " ")
         base = base[:60] + ("..." if len(base) > 60 else "")
         return f"{self.modelo.nome} - {base}"
+
+
+class ComentarioRespostaAuditoria(models.Model):
+    registro = models.ForeignKey(
+        RegistroAuditoria,
+        on_delete=models.CASCADE,
+        related_name="comentarios_resposta",
+        verbose_name="Registro",
+    )
+    pergunta = models.ForeignKey(
+        PerguntaAuditoria,
+        on_delete=models.CASCADE,
+        related_name="comentarios_resposta",
+        verbose_name="Pergunta",
+    )
+    autor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="auditoria_comentarios_resposta",
+        verbose_name="Autor",
+    )
+    texto = models.TextField(verbose_name="Comentário")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Comentário da Resposta (Auditoria)"
+        verbose_name_plural = "Comentários das Respostas (Auditoria)"
+        ordering = ["-atualizado_em", "-id"]
+        unique_together = ("registro", "pergunta")
+
+    def __str__(self):
+        base = (self.texto or "").strip().replace("\n", " ")
+        base = base[:60] + ("..." if len(base) > 60 else "")
+        return f"{self.registro} - {self.pergunta.pergunta[:40]} - {base}"
