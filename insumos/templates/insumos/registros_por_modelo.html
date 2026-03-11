@@ -153,12 +153,23 @@
                                             <th>Tipo</th>
                                             <th class="text-center">Respostas</th>
                                             <th class="text-center">Estatísticas</th>
+                                            <th class="text-center">Comentários</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for est in estatisticas_perguntas %}
                                         <tr>
-                                            <td>{{ est.pergunta }}</td>
+                                            <td>
+                                                <span
+                                                    {% if est.descricao_detalhada %}
+                                                    data-bs-toggle="tooltip"
+                                                    data-bs-placement="top"
+                                                    title="{{ est.descricao_detalhada }}"
+                                                    style="cursor: help;"
+                                                    {% endif %}>
+                                                    {{ est.pergunta }}
+                                                </span>
+                                            </td>
                                             <td><span class="badge bg-secondary">{{ est.tipo }}</span></td>
                                             <td class="text-center">{{ est.total_respostas }}</td>
                                             <td class="text-center">
@@ -170,6 +181,17 @@
                                                 {% else %}
                                                     <span class="text-muted">-</span>
                                                 {% endif %}
+                                            </td>
+                                            <td class="text-center">
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-sm btn-outline-primary comment-open-btn"
+                                                    data-pergunta-id="{{ est.pergunta_id }}"
+                                                    data-pergunta-texto="{{ est.pergunta|escape }}"
+                                                    title="Ver comentários da pergunta no período">
+                                                    <i class="bi bi-chat-left-text"></i>
+                                                    <span class="badge text-bg-primary ms-1 comment-count">0</span>
+                                                </button>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -251,6 +273,38 @@
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                                         <button type="submit" class="btn btn-primary">
                                             <i class="bi bi-plus-circle"></i> Adicionar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade" id="modal-comentarios-pergunta" tabindex="-1" aria-labelledby="modal-comentarios-pergunta-label" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_question_comment">
+                                    <input type="hidden" name="pergunta_id" id="modal-pergunta-id" value="">
+
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modal-comentarios-pergunta-label">Comentários da Pergunta</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-2 small text-muted" id="modal-pergunta-texto"></div>
+                                        <div class="alert alert-light border small py-2 mb-3">
+                                            Exibindo comentários dos registros dentro do período filtrado.
+                                        </div>
+                                        <div id="modal-comentarios-lista" class="mb-3"></div>
+                                        <label class="form-label" for="modal-comentario-texto">Novo comentário</label>
+                                        <textarea name="comentario" id="modal-comentario-texto" class="form-control" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar as respostas desta pergunta..."></textarea>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-plus-circle"></i> Adicionar comentário
                                         </button>
                                     </div>
                                 </form>
@@ -372,8 +426,67 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {{ chart_data|json_script:"insumos-chart-data" }}
 {{ chart_cards|json_script:"insumos-chart-cards" }}
+{{ comentarios_resposta_por_pergunta|json_script:"comentarios-resposta-por-pergunta" }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggers = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggers.forEach(function(el) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            bootstrap.Tooltip.getOrCreateInstance(el);
+        }
+    });
+
+    let comentariosPorPergunta = {};
+    try {
+        const scriptComentarios = document.getElementById('comentarios-resposta-por-pergunta');
+        comentariosPorPergunta = JSON.parse(scriptComentarios ? scriptComentarios.textContent : '{}') || {};
+    } catch (e) {
+        comentariosPorPergunta = {};
+    }
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderList(items) {
+        if (!items || !items.length) {
+            return '<div class="text-muted">Nenhum comentário para esta pergunta no período selecionado.</div>';
+        }
+        const rows = items.map(function(texto) {
+            return '<li class="mb-1">' + escapeHtml(texto) + '</li>';
+        }).join('');
+        return '<ol class="mb-0 ps-3">' + rows + '</ol>';
+    }
+
+    const modalEl = document.getElementById('modal-comentarios-pergunta');
+    const modal = (typeof bootstrap !== 'undefined' && bootstrap.Modal) ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+    const modalPerguntaId = document.getElementById('modal-pergunta-id');
+    const modalPerguntaTexto = document.getElementById('modal-pergunta-texto');
+    const modalLista = document.getElementById('modal-comentarios-lista');
+
+    document.querySelectorAll('.comment-open-btn').forEach(function(btn) {
+        const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
+        const itens = comentariosPorPergunta[perguntaId] || [];
+        const countEl = btn.querySelector('.comment-count');
+        if (countEl) countEl.textContent = String(itens.length || 0);
+
+        btn.addEventListener('click', function() {
+            const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
+            const perguntaTexto = String(btn.getAttribute('data-pergunta-texto') || '');
+            const list = comentariosPorPergunta[perguntaId] || [];
+
+            modalPerguntaId.value = perguntaId;
+            modalPerguntaTexto.textContent = perguntaTexto;
+            modalLista.innerHTML = renderList(list);
+            if (modal) modal.show();
+        });
+    });
+
     const raw = document.getElementById('insumos-chart-data');
     const chartsData = raw ? JSON.parse(raw.textContent || '{}') : {};
     const rawCards = document.getElementById('insumos-chart-cards');
