@@ -40,6 +40,11 @@
                             </thead>
                             <tbody>
                                 {% for item in cobrancas_items %}
+                                {% ifchanged item.section %}
+                                <tr class="table-secondary">
+                                    <td colspan="3" class="fw-semibold text-uppercase small py-2">{{ item.section }}</td>
+                                </tr>
+                                {% endifchanged %}
                                 <tr>
                                     <td class="fw-semibold">{{ item.label }}</td>
                                     <td class="text-center">
