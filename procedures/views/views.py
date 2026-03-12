@@ -307,14 +307,14 @@ def editar_procedimento_view(request, procedimento_id):
     
     if not can_manage_procedimentos(request.user):
         messages.error(request, 'Sem permissão para editar procedimentos.')
-        return redirect('detalhe_procedimento', procedimento_id=proc.id)
+        return redirect('procedures:detalhe_procedimento', procedimento_id=proc.id)
     
     if request.method == 'POST':
         form = ProcedimentoForm(request.POST, request.FILES, instance=proc)
         if form.is_valid():
             form.save()
             messages.success(request, "Procedimento atualizado com sucesso!")
-            return redirect('detalhe_procedimento', procedimento_id=proc.id)
+            return redirect('procedures:detalhe_procedimento', procedimento_id=proc.id)
     else:
         form = ProcedimentoForm(instance=proc)
     

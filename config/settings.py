@@ -363,15 +363,24 @@ if os.environ.get('PERSIST_MEDIA_PATH'):
 else:
     logger = __import__('logging').getLogger(__name__)
 
-    # Railway default volume mount used in this repo (see railway.toml): /data/media
-    # If the volume is mounted, prefer it automatically even if PERSIST_MEDIA_PATH is not set.
-    railway_media_root = Path("/data/media")
-    if (not DEBUG) and (railway_media_root.exists() or railway_media_root.parent.exists()):
+    # Auto-detect common production mount points used by Railway and containers.
+    # If one is available, prefer it even when PERSIST_MEDIA_PATH is not explicitly set.
+    candidate_media_roots = [Path("/data/media"), Path("/app/media")]
+    detected_media_root = next(
+        (
+            candidate
+            for candidate in candidate_media_roots
+            if candidate.exists() or candidate.parent.exists()
+        ),
+        None,
+    )
+
+    if (not DEBUG) and detected_media_root:
         try:
-            railway_media_root.mkdir(parents=True, exist_ok=True)
-            MEDIA_ROOT = railway_media_root
+            detected_media_root.mkdir(parents=True, exist_ok=True)
+            MEDIA_ROOT = detected_media_root
             DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-            logger.info(f"✅ Usando volume persistente (Railway) em: {MEDIA_ROOT}")
+            logger.info(f"✅ Usando volume persistente (auto-detectado) em: {MEDIA_ROOT}")
         except Exception:
             MEDIA_ROOT = BASE_DIR / "media"
             MEDIA_ROOT.mkdir(parents=True, exist_ok=True)

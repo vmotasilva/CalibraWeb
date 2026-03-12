@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 
 from celery import Celery
 
@@ -8,9 +9,15 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 app = Celery("CalibraWeb")
 
+logger = logging.getLogger(__name__)
+CELERY_ENV_DEBUG = os.getenv("CELERY_ENV_DEBUG", "false").lower() in ("1", "true", "yes")
+
 # Debug: Print environment info before loading config
 def _debug_env():
     """Debug print environment variables (safe version)."""
+    if not CELERY_ENV_DEBUG:
+        return
+
     print("\n" + "="*60)
     print("CELERY ENVIRONMENT DEBUG")
     print("="*60)
@@ -38,7 +45,8 @@ _debug_env()
 # the configuration object to child processes.
 try:
     app.config_from_object("django.conf:settings", namespace="CELERY")
-    print("[OK] Django settings loaded for Celery")
+    if CELERY_ENV_DEBUG:
+        print("[OK] Django settings loaded for Celery")
 except Exception as e:
     print(f"[ERROR] Error loading Django settings: {e}")
     sys.exit(1)
@@ -83,10 +91,11 @@ if _has_unresolved_template(broker_url) or _has_unresolved_template(result_backe
     print(f"   result_backend={result_backend}")
     print(f"   Fix Railway env vars: prefer only REDIS_URL (no '${{...}}' placeholders).")
 else:
-    short_broker = f"{broker_url[:30]}..." if len(str(broker_url)) > 30 else str(broker_url)
-    short_backend = f"{result_backend[:30]}..." if len(str(result_backend)) > 30 else str(result_backend)
-    print(f"[OK] CELERY broker_url: {short_broker}")
-    print(f"[OK] CELERY result_backend: {short_backend}")
+    if CELERY_ENV_DEBUG:
+        short_broker = f"{broker_url[:30]}..." if len(str(broker_url)) > 30 else str(broker_url)
+        short_backend = f"{result_backend[:30]}..." if len(str(result_backend)) > 30 else str(result_backend)
+        print(f"[OK] CELERY broker_url: {short_broker}")
+        print(f"[OK] CELERY result_backend: {short_backend}")
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
@@ -102,10 +111,11 @@ try:
     app.conf.beat_schedule = CELERY_BEAT_SCHEDULE
     app.conf.task_queues = CELERY_QUEUES
     app.conf.task_routes = CELERY_ROUTES
-    print(f"[OK] Celery Beat scheduled with {len(CELERY_BEAT_SCHEDULE)} tasks")
+    if CELERY_ENV_DEBUG:
+        print(f"[OK] Celery Beat scheduled with {len(CELERY_BEAT_SCHEDULE)} tasks")
 except ImportError as e:
     # If qms app is not available, continue without Beat configuration
-    print(f"[WARNING] Celery Beat config not available: {e}")
+    logger.warning("Celery Beat config not available: %s", e)
 except Exception as e:
     print(f"[ERROR] Error loading Celery Beat config: {e}")
 
