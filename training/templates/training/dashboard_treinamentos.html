@@ -25,7 +25,7 @@
     
     <div class="dashboard-body">
         <!-- Sidebar de Filtros (Recolhível) - Estilo RH -->
-        <div id="sidebarCol" class="col-auto sidebar-col" style="width: 250px; flex-shrink: 0;">
+        <div id="sidebarCol" class="col-auto sidebar-col">
             <div id="filterSidebar" class="filter-card">
                 <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
                     <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
@@ -275,7 +275,7 @@
                     <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-person-badge text-success me-1"></i>Demanda por Líder</h6>
                 </div>
                 <div class="card-body py-1 px-2">
-                    <canvas id="chartLider" height="140"></canvas>
+                    <canvas id="chartLider" class="dashboard-chart dashboard-chart--row"></canvas>
                     <div id="chartLiderFallback" class="text-center text-muted py-2 d-none">
                         <i class="bi bi-bar-chart fs-4 text-muted"></i>
                         <p class="mt-1 small mb-0">Nenhum dado disponível</p>
@@ -291,7 +291,7 @@
                     <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-building text-warning me-1"></i>Demanda por Setor/Turno</h6>
                 </div>
                 <div class="card-body py-1 px-2">
-                    <canvas id="chartSetorTurno" height="140"></canvas>
+                    <canvas id="chartSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
                     <div id="chartSetorTurnoFallback" class="text-center text-muted py-2 d-none">
                         <i class="bi bi-bar-chart fs-4 text-muted"></i>
                         <p class="mt-1 small mb-0">Nenhum dado disponível</p>
@@ -310,7 +310,7 @@
                     <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-calendar-check text-primary me-1"></i>Planejamento por Instrutor</h6>
                 </div>
                 <div class="card-body py-1 px-2">
-                    <canvas id="chartPlanejamentoInstrutor" height="140"></canvas>
+                    <canvas id="chartPlanejamentoInstrutor" class="dashboard-chart dashboard-chart--row"></canvas>
                     <div id="chartPlanejamentoInstrutorFallback" class="text-center text-muted py-2 d-none">
                         <i class="bi bi-calendar-x fs-4 text-muted"></i>
                         <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
@@ -326,7 +326,7 @@
                     <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-calendar2-week text-info me-1"></i>Planejamento por Setor/Turno</h6>
                 </div>
                 <div class="card-body py-1 px-2">
-                    <canvas id="chartPlanejamentoSetorTurno" height="140"></canvas>
+                    <canvas id="chartPlanejamentoSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
                     <div id="chartPlanejamentoSetorTurnoFallback" class="text-center text-muted py-2 d-none">
                         <i class="bi bi-calendar-x fs-4 text-muted"></i>
                         <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
@@ -344,7 +344,7 @@
                     <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-bar-chart text-info me-1"></i>Treinamentos Últimos 12 Meses</h6>
                 </div>
                 <div class="card-body py-1 px-2">
-                    <canvas id="chartMeses" height="80"></canvas>
+                    <canvas id="chartMeses" class="dashboard-chart dashboard-chart--wide"></canvas>
                 </div>
             </div>
         </div>
@@ -375,11 +375,25 @@
         min-height: 0;
         gap: 0.5rem;
     }
+
+    .dashboard-chart {
+        width: 100% !important;
+        display: block;
+    }
+
+    .dashboard-chart--row {
+        height: clamp(180px, 27vh, 250px) !important;
+    }
+
+    .dashboard-chart--wide {
+        height: clamp(170px, 22vh, 230px) !important;
+    }
     
     /* Sidebar Styles */
     .sidebar-col {
         flex-shrink: 0;
         transition: all 0.3s ease;
+        width: clamp(220px, 18vw, 250px);
     }
     
     .filter-sidebar {
@@ -457,6 +471,7 @@
     .sidebar2-col {
         flex-shrink: 0;
         transition: all 0.3s ease;
+        width: clamp(136px, 12vw, 160px);
     }
     
     .indicators-sidebar {
@@ -723,18 +738,89 @@
     }
     
     /* Responsivo */
-    @media (max-width: 768px) {
-        .filter-sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            height: 100vh;
-            z-index: 1050;
-            border-radius: 0;
+    @media (max-width: 1400px) {
+        .dashboard-wrapper {
+            padding: 0.35rem;
         }
-        
-        .filter-sidebar.collapsed {
-            left: -260px;
+
+        .dashboard-body {
+            gap: 0.35rem;
+        }
+
+        .sidebar-col {
+            width: clamp(200px, 16vw, 230px);
+        }
+
+        .sidebar2-col {
+            width: clamp(120px, 10vw, 145px);
+        }
+
+        .dashboard-chart--row {
+            height: clamp(170px, 24vh, 220px) !important;
+        }
+    }
+
+    @media (max-width: 1100px) {
+        .dashboard-wrapper {
+            height: auto;
+            min-height: calc(100dvh - 60px);
+            overflow: visible;
+        }
+
+        .dashboard-body {
+            flex-wrap: wrap;
+        }
+
+        .sidebar-col {
+            width: 100%;
+            order: 1;
+        }
+
+        .sidebar2-col {
+            width: 100%;
+            order: 2;
+        }
+
+        .main-content {
+            width: 100%;
+            order: 3;
+        }
+
+        .indicators-sidebar,
+        .filter-card {
+            width: 100%;
+            min-width: 0;
+            height: auto;
+        }
+
+        .charts-scroll-area {
+            overflow: visible;
+            padding-right: 0;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-wrapper {
+            height: auto;
+            min-height: calc(100dvh - 60px);
+        }
+
+        .dashboard-header .d-flex {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.5rem;
+        }
+
+        .dashboard-chart--row {
+            height: 200px !important;
+        }
+
+        .dashboard-chart--wide {
+            height: 190px !important;
+        }
+
+        .card-header h6 {
+            font-size: 0.72rem !important;
         }
     }
 </style>
@@ -965,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         display: true,
@@ -1067,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 options: {
                     indexAxis: 'y',
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom'
@@ -1130,7 +1216,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 options: {
                     indexAxis: 'y',
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom'
@@ -1221,7 +1307,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 options: {
                     indexAxis: 'y',
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom'
@@ -1304,7 +1390,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 options: {
                     indexAxis: 'y',
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom'
