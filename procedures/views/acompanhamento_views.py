@@ -47,9 +47,9 @@ def _format_time(value) -> str:
         return ""
 
 
-def _week_start_sunday(d: date) -> date:
-    # weekday(): Monday=0 .. Sunday=6 -> want Sunday as first day
-    delta = (d.weekday() + 1) % 7
+def _week_start_monday(d: date) -> date:
+    # weekday(): Monday=0 .. Sunday=6 -> Monday as first day
+    delta = d.weekday()
     return d - timedelta(days=delta)
 
 
@@ -115,7 +115,7 @@ def calendario_treinamentos_view(request):
         month = ref_date.month
 
         if view_mode == "week":
-            start_date = _week_start_sunday(ref_date)
+            start_date = _week_start_monday(ref_date)
             end_date = start_date + timedelta(days=6)
         else:
             start_date = ref_date
@@ -179,7 +179,7 @@ def calendario_treinamentos_view(request):
             week_days.append(CalendarDay(day=d.day, date=d, events=by_date.get(d, [])))
         weeks = [week_days]
     else:
-        cal = calendar.Calendar(firstweekday=6)  # domingo
+        cal = calendar.Calendar(firstweekday=0)  # segunda-feira
         for week in cal.monthdayscalendar(year, month):
             week_days: list[CalendarDay] = []
             for day_num in week:
