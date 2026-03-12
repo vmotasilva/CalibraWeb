@@ -151,9 +151,33 @@ class RegistroAuditoriaForm(forms.ModelForm):
         model = RegistroAuditoria
         fields = ["data_auditoria", "periodo_inicio", "periodo_fim", "item_os", "grid_itens", "observacoes"]
         widgets = {
-            "data_auditoria": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "periodo_inicio": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "periodo_fim": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "data_auditoria": forms.DateInput(
+                format="%d/%m/%Y",
+                attrs={
+                    "class": "form-control js-week-datepicker",
+                    "type": "text",
+                    "placeholder": "dd/mm/aaaa",
+                    "autocomplete": "off",
+                },
+            ),
+            "periodo_inicio": forms.DateInput(
+                format="%d/%m/%Y",
+                attrs={
+                    "class": "form-control js-week-datepicker",
+                    "type": "text",
+                    "placeholder": "dd/mm/aaaa",
+                    "autocomplete": "off",
+                },
+            ),
+            "periodo_fim": forms.DateInput(
+                format="%d/%m/%Y",
+                attrs={
+                    "class": "form-control js-week-datepicker",
+                    "type": "text",
+                    "placeholder": "dd/mm/aaaa",
+                    "autocomplete": "off",
+                },
+            ),
             "item_os": forms.TextInput(
                 attrs={
                     "class": "form-control",
@@ -170,6 +194,12 @@ class RegistroAuditoriaForm(forms.ModelForm):
             ),
             "observacoes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        accepted_formats = ["%d/%m/%Y", "%Y-%m-%d"]
+        for field_name in ("data_auditoria", "periodo_inicio", "periodo_fim"):
+            self.fields[field_name].input_formats = accepted_formats
 
     def clean(self):
         cleaned_data = super().clean()
