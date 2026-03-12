@@ -36,3 +36,69 @@
     </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const matrizSelect = document.getElementById('id_matriz');
+    const subAreaSelect = document.getElementById('id_sub_area');
+
+    if (!matrizSelect || !subAreaSelect) {
+        return;
+    }
+
+    const endpoint = subAreaSelect.dataset.subareasUrl;
+    if (!endpoint) {
+        return;
+    }
+
+    const currentSubArea = subAreaSelect.value;
+
+    function renderOptions(items, selectedValue) {
+        subAreaSelect.innerHTML = '<option value="">Selecione</option>';
+        items.forEach(function (item) {
+            const option = document.createElement('option');
+            option.value = String(item.id);
+            option.textContent = item.nome;
+            if (selectedValue && String(selectedValue) === String(item.id)) {
+                option.selected = true;
+            }
+            subAreaSelect.appendChild(option);
+        });
+    }
+
+    function carregarSubAreas(matrizId, selectedValue) {
+        if (!matrizId) {
+            renderOptions([], null);
+            return;
+        }
+
+        fetch(endpoint + '?matriz_id=' + encodeURIComponent(matrizId), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Falha ao carregar sub-áreas');
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                renderOptions(data.items || [], selectedValue);
+            })
+            .catch(function () {
+                renderOptions([], null);
+            });
+    }
+
+    matrizSelect.addEventListener('change', function () {
+        carregarSubAreas(matrizSelect.value, null);
+    });
+
+    if (matrizSelect.value) {
+        carregarSubAreas(matrizSelect.value, currentSubArea);
+    }
+});
+</script>
+{% endblock %}

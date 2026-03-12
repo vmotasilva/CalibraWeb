@@ -411,6 +411,18 @@
                             {% if nav_tr_per %}
                                 <li><h6 class="dropdown-header text-muted">PERFIS DE TREINAMENTO</h6></li>
                                 <li><a class="dropdown-item" href="{% url 'procedures:perfis_list' %}"><i class="bi bi-person-badge"></i> Perfis e Grupos</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% can_nav_block user 'procedures' 'procedimentos' as nav_tr_procedimentos %}
+                        {% if nav_tr_procedimentos %}
+                            {% can_nav_view user 'procedures:procedimentos_list' 'procedures' as nav_tr_proc %}
+                            {% can_nav_view user 'procedures:procedimento_matrizes_list' 'procedures' as nav_tr_proc_mat %}
+                            {% if nav_tr_proc or nav_tr_proc_mat %}
+                                <li><h6 class="dropdown-header text-muted">PROCEDIMENTOS</h6></li>
+                                {% if nav_tr_proc %}<li><a class="dropdown-item" href="{% url 'procedures:procedimentos_list' %}"><i class="bi bi-journal-bookmark"></i> Procedimentos</a></li>{% endif %}
+                                {% if nav_tr_proc_mat %}<li><a class="dropdown-item" href="{% url 'procedures:procedimento_matrizes_list' %}"><i class="bi bi-diagram-3"></i> Matrizes e Sub-áreas</a></li>{% endif %}
                             {% endif %}
                         {% endif %}
                     </ul>

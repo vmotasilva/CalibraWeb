@@ -1,0 +1,108 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Matriz: {{ matriz.nome }}{% endblock %}
+{% block header_title %}Matriz de Procedimentos: {{ matriz.nome }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'procedures:procedimento_matrizes_list' %}" class="btn btn-secondary btn-sm">Voltar para Matrizes</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Editar Matriz</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="acao" value="editar_matriz">
+                    <div class="mb-3">
+                        <label for="{{ matriz_form.nome.id_for_label }}" class="form-label">{{ matriz_form.nome.label }}</label>
+                        {{ matriz_form.nome }}
+                        {% if matriz_form.nome.errors %}
+                        <div class="text-danger small mt-1">{{ matriz_form.nome.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-check mb-3">
+                        {{ matriz_form.ativo }}
+                        <label class="form-check-label" for="{{ matriz_form.ativo.id_for_label }}">{{ matriz_form.ativo.label }}</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Atualizar Matriz</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Nova Sub-área</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ sub_area_form.nome.id_for_label }}" class="form-label">{{ sub_area_form.nome.label }}</label>
+                        {{ sub_area_form.nome }}
+                        {% if sub_area_form.nome.errors %}
+                        <div class="text-danger small mt-1">{{ sub_area_form.nome.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-check mb-3">
+                        {{ sub_area_form.ativo }}
+                        <label class="form-check-label" for="{{ sub_area_form.ativo.id_for_label }}">{{ sub_area_form.ativo.label }}</label>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Adicionar Sub-área</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Sub-áreas Associadas</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Sub-área</th>
+                            <th>Status</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sub_area in sub_areas %}
+                        <tr>
+                            <td>{{ sub_area.nome }}</td>
+                            <td>
+                                {% if sub_area.ativo %}
+                                <span class="badge bg-success">Ativa</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inativa</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="acao" value="deletar_sub_area">
+                                    <input type="hidden" name="sub_area_id" value="{{ sub_area.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover esta sub-área?');">
+                                        Remover
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">Nenhuma sub-área vinculada a esta matriz.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

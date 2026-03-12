@@ -8,10 +8,15 @@ from .views import (
     export_procedimentos_excel_view,
     download_template_procedimentos_view,
     importar_procedimentos_view,
+    procedimento_matrizes_list_view,
+    procedimento_matriz_detalhe_view,
+    importar_matrizes_subareas_view,
+    download_template_matrizes_subareas_view,
     novo_procedimento_view,
     editar_procedimento_view,
     detalhe_procedimento_view,
     # API
+    api_subareas_por_matriz_view,
     api_procedimentos_list,
     # Treinamentos
     treinamentos_list_view,
@@ -54,10 +59,15 @@ __all__ = [
     'export_procedimentos_excel_view',
     'download_template_procedimentos_view',
     'importar_procedimentos_view',
+    'procedimento_matrizes_list_view',
+    'procedimento_matriz_detalhe_view',
+    'importar_matrizes_subareas_view',
+    'download_template_matrizes_subareas_view',
     'novo_procedimento_view',
     'editar_procedimento_view',
     'detalhe_procedimento_view',
     # API
+    'api_subareas_por_matriz_view',
     'api_procedimentos_list',
     # Treinamentos
     'treinamentos_list_view',

@@ -120,6 +120,7 @@ class NavigationPermission(models.Model):
             ("nav_treinamentos_gestao", "NAV: Treinamentos / Bloco Gestão de Treinamentos"),
             ("nav_treinamentos_matriz", "NAV: Treinamentos / Bloco Matriz de Competências"),
             ("nav_treinamentos_perfis_bloco", "NAV: Treinamentos / Bloco Perfis de Treinamento"),
+            ("nav_treinamentos_procedimentos_bloco", "NAV: Treinamentos / Bloco Procedimentos"),
 
             # --- TREINAMENTOS: funções ---
             ("nav_treinamentos_dashboard", "NAV: Treinamentos / Dashboard"),
@@ -192,6 +193,9 @@ class NavigationPermission(models.Model):
             ("nav_treinamentos_editar_procedimento", "NAV: Treinamentos / Editar Procedimento"),
             ("nav_treinamentos_importar_procedimentos", "NAV: Treinamentos / Importar Procedimentos"),
             ("nav_treinamentos_exportar_procedimentos", "NAV: Treinamentos / Exportar Procedimentos (Excel)"),
+            ("nav_treinamentos_procedimentos_matrizes", "NAV: Treinamentos / Matrizes e Sub-áreas (Procedimentos)"),
+            ("nav_treinamentos_procedimentos_matrizes_import", "NAV: Treinamentos / Importar Matrizes e Sub-áreas (Procedimentos)"),
+            ("nav_treinamentos_procedimentos_subareas_api", "NAV: Treinamentos / API Sub-áreas por Matriz"),
 
             # --- PESSOAS: blocos ---
             ("nav_pessoas_equipe", "NAV: Pessoas / Bloco Equipe"),

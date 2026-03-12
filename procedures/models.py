@@ -17,6 +17,49 @@ from decimal import Decimal
 # PROCEDIMENTOS E TREINAMENTOS
 # ==============================================================================
 
+class MatrizProcedimento(models.Model):
+    """Matriz funcional para classificação de procedimentos."""
+    nome = models.CharField(max_length=120, unique=True, verbose_name="Nome da Matriz")
+    ativo = models.BooleanField(default=True, verbose_name="Ativo")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.nome
+
+    class Meta:
+        verbose_name = "Matriz de Procedimento"
+        verbose_name_plural = "Matrizes de Procedimentos"
+        ordering = ["nome"]
+
+
+class SubAreaProcedimento(models.Model):
+    """Sub-área vinculada a uma matriz de procedimentos."""
+    matriz = models.ForeignKey(
+        MatrizProcedimento,
+        on_delete=models.CASCADE,
+        related_name="sub_areas",
+        verbose_name="Matriz",
+    )
+    nome = models.CharField(max_length=120, verbose_name="Nome da Sub-Área")
+    ativo = models.BooleanField(default=True, verbose_name="Ativo")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.matriz.nome} - {self.nome}"
+
+    class Meta:
+        verbose_name = "Sub-Área de Procedimento"
+        verbose_name_plural = "Sub-Áreas de Procedimentos"
+        ordering = ["matriz__nome", "nome"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["matriz", "nome"],
+                name="uniq_subarea_procedimento_por_matriz",
+            )
+        ]
+
 class Procedimento(models.Model):
     """Documento de procedimento operacional (GED)."""
     codigo = models.CharField(max_length=50, unique=True, verbose_name="Código", null=True, blank=True)

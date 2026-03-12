@@ -36,18 +36,22 @@ def treinamentos_historico_view(request):
     })
 from procedures.models import (
     Procedimento, RegistroTreinamento, PacoteTreinamento,
+    MatrizProcedimento, SubAreaProcedimento,
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
 )
 from rh.models import Colaborador
 
 # Forms
 from procedures.forms import (
+    MatrizProcedimentoForm, SubAreaProcedimentoForm,
+    ImportacaoMatrizSubAreaForm,
     ProcedimentoForm, RegistroTreinamentoForm, PacoteTreinamentoForm,
     FornecedorForm, AvaliacaoFornecedorForm, ProcessoCotacaoForm, OrcamentoForm
 )
 
 # Helpers
 from qms.views_helpers import export_to_excel_response, can_manage_procedimentos
+from shared.permissions import has_view_access
 
 
 # ==============================================================================
@@ -83,20 +87,22 @@ def procedimentos_list_view(request):
     page_obj = paginator.get_page(page_number)
     procedimentos = page_obj.object_list
 
-    # Extrair valores únicos para filtros dinâmicos
+    # Filtros dinâmicos vindos das tabelas normalizadas
     all_procedimentos = Procedimento.objects.all()
     classificacoes = sorted(set(
         p.classificacao for p in all_procedimentos 
         if p.classificacao
     ))
-    matrizes = sorted(set(
-        p.matriz for p in all_procedimentos 
-        if p.matriz
-    ))
-    sub_areas = sorted(set(
-        p.sub_area for p in all_procedimentos 
-        if p.sub_area
-    ))
+    matrizes = list(
+        MatrizProcedimento.objects.filter(ativo=True)
+        .order_by('nome')
+        .values_list('nome', flat=True)
+    )
+    sub_areas = list(
+        SubAreaProcedimento.objects.filter(ativo=True)
+        .order_by('nome')
+        .values_list('nome', flat=True)
+    )
     criticidades = [
         ('CRITICO', 'Crítico'),
         ('NAO_CRITICO', 'Não Crítico'),
@@ -325,6 +331,213 @@ def detalhe_procedimento_view(request, procedimento_id):
     proc = get_object_or_404(Procedimento, id=procedimento_id)
     return render(request, 'procedures/procedimento_detalhe.html', {
         'proc': proc
+    })
+
+
+@login_required
+def procedimento_matrizes_list_view(request):
+    """Lista e cadastra matrizes de procedimentos."""
+    if not has_view_access(request.user, 'procedures:procedimento_matrizes_list'):
+        messages.error(request, 'Sem permissão para acessar matrizes de procedimentos.')
+        return redirect('procedures:procedimentos_list')
+
+    termo = (request.GET.get('q') or '').strip()
+    qs = MatrizProcedimento.objects.all().order_by('nome')
+    if termo:
+        qs = qs.filter(nome__icontains=termo)
+
+    if request.method == 'POST':
+        form = MatrizProcedimentoForm(request.POST)
+        if form.is_valid():
+            matriz = form.save()
+            messages.success(request, f"Matriz '{matriz.nome}' cadastrada com sucesso.")
+            return redirect('procedures:procedimento_matriz_detalhe', matriz_id=matriz.id)
+    else:
+        form = MatrizProcedimentoForm()
+
+    return render(request, 'procedures/procedimento_matriz_lista.html', {
+        'form': form,
+        'matrizes': qs,
+        'termo': termo,
+    })
+
+
+@login_required
+def importar_matrizes_subareas_view(request):
+    """Importa matrizes e sub-áreas em massa via Excel/CSV."""
+    if not has_view_access(request.user, 'procedures:importar_matrizes_subareas'):
+        messages.error(request, 'Sem permissão para importar matrizes e sub-áreas.')
+        return redirect('procedures:procedimento_matrizes_list')
+
+    resultado = None
+
+    if request.method == 'POST':
+        form = ImportacaoMatrizSubAreaForm(request.POST, request.FILES)
+        if form.is_valid():
+            arquivo = form.cleaned_data['arquivo']
+            nome_arquivo = (arquivo.name or '').lower()
+
+            try:
+                if nome_arquivo.endswith('.csv'):
+                    df = pd.read_csv(arquivo)
+                else:
+                    df = pd.read_excel(arquivo)
+            except Exception as exc:
+                messages.error(request, f'Erro ao ler arquivo: {exc}')
+                return render(request, 'procedures/procedimento_matriz_importar.html', {'form': form, 'resultado': resultado})
+
+            # Normaliza nomes das colunas para facilitar planilhas de fontes diferentes
+            colunas_norm = {str(col).strip().lower(): col for col in df.columns}
+            col_matriz = colunas_norm.get('matriz')
+            col_sub_area = colunas_norm.get('sub_area') or colunas_norm.get('sub-área') or colunas_norm.get('subarea')
+            col_ativo_matriz = colunas_norm.get('ativo_matriz')
+            col_ativo_sub_area = colunas_norm.get('ativo_sub_area')
+
+            if not col_matriz:
+                messages.error(request, 'A coluna obrigatória "matriz" não foi encontrada no arquivo.')
+                return render(request, 'procedures/procedimento_matriz_importar.html', {'form': form, 'resultado': resultado})
+
+            criadas_matrizes = 0
+            atualizadas_matrizes = 0
+            criadas_subareas = 0
+            atualizadas_subareas = 0
+            ignoradas = 0
+            erros = []
+
+            def to_bool(value, default=True):
+                if pd.isna(value):
+                    return default
+                texto = str(value).strip().lower()
+                if texto in ('1', 'true', 'sim', 's', 'yes', 'y'):
+                    return True
+                if texto in ('0', 'false', 'nao', 'não', 'n', 'no'):
+                    return False
+                return default
+
+            for idx, row in df.iterrows():
+                linha = idx + 2
+                try:
+                    nome_matriz = '' if pd.isna(row[col_matriz]) else str(row[col_matriz]).strip()
+                    if not nome_matriz:
+                        ignoradas += 1
+                        continue
+
+                    ativo_matriz = to_bool(row[col_ativo_matriz], True) if col_ativo_matriz else True
+                    matriz_obj, matriz_criada = MatrizProcedimento.objects.get_or_create(
+                        nome=nome_matriz,
+                        defaults={'ativo': ativo_matriz},
+                    )
+
+                    if matriz_criada:
+                        criadas_matrizes += 1
+                    else:
+                        if col_ativo_matriz and matriz_obj.ativo != ativo_matriz:
+                            matriz_obj.ativo = ativo_matriz
+                            matriz_obj.save(update_fields=['ativo', 'atualizado_em'])
+                            atualizadas_matrizes += 1
+
+                    if col_sub_area:
+                        nome_sub_area = '' if pd.isna(row[col_sub_area]) else str(row[col_sub_area]).strip()
+                        if nome_sub_area:
+                            ativo_sub_area = to_bool(row[col_ativo_sub_area], True) if col_ativo_sub_area else True
+                            sub_area_obj, sub_area_criada = SubAreaProcedimento.objects.get_or_create(
+                                matriz=matriz_obj,
+                                nome=nome_sub_area,
+                                defaults={'ativo': ativo_sub_area},
+                            )
+
+                            if sub_area_criada:
+                                criadas_subareas += 1
+                            else:
+                                if col_ativo_sub_area and sub_area_obj.ativo != ativo_sub_area:
+                                    sub_area_obj.ativo = ativo_sub_area
+                                    sub_area_obj.save(update_fields=['ativo', 'atualizado_em'])
+                                    atualizadas_subareas += 1
+                except Exception as exc:
+                    erros.append(f'Linha {linha}: {exc}')
+
+            resultado = {
+                'criadas_matrizes': criadas_matrizes,
+                'atualizadas_matrizes': atualizadas_matrizes,
+                'criadas_subareas': criadas_subareas,
+                'atualizadas_subareas': atualizadas_subareas,
+                'ignoradas': ignoradas,
+                'erros': erros,
+            }
+
+            if erros:
+                messages.warning(request, 'Importação concluída com inconsistências. Verifique o relatório abaixo.')
+            else:
+                messages.success(request, 'Importação de matrizes/sub-áreas concluída com sucesso.')
+    else:
+        form = ImportacaoMatrizSubAreaForm()
+
+    return render(request, 'procedures/procedimento_matriz_importar.html', {
+        'form': form,
+        'resultado': resultado,
+    })
+
+
+@login_required
+def download_template_matrizes_subareas_view(request):
+    """Baixa template de importação de matrizes e sub-áreas."""
+    if not has_view_access(request.user, 'procedures:download_template_matrizes_subareas'):
+        messages.error(request, 'Sem permissão para baixar template de importação.')
+        return redirect('procedures:procedimento_matrizes_list')
+
+    rows = [
+        {'matriz': 'SURFAÇAGEM', 'sub_area': 'Blocagem', 'ativo_matriz': 1, 'ativo_sub_area': 1},
+        {'matriz': 'SURFAÇAGEM', 'sub_area': 'Recebimento', 'ativo_matriz': 1, 'ativo_sub_area': 1},
+        {'matriz': 'MONTAGEM', 'sub_area': 'Linha A', 'ativo_matriz': 1, 'ativo_sub_area': 1},
+    ]
+    return export_to_excel_response(rows, 'template_importacao_matrizes_subareas.xlsx')
+
+
+@login_required
+def procedimento_matriz_detalhe_view(request, matriz_id):
+    """Detalha uma matriz e permite cadastrar/associar sub-áreas."""
+    if not has_view_access(request.user, 'procedures:procedimento_matriz_detalhe'):
+        messages.error(request, 'Sem permissão para gerenciar sub-áreas da matriz.')
+        return redirect('procedures:procedimento_matrizes_list')
+
+    matriz = get_object_or_404(MatrizProcedimento, id=matriz_id)
+
+    if request.method == 'POST':
+        acao = (request.POST.get('acao') or '').strip()
+
+        if acao == 'editar_matriz':
+            matriz_form = MatrizProcedimentoForm(request.POST, instance=matriz)
+            sub_area_form = SubAreaProcedimentoForm()
+            if matriz_form.is_valid():
+                matriz_form.save()
+                messages.success(request, 'Matriz atualizada com sucesso.')
+                return redirect('procedures:procedimento_matriz_detalhe', matriz_id=matriz.id)
+        elif acao == 'deletar_sub_area':
+            sub_area_id = request.POST.get('sub_area_id')
+            sub_area = get_object_or_404(SubAreaProcedimento, id=sub_area_id, matriz=matriz)
+            sub_area.delete()
+            messages.success(request, 'Sub-área removida com sucesso.')
+            return redirect('procedures:procedimento_matriz_detalhe', matriz_id=matriz.id)
+        else:
+            matriz_form = MatrizProcedimentoForm(instance=matriz)
+            sub_area_form = SubAreaProcedimentoForm(request.POST)
+            if sub_area_form.is_valid():
+                sub_area = sub_area_form.save(commit=False)
+                sub_area.matriz = matriz
+                sub_area.save()
+                messages.success(request, f"Sub-área '{sub_area.nome}' associada com sucesso.")
+                return redirect('procedures:procedimento_matriz_detalhe', matriz_id=matriz.id)
+    else:
+        matriz_form = MatrizProcedimentoForm(instance=matriz)
+        sub_area_form = SubAreaProcedimentoForm()
+
+    sub_areas = matriz.sub_areas.all().order_by('nome')
+
+    return render(request, 'procedures/procedimento_matriz_detalhe.html', {
+        'matriz': matriz,
+        'matriz_form': matriz_form,
+        'sub_area_form': sub_area_form,
+        'sub_areas': sub_areas,
     })
 
 
@@ -1234,6 +1447,28 @@ def editar_orcamento_view(request, orcamento_id):
 # ==============================================================================
 
 from django.http import JsonResponse
+
+
+@login_required
+@require_http_methods(["GET"])
+def api_subareas_por_matriz_view(request):
+    """Retorna sub-áreas ativas de uma matriz para preenchimento dinâmico de formulário."""
+    matriz_id = request.GET.get('matriz_id')
+    if not matriz_id:
+        return JsonResponse({'items': []})
+
+    sub_areas = SubAreaProcedimento.objects.filter(
+        matriz_id=matriz_id,
+        ativo=True,
+    ).order_by('nome')
+
+    data = {
+        'items': [
+            {'id': sub_area.id, 'nome': sub_area.nome}
+            for sub_area in sub_areas
+        ]
+    }
+    return JsonResponse(data)
 
 def api_procedimentos_list(request):
     """API endpoint para listar procedimentos com filtros e paginação."""

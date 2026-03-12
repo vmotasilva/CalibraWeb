@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/colaboradores-json/', lista_presenca_views.api_colaboradores_json_view, name='api_colaboradores_json'),
     path('api/colaboradores-busca/', lista_presenca_views.api_colaboradores_busca_view, name='api_colaboradores_busca'),
     path('api/filtros-colaboradores/', habilidades_views.filtros_colaboradores_api, name='filtros_colaboradores_api'),
+    path('api/subareas-por-matriz/', views.api_subareas_por_matriz_view, name='api_subareas_por_matriz'),
     
     # ==========================
     # PROCEDIMENTOS
@@ -32,6 +33,10 @@ urlpatterns = [
     path('procedimentos/export/excel/', views.export_procedimentos_excel_view, name='export_procedimentos_excel'),
     path('procedimentos/template/download/', views.download_template_procedimentos_view, name='dl_template_procedimentos'),
     path('procedimentos/importar/', views.importar_procedimentos_view, name='importar_procedimentos'),
+    path('procedimentos/matrizes/', views.procedimento_matrizes_list_view, name='procedimento_matrizes_list'),
+    path('procedimentos/matrizes/<int:matriz_id>/', views.procedimento_matriz_detalhe_view, name='procedimento_matriz_detalhe'),
+    path('procedimentos/matrizes/importar/', views.importar_matrizes_subareas_view, name='importar_matrizes_subareas'),
+    path('procedimentos/matrizes/template/', views.download_template_matrizes_subareas_view, name='download_template_matrizes_subareas'),
     path('procedimentos/novo/', views.novo_procedimento_view, name='novo_procedimento'),
     path('procedimentos/<int:procedimento_id>/editar/', views.editar_procedimento_view, name='editar_procedimento'),
     path('procedimentos/<int:procedimento_id>/', views.detalhe_procedimento_view, name='detalhe_procedimento'),

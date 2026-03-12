@@ -9,6 +9,7 @@ from django import forms
 from django.forms.models import BaseInlineFormSet
 from .models import (
     Area, Procedimento, ProcedimentoRevisao, PacoteTreinamento, RegistroTreinamento,
+    MatrizProcedimento, SubAreaProcedimento,
     Disciplina, DisciplinaProcedimento, PlanejamentoTreinamento, ListaPresenca,
     TemplateListaPresenca, MapeamentoCampoListaPresenca,
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento
@@ -61,6 +62,21 @@ class ProcedimentoAdmin(admin.ModelAdmin):
     search_fields = ['codigo', 'nome']
     list_filter = ['ultima_revisao']
     ordering = ['codigo']
+
+
+class MatrizProcedimentoAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'ativo', 'criado_em']
+    search_fields = ['nome']
+    list_filter = ['ativo']
+    ordering = ['nome']
+
+
+class SubAreaProcedimentoAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'matriz', 'ativo', 'criado_em']
+    search_fields = ['nome', 'matriz__nome']
+    list_filter = ['ativo', 'matriz']
+    list_select_related = ['matriz']
+    ordering = ['matriz__nome', 'nome']
 
 
 class ProcedimentoRevisaoAdmin(admin.ModelAdmin):
@@ -251,6 +267,8 @@ class TemplateListaPresencaAdmin(admin.ModelAdmin):
 # Procedimentos e Treinamentos
 admin_site.register(Area, AreaAdmin)
 admin_site.register(Procedimento, ProcedimentoAdmin)
+admin_site.register(MatrizProcedimento, MatrizProcedimentoAdmin)
+admin_site.register(SubAreaProcedimento, SubAreaProcedimentoAdmin)
 admin_site.register(ProcedimentoRevisao, ProcedimentoRevisaoAdmin)
 admin_site.register(PacoteTreinamento, PacoteTreinamentoAdmin)
 admin_site.register(RegistroTreinamento, RegistroTreinamentoAdmin)

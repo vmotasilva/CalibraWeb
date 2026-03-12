@@ -5,8 +5,10 @@ Consolida forms de training e procurements
 """
 
 from django import forms
+from django.urls import reverse_lazy
 from procedures.models import (
     Procedimento, RegistroTreinamento, PacoteTreinamento,
+    MatrizProcedimento, SubAreaProcedimento,
     Fornecedor, AvaliacaoFornecedor, ProcessoCotacao, Orcamento,
     Disciplina, MatrizHabilidade, AvaliacaoHabilidade,
     PerfilTreinamento, GrupoTreinamento, SubGrupoTreinamento,
@@ -18,8 +20,130 @@ from procedures.models import (
 # PROCEDIMENTOS E TREINAMENTOS
 # ==============================================================================
 
+class MatrizProcedimentoForm(forms.ModelForm):
+    """Formulário para criar/editar matriz de procedimentos."""
+
+    class Meta:
+        model = MatrizProcedimento
+        fields = ['nome', 'ativo']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: SURFAÇAGEM'
+            }),
+            'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class SubAreaProcedimentoForm(forms.ModelForm):
+    """Formulário para criar sub-áreas dentro de uma matriz de procedimentos."""
+
+    class Meta:
+        model = SubAreaProcedimento
+        fields = ['nome', 'ativo']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ex: Blocagem'
+            }),
+            'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class ImportacaoMatrizSubAreaForm(forms.Form):
+    """Formulário para importação em massa de matrizes e sub-áreas."""
+
+    arquivo = forms.FileField(
+        label='Arquivo de Importação',
+        help_text='Aceita .xlsx, .xls ou .csv com colunas: matriz, sub_area, ativo_matriz, ativo_sub_area',
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.xlsx,.xls,.csv',
+        }),
+    )
+
 class ProcedimentoForm(forms.ModelForm):
     """Formulário para criar/editar procedimentos operacionais."""
+
+    matriz = forms.ModelChoiceField(
+        queryset=MatrizProcedimento.objects.none(),
+        required=False,
+        empty_label='Selecione',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+    sub_area = forms.ModelChoiceField(
+        queryset=SubAreaProcedimento.objects.none(),
+        required=False,
+        empty_label='Selecione',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['matriz'].queryset = MatrizProcedimento.objects.filter(ativo=True).order_by('nome')
+        self.fields['sub_area'].widget.attrs['data-subareas-url'] = reverse_lazy('procedures:api_subareas_por_matriz')
+
+        matriz_id = None
+
+        if self.is_bound:
+            matriz_raw = self.data.get('matriz')
+            if matriz_raw and str(matriz_raw).isdigit():
+                matriz_id = int(matriz_raw)
+        elif self.instance and self.instance.pk and self.instance.matriz:
+            matriz_nome = self.instance.matriz.strip()
+            matriz_obj, _ = MatrizProcedimento.objects.get_or_create(nome=matriz_nome)
+            if matriz_obj:
+                matriz_id = matriz_obj.id
+                self.initial['matriz'] = matriz_obj
+
+        if matriz_id:
+            self.fields['sub_area'].queryset = SubAreaProcedimento.objects.filter(
+                matriz_id=matriz_id,
+                ativo=True,
+            ).order_by('nome')
+        else:
+            self.fields['sub_area'].queryset = SubAreaProcedimento.objects.none()
+
+        if self.instance and self.instance.pk and self.instance.sub_area:
+            sub_area_obj = None
+            if matriz_id:
+                sub_area_obj, _ = SubAreaProcedimento.objects.get_or_create(
+                    matriz_id=matriz_id,
+                    nome=self.instance.sub_area.strip(),
+                )
+            if sub_area_obj:
+                self.initial['sub_area'] = sub_area_obj
+
+    def clean_matriz(self):
+        matriz_obj = self.cleaned_data.get('matriz')
+        if matriz_obj:
+            return matriz_obj.nome
+        if self.instance and self.instance.pk:
+            return self.instance.matriz or ''
+        return ''
+
+    def clean_sub_area(self):
+        sub_area_obj = self.cleaned_data.get('sub_area')
+        if sub_area_obj:
+            return sub_area_obj.nome
+        if self.instance and self.instance.pk:
+            return self.instance.sub_area or ''
+        return ''
+
+    def clean(self):
+        cleaned_data = super().clean()
+        matriz_nome = cleaned_data.get('matriz')
+        sub_area_nome = cleaned_data.get('sub_area')
+
+        if matriz_nome and sub_area_nome:
+            is_vinculada = SubAreaProcedimento.objects.filter(
+                matriz__nome=matriz_nome,
+                nome=sub_area_nome,
+            ).exists()
+            if not is_vinculada:
+                self.add_error('sub_area', 'A sub-área selecionada não pertence à matriz informada.')
+
+        return cleaned_data
     
     class Meta:
         model = Procedimento
@@ -62,8 +186,6 @@ class ProcedimentoForm(forms.ModelForm):
                 'type': 'date'
             }),
             'documentos_controlados': forms.TextInput(attrs={'class': 'form-control'}),
-            'matriz': forms.TextInput(attrs={'class': 'form-control'}),
-            'sub_area': forms.TextInput(attrs={'class': 'form-control'}),
             'criticidade': forms.Select(attrs={'class': 'form-select'}),
         }
 

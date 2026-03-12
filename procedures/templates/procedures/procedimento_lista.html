@@ -70,6 +70,7 @@
         <div class="d-flex gap-2">
             {% can_nav_view user 'procedures:export_procedimentos_excel' 'procedures' as can_exportar %}
             {% can_nav_view user 'procedures:importar_procedimentos' 'procedures' as can_importar %}
+            {% can_nav_view user 'procedures:procedimento_matrizes_list' 'procedures' as can_matrizes %}
             {% can_nav_view user 'procedures:novo_procedimento' 'procedures' as can_novo %}
 
             {% if can_exportar %}
@@ -80,6 +81,11 @@
             {% if can_importar %}
                 <a href="{% url 'procedures:importar_procedimentos' %}" class="btn btn-success">
                     <i class="bi bi-upload"></i> Importar em Massa
+                </a>
+            {% endif %}
+            {% if can_matrizes %}
+                <a href="{% url 'procedures:procedimento_matrizes_list' %}" class="btn btn-outline-dark">
+                    <i class="bi bi-diagram-3"></i> Matrizes e Sub-áreas
                 </a>
             {% endif %}
             {% if can_novo %}

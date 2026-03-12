@@ -3,6 +3,9 @@ Procedures Module Forms
 """
 
 from .forms import (
+    MatrizProcedimentoForm,
+    SubAreaProcedimentoForm,
+    ImportacaoMatrizSubAreaForm,
     ProcedimentoForm,
     RegistroTreinamentoForm,
     PacoteTreinamentoForm,
@@ -23,6 +26,9 @@ from .forms import (
 )
 
 __all__ = [
+    'MatrizProcedimentoForm',
+    'SubAreaProcedimentoForm',
+    'ImportacaoMatrizSubAreaForm',
     'ProcedimentoForm',
     'RegistroTreinamentoForm',
     'PacoteTreinamentoForm',
