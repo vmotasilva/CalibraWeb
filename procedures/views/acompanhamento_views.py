@@ -59,7 +59,7 @@ def _planejamento_badge(status: str) -> tuple[str, str]:
         "CONFIRMADO": "text-bg-primary",
         "REALIZADO": "text-bg-success",
         "CANCELADO": "text-bg-dark",
-        "ATRASADO": "text-bg-warning",
+        "ATRASADO": "text-bg-danger",
     }
     badge_class = status_to_badge.get(status, "text-bg-secondary")
     label_map = {
