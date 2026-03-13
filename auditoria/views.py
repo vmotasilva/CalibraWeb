@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from datetime import date as dt_date
 from datetime import timedelta
+from collections import OrderedDict
 from io import BytesIO
 import json
 from urllib.parse import urlencode
@@ -185,6 +186,80 @@ def _build_comentarios_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
         key = str(comentario.pergunta_id)
         result.setdefault(key, []).append((comentario.texto or "").strip())
     return result
+
+
+def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
+    """Monta estrutura consolidada por pergunta para exibição em blocos e exportação."""
+    respostas = list(
+        registro.respostas.select_related("pergunta").order_by("pergunta__ordem", "pergunta_id", "id")
+    )
+    comentarios_por_pergunta = _build_comentarios_por_pergunta(registro)
+    dia_labels = dict(ModeloAuditoria.DIA_SEMANA_CHOICES)
+    dia_keys = [k for k, _ in ModeloAuditoria.DIA_SEMANA_CHOICES]
+
+    perguntas_consolidadas: "OrderedDict[int, dict]" = OrderedDict()
+    for resposta in respostas:
+        pergunta = resposta.pergunta
+        item = perguntas_consolidadas.get(pergunta.id)
+        if not item:
+            item = {
+                "pergunta_id": pergunta.id,
+                "ordem": pergunta.ordem,
+                "pergunta": pergunta.pergunta,
+                "descricao_detalhada": pergunta.descricao_detalhada,
+                "obrigatoria": pergunta.obrigatoria,
+                "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
+                "subcategoria": (pergunta.subcategoria or "").strip(),
+                "resposta_geral": "",
+                "respostas_por_dia": {},
+                "comentarios": comentarios_por_pergunta.get(str(pergunta.id), []),
+            }
+            perguntas_consolidadas[pergunta.id] = item
+
+        valor = (resposta.valor or "").strip()
+        if resposta.dia_semana:
+            item["respostas_por_dia"][resposta.dia_semana] = valor
+        else:
+            if item["resposta_geral"] and valor and valor != item["resposta_geral"]:
+                item["resposta_geral"] = f"{item['resposta_geral']} | {valor}"
+            elif valor:
+                item["resposta_geral"] = valor
+
+    blocos_map: "OrderedDict[str, dict]" = OrderedDict()
+    for item in perguntas_consolidadas.values():
+        nome_subcategoria = item["subcategoria"] or "Sem sub-categoria"
+        if nome_subcategoria not in blocos_map:
+            blocos_map[nome_subcategoria] = {"nome": nome_subcategoria, "linhas": []}
+
+        respostas_por_dia = item["respostas_por_dia"]
+        has_resposta_dia = any((respostas_por_dia.get(k) or "").strip() for k in dia_keys)
+        usa_colunas_dia = has_resposta_dia
+
+        linha = {
+            **item,
+            "usa_colunas_dia": usa_colunas_dia,
+            "dia_values": [respostas_por_dia.get(k, "") for k in dia_keys],
+            "comentarios_texto": "\n".join(item["comentarios"]),
+            "tem_resposta": bool((item["resposta_geral"] or "").strip() or has_resposta_dia),
+        }
+        blocos_map[nome_subcategoria]["linhas"].append(linha)
+
+    blocos = list(blocos_map.values())
+    total_perguntas = len(perguntas_consolidadas)
+    preenchidas = sum(1 for b in blocos for l in b["linhas"] if l["tem_resposta"])
+    percentual_preenchimento = round((preenchidas / total_perguntas) * 100, 1) if total_perguntas else 0
+    exibir_dias = any(l["usa_colunas_dia"] for b in blocos for l in b["linhas"])
+
+    return {
+        "blocos": blocos,
+        "total_perguntas": total_perguntas,
+        "preenchidas": preenchidas,
+        "percentual_preenchimento": percentual_preenchimento,
+        "exibir_dias": exibir_dias,
+        "dia_keys": dia_keys,
+        "dia_labels": dia_labels,
+        "comentarios_por_pergunta": comentarios_por_pergunta,
+    }
 
 
 def _parse_date_flexible(raw_value):
@@ -1209,24 +1284,154 @@ def registro_detail(request, pk):
         messages.success(request, "Comentário adicionado com sucesso.")
         return redirect("auditoria:registro_detail", pk=registro.pk)
 
-    respostas = registro.respostas.select_related("pergunta").order_by("pergunta__ordem", "id")
-    exibir_dia_semana = respostas.filter(dia_semana__isnull=False).exists()
-    total_respostas = respostas.count()
-    preenchidas = respostas.exclude(valor="").count()
-    percentual_preenchimento = round((preenchidas / total_respostas) * 100, 1) if total_respostas else 0
-    comentarios_por_pergunta = _build_comentarios_por_pergunta(registro)
+    resumo = _build_resumo_respostas_registro(registro)
+    dias_semana_colunas = [
+        {"key": dia_key, "label": resumo["dia_labels"].get(dia_key, dia_key)}
+        for dia_key in resumo["dia_keys"]
+    ]
 
     context = {
         "registro": registro,
-        "respostas": respostas,
-        "exibir_dia_semana": exibir_dia_semana,
-        "total_respostas": total_respostas,
-        "preenchidas": preenchidas,
-        "percentual_preenchimento": percentual_preenchimento,
-        "comentarios_por_pergunta": comentarios_por_pergunta,
+        "blocos_respostas": resumo["blocos"],
+        "exibir_dia_semana": resumo["exibir_dias"],
+        "dias_semana_colunas": dias_semana_colunas,
+        "total_respostas": resumo["total_perguntas"],
+        "preenchidas": resumo["preenchidas"],
+        "percentual_preenchimento": resumo["percentual_preenchimento"],
+        "comentarios_por_pergunta": resumo["comentarios_por_pergunta"],
         "can_delete_registro": _has_nav_view_access(request.user, "auditoria:registro_delete"),
     }
     return render(request, "auditoria/registro_detail.html", context)
+
+
+@login_required
+def registro_exportar_excel(request, pk):
+    """Exporta o detalhe do registro em formato de relatório consolidado."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    registro = get_object_or_404(
+        _filter_registros_para_usuario(
+            request.user,
+            RegistroAuditoria.objects.select_related("modelo", "avaliador"),
+        ),
+        pk=pk,
+    )
+
+    resumo = _build_resumo_respostas_registro(registro)
+    dia_keys = resumo["dia_keys"]
+    dia_labels = resumo["dia_labels"]
+    exibir_dias = resumo["exibir_dias"]
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Relatorio"
+
+    headers = ["Ordem", "Pergunta", "Tipo", "Resposta"]
+    if exibir_dias:
+        headers.extend([dia_labels.get(k, k) for k in dia_keys])
+    headers.append("Comentários")
+    total_colunas = len(headers)
+
+    row = 1
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=total_colunas)
+    ws.cell(row=row, column=1, value=f"Relatório de Auditoria - Registro #{registro.id}")
+    ws.cell(row=row, column=1).font = Font(bold=True, size=14)
+    row += 2
+
+    avaliador = ""
+    if registro.avaliador_id:
+        avaliador = registro.avaliador.get_full_name() or registro.avaliador.username
+    periodo = ""
+    if registro.periodo_inicio and registro.periodo_fim:
+        periodo = f"{registro.periodo_inicio:%d/%m/%Y} até {registro.periodo_fim:%d/%m/%Y}"
+    elif registro.periodo_inicio:
+        periodo = f"A partir de {registro.periodo_inicio:%d/%m/%Y}"
+    elif registro.periodo_fim:
+        periodo = f"Até {registro.periodo_fim:%d/%m/%Y}"
+
+    info_rows = [
+        ("Modelo", registro.modelo.nome or ""),
+        ("Objeto da Auditoria", registro.modelo.objeto_auditoria or ""),
+        ("Data da Auditoria", registro.data_auditoria.strftime("%d/%m/%Y") if registro.data_auditoria else ""),
+        ("Período", periodo),
+        ("Avaliador", avaliador),
+        ("ITEM/O.S.", registro.item_os or ""),
+        ("Observações", registro.observacoes or ""),
+    ]
+    for label, value in info_rows:
+        ws.cell(row=row, column=1, value=label).font = Font(bold=True)
+        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=total_colunas)
+        ws.cell(row=row, column=2, value=value)
+        ws.cell(row=row, column=2).alignment = Alignment(wrap_text=True, vertical="top")
+        row += 1
+    row += 1
+
+    header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
+    subcat_fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+
+    for bloco in resumo["blocos"]:
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=total_colunas)
+        ws.cell(row=row, column=1, value=f"Sub-categoria: {bloco['nome']}")
+        ws.cell(row=row, column=1).font = Font(bold=True)
+        ws.cell(row=row, column=1).fill = subcat_fill
+        row += 1
+
+        for col_idx, title in enumerate(headers, start=1):
+            cell = ws.cell(row=row, column=col_idx, value=title)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        row += 1
+
+        for linha in bloco["linhas"]:
+            values = [
+                linha["ordem"],
+                linha["pergunta"],
+                linha["tipo_resposta_display"],
+                linha["resposta_geral"] or "",
+            ]
+            if exibir_dias:
+                values.extend([linha["respostas_por_dia"].get(k, "") for k in dia_keys])
+            values.append("\n".join(linha["comentarios"]))
+
+            for col_idx, value in enumerate(values, start=1):
+                cell = ws.cell(row=row, column=col_idx, value=value)
+                cell.alignment = Alignment(vertical="top", wrap_text=True)
+            row += 1
+
+        row += 1
+
+    # Ajustes visuais básicos
+    ws.column_dimensions["A"].width = 10
+    ws.column_dimensions["B"].width = 48
+    ws.column_dimensions["C"].width = 18
+    ws.column_dimensions["D"].width = 24
+    if exibir_dias:
+        start = 5
+        for idx in range(len(dia_keys)):
+            ws.column_dimensions[chr(64 + start + idx)].width = 14
+        comentarios_col = 4 + len(dia_keys) + 1
+    else:
+        comentarios_col = 5
+    ws.column_dimensions[chr(64 + comentarios_col)].width = 44
+
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+
+    nome_modelo = "".join(c for c in (registro.modelo.nome or "modelo") if c.isalnum() or c in {" ", "-", "_"}).strip()
+    if not nome_modelo:
+        nome_modelo = f"modelo_{registro.modelo_id}"
+    filename = f"relatorio_registro_{registro.id}_{nome_modelo}.xlsx"
+
+    response = HttpResponse(
+        stream.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @login_required
