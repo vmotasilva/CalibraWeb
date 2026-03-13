@@ -97,7 +97,6 @@
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-secondary">Duplicar</button>
                             </form>
-                            <a href="{% url 'auditoria:pergunta_delete' pergunta.id %}" class="btn btn-sm btn-danger">Excluir</a>
                         </td>
                     </tr>
                     {% empty %}

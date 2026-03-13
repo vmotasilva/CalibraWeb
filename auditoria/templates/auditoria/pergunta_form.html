@@ -106,6 +106,16 @@
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">Salvar</button>
             <a href="{% url 'auditoria:perguntas_list' %}" class="btn btn-secondary">Cancelar</a>
+            {% if modo == 'edicao' and pergunta %}
+            <button
+                type="submit"
+                class="btn btn-danger"
+                formaction="{% url 'auditoria:pergunta_delete' pergunta.id %}"
+                formmethod="post"
+                formnovalidate
+                onclick="return confirm('Tem certeza que deseja excluir esta pergunta?');"
+            >Excluir</button>
+            {% endif %}
         </div>
     </form>
 </div>
