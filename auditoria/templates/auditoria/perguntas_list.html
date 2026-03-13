@@ -92,10 +92,24 @@
                         <td>{{ pergunta.get_tipo_resposta_display }}</td>
                         <td>{% if pergunta.obrigatoria %}Sim{% else %}Não{% endif %}</td>
                         <td>
-                            <a href="{% url 'auditoria:pergunta_edit' pergunta.id %}" class="btn btn-sm btn-warning">Editar</a>
+                            <a
+                                href="{% url 'auditoria:pergunta_edit' pergunta.id %}"
+                                class="btn btn-sm btn-warning"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Editar pergunta"
+                                aria-label="Editar pergunta"
+                            ><i class="bi bi-pencil"></i></a>
                             <form method="post" action="{% url 'auditoria:pergunta_duplicate' pergunta.id %}" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-secondary">Duplicar</button>
+                                <button
+                                    type="submit"
+                                    class="btn btn-sm btn-secondary"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title="Duplicar pergunta"
+                                    aria-label="Duplicar pergunta"
+                                ><i class="bi bi-files"></i></button>
                             </form>
                         </td>
                     </tr>
@@ -136,6 +150,17 @@
         select.addEventListener('change', updateHref);
         if (subSelect) subSelect.addEventListener('change', updateHref);
         btn.addEventListener('click', updateHref);
+    })();
+</script>
+
+<script>
+    (function() {
+        const tooltipTriggers = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipTriggers.forEach(function(el) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                bootstrap.Tooltip.getOrCreateInstance(el);
+            }
+        });
     })();
 </script>
 
