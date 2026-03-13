@@ -211,25 +211,19 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
                 "subcategoria": (pergunta.subcategoria or "").strip(),
                 "resposta_geral": "",
-                "resposta_geral_cor": "",
                 "respostas_por_dia": {},
-                "respostas_por_dia_cores": {},
                 "comentarios": comentarios_por_pergunta.get(str(pergunta.id), []),
             }
             perguntas_consolidadas[pergunta.id] = item
 
         valor = (resposta.valor or "").strip()
-        cor_valor = pergunta.get_cor_resposta(valor)
         if resposta.dia_semana:
             item["respostas_por_dia"][resposta.dia_semana] = valor
-            item["respostas_por_dia_cores"][resposta.dia_semana] = cor_valor
         else:
             if item["resposta_geral"] and valor and valor != item["resposta_geral"]:
                 item["resposta_geral"] = f"{item['resposta_geral']} | {valor}"
-                item["resposta_geral_cor"] = ""
             elif valor:
                 item["resposta_geral"] = valor
-                item["resposta_geral_cor"] = cor_valor
 
     blocos_map: "OrderedDict[str, dict]" = OrderedDict()
     for item in perguntas_consolidadas.values():
@@ -248,7 +242,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
             "dia_cells": [
                 {
                     "value": respostas_por_dia.get(k, ""),
-                    "color": item["respostas_por_dia_cores"].get(k, ""),
+                    "color": "",
                 }
                 for k in dia_keys
             ],
