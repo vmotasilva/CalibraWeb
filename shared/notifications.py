@@ -413,7 +413,7 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
                 label="Auditoria (a realizar)",
                 count=int(counts.get("auditoria", 0) or 0),
                 url=with_qs(_safe_reverse("auditoria:selecionar_modelo_preenchimento"), "pendentes=mes"),
-                section="Auditoria e Insumos",
+                section="Auditoria",
             )
         )
 
@@ -424,7 +424,7 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
                 label="Insumos (a realizar)",
                 count=int(counts.get("insumos", 0) or 0),
                 url=with_qs(_safe_reverse("insumos:selecionar_modelo_preenchimento"), "pendentes=mes"),
-                section="Auditoria e Insumos",
+                section="Insumos",
             )
         )
 

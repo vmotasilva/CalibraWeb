@@ -58,7 +58,7 @@ from qms.views_helpers import dl_df, dl_generic, parse_date
 @login_required
 def home_view(request):
     """Página inicial com boas-vindas ao usuário."""
-    from shared.notifications import get_user_cobrancas_items
+    from shared.notifications import CobrancaItem, get_user_cobrancas_items
     from auditoria.models import RelatorioCompartilhadoAuditoria
 
     cobrancas_items = get_user_cobrancas_items(request.user)
@@ -95,6 +95,20 @@ def home_view(request):
                 "url": url,
             }
         )
+
+    has_auditoria_item = any(getattr(i, "key", "") == "auditoria" for i in cobrancas_items)
+    if has_auditoria_item:
+        relatorios_url = "#relatorios-compartilhados" if recebidos_relatorios else reverse("auditoria:modulo")
+        cobrancas_items.append(
+            CobrancaItem(
+                key="auditoria_relatorios_compartilhados",
+                label="Relatórios compartilhados (recebidos)",
+                count=int(pendentes_compartilhamento),
+                url=relatorios_url,
+                section="Auditoria",
+            )
+        )
+        total_cobrancas += int(pendentes_compartilhamento)
 
     return render(
         request,
