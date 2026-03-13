@@ -1383,7 +1383,7 @@ def registro_exportar_pdf(request, pk):
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     registro = get_object_or_404(
         _filter_registros_para_usuario(
@@ -1432,6 +1432,11 @@ def registro_exportar_pdf(request, pk):
         fontSize=8,
         leading=10,
     )
+    style_cell_center = ParagraphStyle(
+        "AuditoriaCellCenter",
+        parent=style_cell,
+        alignment=1,
+    )
     style_cell_bold = ParagraphStyle(
         "AuditoriaCellBold",
         parent=style_cell,
@@ -1439,7 +1444,6 @@ def registro_exportar_pdf(request, pk):
     )
 
     elements = []
-    elements.append(Paragraph(f"Relatório de Auditoria - Registro #{registro.id}", style_title))
 
     avaliador = ""
     if registro.avaliador_id:
@@ -1475,34 +1479,72 @@ def registro_exportar_pdf(request, pk):
             ]
         )
     )
-    elements.append(info_table)
-    elements.append(Spacer(1, 8))
+    dias_semana_abrev = {
+        "SEGUNDA": "Seg",
+        "TERCA": "Ter",
+        "QUARTA": "Qua",
+        "QUINTA": "Qui",
+        "SEXTA": "Sex",
+        "SABADO": "Sáb",
+        "DOMINGO": "Dom",
+    }
 
-    headers = ["Ordem", "Pergunta"]
-    if exibir_dias:
-        headers.extend([dia_labels.get(k, k) for k in dia_keys])
-    headers.append("Comentários")
+    for idx_bloco, bloco in enumerate(resumo["blocos"]):
+        elements.append(Paragraph(f"Relatório de Auditoria - Registro #{registro.id}", style_title))
 
-    if exibir_dias:
-        col_widths = [1.3 * cm, 6.0 * cm] + [1.8 * cm for _ in dia_keys] + [10.2 * cm]
-    else:
-        col_widths = [1.5 * cm, 10.5 * cm, 15.0 * cm]
+        info_rows = [
+            [Paragraph("<b>Modelo</b>", style_cell_bold), Paragraph(escape(registro.modelo.nome or ""), style_cell)],
+            [Paragraph("<b>Objeto da Auditoria</b>", style_cell_bold), Paragraph(escape(registro.modelo.objeto_auditoria or ""), style_cell)],
+            [Paragraph("<b>Data da Auditoria</b>", style_cell_bold), Paragraph(escape(registro.data_auditoria.strftime("%d/%m/%Y") if registro.data_auditoria else ""), style_cell)],
+            [Paragraph("<b>Período</b>", style_cell_bold), Paragraph(escape(periodo), style_cell)],
+            [Paragraph("<b>Avaliador</b>", style_cell_bold), Paragraph(escape(avaliador), style_cell)],
+            [Paragraph("<b>ITEM/O.S.</b>", style_cell_bold), Paragraph(escape(registro.item_os or ""), style_cell)],
+            [Paragraph("<b>Observações</b>", style_cell_bold), Paragraph(escape(registro.observacoes or ""), style_cell)],
+        ]
+        info_table = Table(info_rows, colWidths=[4.2 * cm, 22.0 * cm], repeatRows=0)
+        info_table.setStyle(
+            TableStyle(
+                [
+                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#d0d7de")),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f8f9fa")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        elements.append(info_table)
+        elements.append(Spacer(1, 8))
 
-    for bloco in resumo["blocos"]:
         elements.append(Paragraph(f"Sub-categoria: {escape(bloco['nome'])}", style_section))
 
-        table_data = [[Paragraph(f"<b>{escape(h)}</b>", style_cell) for h in headers]]
+        headers = ["Ordem", "Pergunta"]
+        if exibir_dias:
+            headers.extend([dias_semana_abrev.get(k, dia_labels.get(k, k)[:3]) for k in dia_keys])
+        headers.append("Comentários")
+
+        if exibir_dias:
+            col_widths = [1.2 * cm, 7.2 * cm] + [1.4 * cm for _ in dia_keys] + [8.6 * cm]
+        else:
+            col_widths = [1.5 * cm, 11.0 * cm, 14.5 * cm]
+
+        table_data = [[Paragraph(f"<b>{escape(h)}</b>", style_cell_center) for h in headers]]
         for linha in bloco["linhas"]:
             comentarios_texto = "<br/>".join(escape(c) for c in linha["comentarios"]) or "-"
             row = [
-                Paragraph(escape(str(linha["ordem"])), style_cell),
+                Paragraph(escape(str(linha["ordem"])), style_cell_center),
                 Paragraph(escape(linha["pergunta"]), style_cell),
             ]
             if exibir_dias:
-                row.extend(
-                    Paragraph(escape((linha["respostas_por_dia"].get(k, "") or "-").strip() or "-"), style_cell)
-                    for k in dia_keys
-                )
+                for k in dia_keys:
+                    valor = (linha["respostas_por_dia"].get(k, "") or "").strip()
+                    cor = (linha.get("respostas_por_dia_cores", {}).get(k, "") or "#6c757d").strip()
+                    if valor:
+                        row.append(Paragraph(f"<font color=\"{escape(cor)}\">&#9679;</font>", style_cell_center))
+                    else:
+                        row.append(Paragraph("-", style_cell_center))
             row.append(Paragraph(comentarios_texto, style_cell))
             table_data.append(row)
 
@@ -1513,7 +1555,7 @@ def registro_exportar_pdf(request, pk):
                     ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#cfd6dd")),
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                     ("ALIGN", (0, 0), (0, -1), "CENTER"),
                     ("LEFTPADDING", (0, 0), (-1, -1), 4),
                     ("RIGHTPADDING", (0, 0), (-1, -1), 4),
@@ -1523,31 +1565,9 @@ def registro_exportar_pdf(request, pk):
             )
         )
         elements.append(bloco_table)
-        elements.append(Spacer(1, 8))
 
-    doc.build(elements)
-    buffer.seek(0)
-
-    nome_modelo = "".join(c for c in (registro.modelo.nome or "modelo") if c.isalnum() or c in {" ", "-", "_"}).strip()
-    if not nome_modelo:
-        nome_modelo = f"modelo_{registro.modelo_id}"
-    filename = f"relatorio_registro_{registro.id}_{nome_modelo}.pdf"
-
-    response = HttpResponse(
-        buffer.getvalue(),
-        content_type="application/pdf",
-    )
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    return response
-
-
-@login_required
-def registro_delete(request, pk):
-    if request.method != "POST":
-        return redirect("auditoria:registro_detail", pk=pk)
-
-    if not _has_nav_view_access(request.user, "auditoria:registro_delete"):
-        messages.error(request, "Acesso negado. Você não tem permissão para excluir registros de auditoria.")
+        if idx_bloco < len(resumo["blocos"]) - 1:
+            elements.append(PageBreak())
         return redirect("auditoria:registro_detail", pk=pk)
 
     registro = get_object_or_404(
