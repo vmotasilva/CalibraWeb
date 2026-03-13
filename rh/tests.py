@@ -1,7 +1,7 @@
 """
 Tests for rh (Human Resources) module
 """
-from django.test import TestCase, Client
+from django.test import TestCase, Client, RequestFactory
 from django.contrib.auth.models import User
 from django.urls import reverse
 from datetime import date
@@ -138,6 +138,7 @@ class RHViewsTests(TestCase):
     
     def setUp(self):
         self.client = Client()
+        self.factory = RequestFactory()
         self.user = User.objects.create_user(
             username='rh_user',
             password='testpass123'
@@ -154,6 +155,95 @@ class RHViewsTests(TestCase):
         self.client.login(username='rh_user', password='testpass123')
         response = self.client.get(reverse('modulo_rh'))
         self.assertIn(response.status_code, [200, 404])
+
+
+class RHAtualizarLiderancasEmMassaTests(TestCase):
+    """Tests for bulk leadership updates by sector and shift."""
+
+    def setUp(self):
+        self.client = Client()
+        self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username='rh_bulk_user',
+            password='testpass123'
+        )
+        self.user.is_staff = True
+        self.user.is_superuser = True
+        self.user.save(update_fields=['is_staff', 'is_superuser'])
+        self.setor = Setor.objects.create(nome='Metrologia', responsavel='Gestor Metrologia')
+
+        self.novo_lider = Colaborador.objects.create(
+            matricula='LID-001',
+            nome_completo='Novo Lider',
+            grupo='ADMINISTRATIVO',
+            setor=self.setor,
+            turno='ADM',
+            is_active=True
+        )
+
+        self.colab_em_ferias = Colaborador.objects.create(
+            matricula='COL-001',
+            nome_completo='Colaborador Ferias',
+            grupo='PRODUCAO',
+            setor=self.setor,
+            turno='ADM',
+            em_ferias=True,
+            is_active=True
+        )
+        self.colab_afastado = Colaborador.objects.create(
+            matricula='COL-002',
+            nome_completo='Colaborador Afastado',
+            grupo='PRODUCAO',
+            setor=self.setor,
+            turno='ADM',
+            afastado=True,
+            is_active=True
+        )
+        self.colab_desligado = Colaborador.objects.create(
+            matricula='COL-003',
+            nome_completo='Colaborador Desligado',
+            grupo='PRODUCAO',
+            setor=self.setor,
+            turno='ADM',
+            is_active=False
+        )
+
+        self.colab_outro_turno = Colaborador.objects.create(
+            matricula='COL-004',
+            nome_completo='Colaborador Outro Turno',
+            grupo='PRODUCAO',
+            setor=self.setor,
+            turno='1T',
+            is_active=True
+        )
+
+    def test_atualiza_tambem_colaboradores_ferias_afastado_desligado(self):
+        """Bulk update must include vacation, leave and inactive collaborators."""
+        from rh.views.views import atualizar_liderancas_em_massa
+
+        request = self.factory.post(
+            '/rh/atualizar-liderancas/',
+            {
+                'setor_id': self.setor.id,
+                'turno': 'ADM',
+                'lider_id': self.novo_lider.id,
+                'confirmar': 'sim',
+            }
+        )
+        request.user = self.user
+
+        response = atualizar_liderancas_em_massa(request)
+        self.assertEqual(response.status_code, 200)
+
+        self.colab_em_ferias.refresh_from_db()
+        self.colab_afastado.refresh_from_db()
+        self.colab_desligado.refresh_from_db()
+        self.colab_outro_turno.refresh_from_db()
+
+        self.assertEqual(self.colab_em_ferias.lider_id, self.novo_lider.id)
+        self.assertEqual(self.colab_afastado.lider_id, self.novo_lider.id)
+        self.assertEqual(self.colab_desligado.lider_id, self.novo_lider.id)
+        self.assertIsNone(self.colab_outro_turno.lider_id)
 
 
 class RHImportsTests(TestCase):
