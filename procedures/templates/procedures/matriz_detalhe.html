@@ -2,12 +2,12 @@
 
 {% load nav_access %}
 
-{% can_nav_view user 'procedures:editar_matriz' 'procedures' as can_editar_matriz %}
-{% can_nav_view user 'procedures:deletar_matriz' 'procedures' as can_deletar_matriz %}
-{% can_nav_view user 'procedures:nova_disciplina' 'procedures' as can_nova_disciplina %}
-{% can_nav_view user 'procedures:editar_disciplina' 'procedures' as can_editar_disciplina %}
-{% can_nav_view user 'procedures:deletar_disciplina' 'procedures' as can_deletar_disciplina %}
-{% can_nav_view user 'procedures:remover_colaborador_matriz' 'procedures' as can_remover_colaborador_matriz %}
+{% can_nav_view request.user 'procedures:editar_matriz' 'procedures' as can_editar_matriz %}
+{% can_nav_view request.user 'procedures:deletar_matriz' 'procedures' as can_deletar_matriz %}
+{% can_nav_view request.user 'procedures:nova_disciplina' 'procedures' as can_nova_disciplina %}
+{% can_nav_view request.user 'procedures:editar_disciplina' 'procedures' as can_editar_disciplina %}
+{% can_nav_view request.user 'procedures:deletar_disciplina' 'procedures' as can_deletar_disciplina %}
+{% can_nav_view request.user 'procedures:remover_colaborador_matriz' 'procedures' as can_remover_colaborador_matriz %}
 
 {% block title %}{{ matriz.codigo }}{% endblock %}
 {% block header_title %}{{ matriz.codigo }} - {{ matriz.nome }}{% endblock %}
