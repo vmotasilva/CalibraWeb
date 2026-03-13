@@ -9,6 +9,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.dateparse import parse_date
+from datetime import date as dt_date
 from io import BytesIO
 import json
 from urllib.parse import urlencode
@@ -125,6 +126,7 @@ def _replace_comentarios_resposta(
                     pergunta_id=pergunta_id,
                     autor=autor,
                     texto=texto,
+                    data_referencia=registro.data_auditoria,
                 )
             )
     if novos:
@@ -144,12 +146,65 @@ def _build_comentarios_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
     return result
 
 
-def _build_comentarios_por_pergunta_qs(comentarios_qs) -> dict[str, list[str]]:
+def _parse_date_flexible(raw_value):
+    if isinstance(raw_value, dt_date):
+        return raw_value
+    raw = str(raw_value or "").strip()
+    if not raw:
+        return None
+    return parse_date(raw)
+
+
+def _resolve_periodo_para_comentarios(data_auditoria_raw, periodo_inicio_raw, periodo_fim_raw):
+    data_auditoria = _parse_date_flexible(data_auditoria_raw)
+    periodo_inicio = _parse_date_flexible(periodo_inicio_raw)
+    periodo_fim = _parse_date_flexible(periodo_fim_raw)
+
+    if not periodo_inicio and data_auditoria:
+        periodo_inicio = data_auditoria
+    if not periodo_fim and data_auditoria:
+        periodo_fim = data_auditoria
+
+    if periodo_inicio and periodo_fim and periodo_inicio > periodo_fim:
+        periodo_inicio, periodo_fim = periodo_fim, periodo_inicio
+    return periodo_inicio, periodo_fim
+
+
+def _filter_comentarios_resposta_por_periodo(comentarios_qs, inicio=None, fim=None):
+    if inicio:
+        comentarios_qs = comentarios_qs.filter(
+            models.Q(data_referencia__gte=inicio)
+            | (models.Q(data_referencia__isnull=True) & models.Q(registro__data_auditoria__gte=inicio))
+        )
+    if fim:
+        comentarios_qs = comentarios_qs.filter(
+            models.Q(data_referencia__lte=fim)
+            | (models.Q(data_referencia__isnull=True) & models.Q(registro__data_auditoria__lte=fim))
+        )
+    return comentarios_qs
+
+
+def _build_comentarios_por_pergunta_qs(comentarios_qs, include_data=False) -> dict[str, list[str]]:
     result: dict[str, list[str]] = {}
     for comentario in comentarios_qs:
+        texto = (comentario.texto or "").strip()
+        if include_data:
+            data_vinculada = comentario.data_referencia or getattr(comentario.registro, "data_auditoria", None)
+            if data_vinculada:
+                texto = f"[{data_vinculada:%d/%m/%Y}] {texto}"
         key = str(comentario.pergunta_id)
-        result.setdefault(key, []).append((comentario.texto or "").strip())
+        result.setdefault(key, []).append(texto)
     return result
+
+
+def _build_comentarios_pre_registro_por_periodo(perguntas, inicio=None, fim=None):
+    comentarios_qs = (
+        ComentarioRespostaAuditoria.objects.filter(pergunta__in=perguntas)
+        .select_related("registro")
+        .order_by("criado_em", "id")
+    )
+    comentarios_qs = _filter_comentarios_resposta_por_periodo(comentarios_qs, inicio=inicio, fim=fim)
+    return _build_comentarios_por_pergunta_qs(comentarios_qs, include_data=True)
 
 
 def _auditoria_is_admin(user) -> bool:
@@ -459,6 +514,7 @@ def pergunta_duplicate(request, pk):
         nova = PerguntaAuditoria(
             modelo_id=pergunta.modelo_id,
             pergunta=pergunta.pergunta,
+            descricao_detalhada=pergunta.descricao_detalhada,
             tipo_resposta=pergunta.tipo_resposta,
             preenchimento_semanal=pergunta.preenchimento_semanal,
             opcoes_resposta=pergunta.opcoes_resposta,
@@ -517,6 +573,7 @@ def modelo_duplicate(request, pk):
             PerguntaAuditoria(
                 modelo=novo_modelo,
                 pergunta=p.pergunta,
+                descricao_detalhada=p.descricao_detalhada,
                 tipo_resposta=p.tipo_resposta,
                 preenchimento_semanal=p.preenchimento_semanal,
                 opcoes_resposta=p.opcoes_resposta,
@@ -810,13 +867,36 @@ def registro_create(request, modelo_id=None):
             
             messages.success(request, "Formulário de auditoria preenchido com sucesso!")
             return redirect("auditoria:registro_detail", pk=registro.pk)
+        comentarios_atuais = {
+            str(k): v for (k, v) in _parse_comentarios_payload(request.POST.get("comentarios_payload", "")).items()
+        }
+        if not comentarios_atuais:
+            periodo_inicio_lookup, periodo_fim_lookup = _resolve_periodo_para_comentarios(
+                post_data.get("data_auditoria"),
+                post_data.get("periodo_inicio"),
+                post_data.get("periodo_fim"),
+            )
+            comentarios_atuais = _build_comentarios_pre_registro_por_periodo(
+                perguntas=perguntas,
+                inicio=periodo_inicio_lookup,
+                fim=periodo_fim_lookup,
+            )
     else:
-        from datetime import date
-        initial = {"data_auditoria": date.today()}
+        initial = {"data_auditoria": dt_date.today()}
         if is_diaria_ou_unica:
             initial["periodo_inicio"] = initial["data_auditoria"]
             initial["periodo_fim"] = initial["data_auditoria"]
         form = RegistroAuditoriaForm(initial=initial)
+        periodo_inicio_lookup, periodo_fim_lookup = _resolve_periodo_para_comentarios(
+            initial.get("data_auditoria"),
+            initial.get("periodo_inicio"),
+            initial.get("periodo_fim"),
+        )
+        comentarios_atuais = _build_comentarios_pre_registro_por_periodo(
+            perguntas=perguntas,
+            inicio=periodo_inicio_lookup,
+            fim=periodo_fim_lookup,
+        )
 
     grid_itens = []
     if grid_enabled:
@@ -1068,6 +1148,7 @@ def registro_detail(request, pk):
             pergunta=pergunta,
             autor=request.user,
             texto=texto,
+            data_referencia=registro.data_auditoria,
         )
         messages.success(request, "Comentário adicionado com sucesso.")
         return redirect("auditoria:registro_detail", pk=registro.pk)
@@ -1305,20 +1386,22 @@ def registros_por_modelo(request, modelo_id):
             messages.error(request, "A data do comentário está fora do período final filtrado.")
             return redirect(redirect_url)
 
-        registros_para_comentario = registros_para_comentario.filter(data_auditoria=comentario_data)
-
-        registro_alvo = registros_para_comentario.order_by("-data_auditoria", "-id").first()
-        if not registro_alvo:
-            messages.error(request, "Não há registro na data informada para associar o comentário.")
-            return redirect(redirect_url)
+        registro_alvo = registros_para_comentario.filter(data_auditoria=comentario_data).order_by("-id").first()
 
         ComentarioRespostaAuditoria.objects.create(
             registro=registro_alvo,
             pergunta=pergunta,
             autor=request.user,
             texto=texto,
+            data_referencia=comentario_data,
         )
-        messages.success(request, "Comentário da pergunta adicionado com sucesso.")
+        if registro_alvo:
+            messages.success(request, "Comentário da pergunta adicionado com sucesso.")
+        else:
+            messages.success(
+                request,
+                "Comentário da pergunta salvo para a data informada. Ele aparecerá ao criar um registro que inclua esse período.",
+            )
         return redirect(redirect_url)
 
     inicio_raw = (request.GET.get("inicio") or "").strip()
@@ -1388,11 +1471,12 @@ def registros_por_modelo(request, modelo_id):
         respostas_por_pergunta.setdefault(r.pergunta_id, []).append(r)
 
     comentarios_resposta_qs = (
-        ComentarioRespostaAuditoria.objects.filter(pergunta__in=perguntas, registro__in=registros_qs)
+        ComentarioRespostaAuditoria.objects.filter(pergunta__in=perguntas)
         .select_related("registro")
         .order_by("criado_em", "id")
     )
-    comentarios_resposta_por_pergunta = _build_comentarios_por_pergunta_qs(comentarios_resposta_qs)
+    comentarios_resposta_qs = _filter_comentarios_resposta_por_periodo(comentarios_resposta_qs, inicio=inicio, fim=fim)
+    comentarios_resposta_por_pergunta = _build_comentarios_por_pergunta_qs(comentarios_resposta_qs, include_data=True)
 
     # Gráfico agregado: situações por subcategoria
     subcat_chart: dict | None = None

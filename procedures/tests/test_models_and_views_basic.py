@@ -17,6 +17,8 @@ from django.urls import reverse
 from rh.models import Colaborador
 
 from procedures.models import (
+    Disciplina,
+    DisciplinaProcedimento,
     Fornecedor,
     ListaPresenca,
     PlanejamentoTreinamento,
@@ -25,6 +27,7 @@ from procedures.models import (
 )
 
 from procedures.views.planejamento_views import editar_planejamento_view
+from procedures.views.habilidades_views import deletar_disciplina_view
 
 
 class ProcedimentoModelTest(TestCase):
@@ -271,3 +274,35 @@ class CalendarioTreinamentosViewTest(TestCase):
         url = reverse('procedures:treinamentos_calendario')
         resp = self.client.get(url, {'view': 'day', 'date': self.ref_date.isoformat()})
         self.assertEqual(resp.status_code, 200)
+
+
+class DisciplinaDeleteRuleTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='disc-del', password='pass12345')
+        self.rf = RequestFactory()
+        self.disciplina = Disciplina.objects.create(nome='Disciplina Teste')
+
+    def test_deletar_disciplina_sem_associacao(self):
+        request = self.rf.post(f'/procedures/disciplinas/{self.disciplina.id}/deletar/')
+        request.user = self.user
+
+        resp = deletar_disciplina_view(request, self.disciplina.id)
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Disciplina.objects.filter(id=self.disciplina.id).exists())
+
+    def test_nao_deleta_disciplina_com_procedimento_associado(self):
+        proc = Procedimento.objects.create(codigo='POP.DEL.001', nome='Proc associado', numero_revisao='01')
+        DisciplinaProcedimento.objects.create(
+            disciplina=self.disciplina,
+            procedimento=proc,
+            ordem=1,
+            obrigatorio=True,
+        )
+        request = self.rf.post(f'/procedures/disciplinas/{self.disciplina.id}/deletar/')
+        request.user = self.user
+
+        resp = deletar_disciplina_view(request, self.disciplina.id)
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertTrue(Disciplina.objects.filter(id=self.disciplina.id).exists())

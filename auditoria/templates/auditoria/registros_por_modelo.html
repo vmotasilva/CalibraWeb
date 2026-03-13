@@ -337,7 +337,7 @@
                                     <div class="modal-body">
                                         <div class="mb-2 small text-muted" id="modal-pergunta-texto"></div>
                                         <div class="alert alert-light border small py-2 mb-3">
-                                            Exibindo comentários dos registros dentro do período filtrado.
+                                            Exibindo comentários vinculados a datas dentro do período filtrado (com ou sem registro existente).
                                         </div>
                                         <div id="modal-comentarios-lista" class="mb-3"></div>
                                         <div id="modal-novo-comentario-fields" class="d-none">
@@ -350,7 +350,7 @@
                                                 name="comentario_data"
                                                 value="{{ comentario_data_default|default:'' }}"
                                                 required>
-                                            <div class="form-text">Esta data será usada para vincular o comentário ao período/registro correspondente.</div>
+                                            <div class="form-text">Esta data será usada para vincular o comentário ao período. Se ainda não houver registro nessa data, o comentário fica salvo e reaparece no próximo preenchimento correspondente.</div>
                                         </div>
                                         <label class="form-label" for="modal-comentario-texto">Novo comentário</label>
                                         <textarea name="comentario" id="modal-comentario-texto" class="form-control" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar as respostas desta pergunta..."></textarea>

@@ -107,9 +107,15 @@
                                     </a>
                                 {% endif %}
                                 {% if can_deletar_disciplina %}
-                                    <button type="button" class="btn btn-sm btn-danger" onclick="abrirModalDeleteDisciplina({{ disc.id }}, '{{ disc.codigo }}', '{{ disc.nome }}')" title="Deletar">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    {% if disc.total_procedimentos_associados == 0 %}
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="abrirModalDeleteDisciplina({{ disc.id }}, '{{ disc.codigo }}', '{{ disc.nome }}')" title="Deletar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% else %}
+                                        <button type="button" class="btn btn-sm btn-danger" disabled title="Remova os procedimentos associados antes de deletar.">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    {% endif %}
                                 {% endif %}
                             </td>
                         </tr>

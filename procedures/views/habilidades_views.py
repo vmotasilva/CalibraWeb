@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q, Max
+from django.db.models import Q, Max, Count
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 import json
@@ -111,11 +111,15 @@ def detalhe_disciplina_view(request, disciplina_id):
     procedimentos_disponiveis = Procedimento.objects.exclude(
         id__in=procedimentos_associados.values_list('procedimento_id', flat=True)
     ).order_by('codigo')[:100]
+
+    total_procedimentos_associados = procedimentos_associados.count()
     
     return render(request, 'procedures/disciplina_detalhe.html', {
         'disc': disc,
         'procedimentos_associados': procedimentos_associados,
         'procedimentos_disponiveis': procedimentos_disponiveis,
+        'total_procedimentos_associados': total_procedimentos_associados,
+        'pode_deletar_disciplina': total_procedimentos_associados == 0,
     })
 
 
@@ -404,7 +408,9 @@ def editar_matriz_view(request, matriz_id):
 def detalhe_matriz_view(request, matriz_id):
     """Visualiza detalhes de matriz de habilidade."""
     matriz = get_object_or_404(MatrizHabilidade, id=matriz_id)
-    disciplinas = matriz.disciplinas_matriz.all().order_by('codigo')
+    disciplinas = matriz.disciplinas_matriz.annotate(
+        total_procedimentos_associados=Count('procedimentos_associados')
+    ).order_by('codigo')
     
     return render(request, 'procedures/matriz_detalhe.html', {
         'matriz': matriz,
@@ -827,13 +833,24 @@ def deletar_matriz_view(request, matriz_id):
 @login_required
 @require_http_methods(["POST"])
 def deletar_disciplina_view(request, disciplina_id):
-    """Deleta uma disciplina de habilidade e todas as avaliações associadas."""
+    """Deleta uma disciplina de habilidade somente quando não há procedimentos associados."""
     try:
-        disciplina = get_object_or_404(DisciplinaHabilidade, id=disciplina_id)
-        
-        # Deletar a disciplina (avaliações serão deletadas em cascata)
+        from procedures.models import DisciplinaProcedimento
+
+        disciplina = get_object_or_404(Disciplina, id=disciplina_id)
+        total_associacoes = DisciplinaProcedimento.objects.filter(disciplina=disciplina).count()
+
+        if total_associacoes > 0:
+            return JsonResponse({
+                'success': False,
+                'message': (
+                    'Não é possível remover a disciplina porque existem '
+                    f'{total_associacoes} procedimento(s) associado(s).'
+                )
+            }, status=400)
+
         disciplina.delete()
-        
+
         return JsonResponse({
             'success': True,
             'message': 'Disciplina deletada com sucesso!'

@@ -1,5 +1,10 @@
 {% extends "procedures/procedimento_base.html" %}
 
+{% load nav_access %}
+
+{% can_nav_view user 'procedures:editar_disciplina' 'procedures' as can_editar_disciplina %}
+{% can_nav_view user 'procedures:deletar_disciplina' 'procedures' as can_deletar_disciplina %}
+
 {% block title %}{{ disc.codigo }}{% endblock %}
 {% block header_title %}{{ disc.codigo }} - {{ disc.nome }}{% endblock %}
 
@@ -9,9 +14,23 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Informações da Disciplina</h5>
             <div>
-                <a href="{% url 'procedures:editar_disciplina' disc.id %}" class="btn btn-warning btn-sm">
-                    <i class="bi bi-pencil"></i> Editar
-                </a>
+                {% if can_editar_disciplina %}
+                    <a href="{% url 'procedures:editar_disciplina' disc.id %}" class="btn btn-warning btn-sm">
+                        <i class="bi bi-pencil"></i> Editar
+                    </a>
+                {% endif %}
+                {% if can_deletar_disciplina %}
+                    {% if pode_deletar_disciplina %}
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deletarDisciplina({{ disc.id }})">
+                            <i class="bi bi-trash"></i> Deletar
+                        </button>
+                    {% else %}
+                        <button type="button" class="btn btn-danger btn-sm" disabled
+                                title="Remova os procedimentos associados antes de deletar.">
+                            <i class="bi bi-trash"></i> Deletar
+                        </button>
+                    {% endif %}
+                {% endif %}
                 <a href="{% url 'procedures:disciplinas_list' %}" class="btn btn-secondary btn-sm">
                     <i class="bi bi-arrow-left"></i> Voltar
                 </a>
@@ -62,6 +81,7 @@
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
                 <i class="bi bi-diagram-2"></i> Procedimentos Associados (1:N)
+                <span class="badge bg-secondary ms-2">{{ total_procedimentos_associados }}</span>
             </h5>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#adicionarProcedimentoModal">
                 <i class="bi bi-plus-circle"></i> Adicionar Procedimento
@@ -489,6 +509,37 @@ function removerProcedimento(assocId, procCodigo, disciplinaId) {
         document.body.appendChild(form);
         form.submit();
     }
+}
+
+function deletarDisciplina(disciplinaId) {
+    const canDelete = {{ pode_deletar_disciplina|yesno:"true,false" }};
+    if (!canDelete) {
+        alert('Esta disciplina possui procedimentos associados e não pode ser removida.');
+        return;
+    }
+
+    if (!confirm('Tem certeza que deseja deletar esta disciplina? Esta ação é irreversível.')) {
+        return;
+    }
+
+    fetch(`/procedures/disciplinas/${disciplinaId}/deletar/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        }
+    })
+    .then(response => response.json().then(data => ({ ok: response.ok, data })))
+    .then(({ ok, data }) => {
+        if (!ok || !data.success) {
+            alert(data.message || 'Erro ao deletar disciplina.');
+            return;
+        }
+        window.location.href = '{% url "procedures:disciplinas_list" %}';
+    })
+    .catch(() => {
+        alert('Erro na requisição ao deletar disciplina.');
+    });
 }
 </script>
 {% endblock %}

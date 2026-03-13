@@ -3,7 +3,6 @@
 {% block title %}{% if edicao %}Editar{% else %}Novo{% endif %} Registro - Insumos{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
     .weekly-grid .form-label { line-height: 1.1; }
 
@@ -526,40 +525,6 @@
 {{ respostas_atuais|json_script:"respostas-dados" }}
 {% endif %}
 {{ comentarios_atuais|json_script:"comentarios-dados" }}
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script>
-    (function() {
-        if (typeof flatpickr === 'undefined') return;
-
-        flatpickr.localize({
-            weekdays: {
-                shorthand: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'],
-                longhand: ['Segunda-feira', 'Terca-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sabado', 'Domingo']
-            },
-            months: {
-                shorthand: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
-                longhand: ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-            },
-            firstDayOfWeek: 1,
-            rangeSeparator: ' a ',
-            weekAbbreviation: 'Sem',
-            scrollTitle: 'Role para aumentar',
-            toggleTitle: 'Clique para alternar',
-            amPM: ['AM', 'PM'],
-            yearAriaLabel: 'Ano',
-            time_24hr: true
-        });
-
-        document.querySelectorAll('.js-week-datepicker').forEach(function(el) {
-            flatpickr(el, {
-                dateFormat: 'd/m/Y',
-                allowInput: true,
-                disableMobile: true,
-                locale: { firstDayOfWeek: 1 }
-            });
-        });
-    })();
-</script>
 <script>
     // Bootstrap form validation
     (function () {

@@ -338,6 +338,8 @@ class ComentarioRespostaAuditoria(models.Model):
     registro = models.ForeignKey(
         RegistroAuditoria,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="comentarios_resposta",
         verbose_name="Registro",
     )
@@ -356,6 +358,13 @@ class ComentarioRespostaAuditoria(models.Model):
         verbose_name="Autor",
     )
     texto = models.TextField(verbose_name="Comentário")
+    data_referencia = models.DateField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="Data de Referência",
+        help_text="Data usada para vincular o comentário ao período/auditoria, inclusive quando ainda não há registro.",
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -367,4 +376,5 @@ class ComentarioRespostaAuditoria(models.Model):
     def __str__(self):
         base = (self.texto or "").strip().replace("\n", " ")
         base = base[:60] + ("..." if len(base) > 60 else "")
-        return f"{self.registro} - {self.pergunta.pergunta[:40]} - {base}"
+        referencia = self.registro if self.registro_id else (self.data_referencia or "sem data")
+        return f"{referencia} - {self.pergunta.pergunta[:40]} - {base}"

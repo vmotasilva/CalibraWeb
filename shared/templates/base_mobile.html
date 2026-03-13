@@ -14,6 +14,7 @@
     <meta name="theme-color" content="#0d6efd">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; padding-top: 64px; }
@@ -502,8 +503,52 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        const mondayFirstLocale = {
+            weekdays: {
+                shorthand: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'],
+                longhand: ['Segunda-feira', 'Terca-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sabado', 'Domingo']
+            },
+            months: {
+                shorthand: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+                longhand: ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+            },
+            firstDayOfWeek: 1,
+            rangeSeparator: ' a ',
+            weekAbbreviation: 'Sem',
+            scrollTitle: 'Role para aumentar',
+            toggleTitle: 'Clique para alternar',
+            amPM: ['AM', 'PM'],
+            yearAriaLabel: 'Ano',
+            time_24hr: true
+        };
+
+        const applyMondayFirstCalendars = (root = document) => {
+            if (typeof flatpickr === 'undefined') return;
+            flatpickr.localize(mondayFirstLocale);
+
+            root.querySelectorAll('input[type="date"], input.js-week-datepicker').forEach((input) => {
+                if (input.dataset.weekCalendarWired === '1') return;
+                input.dataset.weekCalendarWired = '1';
+
+                const isBrazilianFormat = input.classList.contains('js-week-datepicker') || input.type === 'text';
+                const dateFormat = isBrazilianFormat ? 'd/m/Y' : 'Y-m-d';
+
+                if (!input.getAttribute('placeholder')) {
+                    input.setAttribute('placeholder', isBrazilianFormat ? 'dd/mm/aaaa' : 'aaaa-mm-dd');
+                }
+
+                flatpickr(input, {
+                    dateFormat: dateFormat,
+                    allowInput: true,
+                    disableMobile: true,
+                    locale: { firstDayOfWeek: 1 }
+                });
+            });
+        };
+
         const applyIsoDateHelpers = () => {
             const formatIsoDate = (value) => {
                 const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
@@ -548,6 +593,10 @@
                 placement: 'bottom'
             });
         });
+
+        applyMondayFirstCalendars();
+        const observer = new MutationObserver(() => applyMondayFirstCalendars());
+        observer.observe(document.body, { childList: true, subtree: true });
 
         applyIsoDateHelpers();
     });
