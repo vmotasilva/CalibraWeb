@@ -18,12 +18,12 @@
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Matriz de Habilidades</h5>
             <div>
-                {% if can_editar_matriz %}
+                {% if request.user.is_superuser or can_editar_matriz %}
                     <a href="{% url 'procedures:editar_matriz' matriz.id %}" class="btn btn-warning btn-sm">
                         <i class="bi bi-pencil"></i> Editar
                     </a>
                 {% endif %}
-                {% if can_deletar_matriz %}
+                {% if request.user.is_superuser or can_deletar_matriz %}
                     <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalDeleteMatriz" onclick="abrirModalDeleteMatriz({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
                         <i class="bi bi-trash"></i> Deletar Matriz
                     </button>
@@ -58,7 +58,7 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h6 class="mb-0"><i class="bi bi-book"></i> Disciplinas da Matriz</h6>
-            {% if can_nova_disciplina %}
+            {% if request.user.is_superuser or can_nova_disciplina %}
                 <a href="{% url 'procedures:nova_disciplina' %}?matriz={{ matriz.id }}" class="btn btn-sm btn-success">
                     <i class="bi bi-plus-circle"></i> Adicionar Disciplina
                 </a>
@@ -101,12 +101,12 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if can_editar_disciplina %}
+                                {% if request.user.is_superuser or can_editar_disciplina %}
                                     <a href="{% url 'procedures:editar_disciplina' disc.id %}" class="btn btn-sm btn-warning" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                 {% endif %}
-                                {% if can_deletar_disciplina %}
+                                {% if request.user.is_superuser or can_deletar_disciplina %}
                                     {% if disc.total_procedimentos_associados == 0 %}
                                         <button type="button" class="btn btn-sm btn-danger" onclick="abrirModalDeleteDisciplina({{ disc.id }}, '{{ disc.codigo }}', '{{ disc.nome }}')" title="Deletar">
                                             <i class="bi bi-trash"></i>
