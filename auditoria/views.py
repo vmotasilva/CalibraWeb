@@ -249,7 +249,9 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 "pergunta": pergunta.pergunta,
                 "descricao_detalhada": pergunta.descricao_detalhada,
                 "obrigatoria": pergunta.obrigatoria,
+                "tipo_resposta": pergunta.tipo_resposta,
                 "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
+                "opcoes_resposta_com_cores": list(getattr(pergunta, "opcoes_resposta_com_cores", []) or []),
                 "subcategoria": (pergunta.subcategoria or "").strip(),
                 "resposta_geral": "",
                 "resposta_geral_cor": "",
@@ -298,6 +300,66 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
         }
         blocos_map[nome_subcategoria]["linhas"].append(linha)
 
+    for bloco in blocos_map.values():
+        opcoes_meta: "OrderedDict[str, dict]" = OrderedDict()
+        opcoes_counts: dict[str, int] = {}
+        total_respostas_lista = 0
+
+        for linha in bloco["linhas"]:
+            if linha.get("tipo_resposta") != "LISTA":
+                continue
+
+            for opcao in linha.get("opcoes_resposta_com_cores", []):
+                label = str((opcao or {}).get("label") or "").strip()
+                if not label:
+                    continue
+                key = _normalize_text_token(label)
+                if not key:
+                    continue
+                if key not in opcoes_meta:
+                    color = str((opcao or {}).get("color") or "").strip() or _fallback_cor_resposta(label)
+                    opcoes_meta[key] = {"label": label, "color": color}
+                    opcoes_counts[key] = 0
+
+            valores_resposta: list[str] = []
+            respostas_por_dia = linha.get("respostas_por_dia") or {}
+            tem_por_dia = any((respostas_por_dia.get(k) or "").strip() for k in dia_keys)
+            if tem_por_dia:
+                for dia_key in dia_keys:
+                    valor = (respostas_por_dia.get(dia_key) or "").strip()
+                    if valor:
+                        valores_resposta.append(valor)
+            else:
+                valor_geral = (linha.get("resposta_geral") or "").strip()
+                if valor_geral:
+                    if "|" in valor_geral:
+                        valores_resposta.extend([p.strip() for p in valor_geral.split("|") if p.strip()])
+                    else:
+                        valores_resposta.append(valor_geral)
+
+            for valor in valores_resposta:
+                key = _normalize_text_token(valor)
+                if key in opcoes_counts:
+                    opcoes_counts[key] += 1
+                    total_respostas_lista += 1
+
+        lista_resumo = []
+        for key, meta in opcoes_meta.items():
+            count = int(opcoes_counts.get(key, 0))
+            percentual = round((count / total_respostas_lista) * 100, 1) if total_respostas_lista else 0
+            lista_resumo.append(
+                {
+                    "label": meta.get("label") or "",
+                    "color": meta.get("color") or "#6c757d",
+                    "count": count,
+                    "percentual": percentual,
+                }
+            )
+
+        bloco["lista_resumo"] = lista_resumo
+        bloco["lista_total_respostas"] = total_respostas_lista
+        bloco["tem_lista_resumo"] = bool(lista_resumo)
+
     blocos = list(blocos_map.values())
     total_perguntas = len(perguntas_consolidadas)
     preenchidas = sum(1 for b in blocos for l in b["linhas"] if l["tem_resposta"])
@@ -314,6 +376,63 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
         "dia_labels": dia_labels,
         "comentarios_por_pergunta": comentarios_por_pergunta,
     }
+
+
+def _build_subcategoria_chart_from_resumo(blocos: list[dict]) -> dict:
+    """Agrega respostas por sub-categoria para gráfico de situações."""
+    situations_order = ["Conforme", "Não conforme", "N/A", "Sim", "Não", "Outros"]
+
+    def _normalize_situacao(value: str) -> str:
+        raw = str(value or "").strip()
+        if not raw:
+            return ""
+        low = raw.lower()
+        if low in {"conforme", "conf."}:
+            return "Conforme"
+        if low in {"não conforme", "nao conforme", "n/conforme", "nconforme", "nc"}:
+            return "Não conforme"
+        if low in {"n/a", "na", "n.a", "não aplicável", "nao aplicavel"}:
+            return "N/A"
+        if low in {"sim", "true", "1"}:
+            return "Sim"
+        if low in {"não", "nao", "false", "0"}:
+            return "Não"
+        return "Outros"
+
+    labels: list[str] = []
+    counts_by_subcat: dict[str, dict[str, int]] = {}
+    for bloco in blocos or []:
+        nome = str(bloco.get("nome") or "Sem sub-categoria").strip() or "Sem sub-categoria"
+        labels.append(nome)
+        counts_by_subcat[nome] = {s: 0 for s in situations_order}
+
+        for linha in bloco.get("linhas") or []:
+            values: list[str] = []
+            if linha.get("usa_colunas_dia"):
+                values.extend(str(v or "").strip() for v in (linha.get("dia_values") or []))
+            else:
+                raw = str(linha.get("resposta_geral") or "").strip()
+                if raw:
+                    values.extend([v.strip() for v in raw.split("|")])
+
+            for value in values:
+                if not value:
+                    continue
+                situacao = _normalize_situacao(value)
+                if not situacao:
+                    continue
+                if situacao not in situations_order:
+                    situacao = "Outros"
+                counts_by_subcat[nome][situacao] += 1
+
+    datasets = [
+        {
+            "label": sit,
+            "data": [counts_by_subcat.get(sc, {}).get(sit, 0) for sc in labels],
+        }
+        for sit in situations_order
+    ]
+    return {"labels": labels, "datasets": datasets}
 
 
 def _parse_date_flexible(raw_value):
@@ -1364,6 +1483,7 @@ def registro_detail(request, pk):
     context = {
         "registro": registro,
         "blocos_respostas": resumo["blocos"],
+        "subcat_chart": _build_subcategoria_chart_from_resumo(resumo["blocos"]),
         "exibir_dia_semana": resumo["exibir_dias"],
         "dias_semana_colunas": dias_semana_colunas,
         "total_respostas": resumo["total_perguntas"],
@@ -1377,12 +1497,16 @@ def registro_detail(request, pk):
 
 @login_required
 def registro_exportar_pdf(request, pk):
-    """Exporta o detalhe do registro em PDF no formato consolidado por sub-categoria."""
+    """Exporta o detalhe do registro em PDF (A4 paisagem) com gráfico e blocos por sub-categoria."""
     from xml.sax.saxutils import escape
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
+    from reportlab.graphics.charts.barcharts import VerticalBarChart
+    from reportlab.graphics.charts.legends import Legend
+    from reportlab.graphics.shapes import Drawing
+    from reportlab.lib.colors import HexColor
     from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     registro = get_object_or_404(
@@ -1394,6 +1518,7 @@ def registro_exportar_pdf(request, pk):
     )
 
     resumo = _build_resumo_respostas_registro(registro)
+    subcat_chart = _build_subcategoria_chart_from_resumo(resumo["blocos"])
     dia_keys = resumo["dia_keys"]
     dia_labels = resumo["dia_labels"]
     exibir_dias = resumo["exibir_dias"]
@@ -1456,6 +1581,8 @@ def registro_exportar_pdf(request, pk):
     elif registro.periodo_fim:
         periodo = f"Até {registro.periodo_fim:%d/%m/%Y}"
 
+    # Pagina 1: Informacoes gerais
+    elements.append(Paragraph(f"Relatório de Auditoria - Registro #{registro.id}", style_title))
     info_rows = [
         [Paragraph("<b>Modelo</b>", style_cell_bold), Paragraph(escape(registro.modelo.nome or ""), style_cell)],
         [Paragraph("<b>Objeto da Auditoria</b>", style_cell_bold), Paragraph(escape(registro.modelo.objeto_auditoria or ""), style_cell)],
@@ -1465,7 +1592,7 @@ def registro_exportar_pdf(request, pk):
         [Paragraph("<b>ITEM/O.S.</b>", style_cell_bold), Paragraph(escape(registro.item_os or ""), style_cell)],
         [Paragraph("<b>Observações</b>", style_cell_bold), Paragraph(escape(registro.observacoes or ""), style_cell)],
     ]
-    info_table = Table(info_rows, colWidths=[4.2 * cm, 22.0 * cm], repeatRows=0)
+    info_table = Table(info_rows, colWidths=[4.2 * cm, doc.width - 4.2 * cm], repeatRows=0)
     info_table.setStyle(
         TableStyle(
             [
@@ -1479,6 +1606,68 @@ def registro_exportar_pdf(request, pk):
             ]
         )
     )
+    elements.append(info_table)
+
+    # Pagina 2: Grafico por sub-categoria (pagina inteira)
+    elements.append(PageBreak())
+    elements.append(Paragraph("Distribuição de Situações por Sub-categoria", style_title))
+
+    labels = subcat_chart.get("labels") or []
+    datasets = subcat_chart.get("datasets") or []
+    has_chart_data = bool(labels and any((sum((ds.get("data") or [])) > 0) for ds in datasets))
+
+    if has_chart_data:
+        drawing = Drawing(doc.width, doc.height - 2.0 * cm)
+        chart = VerticalBarChart()
+        chart.x = 1.1 * cm
+        chart.y = 2.2 * cm
+        chart.width = doc.width - 2.6 * cm
+        chart.height = doc.height - 5.8 * cm
+        chart.data = [list(ds.get("data") or []) for ds in datasets]
+        chart.categoryAxis.categoryNames = labels
+        chart.categoryAxis.labels.angle = 25
+        chart.categoryAxis.labels.boxAnchor = "ne"
+        chart.categoryAxis.labels.fontSize = 8
+        chart.valueAxis.valueMin = 0
+        chart.valueAxis.forceZero = 1
+        chart.valueAxis.labels.fontSize = 8
+        chart.barSpacing = 1
+        chart.groupSpacing = 8
+        chart.bars[0].strokeWidth = 0
+        chart.bars.strokeWidth = 0
+
+        series_color_map = {
+            "Conforme": "#198754",
+            "Não conforme": "#dc3545",
+            "N/A": "#6c757d",
+            "Sim": "#20c997",
+            "Não": "#fd7e14",
+            "Outros": "#0d6efd",
+        }
+        for idx, ds in enumerate(datasets):
+            label = str(ds.get("label") or "")
+            chart.bars[idx].fillColor = HexColor(series_color_map.get(label, "#0d6efd"))
+
+        chart.categoryAxis.style = "stacked"
+        chart.bars[0].strokeColor = None
+        drawing.add(chart)
+
+        legend = Legend()
+        legend.x = 1.1 * cm
+        legend.y = doc.height - 3.0 * cm
+        legend.fontSize = 8
+        legend.columnMaximum = 6
+        legend.colorNamePairs = [
+            (HexColor(series_color_map.get(str(ds.get("label") or ""), "#0d6efd")), str(ds.get("label") or ""))
+            for ds in datasets
+        ]
+        drawing.add(legend)
+        elements.append(drawing)
+    else:
+        elements.append(Paragraph("Sem dados suficientes para gerar o gráfico desta auditoria.", style_cell))
+
+    # Paginas seguintes: sub-categorias com farol (várias por página, sem quebrar bloco)
+    elements.append(PageBreak())
     dias_semana_abrev = {
         "SEGUNDA": "Seg",
         "TERCA": "Ter",
@@ -1489,36 +1678,11 @@ def registro_exportar_pdf(request, pk):
         "DOMINGO": "Dom",
     }
 
+    elements.append(Paragraph("Respostas por Sub-categoria", style_title))
+    remaining_height = doc.height - 1.0 * cm
+
     for idx_bloco, bloco in enumerate(resumo["blocos"]):
-        elements.append(Paragraph(f"Relatório de Auditoria - Registro #{registro.id}", style_title))
-
-        info_rows = [
-            [Paragraph("<b>Modelo</b>", style_cell_bold), Paragraph(escape(registro.modelo.nome or ""), style_cell)],
-            [Paragraph("<b>Objeto da Auditoria</b>", style_cell_bold), Paragraph(escape(registro.modelo.objeto_auditoria or ""), style_cell)],
-            [Paragraph("<b>Data da Auditoria</b>", style_cell_bold), Paragraph(escape(registro.data_auditoria.strftime("%d/%m/%Y") if registro.data_auditoria else ""), style_cell)],
-            [Paragraph("<b>Período</b>", style_cell_bold), Paragraph(escape(periodo), style_cell)],
-            [Paragraph("<b>Avaliador</b>", style_cell_bold), Paragraph(escape(avaliador), style_cell)],
-            [Paragraph("<b>ITEM/O.S.</b>", style_cell_bold), Paragraph(escape(registro.item_os or ""), style_cell)],
-            [Paragraph("<b>Observações</b>", style_cell_bold), Paragraph(escape(registro.observacoes or ""), style_cell)],
-        ]
-        info_table = Table(info_rows, colWidths=[4.2 * cm, 22.0 * cm], repeatRows=0)
-        info_table.setStyle(
-            TableStyle(
-                [
-                    ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#d0d7de")),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f8f9fa")),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-                    ("TOPPADDING", (0, 0), (-1, -1), 4),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ]
-            )
-        )
-        elements.append(info_table)
-        elements.append(Spacer(1, 8))
-
-        elements.append(Paragraph(f"Sub-categoria: {escape(bloco['nome'])}", style_section))
+        heading = Paragraph(f"Sub-categoria: {escape(bloco['nome'])}", style_section)
 
         headers = ["Ordem", "Pergunta"]
         if exibir_dias:
@@ -1548,7 +1712,7 @@ def registro_exportar_pdf(request, pk):
             row.append(Paragraph(comentarios_texto, style_cell))
             table_data.append(row)
 
-        bloco_table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        bloco_table = Table(table_data, colWidths=col_widths, repeatRows=1, splitByRow=0)
         bloco_table.setStyle(
             TableStyle(
                 [
@@ -1564,10 +1728,18 @@ def registro_exportar_pdf(request, pk):
                 ]
             )
         )
-        elements.append(bloco_table)
+        h_heading = heading.wrap(doc.width, doc.height)[1]
+        h_table = bloco_table.wrap(doc.width, doc.height)[1]
+        h_total = h_heading + h_table + 0.5 * cm
 
-        if idx_bloco < len(resumo["blocos"]) - 1:
+        if h_total > remaining_height and remaining_height < doc.height:
             elements.append(PageBreak())
+            remaining_height = doc.height
+
+        elements.append(heading)
+        elements.append(bloco_table)
+        elements.append(Spacer(1, 0.3 * cm))
+        remaining_height -= h_total
 
     doc.build(elements)
     buffer.seek(0)

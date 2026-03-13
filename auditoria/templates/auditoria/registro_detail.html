@@ -28,6 +28,12 @@
     border: 1px solid rgba(0, 0, 0, 0.2);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
 }
+
+.chart-frame-detail {
+    position: relative;
+    width: 100%;
+    height: 320px;
+}
 </style>
 {% endblock %}
 
@@ -126,11 +132,37 @@
         </div>
     </div>
 
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-light border-bottom">
+            <h6 class="mb-0"><i class="bi bi-bar-chart-line"></i> Distribuição de Situações por Sub-categoria</h6>
+        </div>
+        <div class="card-body">
+            <div class="chart-frame-detail">
+                <canvas id="canvas-subcat-registro"></canvas>
+            </div>
+            <div id="fallback-subcat-registro" class="text-muted text-center py-2 d-none">Sem dados suficientes para exibir o gráfico.</div>
+        </div>
+    </div>
+
     {% for bloco in blocos_respostas %}
     <div class="card shadow-sm mb-3">
         <div class="card-header bg-light border-bottom">
             <h6 class="mb-0"><i class="bi bi-collection"></i> {{ bloco.nome }}</h6>
         </div>
+        {% if bloco.tem_lista_resumo %}
+        <div class="card-body border-bottom py-2">
+            <div class="small fw-semibold mb-2">Legenda e Resumo (itens de lista)</div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                {% for item in bloco.lista_resumo %}
+                <span class="badge rounded-pill text-dark border" style="border-color: {{ item.color }} !important;">
+                    <span class="answer-semaphore me-1" style="background-color: {{ item.color }}; width: 10px; height: 10px;"></span>
+                    {{ item.label }}: {{ item.percentual }}% ({{ item.count }})
+                </span>
+                {% endfor %}
+                <span class="text-muted small">Base: {{ bloco.lista_total_respostas }} respostas</span>
+            </div>
+        </div>
+        {% endif %}
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-striped mb-0 align-middle audit-table">
@@ -251,6 +283,7 @@
 
 {% block extra_js %}
 {{ comentarios_por_pergunta|json_script:"comentarios-por-pergunta" }}
+{{ subcat_chart|json_script:"auditoria-subcat-registro" }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const tooltipTriggers = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -306,6 +339,66 @@ document.addEventListener('DOMContentLoaded', function() {
             if (modal) modal.show();
         });
     });
+
+    const subcatRaw = document.getElementById('auditoria-subcat-registro');
+    let subcatData = null;
+    try {
+        subcatData = subcatRaw ? JSON.parse(subcatRaw.textContent || '{}') : null;
+    } catch (e) {
+        subcatData = null;
+    }
+
+    const fallbackEl = document.getElementById('fallback-subcat-registro');
+    const canvas = document.getElementById('canvas-subcat-registro');
+    const labels = (subcatData && subcatData.labels) ? subcatData.labels : [];
+    const datasets = (subcatData && subcatData.datasets) ? subcatData.datasets : [];
+    const hasAny = labels.length > 0 && datasets.some(function(ds) {
+        return (ds.data || []).some(function(v) { return Number(v || 0) > 0; });
+    });
+
+    if (!hasAny || typeof Chart === 'undefined' || !canvas) {
+        if (fallbackEl) fallbackEl.classList.remove('d-none');
+    } else {
+        if (fallbackEl) fallbackEl.classList.add('d-none');
+
+        const colorMap = {
+            'Conforme': '#198754',
+            'Não conforme': '#dc3545',
+            'N/A': '#6c757d',
+            'Sim': '#20c997',
+            'Não': '#fd7e14',
+            'Outros': '#0d6efd'
+        };
+
+        const chartDatasets = datasets.map(function(ds) {
+            const label = String(ds.label || '');
+            return {
+                label: label,
+                data: ds.data || [],
+                borderWidth: 1,
+                backgroundColor: colorMap[label] || '#0d6efd'
+            };
+        });
+
+        new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: chartDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    x: { stacked: true, ticks: { autoSkip: false, maxRotation: 35, minRotation: 0 } },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
