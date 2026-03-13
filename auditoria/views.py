@@ -1568,6 +1568,30 @@ def registro_exportar_pdf(request, pk):
 
         if idx_bloco < len(resumo["blocos"]) - 1:
             elements.append(PageBreak())
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    nome_modelo = "".join(c for c in (registro.modelo.nome or "modelo") if c.isalnum() or c in {" ", "-", "_"}).strip()
+    if not nome_modelo:
+        nome_modelo = f"modelo_{registro.modelo_id}"
+    filename = f"relatorio_registro_{registro.id}_{nome_modelo}.pdf"
+
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type="application/pdf",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+def registro_delete(request, pk):
+    if request.method != "POST":
+        return redirect("auditoria:registro_detail", pk=pk)
+
+    if not _has_nav_view_access(request.user, "auditoria:registro_delete"):
+        messages.error(request, "Acesso negado. Você não tem permissão para excluir registros de auditoria.")
         return redirect("auditoria:registro_detail", pk=pk)
 
     registro = get_object_or_404(
