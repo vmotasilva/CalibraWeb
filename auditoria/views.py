@@ -16,6 +16,7 @@ from datetime import timedelta
 from collections import OrderedDict
 from io import BytesIO
 import json
+import unicodedata
 from urllib.parse import urlencode
 from shared.permissions import has_view_access
 
@@ -188,6 +189,46 @@ def _build_comentarios_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
     return result
 
 
+def _normalize_text_token(value: str) -> str:
+    raw = str(value or "").strip().lower()
+    if not raw:
+        return ""
+    normalized = unicodedata.normalize("NFKD", raw)
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+
+def _fallback_cor_resposta(valor: str) -> str:
+    token = _normalize_text_token(valor)
+    if not token:
+        return ""
+
+    if token in {"na", "n/a", "n.a", "nao aplicavel", "nao se aplica", "não se aplica"}:
+        return "#6c757d"
+    if any(k in token for k in ["nao conforme", "não conforme", "reprov", "critico", "critico", "nao", "não"]):
+        return "#dc3545"
+    if any(k in token for k in ["parcial", "atencao", "alerta", "pendente", "em andamento"]):
+        return "#fd7e14"
+    if any(k in token for k in ["conforme", "aprov", "ok", "sim"]):
+        return "#198754"
+    return "#0d6efd"
+
+
+def _resolve_cor_resposta(pergunta: PerguntaAuditoria, valor: str) -> str:
+    if not (valor or "").strip():
+        return ""
+
+    method = getattr(pergunta, "get_cor_resposta", None)
+    if callable(method):
+        try:
+            color = str(method(valor) or "").strip()
+            if color:
+                return color
+        except Exception:
+            pass
+
+    return _fallback_cor_resposta(valor)
+
+
 def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
     """Monta estrutura consolidada por pergunta para exibição em blocos e exportação."""
     respostas = list(
@@ -211,19 +252,25 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
                 "subcategoria": (pergunta.subcategoria or "").strip(),
                 "resposta_geral": "",
+                "resposta_geral_cor": "",
                 "respostas_por_dia": {},
+                "respostas_por_dia_cores": {},
                 "comentarios": comentarios_por_pergunta.get(str(pergunta.id), []),
             }
             perguntas_consolidadas[pergunta.id] = item
 
         valor = (resposta.valor or "").strip()
+        cor_valor = _resolve_cor_resposta(pergunta, valor)
         if resposta.dia_semana:
             item["respostas_por_dia"][resposta.dia_semana] = valor
+            item["respostas_por_dia_cores"][resposta.dia_semana] = cor_valor
         else:
             if item["resposta_geral"] and valor and valor != item["resposta_geral"]:
                 item["resposta_geral"] = f"{item['resposta_geral']} | {valor}"
+                item["resposta_geral_cor"] = ""
             elif valor:
                 item["resposta_geral"] = valor
+                item["resposta_geral_cor"] = cor_valor
 
     blocos_map: "OrderedDict[str, dict]" = OrderedDict()
     for item in perguntas_consolidadas.values():
@@ -242,7 +289,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
             "dia_cells": [
                 {
                     "value": respostas_por_dia.get(k, ""),
-                    "color": "",
+                    "color": item["respostas_por_dia_cores"].get(k, ""),
                 }
                 for k in dia_keys
             ],
@@ -1294,10 +1341,25 @@ def registro_detail(request, pk):
         return redirect("auditoria:registro_detail", pk=registro.pk)
 
     resumo = _build_resumo_respostas_registro(registro)
-    dias_semana_colunas = [
-        {"key": dia_key, "label": resumo["dia_labels"].get(dia_key, dia_key)}
-        for dia_key in resumo["dia_keys"]
-    ]
+    dias_semana_abrev = {
+        "SEGUNDA": "Seg",
+        "TERCA": "Ter",
+        "QUARTA": "Qua",
+        "QUINTA": "Qui",
+        "SEXTA": "Sex",
+        "SABADO": "Sáb",
+        "DOMINGO": "Dom",
+    }
+    dias_semana_colunas = []
+    for dia_key in resumo["dia_keys"]:
+        label = resumo["dia_labels"].get(dia_key, dia_key)
+        dias_semana_colunas.append(
+            {
+                "key": dia_key,
+                "label": label,
+                "short_label": dias_semana_abrev.get(dia_key, label[:3]),
+            }
+        )
 
     context = {
         "registro": registro,

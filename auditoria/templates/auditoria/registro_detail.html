@@ -2,6 +2,35 @@
 
 {% block title %}Detalhes do Registro - Auditoria{% endblock %}
 
+{% block extra_css %}
+<style>
+.audit-table th.col-pergunta,
+.audit-table td.col-pergunta {
+    min-width: 360px;
+}
+
+.audit-table th.col-comentarios,
+.audit-table td.col-comentarios {
+    min-width: 500px;
+}
+
+.audit-table th.col-dia,
+.audit-table td.col-dia {
+    width: 76px;
+    text-align: center;
+}
+
+.answer-semaphore {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
@@ -104,17 +133,17 @@
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped mb-0 align-middle">
+                <table class="table table-striped mb-0 align-middle audit-table">
                     <thead class="table-dark">
                         <tr>
                             <th width="80">Ordem</th>
-                            <th>Pergunta</th>
+                            <th class="col-pergunta">Pergunta</th>
                             {% if exibir_dia_semana %}
                                 {% for dia in dias_semana_colunas %}
-                                <th width="130">{{ dia.label }}</th>
+                                <th class="col-dia" title="{{ dia.label }}">{{ dia.short_label }}</th>
                                 {% endfor %}
                             {% endif %}
-                            <th width="430">Comentários</th>
+                            <th class="col-comentarios">Comentários</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -123,7 +152,7 @@
                             <td class="text-center">
                                 <span class="badge bg-secondary">{{ linha.ordem }}</span>
                             </td>
-                            <td>
+                            <td class="col-pergunta">
                                 <span
                                     {% if linha.descricao_detalhada %}
                                     data-bs-toggle="tooltip"
@@ -139,16 +168,22 @@
                             </td>
                             {% if exibir_dia_semana %}
                                 {% for dia_cell in linha.dia_cells %}
-                                <td>
+                                <td class="col-dia">
                                     {% if dia_cell.value %}
-                                    <strong {% if dia_cell.color %}style="color: {{ dia_cell.color }};"{% endif %}>{{ dia_cell.value }}</strong>
+                                    <span
+                                        class="answer-semaphore"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top"
+                                        title="{{ dia_cell.value }}"
+                                        style="background-color: {{ dia_cell.color|default:'#198754' }};"
+                                    ></span>
                                     {% else %}
                                     <span class="text-muted fst-italic">-</span>
                                     {% endif %}
                                 </td>
                                 {% endfor %}
                             {% endif %}
-                            <td>
+                            <td class="col-comentarios">
                                 {% if linha.comentarios %}
                                 <ul class="mb-2 ps-3">
                                     {% for comentario in linha.comentarios %}
@@ -164,7 +199,7 @@
                                     data-pergunta-id="{{ linha.pergunta_id }}"
                                     data-pergunta-texto="{{ linha.pergunta|escape }}"
                                     title="Adicionar comentário">
-                                    <i class="bi bi-chat-left-text"></i> Adicionar comentário
+                                    <i class="bi bi-plus-lg"></i>
                                 </button>
                             </td>
                         </tr>
