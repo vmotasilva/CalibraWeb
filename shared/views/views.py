@@ -17,10 +17,13 @@ from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.core.management import call_command
 from django.db.models import Q
+from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 import pandas as pd
 import logging
 from django.conf import settings
+from urllib.parse import urlencode
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +59,42 @@ from qms.views_helpers import dl_df, dl_generic, parse_date
 def home_view(request):
     """Página inicial com boas-vindas ao usuário."""
     from shared.notifications import get_user_cobrancas_items
+    from auditoria.models import RelatorioCompartilhadoAuditoria
 
     cobrancas_items = get_user_cobrancas_items(request.user)
     total_cobrancas = sum(item.count for item in cobrancas_items)
+
+    now = timezone.now()
+    shares_qs = (
+        RelatorioCompartilhadoAuditoria.objects.filter(destinatario=request.user, ativo=True)
+        .select_related("remetente", "modelo")
+        .order_by("-criado_em", "-id")[:12]
+    )
+    recebidos_relatorios = []
+    pendentes_compartilhamento = 0
+    for item in shares_qs:
+        expirado = bool(item.expira_em and item.expira_em <= now)
+        if not expirado and not item.recebido_em:
+            pendentes_compartilhamento += 1
+
+        target = reverse("auditoria:registros_por_modelo_compartilhado", args=[item.modelo_id])
+        url = f"{target}?{urlencode({'share_token': item.token})}"
+
+        recebidos_relatorios.append(
+            {
+                "id": item.id,
+                "modelo_nome": item.modelo.nome,
+                "remetente": item.remetente,
+                "inicio": item.inicio,
+                "fim": item.fim,
+                "subcategoria": (item.subcategoria or "").strip(),
+                "criado_em": item.criado_em,
+                "recebido_em": item.recebido_em,
+                "expira_em": item.expira_em,
+                "expirado": expirado,
+                "url": url,
+            }
+        )
 
     return render(
         request,
@@ -66,6 +102,8 @@ def home_view(request):
         {
             "cobrancas_items": cobrancas_items,
             "total_cobrancas": total_cobrancas,
+            "recebidos_relatorios": recebidos_relatorios,
+            "pendentes_compartilhamento": pendentes_compartilhamento,
         },
     )
 

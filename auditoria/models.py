@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
+import uuid
 
 
 class ModeloAuditoria(models.Model):
@@ -378,3 +380,52 @@ class ComentarioRespostaAuditoria(models.Model):
         base = base[:60] + ("..." if len(base) > 60 else "")
         referencia = self.registro if self.registro_id else (self.data_referencia or "sem data")
         return f"{referencia} - {self.pergunta.pergunta[:40]} - {base}"
+
+
+class RelatorioCompartilhadoAuditoria(models.Model):
+    modelo = models.ForeignKey(
+        ModeloAuditoria,
+        on_delete=models.CASCADE,
+        related_name="relatorios_compartilhados",
+        verbose_name="Modelo",
+    )
+    remetente = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="auditoria_relatorios_enviados",
+        verbose_name="Remetente",
+    )
+    destinatario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="auditoria_relatorios_recebidos",
+        verbose_name="Destinatário",
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True, default="")
+    inicio = models.DateField(null=True, blank=True, verbose_name="Período Inicial")
+    fim = models.DateField(null=True, blank=True, verbose_name="Período Final")
+    subcategoria = models.CharField(max_length=80, blank=True, default="", verbose_name="Sub-categoria")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    expira_em = models.DateTimeField(null=True, blank=True, verbose_name="Expira em")
+    primeiro_acesso_em = models.DateTimeField(null=True, blank=True, verbose_name="Primeiro acesso")
+    recebido_em = models.DateTimeField(null=True, blank=True, verbose_name="Comprovante de recebimento")
+    recebido_ip = models.GenericIPAddressField(null=True, blank=True, verbose_name="IP de recebimento")
+    recebido_user_agent = models.CharField(max_length=255, blank=True, default="", verbose_name="Navegador")
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Relatório Compartilhado (Auditoria)"
+        verbose_name_plural = "Relatórios Compartilhados (Auditoria)"
+        ordering = ["-criado_em", "-id"]
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = uuid.uuid4().hex
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self) -> bool:
+        return bool(self.expira_em and self.expira_em <= timezone.now())
+
+    def __str__(self):
+        return f"{self.modelo.nome} | {self.remetente} -> {self.destinatario}"

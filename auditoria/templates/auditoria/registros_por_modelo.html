@@ -106,6 +106,12 @@
                     {% if is_read_only %}
                     <div class="alert alert-secondary">
                         <i class="bi bi-eye"></i> Visualização compartilhada: somente leitura.
+                        {% if targeted_share %}
+                            <span class="ms-2">Compartilhado por: <strong>{{ targeted_share.remetente.get_full_name|default:targeted_share.remetente.username }}</strong>.</span>
+                            {% if targeted_share.recebido_em %}
+                                <span class="ms-2">Recebido em: <strong>{{ targeted_share.recebido_em|date:"d/m/Y H:i" }}</strong>.</span>
+                            {% endif %}
+                        {% endif %}
                         {% if inicio or fim %}
                             <span class="ms-2">Período fixo: <strong>{{ inicio|default:'-' }}</strong> até <strong>{{ fim|default:'-' }}</strong>.</span>
                         {% endif %}
@@ -647,24 +653,99 @@
                     </div>
                     {% endif %}
 
-                    {% if not is_read_only and share_link %}
+                    {% if not is_read_only %}
                     <div class="modal fade" id="modal-compartilhar-relatorio" tabindex="-1" aria-labelledby="modal-compartilhar-relatorio-label" aria-hidden="true">
                         <div class="modal-dialog modal-lg modal-dialog-centered">
                             <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="modal-compartilhar-relatorio-label">Compartilhar relatório (somente leitura)</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <p class="mb-2">Este link permite apenas visualizar o recorte atual do relatório, sem edição.</p>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="shared-report-link" value="{{ share_link }}" readonly>
-                                        <button type="button" class="btn btn-outline-primary" id="btn-copy-shared-report-link">
-                                            <i class="bi bi-clipboard"></i> Copiar link
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="share_report_targeted">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modal-compartilhar-relatorio-label">Compartilhar relatório (somente leitura)</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="mb-2">Direcione este recorte para um usuário específico. O sistema registra histórico e comprovante de recebimento.</p>
+                                        <div class="mb-3">
+                                            <label class="form-label" for="share-destinatario-id">Usuário destinatário</label>
+                                            <select class="form-select" id="share-destinatario-id" name="destinatario_id" required>
+                                                <option value="">Selecione...</option>
+                                                {% for u in share_recipients %}
+                                                    <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="small text-muted mb-3">
+                                            Validade padrão: 30 dias. Período compartilhado: <strong>{{ inicio|default:'-' }}</strong> até <strong>{{ fim|default:'-' }}</strong>.
+                                        </div>
+
+                                        {% if share_link %}
+                                        <div class="border rounded p-2 mb-3 bg-light">
+                                            <div class="small fw-semibold mb-1">Link recém-gerado</div>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="shared-report-link" value="{{ share_link }}" readonly>
+                                                <button type="button" class="btn btn-outline-primary" id="btn-copy-shared-report-link">
+                                                    <i class="bi bi-clipboard"></i> Copiar link
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Destinatário</th>
+                                                        <th>Enviado em</th>
+                                                        <th>Status</th>
+                                                        <th>Comprovante</th>
+                                                        <th class="text-center">Link</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for item in share_history %}
+                                                    <tr>
+                                                        <td>{{ item.destinatario.get_full_name|default:item.destinatario.username }}</td>
+                                                        <td>{{ item.criado_em|date:"d/m/Y H:i" }}</td>
+                                                        <td>
+                                                            {% if item.is_expired %}
+                                                                <span class="badge bg-secondary">Expirado</span>
+                                                            {% elif item.recebido_em %}
+                                                                <span class="badge bg-success">Recebido</span>
+                                                            {% else %}
+                                                                <span class="badge bg-warning text-dark">Aguardando</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if item.recebido_em %}
+                                                                <div class="small">{{ item.recebido_em|date:"d/m/Y H:i" }}</div>
+                                                                <div class="small text-muted">IP: {{ item.recebido_ip|default:'-' }}</div>
+                                                            {% else %}
+                                                                <span class="text-muted small">Sem leitura</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <button type="button" class="btn btn-outline-primary btn-sm btn-copy-share-history" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'auditoria:registros_por_modelo_compartilhado' modelo.id %}?share_token={{ item.token }}">
+                                                                Copiar
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    {% empty %}
+                                                    <tr>
+                                                        <td colspan="5" class="text-muted text-center">Nenhum compartilhamento enviado ainda.</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-share"></i> Compartilhar
                                         </button>
                                     </div>
-                                    <div class="form-text">Validade do link: 30 dias.</div>
-                                </div>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -971,16 +1052,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const shareInput = document.getElementById('shared-report-link');
     const shareCopyBtn = document.getElementById('btn-copy-shared-report-link');
+
+    async function copyTextValue(raw) {
+        const text = String(raw || '').trim();
+        if (!text) return false;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+        const temp = document.createElement('input');
+        temp.type = 'text';
+        temp.value = text;
+        document.body.appendChild(temp);
+        temp.focus();
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        return true;
+    }
+
     if (shareInput && shareCopyBtn) {
         shareCopyBtn.addEventListener('click', async function() {
             try {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(shareInput.value || '');
-                } else {
-                    shareInput.focus();
-                    shareInput.select();
-                    document.execCommand('copy');
-                }
+                await copyTextValue(shareInput.value || '');
                 shareCopyBtn.classList.remove('btn-outline-primary');
                 shareCopyBtn.classList.add('btn-success');
                 shareCopyBtn.innerHTML = '<i class="bi bi-check2"></i> Copiado';
@@ -994,6 +1088,26 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    document.querySelectorAll('.btn-copy-share-history').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            const link = btn.getAttribute('data-link') || '';
+            try {
+                await copyTextValue(link);
+                const old = btn.innerHTML;
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-success');
+                btn.innerHTML = 'Copiado';
+                setTimeout(function() {
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-primary');
+                    btn.innerHTML = old;
+                }, 1200);
+            } catch (_e) {
+                alert('Não foi possível copiar automaticamente. Copie manualmente o link.');
+            }
+        });
+    });
 
     const raw = document.getElementById('auditoria-chart-data');
     const chartsData = raw ? JSON.parse(raw.textContent || '{}') : {};

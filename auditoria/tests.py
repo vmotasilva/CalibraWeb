@@ -6,7 +6,13 @@ from django.test import TestCase
 from django.test import RequestFactory
 from django.urls import reverse
 
-from .models import ComentarioRespostaAuditoria, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
+from .models import (
+    ComentarioRespostaAuditoria,
+    ModeloAuditoria,
+    PerguntaAuditoria,
+    RegistroAuditoria,
+    RelatorioCompartilhadoAuditoria,
+)
 from .views import _build_registro_report_share_token, registros_por_modelo
 
 
@@ -344,3 +350,96 @@ class RelatorioCompartilhadoSomenteLeituraTests(TestCase):
         response = self.client.get(f"{self.base_url}?share_token=token-invalido")
 
         self.assertEqual(response.status_code, 403)
+
+
+class RelatorioCompartilhadoDirecionadoTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.remetente = user_model.objects.create_user(
+            username="auditoria_sender",
+            email="auditoria_sender@example.com",
+            password="senha-forte-123",
+            is_staff=True,
+        )
+        self.destinatario = user_model.objects.create_user(
+            username="auditoria_target",
+            email="auditoria_target@example.com",
+            password="senha-forte-123",
+            is_staff=False,
+        )
+        self.outro = user_model.objects.create_user(
+            username="auditoria_other",
+            email="auditoria_other@example.com",
+            password="senha-forte-123",
+            is_staff=False,
+        )
+
+        self.modelo = ModeloAuditoria.objects.create(
+            nome="MODELO SHARE DIRECIONADO",
+            objeto_auditoria="Objeto share direcionado",
+            periodicidade="MENSAL",
+        )
+        self.modelo.responsaveis.add(self.remetente)
+        PerguntaAuditoria.objects.create(
+            modelo=self.modelo,
+            pergunta="Pergunta base",
+            ordem=1,
+            tipo_resposta="SIM_NAO",
+            ativo=True,
+        )
+
+        self.url = reverse("auditoria:registros_por_modelo", args=[self.modelo.pk])
+
+    def test_sender_can_create_targeted_share(self):
+        self.client.force_login(self.remetente)
+
+        response = self.client.post(
+            f"{self.url}?inicio=2026-03-01&fim=2026-03-31",
+            data={"action": "share_report_targeted", "destinatario_id": str(self.destinatario.id)},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        share = RelatorioCompartilhadoAuditoria.objects.get(modelo=self.modelo, remetente=self.remetente)
+        self.assertEqual(share.destinatario_id, self.destinatario.id)
+        self.assertEqual(share.inicio.isoformat(), "2026-03-01")
+        self.assertEqual(share.fim.isoformat(), "2026-03-31")
+
+    def test_only_target_user_can_open_targeted_share(self):
+        share = RelatorioCompartilhadoAuditoria.objects.create(
+            modelo=self.modelo,
+            remetente=self.remetente,
+            destinatario=self.destinatario,
+        )
+
+        self.client.force_login(self.outro)
+        response = self.client.get(f"{self.url}?share_token={share.token}")
+        self.assertEqual(response.status_code, 403)
+
+    def test_target_open_registers_receipt_proof(self):
+        share = RelatorioCompartilhadoAuditoria.objects.create(
+            modelo=self.modelo,
+            remetente=self.remetente,
+            destinatario=self.destinatario,
+        )
+
+        self.client.force_login(self.destinatario)
+        response = self.client.get(f"{self.url}?share_token={share.token}")
+
+        self.assertEqual(response.status_code, 200)
+        share.refresh_from_db()
+        self.assertIsNotNone(share.recebido_em)
+        self.assertIsNotNone(share.primeiro_acesso_em)
+
+    def test_home_shows_received_share_notification(self):
+        RelatorioCompartilhadoAuditoria.objects.create(
+            modelo=self.modelo,
+            remetente=self.remetente,
+            destinatario=self.destinatario,
+        )
+
+        self.client.force_login(self.destinatario)
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn("Relatórios Compartilhados Comigo", content)

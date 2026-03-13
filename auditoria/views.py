@@ -9,8 +9,10 @@ from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from datetime import date as dt_date
+from datetime import timedelta
 from io import BytesIO
 import json
 from urllib.parse import urlencode
@@ -22,6 +24,7 @@ from .models import (
     ComentarioRespostaAuditoria,
     ModeloAuditoria,
     PerguntaAuditoria,
+    RelatorioCompartilhadoAuditoria,
     RegistroAuditoria,
     RespostaAuditoria,
 )
@@ -1356,11 +1359,36 @@ def dashboard_auditoria(request):
 def registros_por_modelo(request, modelo_id):
     """Lista todos os registros preenchidos de um modelo específico"""
     share_token_raw = (request.GET.get("share_token") or "").strip()
-    share_data = _read_registro_report_share_token(share_token_raw) if share_token_raw else None
-    is_read_only = bool(share_data and int(share_data.get("modelo_id", 0)) == int(modelo_id))
+    targeted_share = None
+    share_data = None
+    is_read_only = False
 
-    if share_token_raw and not is_read_only:
-        return HttpResponseForbidden("Link de compartilhamento inválido ou expirado.")
+    if share_token_raw:
+        targeted_share = (
+            RelatorioCompartilhadoAuditoria.objects.select_related("destinatario")
+            .filter(token=share_token_raw, ativo=True)
+            .first()
+        )
+        if targeted_share:
+            if targeted_share.modelo_id != int(modelo_id):
+                return HttpResponseForbidden("Link de compartilhamento inválido para este relatório.")
+            if targeted_share.destinatario_id != request.user.id:
+                return HttpResponseForbidden("Este compartilhamento é direcionado a outro usuário.")
+            if targeted_share.is_expired:
+                return HttpResponseForbidden("Este compartilhamento expirou.")
+
+            is_read_only = True
+            share_data = {
+                "modelo_id": targeted_share.modelo_id,
+                "inicio": targeted_share.inicio.isoformat() if targeted_share.inicio else "",
+                "fim": targeted_share.fim.isoformat() if targeted_share.fim else "",
+                "subcategoria": (targeted_share.subcategoria or "").strip(),
+            }
+        else:
+            share_data = _read_registro_report_share_token(share_token_raw)
+            is_read_only = bool(share_data and int(share_data.get("modelo_id", 0)) == int(modelo_id))
+            if share_token_raw and not is_read_only:
+                return HttpResponseForbidden("Link de compartilhamento inválido ou expirado.")
 
     if is_read_only:
         modelo = get_object_or_404(ModeloAuditoria.objects.all(), pk=modelo_id)
@@ -1372,6 +1400,63 @@ def registros_por_modelo(request, modelo_id):
 
     if request.method == "POST" and is_read_only:
         return HttpResponseForbidden("Este link é somente leitura.")
+
+    if request.method == "POST" and (request.POST.get("action") or "").strip() == "share_report_targeted":
+        destinatario_raw = (request.POST.get("destinatario_id") or "").strip()
+        if not destinatario_raw.isdigit():
+            messages.error(request, "Selecione um destinatário válido.")
+        else:
+            User = get_user_model()
+            destinatario = User.objects.filter(pk=int(destinatario_raw), is_active=True).first()
+            if not destinatario:
+                messages.error(request, "Destinatário não encontrado.")
+            elif destinatario.id == request.user.id:
+                messages.error(request, "Não é possível compartilhar para o próprio usuário.")
+            else:
+                inicio_tmp = parse_date((request.GET.get("inicio") or "").strip() or "")
+                fim_tmp = parse_date((request.GET.get("fim") or "").strip() or "")
+                subcat_tmp = (request.GET.get("subcategoria") or "").strip()
+                if subcat_tmp and subcat_tmp not in modelo.subcategorias_list:
+                    subcat_tmp = ""
+
+                share_obj = RelatorioCompartilhadoAuditoria.objects.create(
+                    modelo=modelo,
+                    remetente=request.user,
+                    destinatario=destinatario,
+                    inicio=inicio_tmp,
+                    fim=fim_tmp,
+                    subcategoria=subcat_tmp,
+                    expira_em=timezone.now() + timedelta(days=30),
+                )
+                redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
+                preserved = {}
+                for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+                    v = (request.GET.get(k) or "").strip()
+                    if v:
+                        preserved[k] = v
+                preserved["share_created"] = str(share_obj.id)
+                if preserved:
+                    redirect_url = f"{redirect_url}?{urlencode(preserved)}"
+                messages.success(request, "Relatório compartilhado com sucesso.")
+                return redirect(redirect_url)
+
+        redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
+        preserved = {}
+        for k in ("inicio", "fim", "subcategoria", "page", "per_page"):
+            v = (request.GET.get(k) or "").strip()
+            if v:
+                preserved[k] = v
+        if preserved:
+            redirect_url = f"{redirect_url}?{urlencode(preserved)}"
+        return redirect(redirect_url)
+
+    if targeted_share and is_read_only and not targeted_share.recebido_em:
+        now = timezone.now()
+        targeted_share.primeiro_acesso_em = targeted_share.primeiro_acesso_em or now
+        targeted_share.recebido_em = now
+        targeted_share.recebido_ip = (request.META.get("HTTP_X_FORWARDED_FOR") or request.META.get("REMOTE_ADDR") or "")[:45]
+        targeted_share.recebido_user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
+        targeted_share.save(update_fields=["primeiro_acesso_em", "recebido_em", "recebido_ip", "recebido_user_agent"])
 
     if request.method == "POST" and (request.POST.get("action") or "").strip() == "add_comment":
         texto = (request.POST.get("comentario") or "").strip()
@@ -1967,16 +2052,29 @@ def registros_por_modelo(request, modelo_id):
             estatisticas_perguntas.append(estatistica)
     
     share_link = ""
+    share_created_id_raw = (request.GET.get("share_created") or "").strip()
+    share_created_id = int(share_created_id_raw) if share_created_id_raw.isdigit() else None
+    share_created = None
+    share_recipients = []
+    share_history = []
+
     if not is_read_only:
-        generated_token = _build_registro_report_share_token(
-            modelo_id=modelo.id,
-            inicio=inicio_raw,
-            fim=fim_raw,
-            subcategoria=subcategoria,
+        User = get_user_model()
+        share_recipients = list(User.objects.filter(is_active=True).exclude(pk=request.user.id).order_by("first_name", "username"))
+
+        share_history_qs = (
+            RelatorioCompartilhadoAuditoria.objects.filter(modelo=modelo, remetente=request.user)
+            .select_related("destinatario")
+            .order_by("-criado_em", "-id")
         )
-        share_link = request.build_absolute_uri(
-            f"{reverse('auditoria:registros_por_modelo_compartilhado', args=[modelo.id])}?{urlencode({'share_token': generated_token})}"
-        )
+        share_history = list(share_history_qs[:30])
+
+        if share_created_id:
+            share_created = share_history_qs.filter(pk=share_created_id).first()
+            if share_created:
+                share_link = request.build_absolute_uri(
+                    f"{reverse('auditoria:registros_por_modelo_compartilhado', args=[modelo.id])}?{urlencode({'share_token': share_created.token})}"
+                )
 
     context = {
         "modelo": modelo,
@@ -2003,6 +2101,10 @@ def registros_por_modelo(request, modelo_id):
         "is_read_only": is_read_only,
         "share_token": share_token_raw,
         "share_link": share_link,
+        "share_created": share_created,
+        "share_recipients": share_recipients,
+        "share_history": share_history,
+        "targeted_share": targeted_share,
     }
     return render(request, "auditoria/registros_por_modelo.html", context)
 
