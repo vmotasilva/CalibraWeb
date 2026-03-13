@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from django.utils import timezone
+from django.utils.dateparse import parse_date, parse_time
 from django.http import JsonResponse
 
 from procedures.models import (
@@ -355,6 +356,10 @@ def alterar_status_planejamento_view(request, planejamento_id):
     
     if request.method == 'POST':
         novo_status = request.POST.get('status')
+
+        if novo_status == 'REALIZADO':
+            messages.info(request, 'Confirme participantes, data, horário e duração para concluir o treinamento.')
+            return redirect('procedures:criar_registros_planejamento', planejamento_id=planejamento.id)
         
         if novo_status in ['PLANEJADO', 'CONFIRMADO', 'REALIZADO', 'CANCELADO']:
             planejamento.status = novo_status
@@ -423,46 +428,103 @@ def criar_registros_planejamento_view(request, planejamento_id):
     Útil quando o treinamento for realizado
     """
     planejamento = get_object_or_404(
-        PlanejamentoTreinamento.objects.prefetch_related('colaboradores'),
+        PlanejamentoTreinamento.objects.prefetch_related('colaboradores', 'procedimentos'),
         id=planejamento_id
+    )
+
+    planejados_qs = planejamento.colaboradores.all().order_by('nome_completo')
+    planejados_ids = set(planejados_qs.values_list('id', flat=True))
+    colaboradores_disponiveis = (
+        Colaborador.objects.filter(is_active=True)
+        .exclude(id__in=planejados_ids)
+        .order_by('nome_completo')
     )
     
     if request.method == 'POST':
-        data_treinamento = request.POST.get('data_treinamento')
-        
+        data_treinamento_raw = (request.POST.get('data_treinamento') or '').strip()
+        horario_realizado_raw = (request.POST.get('horario_realizado') or '').strip()
+        duracao_minutos_raw = (request.POST.get('duracao_minutos') or '').strip()
+
+        data_treinamento = parse_date(data_treinamento_raw) if data_treinamento_raw else None
+        horario_realizado = parse_time(horario_realizado_raw) if horario_realizado_raw else None
+
+        try:
+            duracao_minutos = int(duracao_minutos_raw)
+        except (TypeError, ValueError):
+            duracao_minutos = None
+
+        participantes_planejados_ids = {
+            int(v) for v in request.POST.getlist('participantes_planejados') if str(v).isdigit()
+        }
+        participantes_adicionais_ids = {
+            int(v) for v in request.POST.getlist('participantes_adicionais') if str(v).isdigit()
+        }
+        participantes_finais_ids = participantes_planejados_ids | participantes_adicionais_ids
+
         if not data_treinamento:
             messages.error(request, 'Data do treinamento é obrigatória!')
-            return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
-        
-        # Criar registros para cada colaborador e cada procedimento
-        registros_criados = 0
-        for colaborador in planejamento.colaboradores.all():
-            for procedimento in planejamento.procedimentos.all():
-                # Verificar se já existe registro
-                if not RegistroTreinamento.objects.filter(
-                    procedimento=procedimento,
-                    colaborador=colaborador,
-                    data_treinamento=data_treinamento
-                ).exists():
-                    RegistroTreinamento.objects.create(
+        elif not horario_realizado:
+            messages.error(request, 'Horário do treinamento é obrigatório!')
+        elif duracao_minutos is None or duracao_minutos <= 0:
+            messages.error(request, 'Duração deve ser um número inteiro maior que zero (em minutos).')
+        elif not participantes_finais_ids:
+            messages.error(request, 'Selecione ao menos um participante para concluir o treinamento.')
+        else:
+            colaboradores_finais = list(
+                Colaborador.objects.filter(id__in=participantes_finais_ids, is_active=True)
+            )
+            if not colaboradores_finais:
+                messages.error(request, 'Nenhum participante válido selecionado.')
+                return redirect('procedures:criar_registros_planejamento', planejamento_id=planejamento.id)
+
+            # Atualiza o planejamento com a lista final de participantes.
+            planejamento.colaboradores.set([c.id for c in colaboradores_finais])
+
+            # Criar registros para cada colaborador final e cada procedimento
+            procedimentos = list(planejamento.procedimentos.all())
+            if not procedimentos:
+                messages.error(request, 'Não é possível concluir sem procedimentos vinculados ao planejamento.')
+                return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+
+            observacao_base = (
+                f'Treinamento realizado conforme planejamento: {planejamento.titulo} | '
+                f'Horário: {horario_realizado.strftime("%H:%M")} | Duração: {duracao_minutos} min'
+            )
+
+            registros_criados = 0
+            for colaborador in colaboradores_finais:
+                for procedimento in procedimentos:
+                    if not RegistroTreinamento.objects.filter(
                         procedimento=procedimento,
                         colaborador=colaborador,
                         data_treinamento=data_treinamento,
-                        instrutor=planejamento.instrutor,
-                        observacoes=f'Treinamento realizado conforme planejamento: {planejamento.titulo}'
-                    )
-                    registros_criados += 1
-        
-        # Atualizar status do planejamento
-        planejamento.status = 'REALIZADO'
-        planejamento.data_realizada = data_treinamento
-        planejamento.save()
-        
-        messages.success(request, f'{registros_criados} registros de treinamento criados com sucesso!')
-        return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+                    ).exists():
+                        RegistroTreinamento.objects.create(
+                            procedimento=procedimento,
+                            colaborador=colaborador,
+                            data_treinamento=data_treinamento,
+                            observacoes=observacao_base,
+                        )
+                        registros_criados += 1
+
+            planejamento.status = 'REALIZADO'
+            planejamento.data_realizada = data_treinamento
+            planejamento.horario_previsto = horario_realizado
+            planejamento.carga_horaria = duracao_minutos
+            planejamento.save(update_fields=['status', 'data_realizada', 'horario_previsto', 'carga_horaria', 'atualizado_em'])
+
+            messages.success(
+                request,
+                f'{registros_criados} registros criados. Participantes confirmados: {len(colaboradores_finais)}.',
+            )
+            return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+
+        return redirect('procedures:criar_registros_planejamento', planejamento_id=planejamento.id)
     
     context = {
-        'planejamento': planejamento
+        'planejamento': planejamento,
+        'participantes_planejados': planejados_qs,
+        'participantes_adicionais': colaboradores_disponiveis,
     }
     return render(request, 'procedures/planejamento_criar_registros.html', context)
 

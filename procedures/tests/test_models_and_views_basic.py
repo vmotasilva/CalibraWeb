@@ -24,6 +24,7 @@ from procedures.models import (
     PlanejamentoTreinamento,
     ProcessoCotacao,
     Procedimento,
+    RegistroTreinamento,
 )
 
 from procedures.views.planejamento_views import editar_planejamento_view
@@ -306,3 +307,91 @@ class DisciplinaDeleteRuleTest(TestCase):
 
         self.assertEqual(resp.status_code, 400)
         self.assertTrue(Disciplina.objects.filter(id=self.disciplina.id).exists())
+
+
+class PlanejamentoConclusaoFlowTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='flow-tester', password='pass12345')
+        self.client.force_login(self.user)
+
+        self.instrutor = Colaborador.objects.create(
+            matricula='IFLOW',
+            nome_completo='Instrutor Flow',
+            grupo='GRUPO',
+            setor=None,
+        )
+        self.colab1 = Colaborador.objects.create(
+            matricula='CF1',
+            nome_completo='Colaborador 1',
+            grupo='GRUPO',
+            setor=None,
+        )
+        self.colab2 = Colaborador.objects.create(
+            matricula='CF2',
+            nome_completo='Colaborador 2',
+            grupo='GRUPO',
+            setor=None,
+        )
+        self.colab3 = Colaborador.objects.create(
+            matricula='CF3',
+            nome_completo='Colaborador 3',
+            grupo='GRUPO',
+            setor=None,
+        )
+
+        self.procedimento = Procedimento.objects.create(
+            codigo='POP.FLOW.001',
+            nome='Procedimento Flow',
+            numero_revisao='01',
+        )
+
+        self.planejamento = PlanejamentoTreinamento.objects.create(
+            titulo='Planejamento Flow',
+            origem='LIVRE',
+            instrutor=self.instrutor,
+            data_prevista=date(2026, 3, 20),
+            status='CONFIRMADO',
+        )
+        self.planejamento.procedimentos.set([self.procedimento])
+        self.planejamento.colaboradores.set([self.colab1, self.colab2])
+
+    def test_alterar_status_realizado_redireciona_para_confirmacao(self):
+        url = reverse('procedures:alterar_status_planejamento', args=[self.planejamento.id])
+        resp = self.client.post(url, {'status': 'REALIZADO'})
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertRedirects(resp, reverse('procedures:criar_registros_planejamento', args=[self.planejamento.id]))
+
+        self.planejamento.refresh_from_db()
+        self.assertEqual(self.planejamento.status, 'CONFIRMADO')
+
+    def test_conclusao_confirma_participantes_data_horario_duracao(self):
+        url = reverse('procedures:criar_registros_planejamento', args=[self.planejamento.id])
+        resp = self.client.post(
+            url,
+            {
+                'data_treinamento': '2026-03-21',
+                'horario_realizado': '14:30',
+                'duracao_minutos': '90',
+                'participantes_planejados': [str(self.colab1.id)],
+                'participantes_adicionais': [str(self.colab3.id)],
+            },
+        )
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertRedirects(resp, reverse('procedures:detalhe_planejamento', args=[self.planejamento.id]))
+
+        self.planejamento.refresh_from_db()
+        self.assertEqual(self.planejamento.status, 'REALIZADO')
+        self.assertEqual(self.planejamento.data_realizada.isoformat(), '2026-03-21')
+        self.assertEqual(self.planejamento.horario_previsto.strftime('%H:%M'), '14:30')
+        self.assertEqual(self.planejamento.carga_horaria, 90)
+
+        participantes_ids = set(self.planejamento.colaboradores.values_list('id', flat=True))
+        self.assertEqual(participantes_ids, {self.colab1.id, self.colab3.id})
+
+        registros = RegistroTreinamento.objects.filter(
+            procedimento=self.procedimento,
+            data_treinamento=date(2026, 3, 21),
+        )
+        self.assertEqual(registros.count(), 2)
