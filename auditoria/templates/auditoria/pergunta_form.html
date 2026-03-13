@@ -53,6 +53,7 @@
 
         <div class="mb-3" id="opcoes-resposta-wrap">
             <label class="form-label">Opções de resposta (lista)</label>
+            {{ form.opcoes_resposta_cores }}
 
             <div id="opcoes-resposta-native">
                 {{ form.opcoes_resposta }}
@@ -60,11 +61,15 @@
 
             <div id="opcoes-resposta-enhanced" class="d-none">
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-8">
+                    <div class="col-md-7">
                         <label class="form-label">Nova opção</label>
                         <input type="text" id="opcao-resposta-input" class="form-control" placeholder="Digite a opção...">
                     </div>
-                    <div class="col-md-4 d-grid">
+                    <div class="col-md-2">
+                        <label class="form-label">Cor</label>
+                        <input type="color" id="opcao-resposta-color" class="form-control form-control-color" value="#198754" title="Cor da opção">
+                    </div>
+                    <div class="col-md-3 d-grid">
                         <button type="button" id="opcao-resposta-add" class="btn btn-outline-primary">Adicionar</button>
                     </div>
                 </div>
@@ -209,14 +214,61 @@
         const tipoSelect = document.getElementById('id_tipo_resposta');
         const wrap = document.getElementById('opcoes-resposta-wrap');
         const textarea = document.getElementById('id_opcoes_resposta');
+        const colorsPayload = document.getElementById('id_opcoes_resposta_cores');
         const nativeWrap = document.getElementById('opcoes-resposta-native');
         const enhancedWrap = document.getElementById('opcoes-resposta-enhanced');
         const input = document.getElementById('opcao-resposta-input');
+        const colorInput = document.getElementById('opcao-resposta-color');
         const addBtn = document.getElementById('opcao-resposta-add');
         const listEl = document.getElementById('opcoes-resposta-list');
         const emptyEl = document.getElementById('opcoes-resposta-empty');
 
-        if (!tipoSelect || !wrap || !textarea || !nativeWrap || !enhancedWrap || !input || !addBtn || !listEl || !emptyEl) return;
+        if (!tipoSelect || !wrap || !textarea || !colorsPayload || !nativeWrap || !enhancedWrap || !input || !colorInput || !addBtn || !listEl || !emptyEl) return;
+
+        function normalizeKey(value) {
+            return String(value || '')
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/\s+/g, ' ');
+        }
+
+        function isHexColor(value) {
+            return /^#[0-9a-f]{6}$/i.test(String(value || '').trim());
+        }
+
+        function parseColorPayload() {
+            const raw = (colorsPayload.value || '').trim();
+            if (!raw) return {};
+            try {
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') return {};
+                const out = {};
+                Object.keys(parsed).forEach(function(label) {
+                    const key = normalizeKey(label);
+                    const color = String(parsed[label] || '').trim().toLowerCase();
+                    if (!key || !isHexColor(color)) return;
+                    out[key] = color;
+                });
+                return out;
+            } catch (e) {
+                return {};
+            }
+        }
+
+        let colorByKey = parseColorPayload();
+
+        function syncColorPayload() {
+            const out = {};
+            parseValue().forEach(function(label) {
+                const key = normalizeKey(label);
+                const color = colorByKey[key];
+                if (!isHexColor(color)) return;
+                out[label] = String(color).toLowerCase();
+            });
+            colorsPayload.value = JSON.stringify(out);
+        }
 
         function parseValue() {
             const raw = (textarea.value || '').replace(/\r\n/g, '\n');
@@ -238,10 +290,18 @@
 
         function render() {
             const values = parseValue();
+            const allowedKeys = new Set(values.map(v => normalizeKey(v)));
+            Object.keys(colorByKey).forEach(function(key) {
+                if (!allowedKeys.has(key)) {
+                    delete colorByKey[key];
+                }
+            });
+
             listEl.innerHTML = '';
 
             if (!values.length) {
                 emptyEl.classList.remove('d-none');
+                syncColorPayload();
                 return;
             }
             emptyEl.classList.add('d-none');
@@ -249,9 +309,38 @@
             values.forEach((val, idx) => {
                 const li = document.createElement('li');
                 li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                const key = normalizeKey(val);
 
                 const nameSpan = document.createElement('span');
                 nameSpan.textContent = val;
+
+                const actions = document.createElement('div');
+                actions.className = 'd-flex align-items-center gap-2';
+
+                const optionColor = document.createElement('input');
+                optionColor.type = 'color';
+                optionColor.className = 'form-control form-control-color';
+                optionColor.title = 'Selecionar cor';
+                optionColor.value = colorByKey[key] || '#6c757d';
+                if (!colorByKey[key]) {
+                    optionColor.classList.add('opacity-50');
+                }
+                optionColor.addEventListener('change', function() {
+                    colorByKey[key] = optionColor.value;
+                    optionColor.classList.remove('opacity-50');
+                    syncColorPayload();
+                });
+
+                const clearColorBtn = document.createElement('button');
+                clearColorBtn.type = 'button';
+                clearColorBtn.className = 'btn btn-sm btn-outline-secondary';
+                clearColorBtn.textContent = 'Sem cor';
+                clearColorBtn.addEventListener('click', function() {
+                    delete colorByKey[key];
+                    optionColor.value = '#6c757d';
+                    optionColor.classList.add('opacity-50');
+                    syncColorPayload();
+                });
 
                 const removeBtn = document.createElement('button');
                 removeBtn.type = 'button';
@@ -263,10 +352,15 @@
                     render();
                 });
 
+                actions.appendChild(optionColor);
+                actions.appendChild(clearColorBtn);
+                actions.appendChild(removeBtn);
                 li.appendChild(nameSpan);
-                li.appendChild(removeBtn);
+                li.appendChild(actions);
                 listEl.appendChild(li);
             });
+
+            syncColorPayload();
         }
 
         function addCurrent() {
@@ -282,6 +376,11 @@
             }
 
             existing.push(value);
+            const key = normalizeKey(value);
+            const color = String(colorInput.value || '').trim().toLowerCase();
+            if (isHexColor(color)) {
+                colorByKey[key] = color;
+            }
             writeValue(existing);
             input.value = '';
             render();

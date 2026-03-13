@@ -242,16 +242,16 @@
                                             </div>
 
                                             {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
-                                                <select class="form-select" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <select class="form-select js-colored-answer" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" {% if pergunta.obrigatoria %}required{% endif %}>
                                                     <option value="">-- Selecione --</option>
-                                                    <option value="Sim">Sim</option>
-                                                    <option value="Não">Não</option>
+                                                    <option value="Sim" data-color="#198754">Sim</option>
+                                                    <option value="Não" data-color="#dc3545">Não</option>
                                                 </select>
                                             {% elif pergunta.tipo_resposta == 'LISTA' %}
-                                                <select class="form-select" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <select class="form-select js-colored-answer" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" {% if pergunta.obrigatoria %}required{% endif %}>
                                                     <option value="">-- Selecione --</option>
-                                                    {% for opt in pergunta.opcoes_resposta_list %}
-                                                        <option value="{{ opt }}">{{ opt }}</option>
+                                                    {% for opt_data in pergunta.opcoes_resposta_com_cores %}
+                                                        <option value="{{ opt_data.label }}" {% if opt_data.color %}data-color="{{ opt_data.color }}"{% endif %}>{{ opt_data.label }}</option>
                                                     {% endfor %}
                                                 </select>
                                             {% elif pergunta.tipo_resposta == 'NUMERO' %}
@@ -317,16 +317,16 @@
                                                 <div class="weekly-grid__item">
                                                     <label class="form-label small text-muted mb-1">{{ dia_label }}</label>
                                                     {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
-                                                        <select class="form-select form-select-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                        <select class="form-select form-select-sm js-colored-answer" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
                                                             <option value="">-- Selecione --</option>
-                                                            <option value="Sim">Sim</option>
-                                                            <option value="Não">Não</option>
+                                                            <option value="Sim" data-color="#198754">Sim</option>
+                                                            <option value="Não" data-color="#dc3545">Não</option>
                                                         </select>
                                                     {% elif pergunta.tipo_resposta == 'LISTA' %}
-                                                        <select class="form-select form-select-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                        <select class="form-select form-select-sm js-colored-answer" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
                                                             <option value="">-- Selecione --</option>
-                                                            {% for opt in pergunta.opcoes_resposta_list %}
-                                                                <option value="{{ opt }}">{{ opt }}</option>
+                                                            {% for opt_data in pergunta.opcoes_resposta_com_cores %}
+                                                                <option value="{{ opt_data.label }}" {% if opt_data.color %}data-color="{{ opt_data.color }}"{% endif %}>{{ opt_data.label }}</option>
                                                             {% endfor %}
                                                         </select>
                                                     {% elif pergunta.tipo_resposta == 'NUMERO' %}
@@ -395,16 +395,16 @@
                                     <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
                                 </div>
                                 {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
-                                    <select class="form-select" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                    <select class="form-select js-colored-answer" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
                                         <option value="">-- Selecione --</option>
-                                        <option value="Sim">Sim</option>
-                                        <option value="Não">Não</option>
+                                        <option value="Sim" data-color="#198754">Sim</option>
+                                        <option value="Não" data-color="#dc3545">Não</option>
                                     </select>
                                 {% elif pergunta.tipo_resposta == 'LISTA' %}
-                                    <select class="form-select" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                    <select class="form-select js-colored-answer" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
                                         <option value="">-- Selecione --</option>
-                                        {% for opt in pergunta.opcoes_resposta_list %}
-                                            <option value="{{ opt }}">{{ opt }}</option>
+                                        {% for opt_data in pergunta.opcoes_resposta_com_cores %}
+                                            <option value="{{ opt_data.label }}" {% if opt_data.color %}data-color="{{ opt_data.color }}"{% endif %}>{{ opt_data.label }}</option>
                                         {% endfor %}
                                     </select>
                                 {% elif pergunta.tipo_resposta == 'NUMERO' %}
@@ -472,16 +472,16 @@
                                     <div class="weekly-grid__item">
                                         <label class="form-label small text-muted mb-1">{{ dia_label }}</label>
                                         {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
-                                            <select class="form-select form-select-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                            <select class="form-select form-select-sm js-colored-answer" name="resposta_{{ pergunta.id }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
                                                 <option value="">-- Selecione --</option>
-                                                <option value="Sim">Sim</option>
-                                                <option value="Não">Não</option>
+                                                <option value="Sim" data-color="#198754">Sim</option>
+                                                <option value="Não" data-color="#dc3545">Não</option>
                                             </select>
                                         {% elif pergunta.tipo_resposta == 'LISTA' %}
-                                            <select class="form-select form-select-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                            <select class="form-select form-select-sm js-colored-answer" name="resposta_{{ pergunta.id }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
                                                 <option value="">-- Selecione --</option>
-                                                {% for opt in pergunta.opcoes_resposta_list %}
-                                                    <option value="{{ opt }}">{{ opt }}</option>
+                                                {% for opt_data in pergunta.opcoes_resposta_com_cores %}
+                                                    <option value="{{ opt_data.label }}" {% if opt_data.color %}data-color="{{ opt_data.color }}"{% endif %}>{{ opt_data.label }}</option>
                                                 {% endfor %}
                                             </select>
                                         {% elif pergunta.tipo_resposta == 'NUMERO' %}
@@ -575,6 +575,41 @@
         }
     })();
     {% endif %}
+
+    // Realce de cor por opção (Lista e Sim/Não)
+    (function() {
+        function hexToRgba(hex, alpha) {
+            const value = String(hex || '').replace('#', '').trim();
+            if (!/^[0-9a-fA-F]{6}$/.test(value)) return '';
+            const r = parseInt(value.substring(0, 2), 16);
+            const g = parseInt(value.substring(2, 4), 16);
+            const b = parseInt(value.substring(4, 6), 16);
+            return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+        }
+
+        function applyColor(selectEl) {
+            if (!selectEl) return;
+            const selected = selectEl.options[selectEl.selectedIndex];
+            const color = selected ? (selected.getAttribute('data-color') || '').trim() : '';
+
+            selectEl.style.color = '';
+            selectEl.style.borderColor = '';
+            selectEl.style.backgroundColor = '';
+
+            if (!color) return;
+            selectEl.style.color = color;
+            selectEl.style.borderColor = color;
+            selectEl.style.backgroundColor = hexToRgba(color, 0.08);
+        }
+
+        const coloredSelects = document.querySelectorAll('select.js-colored-answer');
+        coloredSelects.forEach(function(selectEl) {
+            applyColor(selectEl);
+            selectEl.addEventListener('change', function() {
+                applyColor(selectEl);
+            });
+        });
+    })();
 
     // Auto-preencher período para auditorias DIÁRIA ou APLICAÇÃO ÚNICA
     {% if modelo and modelo.periodicidade == 'DIARIA' or modelo and modelo.periodicidade == 'UNICA' %}

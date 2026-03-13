@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 
 from .models import ComentarioAuditoria, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
@@ -82,6 +84,8 @@ class ModeloAuditoriaForm(forms.ModelForm):
 
 
 class PerguntaAuditoriaForm(forms.ModelForm):
+    opcoes_resposta_cores = forms.CharField(required=False, widget=forms.HiddenInput())
+
     class Meta:
         model = PerguntaAuditoria
         fields = [
@@ -92,6 +96,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
             "tipo_resposta",
             "preenchimento_semanal",
             "opcoes_resposta",
+            "opcoes_resposta_cores",
             "aplicar_no_grid",
             "ordem",
             "obrigatoria",
@@ -125,6 +130,11 @@ class PerguntaAuditoriaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        if not self.is_bound:
+            current_colors = getattr(self.instance, "opcoes_resposta_cores", {})
+            if isinstance(current_colors, dict):
+                self.initial["opcoes_resposta_cores"] = json.dumps(current_colors, ensure_ascii=False)
 
         modelo_id = None
         if self.is_bound:
@@ -165,6 +175,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         subcategoria = (cleaned_data.get("subcategoria") or "").strip()
         tipo_resposta = cleaned_data.get("tipo_resposta")
         opcoes_resposta = (cleaned_data.get("opcoes_resposta") or "").strip()
+        opcoes_resposta_cores_raw = (cleaned_data.get("opcoes_resposta_cores") or "").strip()
 
         if modelo and subcategoria:
             allowed = getattr(modelo, "subcategorias_list", []) or []
@@ -176,10 +187,47 @@ class PerguntaAuditoriaForm(forms.ModelForm):
                         "Sub-categoria inválida para este modelo. Cadastre a sub-categoria no modelo e selecione-a aqui.",
                     )
 
+        values = [v.strip() for v in opcoes_resposta.replace("\r\n", "\n").split("\n") if v.strip()]
         if tipo_resposta == "LISTA":
-            values = [v.strip() for v in opcoes_resposta.replace("\r\n", "\n").split("\n") if v.strip()]
             if not values:
                 self.add_error("opcoes_resposta", "Informe pelo menos 1 opção para o tipo 'Lista (opções)'.")
+
+        parsed_colors = {}
+        if opcoes_resposta_cores_raw:
+            try:
+                raw_map = json.loads(opcoes_resposta_cores_raw)
+                if isinstance(raw_map, dict):
+                    parsed_colors = raw_map
+            except Exception:
+                self.add_error("opcoes_resposta", "Falha ao processar as cores das opções.")
+
+        if tipo_resposta == "SIM_NAO":
+            cleaned_data["opcoes_resposta_cores"] = {
+                "Sim": "#198754",
+                "Não": "#dc3545",
+            }
+            return cleaned_data
+
+        if tipo_resposta == "LISTA":
+            values_by_key = {
+                PerguntaAuditoria._normalize_option_key(v): v
+                for v in values
+            }
+            cleaned_map = {}
+            for raw_key, raw_color in parsed_colors.items():
+                key = PerguntaAuditoria._normalize_option_key(raw_key)
+                color = str(raw_color or "").strip().lower()
+                if not key or not color:
+                    continue
+                if key not in values_by_key:
+                    continue
+                if not PerguntaAuditoria._is_hex_color(color):
+                    self.add_error("opcoes_resposta", f"Cor inválida para a opção '{values_by_key[key]}'.")
+                    continue
+                cleaned_map[values_by_key[key]] = color
+            cleaned_data["opcoes_resposta_cores"] = cleaned_map
+        else:
+            cleaned_data["opcoes_resposta_cores"] = {}
         return cleaned_data
 
 

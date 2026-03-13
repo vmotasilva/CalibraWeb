@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+import re
+import unicodedata
 import uuid
 
 
@@ -184,6 +186,12 @@ class PerguntaAuditoria(models.Model):
         verbose_name="Opções de resposta",
         help_text="Apenas para tipo 'Lista (opções)'. Use uma opção por linha.",
     )
+    opcoes_resposta_cores = models.JSONField(
+        blank=True,
+        default=dict,
+        verbose_name="Cores das opções",
+        help_text="Mapa de cores por opção (hex), usado em tipo Lista e Sim/Não.",
+    )
 
     aplicar_no_grid = models.BooleanField(
         default=True,
@@ -209,6 +217,25 @@ class PerguntaAuditoria(models.Model):
     def __str__(self):
         return f"{self.modelo.nome} - {self.pergunta}"
 
+    @staticmethod
+    def _normalize_option_key(value: str) -> str:
+        s = str(value or "").strip().lower()
+        s = unicodedata.normalize("NFKD", s)
+        s = "".join(ch for ch in s if not unicodedata.combining(ch))
+        return re.sub(r"\s+", " ", s)
+
+    @staticmethod
+    def _is_hex_color(value: str) -> bool:
+        return bool(re.fullmatch(r"#[0-9a-fA-F]{6}", str(value or "").strip()))
+
+    def _default_color_for_label(self, label: str) -> str:
+        key = self._normalize_option_key(label)
+        if key in {"sim", "conforme"}:
+            return "#198754"
+        if key in {"nao", "nao conforme"}:
+            return "#dc3545"
+        return ""
+
     @property
     def opcoes_resposta_list(self) -> list[str]:
         raw = (self.opcoes_resposta or "").replace("\r\n", "\n")
@@ -224,6 +251,39 @@ class PerguntaAuditoria(models.Model):
             seen.add(key)
             values.append(p)
         return values
+
+    @property
+    def opcoes_resposta_cores_normalized(self) -> dict[str, str]:
+        raw = self.opcoes_resposta_cores if isinstance(self.opcoes_resposta_cores, dict) else {}
+        result: dict[str, str] = {}
+        for key, value in raw.items():
+            normalized_key = self._normalize_option_key(key)
+            color = str(value or "").strip()
+            if not normalized_key:
+                continue
+            if not self._is_hex_color(color):
+                continue
+            result[normalized_key] = color.lower()
+        return result
+
+    @property
+    def opcoes_resposta_com_cores(self) -> list[dict[str, str]]:
+        color_map = self.opcoes_resposta_cores_normalized
+        options: list[dict[str, str]] = []
+        for opt in self.opcoes_resposta_list:
+            color = color_map.get(self._normalize_option_key(opt), "")
+            if not color:
+                color = self._default_color_for_label(opt)
+            options.append({"label": opt, "color": color})
+        return options
+
+    def get_cor_resposta(self, valor: str) -> str:
+        color_map = self.opcoes_resposta_cores_normalized
+        key = self._normalize_option_key(valor)
+        color = color_map.get(key, "")
+        if color:
+            return color
+        return self._default_color_for_label(valor)
 
 
 class RegistroAuditoria(models.Model):
