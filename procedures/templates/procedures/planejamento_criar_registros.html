@@ -57,12 +57,12 @@
                             <div class="col-md-6">
                                 <div class="card h-100">
                                     <div class="card-header">
-                                        <h6 class="mb-0">Participantes planejados</h6>
+                                        <h6 class="mb-0">Participantes</h6>
                                         <small class="text-muted">Desmarque quem não participou.</small>
                                     </div>
-                                    <div class="card-body" style="max-height: 280px; overflow:auto;">
+                                    <div class="card-body" id="box-participantes" style="max-height: 280px; overflow:auto;">
                                         {% for colab in participantes_planejados %}
-                                        <div class="form-check mb-2">
+                                        <div class="form-check mb-2" data-colab-id="{{ colab.id }}">
                                             <input class="form-check-input" type="checkbox" name="participantes_planejados" value="{{ colab.id }}" id="colab-pl-{{ colab.id }}" checked>
                                             <label class="form-check-label" for="colab-pl-{{ colab.id }}">
                                                 {{ colab.nome_completo|default:"Sem nome" }}
@@ -82,14 +82,20 @@
                                         <small class="text-muted">Selecione quem participou, mesmo sem estar no planejamento inicial.</small>
                                     </div>
                                     <div class="card-body">
-                                        <select name="participantes_adicionais" class="form-select" multiple size="10">
+                                        <input type="text" id="buscar-participantes-extras" class="form-control form-control-sm mb-2" placeholder="Buscar participante...">
+                                        <select id="participantes-adicionais-select" class="form-select" multiple size="9">
                                             {% for colab in participantes_adicionais %}
                                             <option value="{{ colab.id }}">{{ colab.nome_completo|default:"Sem nome" }}</option>
                                             {% empty %}
                                             <option value="" disabled>Nenhum colaborador adicional disponível</option>
                                             {% endfor %}
                                         </select>
-                                        <small class="text-muted d-block mt-2">Use Ctrl/Cmd para selecionar vários.</small>
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <small class="text-muted">Use Ctrl/Cmd para selecionar vários.</small>
+                                            <button type="button" id="btn-adicionar-participantes" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-plus-circle"></i> Adicionar
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -115,4 +121,86 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const busca = document.getElementById('buscar-participantes-extras');
+    const extrasSelect = document.getElementById('participantes-adicionais-select');
+    const btnAdicionar = document.getElementById('btn-adicionar-participantes');
+    const boxParticipantes = document.getElementById('box-participantes');
+
+    function normalizar(texto) {
+        return String(texto || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    if (busca && extrasSelect) {
+        busca.addEventListener('input', function () {
+            const termo = normalizar(busca.value);
+            Array.from(extrasSelect.options).forEach(function (opt) {
+                const texto = normalizar(opt.textContent || '');
+                opt.hidden = !!termo && !texto.includes(termo);
+            });
+        });
+    }
+
+    if (btnAdicionar && extrasSelect && boxParticipantes) {
+        btnAdicionar.addEventListener('click', function () {
+            const selecionados = Array.from(extrasSelect.selectedOptions).filter(function (opt) {
+                return opt.value && !opt.disabled;
+            });
+
+            if (!selecionados.length) {
+                return;
+            }
+
+            selecionados.forEach(function (opt) {
+                const id = String(opt.value);
+                const nome = String(opt.textContent || '').trim();
+
+                if (!id || !nome) {
+                    return;
+                }
+
+                const existente = boxParticipantes.querySelector('[data-colab-id="' + id + '"] input[name="participantes_planejados"]');
+                if (existente) {
+                    existente.checked = true;
+                } else {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'form-check mb-2';
+                    wrapper.setAttribute('data-colab-id', id);
+
+                    const input = document.createElement('input');
+                    input.className = 'form-check-input';
+                    input.type = 'checkbox';
+                    input.name = 'participantes_planejados';
+                    input.value = id;
+                    input.id = 'colab-pl-extra-' + id;
+                    input.checked = true;
+
+                    const label = document.createElement('label');
+                    label.className = 'form-check-label';
+                    label.setAttribute('for', input.id);
+                    label.textContent = nome;
+
+                    wrapper.appendChild(input);
+                    wrapper.appendChild(label);
+                    boxParticipantes.appendChild(wrapper);
+                }
+
+                opt.remove();
+            });
+
+            if (busca) {
+                busca.value = '';
+                busca.dispatchEvent(new Event('input'));
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
