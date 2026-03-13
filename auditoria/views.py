@@ -211,19 +211,25 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 "tipo_resposta_display": pergunta.get_tipo_resposta_display(),
                 "subcategoria": (pergunta.subcategoria or "").strip(),
                 "resposta_geral": "",
+                "resposta_geral_cor": "",
                 "respostas_por_dia": {},
+                "respostas_por_dia_cores": {},
                 "comentarios": comentarios_por_pergunta.get(str(pergunta.id), []),
             }
             perguntas_consolidadas[pergunta.id] = item
 
         valor = (resposta.valor or "").strip()
+        cor_valor = pergunta.get_cor_resposta(valor)
         if resposta.dia_semana:
             item["respostas_por_dia"][resposta.dia_semana] = valor
+            item["respostas_por_dia_cores"][resposta.dia_semana] = cor_valor
         else:
             if item["resposta_geral"] and valor and valor != item["resposta_geral"]:
                 item["resposta_geral"] = f"{item['resposta_geral']} | {valor}"
+                item["resposta_geral_cor"] = ""
             elif valor:
                 item["resposta_geral"] = valor
+                item["resposta_geral_cor"] = cor_valor
 
     blocos_map: "OrderedDict[str, dict]" = OrderedDict()
     for item in perguntas_consolidadas.values():
@@ -239,6 +245,13 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
             **item,
             "usa_colunas_dia": usa_colunas_dia,
             "dia_values": [respostas_por_dia.get(k, "") for k in dia_keys],
+            "dia_cells": [
+                {
+                    "value": respostas_por_dia.get(k, ""),
+                    "color": item["respostas_por_dia_cores"].get(k, ""),
+                }
+                for k in dia_keys
+            ],
             "comentarios_texto": "\n".join(item["comentarios"]),
             "tem_resposta": bool((item["resposta_geral"] or "").strip() or has_resposta_dia),
         }
@@ -634,6 +647,7 @@ def pergunta_duplicate(request, pk):
             tipo_resposta=pergunta.tipo_resposta,
             preenchimento_semanal=pergunta.preenchimento_semanal,
             opcoes_resposta=pergunta.opcoes_resposta,
+            opcoes_resposta_cores=pergunta.opcoes_resposta_cores,
             aplicar_no_grid=pergunta.aplicar_no_grid,
             ordem=_get_next_pergunta_ordem(pergunta.modelo_id),
             subcategoria=pergunta.subcategoria,
@@ -708,6 +722,7 @@ def modelo_duplicate(request, pk):
                 tipo_resposta=p.tipo_resposta,
                 preenchimento_semanal=p.preenchimento_semanal,
                 opcoes_resposta=p.opcoes_resposta,
+                opcoes_resposta_cores=p.opcoes_resposta_cores,
                 aplicar_no_grid=p.aplicar_no_grid,
                 ordem=p.ordem,
                 subcategoria=p.subcategoria,
@@ -1305,10 +1320,14 @@ def registro_detail(request, pk):
 
 
 @login_required
-def registro_exportar_excel(request, pk):
-    """Exporta o detalhe do registro em formato de relatório consolidado."""
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
+def registro_exportar_pdf(request, pk):
+    """Exporta o detalhe do registro em PDF no formato consolidado por sub-categoria."""
+    from xml.sax.saxutils import escape
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     registro = get_object_or_404(
         _filter_registros_para_usuario(
@@ -1323,21 +1342,48 @@ def registro_exportar_excel(request, pk):
     dia_labels = resumo["dia_labels"]
     exibir_dias = resumo["exibir_dias"]
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Relatorio"
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=1.2 * cm,
+        rightMargin=1.2 * cm,
+        topMargin=1.0 * cm,
+        bottomMargin=1.0 * cm,
+        title=f"Relatório de Auditoria - Registro #{registro.id}",
+    )
 
-    headers = ["Ordem", "Pergunta", "Tipo", "Resposta"]
-    if exibir_dias:
-        headers.extend([dia_labels.get(k, k) for k in dia_keys])
-    headers.append("Comentários")
-    total_colunas = len(headers)
+    styles = getSampleStyleSheet()
+    style_title = ParagraphStyle(
+        "AuditoriaTitle",
+        parent=styles["Heading2"],
+        fontSize=14,
+        leading=17,
+        spaceAfter=10,
+    )
+    style_section = ParagraphStyle(
+        "AuditoriaSection",
+        parent=styles["Heading4"],
+        fontSize=10,
+        leading=12,
+        textColor=colors.HexColor("#0f5132"),
+        spaceBefore=8,
+        spaceAfter=4,
+    )
+    style_cell = ParagraphStyle(
+        "AuditoriaCell",
+        parent=styles["BodyText"],
+        fontSize=8,
+        leading=10,
+    )
+    style_cell_bold = ParagraphStyle(
+        "AuditoriaCellBold",
+        parent=style_cell,
+        fontName="Helvetica-Bold",
+    )
 
-    row = 1
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=total_colunas)
-    ws.cell(row=row, column=1, value=f"Relatório de Auditoria - Registro #{registro.id}")
-    ws.cell(row=row, column=1).font = Font(bold=True, size=14)
-    row += 2
+    elements = []
+    elements.append(Paragraph(f"Relatório de Auditoria - Registro #{registro.id}", style_title))
 
     avaliador = ""
     if registro.avaliador_id:
@@ -1351,84 +1397,89 @@ def registro_exportar_excel(request, pk):
         periodo = f"Até {registro.periodo_fim:%d/%m/%Y}"
 
     info_rows = [
-        ("Modelo", registro.modelo.nome or ""),
-        ("Objeto da Auditoria", registro.modelo.objeto_auditoria or ""),
-        ("Data da Auditoria", registro.data_auditoria.strftime("%d/%m/%Y") if registro.data_auditoria else ""),
-        ("Período", periodo),
-        ("Avaliador", avaliador),
-        ("ITEM/O.S.", registro.item_os or ""),
-        ("Observações", registro.observacoes or ""),
+        [Paragraph("<b>Modelo</b>", style_cell_bold), Paragraph(escape(registro.modelo.nome or ""), style_cell)],
+        [Paragraph("<b>Objeto da Auditoria</b>", style_cell_bold), Paragraph(escape(registro.modelo.objeto_auditoria or ""), style_cell)],
+        [Paragraph("<b>Data da Auditoria</b>", style_cell_bold), Paragraph(escape(registro.data_auditoria.strftime("%d/%m/%Y") if registro.data_auditoria else ""), style_cell)],
+        [Paragraph("<b>Período</b>", style_cell_bold), Paragraph(escape(periodo), style_cell)],
+        [Paragraph("<b>Avaliador</b>", style_cell_bold), Paragraph(escape(avaliador), style_cell)],
+        [Paragraph("<b>ITEM/O.S.</b>", style_cell_bold), Paragraph(escape(registro.item_os or ""), style_cell)],
+        [Paragraph("<b>Observações</b>", style_cell_bold), Paragraph(escape(registro.observacoes or ""), style_cell)],
     ]
-    for label, value in info_rows:
-        ws.cell(row=row, column=1, value=label).font = Font(bold=True)
-        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=total_colunas)
-        ws.cell(row=row, column=2, value=value)
-        ws.cell(row=row, column=2).alignment = Alignment(wrap_text=True, vertical="top")
-        row += 1
-    row += 1
+    info_table = Table(info_rows, colWidths=[4.2 * cm, 22.0 * cm], repeatRows=0)
+    info_table.setStyle(
+        TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#d0d7de")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f8f9fa")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    elements.append(info_table)
+    elements.append(Spacer(1, 8))
 
-    header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
-    subcat_fill = PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid")
-    header_font = Font(color="FFFFFF", bold=True)
+    headers = ["Ordem", "Pergunta"]
+    if exibir_dias:
+        headers.extend([dia_labels.get(k, k) for k in dia_keys])
+    headers.append("Comentários")
+
+    if exibir_dias:
+        col_widths = [1.3 * cm, 6.0 * cm] + [1.8 * cm for _ in dia_keys] + [10.2 * cm]
+    else:
+        col_widths = [1.5 * cm, 10.5 * cm, 15.0 * cm]
 
     for bloco in resumo["blocos"]:
-        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=total_colunas)
-        ws.cell(row=row, column=1, value=f"Sub-categoria: {bloco['nome']}")
-        ws.cell(row=row, column=1).font = Font(bold=True)
-        ws.cell(row=row, column=1).fill = subcat_fill
-        row += 1
+        elements.append(Paragraph(f"Sub-categoria: {escape(bloco['nome'])}", style_section))
 
-        for col_idx, title in enumerate(headers, start=1):
-            cell = ws.cell(row=row, column=col_idx, value=title)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        row += 1
-
+        table_data = [[Paragraph(f"<b>{escape(h)}</b>", style_cell) for h in headers]]
         for linha in bloco["linhas"]:
-            values = [
-                linha["ordem"],
-                linha["pergunta"],
-                linha["tipo_resposta_display"],
-                linha["resposta_geral"] or "",
+            comentarios_texto = "<br/>".join(escape(c) for c in linha["comentarios"]) or "-"
+            row = [
+                Paragraph(escape(str(linha["ordem"])), style_cell),
+                Paragraph(escape(linha["pergunta"]), style_cell),
             ]
             if exibir_dias:
-                values.extend([linha["respostas_por_dia"].get(k, "") for k in dia_keys])
-            values.append("\n".join(linha["comentarios"]))
+                row.extend(
+                    Paragraph(escape((linha["respostas_por_dia"].get(k, "") or "-").strip() or "-"), style_cell)
+                    for k in dia_keys
+                )
+            row.append(Paragraph(comentarios_texto, style_cell))
+            table_data.append(row)
 
-            for col_idx, value in enumerate(values, start=1):
-                cell = ws.cell(row=row, column=col_idx, value=value)
-                cell.alignment = Alignment(vertical="top", wrap_text=True)
-            row += 1
+        bloco_table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        bloco_table.setStyle(
+            TableStyle(
+                [
+                    ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#cfd6dd")),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("ALIGN", (0, 0), (0, -1), "CENTER"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ]
+            )
+        )
+        elements.append(bloco_table)
+        elements.append(Spacer(1, 8))
 
-        row += 1
-
-    # Ajustes visuais básicos
-    ws.column_dimensions["A"].width = 10
-    ws.column_dimensions["B"].width = 48
-    ws.column_dimensions["C"].width = 18
-    ws.column_dimensions["D"].width = 24
-    if exibir_dias:
-        start = 5
-        for idx in range(len(dia_keys)):
-            ws.column_dimensions[chr(64 + start + idx)].width = 14
-        comentarios_col = 4 + len(dia_keys) + 1
-    else:
-        comentarios_col = 5
-    ws.column_dimensions[chr(64 + comentarios_col)].width = 44
-
-    stream = BytesIO()
-    wb.save(stream)
-    stream.seek(0)
+    doc.build(elements)
+    buffer.seek(0)
 
     nome_modelo = "".join(c for c in (registro.modelo.nome or "modelo") if c.isalnum() or c in {" ", "-", "_"}).strip()
     if not nome_modelo:
         nome_modelo = f"modelo_{registro.modelo_id}"
-    filename = f"relatorio_registro_{registro.id}_{nome_modelo}.xlsx"
+    filename = f"relatorio_registro_{registro.id}_{nome_modelo}.pdf"
 
     response = HttpResponse(
-        stream.getvalue(),
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        buffer.getvalue(),
+        content_type="application/pdf",
     )
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
