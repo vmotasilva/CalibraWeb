@@ -2,10 +2,12 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Q, Count
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_time
 from django.http import JsonResponse
+from datetime import datetime, timedelta
 
 from procedures.models import (
     PlanejamentoTreinamento,
@@ -13,6 +15,7 @@ from procedures.models import (
     Disciplina,
     DisciplinaProcedimento,
     RegistroTreinamento,
+    ListaPresenca,
     AvaliacaoHabilidade,
     PerfilTreinamento,
     MatrizHabilidade,
@@ -491,31 +494,70 @@ def criar_registros_planejamento_view(request, planejamento_id):
                 f'Horário: {horario_realizado.strftime("%H:%M")} | Duração: {duracao_minutos} min'
             )
 
-            registros_criados = 0
-            for colaborador in colaboradores_finais:
-                for procedimento in procedimentos:
-                    if not RegistroTreinamento.objects.filter(
-                        procedimento=procedimento,
-                        colaborador=colaborador,
-                        data_treinamento=data_treinamento,
-                    ).exists():
-                        RegistroTreinamento.objects.create(
+            with transaction.atomic():
+                carga_horaria_horas = round(duracao_minutos / 60, 2)
+                hora_fim = (
+                    datetime.combine(data_treinamento, horario_realizado) + timedelta(minutes=duracao_minutos)
+                ).time()
+
+                observacao_lista_auto = f'Gerada automaticamente a partir do planejamento #{planejamento.id}.'
+                lista_presenca = ListaPresenca.objects.filter(
+                    data_sessao=data_treinamento,
+                    observacoes=observacao_lista_auto,
+                ).order_by('-id').first()
+
+                # Cria automaticamente uma lista de presença da sessão realizada.
+                if not lista_presenca:
+                    lista_presenca = ListaPresenca.objects.create(
+                        titulo=planejamento.titulo,
+                        instrutor=planejamento.instrutor,
+                        instrutor_nome=planejamento.instrutor.nome_completo if planejamento.instrutor else '',
+                        data_sessao=data_treinamento,
+                        hora_inicio=horario_realizado,
+                        hora_fim=hora_fim,
+                        carga_horaria=carga_horaria_horas,
+                        local=planejamento.local,
+                        observacoes=observacao_lista_auto,
+                        criado_por=request.user,
+                    )
+
+                registros_criados = 0
+                for colaborador in colaboradores_finais:
+                    for procedimento in procedimentos:
+                        registro, criado = RegistroTreinamento.objects.get_or_create(
                             procedimento=procedimento,
                             colaborador=colaborador,
                             data_treinamento=data_treinamento,
-                            observacoes=observacao_base,
+                            defaults={
+                                'observacoes': observacao_base,
+                                'lista_presenca': lista_presenca,
+                            },
                         )
-                        registros_criados += 1
 
-            planejamento.status = 'REALIZADO'
-            planejamento.data_realizada = data_treinamento
-            planejamento.horario_previsto = horario_realizado
-            planejamento.carga_horaria = duracao_minutos
-            planejamento.save(update_fields=['status', 'data_realizada', 'horario_previsto', 'carga_horaria', 'atualizado_em'])
+                        if criado:
+                            registros_criados += 1
+                            continue
+
+                        update_fields = []
+                        if registro.lista_presenca_id != lista_presenca.id:
+                            registro.lista_presenca = lista_presenca
+                            update_fields.append('lista_presenca')
+                        if not registro.observacoes:
+                            registro.observacoes = observacao_base
+                            update_fields.append('observacoes')
+                        if update_fields:
+                            registro.save(update_fields=update_fields)
+
+                planejamento.status = 'REALIZADO'
+                planejamento.data_realizada = data_treinamento
+                planejamento.horario_previsto = horario_realizado
+                planejamento.carga_horaria = duracao_minutos
+                planejamento.save(update_fields=['status', 'data_realizada', 'horario_previsto', 'carga_horaria', 'atualizado_em'])
 
             messages.success(
                 request,
-                f'{registros_criados} registros criados. Participantes confirmados: {len(colaboradores_finais)}.',
+                f'{registros_criados} registros criados. Participantes confirmados: {len(colaboradores_finais)}. '
+                f'Lista de presença gerada: {lista_presenca.codigo}.',
             )
             return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
 
