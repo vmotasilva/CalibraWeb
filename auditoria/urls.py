@@ -27,6 +27,7 @@ urlpatterns = [
     path("registros/<int:pk>/remover/", views.registro_delete, name="registro_delete"),
     path("registros/<int:pk>/", views.registro_detail, name="registro_detail"),
     path("modelos/<int:modelo_id>/registros/", views.registros_por_modelo, name="registros_por_modelo"),
+    path("modelos/<int:modelo_id>/registros/compartilhado/", views.registros_por_modelo, name="registros_por_modelo_compartilhado"),
     path(
         "modelos/<int:modelo_id>/comentarios/<int:pk>/editar/",
         views.comentario_edit,

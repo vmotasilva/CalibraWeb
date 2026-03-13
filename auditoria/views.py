@@ -1,11 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core import signing
 from django.db import models, transaction
 from django.db.models.deletion import ProtectedError
 from django.db.models import Count, Max
 from django.core.paginator import Paginator
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.dateparse import parse_date
@@ -27,6 +28,43 @@ from .models import (
 
 
 SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
+REPORT_SHARE_SALT = "auditoria.registros_por_modelo.share"
+REPORT_SHARE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 dias
+
+
+def _build_registro_report_share_token(modelo_id: int, inicio: str = "", fim: str = "", subcategoria: str = "") -> str:
+    payload = {
+        "m": int(modelo_id),
+        "i": (inicio or "").strip(),
+        "f": (fim or "").strip(),
+        "s": (subcategoria or "").strip(),
+    }
+    return signing.dumps(payload, salt=REPORT_SHARE_SALT, compress=True)
+
+
+def _read_registro_report_share_token(token: str) -> dict | None:
+    if not token:
+        return None
+    try:
+        payload = signing.loads(token, salt=REPORT_SHARE_SALT, max_age=REPORT_SHARE_MAX_AGE_SECONDS)
+    except signing.BadSignature:
+        return None
+    except signing.SignatureExpired:
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+    try:
+        modelo_id = int(payload.get("m"))
+    except (TypeError, ValueError):
+        return None
+
+    return {
+        "modelo_id": modelo_id,
+        "inicio": str(payload.get("i") or "").strip(),
+        "fim": str(payload.get("f") or "").strip(),
+        "subcategoria": str(payload.get("s") or "").strip(),
+    }
 
 
 def _has_special_view_all_colaboradores_perm(user) -> bool:
@@ -548,10 +586,25 @@ def modelo_duplicate(request, pk):
         return redirect("auditoria:modelos_list")
 
     modelo = get_object_or_404(ModeloAuditoria, pk=pk)
+    nome_sugerido = f"{modelo.nome} (Cópia)"
+    nome_informado = (request.POST.get("novo_nome") or "").strip()
+
+    if nome_informado:
+        if ModeloAuditoria.objects.filter(nome=nome_informado).exists():
+            messages.error(request, "Já existe um modelo com este nome. Escolha outro nome para a cópia.")
+            return redirect("auditoria:modelos_list")
+        novo_nome = nome_informado
+    else:
+        # Mantém comportamento antigo quando nenhum nome é informado no formulário.
+        novo_nome = _make_unique_modelo_copy_nome(modelo.nome)
+
+    # Se o usuário manteve o padrão "(Cópia)", garantimos unicidade automática.
+    if novo_nome == nome_sugerido and ModeloAuditoria.objects.filter(nome=novo_nome).exists():
+        novo_nome = _make_unique_modelo_copy_nome(modelo.nome)
 
     with transaction.atomic():
         novo_modelo = ModeloAuditoria(
-            nome=_make_unique_modelo_copy_nome(modelo.nome),
+            nome=novo_nome,
             objeto_auditoria=modelo.objeto_auditoria,
             link_sharepoint=modelo.link_sharepoint,
             periodicidade=modelo.periodicidade,
@@ -1302,10 +1355,23 @@ def dashboard_auditoria(request):
 @login_required
 def registros_por_modelo(request, modelo_id):
     """Lista todos os registros preenchidos de um modelo específico"""
-    modelo = get_object_or_404(
-        _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
-        pk=modelo_id,
-    )
+    share_token_raw = (request.GET.get("share_token") or "").strip()
+    share_data = _read_registro_report_share_token(share_token_raw) if share_token_raw else None
+    is_read_only = bool(share_data and int(share_data.get("modelo_id", 0)) == int(modelo_id))
+
+    if share_token_raw and not is_read_only:
+        return HttpResponseForbidden("Link de compartilhamento inválido ou expirado.")
+
+    if is_read_only:
+        modelo = get_object_or_404(ModeloAuditoria.objects.all(), pk=modelo_id)
+    else:
+        modelo = get_object_or_404(
+            _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
+            pk=modelo_id,
+        )
+
+    if request.method == "POST" and is_read_only:
+        return HttpResponseForbidden("Este link é somente leitura.")
 
     if request.method == "POST" and (request.POST.get("action") or "").strip() == "add_comment":
         texto = (request.POST.get("comentario") or "").strip()
@@ -1404,10 +1470,42 @@ def registros_por_modelo(request, modelo_id):
             )
         return redirect(redirect_url)
 
-    inicio_raw = (request.GET.get("inicio") or "").strip()
-    fim_raw = (request.GET.get("fim") or "").strip()
+    if request.method == "POST" and (request.POST.get("action") or "").strip() == "delete_question_comment":
+        comentario_id_raw = (request.POST.get("comentario_id") or "").strip()
+
+        if not comentario_id_raw.isdigit():
+            return JsonResponse({"success": False, "message": "Comentário inválido."}, status=400)
+
+        comentario = ComentarioRespostaAuditoria.objects.filter(
+            id=int(comentario_id_raw),
+            pergunta__modelo_id=modelo.id,
+        ).select_related("autor", "pergunta").first()
+
+        if not comentario:
+            return JsonResponse({"success": False, "message": "Comentário não encontrado."}, status=404)
+
+        can_manage = _auditoria_is_admin(request.user) or (comentario.autor_id == request.user.id)
+        if not can_manage:
+            return JsonResponse(
+                {"success": False, "message": "Você não tem permissão para remover este comentário."},
+                status=403,
+            )
+
+        pergunta_id = comentario.pergunta_id
+        comentario.delete()
+        return JsonResponse({"success": True, "comentario_id": int(comentario_id_raw), "pergunta_id": pergunta_id})
+
+    if is_read_only:
+        inicio_raw = (share_data.get("inicio") or "").strip()
+        fim_raw = (share_data.get("fim") or "").strip()
+    else:
+        inicio_raw = (request.GET.get("inicio") or "").strip()
+        fim_raw = (request.GET.get("fim") or "").strip()
     subcategorias = list(modelo.subcategorias_list)
-    subcategoria_raw = (request.GET.get("subcategoria") or "").strip()
+    if is_read_only:
+        subcategoria_raw = (share_data.get("subcategoria") or "").strip()
+    else:
+        subcategoria_raw = (request.GET.get("subcategoria") or "").strip()
     subcategoria = subcategoria_raw if (subcategoria_raw and subcategoria_raw in subcategorias) else ""
     inicio = parse_date(inicio_raw) if inicio_raw else None
     fim = parse_date(fim_raw) if fim_raw else None
@@ -1439,6 +1537,8 @@ def registros_por_modelo(request, modelo_id):
         base_params["fim"] = fim_raw
     if subcategoria:
         base_params["subcategoria"] = subcategoria
+    if is_read_only and share_token_raw:
+        base_params["share_token"] = share_token_raw
     base_params["per_page"] = str(per_page)
     querystring_base = urlencode(base_params)
     querystring_with_page = querystring_base
@@ -1472,11 +1572,26 @@ def registros_por_modelo(request, modelo_id):
 
     comentarios_resposta_qs = (
         ComentarioRespostaAuditoria.objects.filter(pergunta__in=perguntas)
-        .select_related("registro")
+        .select_related("registro", "autor")
         .order_by("criado_em", "id")
     )
     comentarios_resposta_qs = _filter_comentarios_resposta_por_periodo(comentarios_resposta_qs, inicio=inicio, fim=fim)
-    comentarios_resposta_por_pergunta = _build_comentarios_por_pergunta_qs(comentarios_resposta_qs, include_data=True)
+    comentarios_resposta_por_pergunta: dict[str, list[dict[str, object]]] = {}
+    can_admin = False if is_read_only else _auditoria_is_admin(request.user)
+    for comentario in comentarios_resposta_qs:
+        texto = (comentario.texto or "").strip()
+        data_vinculada = comentario.data_referencia or getattr(comentario.registro, "data_auditoria", None)
+        if data_vinculada:
+            texto = f"[{data_vinculada:%d/%m/%Y}] {texto}"
+
+        key = str(comentario.pergunta_id)
+        comentarios_resposta_por_pergunta.setdefault(key, []).append(
+            {
+                "id": comentario.id,
+                "texto": texto,
+                "can_delete": bool(can_admin or comentario.autor_id == request.user.id),
+            }
+        )
 
     # Gráfico agregado: situações por subcategoria
     subcat_chart: dict | None = None
@@ -1851,6 +1966,18 @@ def registros_por_modelo(request, modelo_id):
 
             estatisticas_perguntas.append(estatistica)
     
+    share_link = ""
+    if not is_read_only:
+        generated_token = _build_registro_report_share_token(
+            modelo_id=modelo.id,
+            inicio=inicio_raw,
+            fim=fim_raw,
+            subcategoria=subcategoria,
+        )
+        share_link = request.build_absolute_uri(
+            f"{reverse('auditoria:registros_por_modelo_compartilhado', args=[modelo.id])}?{urlencode({'share_token': generated_token})}"
+        )
+
     context = {
         "modelo": modelo,
         "page_obj": page_obj,
@@ -1873,6 +2000,9 @@ def registros_por_modelo(request, modelo_id):
         "inicio": inicio_raw,
         "fim": fim_raw,
         "comentario_data_default": fim_raw or inicio_raw,
+        "is_read_only": is_read_only,
+        "share_token": share_token_raw,
+        "share_link": share_link,
     }
     return render(request, "auditoria/registros_por_modelo.html", context)
 

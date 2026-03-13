@@ -37,17 +37,27 @@
                         </div>
                         <div class="col-md-6 text-start text-md-end">
                             <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                                <button type="button" class="btn btn-outline-dark btn-sm no-print" id="btnPrintPdf">
+                                    <i class="bi bi-printer"></i> Imprimir / PDF
+                                </button>
                                 {% if modelo.link_sharepoint %}
                                 <a href="{{ modelo.link_sharepoint }}" target="_blank" class="btn btn-outline-info btn-sm">
                                     <i class="bi bi-link-45deg"></i> SharePoint
                                 </a>
                                 {% endif %}
+                                {% if not is_read_only %}
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modal-compartilhar-relatorio">
+                                    <i class="bi bi-share"></i> Compartilhar Relatório
+                                </button>
+                                {% endif %}
+                                {% if not is_read_only %}
                                 <a href="{% url 'auditoria:exportar_respostas_excel' modelo.id %}" class="btn btn-outline-success btn-sm">
                                     <i class="bi bi-file-earmark-excel"></i> Exportar Excel
                                 </a>
                                 <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
                                     <i class="bi bi-plus-circle"></i> Novo Registro
                                 </a>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -56,12 +66,62 @@
                         <i class="bi bi-info-circle"></i> Total de registros preenchidos: <strong>{{ registros_count }}</strong>
                     </div>
 
+                    <style>
+                        @media print {
+                            .no-print,
+                            .btn,
+                            .modal,
+                            .pagination,
+                            .breadcrumb,
+                            .nav-tabs,
+                            .form-text {
+                                display: none !important;
+                            }
+                            .tab-pane {
+                                display: block !important;
+                                opacity: 1 !important;
+                            }
+                            .collapse {
+                                display: block !important;
+                            }
+                            .card {
+                                box-shadow: none !important;
+                                border: 1px solid #d0d0d0 !important;
+                                break-inside: avoid;
+                            }
+                            .container-fluid {
+                                margin-top: 0 !important;
+                                padding-top: 0 !important;
+                            }
+                            .table {
+                                font-size: 12px;
+                            }
+                            @page {
+                                size: A4;
+                                margin: 10mm;
+                            }
+                        }
+                    </style>
+
+                    {% if is_read_only %}
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-eye"></i> Visualização compartilhada: somente leitura.
+                        {% if inicio or fim %}
+                            <span class="ms-2">Período fixo: <strong>{{ inicio|default:'-' }}</strong> até <strong>{{ fim|default:'-' }}</strong>.</span>
+                        {% endif %}
+                        {% if subcategoria %}
+                            <span class="ms-2">Sub-categoria: <strong>{{ subcategoria }}</strong>.</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
                     {% if estatisticas_perguntas %}
                     <div class="card mb-3 border-primary">
                         <div class="card-header bg-primary text-white">
                             <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Análise das Respostas</h5>
                         </div>
                         <div class="card-body">
+                            {% if not is_read_only %}
                             <form method="get" class="row g-2 mb-3 align-items-end">
                                 <div class="col-lg-2 col-md-3">
                                     <label class="form-label">Período inicial</label>
@@ -85,35 +145,48 @@
                                 </div>
                                 {% endif %}
 
-                                {% if chart_cards %}
-                                <div class="col-lg-2 col-md-6">
-                                    <label class="form-label">Tipo de campo</label>
-                                    <select class="form-select" id="globalTipoSelect">
-                                        {% for card in chart_cards %}
-                                        <option value="{{ card.key }}">{{ card.label }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-lg-2 col-md-6">
-                                    <label class="form-label">Pergunta</label>
-                                    <select class="form-select" id="globalPerguntaSelect"></select>
-                                </div>
-                                {% endif %}
-
-                                <div class="col-lg-2 col-md-12 d-flex flex-wrap gap-2">
+                                <div class="col-auto d-flex align-items-end gap-2">
                                     <button type="submit" class="btn btn-outline-primary">Aplicar período</button>
                                     <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-outline-secondary">Limpar</a>
                                 </div>
-
-                                {% if chart_cards %}
-                                <div class="col-12">
-                                    <div class="form-text">Selecione o tipo e a pergunta para abrir o card e ver os gráficos.</div>
-                                </div>
-                                {% endif %}
                             </form>
+                            {% endif %}
 
                             {% if chart_cards %}
-                            <div class="mb-4">
+                            <!-- ── Tabs: Gráficos | Construtor ── -->
+                            <ul class="nav nav-tabs mb-0" id="tabsMainView" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="tab-graficos-btn"
+                                            data-bs-toggle="tab" data-bs-target="#tab-graficos"
+                                            type="button" role="tab">
+                                        <i class="bi bi-bar-chart-line me-1"></i>Gráficos por Pergunta
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="tab-construtor-btn"
+                                            data-bs-toggle="tab" data-bs-target="#tab-construtor"
+                                            type="button" role="tab">
+                                        <i class="bi bi-sliders me-1"></i>Construtor Dinâmico
+                                    </button>
+                                </li>
+                            </ul>
+                            <div class="tab-content border border-top-0 rounded-bottom mb-4">
+                            <!-- ─── TAB 1: Gráficos por Pergunta (padrão ativo) ─── -->
+                            <div class="tab-pane fade show active p-3" id="tab-graficos" role="tabpanel">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm fw-semibold">Tipo de campo</label>
+                                        <select class="form-select form-select-sm" id="globalTipoSelect">
+                                            {% for card in chart_cards %}
+                                            <option value="{{ card.key }}">{{ card.label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label form-label-sm fw-semibold">Pergunta</label>
+                                        <select class="form-select form-select-sm" id="globalPerguntaSelect"></select>
+                                    </div>
+                                </div>
                                 {% if subcategorias %}
                                 <ul class="nav nav-tabs mb-3" id="tabs-analise" role="tablist">
                                     <li class="nav-item" role="presentation">
@@ -148,13 +221,13 @@
 
                                             <div class="tab-content pt-3">
                                                 <div class="tab-pane fade show active" id="tab-current-{{ card.key }}" role="tabpanel" aria-labelledby="tab-current-btn-{{ card.key }}">
-                                                    <div style="height: 280px;">
+                                                    <div class="chart-frame chart-frame-sm">
                                                         <canvas id="canvas-current-{{ card.key }}"></canvas>
                                                     </div>
                                                     <div id="fallback-current-{{ card.key }}" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
                                                 </div>
                                                 <div class="tab-pane fade" id="tab-date-{{ card.key }}" role="tabpanel" aria-labelledby="tab-date-btn-{{ card.key }}">
-                                                    <div style="height: 280px;">
+                                                    <div class="chart-frame chart-frame-sm">
                                                         <canvas id="canvas-date-{{ card.key }}"></canvas>
                                                     </div>
                                                     <div id="fallback-date-{{ card.key }}" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
@@ -171,7 +244,7 @@
                                         <div class="card shadow-sm">
                                             <div class="card-body">
                                                 <div class="form-text mb-2">Distribuição de respostas (“situações”) agregada por sub-categoria.</div>
-                                                <div style="height: 280px;">
+                                                <div class="chart-frame chart-frame-sm">
                                                     <canvas id="canvas-subcat"></canvas>
                                                 </div>
                                                 <div id="fallback-subcat" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
@@ -181,6 +254,204 @@
                                 </div>
                                 {% endif %}
                             </div>
+                            <!-- end tab-graficos -->
+                            <!-- ─── TAB 2: Construtor Dinâmico ─── -->
+                            <div class="tab-pane fade p-3" id="tab-construtor" role="tabpanel">
+                                <!-- Linha de controles -->
+                                <div class="row g-2 mb-2 align-items-end">
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Distribuição</label>
+                                        <select class="form-select form-select-sm" id="builderDistribuicaoSelect">
+                                            <option value="current">Geral</option>
+                                            <option value="date">Por data</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Visual</label>
+                                        <select class="form-select form-select-sm" id="builderVisualSelect">
+                                            <option value="auto">Automático</option>
+                                            <option value="bar">Barras</option>
+                                            <option value="line">Linha</option>
+                                            <option value="pie">Pizza</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Layout</label>
+                                        <select class="form-select form-select-sm" id="builderLayoutSelect">
+                                            <option value="stacked">Empilhado</option>
+                                            <option value="grouped">Agrupado</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Orientação</label>
+                                        <select class="form-select form-select-sm" id="builderEixoSelect">
+                                            <option value="vertical">Vertical</option>
+                                            <option value="horizontal">Horizontal</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Fórmula</label>
+                                        <select class="form-select form-select-sm" id="builderFormulaSelect">
+                                            <option value="none">Nenhuma</option>
+                                            <option value="multiply">A × B</option>
+                                            <option value="subtract">A − B</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">2º campo</label>
+                                        <select class="form-select form-select-sm" id="builderPerguntaSecundariaSelect">
+                                            <option value="">Nenhum</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Tendência</label>
+                                        <select class="form-select form-select-sm" id="builderTendenciaSelect">
+                                            <option value="none">Nenhuma</option>
+                                            <option value="moving_avg">Média móvel</option>
+                                            <option value="linear">Linear</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label form-label-sm d-block">Extras</label>
+                                        <div class="d-flex gap-3 align-items-center pt-1">
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="checkbox" id="builderAcumuladoCheck">
+                                                <label class="form-check-label small" for="builderAcumuladoCheck">Acumulado</label>
+                                            </div>
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="checkbox" id="builderTabelaCheck">
+                                                <label class="form-check-label small" for="builderTabelaCheck">Tabela</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto ms-auto d-flex align-items-end">
+                                        <button type="button" class="btn btn-primary" id="btnCarregarVisual">
+                                            <i class="bi bi-play-fill me-1"></i>Carregar visual
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Campo lista -->
+                                <div class="row g-2 mb-3 align-items-end">
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm">Campo lista</label>
+                                        <select class="form-select form-select-sm" id="builderListaCampoSelect">
+                                            <option value="">Nenhum</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm">Uso do campo lista</label>
+                                        <select class="form-select form-select-sm" id="builderListaUsoSelect">
+                                            <option value="none">Nenhum</option>
+                                            <option value="axis">Rótulo no eixo</option>
+                                            <option value="filter">Filtro</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label form-label-sm">Valor do filtro <small class="text-muted">(Ctrl = múltiplo)</small></label>
+                                        <input type="text" class="form-control form-control-sm mb-1" id="builderListaValorSearch" placeholder="Buscar valor..." disabled>
+                                        <select class="form-select form-select-sm" id="builderListaValorSelect" multiple size="3" disabled></select>
+                                    </div>
+                                </div>
+
+                                    <!-- Gráfico — largura total -->
+                                    <div class="chart-frame chart-frame-builder">
+                                        <canvas id="builderChartCanvas"></canvas>
+                                    </div>
+                                    <div id="builderChartFallback" class="text-center text-muted py-3 d-none">
+                                        <i class="bi bi-bar-chart text-secondary" style="font-size:2rem;"></i>
+                                        <div class="mt-1">Adicione campos nos eixos abaixo e clique em <strong>Carregar visual</strong>.</div>
+                                    </div>
+                                    <div id="builderDataTableWrap" class="table-responsive mt-3 d-none"></div>
+
+                                    <!-- Três zonas de campo — abaixo do gráfico -->
+                                    <div class="row g-2 mt-3">
+
+                                        <!-- Eixo X -->
+                                        <div class="col-12 col-md-4">
+                                            <div class="border border-secondary rounded p-2 h-100" style="background:#f8f9fa;">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-semibold small"><i class="bi bi-arrows-horizontal text-secondary me-1"></i>Eixo horizontal (X)</span>
+                                                    <button type="button" class="btn btn-link btn-sm py-0 text-danger" id="btnClearXAxisVars" title="Limpar">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="input-group input-group-sm mb-2">
+                                                    <select class="form-select form-select-sm" id="builderAxisXSelect">
+                                                        <option value="">Selecione...</option>
+                                                    </select>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAddXAxisVar">+</button>
+                                                </div>
+                                                <div id="builderXAxisVars" class="d-flex flex-wrap gap-1 min-height-chips"></div>
+                                                <div class="form-text mt-1">Categorias / rótulos do eixo (1 campo).</div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Eixo Y -->
+                                        <div class="col-12 col-md-4">
+                                            <div class="border border-primary rounded p-2 h-100" style="background:#f0f4ff;">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-semibold small"><i class="bi bi-arrows-vertical text-primary me-1"></i>Eixo vertical (Y)</span>
+                                                    <button type="button" class="btn btn-link btn-sm py-0 text-danger" id="btnClearYAxisVars" title="Limpar">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="input-group input-group-sm mb-2">
+                                                    <select class="form-select form-select-sm" id="builderAxisYSelect">
+                                                        <option value="">Selecione...</option>
+                                                    </select>
+                                                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddYAxisVar">+</button>
+                                                </div>
+                                                <div id="builderYAxisVars" class="d-flex flex-wrap gap-1 min-height-chips"></div>
+                                                <div class="form-text mt-1">Séries exibidas no gráfico (múltiplos campos).</div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Valores -->
+                                        <div class="col-12 col-md-4">
+                                            <div class="border border-success rounded p-2 h-100" style="background:#f0fff4;">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-semibold small"><i class="bi bi-hash text-success me-1"></i>Valores</span>
+                                                    <button type="button" class="btn btn-link btn-sm py-0 text-danger" id="btnClearValuesVars" title="Limpar">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="input-group input-group-sm mb-2">
+                                                    <select class="form-select form-select-sm" id="builderAxisValuesSelect">
+                                                        <option value="">Selecione...</option>
+                                                    </select>
+                                                    <button type="button" class="btn btn-outline-success btn-sm" id="btnAddValuesVar">+</button>
+                                                </div>
+                                                <div id="builderValuesVars" class="d-flex flex-wrap gap-1 min-height-chips"></div>
+                                                <div class="form-text mt-1">Métricas / dados a agregar nas séries.</div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <style>
+                                        .min-height-chips { min-height: 32px; }
+                                        .chart-frame {
+                                            position: relative;
+                                            width: 100%;
+                                        }
+                                        .chart-frame-sm {
+                                            height: clamp(220px, 34vh, 320px);
+                                        }
+                                        .chart-frame-builder {
+                                            height: clamp(240px, 42vh, 420px);
+                                        }
+                                        @media (max-width: 768px) {
+                                            .chart-frame-sm {
+                                                height: 220px;
+                                            }
+                                            .chart-frame-builder {
+                                                height: 260px;
+                                            }
+                                        }
+                                    </style>
+                                <small class="text-muted d-block mt-1" id="builderSelectionSummary"></small>
+                            </div>
+                            <!-- end tab-construtor -->
+                            </div><!-- end tab-content -->
                             {% else %}
                             <div class="alert alert-warning">
                                 <i class="bi bi-info-circle"></i> Este modelo ainda não possui perguntas ou respostas registradas para análise.
@@ -225,6 +496,7 @@
                                                 {% endif %}
                                             </td>
                                             <td class="text-center">
+                                                {% if not is_read_only %}
                                                 <button
                                                     type="button"
                                                     class="btn btn-sm btn-outline-primary comment-open-btn"
@@ -234,6 +506,9 @@
                                                     <i class="bi bi-chat-left-text"></i>
                                                     <span class="badge text-bg-primary ms-1 comment-count">0</span>
                                                 </button>
+                                                {% else %}
+                                                <span class="text-muted small">Somente leitura</span>
+                                                {% endif %}
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -244,6 +519,7 @@
                     </div>
                     {% endif %}
 
+                    {% if not is_read_only %}
                     <div class="card shadow-sm mb-3">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <div class="fw-semibold"><i class="bi bi-chat-left-text"></i> Comentários</div>
@@ -369,6 +645,30 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
+
+                    {% if not is_read_only and share_link %}
+                    <div class="modal fade" id="modal-compartilhar-relatorio" tabindex="-1" aria-labelledby="modal-compartilhar-relatorio-label" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="modal-compartilhar-relatorio-label">Compartilhar relatório (somente leitura)</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="mb-2">Este link permite apenas visualizar o recorte atual do relatório, sem edição.</p>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="shared-report-link" value="{{ share_link }}" readonly>
+                                        <button type="button" class="btn btn-outline-primary" id="btn-copy-shared-report-link">
+                                            <i class="bi bi-clipboard"></i> Copiar link
+                                        </button>
+                                    </div>
+                                    <div class="form-text">Validade do link: 30 dias.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     {% if registros_count %}
                     <div class="card shadow-sm">
@@ -377,6 +677,9 @@
                             <form method="get" class="d-flex flex-wrap gap-2 align-items-center mb-0">
                                 <input type="hidden" name="inicio" value="{{ inicio|default:'' }}">
                                 <input type="hidden" name="fim" value="{{ fim|default:'' }}">
+                                {% if is_read_only and share_token %}
+                                <input type="hidden" name="share_token" value="{{ share_token }}">
+                                {% endif %}
                                 {% if subcategoria %}
                                 <input type="hidden" name="subcategoria" value="{{ subcategoria }}">
                                 {% endif %}
@@ -420,12 +723,16 @@
                                                 {% endif %}
                                             </td>
                                             <td class="text-center">
+                                                {% if not is_read_only %}
                                                 <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="btn btn-sm btn-info" title="Visualizar">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
                                                 <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn btn-sm btn-warning" title="Editar">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
+                                                {% else %}
+                                                <span class="text-muted small">Somente leitura</span>
+                                                {% endif %}
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -489,6 +796,15 @@
 {% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const isReadOnly = {% if is_read_only %}true{% else %}false{% endif %};
+    const btnPrintPdf = document.getElementById('btnPrintPdf');
+
+    if (btnPrintPdf) {
+        btnPrintPdf.addEventListener('click', function() {
+            window.print();
+        });
+    }
+
     const tooltipTriggers = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     tooltipTriggers.forEach(function(el) {
         if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
@@ -517,14 +833,32 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!items || !items.length) {
             return '<div class="text-muted">Nenhum comentário para esta pergunta no período selecionado.</div>';
         }
-        const rows = items.map(function(texto) {
-            return '<li class="mb-1">' + escapeHtml(texto) + '</li>';
+        const rows = items.map(function(item) {
+            const isObj = item && typeof item === 'object';
+            const texto = isObj ? String(item.texto || '') : String(item || '');
+            const commentId = isObj ? Number(item.id || 0) : 0;
+            const canDelete = Boolean(isObj && item.can_delete && commentId);
+
+            let action = '';
+            if (canDelete) {
+                action =
+                    '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-2" '
+                    + 'onclick="deleteQuestionComment(' + commentId + ')" title="Excluir comentário">'
+                    + '<i class="bi bi-trash"></i></button>';
+            }
+
+            return '<li class="mb-1 d-flex justify-content-between align-items-start gap-2">'
+                + '<span>' + escapeHtml(texto) + '</span>'
+                + action
+                + '</li>';
         }).join('');
         return '<ol class="mb-0 ps-3">' + rows + '</ol>';
     }
 
     const modalEl = document.getElementById('modal-comentarios-pergunta');
-    const modal = (typeof bootstrap !== 'undefined' && bootstrap.Modal) ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+    const modal = (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal)
+        ? bootstrap.Modal.getOrCreateInstance(modalEl)
+        : null;
     const modalPerguntaId = document.getElementById('modal-pergunta-id');
     const modalPerguntaTexto = document.getElementById('modal-pergunta-texto');
     const modalLista = document.getElementById('modal-comentarios-lista');
@@ -533,6 +867,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const novoComentarioFields = document.getElementById('modal-novo-comentario-fields');
     const comentarioDataInput = document.getElementById('modal-comentario-data');
     const comentarioTextoInput = document.getElementById('modal-comentario-texto');
+    const csrfInputModal = modalEl ? modalEl.querySelector('input[name="csrfmiddlewaretoken"]') : null;
+    let activePerguntaId = '';
 
     function hideNovoComentarioForm() {
         if (!novoComentarioFields || !btnSalvarComentario || !btnNovoComentario) return;
@@ -570,19 +906,102 @@ document.addEventListener('DOMContentLoaded', function() {
             const perguntaTexto = String(btn.getAttribute('data-pergunta-texto') || '');
             const list = comentariosPorPergunta[perguntaId] || [];
 
-            modalPerguntaId.value = perguntaId;
-            modalPerguntaTexto.textContent = perguntaTexto;
-            modalLista.innerHTML = renderList(list);
+            activePerguntaId = perguntaId;
+            if (modalPerguntaId) modalPerguntaId.value = perguntaId;
+            if (modalPerguntaTexto) modalPerguntaTexto.textContent = perguntaTexto;
+            if (modalLista) modalLista.innerHTML = renderList(list);
             hideNovoComentarioForm();
             if (modal) modal.show();
         });
     });
+
+    window.deleteQuestionComment = function(commentId) {
+        if (isReadOnly) return;
+        const id = Number(commentId || 0);
+        if (!id || !activePerguntaId) return;
+        if (!confirm('Deseja realmente excluir este comentário?')) return;
+
+        const body = new URLSearchParams();
+        body.set('action', 'delete_question_comment');
+        body.set('comentario_id', String(id));
+
+        const csrfToken = csrfInputModal ? csrfInputModal.value : '';
+        if (csrfToken) body.set('csrfmiddlewaretoken', csrfToken);
+
+        fetch(window.location.pathname + window.location.search, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            },
+            body: body.toString(),
+        })
+        .then(function(response) {
+            return response.json().then(function(data) {
+                return { ok: response.ok, data: data };
+            });
+        })
+        .then(function(result) {
+            if (!result.ok || !result.data || !result.data.success) {
+                const msg = (result.data && result.data.message) ? result.data.message : 'Erro ao excluir comentário.';
+                alert(msg);
+                return;
+            }
+
+            const pid = String(result.data.pergunta_id || activePerguntaId);
+            const list = comentariosPorPergunta[pid] || [];
+            comentariosPorPergunta[pid] = list.filter(function(item) {
+                if (!item || typeof item !== 'object') return true;
+                return Number(item.id || 0) !== id;
+            });
+
+            if (modalLista) {
+                modalLista.innerHTML = renderList(comentariosPorPergunta[pid]);
+            }
+
+            document.querySelectorAll('.comment-open-btn[data-pergunta-id="' + pid + '"]').forEach(function(btn) {
+                const badge = btn.querySelector('.comment-count');
+                if (badge) badge.textContent = String((comentariosPorPergunta[pid] || []).length);
+            });
+        })
+        .catch(function() {
+            alert('Erro na requisição ao excluir comentário.');
+        });
+    };
+
+    const shareInput = document.getElementById('shared-report-link');
+    const shareCopyBtn = document.getElementById('btn-copy-shared-report-link');
+    if (shareInput && shareCopyBtn) {
+        shareCopyBtn.addEventListener('click', async function() {
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(shareInput.value || '');
+                } else {
+                    shareInput.focus();
+                    shareInput.select();
+                    document.execCommand('copy');
+                }
+                shareCopyBtn.classList.remove('btn-outline-primary');
+                shareCopyBtn.classList.add('btn-success');
+                shareCopyBtn.innerHTML = '<i class="bi bi-check2"></i> Copiado';
+                setTimeout(function() {
+                    shareCopyBtn.classList.remove('btn-success');
+                    shareCopyBtn.classList.add('btn-outline-primary');
+                    shareCopyBtn.innerHTML = '<i class="bi bi-clipboard"></i> Copiar link';
+                }, 1400);
+            } catch (_e) {
+                alert('Não foi possível copiar automaticamente. Copie manualmente o link.');
+            }
+        });
+    }
 
     const raw = document.getElementById('auditoria-chart-data');
     const chartsData = raw ? JSON.parse(raw.textContent || '{}') : {};
     const rawCards = document.getElementById('auditoria-chart-cards');
     const cardsData = rawCards ? JSON.parse(rawCards.textContent || '[]') : [];
     const chartInstances = {};
+    let builderChart = null;
+    const builderAxisState = { x: [], y: [], values: [] };
     const rawSubcat = document.getElementById('auditoria-subcat-chart');
     const subcatData = rawSubcat ? JSON.parse(rawSubcat.textContent || '{}') : null;
     let subcatInstance = null;
@@ -624,6 +1043,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (subcatInstance) {
             subcatInstance.destroy();
             subcatInstance = null;
+        }
+    }
+
+    function destroyBuilderChart() {
+        if (builderChart) {
+            builderChart.destroy();
+            builderChart = null;
         }
     }
 
@@ -889,17 +1315,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function setGlobalPerguntasForKey(key) {
         const globalPergunta = document.getElementById('globalPerguntaSelect');
+        const secundaria = document.getElementById('builderPerguntaSecundariaSelect');
         if (!globalPergunta) return;
         const found = (cardsData || []).find(c => String(c.key || '') === String(key || ''));
         const perguntas = (found && found.perguntas) ? found.perguntas : [];
 
         const previous = String(globalPergunta.value || '').trim();
+        const previousSecondary = String((secundaria && secundaria.value) || '').trim();
         globalPergunta.innerHTML = '';
+        if (secundaria) {
+            secundaria.innerHTML = '<option value="">Nenhum</option>';
+        }
         (perguntas || []).forEach(p => {
             const o = document.createElement('option');
             o.value = String(p.id);
             o.textContent = String(p.texto || '');
             globalPergunta.appendChild(o);
+
+            if (secundaria) {
+                const os = document.createElement('option');
+                os.value = String(p.id);
+                os.textContent = String(p.texto || '');
+                secundaria.appendChild(os);
+            }
         });
 
         const values = Array.from(globalPergunta.options || []).map(o => o.value);
@@ -909,6 +1347,733 @@ document.addEventListener('DOMContentLoaded', function() {
             globalPergunta.value = '__all__';
         } else {
             globalPergunta.value = (globalPergunta.options[0] ? globalPergunta.options[0].value : '');
+        }
+
+        if (secundaria) {
+            const secValues = Array.from(secundaria.options || []).map(o => o.value);
+            if (previousSecondary && secValues.includes(previousSecondary)) {
+                secundaria.value = previousSecondary;
+            }
+        }
+    }
+
+    function getListQuestions() {
+        const result = [];
+        Object.keys(chartsData || {}).forEach(key => {
+            const card = chartsData[key];
+            if (!card || String(card.tipo || '') !== 'LISTA' || !card.perguntas) return;
+
+            const metaCard = (cardsData || []).find(c => String(c.key || '') === String(key || ''));
+            const perguntasMeta = (metaCard && metaCard.perguntas) ? metaCard.perguntas : [];
+
+            perguntasMeta.forEach(p => {
+                const pid = String(p.id || '');
+                if (pid && card.perguntas[pid]) {
+                    result.push({
+                        key,
+                        id: pid,
+                        texto: String(p.texto || ''),
+                    });
+                }
+            });
+        });
+        return result;
+    }
+
+    function populateListaCampoSelect() {
+        const listaCampo = document.getElementById('builderListaCampoSelect');
+        if (!listaCampo) return;
+        const previous = String(listaCampo.value || '');
+        const listQuestions = getListQuestions();
+
+        listaCampo.innerHTML = '<option value="">Nenhum</option>';
+        listQuestions.forEach(item => {
+            const o = document.createElement('option');
+            o.value = `${item.key}::${item.id}`;
+            o.textContent = item.texto;
+            listaCampo.appendChild(o);
+        });
+
+        const values = Array.from(listaCampo.options || []).map(o => o.value);
+        if (previous && values.includes(previous)) {
+            listaCampo.value = previous;
+        }
+    }
+
+    function getListaAxisLabels(listaFieldValue) {
+        const token = String(listaFieldValue || '');
+        if (!token || token.indexOf('::') < 0) return [];
+        const parts = token.split('::');
+        const key = parts[0];
+        const pid = parts[1];
+        const card = chartsData[key];
+        const q = card && card.perguntas ? card.perguntas[pid] : null;
+        if (!q || !q.current) return [];
+        return (q.current.labels || []).map(v => String(v));
+    }
+
+    function populateListaValorSelect() {
+        const listaCampo = document.getElementById('builderListaCampoSelect');
+        const listaUso = document.getElementById('builderListaUsoSelect');
+        const listaValor = document.getElementById('builderListaValorSelect');
+        const listaBusca = document.getElementById('builderListaValorSearch');
+        if (!listaCampo || !listaUso || !listaValor) return;
+
+        const enabled = String(listaUso.value || 'none') === 'filter' && String(listaCampo.value || '');
+        const labels = enabled ? getListaAxisLabels(listaCampo.value) : [];
+        const previousSelected = Array.from(listaValor.selectedOptions || []).map(o => String(o.value || ''));
+
+        listaValor.innerHTML = '';
+        const uniqueLabels = Array.from(new Set(labels));
+        uniqueLabels.forEach(lbl => {
+            const o = document.createElement('option');
+            o.value = lbl;
+            o.textContent = lbl;
+            listaValor.appendChild(o);
+        });
+
+        listaValor.disabled = !enabled;
+        if (listaBusca) {
+            listaBusca.disabled = !enabled;
+        }
+        if (enabled) {
+            Array.from(listaValor.options || []).forEach(o => {
+                o.selected = previousSelected.includes(String(o.value || ''));
+            });
+        }
+
+        filterListaValorOptions();
+    }
+
+    function filterListaValorOptions() {
+        const listaValor = document.getElementById('builderListaValorSelect');
+        const listaBusca = document.getElementById('builderListaValorSearch');
+        if (!listaValor || !listaBusca) return;
+
+        const term = String(listaBusca.value || '').trim().toLowerCase();
+        Array.from(listaValor.options || []).forEach(o => {
+            const txt = String(o.textContent || '').toLowerCase();
+            o.hidden = Boolean(term) && !txt.includes(term);
+        });
+    }
+
+    function showBuilderFallback(show, msg) {
+        const canvas = document.getElementById('builderChartCanvas');
+        const fallback = document.getElementById('builderChartFallback');
+        if (!canvas || !fallback) return;
+        if (show) {
+            canvas.classList.add('d-none');
+            fallback.classList.remove('d-none');
+            if (msg) fallback.textContent = msg;
+        } else {
+            canvas.classList.remove('d-none');
+            fallback.classList.add('d-none');
+        }
+    }
+
+    function parseQuestionToken(token) {
+        const s = String(token || '');
+        if (!s || s.indexOf('::') < 0) return null;
+        const parts = s.split('::');
+        return { key: parts[0], id: parts[1] };
+    }
+
+    function getQuestionLabelByToken(token) {
+        const p = parseQuestionToken(token);
+        if (!p) return '';
+        const metaCard = (cardsData || []).find(c => String(c.key || '') === p.key);
+        const perguntasMeta = (metaCard && metaCard.perguntas) ? metaCard.perguntas : [];
+        const found = perguntasMeta.find(q => String(q.id || '') === p.id);
+        if (found) return String(found.texto || '');
+        return `${p.key} / ${p.id}`;
+    }
+
+    function getAllQuestionOptions() {
+        const options = [];
+        (cardsData || []).forEach(card => {
+            const key = String(card.key || '');
+            const tipoLabel = String(card.label || key || '');
+            (card.perguntas || []).forEach(p => {
+                const id = String(p.id || '');
+                if (!id) return;
+                options.push({
+                    token: `${key}::${id}`,
+                    label: `${p.texto} (${tipoLabel})`,
+                });
+            });
+        });
+        return options;
+    }
+
+    function populateAxisSelectors() {
+        const xSel = document.getElementById('builderAxisXSelect');
+        const ySel = document.getElementById('builderAxisYSelect');
+        const vSel = document.getElementById('builderAxisValuesSelect');
+        if (!xSel || !ySel) return;
+
+        const options = getAllQuestionOptions();
+        const blank = '<option value="">Selecione...</option>';
+        xSel.innerHTML = blank;
+        ySel.innerHTML = blank;
+        if (vSel) vSel.innerHTML = blank;
+
+        options.forEach(opt => {
+            [xSel, ySel, vSel].forEach(sel => {
+                if (!sel) return;
+                const o = document.createElement('option');
+                o.value = opt.token;
+                o.textContent = opt.label;
+                sel.appendChild(o);
+            });
+        });
+    }
+
+    const AXIS_STYLES = {
+        x: { cls: 'btn-outline-secondary', empty: 'Nenhum campo. Arraste ou adicione para definir categorias.' },
+        y: { cls: 'btn-outline-primary',   empty: 'Nenhum campo. Adicione perguntas que virarão séries.' },
+        values: { cls: 'btn-outline-success', empty: 'Nenhum campo. Adicione métricas/valores a agregar.' },
+    };
+
+    function renderAxisVariables() {
+        const wraps = {
+            x: document.getElementById('builderXAxisVars'),
+            y: document.getElementById('builderYAxisVars'),
+            values: document.getElementById('builderValuesVars'),
+        };
+
+        ['x', 'y', 'values'].forEach(axis => {
+            const wrap = wraps[axis];
+            if (!wrap) return;
+            const tokens = builderAxisState[axis] || [];
+            const style = AXIS_STYLES[axis];
+
+            if (!tokens.length) {
+                wrap.innerHTML = `<span class="text-muted small">${style.empty}</span>`;
+            } else {
+                wrap.innerHTML = tokens.map(token =>
+                    `<button type="button" class="btn ${style.cls} btn-sm py-0 px-2 rounded-pill" data-axis="${axis}" data-token="${escapeHtml(token)}">` +
+                    `${escapeHtml(getQuestionLabelByToken(token))} <span aria-hidden="true">&times;</span></button>`
+                ).join('');
+            }
+
+            wrap.querySelectorAll('button[data-axis][data-token]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const a = String(btn.getAttribute('data-axis') || '');
+                    const t = String(btn.getAttribute('data-token') || '');
+                    if (!a || !t) return;
+                    builderAxisState[a] = (builderAxisState[a] || []).filter(v => v !== t);
+                    renderAxisVariables();
+                });
+            });
+        });
+    }
+
+    const AXIS_SELECTORS = {
+        x: 'builderAxisXSelect',
+        y: 'builderAxisYSelect',
+        values: 'builderAxisValuesSelect',
+    };
+
+    function addAxisVariable(axis) {
+        const selId = AXIS_SELECTORS[axis];
+        if (!selId) return;
+        const sel = document.getElementById(selId);
+        if (!sel) return;
+        const token = String(sel.value || '').trim();
+        if (!token) return;
+        if (!(builderAxisState[axis] || []).includes(token)) {
+            if (axis === 'x') {
+                builderAxisState.x = [token];   // X aceita só 1
+            } else {
+                if (!builderAxisState[axis]) builderAxisState[axis] = [];
+                builderAxisState[axis].push(token);
+            }
+            renderAxisVariables();
+        }
+    }
+
+    function clearAxisVariables(axis) {
+        builderAxisState[axis] = [];
+        renderAxisVariables();
+    }
+
+    function normalizePieConfig(cfg) {
+        if (!cfg || !cfg.data) return null;
+        const labels = cfg.data.labels || [];
+        const datasets = cfg.data.datasets || [];
+        if (!datasets.length) return null;
+
+        let pieLabels = [];
+        let pieValues = [];
+
+        if (datasets.length === 1) {
+            pieLabels = labels;
+            pieValues = datasets[0].data || [];
+        } else {
+            pieLabels = datasets.map(ds => String(ds.label || 'Série'));
+            pieValues = datasets.map(ds => (ds.data || []).reduce((acc, v) => acc + (Number(v) || 0), 0));
+        }
+
+        return {
+            type: 'pie',
+            data: {
+                labels: pieLabels,
+                datasets: [{ data: pieValues, borderWidth: 1 }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+            },
+        };
+    }
+
+    function applyLayoutMode(cfg, mode) {
+        if (!cfg || cfg.type !== 'bar' || !cfg.options || !cfg.options.scales) return;
+        const stacked = String(mode || 'stacked') === 'stacked';
+        if (cfg.options.scales.x) cfg.options.scales.x.stacked = stacked;
+        if (cfg.options.scales.y) cfg.options.scales.y.stacked = stacked;
+    }
+
+    function applyAxisMode(cfg, eixo) {
+        if (!cfg || !cfg.options) return;
+        if (cfg.type === 'bar') {
+            cfg.options.indexAxis = (String(eixo || 'vertical') === 'horizontal') ? 'y' : 'x';
+        }
+    }
+
+    function safeNumber(v) {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function getQuestionSeries(card, perguntaId, distribuicao) {
+        if (!card || !card.perguntas || !card.perguntas[perguntaId]) {
+            return { labels: [], values: [] };
+        }
+        const q = card.perguntas[perguntaId];
+
+        if (distribuicao === 'date' && q.by_date) {
+            const labels = (q.by_date.labels || []).map(isoToBr);
+            const datasets = q.by_date.datasets || [];
+            const values = labels.map((_, idx) => {
+                return (datasets || []).reduce((acc, ds) => acc + safeNumber((ds.data || [])[idx]), 0);
+            });
+            return { labels, values };
+        }
+
+        if (q.current) {
+            const labels = q.current.labels || [];
+            if (Array.isArray(q.current.values)) {
+                return { labels, values: q.current.values.map(safeNumber) };
+            }
+            const datasets = q.current.datasets || [];
+            const values = labels.map((_, idx) => {
+                return (datasets || []).reduce((acc, ds) => acc + safeNumber((ds.data || [])[idx]), 0);
+            });
+            return { labels, values };
+        }
+
+        return { labels: [], values: [] };
+    }
+
+    function getSeriesByToken(token, distribuicao) {
+        const parsed = parseQuestionToken(token);
+        if (!parsed) return { labels: [], values: [] };
+        const card = chartsData[parsed.key];
+        return getQuestionSeries(card, parsed.id, distribuicao);
+    }
+
+    function alignSeriesToLabels(series, labels) {
+        const map = new Map();
+        (series.labels || []).forEach((lbl, idx) => {
+            map.set(String(lbl), safeNumber((series.values || [])[idx]));
+        });
+        return (labels || []).map(lbl => safeNumber(map.get(String(lbl))));
+    }
+
+    function buildAxisDrivenConfig(distribuicao, visual) {
+        const yTokens = builderAxisState.y || [];
+        const valueTokens = builderAxisState.values || [];
+        const xToken = (builderAxisState.x && builderAxisState.x[0]) ? builderAxisState.x[0] : '';
+
+        // Precisa pelo menos Y ou Values para montar o gráfico
+        const hasY = yTokens.length > 0;
+        const hasValues = valueTokens.length > 0;
+        if (!hasY && !hasValues) return null;
+
+        // Determina os labels do eixo X
+        let labels = [];
+        if (xToken) {
+            labels = getSeriesByToken(xToken, distribuicao).labels || [];
+        }
+
+        let datasets = [];
+
+        if (hasValues) {
+            // Modo pivot: cada token de Values vira uma série de dados;
+            // se Y também tiver campos, cada combinação (Y × Values) gera uma série.
+            if (hasY) {
+                yTokens.forEach((yToken, yi) => {
+                    const yLabel = getQuestionLabelByToken(yToken);
+                    valueTokens.forEach((vToken, vi) => {
+                        const vSeries = getSeriesByToken(vToken, distribuicao);
+                        const seriesLabels = vSeries.labels || [];
+                        const finalLabels = labels.length ? labels : seriesLabels;
+                        if (!finalLabels.length && !seriesLabels.length) return;
+                        if (!labels.length) labels = finalLabels;
+                        const idx = datasets.length;
+                        datasets.push({
+                            label: `${yLabel} / ${getQuestionLabelByToken(vToken)}`,
+                            data: alignSeriesToLabels(vSeries, finalLabels),
+                            borderWidth: 2,
+                            borderColor: seriesColors[idx % seriesColors.length],
+                            backgroundColor: seriesColors[idx % seriesColors.length],
+                            pointRadius: 3,
+                            fill: false,
+                            tension: 0.2,
+                        });
+                    });
+                });
+            } else {
+                // Só Values: cada token vira série
+                valueTokens.forEach((vToken, vi) => {
+                    const vSeries = getSeriesByToken(vToken, distribuicao);
+                    const seriesLabels = vSeries.labels || [];
+                    const finalLabels = labels.length ? labels : seriesLabels;
+                    if (!labels.length && seriesLabels.length) labels = seriesLabels;
+                    if (!finalLabels.length && !seriesLabels.length) return;
+                    datasets.push({
+                        label: getQuestionLabelByToken(vToken),
+                        data: alignSeriesToLabels(vSeries, finalLabels),
+                        borderWidth: 2,
+                        borderColor: seriesColors[vi % seriesColors.length],
+                        backgroundColor: seriesColors[vi % seriesColors.length],
+                        pointRadius: 3,
+                        fill: false,
+                        tension: 0.2,
+                    });
+                });
+            }
+        } else {
+            // Só Y (modo original): cada token Y vira série com sua distribuição
+            const ySeriesList = yTokens.map(token => ({ token, series: getSeriesByToken(token, distribuicao) }));
+            const validY = ySeriesList.filter(item => (item.series.labels || []).length);
+            if (!validY.length) return null;
+            if (!labels.length) labels = validY[0].series.labels || [];
+
+            datasets = validY.map((item, idx) => ({
+                label: getQuestionLabelByToken(item.token),
+                data: alignSeriesToLabels(item.series, labels),
+                borderWidth: 2,
+                borderColor: seriesColors[idx % seriesColors.length],
+                backgroundColor: seriesColors[idx % seriesColors.length],
+                pointRadius: 3,
+                fill: false,
+                tension: 0.2,
+            }));
+        }
+
+        if (!datasets.length || !labels.length) return null;
+
+        let chartType = 'bar';
+        if (visual === 'line' || visual === 'pie' || visual === 'bar') {
+            chartType = visual;
+        } else if (distribuicao === 'date') {
+            chartType = 'line';
+        }
+
+        let cfg = {
+            type: chartType,
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                    y: { beginAtZero: true },
+                },
+            },
+        };
+
+        if (chartType === 'pie') {
+            cfg = normalizePieConfig(cfg);
+        }
+
+        return cfg;
+    }
+
+    function alignSeriesByLabels(primary, secondary) {
+        const secMap = new Map();
+        (secondary.labels || []).forEach((lbl, idx) => {
+            secMap.set(String(lbl), safeNumber((secondary.values || [])[idx]));
+        });
+        const labels = (primary.labels || []).map(v => String(v));
+        const p = (primary.values || []).map(safeNumber);
+        const s = labels.map(lbl => safeNumber(secMap.get(lbl)));
+        return { labels, primary: p, secondary: s };
+    }
+
+    function applyFormula(primary, secondary, formula) {
+        if (formula === 'multiply') {
+            return primary.map((v, i) => safeNumber(v) * safeNumber(secondary[i]));
+        }
+        if (formula === 'subtract') {
+            return primary.map((v, i) => safeNumber(v) - safeNumber(secondary[i]));
+        }
+        return primary.slice();
+    }
+
+    function cumulative(values) {
+        let total = 0;
+        return (values || []).map(v => {
+            total += safeNumber(v);
+            return total;
+        });
+    }
+
+    function movingAverage(values, windowSize) {
+        const size = Math.max(2, Number(windowSize) || 3);
+        return (values || []).map((_, idx, arr) => {
+            const start = Math.max(0, idx - size + 1);
+            const slice = arr.slice(start, idx + 1).map(safeNumber);
+            const sum = slice.reduce((acc, v) => acc + v, 0);
+            return slice.length ? (sum / slice.length) : 0;
+        });
+    }
+
+    function linearTrend(values) {
+        const ys = (values || []).map(safeNumber);
+        const n = ys.length;
+        if (!n) return [];
+        const xs = Array.from({ length: n }, (_, i) => i + 1);
+        const sumX = xs.reduce((a, b) => a + b, 0);
+        const sumY = ys.reduce((a, b) => a + b, 0);
+        const sumXY = xs.reduce((acc, x, i) => acc + (x * ys[i]), 0);
+        const sumX2 = xs.reduce((acc, x) => acc + (x * x), 0);
+        const den = (n * sumX2) - (sumX * sumX);
+        const m = den ? (((n * sumXY) - (sumX * sumY)) / den) : 0;
+        const b = (sumY - (m * sumX)) / n;
+        return xs.map(x => (m * x) + b);
+    }
+
+    function renderBuilderTable(labels, datasets) {
+        const wrap = document.getElementById('builderDataTableWrap');
+        const showTable = document.getElementById('builderTabelaCheck');
+        if (!wrap || !showTable) return;
+        if (!showTable.checked || !labels.length || !(datasets || []).length) {
+            wrap.classList.add('d-none');
+            wrap.innerHTML = '';
+            return;
+        }
+
+        const headerCols = (datasets || []).map(ds => `<th>${escapeHtml(ds.label || 'Série')}</th>`).join('');
+        const bodyRows = labels.map((lbl, rowIdx) => {
+            const cols = datasets.map(ds => {
+                const val = safeNumber((ds.data || [])[rowIdx]);
+                return `<td class="text-end">${val.toLocaleString('pt-BR', { maximumFractionDigits: 3 })}</td>`;
+            }).join('');
+            return `<tr><td>${escapeHtml(lbl)}</td>${cols}</tr>`;
+        }).join('');
+
+        wrap.innerHTML = `
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Categoria</th>
+                        ${headerCols}
+                    </tr>
+                </thead>
+                <tbody>${bodyRows}</tbody>
+            </table>
+        `;
+        wrap.classList.remove('d-none');
+    }
+
+    function applyListFieldAssociation(cfg, listFieldValue, listUsage, listFilterValues) {
+        if (!cfg || !cfg.data || !cfg.data.labels || !cfg.data.datasets) return cfg;
+
+        const axisLabels = getListaAxisLabels(listFieldValue);
+        const usage = String(listUsage || 'none');
+        const selectedFilters = (listFilterValues || []).map(v => String(v || '')).filter(Boolean);
+
+        if (usage === 'axis' && axisLabels.length) {
+            const lenLabels = (cfg.data.labels || []).length;
+            const lenData = ((cfg.data.datasets[0] && cfg.data.datasets[0].data) || []).length;
+            if (axisLabels.length === lenLabels || axisLabels.length === lenData) {
+                cfg.data.labels = axisLabels.slice();
+            }
+        }
+
+        if (usage === 'filter' && selectedFilters.length) {
+            const labels = (cfg.data.labels || []).map(v => String(v));
+            let keepIdx = labels
+                .map((lbl, idx) => ({ lbl, idx }))
+                .filter(row => selectedFilters.includes(row.lbl))
+                .map(row => row.idx);
+
+            if (!keepIdx.length && axisLabels.length === labels.length) {
+                keepIdx = axisLabels
+                    .map((lbl, idx) => ({ lbl, idx }))
+                    .filter(row => selectedFilters.includes(row.lbl))
+                    .map(row => row.idx);
+                if (keepIdx.length) {
+                    cfg.data.labels = keepIdx.map(i => labels[i]);
+                }
+            }
+
+            if (keepIdx.length) {
+                cfg.data.labels = keepIdx.map(i => cfg.data.labels[i]);
+                cfg.data.datasets = (cfg.data.datasets || []).map(ds => ({
+                    ...ds,
+                    data: keepIdx.map(i => safeNumber((ds.data || [])[i])),
+                }));
+            }
+        }
+
+        return cfg;
+    }
+
+    function buildByBuilderSelection() {
+        const globalTipo = document.getElementById('globalTipoSelect');
+        const globalPergunta = document.getElementById('globalPerguntaSelect');
+        const perguntaSecundaria = document.getElementById('builderPerguntaSecundariaSelect');
+        const distribuicaoSelect = document.getElementById('builderDistribuicaoSelect');
+        const visualSelect = document.getElementById('builderVisualSelect');
+        const layoutSelect = document.getElementById('builderLayoutSelect');
+        const eixoSelect = document.getElementById('builderEixoSelect');
+        const formulaSelect = document.getElementById('builderFormulaSelect');
+        const listaCampoSelect = document.getElementById('builderListaCampoSelect');
+        const listaUsoSelect = document.getElementById('builderListaUsoSelect');
+        const listaValorSelect = document.getElementById('builderListaValorSelect');
+        const tendenciaSelect = document.getElementById('builderTendenciaSelect');
+        const acumuladoCheck = document.getElementById('builderAcumuladoCheck');
+        const summaryEl = document.getElementById('builderSelectionSummary');
+
+        if (!globalTipo || !globalPergunta) return;
+
+        const key = String(globalTipo.value || '').trim();
+        const perguntaId = String(globalPergunta.value || '').trim();
+        const perguntaSecundariaId = String(perguntaSecundaria ? perguntaSecundaria.value : '').trim();
+        const distribuicao = String(distribuicaoSelect ? distribuicaoSelect.value : 'current');
+        const visual = String(visualSelect ? visualSelect.value : 'auto');
+        const layout = String(layoutSelect ? layoutSelect.value : 'stacked');
+        const eixo = String(eixoSelect ? eixoSelect.value : 'vertical');
+        const formula = String(formulaSelect ? formulaSelect.value : 'none');
+        const listaCampo = String(listaCampoSelect ? listaCampoSelect.value : '');
+        const listaUso = String(listaUsoSelect ? listaUsoSelect.value : 'none');
+        const listaValores = listaValorSelect
+            ? Array.from(listaValorSelect.selectedOptions || []).map(o => String(o.value || '')).filter(Boolean)
+            : [];
+        const tendencia = String(tendenciaSelect ? tendenciaSelect.value : 'none');
+        const acumulado = Boolean(acumuladoCheck && acumuladoCheck.checked);
+
+        const card = chartsData[key];
+        const q = card && card.perguntas ? card.perguntas[perguntaId] : null;
+
+        let cfg = null;
+        const hasAxisVariables = (builderAxisState.y || []).length > 0
+            || (builderAxisState.x || []).length > 0
+            || (builderAxisState.values || []).length > 0;
+        if (hasAxisVariables) {
+            cfg = buildAxisDrivenConfig(distribuicao, visual);
+        }
+
+        if (!cfg || !cfg.data || !(cfg.data.labels || []).length) {
+            destroyBuilderChart();
+            showBuilderFallback(true, 'Nenhum dado disponível para os filtros selecionados.');
+            renderBuilderTable([], []);
+            if (summaryEl) summaryEl.textContent = 'Sem dados para a seleção atual.';
+            return;
+        }
+
+        if (visual === 'pie') {
+            cfg = normalizePieConfig(cfg);
+        } else if (visual === 'bar' || visual === 'line') {
+            cfg.type = visual;
+        }
+
+        if (!cfg) {
+            destroyBuilderChart();
+            showBuilderFallback(true, 'Não foi possível gerar a visualização para esta combinação.');
+            renderBuilderTable([], []);
+            return;
+        }
+
+        if (formula !== 'none' && perguntaSecundariaId) {
+            const primarySeries = getQuestionSeries(card, perguntaId, distribuicao);
+            const secondarySeries = getQuestionSeries(card, perguntaSecundariaId, distribuicao);
+            const aligned = alignSeriesByLabels(primarySeries, secondarySeries);
+            const formulaValues = applyFormula(aligned.primary, aligned.secondary, formula);
+
+            cfg.data.labels = aligned.labels;
+            cfg.data.datasets = [{
+                label: formula === 'multiply' ? 'A × B' : 'A - B',
+                data: formulaValues,
+                borderWidth: 2,
+                borderColor: seriesColors[0],
+                backgroundColor: seriesColors[0],
+                pointRadius: 3,
+                fill: false,
+                tension: 0.25,
+            }];
+            if (visual === 'auto') {
+                cfg.type = 'line';
+            }
+        }
+
+        if (acumulado && cfg.data && cfg.data.datasets) {
+            cfg.data.datasets = cfg.data.datasets.map(ds => ({
+                ...ds,
+                data: cumulative(ds.data || []),
+            }));
+        }
+
+        if (tendencia !== 'none' && cfg.data && cfg.data.datasets && cfg.data.datasets.length) {
+            const base = cfg.data.datasets[0];
+            const trendValues = tendencia === 'moving_avg'
+                ? movingAverage(base.data || [], 3)
+                : linearTrend(base.data || []);
+            cfg.data.datasets.push({
+                label: tendencia === 'moving_avg' ? 'Tendência (média móvel)' : 'Tendência (linear)',
+                data: trendValues,
+                borderColor: seriesColors[2],
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                borderDash: [6, 4],
+                pointRadius: 0,
+                fill: false,
+                tension: 0.2,
+            });
+            if (cfg.type !== 'line') {
+                cfg.type = 'line';
+            }
+        }
+
+        cfg = applyListFieldAssociation(cfg, listaCampo, listaUso, listaValores);
+
+        applyLayoutMode(cfg, layout);
+        applyAxisMode(cfg, eixo);
+
+        destroyBuilderChart();
+        showBuilderFallback(false);
+        const canvas = document.getElementById('builderChartCanvas');
+        if (canvas) {
+            builderChart = new Chart(canvas, cfg);
+        }
+
+        renderBuilderTable(cfg.data.labels || [], cfg.data.datasets || []);
+
+        if (summaryEl) {
+            const tipoTxt = globalTipo.options[globalTipo.selectedIndex]?.textContent || '';
+            const perguntaTxt = globalPergunta.options[globalPergunta.selectedIndex]?.textContent || '';
+            const pergunta2Txt = perguntaSecundaria?.options[perguntaSecundaria.selectedIndex]?.textContent || 'Nenhum';
+            const distTxt = distribuicaoSelect?.options[distribuicaoSelect.selectedIndex]?.textContent || '';
+            const visualTxt = visualSelect?.options[visualSelect.selectedIndex]?.textContent || '';
+            const listaTxt = listaCampoSelect?.options[listaCampoSelect.selectedIndex]?.textContent || 'Nenhum';
+            const listaUsoTxt = listaUsoSelect?.options[listaUsoSelect.selectedIndex]?.textContent || 'Nenhum';
+            summaryEl.textContent = `${tipoTxt} | ${perguntaTxt} | 2º: ${pergunta2Txt} | ${distTxt} | ${visualTxt} | Lista: ${listaTxt} (${listaUsoTxt})`;
         }
     }
 
@@ -953,18 +2118,55 @@ document.addEventListener('DOMContentLoaded', function() {
             const key = String(globalTipo.value || '').trim();
             if (!key) return;
             setGlobalPerguntasForKey(key);
-            showCard(key);
         });
 
         globalPergunta.addEventListener('change', function() {
-            const key = String(globalTipo.value || '').trim();
-            if (!key) return;
-            showCard(key);
-            const collapseEl = document.getElementById(`collapse-${key}`);
-            if (collapseEl && collapseEl.classList.contains('show')) {
-                renderCharts(key);
-            }
+            // seleção apenas prepara o construtor; render ocorre no botão
         });
+    }
+
+    const btnCarregarVisual = document.getElementById('btnCarregarVisual');
+    if (btnCarregarVisual) {
+        populateAxisSelectors();
+        renderAxisVariables();
+
+        const btnAddX = document.getElementById('btnAddXAxisVar');
+        const btnAddY = document.getElementById('btnAddYAxisVar');
+        const btnClearX = document.getElementById('btnClearXAxisVars');
+        const btnClearY = document.getElementById('btnClearYAxisVars');
+        const btnAddValues = document.getElementById('btnAddValuesVar');
+        const btnClearValues = document.getElementById('btnClearValuesVars');
+        if (btnAddX) btnAddX.addEventListener('click', function() { addAxisVariable('x'); });
+        if (btnAddY) btnAddY.addEventListener('click', function() { addAxisVariable('y'); });
+        if (btnAddValues) btnAddValues.addEventListener('click', function() { addAxisVariable('values'); });
+        if (btnClearX) btnClearX.addEventListener('click', function() { clearAxisVariables('x'); });
+        if (btnClearY) btnClearY.addEventListener('click', function() { clearAxisVariables('y'); });
+        if (btnClearValues) btnClearValues.addEventListener('click', function() { clearAxisVariables('values'); });
+
+        populateListaCampoSelect();
+        populateListaValorSelect();
+
+        const listaCampo = document.getElementById('builderListaCampoSelect');
+        const listaUso = document.getElementById('builderListaUsoSelect');
+        const listaValor = document.getElementById('builderListaValorSelect');
+        const listaBusca = document.getElementById('builderListaValorSearch');
+        if (listaCampo) {
+            listaCampo.addEventListener('change', populateListaValorSelect);
+        }
+        if (listaUso) {
+            listaUso.addEventListener('change', populateListaValorSelect);
+        }
+        if (listaBusca) {
+            listaBusca.addEventListener('input', filterListaValorOptions);
+        }
+        if (listaValor) {
+            listaValor.addEventListener('change', function() {
+                // filtro de lista aplicado no próximo carregamento explícito
+            });
+        }
+
+        btnCarregarVisual.addEventListener('click', buildByBuilderSelection);
+        showBuilderFallback(true, 'Adicione campos nos eixos abaixo e clique em Carregar visual.');
     }
 
     // Renderiza o gráfico de subcategorias ao abrir a aba

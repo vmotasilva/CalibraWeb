@@ -3,9 +3,11 @@ from datetime import date
 from django.contrib.auth import get_user_model
 from django.contrib.messages import get_messages
 from django.test import TestCase
+from django.test import RequestFactory
 from django.urls import reverse
 
 from .models import ComentarioRespostaAuditoria, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
+from .views import _build_registro_report_share_token, registros_por_modelo
 
 
 class ModeloDeleteProtectedTests(TestCase):
@@ -98,6 +100,35 @@ class ModeloDuplicateTests(TestCase):
             "Descrição detalhada importante para instrução.",
         )
 
+    def test_modelo_duplicate_uses_custom_target_name(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("auditoria:modelo_duplicate", args=[self.modelo.pk]),
+            data={"novo_nome": "MODELO BASE DUPLICACAO - RENOMEADO"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(ModeloAuditoria.objects.filter(nome="MODELO BASE DUPLICACAO - RENOMEADO").exists())
+
+    def test_modelo_duplicate_rejects_existing_name(self):
+        self.client.force_login(self.user)
+        ModeloAuditoria.objects.create(
+            nome="NOME JA EXISTENTE",
+            objeto_auditoria="Objeto existente",
+            periodicidade="MENSAL",
+        )
+
+        response = self.client.post(
+            reverse("auditoria:modelo_duplicate", args=[self.modelo.pk]),
+            data={"novo_nome": "NOME JA EXISTENTE"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(ModeloAuditoria.objects.filter(nome="NOME JA EXISTENTE").count(), 1)
+        messages = [str(m) for m in get_messages(response.wsgi_request)]
+        self.assertTrue(any("Já existe um modelo com este nome" in m for m in messages))
+
 
 class ComentarioPerguntaSemRegistroTests(TestCase):
     def setUp(self):
@@ -165,3 +196,151 @@ class ComentarioPerguntaSemRegistroTests(TestCase):
         content = response.content.decode("utf-8")
         self.assertIn("comentarios-dados", content)
         self.assertIn("Coment\\u00e1rio pr\\u00e9-registro para exibir no formul\\u00e1rio", content)
+
+
+class ComentarioPerguntaDeleteTests(TestCase):
+    def setUp(self):
+        self.rf = RequestFactory()
+        user_model = get_user_model()
+        self.author = user_model.objects.create_user(
+            username="auditoria_comment_author",
+            email="auditoria_comment_author@example.com",
+            password="senha-forte-123",
+            is_staff=True,
+        )
+        self.other = user_model.objects.create_user(
+            username="auditoria_comment_other",
+            email="auditoria_comment_other@example.com",
+            password="senha-forte-123",
+            is_staff=False,
+        )
+
+        self.modelo = ModeloAuditoria.objects.create(
+            nome="MODELO DELETE COMENTARIO PERGUNTA",
+            objeto_auditoria="Objeto de auditoria para delete",
+            periodicidade="MENSAL",
+        )
+        self.pergunta = PerguntaAuditoria.objects.create(
+            modelo=self.modelo,
+            pergunta="Pergunta para delete de comentário",
+            ordem=1,
+            tipo_resposta="SIM_NAO",
+            ativo=True,
+        )
+        self.modelo.responsaveis.add(self.other)
+
+        self.comentario = ComentarioRespostaAuditoria.objects.create(
+            registro=None,
+            pergunta=self.pergunta,
+            autor=self.author,
+            texto="Comentário removível",
+            data_referencia=date.today(),
+        )
+        self.url = reverse("auditoria:registros_por_modelo", args=[self.modelo.pk])
+
+    def test_author_can_delete_question_comment(self):
+        request = self.rf.post(
+            self.url,
+            data={"action": "delete_question_comment", "comentario_id": str(self.comentario.id)},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        request.user = self.author
+        response = registros_por_modelo(request, self.modelo.pk)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(ComentarioRespostaAuditoria.objects.filter(id=self.comentario.id).exists())
+
+    def test_non_author_cannot_delete_question_comment(self):
+        request = self.rf.post(
+            self.url,
+            data={"action": "delete_question_comment", "comentario_id": str(self.comentario.id)},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        request.user = self.other
+        response = registros_por_modelo(request, self.modelo.pk)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(ComentarioRespostaAuditoria.objects.filter(id=self.comentario.id).exists())
+
+
+class RelatorioCompartilhadoSomenteLeituraTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.owner = user_model.objects.create_user(
+            username="auditoria_owner_share",
+            email="auditoria_owner_share@example.com",
+            password="senha-forte-123",
+            is_staff=True,
+        )
+        self.viewer = user_model.objects.create_user(
+            username="auditoria_viewer_share",
+            email="auditoria_viewer_share@example.com",
+            password="senha-forte-123",
+            is_staff=False,
+        )
+
+        self.modelo = ModeloAuditoria.objects.create(
+            nome="MODELO RELATORIO COMPARTILHADO",
+            objeto_auditoria="Objeto para teste de compartilhamento",
+            periodicidade="MENSAL",
+        )
+        self.modelo.responsaveis.add(self.owner)
+
+        self.pergunta = PerguntaAuditoria.objects.create(
+            modelo=self.modelo,
+            pergunta="Pergunta para compartilhamento",
+            ordem=1,
+            tipo_resposta="SIM_NAO",
+            ativo=True,
+        )
+
+        self.registro = RegistroAuditoria.objects.create(
+            modelo=self.modelo,
+            data_auditoria=date(2026, 3, 10),
+            periodo_inicio=date(2026, 3, 1),
+            periodo_fim=date(2026, 3, 31),
+            avaliador=self.owner,
+        )
+
+        self.base_url = reverse("auditoria:registros_por_modelo", args=[self.modelo.pk])
+
+    def test_viewer_can_open_shared_link_in_read_only_mode(self):
+        self.client.force_login(self.viewer)
+        token = _build_registro_report_share_token(
+            modelo_id=self.modelo.pk,
+            inicio="2026-03-01",
+            fim="2026-03-31",
+            subcategoria="",
+        )
+
+        response = self.client.get(f"{self.base_url}?share_token={token}")
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn("Visualização compartilhada: somente leitura", content)
+        self.assertIn("Somente leitura", content)
+        self.assertNotIn("Novo Registro", content)
+        self.assertNotIn("Novo Comentário", content)
+
+    def test_shared_link_blocks_post_actions(self):
+        self.client.force_login(self.viewer)
+        token = _build_registro_report_share_token(
+            modelo_id=self.modelo.pk,
+            inicio="2026-03-01",
+            fim="2026-03-31",
+            subcategoria="",
+        )
+
+        response = self.client.post(
+            f"{self.base_url}?share_token={token}",
+            data={"action": "add_comment", "comentario": "Tentativa indevida"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_invalid_shared_link_returns_403(self):
+        self.client.force_login(self.viewer)
+
+        response = self.client.get(f"{self.base_url}?share_token=token-invalido")
+
+        self.assertEqual(response.status_code, 403)
