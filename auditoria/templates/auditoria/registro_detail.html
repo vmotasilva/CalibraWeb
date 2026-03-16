@@ -132,48 +132,96 @@
         </div>
     </div>
 
+
+    {% for chart in chart_cards %}
     <div class="card shadow-sm mb-3">
         <div class="card-header bg-light border-bottom d-flex align-items-center justify-content-between">
             <h6 class="mb-0 d-flex align-items-center">
-                <i class="bi bi-bar-chart-line me-2"></i> Distribuição de Situações por Sub-categoria
+                <i class="bi bi-bar-chart-line me-2"></i> {{ chart.label }}
             </h6>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-subcat-chart" aria-expanded="false" aria-controls="collapse-subcat-chart">
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-chart-{{ forloop.counter }}" aria-expanded="false" aria-controls="collapse-chart-{{ forloop.counter }}">
                 <span class="collapsed"><i class="bi bi-chevron-down"></i> Exibir gráfico</span>
                 <span class="not-collapsed"><i class="bi bi-chevron-up"></i> Ocultar gráfico</span>
             </button>
         </div>
-        <div class="collapse" id="collapse-subcat-chart">
+        <div class="collapse" id="collapse-chart-{{ forloop.counter }}">
             <div class="card-body">
                 <div class="chart-frame-detail">
-                    <canvas id="canvas-subcat-registro"></canvas>
+                    <canvas id="canvas-chart-{{ forloop.counter }}"></canvas>
                 </div>
-                <div id="fallback-subcat-registro" class="text-muted text-center py-2 d-none">Sem dados suficientes para exibir o gráfico.</div>
+                <div id="fallback-chart-{{ forloop.counter }}" class="text-muted text-center py-2 d-none">Sem dados suficientes para exibir o gráfico.</div>
             </div>
         </div>
     </div>
+    {% endfor %}
+
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        var collapse = document.getElementById('collapse-subcat-chart');
-        if (collapse) {
-            var btn = collapse.previousElementSibling.querySelector('button[data-bs-toggle="collapse"]');
-            var collapsedSpan = btn.querySelector('.collapsed');
-            var notCollapsedSpan = btn.querySelector('.not-collapsed');
-            var bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapse, {toggle: false});
-            // Padrão: recolhido
-            bsCollapse.hide();
-            function updateBtn() {
-                if (collapse.classList.contains('show')) {
-                    collapsedSpan.style.display = 'none';
-                    notCollapsedSpan.style.display = '';
-                } else {
-                    collapsedSpan.style.display = '';
-                    notCollapsedSpan.style.display = 'none';
+        {% for chart in chart_cards %}
+        (function() {
+            var collapse = document.getElementById('collapse-chart-{{ forloop.counter }}');
+            if (collapse) {
+                var btn = collapse.previousElementSibling.querySelector('button[data-bs-toggle="collapse"]');
+                var collapsedSpan = btn.querySelector('.collapsed');
+                var notCollapsedSpan = btn.querySelector('.not-collapsed');
+                var bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapse, {toggle: false});
+                bsCollapse.hide();
+                function updateBtn() {
+                    if (collapse.classList.contains('show')) {
+                        collapsedSpan.style.display = 'none';
+                        notCollapsedSpan.style.display = '';
+                    } else {
+                        collapsedSpan.style.display = '';
+                        notCollapsedSpan.style.display = 'none';
+                    }
                 }
+                collapse.addEventListener('show.bs.collapse', updateBtn);
+                collapse.addEventListener('hide.bs.collapse', updateBtn);
+                updateBtn();
             }
-            collapse.addEventListener('show.bs.collapse', updateBtn);
-            collapse.addEventListener('hide.bs.collapse', updateBtn);
-            updateBtn();
-        }
+
+            var canvas = document.getElementById('canvas-chart-{{ forloop.counter }}');
+            var fallback = document.getElementById('fallback-chart-{{ forloop.counter }}');
+            var data = {{ chart.data|safe }};
+            var opcoes = {{ chart.opcoes|safe }};
+            var tipo = '{{ chart.tipo }}';
+            var labels = Object.keys(data);
+            var values = Object.values(data);
+            var hasAny = values.some(function(v) { return Number(v || 0) > 0; });
+            if (!hasAny || typeof Chart === 'undefined' || !canvas) {
+                if (fallback) fallback.classList.remove('d-none');
+            } else {
+                if (fallback) fallback.classList.add('d-none');
+                var backgroundColors = labels.map(function(label) {
+                    return opcoes[label] || '#0d6efd';
+                });
+                var chartType = (tipo === 'SIM_NAO') ? 'bar' : 'bar';
+                new Chart(canvas, {
+                    type: chartType,
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: tipo === 'SIM_NAO' ? 'Respostas' : 'Opções',
+                            data: values,
+                            backgroundColor: backgroundColors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: { ticks: { autoSkip: false, maxRotation: 35, minRotation: 0 } },
+                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                        }
+                    }
+                });
+            }
+        })();
+        {% endfor %}
     });
     </script>
 
