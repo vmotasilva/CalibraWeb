@@ -133,16 +133,49 @@
     </div>
 
     <div class="card shadow-sm mb-3">
-        <div class="card-header bg-light border-bottom">
-            <h6 class="mb-0"><i class="bi bi-bar-chart-line"></i> Distribuição de Situações por Sub-categoria</h6>
+        <div class="card-header bg-light border-bottom d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 d-flex align-items-center">
+                <i class="bi bi-bar-chart-line me-2"></i> Distribuição de Situações por Sub-categoria
+            </h6>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-subcat-chart" aria-expanded="false" aria-controls="collapse-subcat-chart">
+                <span class="collapsed"><i class="bi bi-chevron-down"></i> Exibir gráfico</span>
+                <span class="not-collapsed"><i class="bi bi-chevron-up"></i> Ocultar gráfico</span>
+            </button>
         </div>
-        <div class="card-body">
-            <div class="chart-frame-detail">
-                <canvas id="canvas-subcat-registro"></canvas>
+        <div class="collapse" id="collapse-subcat-chart">
+            <div class="card-body">
+                <div class="chart-frame-detail">
+                    <canvas id="canvas-subcat-registro"></canvas>
+                </div>
+                <div id="fallback-subcat-registro" class="text-muted text-center py-2 d-none">Sem dados suficientes para exibir o gráfico.</div>
             </div>
-            <div id="fallback-subcat-registro" class="text-muted text-center py-2 d-none">Sem dados suficientes para exibir o gráfico.</div>
         </div>
     </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var collapse = document.getElementById('collapse-subcat-chart');
+        if (collapse) {
+            var btn = collapse.previousElementSibling.querySelector('button[data-bs-toggle="collapse"]');
+            var collapsedSpan = btn.querySelector('.collapsed');
+            var notCollapsedSpan = btn.querySelector('.not-collapsed');
+            var bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapse, {toggle: false});
+            // Padrão: recolhido
+            bsCollapse.hide();
+            function updateBtn() {
+                if (collapse.classList.contains('show')) {
+                    collapsedSpan.style.display = 'none';
+                    notCollapsedSpan.style.display = '';
+                } else {
+                    collapsedSpan.style.display = '';
+                    notCollapsedSpan.style.display = 'none';
+                }
+            }
+            collapse.addEventListener('show.bs.collapse', updateBtn);
+            collapse.addEventListener('hide.bs.collapse', updateBtn);
+            updateBtn();
+        }
+    });
+    </script>
 
     {% for bloco in blocos_respostas %}
     <div class="card shadow-sm mb-3">
