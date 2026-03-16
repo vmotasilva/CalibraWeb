@@ -1482,9 +1482,9 @@ def registro_detail(request, pk):
 
     # Montar cards de gráfico por subcategoria/tipo
     chart_cards = []
+
     for bloco in resumo["blocos"]:
         subcat = bloco["nome"]
-        # Lista de perguntas do tipo LISTA e SIM_NAO
         perguntas_lista = [l for l in bloco["linhas"] if l["tipo_resposta"] == "LISTA"]
         perguntas_simnao = [l for l in bloco["linhas"] if l["tipo_resposta"] == "SIM_NAO"]
 
@@ -1498,12 +1498,24 @@ def registro_detail(request, pk):
                         opcoes[key] = opc.get("color") or "#6c757d"
             data = {}
             for l in perguntas_lista:
-                valor = (l.get("resposta_geral") or "").strip()
-                if valor:
-                    for v in valor.split("|"):
-                        v = v.strip()
-                        if v:
-                            data[v] = data.get(v, 0) + 1
+                # Considera respostas por dia (se houver) e resposta_geral
+                respostas_por_dia = l.get("respostas_por_dia") or {}
+                tem_por_dia = any((respostas_por_dia.get(k) or "").strip() for k in resumo.get("dia_keys", []))
+                if tem_por_dia:
+                    for dia_key in resumo.get("dia_keys", []):
+                        valor = (respostas_por_dia.get(dia_key) or "").strip()
+                        if valor:
+                            for v in valor.split("|"):
+                                v = v.strip()
+                                if v:
+                                    data[v] = data.get(v, 0) + 1
+                else:
+                    valor = (l.get("resposta_geral") or "").strip()
+                    if valor:
+                        for v in valor.split("|"):
+                            v = v.strip()
+                            if v:
+                                data[v] = data.get(v, 0) + 1
             if data:
                 chart_cards.append({
                     "subcat": subcat,
