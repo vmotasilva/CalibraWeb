@@ -193,16 +193,20 @@ class PlanejamentoExcelExporter:
             cell_indent = ws.cell(row=row, column=1)
             cell_indent.value = ""
             cell_indent.border = self.BORDER
-            
-            # Código, Nome e Revisão do procedimento
-            # Se não houver revisão, usa 0; sempre formata com 2 dígitos
+
+            # Código, Nome, Revisão e Criticidade do procedimento
             revisao = procedimento.numero_revisao if procedimento.numero_revisao else "0"
             revisao_formatada = str(revisao).zfill(2)
+            criticidade = procedimento.get_criticidade_display() if hasattr(procedimento, 'get_criticidade_display') else (procedimento.criticidade or "")
+            if criticidade:
+                texto_criticidade = f" | Criticidade: {criticidade}"
+            else:
+                texto_criticidade = ""
             cell_proc = ws.cell(row=row, column=2)
-            cell_proc.value = f"{procedimento.codigo} - {procedimento.nome} - Rev {revisao_formatada}"
+            cell_proc.value = f"{procedimento.codigo} - {procedimento.nome} - Rev {revisao_formatada}{texto_criticidade}"
             cell_proc.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
             cell_proc.border = self.BORDER
-            
+
             row += 1
         
         # Se não houver procedimentos

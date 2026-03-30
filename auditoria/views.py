@@ -1480,73 +1480,14 @@ def registro_detail(request, pk):
             }
         )
 
-    # Montar cards de gráfico por subcategoria/tipo
-    chart_cards = []
 
-    for bloco in resumo["blocos"]:
-        subcat = bloco["nome"]
-        perguntas_lista = [l for l in bloco["linhas"] if l["tipo_resposta"] == "LISTA"]
-        perguntas_simnao = [l for l in bloco["linhas"] if l["tipo_resposta"] == "SIM_NAO"]
-
-        # Gráfico para LISTA
-        if perguntas_lista:
-            opcoes = {}
-            for l in perguntas_lista:
-                for opc in l.get("opcoes_resposta_com_cores", []):
-                    key = (opc.get("label") or "").strip()
-                    if key:
-                        opcoes[key] = opc.get("color") or "#6c757d"
-            data = {}
-            for l in perguntas_lista:
-                # Considera respostas por dia (se houver) e resposta_geral
-                respostas_por_dia = l.get("respostas_por_dia") or {}
-                tem_por_dia = any((respostas_por_dia.get(k) or "").strip() for k in resumo.get("dia_keys", []))
-                if tem_por_dia:
-                    for dia_key in resumo.get("dia_keys", []):
-                        valor = (respostas_por_dia.get(dia_key) or "").strip()
-                        if valor:
-                            for v in valor.split("|"):
-                                v = v.strip()
-                                if v:
-                                    data[v] = data.get(v, 0) + 1
-                else:
-                    valor = (l.get("resposta_geral") or "").strip()
-                    if valor:
-                        for v in valor.split("|"):
-                            v = v.strip()
-                            if v:
-                                data[v] = data.get(v, 0) + 1
-            if data:
-                chart_cards.append({
-                    "subcat": subcat,
-                    "tipo": "LISTA",
-                    "label": f"{subcat} - Lista (opções)",
-                    "data": data,
-                    "opcoes": opcoes,
-                })
-
-        # Gráfico para SIM_NAO
-        if perguntas_simnao:
-            data = {"Sim": 0, "Não": 0}
-            for l in perguntas_simnao:
-                valor = (l.get("resposta_geral") or "").strip().lower()
-                if valor in ["sim", "true", "1"]:
-                    data["Sim"] += 1
-                elif valor in ["não", "nao", "false", "0"]:
-                    data["Não"] += 1
-            if data["Sim"] > 0 or data["Não"] > 0:
-                chart_cards.append({
-                    "subcat": subcat,
-                    "tipo": "SIM_NAO",
-                    "label": f"{subcat} - Sim/Não",
-                    "data": data,
-                    "opcoes": {"Sim": "#198754", "Não": "#dc3545"},
-                })
+    # Gráfico único de distribuição de situações por subcategoria (dashboard style)
+    subcat_chart = _build_subcategoria_chart_from_resumo(resumo["blocos"])
 
     context = {
         "registro": registro,
         "blocos_respostas": resumo["blocos"],
-        "chart_cards": chart_cards,
+        "subcat_chart": subcat_chart,
         "exibir_dia_semana": resumo["exibir_dias"],
         "dias_semana_colunas": dias_semana_colunas,
         "total_respostas": resumo["total_perguntas"],
