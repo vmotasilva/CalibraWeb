@@ -1,14 +1,9 @@
-"""
-Automated Tests for Phase 3 - HTML Templates & CRUD Operations
-Tests for all 6 solution types with full CRUD workflow coverage
-"""
+import uuid
+from datetime import timedelta
 
 import pytest
-from django.test import TestCase, Client
-from django.urls import reverse
 from django.contrib.auth.models import User
-from datetime import datetime, timedelta
-from decimal import Decimal
+from django.urls import reverse
 from django.utils import timezone
 
 from organization.models import Setor
@@ -16,630 +11,599 @@ from rh.models import Colaborador
 
 from acoes.models import (
     AcaoCorretiva,
+    KPIOpcao,
+    LinhaAcao,
+    OrigemProblema,
     PlanoAcao,
-    SolucaoA3,
-    Solucao8D,
-    SolucaoRNC,
-    SolucaoGestaoDeMudanca,
     RevisaoGerencial,
-    Solucao
+    Solucao,
+    Solucao8D,
+    SolucaoA3,
+    SolucaoGestaoDeMudanca,
+    SolucaoRNC,
+    TipoSolucao,
 )
+
+
+def unique_text(prefix):
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+def date_input(days=0):
+    return (timezone.localdate() + timedelta(days=days)).strftime("%Y-%m-%d")
+
+
+def datetime_input(days=0):
+    value = timezone.localtime(timezone.now() + timedelta(days=days)).replace(second=0, microsecond=0)
+    return value.strftime("%Y-%m-%dT%H:%M")
 
 
 @pytest.fixture
 def user(db):
-    """Create a test user for authentication"""
-    import uuid
-    unique_username = f'testuser_{uuid.uuid4().hex[:8]}'
     return User.objects.create_user(
-        username=unique_username,
-        email='test@example.com',
-        password='testpass123'
+        username=unique_text("testuser"),
+        email="test@example.com",
+        password="testpass123",
     )
 
 
 @pytest.fixture
-def plano_acao_data():
-    """Fixture for PlanoAcao test data"""
-    return {
-        'numero': 'PA001',
-        'descricao': 'Implementar novo processo de qualidade',
-        'responsavel': 'João Silva',
-        'status': 'planejada',
-        'classificacao': 'melhoria',
-        'data_vencimento': datetime.now().date() + timedelta(days=30),
-        'prioridade': True,
-        'efetividade': 'alta',
-        'resultado_esperado': 'Aumentar conformidade em 20%',
-    }
-
-
-@pytest.fixture
-def solucao_a3_data():
-    """Fixture for SolucaoA3 test data"""
-    return {
-        'numero_a3': 'A3001',
-        'laboratorio': None,
-        'lider_projeto': 'Maria Santos',
-        'descricao_problema': 'Reprocessamento alto de amostras',
-        'situacao_atual': 'Reprocessamento em 15%',
-        'situacao_desejada': 'Reprocessamento em 5%',
-        'problema_identificado': 'sistema',
-        'resultado': 'Redução alcançada de 10%',
-        'indicador': 'Taxa de reprocessamento',
-    }
+def auth_client(client, user):
+    client.force_login(user)
+    return client
 
 
 @pytest.fixture
 def setor(db):
-    import uuid
-    return Setor.objects.create(nome=f"Setor Teste {uuid.uuid4().hex[:8]}")
+    return Setor.objects.create(nome=unique_text("Setor"))
 
 
 @pytest.fixture
-def colaborador_factory(db, setor):
-    import uuid
-
-    def _create(nome_completo: str) -> Colaborador:
-        return Colaborador.objects.create(
-            matricula=f"T{uuid.uuid4().hex[:10]}",
-            nome_completo=nome_completo,
-            grupo="Teste",
-            setor=setor,
-        )
-
-    return _create
+def colaborador(db, setor):
+    return Colaborador.objects.create(
+        matricula=unique_text("MAT"),
+        nome_completo="Maria Tester",
+        grupo="Qualidade",
+        setor=setor,
+    )
 
 
-@pytest.fixture
-def solucao_8d_data():
-    """Fixture for Solucao8D test data"""
+def create_acao(colaborador, **overrides):
+    data = {
+        "numero_registro": unique_text("AC"),
+        "titulo": "Ação corretiva teste",
+        "descricao": "Descrição da ação teste",
+        "tipo": "corretiva",
+        "tipo_solucao": "melhoria",
+        "status": "aberta",
+        "data_abertura": timezone.localdate(),
+        "data_vencimento": timezone.localdate() + timedelta(days=15),
+        "criado_por": colaborador,
+        "responsavel": colaborador,
+        "ativo": True,
+    }
+    data.update(overrides)
+    return AcaoCorretiva.objects.create(**data)
+
+
+def create_solucao(colaborador, tipo, **overrides):
+    acao = overrides.pop("acao_corretiva", None) or create_acao(colaborador, tipo_solucao=tipo)
+    data = {
+        "acao_corretiva": acao,
+        "tipo": tipo,
+        "titulo": f"Solução {tipo}",
+        "descricao": f"Descrição {tipo}",
+        "responsavel": colaborador,
+    }
+    data.update(overrides)
+    return Solucao.objects.create(**data)
+
+
+def create_plano_acao(colaborador, **overrides):
+    solucao = overrides.pop("solucao", None) or create_solucao(colaborador, "plano_acao")
+    data = {
+        "solucao": solucao,
+        "numero_registro": unique_text("PA"),
+        "numero_acao": 1,
+        "descricao": "Plano de ação de teste",
+        "problema": "Problema de teste",
+        "status": "planejada",
+        "classificacao": "melhoria",
+        "responsavel_acao": colaborador,
+        "data_primeira_deadline": timezone.localdate() + timedelta(days=7),
+        "data_deadline": timezone.localdate() + timedelta(days=14),
+        "prioridade": True,
+    }
+    data.update(overrides)
+    return PlanoAcao.objects.create(**data)
+
+
+def create_a3(colaborador, **overrides):
+    solucao = overrides.pop("solucao", None) or create_solucao(colaborador, "a3")
+    data = {
+        "solucao": solucao,
+        "a3_numero": unique_text("A3"),
+        "data_criacao": timezone.localdate(),
+        "laboratorio": "CQ",
+        "lider_projeto": colaborador,
+        "problema": "Problema A3",
+        "objetivo": "Objetivo A3",
+        "estado_atual": "Estado atual",
+        "resultados": "Resultados",
+    }
+    data.update(overrides)
+    return SolucaoA3.objects.create(**data)
+
+
+def create_8d(colaborador, **overrides):
+    solucao = overrides.pop("solucao", None) or create_solucao(colaborador, "8d")
+    data = {
+        "solucao": solucao,
+        "numero_formulario": unique_text("8D"),
+        "data_abertura": timezone.now(),
+        "lider_8d": colaborador,
+        "departamento": "Qualidade",
+        "problema_identificado": "Problema 8D",
+        "d2_descricao": "Descrição 8D",
+    }
+    data.update(overrides)
+    return Solucao8D.objects.create(**data)
+
+
+def create_rnc(colaborador, **overrides):
+    solucao = overrides.pop("solucao", None) or create_solucao(colaborador, "rnc")
+    data = {
+        "solucao": solucao,
+        "numero_rnc": unique_text("RNC"),
+        "data_abertura": timezone.now(),
+        "origem": "processo",
+        "classificacao": "maior",
+        "descricao_nc": "Descrição da não conformidade",
+        "risco": "alto",
+        "responsavel": colaborador,
+    }
+    data.update(overrides)
+    return SolucaoRNC.objects.create(**data)
+
+
+def create_mudanca(colaborador, **overrides):
+    solucao = overrides.pop("solucao", None) or create_solucao(colaborador, "gestao_mudanca")
+    data = {
+        "solucao": solucao,
+        "numero_registro": unique_text("GM"),
+        "data_abertura": timezone.now(),
+        "solicitante": "Roberto Alves",
+        "tipo_mudanca": "qms_sgi",
+        "prioridade_mudanca": "medio",
+        "situacao_antes": "Antes",
+        "situacao_depois": "Depois",
+        "justificativa": "Justificativa",
+        "status": "analise",
+    }
+    data.update(overrides)
+    return SolucaoGestaoDeMudanca.objects.create(**data)
+
+
+def create_revisao(colaborador, **overrides):
+    solucao = overrides.pop("solucao", None) or create_solucao(colaborador, "revisao_gerencial")
+    data = {
+        "solucao": solucao,
+        "numero_rg": unique_text("RG"),
+        "data_realizacao": timezone.localdate(),
+        "laboratorio": "CQ",
+        "periodo_inicio": "2026-01-01",
+        "periodo_fim": "2026-03-31",
+        "representante_direcao": "Diretoria",
+        "responsavel_unidade": "Gerência",
+        "analises_criticas": "Análises críticas",
+        "status": "planejada",
+    }
+    data.update(overrides)
+    return RevisaoGerencial.objects.create(**data)
+
+
+def plano_create_payload(colaborador):
     return {
-        'numero_formulario': '8D001',
-        'data_abertura': datetime.now().date(),
-        'lider_8d': 'Carlos Mendes',
-        'departamento': 'Qualidade',
-        'problema_identificado': 'Variação em resultados de testes',
-        'prazo_projeto': datetime.now().date() + timedelta(days=60),
-        'd2_descricao': 'Problema de calibração',
-        'd3_contencao': 'Suspender testes até resolução',
-        'd4_causa_raiz': 'Falha no equipamento',
-        'd5_contramedidas': 'Substituição do equipamento',
-        'd6_implementacao': 'Já implementado',
-        'd6_status': 'implementada',
+        "numero_registro": unique_text("PA"),
+        "numero_acao": 1,
+        "descricao": "Implementar novo fluxo",
+        "problema": "Fluxo atual sem rastreabilidade",
+        "classificacao": "melhoria",
+        "status": "planejada",
+        "prioridade": "on",
+        "responsavel_acao": colaborador.pk,
+        "data_primeira_deadline": date_input(5),
+        "data_deadline": date_input(10),
+        "comentarios": "Criado via teste",
+        "resultado": "Resultado esperado",
     }
 
 
-@pytest.fixture
-def solucao_rnc_data():
-    """Fixture for SolucaoRNC test data"""
+def a3_payload(colaborador):
     return {
-        'numero_rnc': 'RNC001',
-        'data_identificacao': datetime.now().date(),
-        'responsavel_abertura': 'Ana Costa',
-        'descricao': 'Amostra processada com protocolo incorreto',
-        'origem': 'interno',
-        'classificacao': 'nc',
-        'nivel_risco': 'alto',
-        'acao_corretiva': 'Implementar checklist de verificação',
-        'data_target_implementacao': datetime.now().date() + timedelta(days=15),
+        "a3_numero": unique_text("A3"),
+        "data_criacao": date_input(),
+        "laboratorio": "CQ",
+        "lider_projeto": colaborador.pk,
+        "participantes": "Equipe A3",
+        "problema": "Problema A3",
+        "historico_importancia": "Histórico",
+        "observacoes_importantes": "Observações",
+        "analise_causas": "Análise",
+        "causa_raiz": "Causa raiz",
+        "objetivo": "Objetivo",
+        "estado_atual": "Estado atual",
+        "resultados": "Resultados",
     }
 
 
-@pytest.fixture
-def solucao_mudanca_data():
-    """Fixture for SolucaoGestaoDeMudanca test data"""
+def oito_d_payload(colaborador):
     return {
-        'numero_registro': 'MUD001',
-        'data_solicitacao': datetime.now().date(),
-        'solicitante': 'Roberto Alves',
-        'titulo': 'Atualização de SOP de Qualidade',
-        'descricao': 'Implementar novo procedimento de auditorias internas',
-        'tipo_mudanca': 'preventiva',
-        'prioridade': 'medio',
-        'status': 'analise',
+        "numero_formulario": unique_text("8D"),
+        "data_abertura": datetime_input(),
+        "lider_8d": colaborador.pk,
+        "departamento": "Qualidade",
+        "problema_identificado": "Problema 8D",
+        "prazo_projeto": date_input(30),
+        "d2_descricao": "Descrição 8D",
+        "d3_contencao": "Contenção",
+        "d4_causa_raiz": "Causa raiz",
+        "d5_contramedidas": "Contramedidas",
+        "d6_implementacao": "Implementação",
+        "d6_status": "implementada",
     }
 
 
-@pytest.fixture
-def revisao_gerencial_data():
-    """Fixture for RevisaoGerencial test data"""
+def rnc_payload(colaborador):
     return {
-        'numero_rg': 'RG001',
-        'data_revisao': datetime.now().date(),
-        'periodo_inicio': datetime.now().date() - timedelta(days=365),
-        'periodo_fim': datetime.now().date(),
-        'desempenho_processos': 'Processos operando dentro dos limites',
-        'conformidade_requisitos': '100% em conformidade',
-        'satisfacao_cliente': 'Satisfação em 95%',
+        "unidade": "CQ",
+        "numero_rnc": unique_text("RNC"),
+        "data_abertura": datetime_input(),
+        "origem": "processo",
+        "classificacao": "maior",
+        "descricao_nc": "Descrição da NC",
+        "evidencia_nc": "Evidência",
+        "frequencia": "frequente",
+        "risco": "alto",
+        "causa_raiz": "Causa raiz",
+        "acao_contencao": "Ação de contenção",
+        "acao_nc": "corrigir",
+        "eficacia": "eficaz",
+        "responsavel": colaborador.pk,
+        "analise_causas": "Análise",
+        "acao_imediata": "Ação imediata",
+        "acao_corretiva": "Ação corretiva",
+        "acao_preventiva": "Ação preventiva",
+        "plano_verificacao": "Plano de verificação",
+        "resultado": "Resultado",
     }
 
 
-# ============================================================================
-# PLANO DE AÇÃO TESTS
-# ============================================================================
-
-@pytest.mark.django_db
-class TestPlanoAcaoListView:
-    """Test PlanoAcao list view"""
-    
-    def test_list_view_accessible(self, client, user):
-        """Test that list view is accessible"""
-        client.force_login(user)
-        response = client.get(reverse('acoes:plano_acao_list'))
-        assert response.status_code == 200
-        assert 'object_list' in response.context
-    
-    def test_list_view_shows_planos(self, client, user, plano_acao_data):
-        """Test that list view shows created planos"""
-        PlanoAcao.objects.create(**plano_acao_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:plano_acao_list'))
-        assert response.status_code == 200
-        assert len(response.context['object_list']) == 1
-
-
-@pytest.mark.django_db
-class TestPlanoAcaoCRUD:
-    """Test PlanoAcao CRUD operations"""
-    
-    def test_create_plano_acao(self, client, user, plano_acao_data):
-        """Test creating a new PlanoAcao"""
-        client.force_login(user)
-        response = client.post(reverse('acoes:plano_acao_create'), plano_acao_data)
-        assert PlanoAcao.objects.count() == 1
-        plano = PlanoAcao.objects.first()
-        assert plano.numero == 'PA001'
-    
-    def test_edit_plano_acao(self, client, user, plano_acao_data):
-        """Test editing a PlanoAcao"""
-        plano = PlanoAcao.objects.create(**plano_acao_data)
-        client.force_login(user)
-        plano_acao_data['descricao'] = 'Descrição atualizada'
-        response = client.post(reverse('acoes:plano_acao_edit', args=[plano.pk]), plano_acao_data)
-        plano.refresh_from_db()
-        assert plano.descricao == 'Descrição atualizada'
-    
-    def test_detail_view_plano_acao(self, client, user, plano_acao_data):
-        """Test viewing PlanoAcao detail"""
-        plano = PlanoAcao.objects.create(**plano_acao_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:plano_acao_detail', args=[plano.pk]))
-        assert response.status_code == 200
-        assert response.context['object'] == plano
+def mudanca_payload():
+    return {
+        "unidade": "CQ",
+        "data_abertura": datetime_input(),
+        "solicitante": "Roberto Alves",
+        "numero_registro": unique_text("GM"),
+        "tipo_mudanca": "qms_sgi",
+        "prioridade_mudanca": "medio",
+        "area_impactada": "Qualidade",
+        "area_avaliadora": "Validação",
+        "situacao_antes": "Antes",
+        "situacao_depois": "Depois",
+        "justificativa": "Justificativa",
+        "beneficios": "Benefícios",
+        "data_mudanca": date_input(15),
+        "impacto_pessoas": "Nenhum",
+        "referencia_pessoas": "baixo",
+        "impacto_ambiente": "Nenhum",
+        "referencia_ambiente": "baixo",
+        "impacto_ativos": "Controlado",
+        "referencia_ativos": "baixo",
+        "impacto_compliance": "Sem impacto",
+        "referencia_compliance": "baixo",
+        "processos_afetados": "Processo X",
+        "status": "analise",
+    }
 
 
-# ============================================================================
-# SOLUÇÃO A3 TESTS
-# ============================================================================
-
-@pytest.mark.django_db
-class TestSolucaoA3ListeView:
-    """Test SolucaoA3 list view"""
-    
-    def test_a3_list_view_accessible(self, client, user):
-        """Test that A3 list view is accessible"""
-        client.force_login(user)
-        response = client.get(reverse('acoes:a3_list'))
-        assert response.status_code == 200
-    
-    def test_a3_list_shows_entries(self, client, user, colaborador_factory):
-        """Test that A3 list shows entries"""
-        lider = colaborador_factory("Maria Santos")
-        acao = AcaoCorretiva.objects.create(
-            titulo="Ação teste A3",
-            descricao="Descrição teste",
-            data_vencimento=timezone.now().date() + timedelta(days=30),
-            criado_por=lider,
-            responsavel=lider,
-        )
-        solucao = Solucao.objects.create(
-            acao_corretiva=acao,
-            tipo="a3",
-            titulo="Solução A3 teste",
-            descricao="Descrição solução",
-            responsavel=lider,
-        )
-        SolucaoA3.objects.create(
-            solucao=solucao,
-            a3_numero="A3-TESTE-001",
-            data_criacao=timezone.now().date(),
-            laboratorio="Lab",
-            lider_projeto=lider,
-            problema="Problema teste",
-        )
-        client.force_login(user)
-        response = client.get(reverse('acoes:a3_list'))
-        assert len(response.context['object_list']) == 1
+def revisao_payload():
+    return {
+        "numero_rg": unique_text("RG"),
+        "data_realizacao": date_input(),
+        "laboratorio": "CQ",
+        "periodo_inicio": "2026-01-01",
+        "periodo_fim": "2026-03-31",
+        "representante_direcao": "Diretoria",
+        "responsavel_unidade": "Gerência",
+        "participantes": "Time da revisão",
+        "entradas_acompanhamento": "Entradas",
+        "entradas_auditorias": "Auditorias",
+        "entradas_satisfacao": "Satisfação",
+        "entradas_desempenho": "Desempenho",
+        "entradas_pessoal": "Pessoal",
+        "entradas_fornecedores": "Fornecedores",
+        "entradas_mudancas": "Mudanças",
+        "entradas_risco": "Riscos",
+        "entradas_oportunidades": "Oportunidades",
+        "saidas_eficacia_sgq": "Saídas SGQ",
+        "saidas_melhoria_produto": "Saídas produto",
+        "saidas_necessidades_cliente": "Saídas cliente",
+        "saidas_necessidade_recurso": "Saídas recursos",
+        "analises_criticas": "Análises críticas",
+        "status": "planejada",
+    }
 
 
 @pytest.mark.django_db
-class TestSolucaoA3CRUD:
-    """Test SolucaoA3 CRUD operations"""
-    
-    def test_create_a3(self, client, user, solucao_a3_data):
-        """Test creating a new A3"""
-        client.force_login(user)
-        response = client.post(reverse('acoes:a3_create'), solucao_a3_data)
-        assert SolucaoA3.objects.count() == 1
-    
-    def test_edit_a3(self, client, user, solucao_a3_data):
-        """Test editing an A3"""
-        a3 = SolucaoA3.objects.create(**solucao_a3_data)
-        client.force_login(user)
-        solucao_a3_data['descricao_problema'] = 'Problema atualizado'
-        response = client.post(reverse('acoes:a3_edit', args=[a3.pk]), solucao_a3_data)
-        a3.refresh_from_db()
-        assert a3.descricao_problema == 'Problema atualizado'
-    
-    def test_detail_view_a3(self, client, user, solucao_a3_data):
-        """Test viewing A3 detail"""
-        a3 = SolucaoA3.objects.create(**solucao_a3_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:a3_detail', args=[a3.pk]))
-        assert response.status_code == 200
-        assert response.context['object'] == a3
+def test_salvar_acao_corretiva_modal_cria_e_atualiza_registro(auth_client, colaborador):
+    payload = {
+        "data_abertura": date_input(),
+        "ano": timezone.localdate().year,
+        "unidade": "CQ",
+        "numero_registro": unique_text("AC"),
+        "tipo_solucao": "RNC",
+        "origem": "Auditoria",
+        "descricao": "Descrição modal",
+        "causa_raiz": "Causa raiz",
+        "responsavel": colaborador.pk,
+        "data_vencimento": date_input(7),
+        "status": "aberta",
+    }
 
+    response = auth_client.post(reverse("acoes:salvar_acao_corretiva_modal"), payload)
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+    acao = AcaoCorretiva.objects.get()
+    assert acao.titulo == payload["numero_registro"]
 
-# ============================================================================
-# SOLUÇÃO 8D TESTS
-# ============================================================================
-
-@pytest.mark.django_db
-class TestSolucao8DListView:
-    """Test Solucao8D list view"""
-    
-    def test_8d_list_view_accessible(self, client, user):
-        """Test that 8D list view is accessible"""
-        client.force_login(user)
-        response = client.get(reverse('acoes:8d_list'))
-        assert response.status_code == 200
-    
-    def test_8d_list_shows_entries(self, client, user, colaborador_factory):
-        """Test that 8D list shows entries"""
-        lider = colaborador_factory("Carlos Mendes")
-        acao = AcaoCorretiva.objects.create(
-            titulo="Ação teste 8D",
-            descricao="Descrição teste",
-            data_vencimento=timezone.now().date() + timedelta(days=30),
-            criado_por=lider,
-            responsavel=lider,
-        )
-        solucao = Solucao.objects.create(
-            acao_corretiva=acao,
-            tipo="8d",
-            titulo="Solução 8D teste",
-            descricao="Descrição solução",
-            responsavel=lider,
-        )
-        Solucao8D.objects.create(
-            solucao=solucao,
-            numero_formulario="8D-TESTE-001",
-            data_abertura=timezone.now(),
-            lider_8d=lider,
-            departamento="Qualidade",
-            problema_identificado="Problema 8D teste",
-        )
-        client.force_login(user)
-        response = client.get(reverse('acoes:8d_list'))
-        assert len(response.context['object_list']) == 1
+    update_payload = payload | {"id": acao.pk, "descricao": "Descrição atualizada"}
+    response = auth_client.post(reverse("acoes:salvar_acao_corretiva_modal"), update_payload)
+    assert response.status_code == 200
+    acao.refresh_from_db()
+    assert acao.descricao == "Descrição atualizada"
 
 
 @pytest.mark.django_db
-class TestSolucao8DCRUD:
-    """Test Solucao8D CRUD operations"""
-    
-    def test_create_8d(self, client, user, solucao_8d_data):
-        """Test creating a new 8D"""
-        client.force_login(user)
-        response = client.post(reverse('acoes:8d_create'), solucao_8d_data)
-        assert Solucao8D.objects.count() == 1
-    
-    def test_edit_8d(self, client, user, solucao_8d_data):
-        """Test editing an 8D"""
-        oito_d = Solucao8D.objects.create(**solucao_8d_data)
-        client.force_login(user)
-        solucao_8d_data['lider_8d'] = 'Novo Líder'
-        response = client.post(reverse('acoes:8d_edit', args=[oito_d.pk]), solucao_8d_data)
-        oito_d.refresh_from_db()
-        assert oito_d.lider_8d == 'Novo Líder'
-    
-    def test_detail_view_8d(self, client, user, solucao_8d_data):
-        """Test viewing 8D detail"""
-        oito_d = Solucao8D.objects.create(**solucao_8d_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:8d_detail', args=[oito_d.pk]))
-        assert response.status_code == 200
-        assert response.context['object'] == oito_d
+def test_listar_acoes_filtra_atrasadas_e_resume_linhas(auth_client, colaborador):
+    acao = create_acao(
+        colaborador,
+        status="em_progresso",
+        data_vencimento=timezone.localdate() - timedelta(days=2),
+    )
+    solucao = create_solucao(colaborador, "plano_acao", acao_corretiva=acao)
+    plano = create_plano_acao(colaborador, solucao=solucao)
+    LinhaAcao.objects.create(
+        plano_acao=plano,
+        numero_acao=1,
+        descricao="Ação filha",
+        status="planejada",
+        responsavel_acao=colaborador,
+    )
 
-
-# ============================================================================
-# SOLUÇÃO RNC TESTS
-# ============================================================================
-
-@pytest.mark.django_db
-class TestSolucaoRNCListView:
-    """Test SolucaoRNC list view"""
-    
-    def test_rnc_list_view_accessible(self, client, user):
-        """Test that RNC list view is accessible"""
-        client.force_login(user)
-        response = client.get(reverse('acoes:rnc_list'))
-        assert response.status_code == 200
-    
-    def test_rnc_list_shows_entries(self, client, user, colaborador_factory):
-        """Test that RNC list shows entries"""
-        responsavel = colaborador_factory("Ana Costa")
-        acao = AcaoCorretiva.objects.create(
-            titulo="Ação teste RNC",
-            descricao="Descrição teste",
-            data_vencimento=timezone.now().date() + timedelta(days=30),
-            criado_por=responsavel,
-            responsavel=responsavel,
-        )
-        solucao = Solucao.objects.create(
-            acao_corretiva=acao,
-            tipo="rnc",
-            titulo="Solução RNC teste",
-            descricao="Descrição solução",
-            responsavel=responsavel,
-        )
-        SolucaoRNC.objects.create(
-            solucao=solucao,
-            numero_rnc="RNC-TESTE-001",
-            data_abertura=timezone.now(),
-            origem="processo",
-            risco="alto",
-            descricao_nc="Descrição NC teste",
-            responsavel=responsavel,
-        )
-        client.force_login(user)
-        response = client.get(reverse('acoes:rnc_list'))
-        assert len(response.context['object_list']) == 1
+    response = auth_client.get(reverse("acoes:listar_acoes"), {"status": "atrasada"})
+    assert response.status_code == 200
+    assert len(response.context["acoes"]) == 1
+    assert response.context["acoes"][0].status == "atrasada"
+    assert "Planejada: 1" in response.context["acoes"][0].acoes_status_resumo
 
 
 @pytest.mark.django_db
-class TestSolucaoRNCCRUD:
-    """Test SolucaoRNC CRUD operations"""
-    
-    def test_create_rnc(self, client, user, solucao_rnc_data):
-        """Test creating a new RNC"""
-        client.force_login(user)
-        response = client.post(reverse('acoes:rnc_create'), solucao_rnc_data)
-        assert SolucaoRNC.objects.count() == 1
-    
-    def test_edit_rnc(self, client, user, solucao_rnc_data):
-        """Test editing an RNC"""
-        rnc = SolucaoRNC.objects.create(**solucao_rnc_data)
-        client.force_login(user)
-        solucao_rnc_data['descricao'] = 'Descrição atualizada'
-        response = client.post(reverse('acoes:rnc_edit', args=[rnc.pk]), solucao_rnc_data)
-        rnc.refresh_from_db()
-        assert rnc.descricao == 'Descrição atualizada'
-    
-    def test_detail_view_rnc(self, client, user, solucao_rnc_data):
-        """Test viewing RNC detail"""
-        rnc = SolucaoRNC.objects.create(**solucao_rnc_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:rnc_detail', args=[rnc.pk]))
-        assert response.status_code == 200
-        assert response.context['object'] == rnc
-    
-    def test_rnc_risk_levels(self, client, user, solucao_rnc_data):
-        """Test RNC with different risk levels"""
-        for risk in ['alto', 'medio', 'baixo']:
-            solucao_rnc_data['nivel_risco'] = risk
-            rnc = SolucaoRNC.objects.create(**solucao_rnc_data)
-            assert rnc.nivel_risco == risk
-            rnc.delete()
+def test_detalhe_acao_exibe_plano_e_linhas(auth_client, colaborador):
+    acao = create_acao(colaborador)
+    solucao = create_solucao(colaborador, "plano_acao", acao_corretiva=acao)
+    plano = create_plano_acao(colaborador, solucao=solucao)
+    linha = LinhaAcao.objects.create(
+        plano_acao=plano,
+        numero_acao=1,
+        descricao="Linha detalhada",
+        status="em_curso",
+        responsavel_acao=colaborador,
+    )
 
-
-# ============================================================================
-# GESTÃO DE MUDANÇA TESTS
-# ============================================================================
-
-@pytest.mark.django_db
-class TestSolucaoMudancaListView:
-    """Test SolucaoGestaoDeMudanca list view"""
-    
-    def test_mudanca_list_view_accessible(self, client, user):
-        """Test that Mudança list view is accessible"""
-        client.force_login(user)
-        response = client.get(reverse('acoes:mudanca_list'))
-        assert response.status_code == 200
-    
-    def test_mudanca_list_shows_entries(self, client, user, solucao_mudanca_data):
-        """Test that Mudança list shows entries"""
-        SolucaoGestaoDeMudanca.objects.create(**solucao_mudanca_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:mudanca_list'))
-        assert len(response.context['object_list']) == 1
+    response = auth_client.get(reverse("acoes:detalhe_acao", args=[acao.pk]))
+    assert response.status_code == 200
+    assert response.context["plano_acao"] == plano
+    assert list(response.context["acoes_associadas"]) == [linha]
 
 
 @pytest.mark.django_db
-class TestSolucaoMudancaCRUD:
-    """Test SolucaoGestaoDeMudanca CRUD operations"""
-    
-    def test_create_mudanca(self, client, user, solucao_mudanca_data):
-        """Test creating a new Mudança"""
-        client.force_login(user)
-        response = client.post(reverse('acoes:mudanca_create'), solucao_mudanca_data)
-        assert SolucaoGestaoDeMudanca.objects.count() == 1
-    
-    def test_edit_mudanca(self, client, user, solucao_mudanca_data):
-        """Test editing a Mudança"""
-        mudanca = SolucaoGestaoDeMudanca.objects.create(**solucao_mudanca_data)
-        client.force_login(user)
-        solucao_mudanca_data['titulo'] = 'Título atualizado'
-        response = client.post(reverse('acoes:mudanca_edit', args=[mudanca.pk]), solucao_mudanca_data)
-        mudanca.refresh_from_db()
-        assert mudanca.titulo == 'Título atualizado'
-    
-    def test_detail_view_mudanca(self, client, user, solucao_mudanca_data):
-        """Test viewing Mudança detail"""
-        mudanca = SolucaoGestaoDeMudanca.objects.create(**solucao_mudanca_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:mudanca_detail', args=[mudanca.pk]))
-        assert response.status_code == 200
-        assert response.context['object'] == mudanca
+def test_plano_acao_create_view_cria_solucao_base(auth_client, colaborador):
+    response = auth_client.post(reverse("acoes:plano_acao_create"), plano_create_payload(colaborador))
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(reverse("acoes:plano_acao_list"))
 
-
-# ============================================================================
-# REVISÃO GERENCIAL TESTS
-# ============================================================================
-
-@pytest.mark.django_db
-class TestRevisaoGerencialListView:
-    """Test RevisaoGerencial list view"""
-    
-    def test_rg_list_view_accessible(self, client, user):
-        """Test that RG list view is accessible"""
-        client.force_login(user)
-        response = client.get(reverse('acoes:revisao_gerencial_list'))
-        assert response.status_code == 200
-    
-    def test_rg_list_shows_entries(self, client, user, revisao_gerencial_data):
-        """Test that RG list shows entries"""
-        RevisaoGerencial.objects.create(**revisao_gerencial_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:revisao_gerencial_list'))
-        assert len(response.context['object_list']) == 1
+    plano = PlanoAcao.objects.get()
+    assert plano.solucao_id is not None
+    assert plano.solucao.acao_corretiva_id is not None
+    assert plano.numero_registro
 
 
 @pytest.mark.django_db
-class TestRevisaoGerencialCRUD:
-    """Test RevisaoGerencial CRUD operations"""
-    
-    def test_create_rg(self, client, user, revisao_gerencial_data):
-        """Test creating a new RG"""
-        client.force_login(user)
-        response = client.post(reverse('acoes:revisao_gerencial_create'), revisao_gerencial_data)
-        assert RevisaoGerencial.objects.count() == 1
-    
-    def test_edit_rg(self, client, user, revisao_gerencial_data):
-        """Test editing a RG"""
-        rg = RevisaoGerencial.objects.create(**revisao_gerencial_data)
-        client.force_login(user)
-        revisao_gerencial_data['numero_rg'] = 'RG002'
-        response = client.post(reverse('acoes:revisao_gerencial_edit', args=[rg.pk]), revisao_gerencial_data)
-        rg.refresh_from_db()
-        assert rg.numero_rg == 'RG002'
-    
-    def test_detail_view_rg(self, client, user, revisao_gerencial_data):
-        """Test viewing RG detail"""
-        rg = RevisaoGerencial.objects.create(**revisao_gerencial_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:revisao_gerencial_detail', args=[rg.pk]))
-        assert response.status_code == 200
-        assert response.context['object'] == rg
+def test_plano_acao_list_update_detail_delete_flow(auth_client, colaborador):
+    plano = create_plano_acao(colaborador)
+
+    list_response = auth_client.get(reverse("acoes:plano_acao_list"))
+    assert list_response.status_code == 200
+    assert plano in list_response.context["object_list"]
+
+    detail_response = auth_client.get(reverse("acoes:plano_acao_detail", args=[plano.pk]))
+    assert detail_response.status_code == 200
+    assert detail_response.context["object"] == plano
+
+    payload = plano_create_payload(colaborador) | {"numero_registro": plano.numero_registro, "numero_acao": plano.numero_acao}
+    payload["descricao"] = "Plano atualizado"
+    response = auth_client.post(reverse("acoes:plano_acao_update", args=[plano.pk]), payload)
+    assert response.status_code == 302
+    plano.refresh_from_db()
+    assert plano.descricao == "Plano atualizado"
+
+    response = auth_client.post(reverse("acoes:plano_acao_delete", args=[plano.pk]))
+    assert response.status_code == 302
+    assert PlanoAcao.objects.count() == 0
 
 
-# ============================================================================
-# FORM VALIDATION TESTS
-# ============================================================================
+CREATE_SCENARIOS = [
+    ("acoes:a3_create", "acoes:a3_list", SolucaoA3, a3_payload, "a3_numero"),
+    ("acoes:8d_create", "acoes:8d_list", Solucao8D, oito_d_payload, "numero_formulario"),
+    ("acoes:rnc_create", "acoes:rnc_list", SolucaoRNC, rnc_payload, "numero_rnc"),
+    ("acoes:gestao_mudanca_create", "acoes:gestao_mudanca_list", SolucaoGestaoDeMudanca, mudanca_payload, "numero_registro"),
+    ("acoes:revisao_gerencial_create", "acoes:revisao_gerencial_list", RevisaoGerencial, revisao_payload, "numero_rg"),
+]
+
 
 @pytest.mark.django_db
-class TestFormValidation:
-    """Test form validation for all solution types"""
-    
-    def test_plano_acao_form_required_fields(self, client, user):
-        """Test PlanoAcao form requires essential fields"""
-        client.force_login(user)
-        response = client.post(reverse('acoes:plano_acao_create'), {})
-        assert response.status_code == 200  # Form re-rendered with errors
-    
-    def test_rnc_classification_choices(self, client, user, solucao_rnc_data):
-        """Test RNC classification choices"""
-        for classification in ['nc', 'ac', 'op']:
-            solucao_rnc_data['classificacao'] = classification
-            rnc = SolucaoRNC.objects.create(**solucao_rnc_data)
-            assert rnc.classificacao == classification
-            rnc.delete()
+@pytest.mark.parametrize("create_url,list_url,model,payload_factory,identifier_field", CREATE_SCENARIOS)
+def test_create_views_criam_registro_com_solucao_base(auth_client, colaborador, create_url, list_url, model, payload_factory, identifier_field):
+    payload = payload_factory(colaborador) if payload_factory in {a3_payload, oito_d_payload, rnc_payload} else payload_factory()
+    response = auth_client.post(reverse(create_url), payload)
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(reverse(list_url))
+
+    obj = model.objects.get()
+    assert getattr(obj, identifier_field)
+    assert obj.solucao_id is not None
+    assert obj.solucao.acao_corretiva_id is not None
 
 
-# ============================================================================
-# URL ROUTING TESTS
-# ============================================================================
+UPDATE_DETAIL_SCENARIOS = [
+    (
+        "acoes:a3_list",
+        "acoes:a3_detail",
+        "acoes:a3_update",
+        create_a3,
+        lambda colaborador, obj: a3_payload(colaborador) | {"a3_numero": obj.a3_numero, "problema": "Problema atualizado"},
+        "problema",
+        "Problema atualizado",
+    ),
+    (
+        "acoes:8d_list",
+        "acoes:8d_detail",
+        "acoes:8d_update",
+        create_8d,
+        lambda colaborador, obj: oito_d_payload(colaborador) | {"numero_formulario": obj.numero_formulario, "problema_identificado": "Problema 8D atualizado"},
+        "problema_identificado",
+        "Problema 8D atualizado",
+    ),
+    (
+        "acoes:rnc_list",
+        "acoes:rnc_detail",
+        "acoes:rnc_update",
+        create_rnc,
+        lambda colaborador, obj: rnc_payload(colaborador) | {"numero_rnc": obj.numero_rnc, "descricao_nc": "NC atualizada"},
+        "descricao_nc",
+        "NC atualizada",
+    ),
+    (
+        "acoes:gestao_mudanca_list",
+        "acoes:gestao_mudanca_detail",
+        "acoes:gestao_mudanca_update",
+        create_mudanca,
+        lambda colaborador, obj: mudanca_payload() | {"numero_registro": obj.numero_registro, "justificativa": "Justificativa atualizada"},
+        "justificativa",
+        "Justificativa atualizada",
+    ),
+    (
+        "acoes:revisao_gerencial_list",
+        "acoes:revisao_gerencial_detail",
+        "acoes:revisao_gerencial_update",
+        create_revisao,
+        lambda colaborador, obj: revisao_payload() | {"numero_rg": obj.numero_rg, "analises_criticas": "Análise crítica atualizada"},
+        "analises_criticas",
+        "Análise crítica atualizada",
+    ),
+]
+
 
 @pytest.mark.django_db
-class TestURLRouting:
-    """Test all URL patterns"""
-    
-    def test_all_list_urls_accessible(self, client, user):
-        """Test all list view URLs"""
-        urls = [
-            'acoes:plano_acao_list',
-            'acoes:a3_list',
-            'acoes:8d_list',
-            'acoes:rnc_list',
-            'acoes:mudanca_list',
-            'acoes:revisao_gerencial_list',
-        ]
-        client.force_login(user)
-        for url_name in urls:
-            response = client.get(reverse(url_name))
-            assert response.status_code == 200, f"URL {url_name} failed"
-    
-    def test_create_urls_accessible(self, client, user):
-        """Test all create view URLs"""
-        urls = [
-            'acoes:plano_acao_create',
-            'acoes:a3_create',
-            'acoes:8d_create',
-            'acoes:rnc_create',
-            'acoes:mudanca_create',
-            'acoes:revisao_gerencial_create',
-        ]
-        client.force_login(user)
-        for url_name in urls:
-            response = client.get(reverse(url_name))
-            assert response.status_code == 200, f"URL {url_name} failed"
+@pytest.mark.parametrize("list_url,detail_url,update_url,factory,payload_factory,field_name,expected_value", UPDATE_DETAIL_SCENARIOS)
+def test_list_detail_update_views_dos_tipos_de_solucao(auth_client, colaborador, list_url, detail_url, update_url, factory, payload_factory, field_name, expected_value):
+    obj = factory(colaborador)
 
+    list_response = auth_client.get(reverse(list_url))
+    assert list_response.status_code == 200
+    assert obj in list_response.context["object_list"]
 
-# ============================================================================
-# TEMPLATE RENDERING TESTS
-# ============================================================================
+    detail_response = auth_client.get(reverse(detail_url, args=[obj.pk]))
+    assert detail_response.status_code == 200
+    assert detail_response.context["object"] == obj
+
+    response = auth_client.post(reverse(update_url, args=[obj.pk]), payload_factory(colaborador, obj))
+    assert response.status_code == 302
+    obj.refresh_from_db()
+    assert getattr(obj, field_name) == expected_value
+
 
 @pytest.mark.django_db
-class TestTemplateRendering:
-    """Test that all templates render correctly"""
-    
-    def test_list_templates_use_correct_template(self, client, user, plano_acao_data):
-        """Test that list views use correct templates"""
-        PlanoAcao.objects.create(**plano_acao_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:plano_acao_list'))
-        assert 'plano_acao_list.html' in [t.name for t in response.templates]
-    
-    def test_form_templates_use_correct_template(self, client, user):
-        """Test that form views use correct templates"""
-        client.force_login(user)
-        response = client.get(reverse('acoes:plano_acao_create'))
-        assert 'planoacao_form.html' in [t.name for t in response.templates]
-    
-    def test_detail_templates_use_correct_template(self, client, user, plano_acao_data):
-        """Test that detail views use correct templates"""
-        plano = PlanoAcao.objects.create(**plano_acao_data)
-        client.force_login(user)
-        response = client.get(reverse('acoes:plano_acao_detail', args=[plano.pk]))
-        assert 'planoacao_detail.html' in [t.name for t in response.templates]
+@pytest.mark.parametrize(
+    "url_name,expected_template",
+    [
+        ("acoes:plano_acao_create", "planoacao_form_table.html"),
+        ("acoes:a3_create", "solucaoa3_form.html"),
+        ("acoes:8d_create", "solucao8d_form.html"),
+        ("acoes:rnc_create", "solucaornc_form.html"),
+        ("acoes:gestao_mudanca_create", "solucaogesta_de_mudanca_form.html"),
+        ("acoes:revisao_gerencial_create", "revisaogerencial_form.html"),
+    ],
+)
+def test_create_views_renderizam_templates_atuais(auth_client, url_name, expected_template):
+    response = auth_client.get(reverse(url_name))
+    assert response.status_code == 200
+    assert any((template.name or '').endswith(expected_template) for template in response.templates)
 
 
-# ============================================================================
-# AUTHENTICATION & PERMISSION TESTS
-# ============================================================================
+REFERENCE_SCENARIOS = [
+    (OrigemProblema, "acoes:origem_problema_list", "acoes:origem_problema_create", "acoes:origem_problema_update", "acoes:origem_problema_delete", {"nome": unique_text("Origem"), "descricao": "Origem teste", "codigo": unique_text("OP"), "ativo": True}, "nome"),
+    (KPIOpcao, "acoes:kpi_opcao_list", "acoes:kpi_opcao_create", "acoes:kpi_opcao_update", "acoes:kpi_opcao_delete", {"nome": unique_text("KPI"), "descricao": "KPI teste", "codigo": unique_text("KPI"), "ativo": True}, "nome"),
+    (TipoSolucao, "acoes:tipo_solucao_list", "acoes:tipo_solucao_create", "acoes:tipo_solucao_update", "acoes:tipo_solucao_delete", {"nome": unique_text("Tipo"), "descricao": "Tipo teste", "ativo": True}, "nome"),
+]
+
 
 @pytest.mark.django_db
-class TestAuthentication:
-    """Test authentication requirements"""
-    
-    def test_unauthenticated_user_redirected(self, client):
-        """Test that unauthenticated users are redirected"""
-        response = client.get(reverse('acoes:plano_acao_list'))
-        assert response.status_code == 302  # Redirect to login
-    
-    def test_authenticated_user_can_access(self, client, user):
-        """Test that authenticated users can access views"""
-        client.force_login(user)
-        response = client.get(reverse('acoes:plano_acao_list'))
-        assert response.status_code == 200
+@pytest.mark.parametrize("model,list_url,create_url,update_url,delete_url,payload,field_name", REFERENCE_SCENARIOS)
+def test_reference_views_crud(auth_client, model, list_url, create_url, update_url, delete_url, payload, field_name):
+    create_response = auth_client.post(reverse(create_url), payload)
+    assert create_response.status_code == 302
+
+    obj = model.objects.get()
+    list_response = auth_client.get(reverse(list_url))
+    assert list_response.status_code == 200
+    assert obj in list_response.context["object_list"]
+
+    updated_value = unique_text("Atualizado")
+    update_payload = payload | {field_name: updated_value}
+    update_response = auth_client.post(reverse(update_url, args=[obj.pk]), update_payload)
+    assert update_response.status_code == 302
+    obj.refresh_from_db()
+    assert getattr(obj, field_name) == updated_value
+
+    delete_response = auth_client.post(reverse(delete_url, args=[obj.pk]))
+    assert delete_response.status_code == 302
+    assert model.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_dashboard_e_api_proximo_numero(auth_client, colaborador):
+    create_acao(colaborador, status="em_progresso")
+    create_plano_acao(colaborador, numero_acao=1)
+    create_a3(colaborador, numero_acao=1)
+    create_8d(colaborador, numero_acao=1)
+    create_rnc(colaborador)
+    create_mudanca(colaborador)
+    create_revisao(colaborador)
+
+    dashboard = auth_client.get(reverse("acoes:dashboard"))
+    assert dashboard.status_code == 200
+    assert dashboard.context["total_planos"] >= 1
+    assert dashboard.context["total_a3s"] >= 1
+    assert dashboard.context["total_8ds"] >= 1
+
+    invalid = auth_client.get(reverse("acoes:obter_proximo_numero"))
+    assert invalid.status_code == 400
+
+    valid = auth_client.get(reverse("acoes:obter_proximo_numero"), {"tipo": "plano_acao"})
+    assert valid.status_code == 200
+    payload = valid.json()
+    assert payload["tipo"] == "plano_acao"
+    assert payload["proximo_numero"] == "002"

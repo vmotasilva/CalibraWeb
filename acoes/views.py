@@ -299,6 +299,41 @@ class SolucaoAcessoMixin(LoginRequiredMixin):
         return context
 
 
+def _normalize_reference_date(value):
+    if isinstance(value, date):
+        return value
+    if hasattr(value, 'date') and callable(value.date):
+        return value.date()
+    return timezone.localdate()
+
+
+def _create_supporting_solution(tipo, titulo, descricao, responsavel=None, data_referencia=None):
+    reference_date = _normalize_reference_date(data_referencia)
+    safe_title = (titulo or f"Registro {tipo}").strip()[:200]
+    safe_description = (descricao or safe_title).strip() or safe_title
+    unique_suffix = timezone.now().strftime('%Y%m%d%H%M%S%f')
+
+    acao = AcaoCorretiva.objects.create(
+        numero_registro=f"{tipo.upper()}-{unique_suffix}",
+        titulo=safe_title,
+        descricao=safe_description,
+        tipo='corretiva',
+        tipo_solucao=tipo,
+        status='aberta',
+        data_abertura=reference_date,
+        data_vencimento=reference_date + timedelta(days=30),
+        criado_por=responsavel,
+        responsavel=responsavel,
+    )
+    return Solucao.objects.create(
+        acao_corretiva=acao,
+        tipo=tipo,
+        titulo=safe_title,
+        descricao=safe_description,
+        responsavel=responsavel,
+    )
+
+
 # ============================================================================
 # PLANO DE AÇÃO VIEWS
 # ============================================================================
@@ -348,6 +383,7 @@ class PlanoAcaoListView(SolucaoAcessoMixin, ListView):
 class PlanoAcaoCreateView(SolucaoAcessoMixin, View):
     """Criar novo Plano de Ação com múltiplas ações"""
     template_name = 'acoes/planoacao_form_table.html'
+    single_form_template_name = 'acoes/planoacao_form.html'
     form_class = PlanoAcaoForm
     success_url = reverse_lazy('acoes:plano_acao_list')
     formset_prefix = 'acoes'
@@ -365,6 +401,25 @@ class PlanoAcaoCreateView(SolucaoAcessoMixin, View):
             prefix=self.formset_prefix,
         )
 
+    def _save_plano(self, form, numero_registro):
+        from .forms import criar_numero_registro
+
+        plano = form.save(commit=False)
+        registro_final = (numero_registro or '').strip() or criar_numero_registro()
+        if not plano.numero_registro:
+            plano.numero_registro = registro_final
+        if not plano.solucao_id:
+            plano.solucao = _create_supporting_solution(
+                tipo='plano_acao',
+                titulo=f"Plano de Ação {plano.numero_registro}",
+                descricao=plano.descricao or plano.problema or f"Plano de Ação {plano.numero_registro}",
+                responsavel=plano.responsavel_acao,
+                data_referencia=plano.data_deadline or plano.data_primeira_deadline,
+            )
+        plano.save()
+        form.save_m2m()
+        return plano
+
     def get(self, request, *args, **kwargs):
         formset = self._build_formset()
         numero_registro = request.GET.get('numero_registro', '').strip()
@@ -375,6 +430,17 @@ class PlanoAcaoCreateView(SolucaoAcessoMixin, View):
         return render(request, self.template_name, context)
 
     def post(self, request, *args, **kwargs):
+        if f'{self.formset_prefix}-TOTAL_FORMS' not in request.POST:
+            from .forms import criar_numero_registro
+
+            form = self.form_class(request.POST)
+            if form.is_valid():
+                numero_registro = request.POST.get('numero_registro', '').strip() or criar_numero_registro()
+                plano = self._save_plano(form, numero_registro)
+                messages.success(request, f"Plano de Ação '{plano.numero_registro}' criado com sucesso!")
+                return redirect(self.success_url)
+            return render(request, self.single_form_template_name, {'form': form})
+
         formset = self._build_formset(data=request.POST)
         if formset.is_valid():
             from .forms import criar_numero_registro
@@ -384,16 +450,13 @@ class PlanoAcaoCreateView(SolucaoAcessoMixin, View):
             for form in formset:
                 if not form.has_changed():
                     continue
-                plano = form.save(commit=False)
-                if not plano.numero_registro:
-                    plano.numero_registro = numero_registro
-                plano.save()
-                form.save_m2m()
+                registro_atual = numero_registro if planos_salvos == 0 else f"{numero_registro}-{planos_salvos + 1}"
+                self._save_plano(form, registro_atual)
                 planos_salvos += 1
 
             if planos_salvos == 0:
                 messages.error(request, 'Adicione pelo menos uma ação na tabela.')
-                return render(request, self.template_name, {'formset': formset})
+                return render(request, self.template_name, {'formset': formset, 'numero_registro': numero_registro})
 
             messages.success(
                 request,
@@ -401,7 +464,7 @@ class PlanoAcaoCreateView(SolucaoAcessoMixin, View):
             )
             return redirect(self.success_url)
 
-        return render(request, self.template_name, {'formset': formset})
+        return render(request, self.template_name, {'formset': formset, 'numero_registro': request.POST.get('numero_registro', '').strip()})
 
 
 class PlanoAcaoUpdateView(SolucaoAcessoMixin, UpdateView):
@@ -538,18 +601,28 @@ class SolucaoA3CreateView(SolucaoAcessoMixin, CreateView):
     model = SolucaoA3
     form_class = SolucaoA3Form
     template_name = 'acoes/solucaoa3_form.html'
-    success_url = reverse_lazy('acoes:solucao_a3_list')
+    success_url = reverse_lazy('acoes:a3_list')
     
     def form_valid(self, form):
         a3 = form.save(commit=False)
         
         # Gerar número de A3 se não existir
         if not a3.a3_numero:
-            a3.a3_numero = timezone.now().strftime('%Y-%m-%d')
+            a3.a3_numero = f"A3-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+        if not a3.solucao_id:
+            a3.solucao = _create_supporting_solution(
+                tipo='a3',
+                titulo=f"A3 {a3.a3_numero}",
+                descricao=a3.problema or a3.objetivo or f"A3 {a3.a3_numero}",
+                responsavel=a3.lider_projeto,
+                data_referencia=a3.data_criacao,
+            )
         
         a3.save()
+        form.save_m2m()
+        self.object = a3
         messages.success(self.request, f"A3 '{a3.a3_numero}' criado com sucesso!")
-        return super().form_valid(form)
+        return redirect(self.get_success_url())
 
 
 class SolucaoA3UpdateView(SolucaoAcessoMixin, UpdateView):
@@ -557,7 +630,7 @@ class SolucaoA3UpdateView(SolucaoAcessoMixin, UpdateView):
     model = SolucaoA3
     form_class = SolucaoA3Form
     template_name = 'acoes/solucaoa3_form.html'
-    success_url = reverse_lazy('acoes:solucao_a3_list')
+    success_url = reverse_lazy('acoes:a3_list')
     
     def form_valid(self, form):
         messages.success(self.request, "A3 atualizado com sucesso!")
@@ -591,7 +664,7 @@ class Solucao8DCreateView(SolucaoAcessoMixin, CreateView):
     model = Solucao8D
     form_class = Solucao8DForm
     template_name = 'acoes/solucao8d_form.html'
-    success_url = reverse_lazy('acoes:solucao_8d_list')
+    success_url = reverse_lazy('acoes:8d_list')
     
     def form_valid(self, form):
         oito_d = form.save(commit=False)
@@ -599,10 +672,20 @@ class Solucao8DCreateView(SolucaoAcessoMixin, CreateView):
         # Gerar número do formulário se não existir
         if not oito_d.numero_formulario:
             oito_d.numero_formulario = f"8D-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+        if not oito_d.solucao_id:
+            oito_d.solucao = _create_supporting_solution(
+                tipo='8d',
+                titulo=f"8D {oito_d.numero_formulario}",
+                descricao=oito_d.problema_identificado or oito_d.d2_descricao or f"8D {oito_d.numero_formulario}",
+                responsavel=oito_d.lider_8d,
+                data_referencia=oito_d.data_abertura,
+            )
         
         oito_d.save()
+        form.save_m2m()
+        self.object = oito_d
         messages.success(self.request, f"8D '{oito_d.numero_formulario}' criado com sucesso!")
-        return super().form_valid(form)
+        return redirect(self.get_success_url())
 
 
 class Solucao8DUpdateView(SolucaoAcessoMixin, UpdateView):
@@ -610,7 +693,7 @@ class Solucao8DUpdateView(SolucaoAcessoMixin, UpdateView):
     model = Solucao8D
     form_class = Solucao8DForm
     template_name = 'acoes/solucao8d_form.html'
-    success_url = reverse_lazy('acoes:solucao_8d_list')
+    success_url = reverse_lazy('acoes:8d_list')
     
     def form_valid(self, form):
         messages.success(self.request, "8D atualizado com sucesso!")
@@ -662,8 +745,8 @@ class SolucaoRNCCreateView(SolucaoAcessoMixin, CreateView):
     """Criar novo RNC"""
     model = SolucaoRNC
     form_class = SolucaoRNCForm
-    template_name = 'acoes/solucao_rnc_form.html'
-    success_url = reverse_lazy('acoes:solucao_rnc_list')
+    template_name = 'acoes/solucaornc_form.html'
+    success_url = reverse_lazy('acoes:rnc_list')
     
     def form_valid(self, form):
         rnc = form.save(commit=False)
@@ -671,18 +754,28 @@ class SolucaoRNCCreateView(SolucaoAcessoMixin, CreateView):
         # Gerar número RNC se não existir
         if not rnc.numero_rnc:
             rnc.numero_rnc = f"RNC-{timezone.now().strftime('%Y%m%d%H%M')}"
+        if not rnc.solucao_id:
+            rnc.solucao = _create_supporting_solution(
+                tipo='rnc',
+                titulo=f"RNC {rnc.numero_rnc}",
+                descricao=rnc.descricao_nc or rnc.causa_raiz or f"RNC {rnc.numero_rnc}",
+                responsavel=rnc.responsavel,
+                data_referencia=rnc.data_abertura,
+            )
         
         rnc.save()
+        form.save_m2m()
+        self.object = rnc
         messages.success(self.request, f"RNC '{rnc.numero_rnc}' criada com sucesso!")
-        return super().form_valid(form)
+        return redirect(self.get_success_url())
 
 
 class SolucaoRNCUpdateView(SolucaoAcessoMixin, UpdateView):
     """Atualizar RNC"""
     model = SolucaoRNC
     form_class = SolucaoRNCForm
-    template_name = 'acoes/solucao_rnc_form.html'
-    success_url = reverse_lazy('acoes:solucao_rnc_list')
+    template_name = 'acoes/solucaornc_form.html'
+    success_url = reverse_lazy('acoes:rnc_list')
 
 
 class SolucaoRNCDetailView(SolucaoAcessoMixin, DetailView):
@@ -704,7 +797,7 @@ class SolucaoGestaoDeMudancaListView(SolucaoAcessoMixin, ListView):
     paginate_by = 20
     
     def get_queryset(self):
-        queryset = SolucaoGestaoDeMudanca.objects.select_related('responsavel_mudanca').order_by('-data_abertura')
+        queryset = SolucaoGestaoDeMudanca.objects.order_by('-data_abertura')
         
         # Filtro por status
         status = self.request.GET.get('status')
@@ -719,7 +812,7 @@ class SolucaoGestaoDeMudancaCreateView(SolucaoAcessoMixin, CreateView):
     model = SolucaoGestaoDeMudanca
     form_class = SolucaoGestaoDeMudancaForm
     template_name = 'acoes/solucaogesta_de_mudanca_form.html'
-    success_url = reverse_lazy('acoes:solucao_gestao_mudanca_list')
+    success_url = reverse_lazy('acoes:gestao_mudanca_list')
     
     def form_valid(self, form):
         mudanca = form.save(commit=False)
@@ -727,10 +820,19 @@ class SolucaoGestaoDeMudancaCreateView(SolucaoAcessoMixin, CreateView):
         # Gerar número de registro se não existir
         if not mudanca.numero_registro:
             mudanca.numero_registro = f"GM-{timezone.now().strftime('%Y%m%d%H%M')}"
+        if not mudanca.solucao_id:
+            mudanca.solucao = _create_supporting_solution(
+                tipo='gestao_mudanca',
+                titulo=f"Gestão de Mudança {mudanca.numero_registro}",
+                descricao=mudanca.justificativa or mudanca.situacao_antes or f"Gestão de Mudança {mudanca.numero_registro}",
+                data_referencia=mudanca.data_abertura,
+            )
         
         mudanca.save()
+        form.save_m2m()
+        self.object = mudanca
         messages.success(self.request, f"Gestão de Mudança '{mudanca.numero_registro}' criada com sucesso!")
-        return super().form_valid(form)
+        return redirect(self.get_success_url())
 
 
 class SolucaoGestaoDeMudancaUpdateView(SolucaoAcessoMixin, UpdateView):
@@ -738,7 +840,7 @@ class SolucaoGestaoDeMudancaUpdateView(SolucaoAcessoMixin, UpdateView):
     model = SolucaoGestaoDeMudanca
     form_class = SolucaoGestaoDeMudancaForm
     template_name = 'acoes/solucaogesta_de_mudanca_form.html'
-    success_url = reverse_lazy('acoes:solucao_gestao_mudanca_list')
+    success_url = reverse_lazy('acoes:gestao_mudanca_list')
 
 
 class SolucaoGestaoDeMudancaDetailView(SolucaoAcessoMixin, DetailView):
@@ -783,10 +885,19 @@ class RevisaoGerencialCreateView(SolucaoAcessoMixin, CreateView):
         # Gerar número RG se não existir
         if not rg.numero_rg:
             rg.numero_rg = f"RG-{timezone.now().strftime('%Y%m%d%H%M')}"
+        if not rg.solucao_id:
+            rg.solucao = _create_supporting_solution(
+                tipo='revisao_gerencial',
+                titulo=f"Revisão Gerencial {rg.numero_rg}",
+                descricao=rg.analises_criticas or rg.entradas_acompanhamento or f"Revisão Gerencial {rg.numero_rg}",
+                data_referencia=rg.data_realizacao,
+            )
         
         rg.save()
+        form.save_m2m()
+        self.object = rg
         messages.success(self.request, f"Revisão Gerencial '{rg.numero_rg}' criada com sucesso!")
-        return super().form_valid(form)
+        return redirect(self.get_success_url())
 
 
 class RevisaoGerencialUpdateView(SolucaoAcessoMixin, UpdateView):

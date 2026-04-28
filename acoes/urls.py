@@ -144,6 +144,7 @@ urlpatterns = [
     path('plano-acao/', PlanoAcaoListView.as_view(), name='plano_acao_list'),
     path('plano-acao/novo/', PlanoAcaoCreateView.as_view(), name='plano_acao_create'),
     path('plano-acao/<int:pk>/editar/', PlanoAcaoUpdateView.as_view(), name='plano_acao_update'),
+    path('plano-acao/<int:pk>/editar/', PlanoAcaoUpdateView.as_view(), name='plano_acao_edit'),
     path('plano-acao/<int:pk>/deletar/', plano_acao_delete, name='plano_acao_delete'),
     path('plano-acao/<int:pk>/', PlanoAcaoDetailView.as_view(), name='plano_acao_detail'),
     
@@ -160,6 +161,7 @@ urlpatterns = [
     path('a3/', SolucaoA3ListView.as_view(), name='a3_list'),
     path('a3/novo/', SolucaoA3CreateView.as_view(), name='a3_create'),
     path('a3/<int:pk>/editar/', SolucaoA3UpdateView.as_view(), name='a3_update'),
+    path('a3/<int:pk>/editar/', SolucaoA3UpdateView.as_view(), name='a3_edit'),
     path('a3/<int:pk>/', SolucaoA3DetailView.as_view(), name='a3_detail'),
     
     # ========================================================================
@@ -168,6 +170,7 @@ urlpatterns = [
     path('8d/', Solucao8DListView.as_view(), name='8d_list'),
     path('8d/novo/', Solucao8DCreateView.as_view(), name='8d_create'),
     path('8d/<int:pk>/editar/', Solucao8DUpdateView.as_view(), name='8d_update'),
+    path('8d/<int:pk>/editar/', Solucao8DUpdateView.as_view(), name='8d_edit'),
     path('8d/<int:pk>/', Solucao8DDetailView.as_view(), name='8d_detail'),
     
     # ========================================================================
@@ -176,15 +179,22 @@ urlpatterns = [
     path('rnc/', SolucaoRNCListView.as_view(), name='rnc_list'),
     path('rnc/novo/', SolucaoRNCCreateView.as_view(), name='rnc_create'),
     path('rnc/<int:pk>/editar/', SolucaoRNCUpdateView.as_view(), name='rnc_update'),
+    path('rnc/<int:pk>/editar/', SolucaoRNCUpdateView.as_view(), name='rnc_edit'),
+    path('rnc/<int:pk>/verificar/', SolucaoRNCUpdateView.as_view(), name='rnc_verify'),
     path('rnc/<int:pk>/', SolucaoRNCDetailView.as_view(), name='rnc_detail'),
     
     # ========================================================================
     # GESTÃO DE MUDANÇA
     # ========================================================================
     path('gestao-mudanca/', SolucaoGestaoDeMudancaListView.as_view(), name='gestao_mudanca_list'),
+    path('gestao-mudanca/', SolucaoGestaoDeMudancaListView.as_view(), name='mudanca_list'),
     path('gestao-mudanca/novo/', SolucaoGestaoDeMudancaCreateView.as_view(), name='gestao_mudanca_create'),
+    path('gestao-mudanca/novo/', SolucaoGestaoDeMudancaCreateView.as_view(), name='mudanca_create'),
     path('gestao-mudanca/<int:pk>/editar/', SolucaoGestaoDeMudancaUpdateView.as_view(), name='gestao_mudanca_update'),
+    path('gestao-mudanca/<int:pk>/editar/', SolucaoGestaoDeMudancaUpdateView.as_view(), name='mudanca_edit'),
+    path('gestao-mudanca/<int:pk>/aprovar/', SolucaoGestaoDeMudancaUpdateView.as_view(), name='mudanca_approve'),
     path('gestao-mudanca/<int:pk>/', SolucaoGestaoDeMudancaDetailView.as_view(), name='gestao_mudanca_detail'),
+    path('gestao-mudanca/<int:pk>/', SolucaoGestaoDeMudancaDetailView.as_view(), name='mudanca_detail'),
     
     # ========================================================================
     # REVISÃO GERENCIAL
@@ -192,6 +202,7 @@ urlpatterns = [
     path('revisao-gerencial/', RevisaoGerencialListView.as_view(), name='revisao_gerencial_list'),
     path('revisao-gerencial/novo/', RevisaoGerencialCreateView.as_view(), name='revisao_gerencial_create'),
     path('revisao-gerencial/<int:pk>/editar/', RevisaoGerencialUpdateView.as_view(), name='revisao_gerencial_update'),
+    path('revisao-gerencial/<int:pk>/editar/', RevisaoGerencialUpdateView.as_view(), name='revisao_gerencial_edit'),
     path('revisao-gerencial/<int:pk>/', RevisaoGerencialDetailView.as_view(), name='revisao_gerencial_detail'),
     
     # ========================================================================
