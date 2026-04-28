@@ -147,6 +147,36 @@ def ocorrencia_update(request, pk):
 
 
 @login_required
+def ocorrencia_detail(request, pk):
+    ocorrencia = get_object_or_404(
+        OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel"),
+        pk=pk,
+    )
+    return render(
+        request,
+        "laboratorio/ocorrencia_detail.html",
+        {"ocorrencia": ocorrencia, "current_path": request.get_full_path()},
+    )
+
+
+@login_required
+def ocorrencia_close(request, pk):
+    ocorrencia = get_object_or_404(OcorrenciaLaboratorio, pk=pk)
+    if request.method != "POST":
+        return redirect("laboratorio:ocorrencia_detail", pk=ocorrencia.pk)
+
+    if ocorrencia.data_encerramento:
+        messages.info(request, f"A ocorrencia '{ocorrencia.assunto}' ja estava encerrada.")
+    else:
+        ocorrencia.data_encerramento = timezone.now()
+        ocorrencia.save(update_fields=["data_encerramento", "duracao", "atualizado_em"])
+        messages.success(request, f"Ocorrencia '{ocorrencia.assunto}' encerrada com sucesso.")
+
+    next_url = request.POST.get("next") or reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk])
+    return redirect(next_url)
+
+
+@login_required
 def categorias_list(request):
     categorias = CategoriaLaboratorio.objects.annotate(total_ocorrencias=Count("ocorrencias")).order_by("nome")
     return render(

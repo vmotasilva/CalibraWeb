@@ -88,7 +88,17 @@
                                 {% endif %}
                             </td>
                             <td class="text-end">
-                                <a href="{% url 'laboratorio:ocorrencia_update' ocorrencia.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{% url 'laboratorio:ocorrencia_detail' ocorrencia.pk %}" class="btn btn-sm btn-outline-secondary">Detalhes</a>
+                                    {% if not ocorrencia.data_encerramento %}
+                                    <form method="post" action="{% url 'laboratorio:ocorrencia_close' ocorrencia.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Encerrar</button>
+                                    </form>
+                                    {% endif %}
+                                    <a href="{% url 'laboratorio:ocorrencia_update' ocorrencia.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}

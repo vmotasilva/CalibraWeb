@@ -166,7 +166,7 @@
                 <tbody>
                     {% for ocorrencia in ocorrencias_recentes %}
                     <tr>
-                        <td>{{ ocorrencia.assunto }}</td>
+                        <td><a href="{% url 'laboratorio:ocorrencia_detail' ocorrencia.pk %}" class="text-decoration-none">{{ ocorrencia.assunto }}</a></td>
                         <td>{{ ocorrencia.responsavel.get_full_name|default:ocorrencia.responsavel.username|default:'-' }}</td>
                         <td>{{ ocorrencia.data_abertura|date:'d/m/Y H:i' }}</td>
                         <td>{{ ocorrencia.duracao_formatada }}</td>

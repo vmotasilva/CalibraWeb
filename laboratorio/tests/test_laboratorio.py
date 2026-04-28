@@ -92,3 +92,46 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, "Dashboard de ocorrencias")
         self.assertEqual(response.context["total"], 1)
         self.assertEqual(response.context["encerradas"], 1)
+
+    def test_detail_view_exibe_ocorrencia_e_link_na_listagem(self):
+        abertura = timezone.now().replace(second=0, microsecond=0)
+        ocorrencia = OcorrenciaLaboratorio.objects.create(
+            assunto="Falha de incubadora",
+            detalhamento="Equipamento ficou inoperante por oscilacao eletrica.",
+            consequencias="Reagendamento das leituras do turno.",
+            impacto=CategoriaLaboratorio.IMPACTO_ALTO,
+            responsavel=self.user,
+            data_abertura=abertura,
+            data_encerramento=abertura + timedelta(hours=3, minutes=15),
+        )
+
+        list_response = self.client.get(reverse("laboratorio:ocorrencias_list"))
+        self.assertEqual(list_response.status_code, 200)
+        self.assertContains(list_response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+
+        detail_response = self.client.get(reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertContains(detail_response, "Falha de incubadora")
+        self.assertContains(detail_response, "3h 15min")
+
+    def test_encerramento_rapido_define_data_e_duracao(self):
+        abertura = timezone.now().replace(second=0, microsecond=0) - timedelta(hours=2, minutes=10)
+        ocorrencia = OcorrenciaLaboratorio.objects.create(
+            assunto="Interrupcao temporaria de leitura",
+            detalhamento="Parada para ajuste de configuracao.",
+            consequencias="Fila de processamento reorganizada.",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+            responsavel=self.user,
+            data_abertura=abertura,
+        )
+
+        response = self.client.post(
+            reverse("laboratorio:ocorrencia_close", args=[ocorrencia.pk]),
+            {"next": reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk])},
+        )
+
+        self.assertRedirects(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        ocorrencia.refresh_from_db()
+        self.assertIsNotNone(ocorrencia.data_encerramento)
+        self.assertIsNotNone(ocorrencia.duracao)
+        self.assertGreaterEqual(ocorrencia.duracao, timedelta(hours=2, minutes=10))

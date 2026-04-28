@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h2 class="mb-1">{{ ocorrencia.assunto }}</h2>
+            <p class="text-muted mb-0">Detalhes completos da ocorrencia registrada no modulo Laboratorio.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:ocorrencias_list' %}" class="btn btn-outline-secondary">Voltar para listagem</a>
+            {% if not ocorrencia.data_encerramento %}
+            <form method="post" action="{% url 'laboratorio:ocorrencia_close' ocorrencia.pk %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ current_path }}">
+                <button type="submit" class="btn btn-outline-success">Encerrar agora</button>
+            </form>
+            {% endif %}
+            <a href="{% url 'laboratorio:ocorrencia_update' ocorrencia.pk %}" class="btn btn-primary">Editar ocorrencia</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Status</div>
+                    {% if ocorrencia.data_encerramento %}
+                    <div class="h4 mb-0 text-success">Encerrada</div>
+                    {% else %}
+                    <div class="h4 mb-0 text-danger">Aberta</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Impacto</div>
+                    <div class="h4 mb-0"><span class="badge text-bg-{{ ocorrencia.impacto_badge_class }}">{{ ocorrencia.get_impacto_display }}</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Duracao</div>
+                    <div class="h4 mb-0">{{ ocorrencia.duracao_formatada }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Categoria</div>
+                    <div class="h4 mb-0">{{ ocorrencia.categoria|default:'Assunto livre' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-semibold">Dados da ocorrencia</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Responsavel</dt>
+                        <dd class="col-sm-7">{{ ocorrencia.responsavel.get_full_name|default:ocorrencia.responsavel.username|default:'-' }}</dd>
+
+                        <dt class="col-sm-5">Abertura</dt>
+                        <dd class="col-sm-7">{{ ocorrencia.data_abertura|date:'d/m/Y H:i' }}</dd>
+
+                        <dt class="col-sm-5">Encerramento</dt>
+                        <dd class="col-sm-7">{{ ocorrencia.data_encerramento|date:'d/m/Y H:i'|default:'-' }}</dd>
+
+                        <dt class="col-sm-5">Criado em</dt>
+                        <dd class="col-sm-7">{{ ocorrencia.criado_em|date:'d/m/Y H:i' }}</dd>
+
+                        <dt class="col-sm-5">Atualizado em</dt>
+                        <dd class="col-sm-7">{{ ocorrencia.atualizado_em|date:'d/m/Y H:i' }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header bg-white fw-semibold">Detalhamento</div>
+                <div class="card-body">
+                    {{ ocorrencia.detalhamento|linebreaks }}
+                </div>
+            </div>
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-semibold">Consequencias</div>
+                <div class="card-body">
+                    {% if ocorrencia.consequencias %}
+                    {{ ocorrencia.consequencias|linebreaks }}
+                    {% else %}
+                    <p class="text-muted mb-0">Nenhuma consequencia registrada.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
