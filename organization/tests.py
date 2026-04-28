@@ -95,7 +95,7 @@ class OrganizationColaboradorTests(TestCase):
     def test_colaborador_creation(self):
         """Test Colaborador can be created"""
         self.assertEqual(self.colaborador.matricula, "001")
-        self.assertEqual(self.colaborador.nome_completo, "JOÃO SILVA")
+        self.assertEqual(self.colaborador.nome_completo, "João Silva")
     
     def test_colaborador_setor_assignment(self):
         """Test Colaborador setor relationship"""
@@ -109,7 +109,7 @@ class OrganizationColaboradorTests(TestCase):
     
     def test_colaborador_string_representation(self):
         """Test Colaborador __str__ method"""
-        self.assertEqual(str(self.colaborador), "JOÃO SILVA (001)")
+        self.assertEqual(str(self.colaborador), "João Silva (001)")
 
 
 class OrganizationHierarquiaSetorTests(TestCase):

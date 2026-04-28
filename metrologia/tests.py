@@ -40,14 +40,13 @@ class CategoriaInstrumentoTests(TestCase):
         )
         self.categoria = CategoriaInstrumento.objects.create(
             nome="Trena",
-            descricao="Instrumento de medição de comprimento",
-            unidade_padrao=self.unidade
+            descricao="Instrumento de medição de comprimento"
         )
     
     def test_categoria_instrument_creation(self):
         """Test creation of CategoriaInstrumento"""
         self.assertEqual(self.categoria.nome, "Trena")
-        self.assertEqual(self.categoria.unidade_padrao.nome, "Metro")
+        self.assertEqual(self.categoria.descricao, "Instrumento de medição de comprimento")
     
     def test_categoria_str(self):
         """Test string representation of CategoriaInstrumento"""
@@ -64,8 +63,7 @@ class InstrumentoTests(TestCase):
             responsavel="Responsavel"
         )
         self.categoria = CategoriaInstrumento.objects.create(
-            nome="Paquímetro",
-            unidade_padrao=self.unidade
+            nome="Paquímetro"
         )
         self.instrumento = Instrumento.objects.create(
             tag="INSTR-001",
@@ -97,8 +95,7 @@ class FaixaMedicaoTests(TestCase):
         self.unidade = UnidadeMedida.objects.create(nome="Milímetros", descricao="Unidade de comprimento")
         self.setor = Setor.objects.create(nome="Metrologia", responsavel="Admin")
         self.categoria = CategoriaInstrumento.objects.create(
-            nome="Micrômetro",
-            unidade_padrao=self.unidade
+            nome="Micrômetro"
         )
         self.instrumento = Instrumento.objects.create(
             tag="INSTR-002",
@@ -131,8 +128,7 @@ class HistoricoCalibracaoTests(TestCase):
         self.unidade = UnidadeMedida.objects.create(nome="Milímetros", descricao="Unidade de comprimento")
         self.setor = Setor.objects.create(nome="Metrologia", responsavel="Admin")
         self.categoria = CategoriaInstrumento.objects.create(
-            nome="Calibrador",
-            unidade_padrao=self.unidade
+            nome="Calibrador"
         )
         self.instrumento = Instrumento.objects.create(
             tag="INSTR-003",
@@ -169,8 +165,7 @@ class MetrologiaViewsTests(TestCase):
         self.unidade = UnidadeMedida.objects.create(nome="Metros", descricao="Unidade de comprimento")
         self.setor = Setor.objects.create(nome="Metrologia", responsavel="Admin")
         self.categoria = CategoriaInstrumento.objects.create(
-            nome="Régua",
-            unidade_padrao=self.unidade
+            nome="Régua"
         )
     
     def test_modulo_metrologia_view_unauthenticated(self):

@@ -74,9 +74,9 @@ class DocumentsProcedimentoRevisaoTests(TestCase):
         from training.models import ProcedimentoRevisao
         revisao = ProcedimentoRevisao.objects.create(
             procedimento=self.procedimento,
-            numero_revisao="01"
+            revisao="01"
         )
-        self.assertEqual(revisao.numero_revisao, "01")
+        self.assertEqual(revisao.revisao, "01")
         self.assertIsNotNone(revisao.id)
     
     def test_procedimento_revisao_relationship(self):
@@ -84,7 +84,7 @@ class DocumentsProcedimentoRevisaoTests(TestCase):
         from training.models import ProcedimentoRevisao
         revisao = ProcedimentoRevisao.objects.create(
             procedimento=self.procedimento,
-            numero_revisao="02"
+            revisao="02"
         )
         self.assertEqual(revisao.procedimento, self.procedimento)
 

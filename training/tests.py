@@ -4,6 +4,7 @@ Tests for training module - Procedures and Training Management
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
+from django.utils import timezone
 
 from training.models import (
     Area, Procedimento, RegistroTreinamento, PacoteTreinamento
@@ -41,7 +42,6 @@ class ProcedimentoTests(TestCase):
             nome="Inspeção Visual",
             descricao="Procedimento de inspeção visual",
             classificacao="Crítico",
-            area=self.area,
             numero_revisao=1
         )
     
@@ -65,30 +65,33 @@ class RegistroTreinamentoTests(TestCase):
             password='password123'
         )
         self.colaborador = Colaborador.objects.create(
-            user=self.user,
+            user_django=self.user,
             matricula="MAT-TRAIN",
             nome_completo="Colaborador Treinando",
+            grupo="OPERACIONAL",
             setor=self.setor
         )
         self.area = Area.objects.create(nome="Operações")
         self.procedimento = Procedimento.objects.create(
             codigo="PROC-OPS-001",
             nome="Operação de Máquina",
-            area=self.area
+            numero_revisao="01"
         )
         self.registro = RegistroTreinamento.objects.create(
             colaborador=self.colaborador,
-            procedimento=self.procedimento
+            procedimento=self.procedimento,
+            revisao_treinada="01",
+            data_treinamento=timezone.localdate(),
         )
     
     def test_registro_treinamento_creation(self):
         """Test creation of RegistroTreinamento"""
-        self.assertIn(self.registro.status_treinamento, ["OK", "PENDENTE"])
+        self.assertIn(self.registro.status_treinamento, ["VIGENTE", "PENDENTE"])
         self.assertEqual(self.registro.procedimento.codigo, "PROC-OPS-001")
     
     def test_registro_vigente(self):
         """Test that training status can be OK or PENDENTE"""
-        self.assertIn(self.registro.status_treinamento, ["OK", "PENDENTE"])
+        self.assertEqual(self.registro.status_treinamento, "VIGENTE")
 
 
 class TrainingViewsTests(TestCase):
@@ -103,18 +106,18 @@ class TrainingViewsTests(TestCase):
     
     def test_procedimentos_list_requires_auth(self):
         """Test that procedures list requires authentication"""
-        response = self.client.get(reverse('procedimentos_lista'))
+        response = self.client.get(reverse('procedures:procedimentos_list'))
         self.assertEqual(response.status_code, 302)
     
     def test_procedimentos_list_authenticated(self):
         """Test procedures list with authenticated user"""
         self.client.login(username='training_user', password='testpass123')
-        response = self.client.get(reverse('procedimentos_lista'))
+        response = self.client.get(reverse('procedures:procedimentos_list'))
         self.assertIn(response.status_code, [200, 404])
     
     def test_treinamentos_list_requires_auth(self):
         """Test that trainings list requires authentication"""
-        response = self.client.get(reverse('treinamentos_lista'))
+        response = self.client.get(reverse('procedures:treinamentos_list'))
         self.assertEqual(response.status_code, 302)
 
 

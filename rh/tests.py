@@ -7,7 +7,7 @@ from django.urls import reverse
 from datetime import date
 
 from rh.models import Colaborador, Ferias
-from organization.models import Setor
+from organization.models import HierarquiaSetor, Setor
 
 
 class SetorTests(TestCase):
@@ -39,7 +39,7 @@ class ColaboradorTests(TestCase):
             password='password123'
         )
         self.colaborador = Colaborador.objects.create(
-            user=self.user,
+            user_django=self.user,
             matricula="MAT-001",
             cpf="12345678901",
             nome_completo="João da Silva",
@@ -74,7 +74,7 @@ class FeriasTests(TestCase):
             password='password123'
         )
         self.colaborador = Colaborador.objects.create(
-            user=self.user,
+            user_django=self.user,
             matricula="MAT-002",
             cpf="98765432101",
             nome_completo="Maria Silva",
@@ -85,7 +85,8 @@ class FeriasTests(TestCase):
             colaborador=self.colaborador,
             data_inicio=date(2025, 1, 1),
             data_fim=date(2025, 1, 15),
-            observacao="Férias programadas"
+            dias_solicitados=14,
+            descricao="Férias programadas"
         )
     
     def test_ferias_creation(self):
@@ -107,7 +108,7 @@ class HierarquiaSetorTests(TestCase):
         # Create users and colaboradores
         self.user_lider = User.objects.create_user(username='lider', password='pass')
         self.lider = Colaborador.objects.create(
-            user=self.user_lider,
+            user_django=self.user_lider,
             matricula="MAT-100",
             nome_completo="Líder",
             setor=self.setor
@@ -115,7 +116,7 @@ class HierarquiaSetorTests(TestCase):
         
         self.user_supervisor = User.objects.create_user(username='supervisor', password='pass')
         self.supervisor = Colaborador.objects.create(
-            user=self.user_supervisor,
+            user_django=self.user_supervisor,
             matricula="MAT-101",
             nome_completo="Supervisor",
             setor=self.setor
@@ -251,10 +252,9 @@ class RHImportsTests(TestCase):
     
     def test_rh_models_import(self):
         """Test that all RH models can be imported"""
-        from rh.models import (
-            Colaborador, HierarquiaSetor, Ferias,
-            DocumentoPessoal, PacoteTreinamento
-        )
+        from procedures.models import PacoteTreinamento
+        from rh.models import Colaborador, DocumentoPessoal, Ferias
+
         self.assertIsNotNone(Colaborador)
         self.assertIsNotNone(HierarquiaSetor)
         self.assertIsNotNone(Ferias)
