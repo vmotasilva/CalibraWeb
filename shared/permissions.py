@@ -108,6 +108,19 @@ MODULES_PERMISSIONS = {
             'view_respostaauditoria',
         ]
     },
+    'laboratorio': {
+        'name': 'Laboratorio',
+        'permissions': [
+            'add_categorialaboratorio',
+            'change_categorialaboratorio',
+            'delete_categorialaboratorio',
+            'view_categorialaboratorio',
+            'add_ocorrencialaboratorio',
+            'change_ocorrencialaboratorio',
+            'delete_ocorrencialaboratorio',
+            'view_ocorrencialaboratorio',
+        ]
+    },
     'procedures': {
         'name': 'Procedimentos / Treinamentos',
         'permissions': []
@@ -863,6 +876,30 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_insumos_operacao",
                 "funcoes": [
                     {"nome": "Novo Registro", "view_name": "insumos:selecionar_modelo_preenchimento", "perm": "core.nav_insumos_novo"},
+                ],
+            },
+        ],
+    },
+    {
+        "key": "laboratorio",
+        "nome": "Laboratorio",
+        "cor": "warning",
+        "icone": "bi bi-beaker",
+        "module_perm": "core.nav_mod_laboratorio",
+        "blocos": [
+            {
+                "key": "ocorrencias_gerais",
+                "nome": "OCORRENCIAS GERAIS",
+                "perm": "core.nav_laboratorio_ocorrencias_gerais",
+                "funcoes": [
+                    {"nome": "Modulo Laboratorio", "view_name": "laboratorio:modulo", "perm": "core.nav_laboratorio_modulo"},
+                    {"nome": "Nova Ocorrencia", "view_name": "laboratorio:ocorrencia_create", "perm": "core.nav_laboratorio_nova_ocorrencia"},
+                    {"nome": "Listagem de Ocorrencias", "view_name": "laboratorio:ocorrencias_list", "perm": "core.nav_laboratorio_lista_ocorrencias"},
+                    {"nome": "Editar Ocorrencia", "view_name": "laboratorio:ocorrencia_update", "perm": "core.nav_laboratorio_editar_ocorrencia"},
+                    {"nome": "Tabela de Categorias", "view_name": "laboratorio:categorias_list", "perm": "core.nav_laboratorio_categorias"},
+                    {"nome": "Nova Categoria", "view_name": "laboratorio:categoria_create", "perm": "core.nav_laboratorio_categoria_create"},
+                    {"nome": "Editar Categoria", "view_name": "laboratorio:categoria_update", "perm": "core.nav_laboratorio_categoria_update"},
+                    {"nome": "Dashboard Laboratorio", "view_name": "laboratorio:dashboard", "perm": "core.nav_laboratorio_dashboard"},
                 ],
             },
         ],

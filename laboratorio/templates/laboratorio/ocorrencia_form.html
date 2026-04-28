@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h2 class="mb-1">{{ titulo }}</h2>
+            <p class="text-muted mb-0">O encerramento pode ser informado depois. A duracao sera atualizada automaticamente.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:ocorrencias_list' %}" class="btn btn-outline-secondary">Voltar para listagem</a>
+        </div>
+    </div>
+
+    <form method="post" class="card shadow-sm border-0">
+        <div class="card-body">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <datalist id="assuntos-categoria">
+                {% for categoria in categorias_sugestoes %}
+                <option value="{{ categoria.nome }}">
+                {% endfor %}
+            </datalist>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.data_abertura.label }}</label>
+                    {{ form.data_abertura }}
+                    {% if form.data_abertura.errors %}<div class="text-danger small mt-1">{{ form.data_abertura.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.data_encerramento.label }}</label>
+                    {{ form.data_encerramento }}
+                    <div class="form-text">Deixe em branco enquanto a ocorrencia estiver aberta.</div>
+                    {% if form.data_encerramento.errors %}<div class="text-danger small mt-1">{{ form.data_encerramento.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.responsavel.label }}</label>
+                    {{ form.responsavel }}
+                    {% if form.responsavel.errors %}<div class="text-danger small mt-1">{{ form.responsavel.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">{{ form.categoria.label }}</label>
+                    {{ form.categoria }}
+                    <div class="form-text">Use uma categoria padrao para sugerir assunto e impacto.</div>
+                    {% if form.categoria.errors %}<div class="text-danger small mt-1">{{ form.categoria.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">{{ form.assunto.label }}</label>
+                    {{ form.assunto }}
+                    <div class="form-text">Voce pode escolher uma categoria sugerida ou escrever um assunto livre.</div>
+                    {% if form.assunto.errors %}<div class="text-danger small mt-1">{{ form.assunto.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">{{ form.impacto.label }}</label>
+                    {{ form.impacto }}
+                    {% if form.impacto.errors %}<div class="text-danger small mt-1">{{ form.impacto.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label">{{ form.detalhamento.label }}</label>
+                    {{ form.detalhamento }}
+                    {% if form.detalhamento.errors %}<div class="text-danger small mt-1">{{ form.detalhamento.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label">{{ form.consequencias.label }}</label>
+                    {{ form.consequencias }}
+                    {% if form.consequencias.errors %}<div class="text-danger small mt-1">{{ form.consequencias.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-12">
+                    <div class="alert alert-light border mb-0">
+                        <strong>Duracao da ocorrencia:</strong> {{ duracao_atual }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-white d-flex flex-wrap justify-content-end gap-2">
+            <a href="{% url 'laboratorio:ocorrencias_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">{{ acao }}</button>
+        </div>
+    </form>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+{{ categorias_json|json_script:"categorias-laboratorio" }}
+<script>
+    (function() {
+        const categoriaSelect = document.getElementById('id_categoria');
+        const assuntoInput = document.getElementById('id_assunto');
+        const impactoSelect = document.getElementById('id_impacto');
+        const categorias = JSON.parse(document.getElementById('categorias-laboratorio').textContent);
+        const porId = {};
+
+        categorias.forEach((categoria) => {
+            porId[String(categoria.id)] = categoria;
+        });
+
+        if (!categoriaSelect || !assuntoInput || !impactoSelect) {
+            return;
+        }
+
+        categoriaSelect.addEventListener('change', function() {
+            const categoria = porId[this.value];
+            if (!categoria) {
+                return;
+            }
+
+            if (!assuntoInput.value.trim()) {
+                assuntoInput.value = categoria.nome;
+            }
+
+            if (!impactoSelect.value) {
+                impactoSelect.value = categoria.impacto;
+            }
+        });
+    })();
+</script>
+{% endblock %}

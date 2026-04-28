@@ -110,6 +110,7 @@ INSTALLED_APPS = [
     "acoes.apps.AcoesConfig",  # Ações Corretivas/Preventivas
     "auditoria.apps.AuditoriaConfig",
     "insumos.apps.InsumosConfig",
+    "laboratorio.apps.LaboratorioConfig",
     # Módulo legado (compatibilidade - mantém 3 cross-app models: SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob)
     "qms",
     "training",  # Adicionado para compatibilidade com dashboard de gráficos

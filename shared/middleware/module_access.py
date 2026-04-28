@@ -28,6 +28,7 @@ class ModuleAccessMiddleware:
         '/acoes/': 'acoes',
         '/auditoria/': 'auditoria',
         '/insumos/': 'insumos',
+        '/laboratorio/': 'laboratorio',
         '/procurements/': 'procurements',
         '/admin/': 'admin',  # Admin não é restringido
     }

@@ -60,7 +60,21 @@ class NavigationPermission(models.Model):
             ("nav_mod_fornecedores", "NAV: Módulo Fornecedores"),
             ("nav_mod_auditoria", "NAV: Módulo Auditoria"),
             ("nav_mod_insumos", "NAV: Módulo Insumos"),
+            ("nav_mod_laboratorio", "NAV: Módulo Laboratório"),
             ("nav_mod_usuarios", "NAV: Módulo Usuários"),
+
+            # --- LABORATORIO: blocos ---
+            ("nav_laboratorio_ocorrencias_gerais", "NAV: Laboratório / Bloco Ocorrências Gerais"),
+
+            # --- LABORATORIO: funcoes ---
+            ("nav_laboratorio_modulo", "NAV: Laboratório / Módulo"),
+            ("nav_laboratorio_nova_ocorrencia", "NAV: Laboratório / Nova Ocorrência"),
+            ("nav_laboratorio_lista_ocorrencias", "NAV: Laboratório / Listagem de Ocorrências"),
+            ("nav_laboratorio_editar_ocorrencia", "NAV: Laboratório / Editar Ocorrência"),
+            ("nav_laboratorio_categorias", "NAV: Laboratório / Tabela de Categorias"),
+            ("nav_laboratorio_categoria_create", "NAV: Laboratório / Nova Categoria"),
+            ("nav_laboratorio_categoria_update", "NAV: Laboratório / Editar Categoria"),
+            ("nav_laboratorio_dashboard", "NAV: Laboratório / Dashboard"),
 
             # --- METROLOGIA: blocos ---
             ("nav_metrologia_visao_geral", "NAV: Metrologia / Bloco Visão Geral"),

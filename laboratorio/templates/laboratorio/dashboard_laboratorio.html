@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h2 class="mb-1">Dashboard de ocorrencias</h2>
+            <p class="text-muted mb-0">Analise do periodo com foco em volume, impacto e recorrencia.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:modulo' %}" class="btn btn-outline-secondary">Modulo</a>
+            <a href="{% url 'laboratorio:ocorrencia_create' %}" class="btn btn-primary">Nova ocorrencia</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Periodo inicial</label>
+                    <input type="date" name="inicio" class="form-control" value="{{ inicio }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Periodo final</label>
+                    <input type="date" name="fim" class="form-control" value="{{ fim }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Impacto</label>
+                    <select name="impacto" class="form-select">
+                        <option value="">Todos</option>
+                        {% for codigo, nome in impacto_choices %}
+                        <option value="{{ codigo }}" {% if impacto == codigo %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-1 d-grid">
+                    <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Total no periodo</div>
+                    <div class="display-6 fw-semibold">{{ total }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Abertas</div>
+                    <div class="display-6 fw-semibold text-danger">{{ abertas }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Encerradas</div>
+                    <div class="display-6 fw-semibold text-success">{{ encerradas }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Duracao media</div>
+                    <div class="h3 fw-semibold mb-0">{{ media_duracao }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-semibold">Detalhamento por periodo</div>
+                <div class="card-body">
+                    <canvas id="chartPeriodo" height="120"></canvas>
+                    {% if not por_periodo %}
+                    <div class="text-muted small mt-3">Sem dados no periodo selecionado.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-semibold">Distribuicao por impacto</div>
+                <div class="card-body">
+                    <canvas id="chartImpacto" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-semibold">Impactos</div>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Impacto</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in por_impacto %}
+                            <tr>
+                                <td>{{ item.nome }}</td>
+                                <td class="text-end">{{ item.total }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-semibold">Categorias e assuntos mais recorrentes</div>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Categoria/Assunto</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in por_categoria %}
+                            <tr>
+                                <td>{{ item.nome }}</td>
+                                <td class="text-end">{{ item.total }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2" class="text-center text-muted py-4">Sem dados consolidados no periodo.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white fw-semibold">Ocorrencias recentes no periodo filtrado</div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Assunto</th>
+                        <th>Responsavel</th>
+                        <th>Abertura</th>
+                        <th>Duracao</th>
+                        <th>Impacto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ocorrencia in ocorrencias_recentes %}
+                    <tr>
+                        <td>{{ ocorrencia.assunto }}</td>
+                        <td>{{ ocorrencia.responsavel.get_full_name|default:ocorrencia.responsavel.username|default:'-' }}</td>
+                        <td>{{ ocorrencia.data_abertura|date:'d/m/Y H:i' }}</td>
+                        <td>{{ ocorrencia.duracao_formatada }}</td>
+                        <td><span class="badge text-bg-{{ ocorrencia.impacto_badge_class }}">{{ ocorrencia.get_impacto_display }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">Sem ocorrencias para o recorte selecionado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    (function() {
+        const impactoLabels = {{ chart_impacto_labels|safe }};
+        const impactoValues = {{ chart_impacto_values|safe }};
+        const periodoLabels = {{ chart_periodo_labels|safe }};
+        const periodoValues = {{ chart_periodo_values|safe }};
+
+        const chartImpacto = document.getElementById('chartImpacto');
+        const chartPeriodo = document.getElementById('chartPeriodo');
+
+        if (chartImpacto) {
+            new Chart(chartImpacto, {
+                type: 'doughnut',
+                data: {
+                    labels: impactoLabels,
+                    datasets: [{
+                        data: impactoValues,
+                        backgroundColor: ['#2e7d32', '#f9a825', '#c62828', '#263238'],
+                    }],
+                },
+                options: {
+                    plugins: {
+                        legend: { position: 'bottom' },
+                    },
+                },
+            });
+        }
+
+        if (chartPeriodo) {
+            new Chart(chartPeriodo, {
+                type: 'bar',
+                data: {
+                    labels: periodoLabels,
+                    datasets: [{
+                        label: 'Ocorrencias',
+                        data: periodoValues,
+                        borderRadius: 8,
+                        backgroundColor: '#0d6efd',
+                    }],
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } },
+                    },
+                    plugins: {
+                        legend: { display: false },
+                    },
+                },
+            });
+        }
+    })();
+</script>
+{% endblock %}

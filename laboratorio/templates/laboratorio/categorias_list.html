@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h2 class="mb-1">Tabela de categorias</h2>
+            <p class="text-muted mb-0">Assuntos padrao para apoiar o registro rapido das ocorrencias.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:modulo' %}" class="btn btn-outline-secondary">Modulo</a>
+            <a href="{% url 'laboratorio:categoria_create' %}" class="btn btn-primary">Nova categoria</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Categoria</th>
+                            <th>Impacto padrao</th>
+                            <th>Status</th>
+                            <th>Ocorrencias</th>
+                            <th class="text-end">Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for categoria in categorias %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ categoria.nome }}</div>
+                                <div class="small text-muted">{{ categoria.descricao|default:'Sem descricao cadastrada.' }}</div>
+                            </td>
+                            <td>{{ categoria.get_impacto_display }}</td>
+                            <td>
+                                {% if categoria.ativo %}
+                                <span class="badge text-bg-success">Ativa</span>
+                                {% else %}
+                                <span class="badge text-bg-secondary">Inativa</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ categoria.total_ocorrencias }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'laboratorio:categoria_update' categoria.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">Nenhuma categoria cadastrada.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h2 class="mb-1">{{ titulo }}</h2>
+            <p class="text-muted mb-0">Defina o assunto padrao e o impacto sugerido para novas ocorrencias.</p>
+        </div>
+        <a href="{% url 'laboratorio:categorias_list' %}" class="btn btn-outline-secondary">Voltar para categorias</a>
+    </div>
+
+    <form method="post" class="card shadow-sm border-0">
+        <div class="card-body">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label">{{ form.nome.label }}</label>
+                    {{ form.nome }}
+                    {% if form.nome.errors %}<div class="text-danger small mt-1">{{ form.nome.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">{{ form.impacto.label }}</label>
+                    {{ form.impacto }}
+                    {% if form.impacto.errors %}<div class="text-danger small mt-1">{{ form.impacto.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-12">
+                    <label class="form-label">{{ form.descricao.label }}</label>
+                    {{ form.descricao }}
+                    {% if form.descricao.errors %}<div class="text-danger small mt-1">{{ form.descricao.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        {{ form.ativo }}
+                        <label class="form-check-label" for="id_ativo">Categoria ativa para novas sugestoes</label>
+                    </div>
+                    {% if form.ativo.errors %}<div class="text-danger small mt-1">{{ form.ativo.errors|join:', ' }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-white d-flex justify-content-end gap-2">
+            <a href="{% url 'laboratorio:categorias_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">{{ acao }}</button>
+        </div>
+    </form>
+</div>
+{% endblock content %}
