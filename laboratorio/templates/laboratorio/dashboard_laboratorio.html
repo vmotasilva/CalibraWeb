@@ -161,6 +161,7 @@
                         <th>Abertura</th>
                         <th>Duracao</th>
                         <th>Impacto</th>
+                        <th class="text-end">Acoes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -171,10 +172,22 @@
                         <td>{{ ocorrencia.data_abertura|date:'d/m/Y H:i' }}</td>
                         <td>{{ ocorrencia.duracao_formatada }}</td>
                         <td><span class="badge text-bg-{{ ocorrencia.impacto_badge_class }}">{{ ocorrencia.get_impacto_display }}</span></td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="{% url 'laboratorio:ocorrencia_detail' ocorrencia.pk %}" class="btn btn-sm btn-outline-secondary">Detalhes</a>
+                                {% if not ocorrencia.data_encerramento %}
+                                <form method="post" action="{% url 'laboratorio:ocorrencia_close' ocorrencia.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-success">Encerrar</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">Sem ocorrencias para o recorte selecionado.</td>
+                        <td colspan="6" class="text-center text-muted py-4">Sem ocorrencias para o recorte selecionado.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

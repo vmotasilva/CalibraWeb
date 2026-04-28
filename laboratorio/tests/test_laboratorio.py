@@ -70,7 +70,7 @@ class LaboratorioModuleTests(TestCase):
 
     def test_dashboard_exibe_ocorrencias_filtradas(self):
         abertura = timezone.now()
-        OcorrenciaLaboratorio.objects.create(
+        ocorrencia_encerrada = OcorrenciaLaboratorio.objects.create(
             assunto="Oscilacao de temperatura",
             detalhamento="Registro fora da faixa esperada por 20 minutos.",
             consequencias="Analise interrompida para ajuste.",
@@ -78,6 +78,14 @@ class LaboratorioModuleTests(TestCase):
             responsavel=self.user,
             data_abertura=abertura,
             data_encerramento=abertura + timedelta(minutes=20),
+        )
+        ocorrencia_aberta = OcorrenciaLaboratorio.objects.create(
+            assunto="Revisao de reagente em andamento",
+            detalhamento="Lote em conferencia antes da liberacao.",
+            consequencias="Aguardando validacao final.",
+            impacto=CategoriaLaboratorio.IMPACTO_BAIXO,
+            responsavel=self.user,
+            data_abertura=abertura,
         )
 
         response = self.client.get(
@@ -90,8 +98,11 @@ class LaboratorioModuleTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Dashboard de ocorrencias")
-        self.assertEqual(response.context["total"], 1)
+        self.assertEqual(response.context["total"], 2)
+        self.assertEqual(response.context["abertas"], 1)
         self.assertEqual(response.context["encerradas"], 1)
+        self.assertContains(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia_encerrada.pk]))
+        self.assertContains(response, reverse("laboratorio:ocorrencia_close", args=[ocorrencia_aberta.pk]))
 
     def test_detail_view_exibe_ocorrencia_e_link_na_listagem(self):
         abertura = timezone.now().replace(second=0, microsecond=0)
