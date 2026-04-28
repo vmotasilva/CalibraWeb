@@ -1,13 +1,30 @@
 """
-Tests for procurements module - Supplier and Procurement Management
+Tests for procurements module - Supplier and Procurement Management.
+
+This app is legacy in the current modularized project. When it is disabled in
+INSTALLED_APPS, the coverage lives under procedures and these tests should be
+skipped instead of breaking global collection.
 """
+from unittest import skipUnless
+
+from django.conf import settings
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 
-from procurements.models import Fornecedor, AvaliacaoFornecedor
+PROCUREMENTS_ENABLED = any(
+    app == "procurements" or app.startswith("procurements.")
+    for app in settings.INSTALLED_APPS
+)
+
+if PROCUREMENTS_ENABLED:
+    from procurements.models import Fornecedor, AvaliacaoFornecedor
+else:
+    Fornecedor = None
+    AvaliacaoFornecedor = None
 
 
+@skipUnless(PROCUREMENTS_ENABLED, "Legacy procurements app is disabled in this project configuration")
 class FornecedorTests(TestCase):
     """Tests for Fornecedor model"""
     
@@ -34,6 +51,7 @@ class FornecedorTests(TestCase):
         self.assertIn("@", self.fornecedor.email)
 
 
+@skipUnless(PROCUREMENTS_ENABLED, "Legacy procurements app is disabled in this project configuration")
 class AvaliacaoFornecedorTests(TestCase):
     """Tests for AvaliacaoFornecedor model"""
     
@@ -62,6 +80,7 @@ class AvaliacaoFornecedorTests(TestCase):
         self.assertLessEqual(self.avaliacao.qualidade, 10)
 
 
+@skipUnless(PROCUREMENTS_ENABLED, "Legacy procurements app is disabled in this project configuration")
 class ProcurementsViewsTests(TestCase):
     """Integration tests for procurements views"""
     
@@ -78,6 +97,7 @@ class ProcurementsViewsTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
 
+@skipUnless(PROCUREMENTS_ENABLED, "Legacy procurements app is disabled in this project configuration")
 class ProcurementsImportsTests(TestCase):
     """Test that all procurements imports are working correctly"""
     
