@@ -16,6 +16,10 @@
                 <button type="submit" class="btn btn-outline-success">Encerrar agora</button>
             </form>
             {% endif %}
+            <form method="post" action="{% url 'laboratorio:ocorrencia_delete' ocorrencia.pk %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta ocorrencia?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger">Excluir ocorrencia</button>
+            </form>
             <a href="{% url 'laboratorio:ocorrencia_update' ocorrencia.pk %}" class="btn btn-primary">Editar ocorrencia</a>
         </div>
     </div>

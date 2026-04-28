@@ -177,6 +177,18 @@ def ocorrencia_close(request, pk):
 
 
 @login_required
+def ocorrencia_delete(request, pk):
+    ocorrencia = get_object_or_404(OcorrenciaLaboratorio, pk=pk)
+    if request.method != "POST":
+        return redirect("laboratorio:ocorrencia_detail", pk=ocorrencia.pk)
+
+    assunto = ocorrencia.assunto
+    ocorrencia.delete()
+    messages.success(request, f"Ocorrencia '{assunto}' excluida com sucesso.")
+    return redirect("laboratorio:ocorrencias_list")
+
+
+@login_required
 def categorias_list(request):
     categorias = CategoriaLaboratorio.objects.annotate(total_ocorrencias=Count("ocorrencias")).order_by("nome")
     return render(

@@ -146,3 +146,21 @@ class LaboratorioModuleTests(TestCase):
         self.assertIsNotNone(ocorrencia.data_encerramento)
         self.assertIsNotNone(ocorrencia.duracao)
         self.assertGreaterEqual(ocorrencia.duracao, timedelta(hours=2, minutes=10))
+
+    def test_detail_view_exibe_botao_excluir_e_remove_ocorrencia(self):
+        ocorrencia = OcorrenciaLaboratorio.objects.create(
+            assunto="Teste de exclusao",
+            detalhamento="Ocorrencia criada para validar exclusao.",
+            consequencias="Sem consequencias adicionais.",
+            impacto=CategoriaLaboratorio.IMPACTO_BAIXO,
+            responsavel=self.user,
+            data_abertura=timezone.now().replace(second=0, microsecond=0),
+        )
+
+        detail_response = self.client.get(reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertContains(detail_response, reverse("laboratorio:ocorrencia_delete", args=[ocorrencia.pk]))
+
+        delete_response = self.client.post(reverse("laboratorio:ocorrencia_delete", args=[ocorrencia.pk]))
+        self.assertRedirects(delete_response, reverse("laboratorio:ocorrencias_list"))
+        self.assertFalse(OcorrenciaLaboratorio.objects.filter(pk=ocorrencia.pk).exists())

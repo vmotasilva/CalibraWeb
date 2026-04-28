@@ -11,6 +11,7 @@ urlpatterns = [
     path("ocorrencias/<int:pk>/", views.ocorrencia_detail, name="ocorrencia_detail"),
     path("ocorrencias/<int:pk>/editar/", views.ocorrencia_update, name="ocorrencia_update"),
     path("ocorrencias/<int:pk>/encerrar/", views.ocorrencia_close, name="ocorrencia_close"),
+    path("ocorrencias/<int:pk>/excluir/", views.ocorrencia_delete, name="ocorrencia_delete"),
     path("categorias/", views.categorias_list, name="categorias_list"),
     path("categorias/nova/", views.categoria_create, name="categoria_create"),
     path("categorias/<int:pk>/editar/", views.categoria_update, name="categoria_update"),
