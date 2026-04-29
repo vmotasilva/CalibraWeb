@@ -94,3 +94,88 @@ class OcorrenciaLaboratorioForm(forms.ModelForm):
             self.add_error("data_encerramento", "O encerramento nao pode ser anterior a abertura.")
 
         return cleaned_data
+
+
+class OcorrenciaAnotacaoForm(forms.ModelForm):
+    class Meta:
+        model = OcorrenciaLaboratorio
+        fields = ["anotacoes"]
+        widgets = {
+            "anotacoes": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 7,
+                    "placeholder": "Registre observacoes de acompanhamento, tratativas e decisoes gerenciais.",
+                }
+            ),
+        }
+
+
+class OcorrenciaEncerramentoForm(forms.ModelForm):
+    class Meta:
+        model = OcorrenciaLaboratorio
+        fields = [
+            "data_encerramento",
+            "perda_producao",
+            "unidade_perda_producao",
+            "horas_indisponibilidade",
+            "impacto_financeiro",
+            "observacoes_encerramento",
+        ]
+        widgets = {
+            "data_encerramento": forms.DateTimeInput(
+                attrs={"class": "form-control", "type": "datetime-local"}
+            ),
+            "perda_producao": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0", "placeholder": "0.00"}
+            ),
+            "unidade_perda_producao": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Ex.: pecas, lotes, analises, amostras",
+                }
+            ),
+            "horas_indisponibilidade": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0", "placeholder": "0.00"}
+            ),
+            "impacto_financeiro": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0", "placeholder": "0.00"}
+            ),
+            "observacoes_encerramento": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 5,
+                    "placeholder": "Descreva o impacto final, tratativa adotada e pendencias remanescentes.",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["data_encerramento"].required = True
+
+        valor = getattr(self.instance, "data_encerramento", None)
+        if valor:
+            self.initial["data_encerramento"] = timezone.localtime(valor).strftime("%Y-%m-%dT%H:%M")
+        elif not self.is_bound:
+            self.initial["data_encerramento"] = timezone.localtime(timezone.now()).strftime("%Y-%m-%dT%H:%M")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        encerramento = cleaned_data.get("data_encerramento")
+        perda_producao = cleaned_data.get("perda_producao")
+        unidade_perda = (cleaned_data.get("unidade_perda_producao") or "").strip()
+
+        if encerramento and self.instance.data_abertura and encerramento < self.instance.data_abertura:
+            self.add_error("data_encerramento", "O encerramento nao pode ser anterior a abertura.")
+
+        for field_name in ("perda_producao", "horas_indisponibilidade", "impacto_financeiro"):
+            valor = cleaned_data.get(field_name)
+            if valor is not None and valor < 0:
+                self.add_error(field_name, "Informe um valor maior ou igual a zero.")
+
+        if perda_producao not in (None, "") and perda_producao > 0 and not unidade_perda:
+            self.add_error("unidade_perda_producao", "Informe a unidade da perda de producao.")
+
+        cleaned_data["unidade_perda_producao"] = unidade_perda
+        return cleaned_data

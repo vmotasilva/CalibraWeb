@@ -1,3 +1,4 @@
+from decimal import Decimal
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -69,8 +70,13 @@ class LaboratorioModuleTests(TestCase):
         self.assertEqual(ocorrencia.responsavel, self.user)
 
     def test_dashboard_exibe_ocorrencias_filtradas(self):
+        categoria = CategoriaLaboratorio.objects.create(
+            nome="Controle ambiental",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+        )
         abertura = timezone.now()
         ocorrencia_encerrada = OcorrenciaLaboratorio.objects.create(
+            categoria=categoria,
             assunto="Oscilacao de temperatura",
             detalhamento="Registro fora da faixa esperada por 20 minutos.",
             consequencias="Analise interrompida para ajuste.",
@@ -78,6 +84,11 @@ class LaboratorioModuleTests(TestCase):
             responsavel=self.user,
             data_abertura=abertura,
             data_encerramento=abertura + timedelta(minutes=20),
+            perda_producao=Decimal("15.50"),
+            unidade_perda_producao="analises",
+            horas_indisponibilidade=Decimal("1.50"),
+            impacto_financeiro=Decimal("1200.00"),
+            observacoes_encerramento="Amostras repriorizadas para recompor o fluxo.",
         )
         ocorrencia_aberta = OcorrenciaLaboratorio.objects.create(
             assunto="Revisao de reagente em andamento",
@@ -97,12 +108,19 @@ class LaboratorioModuleTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Dashboard de ocorrencias")
+        self.assertContains(response, "Painel gerencial de ocorrencias")
+        self.assertContains(response, "Resumo executivo")
         self.assertEqual(response.context["total"], 2)
         self.assertEqual(response.context["abertas"], 1)
         self.assertEqual(response.context["encerradas"], 1)
+        self.assertEqual(response.context["por_categoria"][0]["nome"], categoria.nome)
+        self.assertIn(
+            ocorrencia_encerrada.assunto,
+            [item["nome"] for item in response.context["por_assunto"]],
+        )
+        self.assertEqual(response.context["total_impacto_financeiro"], Decimal("1200.00"))
         self.assertContains(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia_encerrada.pk]))
-        self.assertContains(response, reverse("laboratorio:ocorrencia_close", args=[ocorrencia_aberta.pk]))
+        self.assertContains(response, "modal=encerramento")
 
     def test_detail_view_exibe_ocorrencia_e_link_na_listagem(self):
         abertura = timezone.now().replace(second=0, microsecond=0)
@@ -124,6 +142,26 @@ class LaboratorioModuleTests(TestCase):
         self.assertEqual(detail_response.status_code, 200)
         self.assertContains(detail_response, "Falha de incubadora")
         self.assertContains(detail_response, "3h 15min")
+        self.assertContains(detail_response, reverse("laboratorio:ocorrencia_notes", args=[ocorrencia.pk]))
+
+    def test_detail_view_registra_anotacoes_por_modal(self):
+        ocorrencia = OcorrenciaLaboratorio.objects.create(
+            assunto="Acompanhamento de analise",
+            detalhamento="Necessidade de observacao adicional na bancada.",
+            consequencias="Sem impacto imediato.",
+            impacto=CategoriaLaboratorio.IMPACTO_BAIXO,
+            responsavel=self.user,
+            data_abertura=timezone.now().replace(second=0, microsecond=0),
+        )
+
+        response = self.client.post(
+            reverse("laboratorio:ocorrencia_notes", args=[ocorrencia.pk]),
+            {"anotacoes": "Primeira anotacao gerencial registrada."},
+        )
+
+        self.assertRedirects(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        ocorrencia.refresh_from_db()
+        self.assertEqual(ocorrencia.anotacoes, "Primeira anotacao gerencial registrada.")
 
     def test_encerramento_rapido_define_data_e_duracao(self):
         abertura = timezone.now().replace(second=0, microsecond=0) - timedelta(hours=2, minutes=10)
@@ -138,7 +176,15 @@ class LaboratorioModuleTests(TestCase):
 
         response = self.client.post(
             reverse("laboratorio:ocorrencia_close", args=[ocorrencia.pk]),
-            {"next": reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk])},
+            {
+                "next": reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]),
+                "data_encerramento": timezone.localtime(timezone.now()).replace(second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M"),
+                "perda_producao": "8.00",
+                "unidade_perda_producao": "analises",
+                "horas_indisponibilidade": "2.17",
+                "impacto_financeiro": "850.00",
+                "observacoes_encerramento": "Plano de contingencia acionado e fila regularizada.",
+            },
         )
 
         self.assertRedirects(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
@@ -146,6 +192,9 @@ class LaboratorioModuleTests(TestCase):
         self.assertIsNotNone(ocorrencia.data_encerramento)
         self.assertIsNotNone(ocorrencia.duracao)
         self.assertGreaterEqual(ocorrencia.duracao, timedelta(hours=2, minutes=10))
+        self.assertEqual(ocorrencia.perda_producao, Decimal("8.00"))
+        self.assertEqual(ocorrencia.unidade_perda_producao, "analises")
+        self.assertEqual(ocorrencia.impacto_financeiro, Decimal("850.00"))
 
     def test_detail_view_exibe_botao_excluir_e_remove_ocorrencia(self):
         ocorrencia = OcorrenciaLaboratorio.objects.create(

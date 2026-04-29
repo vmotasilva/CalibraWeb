@@ -9,6 +9,7 @@ urlpatterns = [
     path("ocorrencias/", views.ocorrencias_list, name="ocorrencias_list"),
     path("ocorrencias/nova/", views.ocorrencia_create, name="ocorrencia_create"),
     path("ocorrencias/<int:pk>/", views.ocorrencia_detail, name="ocorrencia_detail"),
+    path("ocorrencias/<int:pk>/anotacoes/", views.ocorrencia_notes, name="ocorrencia_notes"),
     path("ocorrencias/<int:pk>/editar/", views.ocorrencia_update, name="ocorrencia_update"),
     path("ocorrencias/<int:pk>/encerrar/", views.ocorrencia_close, name="ocorrencia_close"),
     path("ocorrencias/<int:pk>/excluir/", views.ocorrencia_delete, name="ocorrencia_delete"),

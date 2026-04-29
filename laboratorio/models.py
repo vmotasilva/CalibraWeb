@@ -52,6 +52,7 @@ class OcorrenciaLaboratorio(models.Model):
     assunto = models.CharField(max_length=200, verbose_name="Assunto")
     detalhamento = models.TextField(verbose_name="Detalhamento")
     consequencias = models.TextField(blank=True, verbose_name="Consequencias")
+    anotacoes = models.TextField(blank=True, verbose_name="Anotacoes internas")
     impacto = models.CharField(
         max_length=20,
         choices=CategoriaLaboratorio.IMPACTO_CHOICES,
@@ -74,6 +75,36 @@ class OcorrenciaLaboratorio(models.Model):
         null=True,
         blank=True,
         verbose_name="Data e hora do encerramento",
+    )
+    perda_producao = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Perda de producao",
+    )
+    unidade_perda_producao = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Unidade da perda de producao",
+    )
+    horas_indisponibilidade = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Horas de indisponibilidade",
+    )
+    impacto_financeiro = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Impacto financeiro estimado",
+    )
+    observacoes_encerramento = models.TextField(
+        blank=True,
+        verbose_name="Observacoes do encerramento",
     )
     duracao = models.DurationField(
         null=True,
@@ -136,6 +167,18 @@ class OcorrenciaLaboratorio(models.Model):
             CategoriaLaboratorio.IMPACTO_ALTO: "danger",
             CategoriaLaboratorio.IMPACTO_CRITICO: "dark",
         }.get(self.impacto, "secondary")
+
+    @property
+    def possui_impacto_registrado(self):
+        return any(
+            valor not in (None, "")
+            for valor in (
+                self.perda_producao,
+                self.horas_indisponibilidade,
+                self.impacto_financeiro,
+                self.observacoes_encerramento,
+            )
+        )
 
     @staticmethod
     def formatar_duracao(valor):
