@@ -65,19 +65,7 @@
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-semibold">Dados da ocorrencia</div>
                 <div class="card-body">
-                    <div class="row g-3 row-cols-1 row-cols-md-2 row-cols-xl-4">
-                        <div class="col">
-                            <div class="border rounded-3 p-3 h-100">
-                                <div class="text-muted small text-uppercase mb-1">Assunto</div>
-                                <div class="fw-semibold">{{ ocorrencia.assunto }}</div>
-                            </div>
-                        </div>
-                        <div class="col">
-                            <div class="border rounded-3 p-3 h-100">
-                                <div class="text-muted small text-uppercase mb-1">Categoria</div>
-                                <div class="fw-semibold">{{ ocorrencia.categoria|default:'Sem categoria definida' }}</div>
-                            </div>
-                        </div>
+                    <div class="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-5">
                         <div class="col">
                             <div class="border rounded-3 p-3 h-100">
                                 <div class="text-muted small text-uppercase mb-1">Responsavel</div>
@@ -108,12 +96,6 @@
                                 <div class="fw-semibold">{{ ocorrencia.atualizado_em|date:'d/m/Y H:i' }}</div>
                             </div>
                         </div>
-                        <div class="col">
-                            <div class="border rounded-3 p-3 h-100">
-                                <div class="text-muted small text-uppercase mb-1">Sintese</div>
-                                <div class="fw-semibold">{{ ocorrencia.status }} | {{ ocorrencia.duracao_formatada }}</div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -121,8 +103,8 @@
     </div>
 
     <div class="row g-3">
-        <div class="col-xl-7">
-            <div class="card shadow-sm border-0 mb-3 h-100">
+        <div class="col-xl-7 d-flex flex-column gap-3">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-semibold">Detalhamento</div>
                 <div class="card-body">
                     {{ ocorrencia.detalhamento|linebreaks }}
@@ -139,7 +121,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-5">
+        <div class="col-xl-5 d-flex flex-column gap-3">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-semibold">Impactos no encerramento</div>
                 <div class="card-body">
@@ -195,7 +177,7 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="card shadow-sm border-0 mt-3">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <span class="fw-semibold">Anotacoes internas</span>
                     <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#anotacoesModal">Preencher</button>
