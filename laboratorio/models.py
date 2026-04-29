@@ -134,9 +134,9 @@ class OcorrenciaLaboratorio(models.Model):
         if not self.assunto:
             raise ValidationError({"assunto": "Informe um assunto ou selecione uma categoria."})
 
-        if self.data_encerramento and self.data_encerramento < self.data_abertura:
+        if self.data_encerramento and self.data_encerramento <= self.data_abertura:
             raise ValidationError(
-                {"data_encerramento": "O encerramento nao pode ser anterior a abertura."}
+                {"data_encerramento": "O encerramento deve ser posterior a abertura."}
             )
 
         if not self.impacto and self.categoria:

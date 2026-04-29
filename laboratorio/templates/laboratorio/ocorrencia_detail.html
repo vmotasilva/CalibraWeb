@@ -224,37 +224,49 @@
                         <div class="col-md-6">
                             <label class="form-label" for="{{ close_form.data_encerramento.id_for_label }}">{{ close_form.data_encerramento.label }}</label>
                             {{ close_form.data_encerramento }}
+                            <div class="form-text">Este campo deve ser sempre posterior a data e hora de abertura.</div>
                             {% if close_form.data_encerramento.errors %}
                             <div class="text-danger small mt-1">{{ close_form.data_encerramento.errors|join:', ' }}</div>
                             {% endif %}
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-12">
+                            <div class="form-check form-switch border rounded p-3">
+                                {{ close_form.registrar_medidas }}
+                                <label class="form-check-label fw-semibold ms-2" for="{{ close_form.registrar_medidas.id_for_label }}">{{ close_form.registrar_medidas.label }}</label>
+                                <div class="small text-muted mt-1">Marque para registrar perda de producao, indisponibilidade e impacto financeiro.</div>
+                            </div>
+                        </div>
+                        <div class="col-12" id="encerramento-medidas-wrapper">
+                            <div class="row g-3">
+                                <div class="col-md-6">
                             <label class="form-label" for="{{ close_form.perda_producao.id_for_label }}">{{ close_form.perda_producao.label }}</label>
                             {{ close_form.perda_producao }}
                             {% if close_form.perda_producao.errors %}
                             <div class="text-danger small mt-1">{{ close_form.perda_producao.errors|join:', ' }}</div>
                             {% endif %}
-                        </div>
-                        <div class="col-md-6">
+                                </div>
+                                <div class="col-md-6">
                             <label class="form-label" for="{{ close_form.unidade_perda_producao.id_for_label }}">{{ close_form.unidade_perda_producao.label }}</label>
                             {{ close_form.unidade_perda_producao }}
                             {% if close_form.unidade_perda_producao.errors %}
                             <div class="text-danger small mt-1">{{ close_form.unidade_perda_producao.errors|join:', ' }}</div>
                             {% endif %}
-                        </div>
-                        <div class="col-md-6">
+                                </div>
+                                <div class="col-md-6">
                             <label class="form-label" for="{{ close_form.horas_indisponibilidade.id_for_label }}">{{ close_form.horas_indisponibilidade.label }}</label>
                             {{ close_form.horas_indisponibilidade }}
                             {% if close_form.horas_indisponibilidade.errors %}
                             <div class="text-danger small mt-1">{{ close_form.horas_indisponibilidade.errors|join:', ' }}</div>
                             {% endif %}
-                        </div>
-                        <div class="col-md-6">
+                                </div>
+                                <div class="col-md-6">
                             <label class="form-label" for="{{ close_form.impacto_financeiro.id_for_label }}">{{ close_form.impacto_financeiro.label }}</label>
                             {{ close_form.impacto_financeiro }}
                             {% if close_form.impacto_financeiro.errors %}
                             <div class="text-danger small mt-1">{{ close_form.impacto_financeiro.errors|join:', ' }}</div>
                             {% endif %}
+                                </div>
+                            </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label" for="{{ close_form.observacoes_encerramento.id_for_label }}">{{ close_form.observacoes_encerramento.label }}</label>
@@ -276,6 +288,27 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const medidasCheckbox = document.getElementById('{{ close_form.registrar_medidas.id_for_label }}');
+    const medidasWrapper = document.getElementById('encerramento-medidas-wrapper');
+    const medidasInputs = medidasWrapper ? medidasWrapper.querySelectorAll('input, select, textarea') : [];
+
+    function syncMedidasVisibility() {
+        if (!medidasCheckbox || !medidasWrapper) {
+            return;
+        }
+
+        const show = medidasCheckbox.checked;
+        medidasWrapper.classList.toggle('d-none', !show);
+        medidasInputs.forEach(function(input) {
+            input.disabled = !show;
+        });
+    }
+
+    if (medidasCheckbox && medidasWrapper) {
+        medidasCheckbox.addEventListener('change', syncMedidasVisibility);
+        syncMedidasVisibility();
+    }
+
     const modalName = '{{ open_modal|escapejs }}';
     if (!modalName || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
         return;

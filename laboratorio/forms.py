@@ -112,6 +112,12 @@ class OcorrenciaAnotacaoForm(forms.ModelForm):
 
 
 class OcorrenciaEncerramentoForm(forms.ModelForm):
+    registrar_medidas = forms.BooleanField(
+        required=False,
+        label="Medidas",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
+
     class Meta:
         model = OcorrenciaLaboratorio
         fields = [
@@ -154,6 +160,18 @@ class OcorrenciaEncerramentoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["data_encerramento"].required = True
 
+        possui_medidas = any(
+            valor not in (None, "")
+            for valor in (
+                self.instance.perda_producao,
+                self.instance.unidade_perda_producao,
+                self.instance.horas_indisponibilidade,
+                self.instance.impacto_financeiro,
+            )
+        )
+        if not self.is_bound:
+            self.initial["registrar_medidas"] = possui_medidas
+
         valor = getattr(self.instance, "data_encerramento", None)
         if valor:
             self.initial["data_encerramento"] = timezone.localtime(valor).strftime("%Y-%m-%dT%H:%M")
@@ -163,19 +181,23 @@ class OcorrenciaEncerramentoForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         encerramento = cleaned_data.get("data_encerramento")
-        perda_producao = cleaned_data.get("perda_producao")
+        registrar_medidas = cleaned_data.get("registrar_medidas")
         unidade_perda = (cleaned_data.get("unidade_perda_producao") or "").strip()
 
-        if encerramento and self.instance.data_abertura and encerramento < self.instance.data_abertura:
-            self.add_error("data_encerramento", "O encerramento nao pode ser anterior a abertura.")
+        if encerramento and self.instance.data_abertura and encerramento <= self.instance.data_abertura:
+            self.add_error("data_encerramento", "O encerramento deve ser posterior a abertura.")
+
+        if not registrar_medidas:
+            cleaned_data["perda_producao"] = None
+            cleaned_data["unidade_perda_producao"] = ""
+            cleaned_data["horas_indisponibilidade"] = None
+            cleaned_data["impacto_financeiro"] = None
+            return cleaned_data
 
         for field_name in ("perda_producao", "horas_indisponibilidade", "impacto_financeiro"):
             valor = cleaned_data.get(field_name)
             if valor is not None and valor < 0:
                 self.add_error(field_name, "Informe um valor maior ou igual a zero.")
-
-        if perda_producao not in (None, "") and perda_producao > 0 and not unidade_perda:
-            self.add_error("unidade_perda_producao", "Informe a unidade da perda de producao.")
 
         cleaned_data["unidade_perda_producao"] = unidade_perda
         return cleaned_data

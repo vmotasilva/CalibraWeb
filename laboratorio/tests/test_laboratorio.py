@@ -179,6 +179,7 @@ class LaboratorioModuleTests(TestCase):
             {
                 "next": reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]),
                 "data_encerramento": timezone.localtime(timezone.now()).replace(second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M"),
+                "registrar_medidas": "on",
                 "perda_producao": "8.00",
                 "unidade_perda_producao": "analises",
                 "horas_indisponibilidade": "2.17",
@@ -195,6 +196,60 @@ class LaboratorioModuleTests(TestCase):
         self.assertEqual(ocorrencia.perda_producao, Decimal("8.00"))
         self.assertEqual(ocorrencia.unidade_perda_producao, "analises")
         self.assertEqual(ocorrencia.impacto_financeiro, Decimal("850.00"))
+
+    def test_encerramento_aceita_apenas_data_e_observacoes(self):
+        abertura = timezone.now().replace(second=0, microsecond=0) - timedelta(minutes=45)
+        ocorrencia = OcorrenciaLaboratorio.objects.create(
+            assunto="Ajuste simples",
+            detalhamento="Ocorrencia para validar fechamento minimo.",
+            consequencias="Sem perdas numericas.",
+            impacto=CategoriaLaboratorio.IMPACTO_BAIXO,
+            responsavel=self.user,
+            data_abertura=abertura,
+        )
+
+        response = self.client.post(
+            reverse("laboratorio:ocorrencia_close", args=[ocorrencia.pk]),
+            {
+                "next": reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]),
+                "data_encerramento": timezone.localtime(timezone.now()).replace(second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M"),
+                "observacoes_encerramento": "Encerramento sem necessidade de registrar medidas.",
+            },
+        )
+
+        self.assertRedirects(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        ocorrencia.refresh_from_db()
+        self.assertIsNotNone(ocorrencia.data_encerramento)
+        self.assertEqual(ocorrencia.observacoes_encerramento, "Encerramento sem necessidade de registrar medidas.")
+        self.assertIsNone(ocorrencia.perda_producao)
+        self.assertEqual(ocorrencia.unidade_perda_producao, "")
+        self.assertIsNone(ocorrencia.horas_indisponibilidade)
+        self.assertIsNone(ocorrencia.impacto_financeiro)
+
+    def test_encerramento_exige_data_posterior_a_abertura(self):
+        abertura = timezone.now().replace(second=0, microsecond=0)
+        ocorrencia = OcorrenciaLaboratorio.objects.create(
+            assunto="Validacao de data",
+            detalhamento="Ocorrencia para validar encerramento posterior.",
+            consequencias="Sem consequencias.",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+            responsavel=self.user,
+            data_abertura=abertura,
+        )
+
+        response = self.client.post(
+            reverse("laboratorio:ocorrencia_close", args=[ocorrencia.pk]),
+            {
+                "next": reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]),
+                "data_encerramento": timezone.localtime(abertura).strftime("%Y-%m-%dT%H:%M"),
+                "observacoes_encerramento": "Tentativa invalida.",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "O encerramento deve ser posterior a abertura.")
+        ocorrencia.refresh_from_db()
+        self.assertIsNone(ocorrencia.data_encerramento)
 
     def test_detail_view_exibe_botao_excluir_e_remove_ocorrencia(self):
         ocorrencia = OcorrenciaLaboratorio.objects.create(
