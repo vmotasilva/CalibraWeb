@@ -60,51 +60,69 @@
         </div>
     </div>
 
-    <div class="row g-3">
-        <div class="col-lg-4">
-            <div class="card shadow-sm border-0 h-100">
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-semibold">Dados da ocorrencia</div>
                 <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-5">Assunto</dt>
-                        <dd class="col-sm-7">{{ ocorrencia.assunto }}</dd>
-
-                        <dt class="col-sm-5">Categoria</dt>
-                        <dd class="col-sm-7">{{ ocorrencia.categoria|default:'Sem categoria definida' }}</dd>
-
-                        <dt class="col-sm-5">Responsavel</dt>
-                        <dd class="col-sm-7">{{ ocorrencia.responsavel.get_full_name|default:ocorrencia.responsavel.username|default:'-' }}</dd>
-
-                        <dt class="col-sm-5">Abertura</dt>
-                        <dd class="col-sm-7">{{ ocorrencia.data_abertura|date:'d/m/Y H:i' }}</dd>
-
-                        <dt class="col-sm-5">Encerramento</dt>
-                        <dd class="col-sm-7">{{ ocorrencia.data_encerramento|date:'d/m/Y H:i'|default:'-' }}</dd>
-
-                        <dt class="col-sm-5">Criado em</dt>
-                        <dd class="col-sm-7">{{ ocorrencia.criado_em|date:'d/m/Y H:i' }}</dd>
-
-                        <dt class="col-sm-5">Atualizado em</dt>
-                        <dd class="col-sm-7">{{ ocorrencia.atualizado_em|date:'d/m/Y H:i' }}</dd>
-                    </dl>
-                </div>
-            </div>
-            <div class="card shadow-sm border-0 mt-3">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center gap-2">
-                    <span class="fw-semibold">Anotacoes internas</span>
-                    <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#anotacoesModal">Preencher</button>
-                </div>
-                <div class="card-body">
-                    {% if ocorrencia.anotacoes %}
-                    {{ ocorrencia.anotacoes|linebreaks }}
-                    {% else %}
-                    <p class="text-muted mb-0">Nenhuma anotacao registrada ate o momento.</p>
-                    {% endif %}
+                    <div class="row g-3 row-cols-1 row-cols-md-2 row-cols-xl-4">
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Assunto</div>
+                                <div class="fw-semibold">{{ ocorrencia.assunto }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Categoria</div>
+                                <div class="fw-semibold">{{ ocorrencia.categoria|default:'Sem categoria definida' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Responsavel</div>
+                                <div class="fw-semibold">{{ ocorrencia.responsavel.get_full_name|default:ocorrencia.responsavel.username|default:'-' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Abertura</div>
+                                <div class="fw-semibold">{{ ocorrencia.data_abertura|date:'d/m/Y H:i' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Encerramento</div>
+                                <div class="fw-semibold">{{ ocorrencia.data_encerramento|date:'d/m/Y H:i'|default:'-' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Criado em</div>
+                                <div class="fw-semibold">{{ ocorrencia.criado_em|date:'d/m/Y H:i' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Atualizado em</div>
+                                <div class="fw-semibold">{{ ocorrencia.atualizado_em|date:'d/m/Y H:i' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Sintese</div>
+                                <div class="fw-semibold">{{ ocorrencia.status }} | {{ ocorrencia.duracao_formatada }}</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-lg-8">
-            <div class="card shadow-sm border-0 mb-3">
+    </div>
+
+    <div class="row g-3">
+        <div class="col-xl-7">
+            <div class="card shadow-sm border-0 mb-3 h-100">
                 <div class="card-header bg-white fw-semibold">Detalhamento</div>
                 <div class="card-body">
                     {{ ocorrencia.detalhamento|linebreaks }}
@@ -120,15 +138,17 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="card shadow-sm border-0 mt-3">
+        </div>
+        <div class="col-xl-5">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-semibold">Impactos no encerramento</div>
                 <div class="card-body">
                     {% if ocorrencia.data_encerramento or ocorrencia.possui_impacto_registrado %}
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4">
-                            <div class="border rounded p-3 h-100">
+                    <div class="row g-3 mb-3 row-cols-1 row-cols-md-3 row-cols-xl-1">
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
                                 <div class="text-muted small text-uppercase">Perda de producao</div>
-                                <div class="fw-semibold">
+                                <div class="fw-semibold mt-1">
                                     {% if ocorrencia.perda_producao %}
                                     {{ ocorrencia.perda_producao|floatformat:2 }} {{ ocorrencia.unidade_perda_producao }}
                                     {% else %}
@@ -137,10 +157,10 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="border rounded p-3 h-100">
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
                                 <div class="text-muted small text-uppercase">Horas indisponiveis</div>
-                                <div class="fw-semibold">
+                                <div class="fw-semibold mt-1">
                                     {% if ocorrencia.horas_indisponibilidade %}
                                     {{ ocorrencia.horas_indisponibilidade|floatformat:2 }} h
                                     {% else %}
@@ -149,10 +169,10 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="border rounded p-3 h-100">
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
                                 <div class="text-muted small text-uppercase">Impacto financeiro</div>
-                                <div class="fw-semibold">
+                                <div class="fw-semibold mt-1">
                                     {% if ocorrencia.impacto_financeiro %}
                                     R$ {{ ocorrencia.impacto_financeiro|floatformat:2 }}
                                     {% else %}
@@ -172,6 +192,19 @@
                     </div>
                     {% else %}
                     <p class="text-muted mb-0">Use o encerramento guiado para registrar perda de producao, horas indisponiveis, impacto financeiro e observacoes finais.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card shadow-sm border-0 mt-3">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <span class="fw-semibold">Anotacoes internas</span>
+                    <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#anotacoesModal">Preencher</button>
+                </div>
+                <div class="card-body">
+                    {% if ocorrencia.anotacoes %}
+                    {{ ocorrencia.anotacoes|linebreaks }}
+                    {% else %}
+                    <p class="text-muted mb-0">Nenhuma anotacao registrada ate o momento.</p>
                     {% endif %}
                 </div>
             </div>
