@@ -199,8 +199,33 @@
                 </li>
                 {% endif %}
 
-                {% if nav_insumos %}
+                {% if nav_laboratorio %}
                 {% if nav_acoes or nav_auditoria or nav_forn %}<li class="nav-divider"></li>{% endif %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Laboratorio">
+                        <i class="bi bi-beaker nav-icon"></i><span class="nav-text">Laboratorio</span>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        {% can_nav_block user 'laboratorio' 'ocorrencias_gerais' as nav_lab_ocorrencias %}
+                        {% if nav_lab_ocorrencias %}
+                            {% can_nav_view user 'laboratorio:ocorrencia_create' 'laboratorio' as nav_lab_nova %}
+                            {% can_nav_view user 'laboratorio:ocorrencias_list' 'laboratorio' as nav_lab_lista %}
+                            {% can_nav_view user 'laboratorio:categorias_list' 'laboratorio' as nav_lab_categorias %}
+                            {% can_nav_view user 'laboratorio:dashboard' 'laboratorio' as nav_lab_dashboard %}
+                            {% if nav_lab_nova or nav_lab_lista or nav_lab_categorias or nav_lab_dashboard %}
+                                <li><h6 class="dropdown-header text-muted">OCORRENCIAS GERAIS</h6></li>
+                                {% if nav_lab_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:ocorrencia_create' %}"><i class="bi bi-plus-circle me-1"></i>Nova Ocorrencia</a></li>{% endif %}
+                                {% if nav_lab_lista %}<li><a class="dropdown-item" href="{% url 'laboratorio:ocorrencias_list' %}"><i class="bi bi-list-ul"></i> Listagem de Ocorrencias</a></li>{% endif %}
+                                {% if nav_lab_categorias %}<li><a class="dropdown-item" href="{% url 'laboratorio:categorias_list' %}"><i class="bi bi-tags"></i> Tabela de Categorias</a></li>{% endif %}
+                                {% if nav_lab_dashboard %}<li><a class="dropdown-item" href="{% url 'laboratorio:dashboard' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
+                            {% endif %}
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+
+                {% if nav_insumos %}
+                {% if nav_acoes or nav_auditoria or nav_forn or nav_laboratorio %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Insumos">
                         <i class="bi bi-box-seam nav-icon"></i><span class="nav-text">Insumos</span>
@@ -236,33 +261,8 @@
                 </li>
                 {% endif %}
 
-                {% if nav_laboratorio %}
-                {% if nav_acoes or nav_auditoria or nav_forn or nav_insumos %}<li class="nav-divider"></li>{% endif %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Laboratorio">
-                        <i class="bi bi-beaker nav-icon"></i><span class="nav-text">Laboratorio</span>
-                    </a>
-                    <ul class="dropdown-menu shadow">
-                        {% can_nav_block user 'laboratorio' 'ocorrencias_gerais' as nav_lab_ocorrencias %}
-                        {% if nav_lab_ocorrencias %}
-                            {% can_nav_view user 'laboratorio:ocorrencia_create' 'laboratorio' as nav_lab_nova %}
-                            {% can_nav_view user 'laboratorio:ocorrencias_list' 'laboratorio' as nav_lab_lista %}
-                            {% can_nav_view user 'laboratorio:categorias_list' 'laboratorio' as nav_lab_categorias %}
-                            {% can_nav_view user 'laboratorio:dashboard' 'laboratorio' as nav_lab_dashboard %}
-                            {% if nav_lab_nova or nav_lab_lista or nav_lab_categorias or nav_lab_dashboard %}
-                                <li><h6 class="dropdown-header text-muted">OCORRENCIAS GERAIS</h6></li>
-                                {% if nav_lab_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:ocorrencia_create' %}"><i class="bi bi-plus-circle me-1"></i>Nova Ocorrencia</a></li>{% endif %}
-                                {% if nav_lab_lista %}<li><a class="dropdown-item" href="{% url 'laboratorio:ocorrencias_list' %}"><i class="bi bi-list-ul"></i> Listagem de Ocorrencias</a></li>{% endif %}
-                                {% if nav_lab_categorias %}<li><a class="dropdown-item" href="{% url 'laboratorio:categorias_list' %}"><i class="bi bi-tags"></i> Tabela de Categorias</a></li>{% endif %}
-                                {% if nav_lab_dashboard %}<li><a class="dropdown-item" href="{% url 'laboratorio:dashboard' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
-                            {% endif %}
-                        {% endif %}
-                    </ul>
-                </li>
-                {% endif %}
-
                 {% if nav_metrologia %}
-                {% if nav_acoes or nav_auditoria or nav_forn or nav_insumos or nav_laboratorio %}<li class="nav-divider"></li>{% endif %}
+                {% if nav_acoes or nav_auditoria or nav_forn or nav_laboratorio or nav_insumos %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Metrologia">
                         <i class="bi bi-tools nav-icon"></i><span class="nav-text">Metrologia</span>

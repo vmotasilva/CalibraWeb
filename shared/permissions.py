@@ -11,8 +11,6 @@ Compatibilidade:
 - Se o usuário ainda estiver usando grupos legados, o acesso continua funcionando.
 """
 
-import unicodedata
-
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 
@@ -824,6 +822,30 @@ NAV_STRUCTURE = [
         ],
     },
     {
+        "key": "laboratorio",
+        "nome": "Laboratorio",
+        "cor": "warning",
+        "icone": "bi bi-beaker",
+        "module_perm": "core.nav_mod_laboratorio",
+        "blocos": [
+            {
+                "key": "ocorrencias_gerais",
+                "nome": "OCORRENCIAS GERAIS",
+                "perm": "core.nav_laboratorio_ocorrencias_gerais",
+                "funcoes": [
+                    {"nome": "Modulo Laboratorio", "view_name": "laboratorio:modulo", "perm": "core.nav_laboratorio_modulo"},
+                    {"nome": "Nova Ocorrencia", "view_name": "laboratorio:ocorrencia_create", "perm": "core.nav_laboratorio_nova_ocorrencia"},
+                    {"nome": "Listagem de Ocorrencias", "view_name": "laboratorio:ocorrencias_list", "perm": "core.nav_laboratorio_lista_ocorrencias"},
+                    {"nome": "Editar Ocorrencia", "view_name": "laboratorio:ocorrencia_update", "perm": "core.nav_laboratorio_editar_ocorrencia"},
+                    {"nome": "Tabela de Categorias", "view_name": "laboratorio:categorias_list", "perm": "core.nav_laboratorio_categorias"},
+                    {"nome": "Nova Categoria", "view_name": "laboratorio:categoria_create", "perm": "core.nav_laboratorio_categoria_create"},
+                    {"nome": "Editar Categoria", "view_name": "laboratorio:categoria_update", "perm": "core.nav_laboratorio_categoria_update"},
+                    {"nome": "Dashboard Laboratorio", "view_name": "laboratorio:dashboard", "perm": "core.nav_laboratorio_dashboard"},
+                ],
+            },
+        ],
+    },
+    {
         "key": "insumos",
         "nome": "Insumos",
         "cor": "info",
@@ -881,30 +903,6 @@ NAV_STRUCTURE = [
         ],
     },
     {
-        "key": "laboratorio",
-        "nome": "Laboratorio",
-        "cor": "warning",
-        "icone": "bi bi-beaker",
-        "module_perm": "core.nav_mod_laboratorio",
-        "blocos": [
-            {
-                "key": "ocorrencias_gerais",
-                "nome": "OCORRENCIAS GERAIS",
-                "perm": "core.nav_laboratorio_ocorrencias_gerais",
-                "funcoes": [
-                    {"nome": "Modulo Laboratorio", "view_name": "laboratorio:modulo", "perm": "core.nav_laboratorio_modulo"},
-                    {"nome": "Nova Ocorrencia", "view_name": "laboratorio:ocorrencia_create", "perm": "core.nav_laboratorio_nova_ocorrencia"},
-                    {"nome": "Listagem de Ocorrencias", "view_name": "laboratorio:ocorrencias_list", "perm": "core.nav_laboratorio_lista_ocorrencias"},
-                    {"nome": "Editar Ocorrencia", "view_name": "laboratorio:ocorrencia_update", "perm": "core.nav_laboratorio_editar_ocorrencia"},
-                    {"nome": "Tabela de Categorias", "view_name": "laboratorio:categorias_list", "perm": "core.nav_laboratorio_categorias"},
-                    {"nome": "Nova Categoria", "view_name": "laboratorio:categoria_create", "perm": "core.nav_laboratorio_categoria_create"},
-                    {"nome": "Editar Categoria", "view_name": "laboratorio:categoria_update", "perm": "core.nav_laboratorio_categoria_update"},
-                    {"nome": "Dashboard Laboratorio", "view_name": "laboratorio:dashboard", "perm": "core.nav_laboratorio_dashboard"},
-                ],
-            },
-        ],
-    },
-    {
         "key": "usuarios",
         "nome": "Usuários",
         "cor": "dark",
@@ -925,13 +923,7 @@ NAV_STRUCTURE = [
 
 
 def get_nav_structure():
-    def _sort_key(text: str | None) -> str:
-        value = str(text or "")
-        value = unicodedata.normalize("NFKD", value)
-        value = "".join(ch for ch in value if not unicodedata.combining(ch))
-        return value.casefold()
-
-    return sorted(NAV_STRUCTURE, key=lambda m: _sort_key(m.get("nome")))
+    return list(NAV_STRUCTURE)
 
 
 def _nav_module_config(module_key: str):
