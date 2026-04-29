@@ -1,11 +1,19 @@
 {% extends "base_auth.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}Login - Calibra QMS{% endblock %}
 
+{% block extra_css %}
+<style>
+    .auth-brand-logo {
+        height: 60px;
+    }
+</style>
+{% endblock %}
+
 {% block auth_content %}
 <div class="text-center mb-4">
-    <img src="/static/logo.png" alt="Calibra QMS" style="height: 60px;" class="mb-3" onerror="this.style.display='none'">
+    <img src="{% static 'shared/logo_calibraweb.png' %}" alt="Calibra QMS" class="mb-3 auth-brand-logo" onerror="this.style.display='none'">
     <h4 class="fw-bold text-primary">Calibra QMS</h4>
     <p class="text-muted">Sistema de Gestão da Qualidade</p>
 </div>
@@ -54,7 +62,7 @@
                    class="form-control {% if wizard.form.password.errors %}is-invalid{% endif %}"
                    placeholder="Digite sua senha"
                    required>
-            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+            <button class="btn btn-outline-secondary" type="button" id="togglePassword" title="Mostrar ou ocultar senha" aria-label="Mostrar ou ocultar senha">
                 <i class="bi bi-eye" id="eyeIcon"></i>
             </button>
         </div>

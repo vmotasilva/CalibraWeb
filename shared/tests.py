@@ -1,12 +1,17 @@
 """
 Tests for shared module - Common and shared functionality
 """
+from django.http import HttpResponse
+from django.templatetags.static import static
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 from datetime import date, timedelta
 from django.core.cache import cache
+from django.test import RequestFactory
 from django.urls import NoReverseMatch
+
+from shared.middleware import AuthNoCacheMiddleware
 
 
 class SharedViewsTests(TestCase):
@@ -87,4 +92,34 @@ class SharedNotificationsTests(TestCase):
 
         counts = get_user_cobrancas_counts(self.user)
         self.assertGreaterEqual(int(counts.get("cotacoes", 0)), 1)
+
+
+class SharedAuthPagesTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.factory = RequestFactory()
+
+    def test_auth_no_cache_middleware_sets_headers_for_login_path(self):
+        middleware = AuthNoCacheMiddleware(lambda request: HttpResponse("ok"))
+
+        response = middleware(self.factory.get("/account/login/"))
+
+        self.assertEqual(response["Cache-Control"], "no-cache, no-store, must-revalidate, max-age=0")
+        self.assertEqual(response["Pragma"], "no-cache")
+        self.assertEqual(response["Expires"], "0")
+        self.assertIn("Cookie", response["Vary"])
+
+    def test_two_factor_login_uses_existing_logo_asset(self):
+        try:
+            url = reverse("two_factor:login")
+        except NoReverseMatch:
+            self.skipTest("two_factor:login URL não está configurada neste ambiente de teste")
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, static("shared/logo_calibraweb.png"))
+        self.assertNotContains(response, "/static/logo.png")
+        self.assertEqual(response["Cache-Control"], "no-cache, no-store, must-revalidate, max-age=0")
+        self.assertIn("Cookie", response["Vary"])
     

@@ -127,6 +127,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django_otp.middleware.OTPMiddleware",  # Middleware para 2FA
     "django.contrib.messages.middleware.MessageMiddleware",
+    "shared.middleware.AuthNoCacheMiddleware",  # Evita cache de formulários de autenticação/2FA
     "shared.middleware.TwoFactorRequiredMiddleware",  # Força ativação do 2FA (após messages)
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "shared.middleware.ModuleAccessMiddleware",  # Controle de acesso por módulo
