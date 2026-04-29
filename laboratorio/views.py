@@ -17,7 +17,7 @@ from .forms import (
     OcorrenciaEncerramentoForm,
     OcorrenciaLaboratorioForm,
 )
-from .models import CategoriaLaboratorio, OcorrenciaLaboratorio
+from .models import CategoriaLaboratorio, OcorrenciaLaboratorio, OcorrenciaLaboratorioAnotacao
 
 
 def _parse_date(value):
@@ -38,6 +38,12 @@ def _calcular_media_duracao(ocorrencias):
     return total / len(duracoes)
 
 
+def _get_ocorrencia_detail_queryset():
+    return OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel").prefetch_related(
+        "anotacoes_registradas__usuario"
+    )
+
+
 def _build_ocorrencia_detail_context(
     request,
     ocorrencia,
@@ -51,8 +57,9 @@ def _build_ocorrencia_detail_context(
         "ocorrencia": ocorrencia,
         "current_path": detail_url,
         "close_next": close_next or request.GET.get("next") or detail_url,
-        "notes_form": notes_form or OcorrenciaAnotacaoForm(instance=ocorrencia),
+        "notes_form": notes_form or OcorrenciaAnotacaoForm(),
         "close_form": close_form or OcorrenciaEncerramentoForm(instance=ocorrencia),
+        "anotacoes_registradas": list(ocorrencia.anotacoes_registradas.all()),
         "open_modal": open_modal or request.GET.get("modal") or "",
     }
 
@@ -175,7 +182,7 @@ def ocorrencia_update(request, pk):
 @login_required
 def ocorrencia_detail(request, pk):
     ocorrencia = get_object_or_404(
-        OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel"),
+        _get_ocorrencia_detail_queryset(),
         pk=pk,
     )
     return render(request, "laboratorio/ocorrencia_detail.html", _build_ocorrencia_detail_context(request, ocorrencia))
@@ -184,17 +191,20 @@ def ocorrencia_detail(request, pk):
 @login_required
 def ocorrencia_notes(request, pk):
     ocorrencia = get_object_or_404(
-        OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel"),
+        _get_ocorrencia_detail_queryset(),
         pk=pk,
     )
     detail_url = reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk])
     if request.method != "POST":
         return redirect(detail_url)
 
-    form = OcorrenciaAnotacaoForm(request.POST, instance=ocorrencia)
+    form = OcorrenciaAnotacaoForm(request.POST)
     if form.is_valid():
-        form.save()
-        messages.success(request, f"Anotacoes da ocorrencia '{ocorrencia.assunto}' atualizadas com sucesso.")
+        anotacao = form.save(commit=False)
+        anotacao.ocorrencia = ocorrencia
+        anotacao.usuario = request.user
+        anotacao.save()
+        messages.success(request, f"Nova anotacao registrada para a ocorrencia '{ocorrencia.assunto}'.")
         return redirect(detail_url)
 
     context = _build_ocorrencia_detail_context(
@@ -209,7 +219,7 @@ def ocorrencia_notes(request, pk):
 @login_required
 def ocorrencia_close(request, pk):
     ocorrencia = get_object_or_404(
-        OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel"),
+        _get_ocorrencia_detail_queryset(),
         pk=pk,
     )
     detail_url = reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk])

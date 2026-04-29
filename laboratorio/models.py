@@ -52,7 +52,6 @@ class OcorrenciaLaboratorio(models.Model):
     assunto = models.CharField(max_length=200, verbose_name="Assunto")
     detalhamento = models.TextField(verbose_name="Detalhamento")
     consequencias = models.TextField(blank=True, verbose_name="Consequencias")
-    anotacoes = models.TextField(blank=True, verbose_name="Anotacoes internas")
     impacto = models.CharField(
         max_length=20,
         choices=CategoriaLaboratorio.IMPACTO_CHOICES,
@@ -205,3 +204,36 @@ class OcorrenciaLaboratorio(models.Model):
         if not valor and self.data_abertura and not self.data_encerramento:
             valor = timezone.now() - self.data_abertura
         return self.formatar_duracao(valor)
+
+
+class OcorrenciaLaboratorioAnotacao(models.Model):
+    ocorrencia = models.ForeignKey(
+        OcorrenciaLaboratorio,
+        on_delete=models.CASCADE,
+        related_name="anotacoes_registradas",
+        verbose_name="Ocorrencia",
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anotacoes_ocorrencias_laboratorio",
+        verbose_name="Responsavel pela anotacao",
+    )
+    texto = models.TextField(verbose_name="Anotacao")
+    criado_em = models.DateTimeField(auto_now_add=True, verbose_name="Data e hora da anotacao")
+
+    class Meta:
+        ordering = ["-criado_em", "-id"]
+        verbose_name = "Anotacao da ocorrencia do laboratorio"
+        verbose_name_plural = "Anotacoes das ocorrencias do laboratorio"
+
+    def __str__(self):
+        return f"Anotacao de {self.autor_display} em {timezone.localtime(self.criado_em).strftime('%d/%m/%Y %H:%M:%S')}"
+
+    @property
+    def autor_display(self):
+        if not self.usuario:
+            return "Usuario nao informado"
+        return self.usuario.get_full_name() or self.usuario.username

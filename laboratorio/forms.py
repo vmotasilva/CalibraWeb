@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import CategoriaLaboratorio, OcorrenciaLaboratorio
+from .models import CategoriaLaboratorio, OcorrenciaLaboratorio, OcorrenciaLaboratorioAnotacao
 
 
 class CategoriaLaboratorioForm(forms.ModelForm):
@@ -98,14 +98,14 @@ class OcorrenciaLaboratorioForm(forms.ModelForm):
 
 class OcorrenciaAnotacaoForm(forms.ModelForm):
     class Meta:
-        model = OcorrenciaLaboratorio
-        fields = ["anotacoes"]
+        model = OcorrenciaLaboratorioAnotacao
+        fields = ["texto"]
         widgets = {
-            "anotacoes": forms.Textarea(
+            "texto": forms.Textarea(
                 attrs={
                     "class": "form-control",
-                    "rows": 7,
-                    "placeholder": "Registre observacoes de acompanhamento, tratativas e decisoes gerenciais.",
+                    "rows": 6,
+                    "placeholder": "Registre uma nova anotacao de acompanhamento, tratativa ou decisao gerencial.",
                 }
             ),
         }

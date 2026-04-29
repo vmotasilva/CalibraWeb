@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from laboratorio.models import CategoriaLaboratorio, OcorrenciaLaboratorio
+from laboratorio.models import CategoriaLaboratorio, OcorrenciaLaboratorio, OcorrenciaLaboratorioAnotacao
 
 
 class LaboratorioModuleTests(TestCase):
@@ -144,7 +144,7 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(detail_response, "3h 15min")
         self.assertContains(detail_response, reverse("laboratorio:ocorrencia_notes", args=[ocorrencia.pk]))
 
-    def test_detail_view_registra_anotacoes_por_modal(self):
+    def test_detail_view_registra_anotacoes_por_modal_com_autor_e_historico(self):
         ocorrencia = OcorrenciaLaboratorio.objects.create(
             assunto="Acompanhamento de analise",
             detalhamento="Necessidade de observacao adicional na bancada.",
@@ -153,15 +153,40 @@ class LaboratorioModuleTests(TestCase):
             responsavel=self.user,
             data_abertura=timezone.now().replace(second=0, microsecond=0),
         )
+        outro_usuario = get_user_model().objects.create_user(
+            username="lab.coordenador",
+            password="senha-forte-456",
+            first_name="Laura",
+            last_name="Coordenadora",
+        )
 
         response = self.client.post(
             reverse("laboratorio:ocorrencia_notes", args=[ocorrencia.pk]),
-            {"anotacoes": "Primeira anotacao gerencial registrada."},
+            {"texto": "Primeira anotacao gerencial registrada."},
         )
 
         self.assertRedirects(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
-        ocorrencia.refresh_from_db()
-        self.assertEqual(ocorrencia.anotacoes, "Primeira anotacao gerencial registrada.")
+
+        self.client.force_login(outro_usuario)
+        segundo_response = self.client.post(
+            reverse("laboratorio:ocorrencia_notes", args=[ocorrencia.pk]),
+            {"texto": "Segunda anotacao com novo responsavel."},
+        )
+
+        self.assertRedirects(segundo_response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        anotacoes = list(OcorrenciaLaboratorioAnotacao.objects.filter(ocorrencia=ocorrencia))
+        self.assertEqual(len(anotacoes), 2)
+        self.assertEqual(anotacoes[0].texto, "Segunda anotacao com novo responsavel.")
+        self.assertEqual(anotacoes[0].usuario, outro_usuario)
+        self.assertIsNotNone(anotacoes[0].criado_em)
+        self.assertEqual(anotacoes[1].texto, "Primeira anotacao gerencial registrada.")
+        self.assertEqual(anotacoes[1].usuario, self.user)
+
+        detail_response = self.client.get(reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        self.assertContains(detail_response, "Primeira anotacao gerencial registrada.")
+        self.assertContains(detail_response, "Segunda anotacao com novo responsavel.")
+        self.assertContains(detail_response, outro_usuario.get_full_name())
+        self.assertContains(detail_response, anotacoes[0].criado_em.strftime("%d/%m/%Y"))
 
     def test_encerramento_rapido_define_data_e_duracao(self):
         abertura = timezone.now().replace(second=0, microsecond=0) - timedelta(hours=2, minutes=10)
