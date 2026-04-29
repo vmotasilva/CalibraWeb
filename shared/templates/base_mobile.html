@@ -226,13 +226,15 @@
                     <ul class="dropdown-menu">
                         {% can_nav_block user 'laboratorio' 'ocorrencias_gerais' as nav_lab_ocorrencias %}
                         {% if nav_lab_ocorrencias %}
+                            {% can_nav_view user 'laboratorio:modulo' 'laboratorio' as nav_lab_modulo %}
                             {% can_nav_view user 'laboratorio:ocorrencia_create' 'laboratorio' as nav_lab_nova %}
                             {% can_nav_view user 'laboratorio:ocorrencias_list' 'laboratorio' as nav_lab_lista %}
                             {% can_nav_view user 'laboratorio:categorias_list' 'laboratorio' as nav_lab_categorias %}
                             {% can_nav_view user 'laboratorio:dashboard' 'laboratorio' as nav_lab_dashboard %}
-                            {% if nav_lab_nova or nav_lab_lista or nav_lab_categorias or nav_lab_dashboard %}
+                            {% if nav_lab_nova or nav_lab_modulo or nav_lab_lista or nav_lab_categorias or nav_lab_dashboard %}
                                 <li><h6 class="dropdown-header text-muted">OCORRENCIAS GERAIS</h6></li>
                                 {% if nav_lab_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:ocorrencia_create' %}"><i class="bi bi-plus-circle me-1"></i>NOVA OCORRENCIA</a></li>{% endif %}
+                                {% if nav_lab_modulo %}<li><a class="dropdown-item" href="{% url 'laboratorio:modulo' %}"><i class="bi bi-card-text"></i> Modulo de Observacoes Gerais</a></li>{% endif %}
                                 {% if nav_lab_lista %}<li><a class="dropdown-item" href="{% url 'laboratorio:ocorrencias_list' %}"><i class="bi bi-list-ul"></i> Listagem de Ocorrencias</a></li>{% endif %}
                                 {% if nav_lab_categorias %}<li><a class="dropdown-item" href="{% url 'laboratorio:categorias_list' %}"><i class="bi bi-tags"></i> Tabela de Categorias</a></li>{% endif %}
                                 {% if nav_lab_dashboard %}<li><a class="dropdown-item" href="{% url 'laboratorio:dashboard' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
