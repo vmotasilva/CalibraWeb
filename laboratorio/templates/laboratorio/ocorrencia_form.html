@@ -61,6 +61,18 @@
                     {{ form.impacto }}
                     {% if form.impacto.errors %}<div class="text-danger small mt-1">{{ form.impacto.errors|join:', ' }}</div>{% endif %}
                 </div>
+                <div class="col-md-6" id="div-colaborador" style="display:none;">
+                    <label class="form-label">{{ form.colaborador.label }}</label>
+                    {{ form.colaborador }}
+                    <div class="form-text">Selecione o colaborador relacionado à ocorrência.</div>
+                    {% if form.colaborador.errors %}<div class="text-danger small mt-1">{{ form.colaborador.errors|join:', ' }}</div>{% endif %}
+                </div>
+                <div class="col-md-6" id="div-maquina" style="display:none;">
+                    <label class="form-label">{{ form.maquina.label }}</label>
+                    {{ form.maquina }}
+                    <div class="form-text">Selecione a máquina relacionada à ocorrência.</div>
+                    {% if form.maquina.errors %}<div class="text-danger small mt-1">{{ form.maquina.errors|join:', ' }}</div>{% endif %}
+                </div>
                 <div class="col-12">
                     <label class="form-label">{{ form.detalhamento.label }}</label>
                     {{ form.detalhamento }}
@@ -93,12 +105,34 @@
         const categoriaSelect = document.getElementById('id_categoria');
         const assuntoInput = document.getElementById('id_assunto');
         const impactoSelect = document.getElementById('id_impacto');
+        const divColaborador = document.getElementById('div-colaborador');
+        const divMaquina = document.getElementById('div-maquina');
         const categorias = JSON.parse(document.getElementById('categorias-laboratorio').textContent);
         const porId = {};
 
         categorias.forEach((categoria) => {
             porId[String(categoria.id)] = categoria;
         });
+
+        function toggleCamposExtras() {
+            let categoria = porId[categoriaSelect.value];
+            if (!categoria) {
+                divColaborador.style.display = 'none';
+                divMaquina.style.display = 'none';
+                return;
+            }
+            let nome = categoria.nome.toLowerCase();
+            if (nome.startsWith('falta de colaborador')) {
+                divColaborador.style.display = '';
+            } else {
+                divColaborador.style.display = 'none';
+            }
+            if (nome.startsWith('parada de máquina') || nome.startsWith('parada de manutencao') || nome.startsWith('parada de manutenção')) {
+                divMaquina.style.display = '';
+            } else {
+                divMaquina.style.display = 'none';
+            }
+        }
 
         if (!categoriaSelect || !assuntoInput || !impactoSelect) {
             return;
@@ -109,15 +143,17 @@
             if (!categoria) {
                 return;
             }
-
             if (!assuntoInput.value.trim()) {
                 assuntoInput.value = categoria.nome;
             }
-
             if (!impactoSelect.value) {
                 impactoSelect.value = categoria.impacto;
             }
+            toggleCamposExtras();
         });
+
+        // Inicializa ao carregar
+        toggleCamposExtras();
     })();
 </script>
 {% endblock %}

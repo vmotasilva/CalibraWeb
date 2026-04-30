@@ -15,6 +15,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="{% static 'custom_nav.css' %}">
     
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; padding-top: 80px; }
@@ -226,17 +227,37 @@
                 </li>
                 {% endif %}
 
-                {% if nav_insumos %}
-                {% if nav_acoes or nav_auditoria or nav_forn or nav_laboratorio %}<li class="nav-divider"></li>{% endif %}
+                {# INÍCIO: Itens de Insumos dentro do menu Laboratório #}
+                {% if nav_laboratorio %}
+                {% if nav_acoes or nav_auditoria or nav_forn %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Insumos">
-                        <i class="bi bi-box-seam nav-icon"></i><span class="nav-text">Insumos</span>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Laboratorio">
+                        <i class="bi bi-beaker nav-icon"></i><span class="nav-text">Laboratorio</span>
                     </a>
                     <ul class="dropdown-menu shadow">
+                        {# Ocorrências Gerais #}
+                        {% can_nav_block user 'laboratorio' 'ocorrencias_gerais' as nav_lab_ocorrencias %}
+                        {% if nav_lab_ocorrencias %}
+                            {% can_nav_view user 'laboratorio:modulo' 'laboratorio' as nav_lab_modulo %}
+                            {% can_nav_view user 'laboratorio:ocorrencia_create' 'laboratorio' as nav_lab_nova %}
+                            {% can_nav_view user 'laboratorio:ocorrencias_list' 'laboratorio' as nav_lab_lista %}
+                            {% can_nav_view user 'laboratorio:categorias_list' 'laboratorio' as nav_lab_categorias %}
+                            {% can_nav_view user 'laboratorio:dashboard' 'laboratorio' as nav_lab_dashboard %}
+                            {% if nav_lab_nova or nav_lab_modulo or nav_lab_lista or nav_lab_categorias or nav_lab_dashboard %}
+                                <li><h6 class="dropdown-header text-muted">OCORRENCIAS GERAIS</h6></li>
+                                {% if nav_lab_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:ocorrencia_create' %}"><i class="bi bi-plus-circle me-1"></i>Nova Ocorrencia</a></li>{% endif %}
+                                {% if nav_lab_modulo %}<li><a class="dropdown-item" href="{% url 'laboratorio:modulo' %}"><i class="bi bi-card-text"></i> Modulo de Observacoes Gerais</a></li>{% endif %}
+                                {% if nav_lab_lista %}<li><a class="dropdown-item" href="{% url 'laboratorio:ocorrencias_list' %}"><i class="bi bi-list-ul"></i> Listagem de Ocorrencias</a></li>{% endif %}
+                                {% if nav_lab_categorias %}<li><a class="dropdown-item" href="{% url 'laboratorio:categorias_list' %}"><i class="bi bi-tags"></i> Tabela de Categorias</a></li>{% endif %}
+                                {% if nav_lab_dashboard %}<li><a class="dropdown-item" href="{% url 'laboratorio:dashboard' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {# Itens de Insumos #}
                         {% can_nav_view user 'insumos:selecionar_modelo_preenchimento' 'insumos' as nav_ins_novo %}
                         {% if nav_ins_novo %}
-                            <li><a class="dropdown-item fw-bold text-success" href="{% url 'insumos:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVO REGISTRO</a></li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item fw-bold text-success" href="{% url 'insumos:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVO REGISTRO DE INSUMO</a></li>
                         {% endif %}
 
                         {% can_nav_block user 'insumos' 'cadastro' as nav_ins_cad %}
@@ -244,10 +265,9 @@
                             {% can_nav_view user 'insumos:modelos_list' 'insumos' as nav_ins_modelos %}
                             {% can_nav_view user 'insumos:perguntas_list' 'insumos' as nav_ins_perg %}
                             {% if nav_ins_modelos or nav_ins_perg %}
-                                <li><h6 class="dropdown-header text-muted">CADASTRO</h6></li>
+                                <li><h6 class="dropdown-header text-muted">INSUMOS - CADASTRO</h6></li>
                                 {% if nav_ins_modelos %}<li><a class="dropdown-item" href="{% url 'insumos:modelos_list' %}">Modelos de Insumos</a></li>{% endif %}
                                 {% if nav_ins_perg %}<li><a class="dropdown-item" href="{% url 'insumos:perguntas_list' %}">Perguntas por Modelo</a></li>{% endif %}
-                                <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
 
@@ -255,13 +275,14 @@
                         {% if nav_ins_an %}
                             {% can_nav_view user 'insumos:dashboard' 'insumos' as nav_ins_dash %}
                             {% if nav_ins_dash %}
-                                <li><h6 class="dropdown-header text-muted">ANÁLISE</h6></li>
+                                <li><h6 class="dropdown-header text-muted">INSUMOS - ANÁLISE</h6></li>
                                 <li><a class="dropdown-item" href="{% url 'insumos:dashboard' %}">Dashboard Insumos</a></li>
                             {% endif %}
                         {% endif %}
                     </ul>
                 </li>
                 {% endif %}
+                {# FIM: Itens de Insumos dentro do menu Laboratório #}
 
                 {% if nav_metrologia %}
                 {% if nav_acoes or nav_auditoria or nav_forn or nav_laboratorio or nav_insumos %}<li class="nav-divider"></li>{% endif %}

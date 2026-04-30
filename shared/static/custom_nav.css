@@ -1,0 +1,17 @@
+/* Remove highlight/hover nos menus dropdown do navbar */
+.dropdown-menu .dropdown-item:active,
+.dropdown-menu .dropdown-item:focus,
+.dropdown-menu .dropdown-item:hover {
+    background-color: transparent !important;
+    color: inherit !important;
+}
+
+/* Remove highlight do item ativo do menu principal */
+.navbar .nav-link.active,
+.navbar .nav-link:focus,
+.navbar .nav-link:hover {
+    background-color: transparent !important;
+    color: inherit !important;
+    box-shadow: none !important;
+    outline: none !important;
+}

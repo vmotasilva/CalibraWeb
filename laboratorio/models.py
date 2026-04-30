@@ -40,6 +40,9 @@ class CategoriaLaboratorio(models.Model):
         return self.nome
 
 
+from rh.models import Colaborador
+from maquinas.models import Maquina
+
 class OcorrenciaLaboratorio(models.Model):
     categoria = models.ForeignKey(
         CategoriaLaboratorio,
@@ -50,6 +53,22 @@ class OcorrenciaLaboratorio(models.Model):
         verbose_name="Categoria",
     )
     assunto = models.CharField(max_length=200, verbose_name="Assunto")
+    colaborador = models.ForeignKey(
+        Colaborador,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ocorrencias_laboratorio_colaborador",
+        verbose_name="Colaborador (se aplicável)",
+    )
+    maquina = models.ForeignKey(
+        Maquina,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ocorrencias_laboratorio_maquina",
+        verbose_name="Máquina (se aplicável)",
+    )
     detalhamento = models.TextField(verbose_name="Detalhamento")
     consequencias = models.TextField(blank=True, verbose_name="Consequencias")
     impacto = models.CharField(

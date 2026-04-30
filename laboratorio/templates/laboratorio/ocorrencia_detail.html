@@ -58,6 +58,26 @@
                 </div>
             </div>
         </div>
+        {% if ocorrencia.colaborador %}
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Colaborador</div>
+                    <div class="h4 mb-0">{{ ocorrencia.colaborador.nome_completo }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if ocorrencia.maquina %}
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Máquina</div>
+                    <div class="h4 mb-0">{{ ocorrencia.maquina }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <div class="row g-3 mb-3">

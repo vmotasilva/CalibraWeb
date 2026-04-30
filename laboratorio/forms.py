@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from .models import CategoriaLaboratorio, OcorrenciaLaboratorio, OcorrenciaLaboratorioAnotacao
+from rh.models import Colaborador
+from maquinas.models import Maquina
 
 
 class CategoriaLaboratorioForm(forms.ModelForm):
@@ -18,6 +20,18 @@ class CategoriaLaboratorioForm(forms.ModelForm):
 
 
 class OcorrenciaLaboratorioForm(forms.ModelForm):
+    colaborador = forms.ModelChoiceField(
+        queryset=Colaborador.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"}),
+        label="Colaborador (se aplicável)",
+    )
+    maquina = forms.ModelChoiceField(
+        queryset=Maquina.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"}),
+        label="Máquina (se aplicável)",
+    )
     impacto = forms.ChoiceField(
         choices=[("", "Selecione")] + CategoriaLaboratorio.IMPACTO_CHOICES,
         required=False,
@@ -35,6 +49,8 @@ class OcorrenciaLaboratorioForm(forms.ModelForm):
             "impacto",
             "detalhamento",
             "consequencias",
+            "colaborador",
+            "maquina",
         ]
         widgets = {
             "data_abertura": forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}),
@@ -59,6 +75,8 @@ class OcorrenciaLaboratorioForm(forms.ModelForm):
         self.fields["data_encerramento"].required = False
         self.fields["responsavel"].queryset = get_user_model().objects.order_by("first_name", "username")
         self.fields["categoria"].queryset = CategoriaLaboratorio.objects.order_by("nome")
+        self.fields["colaborador"].queryset = Colaborador.objects.order_by("nome_completo")
+        self.fields["maquina"].queryset = Maquina.objects.order_by("nome")
 
         if user and not self.instance.pk and not self.initial.get("responsavel"):
             self.initial["responsavel"] = user
@@ -67,6 +85,20 @@ class OcorrenciaLaboratorioForm(forms.ModelForm):
             valor = getattr(self.instance, field_name, None)
             if valor:
                 self.initial[field_name] = timezone.localtime(valor).strftime("%Y-%m-%dT%H:%M")
+
+        # Esconde campos colaborador/maquina por padrão
+        self.fields["colaborador"].widget.attrs["style"] = "display:none;"
+        self.fields["maquina"].widget.attrs["style"] = "display:none;"
+
+        # Exibe campo conforme categoria (se já selecionada)
+        categoria = self.initial.get("categoria") or self.data.get("categoria")
+        if categoria:
+            cat_obj = CategoriaLaboratorio.objects.filter(pk=categoria).first()
+            if cat_obj:
+                if cat_obj.nome.lower().startswith("falta de colaborador"):
+                    self.fields["colaborador"].widget.attrs.pop("style", None)
+                if cat_obj.nome.lower().startswith("parada de máquina") or cat_obj.nome.lower().startswith("parada de manutencao"):
+                    self.fields["maquina"].widget.attrs.pop("style", None)
 
     def clean(self):
         cleaned_data = super().clean()

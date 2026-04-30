@@ -74,6 +74,12 @@
                             <td>
                                 <div class="fw-semibold">{{ ocorrencia.assunto }}</div>
                                 <div class="small text-muted">{{ ocorrencia.categoria|default:'Assunto livre' }}</div>
+                                {% if ocorrencia.colaborador %}
+                                    <div class="small text-info">👤 {{ ocorrencia.colaborador.nome_completo }}</div>
+                                {% endif %}
+                                {% if ocorrencia.maquina %}
+                                    <div class="small text-info">🛠️ {{ ocorrencia.maquina }}</div>
+                                {% endif %}
                             </td>
                             <td>{{ ocorrencia.responsavel.get_full_name|default:ocorrencia.responsavel.username|default:'-' }}</td>
                             <td>{{ ocorrencia.data_abertura|date:'d/m/Y H:i' }}</td>
