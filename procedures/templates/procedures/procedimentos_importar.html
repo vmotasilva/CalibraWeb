@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% load nav_access %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">📤 Importação em Massa de Procedimentos</h3>
+            <small class="text-muted">Importe múltiplos procedimentos através de arquivo Excel ou CSV</small>
+        </div>
+        {% can_nav_view user 'procedures:importar_procedimentos' 'procedures' as can_importar_procedimentos %}
+        {% can_nav_view user 'procedures:dl_template_procedimentos' 'procedures' as can_baixar_template %}
+        <div>
+            <a href="{% url 'procedures:procedimentos_list' %}" class="btn btn-sm btn-outline-secondary">← Voltar</a>
+        </div>
+    </div>
+
+    <!-- Alert de Informação -->
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <h6 class="alert-heading">ℹ️ Como usar</h6>
+        <ul class="mb-0 small">
+            <li>Baixe o <strong>template Excel</strong></li>
+            <li>Preencha com seus dados</li>
+            <li>Faça upload e clique em <strong>Processar Importação</strong></li>
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row">
+        <!-- Seção Esquerda: Upload e Configuração -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">📤 Importação de Procedimentos</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Botão Template -->
+                    <div class="mb-4">
+                        {% if can_baixar_template %}
+                            <a href="{% url 'procedures:dl_template_procedimentos' %}" class="btn btn-outline-primary">
+                                📥 Baixar Template
+                            </a>
+                            <small class="text-muted d-block mt-2">Baixe o template com todas as colunas necessárias</small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Formulário de Upload -->
+                    {% if can_importar_procedimentos %}
+                        <form method="post" enctype="multipart/form-data" id="importacao-form">
+                            {% csrf_token %}
+                            
+                            <!-- Input de Arquivo -->
+                            <div class="mb-3">
+                                <label class="form-label">Selecionar Arquivo</label>
+                                <div class="input-group">
+                                    <input type="file" 
+                                           class="form-control" 
+                                           name="arquivo_excel" 
+                                           id="arquivo_excel"
+                                           accept=".xlsx,.xls,.csv"
+                                           required>
+                                    <span class="input-group-text">.xlsx, .xls, .csv</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    ✓ Suporta: Excel (.xlsx, .xls) e CSV
+                                </small>
+                            </div>
+
+                            <!-- Botão Submit -->
+                            <button type="submit" class="btn btn-success w-100 btn-lg" id="btn-importar">
+                                ▶ Processar Importação
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Relatório (se houver) -->
+    {% if relatorio_html %}
+    <div class="mt-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">📈 Resultado da Importação</h5>
+            </div>
+            <div class="card-body">
+                {{ relatorio_html|safe }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .importacao-relatorio {
+        font-size: 0.95rem;
+    }
+    
+    .importacao-relatorio .card {
+        border: none;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    
+    .importacao-relatorio .table {
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}

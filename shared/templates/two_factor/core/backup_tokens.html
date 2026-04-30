@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Códigos de Backup - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="bi bi-key me-2"></i>
+                        Códigos de Backup
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Guarde estes códigos em um local seguro!</strong>
+                        <p class="mb-0 small mt-1">
+                            Use um código de backup para fazer login caso você perca acesso ao seu dispositivo.
+                            Cada código só pode ser usado uma vez.
+                        </p>
+                    </div>
+                    
+                    {% if device %}
+                    <div class="bg-light p-4 rounded mb-4">
+                        <div class="row g-2">
+                            {% for token in device.token_set.all %}
+                            <div class="col-6">
+                                <code class="d-block text-center p-2 bg-white rounded border">{{ token.token }}</code>
+                            </div>
+                            {% empty %}
+                            <div class="col-12 text-center text-muted">
+                                <i class="bi bi-x-circle me-1"></i>Nenhum código disponível
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="bi bi-arrow-repeat me-2"></i>Gerar Novos Códigos
+                            </button>
+                            <a href="{% url 'two_factor:profile' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Voltar
+                            </a>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-shield-x display-4 text-muted mb-3"></i>
+                        <p class="text-muted">Configure o 2FA primeiro para gerar códigos de backup.</p>
+                        <a href="{% url 'two_factor:setup' %}" class="btn btn-primary">
+                            <i class="bi bi-shield-plus me-1"></i>Configurar 2FA
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

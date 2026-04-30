@@ -1,0 +1,80 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block header_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">{{ titulo }}</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label class="form-label">{{ form.matriz.label }} *</label>
+                    {{ form.matriz }}
+                    {% if form.matriz.errors %}
+                        <div class="text-danger small">{{ form.matriz.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">Selecione a matriz à qual esta disciplina pertence</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">{{ form.nome.label }} *</label>
+                    {{ form.nome }}
+                    {% if form.nome.errors %}
+                        <div class="text-danger small">{{ form.nome.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">O código será gerado automaticamente (DISC001, DISC002, etc.)</div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.prioridade.label }}</label>
+                        {{ form.prioridade }}
+                        {% if form.prioridade.errors %}
+                            <div class="text-danger small">{{ form.prioridade.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.obrigatoriedade_legal.label }}</label>
+                        {{ form.obrigatoriedade_legal }}
+                        {% if form.obrigatoriedade_legal.errors %}
+                            <div class="text-danger small">{{ form.obrigatoriedade_legal.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">{{ form.descricao.label }}</label>
+                    {{ form.descricao }}
+                    {% if form.descricao.errors %}
+                        <div class="text-danger small">{{ form.descricao.errors }}</div>
+                    {% endif %}
+                    <div class="form-text">Informações complementares: público, periodicidade, carga horária, etc.</div>
+                </div>
+                
+                <div class="form-check mb-3">
+                    {{ form.ativo }}
+                    <label class="form-check-label" for="{{ form.ativo.id_for_label }}">
+                        {{ form.ativo.label }}
+                    </label>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Salvar
+                    </button>
+                    <a href="{% url 'procedures:disciplinas_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,2097 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block header_title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-label {
+        font-weight: 600;
+        color: #212529;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control, .form-select {
+        border: 1px solid #dee2e6;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.95rem;
+    }
+    
+    .form-text {
+        display: block;
+        margin-top: 0.25rem;
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .form-section {
+        padding: 1.5rem;
+        background-color: #ffffff;
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0d6efd;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #0d6efd;
+        margin-bottom: 1rem;
+    }
+    
+    .section-subtitle {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #495057;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+    
+    .sugestoes-section {
+        background: linear-gradient(135deg, #f0f7ff 0%, #e8f4f8 100%);
+        border: 2px solid #0d6efd;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    
+    .sugestoes-alert {
+        background-color: #d1ecf1;
+        border-left: 4px solid #17a2b8;
+        padding: 0.75rem 1rem;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+        color: #0c5460;
+        font-weight: 500;
+    }
+    
+    .sugestoes-alert i {
+        margin-right: 0.5rem;
+    }
+    
+    .sugestao-item {
+        background-color: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+    
+    .sugestao-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+    
+    .sugestao-header i {
+        color: #0d6efd;
+        font-size: 1.1rem;
+    }
+    
+    .sugestao-desc {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .colaborador-sugerido {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background-color: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.375rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .colaborador-sugerido-info {
+        flex: 1;
+    }
+    
+    .colaborador-sugerido-nome {
+        font-weight: 500;
+        color: #212529;
+    }
+    
+    .colaborador-sugerido-meta {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .colaborador-sugerido-badge {
+        margin-left: 0.5rem;
+    }
+    
+    /* Classes para controlar visibilidade com JavaScript */
+    .hidden-section {
+        display: none !important;
+    }
+    
+    .max-height-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .max-height-colaboradores {
+        max-height: 250px;
+        overflow-y: auto;
+        margin-bottom: 1rem;
+    }
+    
+    .alert-sm {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+    
+    .origem-section {
+        background-color: #f0f7ff;
+        border-left: 4px solid #0d6efd;
+        padding: 1.5rem;
+        border-radius: 0.375rem;
+        margin-bottom: 0;
+    }
+    
+    .origem-options {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .form-check-input {
+        width: 1.2em;
+        height: 1.2em;
+        margin: 0;
+        cursor: pointer;
+    }
+    
+    .form-check-label {
+        margin: 0;
+        cursor: pointer;
+        font-weight: 500;
+        padding: 0;
+    }
+    
+    .list-section {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        min-height: 60px;
+    }
+    
+    .list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.375rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .list-item-name {
+        font-weight: 500;
+        color: #212529;
+    }
+    
+    .list-item-remove {
+        background: none;
+        border: none;
+        color: #dc3545;
+        cursor: pointer;
+        font-weight: 600;
+        padding: 0;
+    }
+    
+    .list-item-remove:hover {
+        color: #a02622;
+    }
+    
+    .empty-list {
+        text-align: center;
+        color: #6c757d;
+        padding: 1rem;
+        font-style: italic;
+    }
+    
+    .btn-add {
+        margin-top: 0;
+    }
+    
+    .table-responsive {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        overflow: hidden;
+        margin-bottom: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .table {
+        margin-bottom: 0;
+    }
+    
+    .table thead th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #dee2e6;
+        padding: 0.75rem;
+    }
+    
+    .table tbody td {
+        padding: 0.75rem;
+        vertical-align: middle;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .row-3col {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 0;
+    }
+    
+    @media (max-width: 992px) {
+        .row-3col { grid-template-columns: 1fr 1fr; }
+    }
+    
+    @media (max-width: 576px) {
+        .row-3col { grid-template-columns: 1fr; }
+    }
+    
+    .btn-group-form {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .card {
+        border: none;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .card-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        color: white;
+        border: none;
+        padding: 1.5rem;
+    }
+    
+    .card-body {
+        padding: 2rem;
+        background-color: #f8f9fa;
+    }
+    
+    .mb-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .section-subtitle {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 0.5rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 1rem;
+        }
+        
+        .card-body {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-9 offset-lg-1">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ titulo }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="planejamentoForm">
+                        {% csrf_token %}
+                        
+                        <!-- SEÇÃO 1: INFORMAÇÕES PRINCIPAIS -->
+                        <div class="form-section mb-4">
+                            <h6 class="section-title mb-3">Informações do Treinamento</h6>
+                            
+                            <div class="row mb-section">
+                                <div class="col-md-8">
+                                    <label class="form-label">{{ form.titulo.label }} <span class="text-danger">*</span></label>
+                                    {{ form.titulo }}
+                                    <small class="form-text">Título descritivo para identificar o treinamento</small>
+                                    {% if form.titulo.errors %}<div class="text-danger small mt-1">{{ form.titulo.errors }}</div>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">{{ form.status.label }}</label>
+                                    {{ form.status }}
+                                    {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="origem-section">
+                                <label class="form-label">{{ form.origem.label }} <span class="text-danger">*</span></label>
+                                <div class="origem-options">
+                                    {% for radio in form.origem %}
+                                        <div class="form-check">
+                                            {{ radio.tag }}
+                                            <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                                {{ radio.choice_label }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <small class="form-text mt-2">{{ form.origem.help_text|safe }}</small>
+                                {% if form.origem.errors %}<div class="text-danger small mt-1">{{ form.origem.errors }}</div>{% endif %}
+                            </div>
+                            
+                            <!-- SEÇÃO PARA DEMANDA EXISTENTE -->
+                            <div id="demanda_section" class="mb-section hidden-section">
+                                <h6 class="section-subtitle mb-3">Seleção de Perfil</h6>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> 
+                                    Selecione um perfil de colaborador para gerar planejamento baseado nas demandas pendentes
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Perfil de Treinamento <span class="text-danger">*</span></label>
+                                    <select id="select_perfil" class="form-select">
+                                        <option value="">-- Selecione um Perfil --</option>
+                                    </select>
+                                    <small class="form-text">Os colaboradores e procedimentos pendentes serão carregados automaticamente</small>
+                                </div>
+                                <button type="button" id="btn_carregar_demanda" class="btn btn-success w-100" disabled>
+                                    <i class="bi bi-clipboard-check"></i> Carregar Demandas Pendentes
+                                </button>
+                                
+                                <!-- Informações da demanda -->
+                                <div id="demanda_info" class="alert alert-primary hidden-section mt-3">
+                                    <strong>Perfil selecionado:</strong> <span id="perfil_nome">-</span><br>
+                                    <strong>Colaboradores encontrados:</strong> <span id="count_colaboradores_demanda">0</span><br>
+                                    <strong>Procedimentos pendentes:</strong> <span id="count_procedimentos_demanda">0</span>
+                                </div>
+                            </div>
+                            
+                            <!-- SEÇÃO PARA MATRIZ DE HABILIDADES -->
+                            <div id="matriz_button_section" class="mb-section hidden-section">
+                                <h6 class="section-subtitle mb-3">Seleção de Matriz e Disciplina</h6>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> 
+                                    Selecione matriz e disciplina para gerar planejamento baseado nas notas dos colaboradores (notas 0 ou 1)
+                                </div>
+                                <button type="button" id="btn_abrir_modal_matriz" class="btn btn-primary w-100">
+                                    <i class="bi bi-grid-3x3-gap"></i> Selecionar Matriz e Disciplina
+                                </button>
+                                <small class="form-text">Clique para selecionar a matriz e disciplina (procedimentos e colaboradores serão carregados automaticamente)</small>
+                                
+                                <!-- Informações da seleção -->
+                                <div id="matriz_selecionada_info" class="alert alert-success hidden-section mt-3">
+                                    <strong>Matriz selecionada:</strong> <span id="matriz_nome_selecionada">-</span><br>
+                                    <strong>Disciplina selecionada:</strong> <span id="disciplina_nome_selecionada">-</span><br>
+                                    <strong>Procedimentos carregados:</strong> <span id="count_procedimentos_info">0</span><br>
+                                    <strong>Colaboradores sugeridos:</strong> <span id="count_colaboradores_info">0</span>
+                                </div>
+                                
+                                <!-- Hidden inputs para armazenar seleção -->
+                                <input type="hidden" id="hidden_matriz_id" value="">
+                                <input type="hidden" id="hidden_disciplina_id" name="disciplina" value="">
+                            </div>
+                        </div>
+                        
+                        <!-- SEÇÃO 2: DATAS E INSTRUTOR -->
+                        <div class="form-section mb-4">
+                            <h6 class="section-title mb-3">Datas e Instrutor</h6>
+                            
+                            <div class="row-3col">
+                                <div>
+                                    <label class="form-label">{{ form.data_prevista.label }} <span class="text-danger">*</span></label>
+                                    {{ form.data_prevista }}
+                                    {% if form.data_prevista.errors %}<div class="text-danger small mt-1">{{ form.data_prevista.errors }}</div>{% endif %}
+                                </div>
+                                <div>
+                                    <label class="form-label">{{ form.horario_previsto.label }}</label>
+                                    {{ form.horario_previsto }}
+                                    {% if form.horario_previsto.errors %}<div class="text-danger small mt-1">{{ form.horario_previsto.errors }}</div>{% endif %}
+                                </div>
+                                <div>
+                                    <label class="form-label">{{ form.data_realizada.label }}</label>
+                                    {{ form.data_realizada }}
+                                    {% if form.data_realizada.errors %}<div class="text-danger small mt-1">{{ form.data_realizada.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row-3col">
+                                <div>
+                                    <label class="form-label">{{ form.instrutor.label }}</label>
+                                    {{ form.instrutor }}
+                                    {% if form.instrutor.errors %}<div class="text-danger small mt-1">{{ form.instrutor.errors }}</div>{% endif %}
+                                </div>
+                        </div>
+                        
+                        <!-- SEÇÃO 3: CARGA HORÁRIA -->
+                        <div class="form-section mb-4">
+                            <h6 class="section-title mb-3">Informações Adicionais</h6>
+                            
+                            <div class="row mb-section">
+                                <div class="col-md-6">
+                                    <label class="form-label">{{ form.carga_horaria.label }}</label>
+                                    {{ form.carga_horaria }}
+                                    <small class="form-text">Em minutos</small>
+                                    {% if form.carga_horaria.errors %}<div class="text-danger small mt-1">{{ form.carga_horaria.errors }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- SEÇÃO 4: OBSERVAÇÕES -->
+                        <div class="form-section mb-4">
+                            <h6 class="section-title mb-3">Observações</h6>
+                            
+                            <div class="mb-section">
+                                <label class="form-label">{{ form.observacoes.label }}</label>
+                                {{ form.observacoes }}
+                                {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors }}</div>{% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- SEÇÃO 5: PROCEDIMENTOS (Na parte de baixo) - Visível apenas em Planejamento LIVRE -->
+                        <div id="procedimento_field" class="form-section mb-4 hidden-section">
+                            <h6 class="section-title mb-3">Procedimentos</h6>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">{{ form.procedimentos.label }}</label>
+                                <button type="button" class="btn btn-sm btn-primary btn-add" data-bs-toggle="modal" data-bs-target="#procedimentoModal">
+                                    <i class="bi bi-plus-circle"></i> Adicionar Procedimento
+                                </button>
+                            </div>
+                            <div class="table-responsive" id="procedimento_list" style="display: none;">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="120">Código</th>
+                                            <th>Nome</th>
+                                            <th width="120">Matriz</th>
+                                            <th width="150">Sub-área</th>
+                                            <th width="50" class="text-center">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="procedimento_table_body">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="procedimento_empty" class="list-section">
+                                <div class="empty-list">Nenhum procedimento selecionado</div>
+                            </div>
+                            <small class="form-text">{{ form.procedimentos.help_text|safe }}</small>
+                            {% if form.procedimentos.errors %}<div class="text-danger small mt-1">{{ form.procedimentos.errors }}</div>{% endif %}
+                            <!-- Hidden inputs para armazenar procedimentos selecionados -->
+                            <div id="procedimento_hidden_container"></div>
+                        </div>
+                        
+                        <!-- SEÇÃO 6: COLABORADORES (Na parte de baixo) -->
+                        <div class="form-section mb-4">
+                            <h6 class="section-title mb-3">Colaboradores</h6>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">{{ form.colaboradores.label }} <span class="text-danger">*</span></label>
+                                <button type="button" class="btn btn-sm btn-primary btn-add" data-bs-toggle="modal" data-bs-target="#colaboradoresModal">
+                                    <i class="bi bi-plus-circle"></i> Adicionar Colaborador
+                                </button>
+                            </div>
+                            <div class="table-responsive" id="colaboradores_list" style="display: none;">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th width="150">Matrícula</th>
+                                            <th width="200">Setor</th>
+                                            <th width="50" class="text-center">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="colaboradores_table_body">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="colaboradores_empty" class="list-section">
+                                <div class="empty-list">Nenhum colaborador selecionado</div>
+                            </div>
+                            <small class="form-text">Selecione os colaboradores que participarão do treinamento</small>
+                            {% if form.colaboradores.errors %}<div class="text-danger small mt-1">{{ form.colaboradores.errors }}</div>{% endif %}
+                            <!-- Hidden inputs para armazenar colaboradores selecionados -->
+                            <div id="colaboradores_hidden_container"></div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="btn-group-form">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Salvar
+                            </button>
+                            <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const origemRadios = document.querySelectorAll('input[name="origem"]');
+    const procedimentoField = document.getElementById('procedimento_field');
+    const matrizFieldsSection = document.getElementById('matriz_fields_section');
+    const selectMatriz = document.getElementById('select_matriz');
+    const selectDisciplina = document.getElementById('select_disciplina');
+    
+    // ========== LÓGICA DE ORIGEM ==========
+    function updateFields() {
+        const selectedOrigem = document.querySelector('input[name="origem"]:checked');
+        if (!selectedOrigem) {
+            console.log('[DEBUG] Nenhuma origem selecionada ainda');
+            return;
+        }
+        
+        const value = selectedOrigem.value;
+        console.log('[DEBUG] Origem selecionada:', value);
+        
+        const procedimentoSelect = document.querySelector('select[name="procedimento"]');
+        const matrizButtonSection = document.getElementById('matriz_button_section');
+        const demandaSection = document.getElementById('demanda_section');
+        
+        console.log('[DEBUG] Elementos encontrados:', {
+            procedimentoField: !!procedimentoField,
+            matrizButtonSection: !!matrizButtonSection,
+            demandaSection: !!demandaSection,
+            procedimentoSelect: !!procedimentoSelect,
+            value: value
+        });
+        
+        // IMPORTANTE: Primeiro esconder TODAS as seções (usando classe E estilo para garantir)
+        if (procedimentoField) {
+            procedimentoField.classList.add('hidden-section');
+            procedimentoField.style.display = 'none';
+        }
+        if (matrizButtonSection) {
+            matrizButtonSection.classList.add('hidden-section');
+            matrizButtonSection.style.display = 'none';
+        }
+        if (demandaSection) {
+            demandaSection.classList.add('hidden-section');
+            demandaSection.style.display = 'none';
+        }
+        
+        // Depois mostrar apenas a seção relevante
+        if (value === 'LIVRE') {
+            // Planejamento Livre: mostrar apenas seleção de procedimentos
+            if (procedimentoField) {
+                procedimentoField.classList.remove('hidden-section');
+                procedimentoField.style.display = 'block';
+            }
+            if (procedimentoSelect) procedimentoSelect.required = true;
+            console.log('[DEBUG] Modo LIVRE: apenas procedimentos visível');
+        } else if (value === 'MATRIZ') {
+            // Matriz de Habilidades: mostrar apenas botão de modal
+            if (matrizButtonSection) {
+                matrizButtonSection.classList.remove('hidden-section');
+                matrizButtonSection.style.display = 'block';
+            }
+            if (procedimentoSelect) procedimentoSelect.required = false;
+            console.log('[DEBUG] Modo MATRIZ: apenas botão modal visível');
+        } else if (value === 'DEMANDA') {
+            // Demanda Existente: mostrar apenas seleção de perfil
+            if (demandaSection) {
+                demandaSection.classList.remove('hidden-section');
+                demandaSection.style.display = 'block';
+            }
+            if (procedimentoSelect) procedimentoSelect.required = false;
+            console.log('[DEBUG] Modo DEMANDA: apenas seleção de perfil visível');
+        } else {
+            // Fallback: todas já estão escondidas
+            if (procedimentoSelect) procedimentoSelect.required = false;
+            console.log('[DEBUG] Modo DESCONHECIDO: tudo escondido');
+        }
+    }
+    
+    origemRadios.forEach(radio => {
+        radio.addEventListener('change', updateFields);
+    });
+    
+    // Chamar updateFields após garantir que o DOM está pronto
+    setTimeout(updateFields, 100);
+    
+    // ========== LÓGICA DO MODAL PARA SELEÇÃO DE MATRIZ ==========
+    const modalMatrizDisciplinaElement = document.getElementById('modalMatrizDisciplina');
+    let modalMatrizDisciplina = null;
+    
+    if (modalMatrizDisciplinaElement) {
+        modalMatrizDisciplina = new bootstrap.Modal(modalMatrizDisciplinaElement);
+    }
+    
+    const modalSelectMatriz = document.getElementById('modal_select_matriz');
+    const modalSelectDisciplina = document.getElementById('modal_select_disciplina');
+    const btnAbrirModalMatriz = document.getElementById('btn_abrir_modal_matriz');
+    const btnModalConfirmar = document.getElementById('btn_modal_confirmar');
+    const modalSugestoesContainer = document.getElementById('modal_sugestoes_container');
+    
+    // Carregar matrizes no modal
+    async function carregarMatrizesModal() {
+        try {
+            const responseMatrizesDB = await fetch('/procedures/api/matrizes-bd/');
+            if (responseMatrizesDB.ok) {
+                const dataMatrizesDB = await responseMatrizesDB.json();
+                modalSelectMatriz.innerHTML = '<option value="">-- Selecione uma Matriz --</option>';
+                (dataMatrizesDB.matrizes || []).forEach(matriz => {
+                    const option = document.createElement('option');
+                    option.value = matriz.id;
+                    option.textContent = `${matriz.codigo} - ${matriz.nome}`;
+                    modalSelectMatriz.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('[ERRO] Falha ao carregar matrizes:', error);
+        }
+    }
+    
+    // Abrir modal e carregar matrizes
+    if (btnAbrirModalMatriz) {
+        btnAbrirModalMatriz.addEventListener('click', function() {
+            carregarMatrizesModal();
+            if (modalMatrizDisciplina) {
+                modalMatrizDisciplina.show();
+            }
+        });
+    }
+    
+    // Quando matriz mudar, carregar disciplinas
+    if (modalSelectMatriz) {
+        modalSelectMatriz.addEventListener('change', async function() {
+            const matrizId = this.value;
+            if (modalSelectDisciplina) {
+                modalSelectDisciplina.innerHTML = '<option value="">-- Selecione uma Disciplina --</option>';
+                modalSelectDisciplina.disabled = true;
+            }
+            if (modalSugestoesContainer) {
+                modalSugestoesContainer.classList.add('hidden-section');
+            }
+            if (btnModalConfirmar) {
+                btnModalConfirmar.disabled = true;
+            }
+            
+            if (!matrizId) return;
+        
+        try {
+            const response = await fetch(`/procedures/api/disciplinas-por-matriz/?matriz_id=${matrizId}`);
+            if (!response.ok) throw new Error('Erro ao carregar disciplinas');
+            
+            const data = await response.json();
+            modalSelectDisciplina.disabled = false;
+            (data.disciplinas || []).forEach(disciplina => {
+                const option = document.createElement('option');
+                option.value = disciplina.id;
+                option.textContent = `${disciplina.codigo} - ${disciplina.nome}`;
+                if (modalSelectDisciplina) {
+                    modalSelectDisciplina.appendChild(option);
+                }
+            });
+            if (modalSelectDisciplina) {
+                modalSelectDisciplina.disabled = false;
+            }
+        } catch (error) {
+            console.error('[ERRO] Falha ao carregar disciplinas:', error);
+        }
+        });
+    }
+    
+    // Quando disciplina mudar, carregar sugestões automaticamente
+    if (modalSelectDisciplina) {
+        modalSelectDisciplina.addEventListener('change', async function() {
+            const disciplinaId = this.value;
+            
+            if (!disciplinaId) {
+            modalSugestoesContainer.classList.add('hidden-section');
+            btnModalConfirmar.disabled = true;
+            return;
+        }
+        
+        try {
+            // Carregar procedimentos
+            const responseProcedimentos = await fetch(`/procedures/api/procedimentos-por-disciplina/?disciplina_id=${disciplinaId}`);
+            if (responseProcedimentos.ok) {
+                const dataProcedimentos = await responseProcedimentos.json();
+                
+                // Armazenar procedimentos
+                procedimentosSelecionados = {};
+                (dataProcedimentos.procedimentos || []).forEach(proc => {
+                    procedimentosSelecionados[proc.id] = {
+                        codigo: proc.codigo,
+                        nome: proc.nome,
+                        matriz: proc.matriz,
+                        sub_area: proc.sub_area
+                    };
+                });
+                
+                const countProcedimentos = (dataProcedimentos.procedimentos || []).length;
+                document.getElementById('modal_count_procedimentos').textContent = countProcedimentos;
+                
+                const modalAvisoProcedimentos = document.getElementById('modal_aviso_procedimentos');
+                if (countProcedimentos === 0) {
+                    modalAvisoProcedimentos.classList.remove('hidden-section');
+                } else {
+                    modalAvisoProcedimentos.classList.add('hidden-section');
+                }
+            }
+            
+            // Carregar colaboradores sugeridos
+            const responseColaboradores = await fetch(`/procedures/api/colaboradores-por-disciplina/?disciplina_id=${disciplinaId}`);
+            if (responseColaboradores.ok) {
+                const dataColaboradores = await responseColaboradores.json();
+                
+                // Armazenar colaboradores sugeridos
+                colaboradoresSugeridosGlobal = dataColaboradores.colaboradores || [];
+                
+                // Mostrar colaboradores no modal
+                const listaColaboradoresModal = document.getElementById('modal_lista_colaboradores_sugeridos');
+                listaColaboradoresModal.innerHTML = '';
+                
+                if (colaboradoresSugeridosGlobal.length > 0) {
+                    colaboradoresSugeridosGlobal.forEach(colab => {
+                        const nivelClasse = colab.nivel === 3 ? 'success' : colab.nivel === 2 ? 'info' : 'warning';
+                        const nivelTexto = colab.nivel === 3 ? 'Avançado' : colab.nivel === 2 ? 'Intermediário' : 'Básico';
+                        
+                        const item = document.createElement('div');
+                        item.className = 'mb-2 p-2 bg-light rounded';
+                        item.innerHTML = `
+                            <strong>${colab.nome}</strong>
+                            <span class="badge bg-${nivelClasse} ms-2">${nivelTexto}</span>
+                        `;
+                        listaColaboradoresModal.appendChild(item);
+                    });
+                }
+                
+                document.getElementById('modal_count_colaboradores').textContent = colaboradoresSugeridosGlobal.length;
+            }
+            
+            // Mostrar container de sugestões
+            modalSugestoesContainer.classList.remove('hidden-section');
+            btnModalConfirmar.disabled = false;
+        } catch (error) {
+            console.error('[ERRO] Falha ao carregar dados:', error);
+        }
+        });
+    }
+    
+    // Confirmar seleção e fechar modal
+    if (btnModalConfirmar) {
+        btnModalConfirmar.addEventListener('click', function() {
+            const matrizId = modalSelectMatriz ? modalSelectMatriz.value : null;
+            const matrizNome = modalSelectMatriz ? modalSelectMatriz.options[modalSelectMatriz.selectedIndex].text : '';
+            const disciplinaId = modalSelectDisciplina ? modalSelectDisciplina.value : null;
+            const disciplinaNome = modalSelectDisciplina ? modalSelectDisciplina.options[modalSelectDisciplina.selectedIndex].text : '';
+            
+        if (!matrizId || !disciplinaId) {
+            alert('Por favor, selecione matriz e disciplina');
+            return;
+        }
+        
+        // Preencher hidden inputs
+        document.getElementById('hidden_matriz_id').value = matrizId;
+        document.getElementById('hidden_disciplina_id').value = disciplinaId;
+        
+        // Atualizar informações de seleção
+        document.getElementById('matriz_nome_selecionada').textContent = matrizNome;
+        document.getElementById('disciplina_nome_selecionada').textContent = disciplinaNome;
+        document.getElementById('count_procedimentos_info').textContent = Object.keys(procedimentosSelecionados).length;
+        document.getElementById('count_colaboradores_info').textContent = colaboradoresSugeridosGlobal.length;
+        
+        // Mostrar informações de seleção
+        document.getElementById('matriz_selecionada_info').classList.remove('hidden-section');
+        
+        // Adicionar colaboradores sugeridos automaticamente
+        colaboradoresSugeridosGlobal.forEach(colab => {
+            colaboradoresSelecionados[colab.id] = {
+                nome: colab.nome,
+                nivel: colab.nivel
+            };
+        });
+        renderColaboradores();
+        
+        // Fechar modal
+        if (modalMatrizDisciplina) {
+            modalMatrizDisciplina.hide();
+        }
+        });
+    }
+    
+    // ========== LÓGICA DE DEMANDA EXISTENTE ==========
+    const selectPerfil = document.getElementById('select_perfil');
+    const btnCarregarDemanda = document.getElementById('btn_carregar_demanda');
+    const demandaInfo = document.getElementById('demanda_info');
+    
+    // Carregar perfis disponíveis
+    async function carregarPerfis() {
+        try {
+            // TODO: Criar endpoint para listar perfis
+            // Por enquanto, vou deixar preparado para quando a API estiver pronta
+            console.log('[INFO] Carregando perfis...');
+            // const response = await fetch('/procedures/api/perfis/');
+            // if (response.ok) {
+            //     const data = await response.json();
+            //     selectPerfil.innerHTML = '<option value="">-- Selecione um Perfil --</option>';
+            //     (data.perfis || []).forEach(perfil => {
+            //         const option = document.createElement('option');
+            //         option.value = perfil.id;
+            //         option.textContent = perfil.nome;
+            //         selectPerfil.appendChild(option);
+            //     });
+            // }
+        } catch (error) {
+            console.error('[ERRO] Falha ao carregar perfis:', error);
+        }
+    }
+    
+    // Habilitar/desabilitar botão quando perfil for selecionado
+    if (selectPerfil) {
+        selectPerfil.addEventListener('change', function() {
+            if (btnCarregarDemanda) {
+                btnCarregarDemanda.disabled = !this.value;
+            }
+        });
+    }
+    
+    // Carregar demandas pendentes
+    if (btnCarregarDemanda) {
+        btnCarregarDemanda.addEventListener('click', async function() {
+            const perfilId = selectPerfil.value;
+            
+            if (!perfilId) {
+                alert('Por favor, selecione um perfil primeiro');
+                return;
+            }
+            
+            this.disabled = true;
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="bi bi-hourglass-split"></i> Carregando...';
+            
+            try {
+                // TODO: Criar endpoint para buscar demandas pendentes por perfil
+                console.log('[INFO] Carregando demandas para perfil:', perfilId);
+                
+                // const response = await fetch(`/procedures/api/demandas-pendentes/?perfil_id=${perfilId}`);
+                // if (response.ok) {
+                //     const data = await response.json();
+                //     
+                //     // Preencher procedimentos
+                //     procedimentosSelecionados = {};
+                //     (data.procedimentos || []).forEach(proc => {
+                //         procedimentosSelecionados[proc.id] = {
+                //             codigo: proc.codigo,
+                //             nome: proc.nome
+                //         };
+                //     });
+                //     renderProcedimentos();
+                //     
+                //     // Preencher colaboradores
+                //     colaboradoresSelecionados = {};
+                //     (data.colaboradores || []).forEach(colab => {
+                //         colaboradoresSelecionados[colab.id] = {
+                //             nome: colab.nome
+                //         };
+                //     });
+                //     renderColaboradores();
+                //     
+                //     // Atualizar informações
+                //     document.getElementById('perfil_nome').textContent = selectPerfil.options[selectPerfil.selectedIndex].text;
+                //     document.getElementById('count_colaboradores_demanda').textContent = data.colaboradores.length;
+                //     document.getElementById('count_procedimentos_demanda').textContent = data.procedimentos.length;
+                //     
+                //     demandaInfo.classList.remove('hidden-section');
+                // }
+                
+                alert('Funcionalidade em desenvolvimento. Em breve será possível carregar demandas pendentes por perfil.');
+                
+            } catch (error) {
+                console.error('[ERRO] Falha ao carregar demandas:', error);
+                alert('Erro ao carregar demandas. Verifique o console para mais detalhes.');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = originalText;
+            }
+        });
+    }
+    
+    // ========== LÓGICA DE MATRIZ DE HABILIDADES ==========
+    
+    // Carregar disciplinas quando matriz mudar
+    selectMatriz.addEventListener('change', async function() {
+        const matrizId = this.value;
+        selectDisciplina.innerHTML = '<option value="">-- Selecione uma Disciplina --</option>';
+        selectDisciplina.disabled = true;
+        
+        if (!matrizId) return;
+        
+        try {
+            const response = await fetch(`/procedures/api/disciplinas-por-matriz/?matriz_id=${matrizId}`);
+            if (!response.ok) throw new Error('Erro ao carregar disciplinas');
+            
+            const data = await response.json();
+            selectDisciplina.disabled = false;
+            selectDisciplina.innerHTML = '<option value="">-- Selecione uma Disciplina --</option>';
+            
+            (data.disciplinas || []).forEach(disciplina => {
+                const option = document.createElement('option');
+                option.value = disciplina.id;
+                option.textContent = `${disciplina.codigo} - ${disciplina.nome}`;
+                selectDisciplina.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro ao carregar disciplinas:', error);
+        }
+    });
+    
+    // Habilitar/desabilitar botão quando disciplina mudar
+    selectDisciplina.addEventListener('change', function() {
+        const disciplinaId = this.value;
+        const btnCarregarSugestoes = document.getElementById('btn_carregar_sugestoes');
+        
+        // Preencher o hidden input com a disciplina selecionada
+        document.getElementById('hidden_disciplina_id').value = disciplinaId;
+        
+        if (!disciplinaId) {
+            // Desabilitar botão e limpar dados se nenhuma disciplina selecionada
+            btnCarregarSugestoes.disabled = true;
+            procedimentosSelecionados = {};
+            colaboradoresSelecionados = {};
+            renderProcedimentos();
+            renderColaboradores();
+            document.getElementById('sugestoes_container').classList.add('hidden-section');
+        } else {
+            // Habilitar botão quando disciplina selecionada
+            btnCarregarSugestoes.disabled = false;
+        }
+    });
+    
+    // Carregar sugestões quando botão "Carregar Sugestões" for clicado
+    const btnCarregarSugestoes = document.getElementById('btn_carregar_sugestoes');
+    if (btnCarregarSugestoes) {
+        btnCarregarSugestoes.addEventListener('click', async function(e) {
+            e.preventDefault();
+            
+            const disciplinaId = document.getElementById('select_disciplina').value;
+            
+            if (!disciplinaId) {
+                    alert('Por favor, selecione uma disciplina primeiro');
+                    return;
+                }
+                
+                // Mostrar feedback de carregamento
+                this.disabled = true;
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="bi bi-hourglass-split"></i> Carregando...';
+                
+                try {
+                    // Mostrar container de sugestões
+                    document.getElementById('sugestoes_container').classList.remove('hidden-section');
+                    
+                    console.log('[INFO] Carregando procedimentos para disciplina ID:', disciplinaId);
+                    
+                    // Carregar procedimentos
+                    const responseProcedimentos = await fetch(`/procedures/api/procedimentos-por-disciplina/?disciplina_id=${disciplinaId}`);
+                    if (responseProcedimentos.ok) {
+                        const dataProcedimentos = await responseProcedimentos.json();
+                        
+                        console.log('[DEBUG API Response]:', dataProcedimentos);
+                        
+                        // Limpar e adicionar procedimentos automaticamente
+                        procedimentosSelecionados = {};
+                        (dataProcedimentos.procedimentos || []).forEach(proc => {
+                            procedimentosSelecionados[proc.id] = {
+                                codigo: proc.codigo,
+                                nome: proc.nome,
+                                matriz: proc.matriz,
+                                sub_area: proc.sub_area
+                            };
+                        });
+                        renderProcedimentos();
+                        
+                        // Atualizar contador de procedimentos na sugestão
+                        const countProcedimentos = (dataProcedimentos.procedimentos || []).length;
+                        document.getElementById('count_procedimentos').textContent = countProcedimentos;
+                        
+                        // Mostrar aviso se não houver procedimentos
+                        const avisoProcedimentos = document.getElementById('aviso_procedimentos');
+                        if (countProcedimentos === 0) {
+                            avisoProcedimentos.classList.remove('hidden-section');
+                            console.warn('[AVISO] Nenhum procedimento encontrado para disciplina ID:', disciplinaId);
+                        } else {
+                            avisoProcedimentos.classList.add('hidden-section');
+                            console.log('[OK] Procedimentos encontrados:', countProcedimentos);
+                        }
+                        
+                    } else {
+                        console.error('[ERRO] Falha ao carregar procedimentos:', responseProcedimentos.status);
+                    }
+                    
+                    // Carregar colaboradores sugeridos
+                    const responseColaboradores = await fetch(`/procedures/api/colaboradores-por-disciplina/?disciplina_id=${disciplinaId}`);
+                    if (responseColaboradores.ok) {
+                        const dataColaboradores = await responseColaboradores.json();
+                        
+                        // Sugerir colaboradores (não adicionar automaticamente, apenas mostrar como sugestão)
+                        mostrarSugestaoColaboradores(dataColaboradores.colaboradores || []);
+                        
+                        console.log('[INFO] Colaboradores sugeridos carregados:', dataColaboradores.colaboradores.length);
+                    } else {
+                        console.error('[ERRO] Falha ao carregar colaboradores:', responseColaboradores.status);
+                    }
+                } catch (error) {
+                    console.error('[ERRO] Erro ao carregar dados da disciplina:', error);
+                    alert('Erro ao carregar as sugestões. Verifique o console para mais detalhes.');
+                    document.getElementById('sugestoes_container').classList.add('hidden-section');
+                } finally {
+                    // Restaurar botão ao estado normal
+                    this.disabled = false;
+                    this.innerHTML = originalText;
+                }
+            });
+        }
+    }, { once: true });
+    
+    
+    // Variável global para armazenar colaboradores sugeridos
+    let colaboradoresSugeridosGlobal = [];
+    
+    // Função para mostrar sugestão de colaboradores com interface visual
+    function mostrarSugestaoColaboradores(colaboradores) {
+        const sugestoesContainer = document.getElementById('sugestoes_container');
+        const listaColaboradores = document.getElementById('lista_colaboradores_sugeridos');
+        const btnAdicionar = document.getElementById('btn_adicionar_sugeridos');
+        const countColaboradores = document.getElementById('count_colaboradores');
+        
+        // Armazenar globalmente para usar no botão
+        colaboradoresSugeridosGlobal = colaboradores;
+        
+        if (colaboradores.length === 0) {
+            listaColaboradores.innerHTML = '<p class="text-muted text-center py-3">Nenhum colaborador com avaliação nesta disciplina.</p>';
+            btnAdicionar.classList.add('hidden-section');
+            sugestoesContainer.classList.remove('hidden-section');
+            countColaboradores.textContent = '0';
+            return;
+        }
+        
+        // Renderizar lista de colaboradores sugeridos
+        let html = '';
+        colaboradores.forEach(col => {
+            const nivelColor = col.nivel_competencia === 3 ? 'success' : 
+                               col.nivel_competencia === 2 ? 'info' : 'warning';
+            
+            html += `
+                <div class="colaborador-sugerido">
+                    <div class="colaborador-sugerido-info">
+                        <div class="colaborador-sugerido-nome">${col.matricula} - ${col.nome}</div>
+                        <div class="colaborador-sugerido-meta">
+                            ${col.setor}
+                            <span class="colaborador-sugerido-badge">
+                                <span class="badge bg-${nivelColor}">${col.nivel_label}</span>
+                            </span>
+                            <span class="colaborador-sugerido-badge">
+                                <span class="badge bg-secondary">${col.data_avaliacao}</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        listaColaboradores.innerHTML = html;
+        countColaboradores.textContent = colaboradores.length;
+        btnAdicionar.classList.remove('hidden-section');
+        sugestoesContainer.classList.remove('hidden-section');
+        
+        console.log('[INFO] Colaboradores sugeridos renderizados:', colaboradores.length);
+    }
+    
+    // Evento do botão para adicionar colaboradores sugeridos
+    document.getElementById('btn_adicionar_sugeridos').addEventListener('click', function() {
+        if (colaboradoresSugeridosGlobal.length === 0) {
+            alert('Nenhum colaborador sugerido para adicionar.');
+            return;
+        }
+        
+        // Adicionar todos os colaboradores sugeridos
+        colaboradoresSugeridosGlobal.forEach(col => {
+            if (!colaboradoresSelecionados[col.id]) {
+                colaboradoresSelecionados[col.id] = {
+                    nome: col.nome,
+                    matricula: col.matricula,
+                    setor: col.setor
+                };
+            }
+        });
+        
+        renderColaboradores();
+        
+        // Feedback visual
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check-circle"></i> Adicionados!';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-success');
+        btn.disabled = true;
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 2000);
+        
+        console.log('[INFO] Colaboradores sugeridos adicionados:', colaboradoresSugeridosGlobal.length);
+    });
+    
+    // Função para mostrar informações de debug
+    window.mostrarInfoDebug = function() {
+        const selectDisciplina = document.getElementById('select_disciplina');
+        const disciplinaId = selectDisciplina.value;
+        
+        if (!disciplinaId) {
+            alert('Selecione uma disciplina primeiro!');
+            return;
+        }
+        
+        // Chamar endpoint de debug
+        fetch(`/procedures/api/debug-disciplina/?disciplina_id=${disciplinaId}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('[DEBUG] Dados da Disciplina:', data);
+                
+                const msg = `
+INFORMAÇÕES DA DISCIPLINA:
+========================
+ID: ${data.disciplina.id}
+Código: ${data.disciplina.codigo}
+Nome: ${data.disciplina.nome}
+Matriz: ${data.disciplina.matriz_nome || 'Nenhuma'}
+
+PROCEDIMENTOS ASSOCIADOS:
+========================
+Total: ${data.procedimentos_associados.total}
+
+${data.procedimentos_associados.total === 0 ? 
+  '⚠️ ATENÇÃO: Nenhum procedimento associado!\n\nVocê precisa criar associações em DisciplinaProcedimento no admin.\nOu a matriz/disciplina não tem procedimentos cadastrados.' : 
+  'Lista: ' + data.procedimentos_associados.lista.map(p => p.codigo + ' - ' + p.nome).join('\n         ')}
+
+SISTEMA:
+========
+Total de procedimentos no banco: ${data.sistema.total_procedimentos}
+
+${data.sistema.aviso}
+                `;
+                
+                alert(msg);
+            })
+            .catch(error => {
+                console.error('Erro ao buscar debug:', error);
+                alert('Erro ao buscar informações de debug. Verifique o console.');
+            });
+    };
+    
+    // Inicializar
+    carregarMatrizes();
+});
+</script>
+
+<!-- MODAL: Adicionar Colaborador -->
+<div class="modal fade" id="colaboradoresModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Colaborador(es)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtros -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label small">Buscar por nome ou matrícula:</label>
+                        <input type="text" id="colaborador_search" class="form-control" placeholder="Digite para buscar...">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Setor:</label>
+                        <select id="filtro_setor" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Cargo:</label>
+                        <select id="filtro_cargo" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Grupo:</label>
+                        <select id="filtro_grupo" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Turno:</label>
+                        <select id="filtro_turno" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                            <option value="ADM">ADM</option>
+                            <option value="1T">1º Turno</option>
+                            <option value="2T">2º Turno</option>
+                            <option value="3T">3º Turno</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Líder:</label>
+                        <select id="filtro_lider" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Supervisor:</label>
+                        <select id="filtro_supervisor" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <button type="button" class="btn btn-primary btn-sm w-100" onclick="buscarColaboradores()">
+                            <i class="bi bi-search"></i> Buscar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Loading indicator -->
+                <div id="colaboradores_loading" class="text-center py-3" style="display: none;">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <span class="ms-2">Carregando colaboradores...</span>
+                </div>
+                
+                <!-- Lista de colaboradores -->
+                <div id="colaborador_options" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Será preenchido via JavaScript -->
+                </div>
+                
+                <div id="colaboradores_empty" class="text-muted text-center py-3" style="display: none;">
+                    <i class="bi bi-search"></i> Nenhum colaborador encontrado
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-primary" onclick="selecionarTodosColaboradores()">
+                    <i class="bi bi-check-all"></i> Selecionar Todos Filtrados
+                </button>
+                <div class="ms-auto">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" onclick="adicionarColaboradoresSelecionados()">
+                        <i class="bi bi-check-circle"></i> Adicionar Selecionados
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Adicionar Procedimento -->
+<div class="modal fade" id="procedimentoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Procedimento(s)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtros -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label small">Buscar por código ou nome:</label>
+                        <input type="text" id="procedimento_search" class="form-control form-control-sm" placeholder="Digite código ou nome...">
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label small">Matriz:</label>
+                        <select id="filtro_matriz" class="form-select form-select-sm" title="Filtrar por matriz">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label small">Sub-área:</label>
+                        <select id="filtro_sub_area" class="form-select form-select-sm" title="Filtrar por sub-área" disabled>
+                            <option value="">Selecione uma matriz primeiro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-sm btn-primary w-100" onclick="buscarProcedimentos()">
+                            <i class="bi bi-search"></i> Buscar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Loading indicator -->
+                <div id="procedimentos_loading" class="text-center py-3" style="display: none;">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <span class="ms-2">Carregando procedimentos...</span>
+                </div>
+                
+                <!-- Lista de procedimentos -->
+                <div id="procedimento_options" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Será preenchido via JavaScript -->
+                </div>
+                
+                <div id="procedimentos_empty" class="text-muted text-center py-3" style="display: none;">
+                    <i class="bi bi-search"></i> Nenhum procedimento encontrado
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-primary" onclick="selecionarTodosProcedimentos()">
+                    <i class="bi bi-check-all"></i> Selecionar Todos Filtrados
+                </button>
+                <div class="ms-auto">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" onclick="adicionarProcedimentosSelecionados()">
+                        <i class="bi bi-check-circle"></i> Adicionar Selecionados
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Data structures para armazenar seleções
+const colaboradoresSelecionados = {};
+const procedimentosSelecionados = {};
+
+// Cache de dados
+let matrizesCache = [];
+let subAreasCache = [];
+let todasSubAreasCache = []; // Guardar todas as sub-áreas para filtrar
+let procedimentosFiltradosCache = []; // Cache dos procedimentos filtrados
+
+// Função para renderizar lista de colaboradores em formato de tabela
+function renderColaboradores() {
+    const tableContainer = document.getElementById('colaboradores_list');
+    const tableBody = document.getElementById('colaboradores_table_body');
+    const empty = document.getElementById('colaboradores_empty');
+    const hiddenContainer = document.getElementById('colaboradores_hidden_container');
+    
+    if (Object.keys(colaboradoresSelecionados).length === 0) {
+        tableContainer.style.display = 'none';
+        empty.style.display = 'block';
+        hiddenContainer.innerHTML = '';
+        return;
+    }
+    
+    let html = '';
+    let hiddenInputsHtml = '';
+    for (const [id, data] of Object.entries(colaboradoresSelecionados)) {
+        html += `
+            <tr>
+                <td><strong>${data.nome}</strong></td>
+                <td>${data.matricula || '-'}</td>
+                <td>${data.setor || '-'}</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerColaborador(${id})" title="Remover">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        // Criar um input hidden para cada colaborador selecionado
+        hiddenInputsHtml += `<input type="hidden" name="colaboradores" value="${id}">`;
+    }
+    
+    tableBody.innerHTML = html;
+    tableContainer.style.display = 'block';
+    empty.style.display = 'none';
+    hiddenContainer.innerHTML = hiddenInputsHtml;
+}
+
+// Função para renderizar lista de procedimentos em formato de tabela
+function renderProcedimentos() {
+    const tableContainer = document.getElementById('procedimento_list');
+    const tableBody = document.getElementById('procedimento_table_body');
+    const empty = document.getElementById('procedimento_empty');
+    const hiddenContainer = document.getElementById('procedimento_hidden_container');
+    
+    if (Object.keys(procedimentosSelecionados).length === 0) {
+        tableContainer.style.display = 'none';
+        empty.style.display = 'block';
+        hiddenContainer.innerHTML = '';
+        return;
+    }
+    
+    let html = '';
+    let hiddenInputsHtml = '';
+    for (const [id, data] of Object.entries(procedimentosSelecionados)) {
+        html += `
+            <tr>
+                <td><strong>${data.codigo}</strong></td>
+                <td>${data.nome}</td>
+                <td><span class="badge bg-primary">${data.matriz || '-'}</span></td>
+                <td><span class="badge bg-info">${data.sub_area || '-'}</span></td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerProcedimento(${id})" title="Remover">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        // Criar um input hidden para cada procedimento selecionado
+        hiddenInputsHtml += `<input type="hidden" name="procedimentos" value="${id}">`;
+    }
+    
+    tableBody.innerHTML = html;
+    tableContainer.style.display = 'block';
+    empty.style.display = 'none';
+    hiddenContainer.innerHTML = hiddenInputsHtml;
+}
+
+// Pré-carregar seleções existentes ao editar
+(function hydrateInitialSelections() {
+    {% if planejamento %}
+    try {
+        const colaboradoresIniciais = [
+            {% for c in planejamento.colaboradores.all %}
+            {
+                id: {{ c.id }},
+                nome: "{{ c.nome_completo|default:''|escapejs }}",
+                matricula: "{{ c.matricula|default:''|escapejs }}",
+                setor: "{{ c.setor.nome|default:''|escapejs }}",
+            },
+            {% endfor %}
+        ];
+
+        colaboradoresIniciais.forEach(c => {
+            if (c && c.id) {
+                colaboradoresSelecionados[c.id] = c;
+            }
+        });
+
+        const procedimentosIniciais = [
+            {% for p in planejamento.procedimentos.all %}
+            {
+                id: {{ p.id }},
+                codigo: "{{ p.codigo|default:''|escapejs }}",
+                nome: "{{ p.nome|default:''|escapejs }}",
+                matriz: "{{ p.matriz|default:''|escapejs }}",
+                sub_area: "{{ p.sub_area|default:''|escapejs }}",
+            },
+            {% endfor %}
+        ];
+
+        procedimentosIniciais.forEach(p => {
+            if (p && p.id) {
+                procedimentosSelecionados[p.id] = p;
+            }
+        });
+
+        renderColaboradores();
+        renderProcedimentos();
+    } catch (e) {
+        console.error('[ERRO] Falha ao hidratar seleções iniciais:', e);
+    }
+    {% endif %}
+})();
+
+// Carregar matrizes
+async function carregarMatrizes() {
+    try {
+        const response = await fetch('/procedures/api/matrizes/');
+        
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        matrizesCache = data.matrizes;
+        
+        const select = document.getElementById('filtro_matriz');
+        select.innerHTML = '<option value="">Todas</option>';
+        
+        data.matrizes.forEach(matriz => {
+            const option = document.createElement('option');
+            option.value = matriz;
+            option.textContent = matriz;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar matrizes:', error);
+        const select = document.getElementById('filtro_matriz');
+        select.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
+// Carregar sub-áreas
+async function carregarSubAreas(matriz = '') {
+    try {
+        const url = matriz 
+            ? `/procedures/api/subgrupos/?matriz=${encodeURIComponent(matriz)}`
+            : '/procedures/api/subgrupos/';
+        
+        console.log('[DEBUG] Carregando sub-áreas:', url);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('[DEBUG] Sub-áreas recebidas:', data);
+        
+        const select = document.getElementById('filtro_sub_area');
+        select.innerHTML = '<option value="">Todas desta matriz</option>';
+        select.disabled = false;
+        
+        if (data.sub_areas && data.sub_areas.length > 0) {
+            data.sub_areas.forEach(sa => {
+                const option = document.createElement('option');
+                option.value = sa;
+                option.textContent = sa;
+                select.appendChild(option);
+            });
+        } else {
+            console.warn('[DEBUG] Nenhuma sub-área encontrada para a matriz:', matriz);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar sub-áreas:', error);
+        const select = document.getElementById('filtro_sub_area');
+        select.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
+// Filtrar sub-áreas pela matriz selecionada
+function filtrarSubAreasPorMatriz(matrizSelecionada) {
+    const select = document.getElementById('filtro_sub_area');
+    
+    if (!matrizSelecionada) {
+        // Se nenhuma matriz selecionada, desabilitar e mostrar mensagem
+        select.innerHTML = '<option value="">Selecione uma matriz primeiro</option>';
+        select.disabled = true;
+        return;
+    }
+    
+    // Carregar sub-áreas da matriz selecionada
+    carregarSubAreas(matrizSelecionada);
+}
+
+// Buscar procedimentos com filtros
+async function buscarProcedimentos() {
+    const search = document.getElementById('procedimento_search').value;
+    const matriz = document.getElementById('filtro_matriz').value;
+    const sub_area = document.getElementById('filtro_sub_area').value;
+    
+    const loading = document.getElementById('procedimentos_loading');
+    const container = document.getElementById('procedimento_options');
+    const empty = document.getElementById('procedimentos_empty');
+    
+    // Mostrar loading
+    loading.style.display = 'block';
+    container.innerHTML = '';
+    empty.style.display = 'none';
+    
+    try {
+        const params = new URLSearchParams();
+        if (search) params.append('q', search);
+        if (matriz) params.append('matriz', matriz);
+        if (sub_area) params.append('sub_area', sub_area);
+        
+        const url = '/procedures/api/procedimentos/?' + params.toString();
+        console.log('[DEBUG] Buscando procedimentos:', url);
+        console.log('[DEBUG] Filtros aplicados:', { search, matriz, sub_area });
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('[DEBUG] Resposta da API:', data);
+        
+        loading.style.display = 'none';
+        
+        // Suportar tanto 'items' quanto 'procedimentos' na resposta
+        const procedimentos = data.items || data.procedimentos || [];
+        
+        if (!procedimentos || procedimentos.length === 0) {
+            empty.style.display = 'block';
+            console.log('[DEBUG] Nenhum procedimento retornado pela API');
+            return;
+        }
+        
+        console.log('[DEBUG] Procedimentos encontrados:', procedimentos.length);
+        
+        // Armazenar cache dos procedimentos filtrados para "Selecionar Todos"
+        procedimentosFiltradosCache = procedimentos;
+        
+        // Renderizar procedimentos
+        let html = '';
+        procedimentos.forEach(proc => {
+            const checked = procedimentosSelecionados[proc.id] ? 'checked' : '';
+            const badgeMatriz = proc.matriz ? `<span class="badge bg-secondary ms-2">${proc.matriz}</span>` : '';
+            const badgeSubArea = proc.sub_area ? `<span class="badge bg-info ms-1">${proc.sub_area}</span>` : '';
+            
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input procedimento-option" type="checkbox" 
+                           value="${proc.id}" id="proc_${proc.id}" ${checked}
+                           data-codigo="${proc.codigo}"
+                           data-nome="${proc.nome}"
+                           data-matriz="${proc.matriz || ''}"
+                           data-sub-area="${proc.sub_area || ''}">
+                    <label class="form-check-label" for="proc_${proc.id}">
+                        <strong>${proc.codigo}</strong> - ${proc.nome}
+                        ${badgeMatriz}${badgeSubArea}
+                    </label>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Erro ao buscar procedimentos:', error);
+        loading.style.display = 'none';
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>Erro ao carregar procedimentos</strong><br>
+                ${error.message}<br>
+                <small>Verifique o console para mais detalhes.</small>
+            </div>
+        `;
+    }
+}
+
+// Adicionar colaboradores selecionados
+function adicionarColaboradoresSelecionados() {
+    document.querySelectorAll('.colaborador-option:checked').forEach(cb => {
+        const id = cb.value;
+        colaboradoresSelecionados[id] = {
+            nome: cb.dataset.nome,
+            matricula: cb.dataset.matricula,
+            setor: cb.dataset.setor
+        };
+    });
+    
+    renderColaboradores();
+    
+    // Fechar modal e limpar checkboxes
+    const modal = bootstrap.Modal.getInstance(document.getElementById('colaboradoresModal'));
+    modal.hide();
+    document.querySelectorAll('.colaborador-option').forEach(cb => cb.checked = false);
+}
+
+// Adicionar procedimentos selecionados
+function adicionarProcedimentosSelecionados() {
+    document.querySelectorAll('.procedimento-option:checked').forEach(cb => {
+        const id = cb.value;
+        procedimentosSelecionados[id] = {
+            codigo: cb.dataset.codigo,
+            nome: cb.dataset.nome,
+            matriz: cb.dataset.matriz,
+            sub_area: cb.dataset.subArea
+        };
+    });
+    
+    renderProcedimentos();
+    
+    // Fechar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('procedimentoModal'));
+    modal.hide();
+}
+
+// Selecionar todos os procedimentos filtrados
+function selecionarTodosProcedimentos() {
+    const checkboxes = document.querySelectorAll('.procedimento-option');
+    const todosJaSelecionados = Array.from(checkboxes).every(cb => cb.checked);
+    
+    // Se todos já estão selecionados, desselecionar; caso contrário, selecionar todos
+    checkboxes.forEach(cb => {
+        cb.checked = !todosJaSelecionados;
+    });
+    
+    // Mostrar feedback
+    const count = todosJaSelecionados ? 0 : checkboxes.length;
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    
+    if (count > 0) {
+        btn.innerHTML = `<i class="bi bi-check-all"></i> ${count} Selecionados`;
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-outline-primary');
+    } else {
+        btn.innerHTML = `<i class="bi bi-check-all"></i> Selecionar Todos Filtrados`;
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-primary');
+    }
+}
+
+// Selecionar todos os colaboradores filtrados
+function selecionarTodosColaboradores() {
+    const checkboxes = document.querySelectorAll('.colaborador-option');
+    const todosJaSelecionados = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(cb => {
+        cb.checked = !todosJaSelecionados;
+    });
+    
+    const count = todosJaSelecionados ? 0 : checkboxes.length;
+    const btn = event.target.closest('button');
+    
+    if (count > 0) {
+        btn.innerHTML = `<i class="bi bi-check-all"></i> ${count} Selecionados`;
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-outline-primary');
+    } else {
+        btn.innerHTML = `<i class="bi bi-check-all"></i> Selecionar Todos Filtrados`;
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-outline-primary');
+    }
+}
+
+// Carregar filtros de colaboradores
+async function carregarFiltrosColaboradores() {
+    try {
+        // Carregar setores
+        const responseSetores = await fetch('/rh/api/setores/');
+        if (responseSetores.ok) {
+            const dataSetores = await responseSetores.json();
+            const selectSetor = document.getElementById('filtro_setor');
+            selectSetor.innerHTML = '<option value="">Todos</option>';
+            (dataSetores.setores || []).forEach(setor => {
+                const option = document.createElement('option');
+                option.value = setor.id;
+                option.textContent = setor.nome;
+                selectSetor.appendChild(option);
+            });
+        }
+        
+        // Carregar cargos
+        const responseCargos = await fetch('/rh/api/cargos/');
+        if (responseCargos.ok) {
+            const dataCargos = await responseCargos.json();
+            const selectCargo = document.getElementById('filtro_cargo');
+            selectCargo.innerHTML = '<option value="">Todos</option>';
+            (dataCargos.cargos || []).forEach(cargo => {
+                const option = document.createElement('option');
+                option.value = cargo;
+                option.textContent = cargo;
+                selectCargo.appendChild(option);
+            });
+        }
+        
+        // Carregar grupos
+        const responseGrupos = await fetch('/rh/api/grupos/');
+        if (responseGrupos.ok) {
+            const dataGrupos = await responseGrupos.json();
+            const selectGrupo = document.getElementById('filtro_grupo');
+            selectGrupo.innerHTML = '<option value="">Todos</option>';
+            (dataGrupos.grupos || []).forEach(grupo => {
+                const option = document.createElement('option');
+                option.value = grupo;
+                option.textContent = grupo;
+                selectGrupo.appendChild(option);
+            });
+        }
+        
+        // Carregar líderes
+        const responseLideres = await fetch('/rh/api/lideres/');
+        if (responseLideres.ok) {
+            const dataLideres = await responseLideres.json();
+            const selectLider = document.getElementById('filtro_lider');
+            selectLider.innerHTML = '<option value="">Todos</option>';
+            (dataLideres.lideres || []).forEach(lider => {
+                const option = document.createElement('option');
+                option.value = lider.id;
+                option.textContent = lider.nome;
+                selectLider.appendChild(option);
+            });
+        }
+        
+        // Carregar supervisores
+        const responseSupervisores = await fetch('/rh/api/supervisores/');
+        if (responseSupervisores.ok) {
+            const dataSupervisores = await responseSupervisores.json();
+            const selectSupervisor = document.getElementById('filtro_supervisor');
+            selectSupervisor.innerHTML = '<option value="">Todos</option>';
+            (dataSupervisores.supervisores || []).forEach(supervisor => {
+                const option = document.createElement('option');
+                option.value = supervisor.id;
+                option.textContent = supervisor.nome;
+                selectSupervisor.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Erro ao carregar filtros de colaboradores:', error);
+    }
+}
+
+// Buscar colaboradores com filtros
+async function buscarColaboradores() {
+    const search = document.getElementById('colaborador_search').value;
+    const setor = document.getElementById('filtro_setor').value;
+    const cargo = document.getElementById('filtro_cargo').value;
+    const grupo = document.getElementById('filtro_grupo').value;
+    const turno = document.getElementById('filtro_turno').value;
+    const lider = document.getElementById('filtro_lider').value;
+    const supervisor = document.getElementById('filtro_supervisor').value;
+    
+    const loading = document.getElementById('colaboradores_loading');
+    const container = document.getElementById('colaborador_options');
+    const empty = document.getElementById('colaboradores_empty');
+    
+    loading.style.display = 'block';
+    container.innerHTML = '';
+    empty.style.display = 'none';
+    
+    try {
+        const params = new URLSearchParams();
+        if (search) params.append('q', search);
+        if (setor) params.append('setor', setor);
+        if (cargo) params.append('cargo', cargo);
+        if (grupo) params.append('grupo', grupo);
+        if (turno) params.append('turno', turno);
+        if (lider) params.append('lider', lider);
+        if (supervisor) params.append('supervisor', supervisor);
+        
+        const url = '/rh/api/colaboradores/?' + params.toString();
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        loading.style.display = 'none';
+        
+        const colaboradores = data.colaboradores || [];
+        
+        if (!colaboradores || colaboradores.length === 0) {
+            empty.style.display = 'block';
+            return;
+        }
+        
+        let html = '';
+        colaboradores.forEach(col => {
+            const checked = colaboradoresSelecionados[col.id] ? 'checked' : '';
+            const badgeSetor = col.setor ? `<span class="badge bg-secondary ms-2">${col.setor}</span>` : '';
+            const badgeCargo = col.cargo ? `<span class="badge bg-info ms-1">${col.cargo}</span>` : '';
+            
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input colaborador-option" type="checkbox" 
+                           value="${col.id}" id="col_${col.id}" ${checked}
+                           data-nome="${col.nome}"
+                           data-matricula="${col.matricula || '-'}"
+                           data-setor="${col.setor || '-'}">
+                    <label class="form-check-label" for="col_${col.id}">
+                        <strong>${col.matricula}</strong> - ${col.nome}
+                        ${badgeSetor}${badgeCargo}
+                    </label>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Erro ao buscar colaboradores:', error);
+        loading.style.display = 'none';
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <strong>Erro ao carregar colaboradores</strong><br>
+                ${error.message}
+            </div>
+        `;
+    }
+}
+
+// Remover colaborador
+function removerColaborador(id) {
+    delete colaboradoresSelecionados[id];
+    renderColaboradores();
+}
+
+// Remover procedimento
+function removerProcedimento(id) {
+    delete procedimentosSelecionados[id];
+    renderProcedimentos();
+}
+
+// Buscar em modals
+document.addEventListener('DOMContentLoaded', function() {
+    // Carregar dados de filtros
+    carregarMatrizes();
+    carregarFiltrosColaboradores();
+    
+    // Busca de colaboradores com Enter
+    const colSearch = document.getElementById('colaborador_search');
+    if (colSearch) {
+        colSearch.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                buscarColaboradores();
+            }
+        });
+    }
+    
+    // Quando matriz mudar, filtrar sub-áreas e limpar resultados
+    const filtroMatriz = document.getElementById('filtro_matriz');
+    if (filtroMatriz) {
+        filtroMatriz.addEventListener('change', function() {
+            filtrarSubAreasPorMatriz(this.value);
+            // Limpar resultados anteriores
+            document.getElementById('procedimento_options').innerHTML = '';
+            document.getElementById('procedimentos_empty').style.display = 'none';
+        });
+    }
+    
+    // Permitir buscar com Enter no campo de busca
+    const procSearch = document.getElementById('procedimento_search');
+    if (procSearch) {
+        procSearch.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                buscarProcedimentos();
+            }
+        });
+    }
+    
+    // Quando modal abrir, não carregar procedimentos automaticamente
+    const procedimentoModal = document.getElementById('procedimentoModal');
+    if (procedimentoModal) {
+        procedimentoModal.addEventListener('shown.bs.modal', function() {
+            // Apenas focar no campo de busca
+            document.getElementById('procedimento_search').focus();
+        });
+    }
+    
+    // Interceptar envio do formulário para validar seleções
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const origemSelecionada = document.querySelector('input[name="origem"]:checked')?.value;
+            
+            // Verificar se tem pelo menos um colaborador
+            if (Object.keys(colaboradoresSelecionados).length === 0) {
+                e.preventDefault();
+                alert('Por favor, selecione pelo menos um colaborador!');
+                return false;
+            }
+            
+            // Verificar procedimentos conforme origem
+            if (origemSelecionada === 'LIVRE') {
+                if (Object.keys(procedimentosSelecionados).length === 0) {
+                    e.preventDefault();
+                    alert('Por favor, selecione pelo menos um procedimento para a origem LIVRE!');
+                    return false;
+                }
+            } else if (origemSelecionada === 'MATRIZ') {
+                if (Object.keys(procedimentosSelecionados).length === 0) {
+                    e.preventDefault();
+                    alert('Por favor, selecione uma disciplina para carregar os procedimentos da matriz!');
+                    return false;
+                }
+            }
+            
+            // Os hidden inputs já foram populados pelos render functions
+            return true;
+        });
+    }
+});
+</script>
+
+<!-- MODAL PARA SELEÇÃO DE MATRIZ E DISCIPLINA -->
+<div class="modal fade" id="modalMatrizDisciplina" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-grid-3x3-gap"></i> Selecionar Matriz e Disciplina
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Matriz de Habilidades <span class="text-danger">*</span></label>
+                        <select id="modal_select_matriz" class="form-select">
+                            <option value="">-- Selecione uma Matriz --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Disciplina <span class="text-danger">*</span></label>
+                        <select id="modal_select_disciplina" class="form-select" disabled>
+                            <option value="">-- Selecione uma Disciplina --</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Sugestões carregadas no modal -->
+                <div id="modal_sugestoes_container" class="hidden-section">
+                    <hr>
+                    <h6 class="mb-3"><i class="bi bi-lightbulb"></i> Sugestões Carregadas</h6>
+                    
+                    <!-- Procedimentos -->
+                    <div class="alert alert-info mb-3">
+                        <strong>Procedimentos:</strong> <span id="modal_count_procedimentos">0</span> encontrados
+                        <div id="modal_aviso_procedimentos" class="hidden-section mt-2">
+                            <small class="text-warning">⚠️ Nenhum procedimento foi encontrado para esta disciplina.</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Colaboradores -->
+                    <div class="alert alert-success">
+                        <strong>Colaboradores Sugeridos:</strong> <span id="modal_count_colaboradores">0</span>
+                        <div id="modal_lista_colaboradores_sugeridos" class="mt-2" style="max-height: 200px; overflow-y: auto;">
+                            <!-- Será preenchido dinamicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btn_modal_confirmar" class="btn btn-primary" disabled>
+                    <i class="bi bi-check-circle"></i> Confirmar Seleção
+                </button>
+            </div>
+        </div>
+    </div>
+</div>{% endblock %}

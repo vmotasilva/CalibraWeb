@@ -1,0 +1,153 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Calendário de Treinamentos{% endblock %}
+{% block header_title %}Calendário de Treinamentos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .calendar-table th,
+    .calendar-table td {
+        width: 14.28%;
+    }
+
+    .calendar-day-cell {
+        vertical-align: top;
+        min-height: 90px;
+        padding: 0.4rem;
+    }
+
+    .calendar-event-item {
+        margin-bottom: 0.2rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        line-height: 1.25;
+    }
+
+    .calendar-event-link {
+        display: inline;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .calendar-event-title {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .calendar-event-badge {
+        vertical-align: middle;
+        margin-right: 0.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+    <div class="btn-group" role="group" aria-label="Visualização">
+        <a class="btn btn-outline-primary btn-sm {% if view_mode == 'month' %}active{% endif %}" href="{{ month_url }}">Mês</a>
+        <a class="btn btn-outline-primary btn-sm {% if view_mode == 'week' %}active{% endif %}" href="{{ week_url }}">Semana</a>
+        <a class="btn btn-outline-primary btn-sm {% if view_mode == 'day' %}active{% endif %}" href="{{ day_url }}">Dia</a>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ prev_url }}">&laquo; Anterior</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ next_url }}">Próximo &raquo;</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h5 class="mb-0">
+                {% if view_mode == 'month' %}
+                    {{ current_month|date:"F"|capfirst }} / {{ year }}
+                {% elif view_mode == 'week' %}
+                    Semana: {{ start_date|date:"d/m/Y" }} - {{ end_date|date:"d/m/Y" }}
+                {% else %}
+                    {{ ref_date|date:"d/m/Y" }}
+                {% endif %}
+            </h5>
+            <a class="btn btn-outline-primary btn-sm" href="{{ today_url }}">Ir para hoje</a>
+        </div>
+
+        {% if view_mode == 'day' %}
+            {% with d=weeks.0.0 %}
+                {% if d.events %}
+                    <ul class="list-group">
+                        {% for e in d.events %}
+                            <li class="list-group-item d-flex align-items-center gap-2">
+                                {% if e.start_time %}
+                                    <span class="text-muted" style="min-width: 44px;">{{ e.start_time }}</span>
+                                {% else %}
+                                    <span class="text-muted" style="min-width: 44px;">&nbsp;</span>
+                                {% endif %}
+                                <span class="badge {{ e.badge_class }}">{{ e.badge_label }}</span>
+                                <a href="{{ e.url }}" class="text-decoration-none text-body">{{ e.title }}</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-muted">Nenhum treinamento neste dia.</div>
+                {% endif %}
+            {% endwith %}
+        {% else %}
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0 calendar-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-center">Seg</th>
+                            <th class="text-center">Ter</th>
+                            <th class="text-center">Qua</th>
+                            <th class="text-center">Qui</th>
+                            <th class="text-center">Sex</th>
+                            <th class="text-center">Sáb</th>
+                            <th class="text-center">Dom</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for week in weeks %}
+                            <tr>
+                                {% for d in week %}
+                                    <td class="calendar-day-cell">
+                                        {% if d.date %}
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <span class="fw-semibold {% if d.date == today %}text-primary{% endif %}">{{ d.day }}</span>
+                                                {% if d.events %}
+                                                    <span class="badge text-bg-secondary">{{ d.events|length }}</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if d.events %}
+                                                <ul class="list-unstyled small mb-0">
+                                                    {% for e in d.events|slice:":3" %}
+                                                        <li class="calendar-event-item" title="{{ e.title }}">
+                                                            <a href="{{ e.url }}" class="text-decoration-none text-body calendar-event-link">
+                                                                {% if e.start_time %}
+                                                                    <span class="text-muted">{{ e.start_time }}</span>
+                                                                {% endif %}
+                                                                <span class="badge {{ e.badge_class }} calendar-event-badge">{{ e.badge_label }}</span>
+                                                                <span class="calendar-event-title">{{ e.title }}</span>
+                                                            </a>
+                                                        </li>
+                                                    {% endfor %}
+                                                    {% if d.events|length > 3 %}
+                                                        <li class="text-muted">+ {{ d.events|length|add:"-3" }} mais</li>
+                                                    {% endif %}
+                                                </ul>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

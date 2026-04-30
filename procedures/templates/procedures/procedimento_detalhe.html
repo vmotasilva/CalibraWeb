@@ -1,0 +1,98 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Detalhe do Procedimento{% endblock %}
+{% block header_title %}{{ proc.codigo }} - {{ proc.nome }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{% url 'procedures:editar_procedimento' proc.id %}" class="btn btn-warning btn-sm">Editar</a>
+    <a href="{% url 'procedures:procedimentos_list' %}" class="btn btn-secondary btn-sm">Voltar</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Informações do Procedimento</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th style="width: 30%">Código:</th>
+                        <td>{{ proc.codigo }}</td>
+                    </tr>
+                    <tr>
+                        <th>Nome:</th>
+                        <td>{{ proc.nome }}</td>
+                    </tr>
+                    <tr>
+                        <th>Descrição:</th>
+                        <td>{{ proc.descricao|linebreaks }}</td>
+                    </tr>
+                    <tr>
+                        <th>Classificação:</th>
+                        <td><span class="badge bg-info">{{ proc.classificacao }}</span></td>
+                    </tr>
+                    <tr>
+                        <th>Número de Revisão:</th>
+                        <td>{{ proc.numero_revisao }}</td>
+                    </tr>
+                    <tr>
+                        <th>Última Revisão:</th>
+                        <td>{{ proc.ultima_revisao|date:"d/m/Y" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Data de Aprovação:</th>
+                        <td>{{ proc.data_aprovacao|date:"d/m/Y" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Próxima Revisão:</th>
+                        <td>{{ proc.proxima_revisao|date:"d/m/Y" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Data de Validade:</th>
+                        <td>{{ proc.data_validade|date:"d/m/Y" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Autor:</th>
+                        <td>{{ proc.autor }}</td>
+                    </tr>
+                    <tr>
+                        <th>Matriz:</th>
+                        <td>{{ proc.matriz }}</td>
+                    </tr>
+                    <tr>
+                        <th>Sub-Área:</th>
+                        <td>{{ proc.sub_area }}</td>
+                    </tr>
+                    <tr>
+                        <th>Criticidade:</th>
+                        <td>
+                            {% if proc.criticidade %}
+                                {% if proc.criticidade == 'CRITICO' %}
+                                    <span class="badge bg-danger">Crítico</span>
+                                {% elif proc.criticidade == 'NAO_CRITICO' %}
+                                    <span class="badge bg-success">Não Crítico</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Ações</h6>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'procedures:editar_procedimento' proc.id %}" class="btn btn-warning w-100 mb-2">Editar Procedimento</a>
+                <a href="{% url 'procedures:procedimentos_list' %}" class="btn btn-secondary w-100">Voltar à Lista</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

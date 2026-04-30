@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="mb-0">Perguntas dos Modelos</h2>
+        <a href="{% url 'auditoria:pergunta_create' %}{% if modelo_id %}?modelo={{ modelo_id }}{% if subcategoria %}&subcategoria={{ subcategoria|urlencode }}{% endif %}{% endif %}" class="btn btn-primary" id="btnNovaPergunta" data-base-href="{% url 'auditoria:pergunta_create' %}">Nova Pergunta</a>
+    </div>
+
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-4">
+            <label class="form-label">Filtrar por modelo</label>
+            <select name="modelo" class="form-select" id="filterModeloSelect">
+                <option value="">Todos</option>
+                {% for modelo in modelos %}
+                <option value="{{ modelo.id }}" {% if modelo_id == modelo.id|stringformat:'s' %}selected{% endif %}>{{ modelo.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Filtrar por sub-categoria</label>
+            <select name="subcategoria" class="form-select" id="filterSubcategoriaSelect" {% if not modelo_id %}disabled{% endif %}>
+                <option value="">Todas</option>
+                {% for sc in subcategorias %}
+                <option value="{{ sc }}" {% if subcategoria == sc %}selected{% endif %}>{{ sc }}</option>
+                {% endfor %}
+            </select>
+            {% if not modelo_id %}
+                <div class="form-text">Selecione um modelo para ver as sub-categorias.</div>
+            {% endif %}
+        </div>
+        <div class="col-md-3 d-flex flex-wrap align-items-end gap-2">
+            <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+            <a href="{% url 'auditoria:perguntas_list' %}" class="btn btn-outline-secondary">Limpar</a>
+        </div>
+    </form>
+
+    <form method="post" action="{% url 'auditoria:perguntas_bulk_set_subcategoria' %}" class="card shadow-sm mb-3" id="bulkSubcategoriaForm">
+        {% csrf_token %}
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label mb-0">Aplicar sub-categoria (selecionadas)</label>
+                    <input type="hidden" name="modelo" value="{{ modelo_id|default:'' }}" id="bulkModeloId">
+                    <select name="subcategoria" class="form-select" id="bulkSubcategoriaSelect" {% if not modelo_id %}disabled{% endif %}>
+                        <option value="">(Limpar sub-categoria)</option>
+                        {% for sc in subcategorias %}
+                        <option value="{{ sc }}">{{ sc }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if not modelo_id %}
+                        <div class="form-text">Selecione um modelo para aplicar em lote.</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-outline-primary" id="bulkApplyBtn" {% if not modelo_id %}disabled{% endif %}>Aplicar</button>
+                    <button type="button" class="btn btn-outline-secondary" id="bulkClearSelectionBtn">Limpar seleção</button>
+                </div>
+            </div>
+            <div class="form-text mt-2">Marque as perguntas na tabela abaixo e clique em “Aplicar”.</div>
+        </div>
+    </form>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0" id="perguntasTable">
+                <thead>
+                    <tr>
+                        <th style="width: 1%;">
+                            <input type="checkbox" class="form-check-input" id="selectAllPerguntas" {% if not modelo_id %}disabled{% endif %}>
+                        </th>
+                        <th>Modelo</th>
+                        <th>Sub-categoria</th>
+                        <th>Ordem</th>
+                        <th>Pergunta</th>
+                        <th>Tipo de Resposta</th>
+                        <th>Obrigatória</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pergunta in perguntas %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" class="form-check-input pergunta-checkbox" value="{{ pergunta.id }}" {% if not modelo_id %}disabled{% endif %}>
+                        </td>
+                        <td>{{ pergunta.modelo.nome }}</td>
+                        <td>{{ pergunta.subcategoria|default:'-' }}</td>
+                        <td>{{ pergunta.ordem }}</td>
+                        <td>{{ pergunta.pergunta }}</td>
+                        <td>{{ pergunta.get_tipo_resposta_display }}</td>
+                        <td>{% if pergunta.obrigatoria %}Sim{% else %}Não{% endif %}</td>
+                        <td>
+                            <a
+                                href="{% url 'auditoria:pergunta_edit' pergunta.id %}"
+                                class="btn btn-sm btn-warning"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Editar pergunta"
+                                aria-label="Editar pergunta"
+                            ><i class="bi bi-pencil"></i></a>
+                            <form method="post" action="{% url 'auditoria:pergunta_duplicate' pergunta.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button
+                                    type="submit"
+                                    class="btn btn-sm btn-secondary"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title="Duplicar pergunta"
+                                    aria-label="Duplicar pergunta"
+                                ><i class="bi bi-files"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center py-3">Nenhuma pergunta cadastrada.</td></tr>
+                    {% endfor %}
+                </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const select = document.getElementById('filterModeloSelect');
+        const subSelect = document.getElementById('filterSubcategoriaSelect');
+        const btn = document.getElementById('btnNovaPergunta');
+        if (!select || !btn) return;
+
+        const baseHref = btn.getAttribute('data-base-href') || btn.getAttribute('href');
+
+        const updateHref = () => {
+            const modeloId = (select.value || '').trim();
+            const subVal = subSelect ? (subSelect.value || '').trim() : '';
+            if (!modeloId) {
+                btn.setAttribute('href', baseHref);
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.set('modelo', modeloId);
+            if (subVal) params.set('subcategoria', subVal);
+            btn.setAttribute('href', `${baseHref}?${params.toString()}`);
+        };
+
+        updateHref();
+        select.addEventListener('change', updateHref);
+        if (subSelect) subSelect.addEventListener('change', updateHref);
+        btn.addEventListener('click', updateHref);
+    })();
+</script>
+
+<script>
+    (function() {
+        const tooltipTriggers = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipTriggers.forEach(function(el) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                bootstrap.Tooltip.getOrCreateInstance(el);
+            }
+        });
+    })();
+</script>
+
+<script>
+    (function() {
+        const table = document.getElementById('perguntasTable');
+        const selectAll = document.getElementById('selectAllPerguntas');
+        const bulkForm = document.getElementById('bulkSubcategoriaForm');
+        const applyBtn = document.getElementById('bulkApplyBtn');
+        const clearBtn = document.getElementById('bulkClearSelectionBtn');
+        if (!table || !bulkForm || !applyBtn || !clearBtn) return;
+
+        const serverDisabled = applyBtn.disabled;
+
+        const getCheckboxes = () => Array.from(table.querySelectorAll('input.pergunta-checkbox'));
+        const getChecked = () => getCheckboxes().filter(cb => cb.checked);
+
+        function clearHiddenIds() {
+            Array.from(bulkForm.querySelectorAll('input[name="pergunta_ids"]')).forEach(el => el.remove());
+        }
+
+        function sync() {
+            const boxes = getCheckboxes();
+            const checked = getChecked();
+
+            if (selectAll) {
+                selectAll.checked = boxes.length > 0 && checked.length === boxes.length;
+                selectAll.indeterminate = checked.length > 0 && checked.length < boxes.length;
+            }
+
+            if (!serverDisabled) {
+                applyBtn.disabled = checked.length === 0;
+            }
+        }
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                const boxes = getCheckboxes();
+                boxes.forEach(cb => { if (!cb.disabled) cb.checked = selectAll.checked; });
+                sync();
+            });
+        }
+
+        table.addEventListener('change', function(e) {
+            const t = e.target;
+            if (t && t.classList && t.classList.contains('pergunta-checkbox')) {
+                sync();
+            }
+        });
+
+        clearBtn.addEventListener('click', function() {
+            getCheckboxes().forEach(cb => { cb.checked = false; });
+            if (selectAll) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+            clearHiddenIds();
+            sync();
+        });
+
+        bulkForm.addEventListener('submit', function(e) {
+            clearHiddenIds();
+            const checked = getChecked();
+            if (!checked.length) {
+                e.preventDefault();
+                sync();
+                return;
+            }
+            checked.forEach(cb => {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'pergunta_ids';
+                hidden.value = cb.value;
+                bulkForm.appendChild(hidden);
+            });
+        });
+
+        sync();
+    })();
+</script>
+{% endblock %}

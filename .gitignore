@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# SQLite DB
+db.sqlite3
+
+# Uploaded files or certificates (sensitive)
+certificados/
+
+# Django static and media
+staticfiles/
+media/
+
+# IDE / editor
+.idea/
+.vscode/
+*.sublime-workspace
+
+# Local tooling
+.tools/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables / credentials
+.env
+*.env
+.env.local
+.env.*
+
+# Logs
+*.log
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

@@ -1,0 +1,94 @@
+{% extends "procedures/procedimento_base.html" %}
+{% load nav_access %}
+
+{% block title %}Matrizes de Procedimentos{% endblock %}
+{% block header_title %}Matrizes de Procedimentos{% endblock %}
+
+{% block header_actions %}
+{% can_nav_view user 'procedures:download_template_matrizes_subareas' 'procedures' as can_template_matriz %}
+{% can_nav_view user 'procedures:importar_matrizes_subareas' 'procedures' as can_importar_matriz %}
+{% if can_template_matriz %}
+<a href="{% url 'procedures:download_template_matrizes_subareas' %}" class="btn btn-outline-success btn-sm">Template Importação</a>
+{% endif %}
+{% if can_importar_matriz %}
+<a href="{% url 'procedures:importar_matrizes_subareas' %}" class="btn btn-success btn-sm">Importar em Massa</a>
+{% endif %}
+<a href="{% url 'procedures:procedimentos_list' %}" class="btn btn-secondary btn-sm">Voltar para Procedimentos</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Nova Matriz</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.nome.id_for_label }}" class="form-label">{{ form.nome.label }}</label>
+                        {{ form.nome }}
+                        {% if form.nome.errors %}
+                        <div class="text-danger small mt-1">{{ form.nome.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-check mb-3">
+                        {{ form.ativo }}
+                        <label class="form-check-label" for="{{ form.ativo.id_for_label }}">{{ form.ativo.label }}</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Salvar Matriz</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Matrizes Cadastradas</h5>
+                <form method="get" class="d-flex gap-2">
+                    <input type="text" class="form-control form-control-sm" name="q" value="{{ termo }}" placeholder="Buscar matriz">
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Buscar</button>
+                </form>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Status</th>
+                            <th>Sub-áreas</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for matriz in matrizes %}
+                        <tr>
+                            <td>{{ matriz.nome }}</td>
+                            <td>
+                                {% if matriz.ativo %}
+                                <span class="badge bg-success">Ativa</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inativa</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ matriz.sub_areas.count }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'procedures:procedimento_matriz_detalhe' matriz.id %}" class="btn btn-sm btn-outline-primary">
+                                    Gerenciar Sub-áreas
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">Nenhuma matriz cadastrada.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

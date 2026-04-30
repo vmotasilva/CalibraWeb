@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}{{ form.instance.pk|yesno:'Editar,Adicionar' }} Procedimento{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">{{ form.instance.pk|yesno:'Editar,Adicionar' }} Procedimento</h2>
+    <a href="{% url 'procedimentos_lista' %}" class="btn btn-outline-dark btn-sm">Voltar</a>
+  </div>
+  <form method="post" enctype="multipart/form-data" class="card shadow-sm p-4">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Código *</label>
+        {{ form.codigo|as_crispy_field }}
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">Título *</label>
+        {{ form.titulo|as_crispy_field }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Tipo *</label>
+        {{ form.tipo|as_crispy_field }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Revisão *</label>
+        {{ form.revisao_atual|as_crispy_field }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Data Revisão</label>
+        {{ form.data_revisao|as_crispy_field }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Data Aprovação</label>
+        {{ form.data_aprovacao_revisao|as_crispy_field }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Setor</label>
+        {{ form.setor|as_crispy_field }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Área</label>
+        {{ form.area|as_crispy_field }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Elaborador</label>
+        {{ form.elaborador|as_crispy_field }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Revisor</label>
+        {{ form.revisor|as_crispy_field }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Aprovador</label>
+        {{ form.aprovador|as_crispy_field }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Prioridade</label>
+        {{ form.prioridade|as_crispy_field }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Habilidade Vinculada</label>
+        {{ form.habilidade_vinculada|as_crispy_field }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Cópia Física?</label>
+        {{ form.tem_copia_fisica|as_crispy_field }}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Aplica Treinamento?</label>
+        {{ form.aplica_treinamento|as_crispy_field }}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Link Externo</label>
+        {{ form.link_externo|as_crispy_field }}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Arquivo (PDF)</label>
+        {{ form.arquivo|as_crispy_field }}
+        {% if form.instance.arquivo %}
+          <a href="{{ form.instance.arquivo.url }}" target="_blank" class="btn btn-link btn-sm">Ver atual</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="mt-4 d-flex justify-content-end gap-2">
+      <button type="submit" class="btn btn-primary">Salvar</button>
+      <a href="{% url 'procedimentos_lista' %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

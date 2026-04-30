@@ -1,0 +1,340 @@
+{% extends "base_auth.html" %}
+{% load i18n static %}
+
+{% block title %}Login - Calibra QMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-brand-logo {
+        height: 60px;
+    }
+</style>
+{% endblock %}
+
+{% block auth_content %}
+<div class="text-center mb-4">
+    <img src="{% static 'shared/logo_calibraweb.png' %}" alt="Calibra QMS" class="mb-3 auth-brand-logo" onerror="this.style.display='none'">
+    <h4 class="fw-bold text-primary">Calibra QMS</h4>
+    <p class="text-muted">Sistema de Gestão da Qualidade</p>
+</div>
+
+{% if wizard.steps.current == 'auth' %}
+<h5 class="text-center mb-4">
+    <i class="bi bi-box-arrow-in-right me-2"></i>Entrar no Sistema
+</h5>
+
+<form method="post" id="loginForm">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+    
+    {% if wizard.form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in wizard.form.non_field_errors %}
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="mb-3">
+        <label for="id_auth-username" class="form-label">
+            <i class="bi bi-person me-1"></i>Usuário
+        </label>
+        <input type="text" 
+               name="auth-username" 
+               id="id_auth-username" 
+               class="form-control {% if wizard.form.username.errors %}is-invalid{% endif %}"
+               placeholder="Digite seu usuário"
+               autofocus
+               required>
+        {% if wizard.form.username.errors %}
+        <div class="invalid-feedback">{{ wizard.form.username.errors.0 }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="mb-4">
+        <label for="id_auth-password" class="form-label">
+            <i class="bi bi-lock me-1"></i>Senha
+        </label>
+        <div class="input-group">
+            <input type="password" 
+                   name="auth-password" 
+                   id="id_auth-password" 
+                   class="form-control {% if wizard.form.password.errors %}is-invalid{% endif %}"
+                   placeholder="Digite sua senha"
+                   required>
+            <button class="btn btn-outline-secondary" type="button" id="togglePassword" title="Mostrar ou ocultar senha" aria-label="Mostrar ou ocultar senha">
+                <i class="bi bi-eye" id="eyeIcon"></i>
+            </button>
+        </div>
+        {% if wizard.form.password.errors %}
+        <div class="invalid-feedback d-block">{{ wizard.form.password.errors.0 }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="d-grid">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Entrar
+        </button>
+    </div>
+
+    <div class="text-center mt-3">
+        <button type="button" class="btn btn-link" data-bs-toggle="modal" data-bs-target="#resetPasswordTotpModal">
+            Redefinir senha com código do autenticador
+        </button>
+    </div>
+</form>
+
+{% elif wizard.steps.current == 'token' %}
+<h5 class="text-center mb-4">
+    <i class="bi bi-shield-lock me-2"></i>Verificação em Duas Etapas
+</h5>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-1"></i>
+    Digite o código de 6 dígitos do seu aplicativo autenticador.
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+    
+    {% if wizard.form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in wizard.form.non_field_errors %}
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="mb-4">
+        <label for="id_token-otp_token" class="form-label">
+            <i class="bi bi-key me-1"></i>Código de Verificação
+        </label>
+        <input type="text" 
+               name="token-otp_token" 
+               id="id_token-otp_token" 
+               class="form-control form-control-lg text-center {% if wizard.form.otp_token.errors %}is-invalid{% endif %}"
+               placeholder="000000"
+               maxlength="6"
+               pattern="[0-9]{6}"
+               inputmode="numeric"
+               autocomplete="one-time-code"
+               autofocus
+               required>
+        {% if wizard.form.otp_token.errors %}
+        <div class="invalid-feedback">{{ wizard.form.otp_token.errors.0 }}</div>
+        {% endif %}
+    </div>
+    
+    <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-circle me-2"></i>Verificar
+        </button>
+        <a href="{% url 'two_factor:login' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+</form>
+
+{% elif wizard.steps.current == 'backup' %}
+<h5 class="text-center mb-4">
+    <i class="bi bi-key me-2"></i>Código de Backup
+</h5>
+
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    Perdeu acesso ao seu dispositivo? Use um código de backup.
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+    
+    {% if wizard.form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in wizard.form.non_field_errors %}
+            {{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <div class="mb-4">
+        <label for="id_backup-otp_token" class="form-label">Código de Backup</label>
+        <input type="text" 
+               name="backup-otp_token" 
+               id="id_backup-otp_token" 
+               class="form-control"
+               placeholder="Digite seu código de backup"
+               autofocus
+               required>
+    </div>
+    
+    <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-check-circle me-2"></i>Verificar
+        </button>
+        <a href="{% url 'two_factor:login' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+</form>
+{% endif %}
+
+<!-- Modal Reset de senha via Autenticador (TOTP) -->
+<div class="modal fade" id="resetPasswordTotpModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-shield-lock me-2"></i>Redefinir senha</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Informe seu <strong>usuário</strong> (ou e-mail), o <strong>código de 6 dígitos</strong> do autenticador e escolha a nova senha.
+                </div>
+
+                <div id="resetTotpAlert" class="alert d-none" role="alert"></div>
+
+                <div class="mb-3">
+                    <label class="form-label">Usuário ou e-mail</label>
+                    <input type="text" class="form-control" id="resetTotpUsername" autocomplete="username">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Código do autenticador</label>
+                    <input type="text" class="form-control text-center" id="resetTotpCode" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Nova senha</label>
+                    <input type="password" class="form-control" id="resetTotpNewPassword" autocomplete="new-password">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Confirmar nova senha</label>
+                    <input type="password" class="form-control" id="resetTotpConfirmPassword" autocomplete="new-password">
+                    <div class="invalid-feedback">As senhas não conferem.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnResetTotpPassword">Concluir troca de senha</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('id_auth-password');
+    const eyeIcon = document.getElementById('eyeIcon');
+    
+    if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            eyeIcon.classList.toggle('bi-eye');
+            eyeIcon.classList.toggle('bi-eye-slash');
+        });
+    }
+
+    // Reset de senha via TOTP (autenticador)
+    const resetModalEl = document.getElementById('resetPasswordTotpModal');
+    const resetAlertEl = document.getElementById('resetTotpAlert');
+    const resetUserEl = document.getElementById('resetTotpUsername');
+    const resetCodeEl = document.getElementById('resetTotpCode');
+    const resetNewEl = document.getElementById('resetTotpNewPassword');
+    const resetConfEl = document.getElementById('resetTotpConfirmPassword');
+    const resetBtnEl = document.getElementById('btnResetTotpPassword');
+    const loginUserEl = document.getElementById('id_auth-username');
+
+    const resetSetAlert = (msg, ok) => {
+        if (!resetAlertEl) return;
+        resetAlertEl.classList.remove('d-none', 'alert-success', 'alert-danger');
+        resetAlertEl.classList.add(ok ? 'alert-success' : 'alert-danger');
+        resetAlertEl.textContent = msg;
+    };
+
+    const resetClearAlert = () => {
+        if (!resetAlertEl) return;
+        resetAlertEl.classList.add('d-none');
+        resetAlertEl.textContent = '';
+        resetAlertEl.classList.remove('alert-success', 'alert-danger');
+    };
+
+    const resetValidateMatch = () => {
+        if (!resetConfEl) return true;
+        const match = String(resetNewEl?.value || '') === String(resetConfEl.value || '');
+        resetConfEl.classList.toggle('is-invalid', !match && (resetConfEl.value || '').length > 0);
+        return match;
+    };
+
+    resetNewEl?.addEventListener('input', resetValidateMatch);
+    resetConfEl?.addEventListener('input', resetValidateMatch);
+
+    resetModalEl?.addEventListener('show.bs.modal', () => {
+        resetClearAlert();
+        if (resetUserEl) resetUserEl.value = String(loginUserEl?.value || '').trim();
+        if (resetCodeEl) resetCodeEl.value = '';
+        if (resetNewEl) resetNewEl.value = '';
+        if (resetConfEl) {
+            resetConfEl.value = '';
+            resetConfEl.classList.remove('is-invalid');
+        }
+    });
+
+    resetBtnEl?.addEventListener('click', async () => {
+        resetClearAlert();
+        if (!resetValidateMatch()) {
+            resetSetAlert('As senhas novas não conferem.', false);
+            return;
+        }
+
+        const identifier = String(resetUserEl?.value || '').trim();
+        const otpCode = String(resetCodeEl?.value || '').trim();
+        const newPassword = String(resetNewEl?.value || '');
+        const confirmPassword = String(resetConfEl?.value || '');
+
+        if (!identifier || !otpCode || !newPassword || !confirmPassword) {
+            resetSetAlert('Preencha todos os campos.', false);
+            return;
+        }
+
+        const originalText = resetBtnEl.textContent;
+        resetBtnEl.disabled = true;
+        resetBtnEl.textContent = 'Processando...';
+
+        try {
+            const response = await fetch("{% url 'api_reset_password_totp' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    username: identifier,
+                    otp_code: otpCode,
+                    new_password: newPassword,
+                    confirm_password: confirmPassword
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                resetSetAlert(data.message || 'Senha redefinida com sucesso.', true);
+                const instance = bootstrap.Modal.getInstance(resetModalEl);
+                setTimeout(() => instance?.hide(), 700);
+            } else {
+                resetSetAlert(data.error || 'Não foi possível redefinir a senha.', false);
+            }
+        } catch (e) {
+            resetSetAlert('Erro de conexão.', false);
+        } finally {
+            resetBtnEl.disabled = false;
+            resetBtnEl.textContent = originalText;
+        }
+    });
+});
+</script>
+{% endblock %}

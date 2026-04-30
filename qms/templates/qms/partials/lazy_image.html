@@ -1,0 +1,51 @@
+{# Lazy-loaded image with Intersection Observer API #}
+
+<img 
+    src="{{ placeholder }}"
+    data-src="{{ src }}"
+    alt="{{ alt }}"
+    {% if width %}width="{{ width }}"{% endif %}
+    {% if height %}height="{{ height }}"{% endif %}
+    class="lazy-image {{ classes }}"
+    loading="lazy"
+/>
+
+<script>
+// Lazy loading with Intersection Observer
+document.addEventListener('DOMContentLoaded', function() {
+    const images = document.querySelectorAll('.lazy-image');
+    
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.add('loaded');
+                    observer.unobserve(img);
+                }
+            });
+        }, {
+            rootMargin: '50px'  // Start loading 50px before visible
+        });
+        
+        images.forEach(img => observer.observe(img));
+    } else {
+        // Fallback for older browsers
+        images.forEach(img => {
+            img.src = img.dataset.src;
+        });
+    }
+});
+</script>
+
+<style>
+    .lazy-image {
+        transition: opacity 0.3s ease-in;
+        opacity: 0.7;
+    }
+    
+    .lazy-image.loaded {
+        opacity: 1;
+    }
+</style>

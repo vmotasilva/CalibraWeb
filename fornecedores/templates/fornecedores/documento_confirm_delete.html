@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Remover Documento</h3>
+<p>Tem certeza que deseja remover o documento <strong>{{ documento }}</strong>?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Remover</button>
+    <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}

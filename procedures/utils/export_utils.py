@@ -1,0 +1,385 @@
+"""
+Utilitários de exportação para Excel
+Responsável por gerar arquivos Excel com dados de planejamentos
+"""
+
+from io import BytesIO
+from datetime import datetime
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+from django.http import HttpResponse
+
+
+class PlanejamentoExcelExporter:
+    """Exporta planejamentos de treinamento para Excel"""
+    
+    HEADER_FILL = PatternFill(start_color="0D6EFD", end_color="0D6EFD", fill_type="solid")
+    HEADER_FONT = Font(name='Calibri', size=11, bold=True, color="FFFFFF")
+    BORDER = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    def __init__(self):
+        self.workbook = openpyxl.Workbook()
+        self.ws = self.workbook.active
+        self.ws.title = "Planejamentos"
+    
+    def export_lista_planejamentos(self, planejamentos):
+        """
+        Exporta lista de planejamentos para Excel
+        
+        Args:
+            planejamentos: QuerySet de PlanejamentoTreinamento
+        
+        Returns:
+            HttpResponse com arquivo Excel
+        """
+        # Configurar cabeçalhos
+        headers = [
+            "ID",
+            "Título",
+            "Status",
+            "Origem",
+            "Data Prevista",
+            "Data Realizada",
+            "Instrutor",
+            "Carga Horária",
+            "Procedimentos",
+            "Colaboradores",
+            "Local",
+            "Observações"
+        ]
+        
+        # Adicionar cabeçalhos
+        for col_num, header in enumerate(headers, 1):
+            cell = self.ws.cell(row=1, column=col_num)
+            cell.value = header
+            cell.font = self.HEADER_FONT
+            cell.fill = self.HEADER_FILL
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            cell.border = self.BORDER
+        
+        # Adicionar dados
+        for row_num, planejamento in enumerate(planejamentos, 2):
+            dados = [
+                planejamento.id,
+                planejamento.titulo,
+                planejamento.get_status_display() if hasattr(planejamento, 'get_status_display') else planejamento.status,
+                planejamento.get_origem_display() if hasattr(planejamento, 'get_origem_display') else planejamento.origem,
+                planejamento.data_prevista.strftime("%d/%m/%Y") if planejamento.data_prevista else "",
+                planejamento.data_realizada.strftime("%d/%m/%Y") if planejamento.data_realizada else "",
+                planejamento.instrutor.nome_completo if planejamento.instrutor else "",
+                f"{planejamento.carga_horaria} min" if planejamento.carga_horaria else "",
+                ", ".join([p.codigo for p in planejamento.procedimentos.all()]),
+                ", ".join([c.nome_completo for c in planejamento.colaboradores.all()]),
+                planejamento.local or "",
+                planejamento.observacoes or ""
+            ]
+            
+            for col_num, valor in enumerate(dados, 1):
+                cell = self.ws.cell(row=row_num, column=col_num)
+                cell.value = valor
+                cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+                cell.border = self.BORDER
+        
+        # Ajustar largura das colunas
+        self._auto_adjust_columns()
+        
+        # Congelar a primeira linha
+        self.ws.freeze_panes = "A2"
+        
+        return self._generate_response("planejamentos_lista.xlsx")
+    
+    def export_detalhe_planejamento(self, planejamento):
+        """
+        Exporta detalhes de um planejamento específico para Excel
+        Estrutura com 2 abas:
+        - Aba 1: Informações Gerais + Procedimentos
+        - Aba 2: Colaboradores (Relação Pessoa x Treinamentos)
+        
+        Args:
+            planejamento: Instância de PlanejamentoTreinamento
+        
+        Returns:
+            HttpResponse com arquivo Excel
+        """
+        # ===== ABA 1: Informações Gerais =====
+        ws_info = self.ws
+        ws_info.title = "Informações Gerais"
+        
+        # Cabeçalho
+        self._adicionar_titulo(ws_info, planejamento.titulo, 1)
+        
+        row = 3
+        # Bloco de informações principais
+        dados_info = [
+            ("ID", planejamento.id),
+            ("Título", planejamento.titulo),
+            ("Status", self._get_status_display(planejamento.status)),
+            ("Origem", self._get_origem_display(planejamento.origem)),
+            ("Data Prevista", planejamento.data_prevista.strftime("%d/%m/%Y") if planejamento.data_prevista else ""),
+            ("Hora Prevista", planejamento.horario_previsto.strftime("%H:%M") if planejamento.horario_previsto else ""),
+            ("Data Realizada", planejamento.data_realizada.strftime("%d/%m/%Y") if planejamento.data_realizada else ""),
+            ("Instrutor", planejamento.instrutor.nome_completo if planejamento.instrutor else "Não definido"),
+            ("Local", planejamento.local or ""),
+            ("Carga Horária", f"{planejamento.carga_horaria} minutos" if planejamento.carga_horaria else ""),
+            ("Observações", planejamento.observacoes or ""),
+        ]
+        
+        for label, valor in dados_info:
+            self._adicionar_linha_info(ws_info, row, label, valor)
+            row += 1
+        
+        # Seção de Procedimentos
+        row += 1
+        self._adicionar_secao_procedimentos(ws_info, planejamento, row)
+        
+        # ===== ABA 2: Colaboradores =====
+        ws_colab = self.workbook.create_sheet("Colaboradores")
+        self._adicionar_relacao_pessoa_treinamento(ws_colab, planejamento)
+        
+        # Ajustar largura de todas as abas
+        for ws in self.workbook.sheetnames:
+            self._auto_adjust_columns(self.workbook[ws])
+        
+        return self._generate_response(f"planejamento_{planejamento.id}.xlsx")
+    
+    def _adicionar_titulo(self, ws, titulo, row):
+        """Adiciona um título formatado na planilha"""
+        cell = ws.cell(row=row, column=1)
+        cell.value = f"📋 {titulo}"
+        cell.font = Font(name='Calibri', size=14, bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="0D6EFD", end_color="0D6EFD", fill_type="solid")
+        cell.alignment = Alignment(horizontal='left', vertical='center')
+        ws.merge_cells(f"A{row}:L{row}")
+        ws.row_dimensions[row].height = 25
+    
+    def _adicionar_linha_info(self, ws, row, label, valor):
+        """Adiciona uma linha de informação formatada"""
+        # Label
+        cell_label = ws.cell(row=row, column=1)
+        cell_label.value = label
+        cell_label.font = Font(bold=True, size=10)
+        cell_label.fill = PatternFill(start_color="E9ECEF", end_color="E9ECEF", fill_type="solid")
+        cell_label.border = self.BORDER
+        
+        # Valor
+        cell_valor = ws.cell(row=row, column=2)
+        cell_valor.value = valor
+        cell_valor.alignment = Alignment(wrap_text=True, vertical='top')
+        cell_valor.border = self.BORDER
+        
+        ws.merge_cells(f"B{row}:L{row}")
+    
+    def _adicionar_secao_procedimentos(self, ws, planejamento, start_row):
+        """Adiciona seção de procedimentos na aba de informações gerais"""
+        # Título da seção
+        cell_titulo = ws.cell(row=start_row, column=1)
+        cell_titulo.value = "📋 Procedimentos"
+        cell_titulo.font = Font(name='Calibri', size=12, bold=True, color="FFFFFF")
+        cell_titulo.fill = PatternFill(start_color="0D6EFD", end_color="0D6EFD", fill_type="solid")
+        cell_titulo.alignment = Alignment(horizontal='left', vertical='center')
+        ws.merge_cells(f"A{start_row}:B{start_row}")
+        ws.row_dimensions[start_row].height = 20
+        
+        # Lista de procedimentos, um por linha
+        row = start_row + 1
+        for procedimento in planejamento.procedimentos.all().order_by('codigo'):
+            # Célula vazia para indentação
+            cell_indent = ws.cell(row=row, column=1)
+            cell_indent.value = ""
+            cell_indent.border = self.BORDER
+
+            # Código, Nome, Revisão e Criticidade do procedimento
+            revisao = procedimento.numero_revisao if procedimento.numero_revisao else "0"
+            revisao_formatada = str(revisao).zfill(2)
+            criticidade = procedimento.get_criticidade_display() if hasattr(procedimento, 'get_criticidade_display') else (procedimento.criticidade or "")
+            if criticidade:
+                texto_criticidade = f" | Criticidade: {criticidade}"
+            else:
+                texto_criticidade = ""
+            cell_proc = ws.cell(row=row, column=2)
+            cell_proc.value = f"{procedimento.codigo} - {procedimento.nome} - Rev {revisao_formatada}{texto_criticidade}"
+            cell_proc.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+            cell_proc.border = self.BORDER
+
+            row += 1
+        
+        # Se não houver procedimentos
+        if not planejamento.procedimentos.exists():
+            cell_vazio = ws.cell(row=row, column=2)
+            cell_vazio.value = "Nenhum procedimento associado"
+            cell_vazio.alignment = Alignment(horizontal='left', vertical='top')
+            cell_vazio.border = self.BORDER
+    
+    def _adicionar_relacao_pessoa_treinamento(self, ws, planejamento):
+        """
+        Adiciona tabela consolidada: Pessoa x Treinamentos
+        Mostra cada colaborador com seus procedimentos planejados
+        """
+        self._adicionar_titulo(ws, f"Relação Pessoa x Treinamentos - {planejamento.titulo}", 1)
+        
+        # Cabeçalhos
+        headers = [
+            "Colaborador",
+            "Matrícula",
+            "Cargo",
+            "Setor",
+            "Procedimentos Planejados",
+            "Quantidade"
+        ]
+        
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=3, column=col_num)
+            cell.value = header
+            cell.font = self.HEADER_FONT
+            cell.fill = self.HEADER_FILL
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            cell.border = self.BORDER
+        
+        # Dados: um colaborador por linha
+        row_num = 4
+        for colaborador in planejamento.colaboradores.all().order_by('nome_completo'):
+            # Procedimentos planejados (do planejamento)
+            procs_planejados = planejamento.procedimentos.all()
+            procs_texto = ", ".join([p.codigo for p in procs_planejados])
+            total_procs = procs_planejados.count()
+            
+            dados = [
+                colaborador.nome_completo,
+                colaborador.matricula or "",
+                colaborador.cargo or "",
+                str(colaborador.setor) if colaborador.setor else "",
+                procs_texto if procs_texto else "Nenhum",
+                str(total_procs)
+            ]
+            
+            for col_num, valor in enumerate(dados, 1):
+                cell = ws.cell(row=row_num, column=col_num)
+                cell.value = valor
+                cell.alignment = Alignment(wrap_text=True, vertical='top')
+                cell.border = self.BORDER
+            
+            row_num += 1
+        
+        if not planejamento.colaboradores.exists():
+            cell = ws.cell(row=4, column=1)
+            cell.value = "Nenhum colaborador associado a este planejamento"
+            ws.merge_cells("A4:F4")
+    
+    def _auto_adjust_columns(self, ws=None):
+        """Ajusta automaticamente a largura das colunas"""
+        if ws is None:
+            ws = self.ws
+        
+        for column in ws.columns:
+            max_length = 0
+            column_letter = get_column_letter(column[0].column)
+            
+            for cell in column:
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+    
+    def _get_status_display(self, status):
+        """Converte código de status para exibição"""
+        status_map = {
+            'PLANEJADO': 'Planejado',
+            'CONFIRMADO': 'Confirmado',
+            'REALIZADO': 'Realizado',
+            'CANCELADO': 'Cancelado'
+        }
+        return status_map.get(status, status)
+    
+    def _get_origem_display(self, origem):
+        """Converte código de origem para exibição"""
+        origem_map = {
+            'PROCEDIMENTO': 'Procedimento Operacional',
+            'MATRIZ': 'Matriz de Habilidades',
+            'DEMANDA': 'Demanda de Treinamento',
+            'LIVRE': 'Planejamento Livre'
+        }
+        return origem_map.get(origem, origem)
+    
+    def export_matriz_treinamentos(self, treinamentos):
+        """
+        Exporta matriz de treinamentos (relação pessoa x procedimento)
+        
+        Args:
+            treinamentos: QuerySet ou List de RegistroTreinamento
+        
+        Returns:
+            HttpResponse com arquivo Excel
+        """
+        # Configurar cabeçalhos
+        headers = [
+            "Colaborador",
+            "Matrícula",
+            "Cargo",
+            "Setor",
+            "Procedimento",
+            "Código",
+            "Data Treinamento",
+            "Status",
+            "Carga Horária"
+        ]
+        
+        # Adicionar cabeçalhos
+        for col_num, header in enumerate(headers, 1):
+            cell = self.ws.cell(row=1, column=col_num)
+            cell.value = header
+            cell.font = self.HEADER_FONT
+            cell.fill = self.HEADER_FILL
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            cell.border = self.BORDER
+        
+        # Adicionar dados
+        for row_num, treinamento in enumerate(treinamentos, 2):
+            dados = [
+                treinamento.colaborador.nome_completo if treinamento.colaborador else "",
+                treinamento.colaborador.matricula if treinamento.colaborador else "",
+                treinamento.colaborador.cargo if treinamento.colaborador else "",
+                treinamento.colaborador.setor.nome if treinamento.colaborador and treinamento.colaborador.setor else "",
+                treinamento.procedimento.nome if treinamento.procedimento else "",
+                treinamento.procedimento.codigo if treinamento.procedimento else "",
+                treinamento.data_treinamento.strftime("%d/%m/%Y") if treinamento.data_treinamento else "",
+                str(treinamento.status_treinamento) if hasattr(treinamento, 'status_treinamento') else "",
+                f"{treinamento.carga_horaria}h" if treinamento.carga_horaria else ""
+            ]
+            
+            for col_num, valor in enumerate(dados, 1):
+                cell = self.ws.cell(row=row_num, column=col_num)
+                cell.value = valor
+                cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+                cell.border = self.BORDER
+        
+        # Ajustar largura das colunas
+        self._auto_adjust_columns()
+        
+        # Congelar a primeira linha
+        self.ws.freeze_panes = "A2"
+        
+        return self._generate_response("matriz_treinamentos.xlsx")
+    
+    def _generate_response(self, filename):
+        """Gera HttpResponse com o arquivo Excel"""
+        output = BytesIO()
+        self.workbook.save(output)
+        output.seek(0)
+        
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard de Acoes{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+                <h1 class="mb-1">Dashboard de Acoes</h1>
+                <p class="text-muted mb-0">Visao geral das acoes corretivas e solucoes cadastradas.</p>
+            </div>
+            <a href="{% url 'acoes:listar_solucoes' %}" class="btn btn-outline-primary">Ver solucoes</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-2">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Acoes</div>
+                    <div class="display-6 fw-semibold">{{ total_acoes }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card h-100 shadow-sm border-warning">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Em progresso</div>
+                    <div class="display-6 fw-semibold">{{ acoes_em_progresso }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card h-100 shadow-sm border-danger">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Vencidas</div>
+                    <div class="display-6 fw-semibold">{{ acoes_vencidas }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Planos</div>
+                    <div class="display-6 fw-semibold">{{ total_planos }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">A3 / 8D</div>
+                    <div class="display-6 fw-semibold">{{ total_a3s }} / {{ total_8ds }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">RNC / Mud. / Rev.</div>
+                    <div class="display-6 fw-semibold">{{ total_rncs }} / {{ total_mudancas }} / {{ total_revisoes }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h2 class="h5 mb-0">Acoes recentes</h2>
+                </div>
+                <div class="card-body p-0">
+                    {% if acoes_recentes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Registro</th>
+                                    <th>Status</th>
+                                    <th>Abertura</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for acao in acoes_recentes %}
+                                <tr>
+                                    <td>{{ acao.numero_registro|default:"-" }}</td>
+                                    <td>{{ acao.get_status_display|default:acao.status }}</td>
+                                    <td>{{ acao.data_abertura|date:"d/m/Y"|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-3 text-muted">Nenhuma acao registrada.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h2 class="h5 mb-0">Solucoes recentes</h2>
+                </div>
+                <div class="card-body p-0">
+                    {% if solucoes_recentes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Titulo</th>
+                                    <th>Tipo</th>
+                                    <th>Criacao</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for solucao in solucoes_recentes %}
+                                <tr>
+                                    <td>{{ solucao.titulo|default:"-" }}</td>
+                                    <td>{{ solucao.get_tipo_display|default:solucao.tipo }}</td>
+                                    <td>{{ solucao.data_criacao|date:"d/m/Y H:i"|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-3 text-muted">Nenhuma solucao registrada.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

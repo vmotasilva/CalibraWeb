@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title|default:"Monitoring" }}{% endblock %}
+
+{% block content %}
+<div class="row g-2 mt-3">
+    <div class="col-12">
+        <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+            <div>
+                <h1 class="h5 mb-1">{{ title|default:"Performance Monitoring" }}</h1>
+                <div class="text-muted small">Atualizado em {{ health_status.checked_at|default:health_status.timestamp|default:"-" }}</div>
+            </div>
+
+            <div>
+                {% if health_status.status == "healthy" %}
+                    <span class="badge bg-success">Saudável</span>
+                {% elif health_status.status == "warning" %}
+                    <span class="badge bg-warning text-dark">Atenção</span>
+                {% else %}
+                    <span class="badge bg-danger">Crítico</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if health_status.issues %}
+            <div class="alert alert-warning mt-2 mb-0">
+                <div class="fw-semibold">Alertas</div>
+                <div class="small">{{ health_status.issues|join:", " }}</div>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="col-12 col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">Requests</div>
+            <div class="card-body">
+                <div class="row g-2 small">
+                    <div class="col-6">Média: <span class="fw-semibold">{{ request_metrics.avg_response_time }}</span> ms</div>
+                    <div class="col-6">P95: <span class="fw-semibold">{{ request_metrics.p95_response_time }}</span> ms</div>
+                    <div class="col-6">P99: <span class="fw-semibold">{{ request_metrics.p99_response_time }}</span> ms</div>
+                    <div class="col-6">Erros: <span class="fw-semibold">{{ request_metrics.error_rate }}</span>%</div>
+                    <div class="col-6">Total: <span class="fw-semibold">{{ request_metrics.request_count }}</span></div>
+                    <div class="col-6">Falhas: <span class="fw-semibold">{{ request_metrics.error_count }}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">Banco</div>
+            <div class="card-body">
+                <div class="row g-2 small">
+                    <div class="col-6">Queries: <span class="fw-semibold">{{ database_metrics.total_queries }}</span></div>
+                    <div class="col-6">Média: <span class="fw-semibold">{{ database_metrics.avg_query_time }}</span> ms</div>
+                    <div class="col-6">Lentas: <span class="fw-semibold">{{ database_metrics.slow_queries }}</span></div>
+                    <div class="col-6">Hit rate: <span class="fw-semibold">{{ database_metrics.cache_hit_rate|floatformat:3 }}</span></div>
+                    <div class="col-6">Pool: <span class="fw-semibold">{{ database_metrics.connection_pool_utilization|floatformat:2 }}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">Cache</div>
+            <div class="card-body">
+                <div class="row g-2 small">
+                    <div class="col-6">Hits: <span class="fw-semibold">{{ cache_metrics.total_hits }}</span></div>
+                    <div class="col-6">Misses: <span class="fw-semibold">{{ cache_metrics.total_misses }}</span></div>
+                    <div class="col-6">Taxa: <span class="fw-semibold">{{ cache_metrics.hit_rate|floatformat:3 }}</span></div>
+                    <div class="col-6">Memória: <span class="fw-semibold">{{ cache_metrics.memory_usage }}</span></div>
+                    <div class="col-6">Evictions: <span class="fw-semibold">{{ cache_metrics.evictions }}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">Celery</div>
+            <div class="card-body">
+                <div class="row g-2 small">
+                    <div class="col-6">Total: <span class="fw-semibold">{{ celery_metrics.total_tasks }}</span></div>
+                    <div class="col-6">Sucesso: <span class="fw-semibold">{{ celery_metrics.success_rate|floatformat:3 }}</span></div>
+                    <div class="col-6">Falhas: <span class="fw-semibold">{{ celery_metrics.failed_tasks }}</span></div>
+                    <div class="col-6">Pendente: <span class="fw-semibold">{{ celery_metrics.pending_tasks }}</span></div>
+                    <div class="col-6">DLQ: <span class="fw-semibold">{{ celery_metrics.dlq_tasks }}</span></div>
+                    <div class="col-6">Média: <span class="fw-semibold">{{ celery_metrics.avg_task_time }}</span> ms</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Recursos</div>
+            <div class="card-body">
+                <div class="row g-2 small">
+                    <div class="col-6 col-md-3">CPU: <span class="fw-semibold">{{ resource_metrics.cpu_usage|floatformat:1 }}</span>%</div>
+                    <div class="col-6 col-md-3">Memória: <span class="fw-semibold">{{ resource_metrics.memory_usage|floatformat:1 }}</span>%</div>
+                    <div class="col-6 col-md-3">Disco: <span class="fw-semibold">{{ resource_metrics.disk_usage|floatformat:1 }}</span>%</div>
+                    <div class="col-6 col-md-3">Livre: <span class="fw-semibold">{{ resource_metrics.memory_available }}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">Queries mais lentas</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Query</th>
+                                <th class="text-end" style="width: 110px;">Duração (ms)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in slowest_queries %}
+                                <tr>
+                                    <td class="text-break">{{ row.query }}</td>
+                                    <td class="text-end">{{ row.duration|floatformat:1 }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="2" class="text-muted text-center py-3">Sem dados</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">Requests mais lentos</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Path</th>
+                                <th style="width: 72px;">Método</th>
+                                <th class="text-end" style="width: 110px;">Duração (ms)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in slowest_requests %}
+                                <tr>
+                                    <td class="text-break">{{ row.path }}</td>
+                                    <td class="text-nowrap">{{ row.method }}</td>
+                                    <td class="text-end">{{ row.duration|floatformat:1 }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="3" class="text-muted text-center py-3">Sem dados</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,778 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if edicao %}Editar{% else %}Novo{% endif %} Registro - Auditoria{% endblock %}
+
+{% block extra_css %}
+<style>
+    .weekly-grid .form-label { line-height: 1.1; }
+
+    /* Layout compacto para respostas por dia (semanal/por dia) */
+    .weekly-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem 0.7rem;
+        align-items: flex-start;
+    }
+
+    /* Largura aproximada do texto do dia + o select abaixo */
+    .weekly-grid__item {
+        flex: 0 0 auto;
+        width: clamp(7.25rem, 10.5vw, 8.75rem);
+    }
+
+    .weekly-grid__item .form-label {
+        white-space: nowrap;
+    }
+
+    .weekly-grid__item .form-select,
+    .weekly-grid__item .form-control {
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* Evita que o placeholder force largura grande */
+    .weekly-grid__item .form-select {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Enxuga um pouco o select para caber mais colunas */
+    .weekly-grid__item .form-select.form-select-sm {
+        font-size: 0.85rem;
+        padding-left: 0.5rem;
+        padding-right: 1.75rem;
+    }
+
+    .grid-table th,
+    .grid-table td {
+        vertical-align: top;
+    }
+
+    .grid-table th {
+        white-space: nowrap;
+    }
+
+    .grid-table .grid-q {
+        min-width: 16rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:modulo' %}">Auditoria</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:registros_por_modelo' modelo.id %}">Registros</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{% if edicao %}Editar{% else %}Novo{% endif %}</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-clipboard-data"></i> 
+                {% if edicao %}Editar Registro de Auditoria{% else %}Novo Registro de Auditoria{% endif %}
+            </h4>
+        </div>
+        <div class="card-body">
+            {% if modelo %}
+            <div class="alert alert-info mb-4">
+                <i class="bi bi-info-circle"></i>
+                <strong>Modelo:</strong> {{ modelo.nome }} | 
+                <strong>Objeto:</strong> {{ modelo.objeto_auditoria }} | 
+                <strong>Periodicidade:</strong> {{ modelo.get_periodicidade_completa }}
+                {% if modelo.link_sharepoint %}
+                | <a href="{{ modelo.link_sharepoint }}" target="_blank" class="alert-link"><i class="bi bi-link-45deg"></i> Documentação</a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <form method="post" class="needs-validation" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="comentarios_payload" id="id_comentarios_payload" value="{}">
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Data da Auditoria <span class="text-danger">*</span></label>
+                        {{ form.data_auditoria }}
+                        {% if form.data_auditoria.errors %}
+                        <div class="invalid-feedback d-block">{{ form.data_auditoria.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Período Inicial</label>
+                        {{ form.periodo_inicio }}
+                        {% if form.periodo_inicio.errors %}
+                        <div class="invalid-feedback d-block">{{ form.periodo_inicio.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Período Final</label>
+                        {{ form.periodo_fim }}
+                        {% if form.periodo_fim.errors %}
+                        <div class="invalid-feedback d-block">{{ form.periodo_fim.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold">ITEM/O.S. <span class="text-muted">(preencher se necessário)</span></label>
+                    {{ form.item_os }}
+                    {% if form.item_os.errors %}
+                    <div class="invalid-feedback d-block">{{ form.item_os.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Observações Gerais</label>
+                    {{ form.observacoes }}
+                    {% if form.observacoes.errors %}
+                    <div class="invalid-feedback d-block">{{ form.observacoes.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <hr class="my-4">
+
+                <h5 class="mb-3">
+                    <i class="bi bi-question-circle"></i> Perguntas do Modelo
+                    <span class="badge bg-secondary">{{ perguntas|length }}</span>
+                </h5>
+
+                {% if grid_enabled %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <label class="form-label fw-bold">{{ modelo.grid_rotulo_item|default:"Item" }}(s) (GRID)</label>
+                        {% if grid_colunas_predefinidas %}
+                            <div class="text-muted small mb-2">Colunas definidas no modelo.</div>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for item in grid_itens %}
+                                    <span class="badge bg-secondary">{{ item }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-muted small mb-2">Use uma linha por {{ modelo.grid_rotulo_item|default:"item"|lower }} para habilitar o preenchimento em tabela.</div>
+                            {{ form.grid_itens }}
+                            {% if form.grid_itens.errors %}
+                            <div class="invalid-feedback d-block">{{ form.grid_itens.errors }}</div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if perguntas %}
+
+                    {% if grid_enabled and grid_itens %}
+                    <div class="mb-4">
+                        <ul class="nav nav-tabs" role="tablist">
+                            {% for item in grid_itens %}
+                                <li class="nav-item" role="presentation">
+                                    <button
+                                        class="nav-link {% if forloop.first %}active{% endif %}"
+                                        id="tab-grid-{{ forloop.counter0 }}"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#pane-grid-{{ forloop.counter0 }}"
+                                        type="button"
+                                        role="tab"
+                                        aria-controls="pane-grid-{{ forloop.counter0 }}"
+                                        aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                                        {{ item }}
+                                    </button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+
+                        <div class="tab-content border border-top-0 rounded-bottom p-3">
+                            {% for item in grid_itens %}
+                                <div
+                                    class="tab-pane fade {% if forloop.first %}show active{% endif %}"
+                                    id="pane-grid-{{ forloop.counter0 }}"
+                                    role="tabpanel"
+                                    aria-labelledby="tab-grid-{{ forloop.counter0 }}">
+
+                                    {% for pergunta in grid_perguntas %}
+                                    {% ifchanged pergunta.subcategoria %}
+                                        {% if pergunta.subcategoria %}
+                                            <div class="alert alert-secondary py-2">
+                                                <strong>{{ pergunta.subcategoria }}</strong>
+                                            </div>
+                                        {% endif %}
+                                    {% endifchanged %}
+                                    <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
+                                        <div class="card-body">
+                                            <label class="form-label fw-bold mb-2">
+                                                <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
+                                                {{ pergunta.pergunta }}
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-link p-0 ms-2 align-baseline text-decoration-none comment-add-btn"
+                                                    data-pergunta-id="{{ pergunta.id }}"
+                                                    title="Adicionar comentário contextual"
+                                                    aria-label="Adicionar comentário contextual">
+                                                    <i class="bi bi-plus-circle"></i>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-sm btn-outline-primary py-0 px-2 ms-1 comment-count-btn d-none"
+                                                    data-pergunta-id="{{ pergunta.id }}"
+                                                    title="Ver comentários"
+                                                    aria-label="Ver comentários"></button>
+                                                {% if pergunta.descricao_detalhada %}
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-link p-0 ms-2 align-baseline text-decoration-none"
+                                                        aria-label="Ver descrição detalhada"
+                                                        data-bs-toggle="popover"
+                                                        data-bs-trigger="focus"
+                                                        data-bs-placement="auto"
+                                                        data-bs-container="body"
+                                                        data-popover-content-id="pergunta-desc-{{ pergunta.id }}-tab-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}">
+                                                        <i class="bi bi-info-circle"></i>
+                                                    </button>
+                                                    <div id="pergunta-desc-{{ pergunta.id }}-tab-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}" class="d-none">{{ pergunta.descricao_detalhada|linebreaksbr }}</div>
+                                                {% endif %}
+                                                {% if pergunta.obrigatoria %}
+                                                <span class="text-danger">*</span>
+                                                {% endif %}
+                                            </label>
+                                            <div class="small text-muted mb-2">
+                                                <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
+                                            </div>
+
+                                            {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
+                                                <select class="form-select js-colored-answer" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                    <option value="">-- Selecione --</option>
+                                                    <option value="Sim" data-color="#198754">Sim</option>
+                                                    <option value="Não" data-color="#dc3545">Não</option>
+                                                </select>
+                                            {% elif pergunta.tipo_resposta == 'LISTA' %}
+                                                <select class="form-select js-colored-answer" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                    <option value="">-- Selecione --</option>
+                                                    {% for opt_data in pergunta.opcoes_resposta_com_cores %}
+                                                        <option value="{{ opt_data.label }}" {% if opt_data.color %}data-color="{{ opt_data.color }}"{% endif %}>{{ opt_data.label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            {% elif pergunta.tipo_resposta == 'NUMERO' %}
+                                                <input type="number" class="form-control" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
+                                            {% elif pergunta.tipo_resposta == 'DECIMAL' %}
+                                                <input type="number" class="form-control" name="grid_{{ pergunta.id }}_{{ forloop.parentloop.counter0 }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+
+                                    {% for pergunta in perguntas_por_dia %}
+                                    {% ifchanged pergunta.subcategoria %}
+                                        {% if pergunta.subcategoria %}
+                                            <div class="alert alert-secondary py-2">
+                                                <strong>{{ pergunta.subcategoria }}</strong>
+                                            </div>
+                                        {% endif %}
+                                    {% endifchanged %}
+                                    <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
+                                        <div class="card-body">
+                                            <label class="form-label fw-bold mb-2">
+                                                <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
+                                                {{ pergunta.pergunta }}
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-link p-0 ms-2 align-baseline text-decoration-none comment-add-btn"
+                                                    data-pergunta-id="{{ pergunta.id }}"
+                                                    title="Adicionar comentário contextual"
+                                                    aria-label="Adicionar comentário contextual">
+                                                    <i class="bi bi-plus-circle"></i>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-sm btn-outline-primary py-0 px-2 ms-1 comment-count-btn d-none"
+                                                    data-pergunta-id="{{ pergunta.id }}"
+                                                    title="Ver comentários"
+                                                    aria-label="Ver comentários"></button>
+                                                {% if pergunta.descricao_detalhada %}
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-link p-0 ms-2 align-baseline text-decoration-none"
+                                                        aria-label="Ver descrição detalhada"
+                                                        data-bs-toggle="popover"
+                                                        data-bs-trigger="focus"
+                                                        data-bs-placement="auto"
+                                                        data-bs-container="body"
+                                                        data-popover-content-id="pergunta-desc-{{ pergunta.id }}-tabdia-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}">
+                                                        <i class="bi bi-info-circle"></i>
+                                                    </button>
+                                                    <div id="pergunta-desc-{{ pergunta.id }}-tabdia-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}" class="d-none">{{ pergunta.descricao_detalhada|linebreaksbr }}</div>
+                                                {% endif %}
+                                                {% if pergunta.obrigatoria %}
+                                                <span class="text-danger">*</span>
+                                                {% endif %}
+                                            </label>
+                                            <div class="small text-muted mb-2">
+                                                <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
+                                            </div>
+
+                                            <div class="weekly-grid">
+                                                {% for dia_key, dia_label in dias_semana_choices %}
+                                                <div class="weekly-grid__item">
+                                                    <label class="form-label small text-muted mb-1">{{ dia_label }}</label>
+                                                    {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
+                                                        <select class="form-select form-select-sm js-colored-answer" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                            <option value="">-- Selecione --</option>
+                                                            <option value="Sim" data-color="#198754">Sim</option>
+                                                            <option value="Não" data-color="#dc3545">Não</option>
+                                                        </select>
+                                                    {% elif pergunta.tipo_resposta == 'LISTA' %}
+                                                        <select class="form-select form-select-sm js-colored-answer" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                            <option value="">-- Selecione --</option>
+                                                            {% for opt_data in pergunta.opcoes_resposta_com_cores %}
+                                                                <option value="{{ opt_data.label }}" {% if opt_data.color %}data-color="{{ opt_data.color }}"{% endif %}>{{ opt_data.label }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    {% elif pergunta.tipo_resposta == 'NUMERO' %}
+                                                        <input type="number" class="form-control form-control-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                    {% elif pergunta.tipo_resposta == 'DECIMAL' %}
+                                                        <input type="number" class="form-control form-control-sm" name="griddia_{{ pergunta.id }}_{{ forloop.parentloop.parentloop.counter0 }}_{{ dia_key }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                    {% endif %}
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                        {% for pergunta in grid_perguntas %}
+                        {% ifchanged pergunta.subcategoria %}
+                            {% if pergunta.subcategoria %}
+                                <div class="alert alert-secondary py-2">
+                                    <strong>{{ pergunta.subcategoria }}</strong>
+                                </div>
+                            {% endif %}
+                        {% endifchanged %}
+                        <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
+                            <div class="card-body">
+                                <label class="form-label fw-bold mb-2">
+                                    <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
+                                    {{ pergunta.pergunta }}
+                                    <button
+                                        type="button"
+                                        class="btn btn-link p-0 ms-2 align-baseline text-decoration-none comment-add-btn"
+                                        data-pergunta-id="{{ pergunta.id }}"
+                                        title="Adicionar comentário contextual"
+                                        aria-label="Adicionar comentário contextual">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-primary py-0 px-2 ms-1 comment-count-btn d-none"
+                                        data-pergunta-id="{{ pergunta.id }}"
+                                        title="Ver comentários"
+                                        aria-label="Ver comentários"></button>
+                                    {% if pergunta.descricao_detalhada %}
+                                        <button
+                                            type="button"
+                                            class="btn btn-link p-0 ms-2 align-baseline text-decoration-none"
+                                            aria-label="Ver descrição detalhada"
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="focus"
+                                            data-bs-placement="auto"
+                                            data-bs-container="body"
+                                            data-popover-content-id="pergunta-desc-{{ pergunta.id }}-grid-{{ forloop.counter0 }}">
+                                            <i class="bi bi-info-circle"></i>
+                                        </button>
+                                        <div id="pergunta-desc-{{ pergunta.id }}-grid-{{ forloop.counter0 }}" class="d-none">{{ pergunta.descricao_detalhada|linebreaksbr }}</div>
+                                    {% endif %}
+                                    {% if pergunta.obrigatoria %}
+                                    <span class="text-danger">*</span>
+                                    {% endif %}
+                                </label>
+                                <div class="small text-muted mb-2">
+                                    <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
+                                </div>
+                                {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
+                                    <select class="form-select js-colored-answer" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                        <option value="">-- Selecione --</option>
+                                        <option value="Sim" data-color="#198754">Sim</option>
+                                        <option value="Não" data-color="#dc3545">Não</option>
+                                    </select>
+                                {% elif pergunta.tipo_resposta == 'LISTA' %}
+                                    <select class="form-select js-colored-answer" name="resposta_{{ pergunta.id }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                        <option value="">-- Selecione --</option>
+                                        {% for opt_data in pergunta.opcoes_resposta_com_cores %}
+                                            <option value="{{ opt_data.label }}" {% if opt_data.color %}data-color="{{ opt_data.color }}"{% endif %}>{{ opt_data.label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% elif pergunta.tipo_resposta == 'NUMERO' %}
+                                    <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
+                                {% elif pergunta.tipo_resposta == 'DECIMAL' %}
+                                    <input type="number" class="form-control" name="resposta_{{ pergunta.id }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    {% if not grid_enabled or not grid_itens %}
+                        {% for pergunta in perguntas_por_dia %}
+                        {% ifchanged pergunta.subcategoria %}
+                            {% if pergunta.subcategoria %}
+                                <div class="alert alert-secondary py-2">
+                                    <strong>{{ pergunta.subcategoria }}</strong>
+                                </div>
+                            {% endif %}
+                        {% endifchanged %}
+                        <div class="card mb-3 {% if pergunta.obrigatoria %}border-primary{% endif %}">
+                            <div class="card-body">
+                                <label class="form-label fw-bold mb-2">
+                                    <span class="badge bg-secondary me-2">{{ pergunta.ordem }}</span>
+                                    {{ pergunta.pergunta }}
+                                    <button
+                                        type="button"
+                                        class="btn btn-link p-0 ms-2 align-baseline text-decoration-none comment-add-btn"
+                                        data-pergunta-id="{{ pergunta.id }}"
+                                        title="Adicionar comentário contextual"
+                                        aria-label="Adicionar comentário contextual">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-primary py-0 px-2 ms-1 comment-count-btn d-none"
+                                        data-pergunta-id="{{ pergunta.id }}"
+                                        title="Ver comentários"
+                                        aria-label="Ver comentários"></button>
+                                    {% if pergunta.descricao_detalhada %}
+                                        <button
+                                            type="button"
+                                            class="btn btn-link p-0 ms-2 align-baseline text-decoration-none"
+                                            aria-label="Ver descrição detalhada"
+                                            data-bs-toggle="popover"
+                                            data-bs-trigger="focus"
+                                            data-bs-placement="auto"
+                                            data-bs-container="body"
+                                            data-popover-content-id="pergunta-desc-{{ pergunta.id }}-dia-{{ forloop.counter0 }}">
+                                            <i class="bi bi-info-circle"></i>
+                                        </button>
+                                        <div id="pergunta-desc-{{ pergunta.id }}-dia-{{ forloop.counter0 }}" class="d-none">{{ pergunta.descricao_detalhada|linebreaksbr }}</div>
+                                    {% endif %}
+                                    {% if pergunta.obrigatoria %}
+                                    <span class="text-danger">*</span>
+                                    {% endif %}
+                                </label>
+                                <div class="small text-muted mb-2">
+                                    <i class="bi bi-tag"></i> {{ pergunta.get_tipo_resposta_display }}
+                                </div>
+
+                                <div class="weekly-grid">
+                                    {% for dia_key, dia_label in dias_semana_choices %}
+                                    <div class="weekly-grid__item">
+                                        <label class="form-label small text-muted mb-1">{{ dia_label }}</label>
+                                        {% if pergunta.tipo_resposta == 'SIM_NAO' or pergunta.tipo_resposta == 'BOOLEANO' %}
+                                            <select class="form-select form-select-sm js-colored-answer" name="resposta_{{ pergunta.id }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <option value="">-- Selecione --</option>
+                                                <option value="Sim" data-color="#198754">Sim</option>
+                                                <option value="Não" data-color="#dc3545">Não</option>
+                                            </select>
+                                        {% elif pergunta.tipo_resposta == 'LISTA' %}
+                                            <select class="form-select form-select-sm js-colored-answer" name="resposta_{{ pergunta.id }}_{{ dia_key }}" {% if pergunta.obrigatoria %}required{% endif %}>
+                                                <option value="">-- Selecione --</option>
+                                                {% for opt_data in pergunta.opcoes_resposta_com_cores %}
+                                                    <option value="{{ opt_data.label }}" {% if opt_data.color %}data-color="{{ opt_data.color }}"{% endif %}>{{ opt_data.label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        {% elif pergunta.tipo_resposta == 'NUMERO' %}
+                                            <input type="number" class="form-control form-control-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" step="1" {% if pergunta.obrigatoria %}required{% endif %}>
+                                        {% elif pergunta.tipo_resposta == 'DECIMAL' %}
+                                            <input type="number" class="form-control form-control-sm" name="resposta_{{ pergunta.id }}_{{ dia_key }}" step="0.01" {% if pergunta.obrigatoria %}required{% endif %}>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Este modelo não possui perguntas ativas. <a href="{% url 'auditoria:perguntas_list' %}?modelo={{ modelo.id }}" class="alert-link">Adicionar perguntas</a>.
+                    </div>
+                {% endif %}
+
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> {% if edicao %}Atualizar{% else %}Salvar{% endif %} Registro
+                    </button>
+                    <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalComentarioPergunta" tabindex="-1" aria-labelledby="modalComentarioPerguntaLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalComentarioPerguntaLabel">Adicionar comentário da pergunta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2 small text-muted" id="modalComentarioPerguntaContexto"></div>
+                <label class="form-label" for="modalComentarioPerguntaTexto">Comentário</label>
+                <textarea id="modalComentarioPerguntaTexto" class="form-control" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar esta resposta..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="modalComentarioPerguntaSalvar">Adicionar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if edicao and respostas_atuais %}
+{{ respostas_atuais|json_script:"respostas-dados" }}
+{% endif %}
+{{ comentarios_atuais|json_script:"comentarios-dados" }}
+<script>
+    // Bootstrap form validation
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })();
+
+    // Preencher valores na edição
+    {% if edicao and respostas_atuais %}
+    (function() {
+        const respostasScript = document.getElementById('respostas-dados');
+        if (respostasScript) {
+            const respostas = JSON.parse(respostasScript.textContent);
+            Object.keys(respostas).forEach(function(fieldName) {
+                const valor = respostas[fieldName];
+                const campo = document.querySelector('[name="' + fieldName + '"]');
+                if (campo && valor) {
+                    campo.value = valor;
+                }
+            });
+        }
+    })();
+    {% endif %}
+
+    // Realce de cor por opção (Lista e Sim/Não)
+    (function() {
+        function hexToRgba(hex, alpha) {
+            const value = String(hex || '').replace('#', '').trim();
+            if (!/^[0-9a-fA-F]{6}$/.test(value)) return '';
+            const r = parseInt(value.substring(0, 2), 16);
+            const g = parseInt(value.substring(2, 4), 16);
+            const b = parseInt(value.substring(4, 6), 16);
+            return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+        }
+
+        function applyColor(selectEl) {
+            if (!selectEl) return;
+            const selected = selectEl.options[selectEl.selectedIndex];
+            const color = selected ? (selected.getAttribute('data-color') || '').trim() : '';
+
+            selectEl.style.color = '';
+            selectEl.style.borderColor = '';
+            selectEl.style.backgroundColor = '';
+
+            if (!color) return;
+            selectEl.style.color = color;
+            selectEl.style.borderColor = color;
+            selectEl.style.backgroundColor = hexToRgba(color, 0.08);
+        }
+
+        const coloredSelects = document.querySelectorAll('select.js-colored-answer');
+        coloredSelects.forEach(function(selectEl) {
+            applyColor(selectEl);
+            selectEl.addEventListener('change', function() {
+                applyColor(selectEl);
+            });
+        });
+    })();
+
+    // Auto-preencher período para auditorias DIÁRIA ou APLICAÇÃO ÚNICA
+    {% if modelo and modelo.periodicidade == 'DIARIA' or modelo and modelo.periodicidade == 'UNICA' %}
+    (function() {
+        const dataInput = document.getElementById('id_data_auditoria');
+        const inicioInput = document.getElementById('id_periodo_inicio');
+        const fimInput = document.getElementById('id_periodo_fim');
+
+        if (!dataInput || !inicioInput || !fimInput) return;
+
+        const syncPeriodo = () => {
+            const dt = (dataInput.value || '').trim();
+            if (!dt) return;
+            inicioInput.value = dt;
+            fimInput.value = dt;
+        };
+
+        // Se já existe data, garantir que período esteja preenchido
+        syncPeriodo();
+        dataInput.addEventListener('change', syncPeriodo);
+        dataInput.addEventListener('blur', syncPeriodo);
+    })();
+    {% endif %}
+
+    // Popovers (descrição detalhada por pergunta)
+    (function() {
+        if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
+        const triggers = document.querySelectorAll('[data-bs-toggle="popover"][data-popover-content-id]');
+        triggers.forEach(function(el) {
+            const contentId = el.getAttribute('data-popover-content-id');
+            const contentEl = contentId ? document.getElementById(contentId) : null;
+            const contentHtml = contentEl ? contentEl.innerHTML : '';
+            new bootstrap.Popover(el, { html: true, content: contentHtml });
+        });
+    })();
+
+    // Comentários por pergunta (+, contador e pop-up de listagem)
+    (function() {
+        const hiddenInput = document.getElementById('id_comentarios_payload');
+        const scriptEl = document.getElementById('comentarios-dados');
+        const addButtons = document.querySelectorAll('.comment-add-btn');
+        const countButtons = document.querySelectorAll('.comment-count-btn');
+        const modalEl = document.getElementById('modalComentarioPergunta');
+        const modalText = document.getElementById('modalComentarioPerguntaTexto');
+        const modalSave = document.getElementById('modalComentarioPerguntaSalvar');
+        const modalContexto = document.getElementById('modalComentarioPerguntaContexto');
+        if (!hiddenInput || !scriptEl || !modalEl || !modalText || !modalSave || !modalContexto) return;
+        if (typeof bootstrap === 'undefined' || !bootstrap.Modal || !bootstrap.Popover) return;
+
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        let perguntaAtual = null;
+        let comentarios = {};
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function normalize(input) {
+            const out = {};
+            if (!input || typeof input !== 'object') return out;
+            Object.keys(input).forEach(function(key) {
+                const arr = Array.isArray(input[key]) ? input[key] : [];
+                const valid = arr
+                    .map(function(item) { return String(item || '').trim(); })
+                    .filter(function(item) { return !!item; });
+                if (valid.length) out[String(key)] = valid;
+            });
+            return out;
+        }
+
+        try {
+            comentarios = normalize(JSON.parse(scriptEl.textContent || '{}'));
+        } catch (e) {
+            comentarios = {};
+        }
+
+        function syncPayload() {
+            hiddenInput.value = JSON.stringify(comentarios);
+        }
+
+        function getList(perguntaId) {
+            return comentarios[String(perguntaId)] || [];
+        }
+
+        function renderCommentList(list) {
+            if (!list.length) {
+                return '<div class="small text-muted mb-0">Sem comentários.</div>';
+            }
+            const items = list.map(function(texto) {
+                return '<li class="mb-1">' + escapeHtml(texto) + '</li>';
+            }).join('');
+            return '<ol class="ps-3 mb-0">' + items + '</ol>';
+        }
+
+        function refreshCountButtons() {
+            countButtons.forEach(function(btn) {
+                const perguntaId = btn.getAttribute('data-pergunta-id');
+                const count = getList(perguntaId).length;
+                const pop = bootstrap.Popover.getInstance(btn);
+                if (!count) {
+                    btn.classList.add('d-none');
+                    btn.innerHTML = '';
+                    if (pop) pop.dispose();
+                    return;
+                }
+                btn.classList.remove('d-none');
+                btn.innerHTML = '<i class="bi bi-chat-left-text"></i> <span class="badge text-bg-primary ms-1">' + count + '</span>';
+                btn.setAttribute('title', 'Ver comentários (' + count + ')');
+            });
+        }
+
+        addButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                perguntaAtual = btn.getAttribute('data-pergunta-id');
+                const card = btn.closest('.card-body');
+                const perguntaTexto = card ? (card.querySelector('label.form-label') || {}).textContent : '';
+                modalContexto.textContent = (perguntaTexto || '').trim();
+                modalText.value = '';
+                modal.show();
+                setTimeout(function() { modalText.focus(); }, 150);
+            });
+        });
+
+        modalSave.addEventListener('click', function() {
+            if (!perguntaAtual) return;
+            const texto = (modalText.value || '').trim();
+            if (!texto) {
+                modalText.focus();
+                return;
+            }
+            const key = String(perguntaAtual);
+            if (!Array.isArray(comentarios[key])) comentarios[key] = [];
+            comentarios[key].push(texto);
+            syncPayload();
+            refreshCountButtons();
+            modal.hide();
+        });
+
+        countButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const perguntaId = btn.getAttribute('data-pergunta-id');
+                const list = getList(perguntaId);
+                const pop = bootstrap.Popover.getInstance(btn);
+                if (pop) pop.dispose();
+                const instance = new bootstrap.Popover(btn, {
+                    html: true,
+                    trigger: 'focus',
+                    placement: 'auto',
+                    container: 'body',
+                    title: 'Comentários (' + list.length + ')',
+                    content: renderCommentList(list),
+                });
+                instance.show();
+            });
+        });
+
+        syncPayload();
+        refreshCountButtons();
+    })();
+</script>
+{% endblock %}

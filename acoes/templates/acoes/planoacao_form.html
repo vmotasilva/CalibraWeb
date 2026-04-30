@@ -1,0 +1,453 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.id %}Editar{% else %}Novo{% endif %} Plano de Ação{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-check-list text-primary me-2"></i>
+                        {% if form.instance.id %}Editar{% else %}Novo{% endif %} Plano de Ação
+                    </h1>
+                    <p class="text-muted small mt-1">
+                        {% if form.instance.id %}
+                            Editando plano de ação #{{ form.instance.numero_acao }}
+                        {% else %}
+                            Criar um novo plano de ação
+                        {% endif %}
+                    </p>
+                </div>
+                <a href="{% url 'acoes:plano_acao_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="row">
+        <div class="col-lg-8">
+            <form method="post" class="needs-validation" novalidate>
+                {% csrf_token %}
+
+                <!-- Seção: Informações Básicas -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle me-2"></i>Informações Básicas
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.laboratorio_area_projeto.label }}</label>
+                                {{ form.laboratorio_area_projeto }}
+                                {% if form.laboratorio_area_projeto.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.laboratorio_area_projeto.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.numero_acao.label }}</label>
+                                {{ form.numero_acao }}
+                                {% if form.numero_acao.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.numero_acao.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.input_origem.label }}</label>
+                                {{ form.input_origem }}
+                                {% if form.input_origem.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.input_origem.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.laboratorio.label }}</label>
+                                {{ form.laboratorio }}
+                                {% if form.laboratorio.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.laboratorio.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">{{ form.kpi.label }}</label>
+                                {{ form.kpi }}
+                                {% if form.kpi.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.kpi.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção: Descrição da Ação -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="bi bi-file-text me-2"></i>Descrição
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.problema.label }}</label>
+                            {{ form.problema }}
+                            <small class="form-text text-muted">Descreva o problema ou oportunidade identificada</small>
+                            {% if form.problema.errors %}
+                                <div class="invalid-feedback d-block">{{ form.problema.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.descricao.label }}</label>
+                            {{ form.descricao }}
+                            <small class="form-text text-muted">Detalhes completos sobre a ação a ser executada</small>
+                            {% if form.descricao.errors %}
+                                <div class="invalid-feedback d-block">{{ form.descricao.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.classificacao.label }}</label>
+                                {{ form.classificacao }}
+                                {% if form.classificacao.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.classificacao.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.status.label }}</label>
+                                {{ form.status }}
+                                {% if form.status.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.status.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="prioridade" name="prioridade" {% if form.prioridade.value %}checked{% endif %}>
+                            <label class="form-check-label" for="prioridade">
+                                <i class="bi bi-exclamation-circle me-1"></i>Esta ação é prioritária?
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção: Responsabilidades -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="bi bi-person-check me-2"></i>Responsabilidades
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.responsavel_acao.label }}</label>
+                            {{ form.responsavel_acao }}
+                            {% if form.responsavel_acao.errors %}
+                                <div class="invalid-feedback d-block">{{ form.responsavel_acao.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.data_primeira_deadline.label }}</label>
+                                {{ form.data_primeira_deadline }}
+                                <small class="form-text text-muted">Primeiro prazo</small>
+                                {% if form.data_primeira_deadline.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.data_primeira_deadline.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.data_deadline.label }}</label>
+                                {{ form.data_deadline }}
+                                <small class="form-text text-muted">Prazo final</small>
+                                {% if form.data_deadline.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.data_deadline.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção: Resultados -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="bi bi-check-circle me-2"></i>Resultados
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.resultado.label }}</label>
+                            {{ form.resultado }}
+                            <small class="form-text text-muted">Resultado obtido após implementação</small>
+                            {% if form.resultado.errors %}
+                                <div class="invalid-feedback d-block">{{ form.resultado.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.acao_eficaz.label }}</label>
+                                {{ form.acao_eficaz }}
+                                {% if form.acao_eficaz.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.acao_eficaz.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">{{ form.data_conclusao.label }}</label>
+                                {{ form.data_conclusao }}
+                                {% if form.data_conclusao.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.data_conclusao.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.comentarios.label }}</label>
+                            {{ form.comentarios }}
+                            {% if form.comentarios.errors %}
+                                <div class="invalid-feedback d-block">{{ form.comentarios.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mensagens de Erro Geral -->
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">
+                    <strong>Erros no formulário:</strong>
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+
+                <!-- Botões -->
+                <div class="d-flex gap-2 mb-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>
+                        {% if form.instance.id %}Atualizar{% else %}Criar{% endif %} Plano
+                    </button>
+                    <a href="{% url 'acoes:plano_acao_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-1"></i>Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sidebar com Ajuda -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-lightbulb me-2"></i>Dicas
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="small">📋 Informações Básicas</h6>
+                        <p class="small text-muted">Preencha com dados de identificação da ação e área responsável.</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="small">📝 Descrição</h6>
+                        <p class="small text-muted">Seja claro e objetivo. Inclua o que deve ser feito e por quê.</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="small">👤 Responsável</h6>
+                        <p class="small text-muted">Atribua a uma pessoa específica para melhor controle.</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="small">📅 Prazos</h6>
+                        <p class="small text-muted">Defina datas realistas. O primeiro deadline é intermediário.</p>
+                    </div>
+                    <div>
+                        <h6 class="small">✅ Verificação</h6>
+                        <p class="small text-muted">Sempre confirme se a ação foi eficaz ao concluir.</p>
+                    </div>
+                </div>
+            </div>
+
+            {% if form.instance.id %}
+            <div class="card mt-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Histórico
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        <strong>Criado:</strong><br>
+                        {{ form.instance.criado_em|date:"d/m/Y H:i"|default:"N/A" }}
+                    </p>
+                    <p class="small text-muted">
+                        <strong>Atualizado:</strong><br>
+                        {{ form.instance.atualizado_em|date:"d/m/Y H:i"|default:"N/A" }}
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Preencher campos sugeridos do modal
+document.addEventListener('DOMContentLoaded', function() {
+    // Campos do sessionStorage
+    const codigoSugerido = sessionStorage.getItem('codigo_sugerido');
+    const dataAbertura = sessionStorage.getItem('data_abertura');
+    const unidade = sessionStorage.getItem('unidade');
+    const dataVencimento = sessionStorage.getItem('data_vencimento');
+    const origemProblema = sessionStorage.getItem('origem_problema');
+    const descricao = sessionStorage.getItem('descricao');
+    const causaRaiz = sessionStorage.getItem('causa_raiz');
+    const responsavel = sessionStorage.getItem('responsavel');
+    const observacao = sessionStorage.getItem('observacao');
+    const link = sessionStorage.getItem('link');
+
+    // Preencher campo de número registro
+    if (codigoSugerido) {
+        const campoNumero = document.getElementById('id_numero_registro');
+        if (campoNumero) {
+            campoNumero.value = codigoSugerido;
+        }
+    }
+
+    // Preencher data de abertura (converter YYYY-MM-DD para DD/MM/YYYY se necessário)
+    if (dataAbertura) {
+        const campoData = document.getElementById('id_data_abertura') || 
+                         document.querySelector('input[name="data_abertura"]');
+        if (campoData) {
+            // Tentar formatos diferentes
+            if (campoData.type === 'date') {
+                campoData.value = dataAbertura;
+            } else {
+                // Converter YYYY-MM-DD para DD/MM/YYYY
+                const [ano, mes, dia] = dataAbertura.split('-');
+                campoData.value = `${dia}/${mes}/${ano}`;
+            }
+        }
+    }
+
+    // Preencher unidade
+    if (unidade) {
+        const campoUnidade = document.getElementById('id_unidade') || 
+                            document.querySelector('input[name="unidade"]');
+        if (campoUnidade) {
+            campoUnidade.value = unidade;
+        }
+    }
+
+    // Preencher data de vencimento
+    if (dataVencimento) {
+        const campoDataVenc = document.getElementById('id_data_primeira_deadline') || 
+                             document.getElementById('id_data_vencimento') ||
+                             document.querySelector('input[name="data_vencimento"]') ||
+                             document.querySelector('input[name="data_primeira_deadline"]');
+        if (campoDataVenc) {
+            if (campoDataVenc.type === 'date') {
+                campoDataVenc.value = dataVencimento;
+            } else {
+                const [ano, mes, dia] = dataVencimento.split('-');
+                campoDataVenc.value = `${dia}/${mes}/${ano}`;
+            }
+        }
+    }
+
+    // Preencher origem do problema (input_origem)
+    if (origemProblema) {
+        const campoOrigem = document.getElementById('id_input_origem') || 
+                           document.querySelector('input[name="input_origem"]');
+        if (campoOrigem) {
+            campoOrigem.value = origemProblema;
+        }
+    }
+
+    // Preencher descrição
+    if (descricao) {
+        const campoDesc = document.getElementById('id_descricao') || 
+                         document.getElementById('id_titulo') ||
+                         document.querySelector('textarea[name="descricao"]') ||
+                         document.querySelector('textarea[name="titulo"]');
+        if (campoDesc) {
+            campoDesc.value = descricao;
+        }
+    }
+
+    // Preencher causa raiz
+    if (causaRaiz) {
+        const campoCausa = document.getElementById('id_causa_raiz') || 
+                          document.querySelector('textarea[name="causa_raiz"]');
+        if (campoCausa) {
+            campoCausa.value = causaRaiz;
+        }
+    }
+
+    // Preencher responsável
+    if (responsavel) {
+        const campoResp = document.getElementById('id_responsavel') || 
+                         document.getElementById('id_responsaveis') ||
+                         document.querySelector('input[name="responsavel"]');
+        if (campoResp) {
+            campoResp.value = responsavel;
+        }
+    }
+
+    // Preencher observação/comentários
+    if (observacao) {
+        const campoObs = document.getElementById('id_comentarios') || 
+                        document.getElementById('id_observacao') ||
+                        document.querySelector('textarea[name="comentarios"]') ||
+                        document.querySelector('textarea[name="observacao"]');
+        if (campoObs) {
+            campoObs.value = observacao;
+        }
+    }
+
+    // Preencher link
+    if (link) {
+        const campoLink = document.getElementById('id_link') || 
+                         document.querySelector('input[name="link"]');
+        if (campoLink) {
+            campoLink.value = link;
+        }
+    }
+
+    // Limpar todos os dados do sessionStorage após preencher
+    sessionStorage.removeItem('codigo_sugerido');
+    sessionStorage.removeItem('data_abertura');
+    sessionStorage.removeItem('unidade');
+    sessionStorage.removeItem('data_vencimento');
+    sessionStorage.removeItem('origem_problema');
+    sessionStorage.removeItem('descricao');
+    sessionStorage.removeItem('causa_raiz');
+    sessionStorage.removeItem('responsavel');
+    sessionStorage.removeItem('observacao');
+    sessionStorage.removeItem('link');
+});
+
+// Validação de formulário Bootstrap
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.querySelectorAll('.needs-validation');
+        Array.prototype.slice.call(forms).forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+</script>
+{% endblock %}

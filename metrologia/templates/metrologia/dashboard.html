@@ -1,0 +1,759 @@
+{% extends 'base.html' %}
+
+{% load nav_access %}
+
+{% can_nav_view user 'exportar_instrumentos' 'metrologia' as can_exportar_instrumentos %}
+{% can_nav_view user 'metrologia:export_etiquetas' 'metrologia' as can_exportar_etiquetas %}
+{% can_nav_view user 'novo_instrumento' 'metrologia' as can_novo_instrumento %}
+
+{% block content %}
+<style>
+    /* Estilos de "App" (Rolagem Independente) */
+    body { overflow: hidden; }
+
+    .sidebar-scroll {
+        height: calc(100vh - 160px);
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+    .table-container-scroll {
+        height: calc(100vh - 200px);
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        background-color: white;
+    }
+    .table-container-scroll thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Filtros Expansíveis */
+    .filter-header {
+        cursor: pointer; padding: 8px 0; user-select: none; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0;
+    }
+    .filter-header:hover { background-color: #f8f9fa; }
+    .filter-header i { transition: transform 0.2s ease; font-size: 0.8rem; color: #6c757d; }
+    .filter-group.open .filter-header i { transform: rotate(180deg); }
+    .filter-content { display: none; padding: 8px 0 8px 5px; }
+    .filter-group.open .filter-content { display: block; }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    .transition-all { transition: all 0.3s ease; }
+</style>
+
+<div class="container-fluid py-3" style="height: 100vh; display: flex; flex-direction: column;">
+    
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2 flex-shrink-0">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Alternar Filtros">
+                <i class="bi bi-layout-sidebar" id="sidebarIcon"></i>
+            </button>
+            <div>
+                <h4 class="fw-bold text-primary mb-0">Metrologia</h4>
+                <p class="text-muted mb-0 small">Controle de Instrumentos e Calibrações</p>
+            </div>
+        </div>
+        
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <button id="btnCopyFilters" type="button" class="btn btn-outline-secondary btn-sm shadow-sm" title="Copiar link com filtros">🔗 Copiar Link</button>
+            {% if can_exportar_instrumentos %}
+                <a id="btnExport" href="#" class="btn btn-outline-success btn-sm shadow-sm" title="Exportar Excel">
+                    <i class="bi bi-download"></i> Exportar
+                </a>
+            {% endif %}
+            <button class="btn btn-outline-info btn-sm shadow-sm" title="Atualizar todas as datas de calibração" onclick="atualizarTodasDatas()">
+                <i class="bi bi-arrow-clockwise"></i> Atualizar Datas
+            </button>
+            {% if can_exportar_etiquetas %}
+                <button class="btn btn-outline-primary btn-sm shadow-sm" title="Exportar Etiquetas PDF" data-bs-toggle="modal" data-bs-target="#etqModal">
+                    🏷️ Etiquetas
+                </button>
+            {% endif %}
+            <a href="/admin/qms/categoriainstrumento/" target="_blank" class="btn btn-outline-primary btn-sm shadow-sm" title="Gerenciar Categorias">
+                <i class="bi bi-tags"></i> Categorias
+            </a>
+            <!-- TODO: Implementar import_jobs
+            <a href="#" class="btn btn-outline-info btn-sm shadow-sm" disabled>
+                <i class="bi bi-clock-history"></i> Ver Importações
+            </a>
+            -->
+            {% if can_novo_instrumento %}
+                <a href="{% url 'novo_instrumento' %}" class="btn btn-primary btn-sm shadow-sm">
+                    <i class="bi bi-plus-lg"></i> Novo
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal compacto para Etiquetas -->
+    {% if can_exportar_etiquetas %}
+    <div class="modal fade" id="etqModal" tabindex="-1" aria-labelledby="etqModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="etqModalLabel">Configurar Etiquetas</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Orientação</label>
+                            <select id="etq_orient" class="form-select">
+                                <option value="portrait" selected>Retrato</option>
+                                <option value="landscape">Paisagem</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Colunas</label>
+                            <input id="etq_cols" type="number" min="1" max="5" value="2" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Linhas</label>
+                            <input id="etq_rows" type="number" min="1" max="10" value="5" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Margem (mm)</label>
+                            <input id="etq_margin" type="number" min="0" max="30" value="10" class="form-control">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Espaço (mm)</label>
+                            <input id="etq_pad" type="number" min="0" max="30" value="5" class="form-control">
+                        </div>
+                    </div>
+                    <div id="etqSummary" class="mt-3 p-2 bg-light border rounded small text-muted">
+                        Serão geradas etiquetas para 0 instrumentos. Ajuste filtros e configurações.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a id="btnEtiquetas" href="#" class="btn btn-primary" target="_blank">Gerar PDF</a>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row h-100 overflow-hidden">
+        
+        <!-- SIDEBAR FILTROS -->
+        <div class="col-md-3 col-lg-2 border-end pe-3 d-flex flex-column" id="sidebar-col">
+
+            <!-- Busca e ações dos filtros (sem títulos adicionais) -->
+            <div class="mb-2 flex-shrink-0">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Tag, Descrição...">
+                </div>
+                <div class="d-flex justify-content-end mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">Limpar filtros</button>
+                </div>
+            </div>
+            <!-- keep sidebar-col open so sidebar-scroll stays inside -->
+
+            <div class="sidebar-scroll">
+                
+                <!-- 1. SITUAÇÃO (Vencimento) -->
+                <div class="filter-group open mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0">SITUAÇÃO</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('situacao')">Selecionar Todos</button>
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="VENCIDO" data-category="situacao">
+                                <label class="form-check-label small text-danger fw-bold">Vencidos</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_30" data-category="situacao">
+                                <label class="form-check-label small text-warning fw-bold">A Vencer (30 dias)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_60" data-category="situacao">
+                                <label class="form-check-label small text-warning">A Vencer (60 dias)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_90" data-category="situacao">
+                                <label class="form-check-label small text-warning">A Vencer (90 dias)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AVENCER_120" data-category="situacao">
+                                <label class="form-check-label small text-warning">A Vencer (120 dias)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="EM_DIA" data-category="situacao">
+                                <label class="form-check-label small text-success">Em Dia</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. STATUS (Ativo/Inativo) -->
+                <div class="filter-group mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0">STATUS</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('status')">Selecionar Todos</button>
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo" checked>
+                                <label class="form-check-label small">Ativo</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status">
+                                <label class="form-check-label small">Inativo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. CATEGORIA -->
+                <div class="filter-group mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0">CATEGORIA</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('categoria')">Selecionar Todos</button>
+                        <div class="d-flex flex-column gap-1 ps-1">
+                            {% for cat in categorias_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ cat.id }}" data-category="categoria">
+                                <label class="form-check-label small text-truncate" title="{{ cat.nome }}">{{ cat.nome }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. SETOR -->
+                <div class="filter-group mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0">SETOR</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('setor')">Selecionar Todos</button>
+                        <div class="d-flex flex-column gap-1 ps-1">
+                            {% for setor in setores_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor">
+                                <label class="form-check-label small text-truncate" title="{{ setor.nome }}">{{ setor.nome }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. RESULTADO -->
+                <div class="filter-group mb-1">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="form-label small fw-bold text-muted mb-0">RESULTADO</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <button class="btn btn-xs btn-link p-0 mb-2 small" onclick="selectAllInCategory('resultado')">Selecionar Todos</button>
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="APROVADO_SEM_CORRECAO" data-category="resultado">
+                                <label class="form-check-label small">Aprovado</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="APROVADO_COM_CORRECAO" data-category="resultado">
+                                <label class="form-check-label small">Aprv. c/ Correção</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="REPROVADO" data-category="resultado">
+                                <label class="form-check-label small">Reprovado</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="SEM_CALIBRACAO" data-category="resultado">
+                                <label class="form-check-label small">Sem Calibração</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TABELA PRINCIPAL -->
+        <div class="col-md-9 col-lg-10 transition-all h-100 d-flex flex-column" id="content-col">
+            
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                    <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ instrumentos.count }}</span> instrumentos
+                </span>
+            </div>
+
+            <div class="table-container-scroll shadow-sm">
+                <table class="table table-hover align-middle mb-0" id="metrologiaTable">
+                    <thead class="small text-uppercase text-muted font-monospace">
+                        <tr>
+                            <th class="ps-3 py-3"><input type="checkbox" id="selectAll" title="Selecionar todos visíveis"></th>
+                            <th class="ps-4 py-3">Tag / Código</th>
+                            <th class="py-3">Descrição</th>
+                            <th class="py-3">Categoria</th>
+                            <th class="py-3">Setor</th>
+                            <th class="py-3">Próxima Calibração</th>
+                            <th class="py-3">Últ. Calibração</th>
+                            <th class="text-end pe-4 py-3">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0 bg-white">
+                        {% for i in instrumentos %}
+                        
+                        <tr class="instrumento-row border-bottom"
+                            data-nome="{{ i.tag|default:''|lower }} {{ i.descricao|default:''|lower }} {{ i.fabricante|default:''|lower }}"
+                            data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
+                            data-categoria="{{ i.categoria_id|default:'' }}"
+                            data-setor="{{ i.setor_id|default:'' }}"
+                            data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
+                            data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
+                            <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" /></td>
+                            
+                            <td class="ps-4 py-2 fw-bold text-primary font-monospace">
+                                {{ i.tag }}
+                            </td>
+                            
+                            <td class="py-2">
+                                <div class="text-dark small fw-semibold">{{ i.descricao|truncatechars:40 }}</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">
+                                    {{ i.fabricante }} - {{ i.modelo }}
+                                </div>
+                            </td>
+
+                            <td class="py-2">
+                                {% if i.categoria %}
+                                    <span class="badge bg-light text-dark border fw-normal">{{ i.categoria.nome }}</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark border fw-normal">-</span>
+                                {% endif %}
+                            </td>
+
+                            <td class="py-2 small text-muted">
+                                {% if i.setor %}{{ i.setor.nome }}{% else %}-{% endif %}
+                            </td>
+
+                            <td class="py-2">
+                                {% if i.data_proxima_calibracao %}
+                                    {% if i.data_proxima_calibracao < hoje %}
+                                        <span class="badge bg-danger">VENCIDO ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                    {% elif i.data_proxima_calibracao <= alerta_30d %}
+                                        <span class="badge bg-warning text-dark">A VENCER 30d ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                    {% elif i.data_proxima_calibracao <= alerta_60d %}
+                                        <span class="badge bg-warning text-dark">A VENCER 60d ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                    {% elif i.data_proxima_calibracao <= alerta_90d %}
+                                        <span class="badge bg-info text-white">A VENCER 90d ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                    {% elif i.data_proxima_calibracao <= alerta_120d %}
+                                        <span class="badge bg-info text-white">A VENCER 120d ({{ i.data_proxima_calibracao|date:"d/m/Y" }})</span>
+                                    {% else %}
+                                        <span class="text-success small fw-bold">{{ i.data_proxima_calibracao|date:"d/m/Y" }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+
+                            <td class="py-2">
+                                {% with historico=i.historicos.all|first %}
+                                    {% if historico %}
+                                        {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                            <span class="badge bg-success">✓ Aprovado</span>
+                                        {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
+                                            <span class="badge bg-warning text-dark">⚠ Aprv. c/ Corr.</span>
+                                        {% elif historico.resultado == 'REPROVADO' %}
+                                            <span class="badge bg-danger">✗ Reprovado</span>
+                                        {% else %}
+                                            <span class="text-muted small">-</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted small">-</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+
+                            <td class="text-end pe-4 py-2">
+                                <a href="{% url 'visualizar_instrumento' i.id %}" class="btn btn-sm btn-outline-primary py-0 px-3 rounded-pill detail-link" style="font-size: 0.75rem;">
+                                    Detalhes
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="8" class="text-center py-5 text-muted">Nenhum instrumento cadastrado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    applyStateFromQuery();
+    filtrar();
+    const searchInput = document.getElementById('searchInput');
+    const checkboxes = document.querySelectorAll('.filter-checkbox');
+    searchInput.addEventListener('keyup', function(){ filtrar(); updateExportLink(); updateEtiquetasLink(); renderEtiquetasSummary(); });
+    checkboxes.forEach(cb => cb.addEventListener('change', function(){ filtrar(); updateExportLink(); updateEtiquetasLink(); renderEtiquetasSummary(); }));
+
+    // Append filter state to detail links
+    document.querySelectorAll('.detail-link').forEach(a => {
+        a.addEventListener('click', function(ev){
+            ev.preventDefault();
+            const state = getFilterState();
+            const qs = buildQueryString(state);
+            const base = this.getAttribute('href');
+            window.location.href = base + (qs ? ('?' + qs) : '');
+        });
+    });
+
+    // Copy link with current filters
+    const btnCopy = document.getElementById('btnCopyFilters');
+    if (btnCopy) {
+        btnCopy.addEventListener('click', async function(){
+            const qs = buildQueryString(getFilterState());
+            const url = window.location.origin + window.location.pathname + (qs ? ('?' + qs) : '');
+            try {
+                await navigator.clipboard.writeText(url);
+                btnCopy.innerText = '✅ Copiado!';
+                setTimeout(()=> btnCopy.innerText = '🔗 Copiar Link', 1500);
+            } catch (e) {
+                alert('Não foi possível copiar o link.');
+            }
+        });
+    }
+
+    // Export button points to export endpoint with same query
+    const btnExport = document.getElementById('btnExport');
+    if (btnExport) {
+        updateExportLink();
+    }
+
+    const btnEtiquetas = document.getElementById('btnEtiquetas');
+    if (btnEtiquetas) {
+        updateEtiquetasLink();
+        ['etq_orient','etq_cols','etq_rows','etq_margin','etq_pad'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', function(){ updateEtiquetasLink(); renderEtiquetasSummary(); });
+            if (el) el.addEventListener('keyup', function(){ updateEtiquetasLink(); renderEtiquetasSummary(); });
+        });
+    }
+
+    // Atualiza o resumo quando o modal abre (Bootstrap)
+    const etqModal = document.getElementById('etqModal');
+    if (etqModal) {
+        etqModal.addEventListener('shown.bs.modal', function(){
+            updateEtiquetasLink();
+            renderEtiquetasSummary();
+        });
+    }
+});
+
+function getFilterState() {
+    const state = { q: '', st: [], sit: [], cat: [], set: [], res: [] };
+    const qEl = document.getElementById('searchInput');
+    state.q = (qEl && qEl.value) ? qEl.value : '';
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        if (!cb.checked) return;
+        const val = cb.value;
+        switch(cb.dataset.category){
+            case 'status': state.st.push(val); break;
+            case 'situacao': state.sit.push(val); break;
+            case 'categoria': state.cat.push(val); break;
+            case 'setor': state.set.push(val); break;
+            case 'resultado': state.res.push(val); break;
+        }
+    });
+    return state;
+}
+
+function buildQueryString(state){
+    const params = [];
+    if (state.q) params.push('q=' + encodeURIComponent(state.q));
+    if (state.st.length) params.push('st=' + encodeURIComponent(state.st.join(',')));
+    if (state.sit.length) params.push('sit=' + encodeURIComponent(state.sit.join(',')));
+    if (state.cat.length) params.push('cat=' + encodeURIComponent(state.cat.join(',')));
+    if (state.set.length) params.push('set=' + encodeURIComponent(state.set.join(',')));
+    if (state.res.length) params.push('res=' + encodeURIComponent(state.res.join(',')));
+    return params.join('&');
+}
+
+function applyStateFromQuery(){
+    const sp = new URLSearchParams(window.location.search);
+    const q = sp.get('q') || '';
+    const st = (sp.get('st') || '').split(',').filter(Boolean);
+    const sit = (sp.get('sit') || '').split(',').filter(Boolean);
+    // Dashboard hint: status=vencidos|avencer maps to situacao checkboxes
+    const dashStatus = (sp.get('status') || '').toLowerCase();
+    if (!sit.length && dashStatus) {
+        if (dashStatus === 'vencidos') {
+            sit.push('VENCIDO');
+        } else if (dashStatus === 'avencer') {
+            // Map legacy 'avencer' to all AVENCER_* ranges
+            sit.push('AVENCER_30', 'AVENCER_60', 'AVENCER_90', 'AVENCER_120');
+        }
+    }
+    const cat = (sp.get('cat') || '').split(',').filter(Boolean);
+    const set = (sp.get('set') || '').split(',').filter(Boolean);
+    const res = (sp.get('res') || '').split(',').filter(Boolean);
+    const qEl = document.getElementById('searchInput');
+    if (qEl) qEl.value = q;
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        const val = cb.value;
+        switch(cb.dataset.category){
+            case 'status': cb.checked = st.includes(val) || (st.length===0 && cb.id==='st_ativo'); break;
+            case 'situacao': cb.checked = sit.includes(val); break;
+            case 'categoria': cb.checked = cat.includes(val); break;
+            case 'setor': cb.checked = set.includes(val); break;
+            case 'resultado': cb.checked = res.includes(val); break;
+        }
+    });
+}
+
+function toggleFilterGroup(element) {
+    element.parentElement.classList.toggle('open');
+}
+
+function filtrar() {
+    const searchInput = document.getElementById('searchInput');
+    const countDisplay = document.getElementById('countDisplay');
+    const termoBusca = searchInput.value.toLowerCase();
+    
+    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [] };
+    
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
+    });
+
+    let visiveis = 0;
+    
+    document.querySelectorAll('.instrumento-row').forEach(row => {
+        let mostrar = true;
+
+        if (termoBusca && !row.dataset.nome.includes(termoBusca)) mostrar = false;
+        
+        if (mostrar && filtrosAtivos.status.length > 0 && !filtrosAtivos.status.includes(row.dataset.status)) mostrar = false;
+        if (mostrar && filtrosAtivos.situacao.length > 0 && !filtrosAtivos.situacao.includes(row.dataset.situacao)) mostrar = false;
+        if (mostrar && filtrosAtivos.categoria.length > 0 && !filtrosAtivos.categoria.includes(row.dataset.categoria)) mostrar = false;
+        if (mostrar && filtrosAtivos.setor.length > 0 && !filtrosAtivos.setor.includes(row.dataset.setor)) mostrar = false;
+        if (mostrar && filtrosAtivos.resultado.length > 0 && !filtrosAtivos.resultado.includes(row.dataset.resultado)) mostrar = false;
+
+        row.style.display = mostrar ? '' : 'none';
+        if (mostrar) visiveis++;
+    });
+
+    if(countDisplay) countDisplay.innerText = visiveis;
+}
+
+function limparFiltros() {
+    document.getElementById('searchInput').value = '';
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        cb.checked = (cb.id === 'st_ativo');
+    });
+    filtrar();
+    updateExportLink();
+    updateEtiquetasLink();
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar-col');
+    const content = document.getElementById('content-col');
+    const icon = document.getElementById('sidebarIcon');
+
+    if (sidebar.classList.contains('d-none')) {
+        sidebar.classList.remove('d-none');
+        content.classList.replace('col-12', 'col-md-9');
+        content.classList.add('col-lg-10');
+        icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
+    } else {
+        sidebar.classList.add('d-none');
+        content.classList.replace('col-md-9', 'col-12');
+        content.classList.remove('col-lg-10');
+        icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
+    }
+}
+
+function updateExportLink(){
+    const btnExport = document.getElementById('btnExport');
+    if(!btnExport) return;
+    const qs = buildQueryString(getFilterState());
+    btnExport.href = '{% url 'exportar_instrumentos' %}' + (qs ? ('?' + qs) : '');
+}
+
+function updateEtiquetasLink(){
+    const btnEtiquetas = document.getElementById('btnEtiquetas');
+    if(!btnEtiquetas) return;
+    const qs = buildQueryString(getFilterState());
+    const orient = (document.getElementById('etq_orient')?.value || 'portrait');
+    const cols = (document.getElementById('etq_cols')?.value || 2);
+    const rows = (document.getElementById('etq_rows')?.value || 5);
+    const margin = (document.getElementById('etq_margin')?.value || 10);
+    const pad = (document.getElementById('etq_pad')?.value || 5);
+    const extras = `orient=${encodeURIComponent(orient)}&cols=${encodeURIComponent(cols)}&rows=${encodeURIComponent(rows)}&margin_mm=${encodeURIComponent(margin)}&pad_mm=${encodeURIComponent(pad)}`;
+    const finalQs = qs ? (qs + '&' + extras) : extras;
+    btnEtiquetas.href = '{% url 'metrologia:export_etiquetas' %}' + (finalQs ? ('?' + finalQs) : '');
+}
+
+function renderEtiquetasSummary(){
+    const box = document.getElementById('etqSummary');
+    if(!box) return;
+    const countTxt = document.getElementById('countDisplay')?.innerText || '0';
+    const count = parseInt(countTxt, 10) || 0;
+    const state = getFilterState();
+    function fmt(arr){ return arr.length ? arr.join(', ') : 'Todos'; }
+
+    // Coleta nomes legíveis de categorias e setores selecionados
+    const catNames = Array.from(document.querySelectorAll('.filter-checkbox[data-category="categoria"]:checked'))
+        .map(cb => (cb.nextElementSibling ? cb.nextElementSibling.textContent.trim() : cb.value));
+    const setNames = Array.from(document.querySelectorAll('.filter-checkbox[data-category="setor"]:checked'))
+        .map(cb => (cb.nextElementSibling ? cb.nextElementSibling.textContent.trim() : cb.value));
+
+    const parts = [];
+    parts.push(`<strong>${count}</strong> instrumento${count===1?'':'s'}`);
+    if (state.sit.length) parts.push(`Situação: ${fmt(state.sit)}`);
+    if (state.st.length) parts.push(`Status: ${fmt(state.st)}`);
+
+    // Monta chips de categoria e setor quando houver seleção
+    let chipsHTML = '';
+    if (catNames.length) {
+        chipsHTML += `<div class=\"mt-1\"><span class=\"me-2 text-muted\">Categorias:</span>` +
+            catNames.map(n => `<span class=\"badge bg-light text-dark border me-1\">${n}</span>`).join(' ') + `</div>`;
+    }
+    if (setNames.length) {
+        chipsHTML += `<div class=\"mt-1\"><span class=\"me-2 text-muted\">Setores:</span>` +
+            setNames.map(n => `<span class=\"badge bg-light text-dark border me-1\">${n}</span>`).join(' ') + `</div>`;
+    }
+
+    box.innerHTML = `Serão geradas etiquetas para ${parts[0]}. <span class=\"ms-2\">${parts.slice(1).join(' • ')}</span>${chipsHTML}`;
+}
+</script>
+<script>
+// Seleção de linhas e integração com Etiquetas
+document.addEventListener('DOMContentLoaded', function(){
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', function(){
+            const rows = document.querySelectorAll('.instrumento-row');
+            rows.forEach(r => {
+                if (r.style.display === 'none') return; // aplica somente aos visíveis
+                const cb = r.querySelector('.row-select');
+                if (cb) cb.checked = selectAll.checked;
+            });
+            updateEtiquetasLink();
+            renderEtiquetasSummary();
+        });
+    }
+    document.querySelectorAll('.row-select').forEach(cb => {
+        cb.addEventListener('change', function(){
+            updateEtiquetasLink();
+            renderEtiquetasSummary();
+        });
+    });
+});
+
+function getSelectedIds(){
+    const ids = [];
+    document.querySelectorAll('.instrumento-row').forEach(r => {
+        if (r.style.display === 'none') return; // só da página visível
+        const cb = r.querySelector('.row-select');
+        if (cb && cb.checked) ids.push(cb.value);
+    });
+    return ids;
+}
+
+// Extende updateEtiquetasLink para incluir ids selecionados (se houver)
+const __origUpdateEtiquetasLink = updateEtiquetasLink;
+updateEtiquetasLink = function(){
+    __origUpdateEtiquetasLink();
+    const btnEtiquetas = document.getElementById('btnEtiquetas');
+    if (!btnEtiquetas) return;
+    const ids = getSelectedIds();
+    if (ids.length) {
+        const u = new URL(btnEtiquetas.href);
+        u.searchParams.set('ids', ids.join(','));
+        btnEtiquetas.href = u.toString();
+    }
+}
+
+// Atualiza o resumo para mostrar se há seleção manual
+const __origRenderEtiquetasSummary = renderEtiquetasSummary;
+renderEtiquetasSummary = function(){
+    __origRenderEtiquetasSummary();
+    const box = document.getElementById('etqSummary');
+    if (!box) return;
+    const ids = getSelectedIds();
+    if (ids.length) {
+        const note = document.createElement('div');
+        note.className = 'mt-2 text-primary small';
+        note.innerHTML = `Selecionados manualmente nesta página: <strong>${ids.length}</strong> (prioriza estes no PDF)`;
+        box.appendChild(note);
+    }
+}
+
+// Atualizar todas as datas de calibração em massa
+function atualizarTodasDatas() {
+    if (!confirm('Deseja atualizar todas as datas de próximas calibrações com base nos históricos mais recentes?\n\nIsso pode levar alguns minutos...')) {
+        return;
+    }
+    
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Atualizando...';
+    
+    fetch('{% url "metrologia:atualizar_todas_datas_calibracao" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`✅ Sucesso!\n\n${data.message}`);
+            location.reload();
+        } else {
+            alert(`❌ Erro:\n\n${data.message}`);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    })
+    .catch(error => {
+        alert(`❌ Erro na requisição:\n\n${error.message}`);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    });
+}
+
+// Função para selecionar todos os itens de uma categoria de filtro
+function selectAllInCategory(category) {
+    const checkboxes = document.querySelectorAll(`.filter-checkbox[data-category="${category}"]`);
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(cb => {
+        cb.checked = !allChecked;
+    });
+    
+    // Trigger change event to update filters
+    checkboxes.forEach(cb => {
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+}
+
+</script>
+{% endblock %}

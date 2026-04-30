@@ -1,0 +1,422 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh;">
+    
+    <!-- Header com Dados do Colaborador -->
+    <div class="container mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="text-white mb-1"><i class="bi bi-person-check"></i> Editar Colaborador</h2>
+                <p class="text-white-50 mb-0">Atualize as informações de <strong>{{ alvo.nome_completo }}</strong></p>
+            </div>
+            <div class="text-white">
+                <div class="display-6" style="font-size: 2rem;">{{ alvo.matricula }}</div>
+                <small class="text-white-50">Matrícula</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <form method="post" class="needs-validation">
+            {% csrf_token %}
+            
+            <!-- SEÇÃO 1: DADOS PESSOAIS -->
+            <div class="card shadow-lg mb-4 border-0">
+                <div class="card-header bg-white border-bottom-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-primary bg-opacity-10 rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-person text-primary" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 text-dark fw-bold">Dados Pessoais</h5>
+                            <small class="text-muted">Informações básicas do colaborador</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold text-dark">Nome Completo <span class="text-danger">*</span></label>
+                            {{ form.nome_completo }}
+                            {% if form.nome_completo.errors %}
+                                <div class="invalid-feedback d-block">{{ form.nome_completo.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1"><i class="bi bi-info-circle"></i> Nome será convertido para MAIÚSCULAS</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">CPF</label>
+                            {{ form.cpf }}
+                            {% if form.cpf.errors %}
+                                <div class="invalid-feedback d-block">{{ form.cpf.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1">Formato: XXX.XXX.XXX-XX</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEÇÃO 2: DADOS CORPORATIVOS -->
+            <div class="card shadow-lg mb-4 border-0">
+                <div class="card-header bg-white border-bottom-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-success bg-opacity-10 rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-briefcase text-success" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 text-dark fw-bold">Dados Corporativos</h5>
+                            <small class="text-muted">Cargo, setor e estrutura organizacional</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold text-dark">Matrícula <span class="text-danger">*</span></label>
+                            {{ form.matricula }}
+                            {% if form.matricula.errors %}
+                                <div class="invalid-feedback d-block">{{ form.matricula.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold text-dark">Cargo <span class="text-danger">*</span></label>
+                            {{ form.cargo }}
+                            {% if form.cargo.errors %}
+                                <div class="invalid-feedback d-block">{{ form.cargo.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold text-dark">Grupo</label>
+                            {{ form.grupo }}
+                            {% if form.grupo.errors %}
+                                <div class="invalid-feedback d-block">{{ form.grupo.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold text-dark">Turno <span class="text-danger">*</span></label>
+                            {{ form.turno }}
+                            {% if form.turno.errors %}
+                                <div class="invalid-feedback d-block">{{ form.turno.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Setor</label>
+                            {{ form.setor }}
+                            {% if form.setor.errors %}
+                                <div class="invalid-feedback d-block">{{ form.setor.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Centro de Custo</label>
+                            {{ form.centro_custo }}
+                            {% if form.centro_custo.errors %}
+                                <div class="invalid-feedback d-block">{{ form.centro_custo.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEÇÃO 3: SALÁRIO E ESTRUTURA SALARIAL -->
+            <div class="card shadow-lg mb-4 border-0">
+                <div class="card-header bg-white border-bottom-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-warning bg-opacity-10 rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-currency-dollar text-warning" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 text-dark fw-bold">Salário</h5>
+                            <small class="text-muted">Informações salariais do colaborador</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Salário Mensal (R$)</label>
+                            {{ form.salario }}
+                            {% if form.salario.errors %}
+                                <div class="invalid-feedback d-block">{{ form.salario.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1"><i class="bi bi-lock"></i> Apenas superuser e gerentes podem editar</small>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="alert alert-info w-100 mb-0">
+                                <i class="bi bi-info-circle"></i> Alterações salariais são registradas no histórico
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEÇÃO 4: HIERARQUIA E GESTÃO -->
+            <div class="card shadow-lg mb-4 border-0">
+                <div class="card-header bg-white border-bottom-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-info bg-opacity-10 rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-diagram-2 text-info" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 text-dark fw-bold">Hierarquia Organizacional</h5>
+                            <small class="text-muted">Relacionamento com lideranças</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Líder / Superior Direto</label>
+                            {{ form.lider }}
+                            {% if form.lider.errors %}
+                                <div class="invalid-feedback d-block">{{ form.lider.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1">Quem gerencia diretamente</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Supervisor</label>
+                            {{ form.supervisor }}
+                            {% if form.supervisor.errors %}
+                                <div class="invalid-feedback d-block">{{ form.supervisor.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1">Supervisão de 2º nível</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Coordenador / Gerente</label>
+                            {{ form.gerente }}
+                            {% if form.gerente.errors %}
+                                <div class="invalid-feedback d-block">{{ form.gerente.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1">Gerência de 3º nível</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEÇÃO 5: STATUS E DISPONIBILIDADE -->
+            <div class="card shadow-lg mb-4 border-0">
+                <div class="card-header bg-white border-bottom-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-danger bg-opacity-10 rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-toggle-on text-danger" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 text-dark fw-bold">Status e Disponibilidade</h5>
+                            <small class="text-muted">Situação atual do colaborador</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch form-check-lg">
+                                {{ form.is_active }}
+                                <label class="form-check-label fw-bold" for="{{ form.is_active.id_for_label }}">
+                                    <i class="bi bi-check-circle"></i> Colaborador Ativo
+                                </label>
+                                <small class="text-muted d-block mt-2">Desmarque para desligar o colaborador</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch form-check-lg">
+                                {{ form.em_ferias }}
+                                <label class="form-check-label fw-bold" for="{{ form.em_ferias.id_for_label }}">
+                                    <i class="bi bi-calendar-event"></i> Está de Férias
+                                </label>
+                                <small class="text-muted d-block mt-2">Marque se colaborador está em férias</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch form-check-lg">
+                                {{ form.afastado }}
+                                <label class="form-check-label fw-bold" for="{{ form.afastado.id_for_label }}">
+                                    <i class="bi bi-exclamation-circle"></i> Afastado
+                                </label>
+                                <small class="text-muted d-block mt-2">Marque se colaborador está afastado (INSS, Licença, etc.)</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Campos de Afastamento (aparecem quando afastado está marcado) -->
+                    <div id="afastamento-fields" class="row g-3 mt-3" style="display: none; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Tipo de Afastamento</label>
+                            {{ form.tipo_afastamento }}
+                            <small class="text-muted d-block mt-1">Ex: INSS, LICENÇA_MATERNIDADE, LICENÇA_PATERNIDADE, etc.</small>
+                            {% if form.tipo_afastamento.errors %}
+                                <div class="invalid-feedback d-block">{{ form.tipo_afastamento.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Data Início</label>
+                            {{ form.data_inicio_afastamento }}
+                            {% if form.data_inicio_afastamento.errors %}
+                                <div class="invalid-feedback d-block">{{ form.data_inicio_afastamento.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Data Fim</label>
+                            {{ form.data_fim_afastamento }}
+                            {% if form.data_fim_afastamento.errors %}
+                                <div class="invalid-feedback d-block">{{ form.data_fim_afastamento.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEÇÃO 6: PACOTES DE TREINAMENTO -->
+            <div class="card shadow-lg mb-4 border-0">
+                <div class="card-header bg-white border-bottom-0">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-secondary bg-opacity-10 rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-book-half text-secondary" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 text-dark fw-bold">Pacotes de Treinamento</h5>
+                            <small class="text-muted">Treinamentos vinculados ao colaborador</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <label class="form-label fw-bold text-dark mb-3">Selecionar Pacotes</label>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        {{ form.pacotes_treinamento }}
+                    </div>
+                    <small class="text-muted d-block mt-2"><i class="bi bi-info-circle"></i> Segure <kbd>Ctrl</kbd> (ou <kbd>Cmd</kbd> no Mac) para selecionar múltiplos pacotes</small>
+                    {% if form.pacotes_treinamento.errors %}
+                        <div class="invalid-feedback d-block">{{ form.pacotes_treinamento.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- BOTÕES DE AÇÃO -->
+            <div class="card shadow-lg border-0 mb-5">
+                <div class="card-body p-4">
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'detalhe_colaborador' alvo.id %}" class="btn btn-outline-secondary btn-lg">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> Salvar Alterações
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-3 text-center">
+                        <i class="bi bi-shield-check"></i> Suas alterações serão salvas com segurança
+                    </small>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<style>
+    /* Inputs customizados */
+    .form-control, .form-select {
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+    }
+
+    .form-label {
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+        color: #333;
+    }
+
+    /* Cards */
+    .card {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 20px;
+        background: #f8f9fa;
+    }
+
+    /* Validação */
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 0.85rem;
+        margin-top: 5px;
+    }
+
+    /* Switches customizados */
+    .form-check-lg .form-check-input {
+        width: 3rem;
+        height: 1.5rem;
+        margin-top: 0.35rem;
+    }
+
+    .form-check-lg .form-check-label {
+        font-size: 1rem;
+        padding-left: 1rem;
+    }
+
+    /* Buttons */
+    .btn {
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 12px 24px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Responsivo */
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 10px;
+        }
+
+        .card {
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const afastadoCheckbox = document.getElementById('{{ form.afastado.id_for_label }}');
+    const afastamentoFields = document.getElementById('afastamento-fields');
+    
+    // Função para mostrar/ocultar campos de afastamento
+    function toggleAfastamentoFields() {
+        if (afastadoCheckbox.checked) {
+            afastamentoFields.style.display = 'grid';
+        } else {
+            afastamentoFields.style.display = 'none';
+        }
+    }
+    
+    // Executar ao carregar a página
+    toggleAfastamentoFields();
+    
+    // Adicionar listener para mudanças
+    afastadoCheckbox.addEventListener('change', toggleAfastamentoFields);
+});
+</script>
+
+{% endblock %}

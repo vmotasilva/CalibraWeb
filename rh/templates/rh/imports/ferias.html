@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0"><i class="bi bi-airplane"></i> Importar Programação de Férias</h4>
+                </div>
+                <div class="card-body">
+                    {% if jobs %}
+                    <div class="alert alert-secondary">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Últimas Importações:</strong>
+                                <ul class="mb-0 small">
+                                                                        {% for j in jobs %}
+                                                                        <li>#{{ j.id }} - {{ j.filename }} —
+                                                                                {% if j.status == 'SUCCESS' %}
+                                                                                    <span class="badge bg-success">SUCCESS</span>
+                                                                                {% elif j.status == 'FAILURE' %}
+                                                                                    <span class="badge bg-danger">FAILURE</span>
+                                                                                {% elif j.status == 'STARTED' %}
+                                                                                    <span class="badge bg-warning text-dark">STARTED</span>
+                                                                                {% elif j.status == 'PENDING' %}
+                                                                                    <span class="badge bg-secondary">PENDING</span>
+                                                                                {% else %}
+                                                                                    <span class="badge bg-light text-dark">{{ j.status }}</span>
+                                                                                {% endif %}
+                                                                        </li>
+                                                                        {% endfor %}
+                                </ul>
+                            </div>
+                            <div>
+                                <a href="{% url 'import_jobs' %}" class="btn btn-outline-dark btn-sm">Detalhes</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <p class="text-muted">
+                        Atualize a programação e o saldo de férias da equipe através de uma planilha Excel.
+                        O sistema usará a <strong>Matrícula</strong> para vincular ao colaborador.
+                    </p>
+
+                    <div class="alert alert-light border">
+                        <strong>Colunas Obrigatórias:</strong><br>
+                        <code>MATRICULA</code>, <code>AQUISITIVO_FIM</code> (Data vencimento do período)<br><br>
+                        <strong>Opcionais (Programação):</strong><br>
+                        <code>AQUISITIVO_INICIO</code>, <code>DATA_INICIO</code>, <code>DATA_FIM</code>, <code>STATUS</code>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            {{ form.as_p }}
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-info text-white fw-bold">
+                                Processar Arquivo
+                            </button>
+                            <a href="{% url 'dl_template_ferias' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-download"></i> Baixar Modelo
+                            </a>
+                            <a href="{% url 'modulo_rh' %}" class="btn btn-link text-muted">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

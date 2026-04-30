@@ -1,0 +1,562 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Gerenciar Permissões - Calibra QMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .permission-table {
+        font-size: 0.85rem;
+    }
+    
+    .permission-table th {
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        z-index: 10;
+    }
+    
+    .permission-table th.rotate {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+        height: 140px;
+        padding: 8px 4px;
+        font-weight: 500;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+    
+    .permission-table td {
+        text-align: center;
+        vertical-align: middle;
+    }
+    
+    .permission-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    
+    .permission-checkbox:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+    
+    .user-row:hover {
+        background-color: rgba(0, 123, 255, 0.05);
+    }
+    
+    .badge-superuser {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .badge-staff {
+        background-color: #fd7e14;
+        color: white;
+    }
+    
+    .model-header {
+        background-color: #e9ecef;
+        font-weight: bold;
+        border-top: 2px solid #dee2e6;
+    }
+    
+    .table-container {
+        max-height: calc(100vh - 280px);
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+    }
+    
+    .search-box {
+        max-width: 300px;
+    }
+    
+    .saving-indicator {
+        display: none;
+        color: #0d6efd;
+    }
+    
+    .saving-indicator.active {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .legend-item {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 15px;
+        font-size: 0.8rem;
+    }
+    
+    .legend-box {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        margin-right: 5px;
+    }
+    
+    .staff-toggle {
+        cursor: pointer;
+    }
+    
+    .staff-toggle:hover {
+        opacity: 0.8;
+    }
+    
+    /* Cores por modelo */
+    .perm-colaborador { background-color: rgba(13, 110, 253, 0.1); }
+    .perm-documentopessoal { background-color: rgba(25, 135, 84, 0.1); }
+    .perm-ferias { background-color: rgba(255, 193, 7, 0.1); }
+    .perm-ocorrencia { background-color: rgba(220, 53, 69, 0.1); }
+    
+    .header-colaborador { border-bottom: 3px solid #0d6efd; }
+    .header-documentopessoal { border-bottom: 3px solid #198754; }
+    .header-ferias { border-bottom: 3px solid #ffc107; }
+    .header-ocorrencia { border-bottom: 3px solid #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1 class="h3 d-flex align-items-center gap-2">
+                <i class="fas fa-user-shield text-primary"></i>
+                Gerenciar Permissões
+            </h1>
+            <p class="text-muted mb-0">Gerencie as permissões dos usuários do módulo RH</p>
+        </div>
+        <div class="col-md-6">
+            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end align-items-center">
+                <span class="saving-indicator" id="savingIndicator">
+                    <span class="spinner-border spinner-border-sm"></span>
+                    Salvando...
+                </span>
+                <a href="{% url 'modulo_rh' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar ao RH
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros e Legenda -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="input-group search-box">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" id="searchUser" placeholder="Buscar usuário...">
+            </div>
+        </div>
+        <div class="col-md-8 d-flex flex-wrap gap-2 align-items-center justify-content-start justify-content-md-end">
+            <div class="legend-item">
+                <span class="legend-box" style="background-color: #0d6efd;"></span>
+                Colaborador
+            </div>
+            <div class="legend-item">
+                <span class="legend-box" style="background-color: #198754;"></span>
+                Doc. Pessoal
+            </div>
+            <div class="legend-item">
+                <span class="legend-box" style="background-color: #ffc107;"></span>
+                Férias
+            </div>
+            <div class="legend-item">
+                <span class="legend-box" style="background-color: #dc3545;"></span>
+                Ocorrência
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-primary">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-0 small">Total de Usuários</p>
+                            <h4 class="mb-0 text-primary fw-bold">{{ total_usuarios }}</h4>
+                        </div>
+                        <i class="fas fa-users text-primary opacity-25" style="font-size: 1.8rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-body py-2">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>Dica:</strong> Clique nos checkboxes para alternar as permissões. 
+                        Superusuários têm acesso total automaticamente.
+                        Usuários <span class="badge badge-staff">Staff</span> podem acessar o painel admin.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Permissões -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-container">
+                <table class="table table-bordered table-sm permission-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 180px; position: sticky; left: 0; background: #f8f9fa; z-index: 11;">
+                                Usuário
+                            </th>
+                            <th style="min-width: 150px;">Colaborador</th>
+                            <th style="min-width: 100px;">Setor</th>
+                            <th style="width: 60px;" title="Status Staff (pode acessar admin)">Staff</th>
+                            <!-- Permissões Colaborador -->
+                            <th class="rotate header-colaborador" title="Visualizar Colaborador">
+                                <i class="fas fa-eye text-muted me-1"></i> Ver
+                            </th>
+                            <th class="rotate header-colaborador" title="Adicionar Colaborador">
+                                <i class="fas fa-plus text-muted me-1"></i> Add
+                            </th>
+                            <th class="rotate header-colaborador" title="Editar Colaborador">
+                                <i class="fas fa-edit text-muted me-1"></i> Edit
+                            </th>
+                            <th class="rotate header-colaborador" title="Excluir Colaborador">
+                                <i class="fas fa-trash text-muted me-1"></i> Del
+                            </th>
+                            <!-- Permissões Documento Pessoal -->
+                            <th class="rotate header-documentopessoal" title="Visualizar Documento">
+                                <i class="fas fa-eye text-muted me-1"></i> Ver
+                            </th>
+                            <th class="rotate header-documentopessoal" title="Adicionar Documento">
+                                <i class="fas fa-plus text-muted me-1"></i> Add
+                            </th>
+                            <th class="rotate header-documentopessoal" title="Editar Documento">
+                                <i class="fas fa-edit text-muted me-1"></i> Edit
+                            </th>
+                            <th class="rotate header-documentopessoal" title="Excluir Documento">
+                                <i class="fas fa-trash text-muted me-1"></i> Del
+                            </th>
+                            <!-- Permissões Férias -->
+                            <th class="rotate header-ferias" title="Visualizar Férias">
+                                <i class="fas fa-eye text-muted me-1"></i> Ver
+                            </th>
+                            <th class="rotate header-ferias" title="Adicionar Férias">
+                                <i class="fas fa-plus text-muted me-1"></i> Add
+                            </th>
+                            <th class="rotate header-ferias" title="Editar Férias">
+                                <i class="fas fa-edit text-muted me-1"></i> Edit
+                            </th>
+                            <th class="rotate header-ferias" title="Excluir Férias">
+                                <i class="fas fa-trash text-muted me-1"></i> Del
+                            </th>
+                            <!-- Permissões Ocorrência -->
+                            <th class="rotate header-ocorrencia" title="Visualizar Ocorrência">
+                                <i class="fas fa-eye text-muted me-1"></i> Ver
+                            </th>
+                            <th class="rotate header-ocorrencia" title="Adicionar Ocorrência">
+                                <i class="fas fa-plus text-muted me-1"></i> Add
+                            </th>
+                            <th class="rotate header-ocorrencia" title="Editar Ocorrência">
+                                <i class="fas fa-edit text-muted me-1"></i> Edit
+                            </th>
+                            <th class="rotate header-ocorrencia" title="Excluir Ocorrência">
+                                <i class="fas fa-trash text-muted me-1"></i> Del
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="permissionsTableBody">
+                        {% for u in usuarios %}
+                        <tr class="user-row" data-user-id="{{ u.user.id }}" data-username="{{ u.user.username|lower }}">
+                            <td style="position: sticky; left: 0; background: white; z-index: 5;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fas fa-user-circle text-secondary"></i>
+                                    <div>
+                                        <strong>{{ u.user.username }}</strong>
+                                        {% if u.is_superuser %}
+                                        <span class="badge badge-superuser ms-1" title="Superusuário - acesso total">
+                                            <i class="fas fa-crown"></i>
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-start">
+                                {% if u.colaborador_nome %}
+                                    <small>{{ u.colaborador_nome }}</small>
+                                {% else %}
+                                    <small class="text-muted">-</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ u.colaborador_setor }}</small>
+                            </td>
+                            <td>
+                                {% if u.is_superuser %}
+                                    <span class="badge bg-secondary" title="Superusuários são automaticamente staff">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
+                                {% else %}
+                                    <span class="staff-toggle badge {% if u.is_staff %}badge-staff{% else %}bg-light text-dark{% endif %}"
+                                          data-user-id="{{ u.user.id }}"
+                                          title="Clique para alternar status de Staff">
+                                        {% if u.is_staff %}
+                                            <i class="fas fa-check"></i>
+                                        {% else %}
+                                            <i class="fas fa-times"></i>
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <!-- Permissões Colaborador -->
+                            <td class="perm-colaborador">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="view_colaborador"
+                                       {% if 'view_colaborador' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-colaborador">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="add_colaborador"
+                                       {% if 'add_colaborador' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-colaborador">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="change_colaborador"
+                                       {% if 'change_colaborador' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-colaborador">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="delete_colaborador"
+                                       {% if 'delete_colaborador' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <!-- Permissões Documento Pessoal -->
+                            <td class="perm-documentopessoal">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="view_documentopessoal"
+                                       {% if 'view_documentopessoal' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-documentopessoal">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="add_documentopessoal"
+                                       {% if 'add_documentopessoal' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-documentopessoal">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="change_documentopessoal"
+                                       {% if 'change_documentopessoal' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-documentopessoal">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="delete_documentopessoal"
+                                       {% if 'delete_documentopessoal' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <!-- Permissões Férias -->
+                            <td class="perm-ferias">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="view_ferias"
+                                       {% if 'view_ferias' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-ferias">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="add_ferias"
+                                       {% if 'add_ferias' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-ferias">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="change_ferias"
+                                       {% if 'change_ferias' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-ferias">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="delete_ferias"
+                                       {% if 'delete_ferias' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <!-- Permissões Ocorrência -->
+                            <td class="perm-ocorrencia">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="view_ocorrencia"
+                                       {% if 'view_ocorrencia' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-ocorrencia">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="add_ocorrencia"
+                                       {% if 'add_ocorrencia' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-ocorrencia">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="change_ocorrencia"
+                                       {% if 'change_ocorrencia' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                            <td class="perm-ocorrencia">
+                                <input type="checkbox" class="form-check-input permission-checkbox"
+                                       data-codename="delete_ocorrencia"
+                                       {% if 'delete_ocorrencia' in u.permissoes or u.is_superuser %}checked{% endif %}
+                                       {% if u.is_superuser %}disabled{% endif %}>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="20" class="text-center py-4 text-muted">
+                                <i class="fas fa-users-slash fa-2x mb-2"></i>
+                                <p>Nenhum usuário encontrado.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast de notificação -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+    <div id="toastNotification" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMessage">
+                Permissão atualizada com sucesso!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const savingIndicator = document.getElementById('savingIndicator');
+    const toast = new bootstrap.Toast(document.getElementById('toastNotification'), {
+        delay: 2000
+    });
+    const toastEl = document.getElementById('toastNotification');
+    const toastMessage = document.getElementById('toastMessage');
+    
+    // Função para mostrar toast
+    function showToast(message, isSuccess = true) {
+        toastEl.classList.remove('text-bg-success', 'text-bg-danger');
+        toastEl.classList.add(isSuccess ? 'text-bg-success' : 'text-bg-danger');
+        toastMessage.textContent = message;
+        toast.show();
+    }
+    
+    // Função para mostrar/esconder indicador de salvamento
+    function showSaving(show) {
+        savingIndicator.classList.toggle('active', show);
+    }
+    
+    // Handler para checkboxes de permissão
+    document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', async function() {
+            const row = this.closest('tr');
+            const userId = row.dataset.userId;
+            const codename = this.dataset.codename;
+            const acao = this.checked ? 'add' : 'remove';
+            
+            showSaving(true);
+            
+            try {
+                const response = await fetch("{% url 'rh:api_atualizar_permissao' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        codename: codename,
+                        acao: acao
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message || 'Permissão atualizada!', true);
+                } else {
+                    showToast(data.error || 'Erro ao atualizar permissão', false);
+                    // Reverter o checkbox
+                    this.checked = !this.checked;
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast('Erro de conexão', false);
+                this.checked = !this.checked;
+            } finally {
+                showSaving(false);
+            }
+        });
+    });
+    
+    // Handler para toggle de staff
+    document.querySelectorAll('.staff-toggle').forEach(badge => {
+        badge.addEventListener('click', async function() {
+            const userId = this.dataset.userId;
+            
+            showSaving(true);
+            
+            try {
+                const response = await fetch("{% url 'rh:api_toggle_staff' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Atualizar visual do badge
+                    this.classList.toggle('badge-staff', data.is_staff);
+                    this.classList.toggle('bg-light', !data.is_staff);
+                    this.classList.toggle('text-dark', !data.is_staff);
+                    this.innerHTML = data.is_staff 
+                        ? '<i class="fas fa-check"></i>' 
+                        : '<i class="fas fa-times"></i>';
+                    showToast(data.message, true);
+                } else {
+                    showToast(data.error || 'Erro ao alternar staff', false);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast('Erro de conexão', false);
+            } finally {
+                showSaving(false);
+            }
+        });
+    });
+    
+    // Busca de usuários
+    const searchInput = document.getElementById('searchUser');
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        document.querySelectorAll('#permissionsTableBody tr').forEach(row => {
+            const username = row.dataset.username || '';
+            const colaborador = row.querySelector('td:nth-child(2)')?.textContent?.toLowerCase() || '';
+            const matches = username.includes(searchTerm) || colaborador.includes(searchTerm);
+            row.style.display = matches ? '' : 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

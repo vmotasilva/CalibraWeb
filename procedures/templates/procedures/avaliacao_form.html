@@ -1,0 +1,301 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Avaliar Habilidade{% endblock %}
+{% block header_title %}Avaliar Habilidade{% endblock %}
+
+{% block content %}
+<style>
+    .nivel-card {
+        cursor: pointer;
+        transition: all 0.3s;
+        border: 3px solid transparent;
+    }
+    .nivel-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .nivel-card.selected {
+        border-color: #0d6efd !important;
+        box-shadow: 0 0 15px rgba(13, 110, 253, 0.8) !important;
+        background-color: rgba(13, 110, 253, 0.1) !important;
+    }
+    .nivel-badge-large {
+        width: 60px;
+        height: 60px;
+        line-height: 60px;
+        border-radius: 50%;
+        font-size: 2rem;
+        font-weight: bold;
+        display: inline-block;
+        margin-bottom: 10px;
+    }
+    .nivel-na-bg { background: #e9ecef; color: #6c757d; }
+    .nivel-0-bg { background: #dc3545; color: white; }
+    .nivel-1-bg { background: #ffc107; color: white; }
+    .nivel-2-bg { background: #28a745; color: white; }
+    .nivel-3-bg { background: #0dcaf0; color: white; }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <!-- Breadcrumb/Context -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'procedures:matriz_avaliacoes' %}?matriz={{ matriz.id }}">{{ matriz.nome }}</a>
+                    </li>
+                    <li class="breadcrumb-item active">Avaliação</li>
+                </ol>
+            </nav>
+
+            <!-- Card Principal -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-check"></i> Avaliar Habilidade
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Informações -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Colaborador:</strong></p>
+                            <p class="text-primary fs-5">{{ colaborador.nome_completo }}</p>
+                            <p class="text-muted small">Matrícula: {{ colaborador.matricula }}</p>
+                            {% if colaborador.setor %}
+                            <p class="text-muted small">Setor: {{ colaborador.setor }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Disciplina:</strong></p>
+                            <p class="text-info fs-5">{{ disciplina.codigo }} - {{ disciplina.nome }}</p>
+                            {% if disciplina.descricao %}
+                            <p class="text-muted small">{{ disciplina.descricao|truncatewords:15 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if avaliacao %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Avaliação existente:</strong> 
+                        Nível {{ avaliacao.nivel }} 
+                        - Avaliado em {{ avaliacao.data_avaliacao|date:"d/m/Y" }}
+                        {% if avaliacao.avaliador %}
+                        por {{ avaliacao.avaliador.nome_completo }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <hr>
+
+                    <!-- Formulário -->
+                    <form method="POST" id="avaliacaoForm">
+                        {% csrf_token %}
+                        
+                        <h6 class="mb-3">Selecione o nível de competência:</h6>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3 col-6">
+                                <div class="card nivel-card text-center h-100 {% if avaliacao and avaliacao.nivel == -1 %}selected{% endif %}" 
+                                     data-nivel="-1" style="cursor: pointer;" onclick="selecionarNivel(this)">
+                                    <div class="card-body">
+                                        <span class="nivel-badge-large nivel-na-bg">N/A</span>
+                                        <h6>Não se Aplica</h6>
+                                        <p class="small text-muted mb-0">Disciplina não aplicável</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3 col-6">
+                                <div class="card nivel-card text-center h-100 {% if avaliacao and avaliacao.nivel == 0 %}selected{% endif %}" 
+                                     data-nivel="0" style="cursor: pointer;" onclick="selecionarNivel(this)">
+                                    <div class="card-body">
+                                        <span class="nivel-badge-large nivel-0-bg">0</span>
+                                        <h6>Há Intenção</h6>
+                                        <p class="small text-muted mb-0">Há intenção de treinar</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3 col-6">
+                                <div class="card nivel-card text-center h-100 {% if avaliacao and avaliacao.nivel == 1 %}selected{% endif %}" 
+                                     data-nivel="1" style="cursor: pointer;" onclick="selecionarNivel(this)">
+                                    <div class="card-body">
+                                        <span class="nivel-badge-large nivel-1-bg">1</span>
+                                        <h6>Em Treinamento</h6>
+                                        <p class="small text-muted mb-0">Colaborador em treinamento</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3 col-6">
+                                <div class="card nivel-card text-center h-100 {% if avaliacao and avaliacao.nivel == 2 %}selected{% endif %}" 
+                                     data-nivel="2" style="cursor: pointer;" onclick="selecionarNivel(this)">
+                                    <div class="card-body">
+                                        <span class="nivel-badge-large nivel-2-bg">2</span>
+                                        <h6>Treinado</h6>
+                                        <p class="small text-muted mb-0">Treinado na disciplina</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3 col-6">
+                                <div class="card nivel-card text-center h-100 {% if avaliacao and avaliacao.nivel == 3 %}selected{% endif %}" 
+                                     data-nivel="3" style="cursor: pointer;" onclick="selecionarNivel(this)">
+                                    <div class="card-body">
+                                        <span class="nivel-badge-large nivel-3-bg">3</span>
+                                        <h6>LOFT</h6>
+                                        <p class="small text-muted mb-0">Treinado na Plataforma LOFT</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Campo hidden para o nível selecionado -->
+                        <input type="hidden" name="nivel" id="nivelInput" value="{% if avaliacao %}{{ avaliacao.nivel }}{% endif %}">
+                        
+                        <!-- Data da Avaliação -->
+                        <div class="mb-3">
+                            <label for="dataAvaliacao" class="form-label"><strong>Data da Avaliação</strong></label>
+                            <input type="date" id="dataAvaliacao" name="data_avaliacao" class="form-control" 
+                                   value="{% if avaliacao %}{{ avaliacao.data_avaliacao|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}"
+                                   required>
+                            <small class="text-muted">Data em que a avaliação foi realizada</small>
+                        </div>
+                        
+                        <!-- Observações (opcional) -->
+                        <div class="mb-3">
+                            <label for="observacoes" class="form-label">Observações (opcional)</label>
+                            <textarea id="observacoes" name="observacoes" class="form-control" rows="3">{% if avaliacao %}{{ avaliacao.observacoes }}{% endif %}</textarea>
+                            <small class="text-muted">Comentários ou observações sobre a avaliação</small>
+                        </div>
+                        
+                        <!-- Histórico de Avaliações -->
+                        {% if historico %}
+                        <div class="card bg-light mt-4 mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0"><i class="bi bi-clock-history"></i> Histórico de Alterações</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="timeline">
+                                    {% for registro in historico %}
+                                    <div class="timeline-item mb-3 pb-3 border-bottom" style="{% if forloop.last %}border-bottom: none;{% endif %}">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1">
+                                                    {% if registro.tipo_alteracao == 'criacao' %}
+                                                    <span class="badge bg-success">Criação</span>
+                                                    {% else %}
+                                                    <span class="badge bg-warning">Atualização</span>
+                                                    {% endif %}
+                                                </h6>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-calendar"></i> {{ registro.alterado_em|date:"d/m/Y H:i" }}
+                                                </small>
+                                            </div>
+                                            {% if registro.avaliador %}
+                                            <small class="text-muted">
+                                                <i class="bi bi-person"></i> {{ registro.avaliador.nome_completo }}
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="mt-2">
+                                            {% if registro.tipo_alteracao == 'criacao' %}
+                                            <p class="mb-1">
+                                                <strong>Nível:</strong> 
+                                                <span style="display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: 
+                                                {% if registro.nivel_novo == -1 %}#e9ecef; color: #6c757d;{% elif registro.nivel_novo == 0 %}#dc3545; color: white;{% elif registro.nivel_novo == 1 %}#ffc107; color: white;{% elif registro.nivel_novo == 2 %}#28a745; color: white;{% elif registro.nivel_novo == 3 %}#0dcaf0; color: white;{% endif %}
+                                                font-weight: bold; font-size: 1rem;">
+                                                    {% if registro.nivel_novo == -1 %}N/A{% else %}{{ registro.nivel_novo }}{% endif %}
+                                                </span>
+                                            </p>
+                                            {% else %}
+                                            <p class="mb-1">
+                                                <strong>Nível:</strong> 
+                                                <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #e9ecef; color: #6c757d; font-weight: bold;">
+                                                    {% if registro.nivel_anterior == -1 %}N/A{% else %}{{ registro.nivel_anterior }}{% endif %}
+                                                </span>
+                                                → 
+                                                <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: 
+                                                {% if registro.nivel_novo == -1 %}#e9ecef; color: #6c757d;{% elif registro.nivel_novo == 0 %}#dc3545; color: white;{% elif registro.nivel_novo == 1 %}#ffc107; color: white;{% elif registro.nivel_novo == 2 %}#28a745; color: white;{% elif registro.nivel_novo == 3 %}#0dcaf0; color: white;{% endif %}
+                                                font-weight: bold;">
+                                                    {% if registro.nivel_novo == -1 %}N/A{% else %}{{ registro.nivel_novo }}{% endif %}
+                                                </span>
+                                            </p>
+                                            {% endif %}
+                                            
+                                            <p class="mb-1">
+                                                <strong>Data da avaliação:</strong> {{ registro.data_avaliacao_nova|date:"d/m/Y" }}
+                                            </p>
+                                            
+                                            {% if registro.observacoes_nova %}
+                                            <p class="mb-0">
+                                                <strong>Observações:</strong><br>
+                                                <small class="text-muted">{{ registro.observacoes_nova }}</small>
+                                            </p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'procedures:matriz_avaliacoes' %}?matriz={{ matriz.id }}" 
+                               class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Voltar para Matriz
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="btnSalvar" disabled>
+                                <i class="bi bi-check-circle"></i> Salvar Avaliação
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function selecionarNivel(element) {
+    console.log('Clicou no card, data-nivel:', element.getAttribute('data-nivel'));
+    
+    // Remove selected de todos
+    document.querySelectorAll('.nivel-card').forEach(c => c.classList.remove('selected'));
+    
+    // Adiciona selected ao clicado
+    element.classList.add('selected');
+    
+    // Atualiza o input hidden com o nivel
+    const nivel = element.getAttribute('data-nivel');
+    document.getElementById('nivelInput').value = nivel;
+    
+    // Habilita o botão
+    document.getElementById('btnSalvar').disabled = false;
+    
+    console.log('Nível selecionado:', nivel);
+}
+
+// Validar ao enviar o formulário
+document.getElementById('avaliacaoForm').addEventListener('submit', function(e) {
+    const nivelInput = document.getElementById('nivelInput').value;
+    if (!nivelInput) {
+        e.preventDefault();
+        alert('Por favor, selecione um nível de competência!');
+        return false;
+    }
+    console.log('Enviando formulário com nível:', nivelInput);
+});
+
+// Se já tiver avaliação, habilitar botão
+{% if avaliacao %}
+document.getElementById('btnSalvar').disabled = false;
+{% endif %}
+</script>
+
+{% endblock %}

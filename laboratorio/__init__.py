@@ -1,0 +1,1 @@
+"""Aplicacao do modulo Laboratorio."""

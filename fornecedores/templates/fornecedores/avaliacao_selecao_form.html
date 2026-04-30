@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Avaliação de Seleção - {{ fornecedor.empresa }}</h2>
+    
+    {% if ultima_avaliacao %}
+    <div class="alert alert-info" role="alert">
+        <strong>Última avaliação:</strong> {{ ultima_avaliacao.data|date:"d/m/Y" }} 
+        <strong>Resultado:</strong> {{ ultima_avaliacao.resultado }}
+        <strong>Pontuação:</strong> {{ ultima_avaliacao.pontuacao_ano|floatformat:1 }}%
+    </div>
+    {% endif %}
+    
+    <form method="post" class="mt-4">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="data" class="form-label">Data da Avaliação</label>
+            <input 
+                type="date" 
+                name="data" 
+                id="data" 
+                class="form-control" 
+                value="{% if ultima_avaliacao %}{{ ultima_avaliacao.data|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}"
+                required
+            >
+        </div>
+        
+        <div class="mb-3">
+            <label for="observacao" class="form-label">Observação</label>
+            <textarea name="observacao" id="observacao" class="form-control" rows="3"></textarea>
+        </div>
+        
+        <h4 class="mt-4 mb-3">Perguntas</h4>
+        <div class="list-group">
+            {% for item in perguntas_com_respostas %}
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="flex-grow-1">
+                        <h5>{{ item.pergunta.texto }}</h5>
+                        <small class="text-muted">Ordem: {{ item.pergunta.ordem }}</small>
+                    </div>
+                </div>
+                
+                <div class="form-check">
+                    <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="resposta_{{ item.pergunta.id }}" 
+                        name="resposta_{{ item.pergunta.id }}"
+                        {% if item.resposta_anterior %}checked{% endif %}
+                    >
+                    <label class="form-check-label" for="resposta_{{ item.pergunta.id }}">
+                        Sim
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="mt-4">
+            <button type="submit" class="btn btn-success btn-lg">Salvar Avaliação</button>
+            <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary btn-lg">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dataInput = document.getElementById('data');
+    
+    // Preencher data com hoje se vazio
+    if (!dataInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dataInput.value = today;
+    }
+});
+</script>
+{% endblock %}

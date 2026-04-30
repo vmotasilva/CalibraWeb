@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load nav_access %}
+
+{% can_nav_view user 'metrologia:categoria_create' 'metrologia' as can_categoria_create %}
+{% can_nav_view user 'metrologia:categoria_update' 'metrologia' as can_categoria_update %}
+{% can_nav_view user 'metrologia:categoria_delete' 'metrologia' as can_categoria_delete %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-tags"></i> Categorias de Instrumentos</h2>
+            <p class="text-muted mb-0">Total: <strong>{{ total_categorias }}</strong> categoria(s)</p>
+        </div>
+        {% if can_categoria_create %}
+            <a href="{% url 'metrologia:categoria_create' %}" class="btn btn-primary btn-lg">
+                <i class="bi bi-plus-circle"></i> Nova Categoria
+            </a>
+        {% endif %}
+    </div>
+
+    <!-- MENSAGENS -->
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- TABELA DE CATEGORIAS -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            {% if categorias %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="5%">#</th>
+                            <th width="25%">Nome</th>
+                            <th width="35%">Descrição</th>
+                            <th width="15%">Instrumentos</th>
+                            <th width="20%">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for categoria in categorias %}
+                        <tr>
+                            <td class="text-muted small">{{ categoria.id }}</td>
+                            <td>
+                                <strong>{{ categoria.nome }}</strong>
+                                {% if categoria.unidade_padrao %}
+                                <br><small class="text-muted">Unidade: {{ categoria.unidade_padrao.nome }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ categoria.descricao|truncatewords:15 }}
+                                </small>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ categoria.total_instrumentos }}</span>
+                                {% if categoria.total_faixas %}
+                                <br><small class="text-muted">{{ categoria.total_faixas }} faixa(s)</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'metrologia:categoria_detail' categoria.id %}" class="btn btn-outline-primary">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </a>
+                                    {% if can_categoria_update %}
+                                        <a href="{% url 'metrologia:categoria_update' categoria.id %}" class="btn btn-outline-warning">
+                                            <i class="bi bi-pencil"></i> Editar
+                                        </a>
+                                    {% endif %}
+                                    {% if can_categoria_delete %}
+                                        {% if categoria.total_instrumentos == 0 %}
+                                        <form method="post" action="{% url 'metrologia:categoria_delete' categoria.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Deletar categoria &quot;{{ categoria.nome }}&quot;?')">
+                                                <i class="bi bi-trash"></i> Deletar
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <button type="button" class="btn btn-outline-danger" disabled title="Não pode deletar: categoria possui instrumentos">
+                                            <i class="bi bi-trash"></i> Deletar
+                                        </button>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                <p class="mt-3">Nenhuma categoria cadastrada.</p>
+                {% if can_categoria_create %}
+                    <a href="{% url 'metrologia:categoria_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Criar Primeira Categoria
+                    </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- INFORMAÇÕES ÚTEIS -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="alert alert-info" role="alert">
+                <i class="bi bi-info-circle"></i> <strong>Dica:</strong> 
+                Ao criar uma categoria, você pode definir uma unidade padrão que será sugerida ao cadastrar instrumentos dessa categoria.
+                Cada categoria pode ter múltiplas faixas de medição conforme os instrumentos cadastrados.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-exclamation-triangle"></i> 
+                {% if edicao %}Editar Ocorrência{% else %}Registrar Ocorrência{% endif %}
+            </h4>
+        </div>
+        <div class="card-body">
+            {% if edicao %}
+            <form method="post" action="{% url 'editar_ocorrencia' occ_id=ocorrencia.id %}" enctype="multipart/form-data">
+            {% else %}
+            <form method="post" action="{% url 'registrar_ocorrencia' %}" enctype="multipart/form-data">
+            {% endif %}
+                {% csrf_token %}
+                
+                <div class="row g-3">
+                    <!-- Colaborador -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Colaborador <span class="text-danger">*</span></label>
+                        {{ form.colaborador }}
+                        {% if form.colaborador.errors %}
+                            <div class="invalid-feedback d-block">{{ form.colaborador.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Responsável (Condutor) -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Responsável pela Ocorrência <span class="text-danger">*</span></label>
+                        {{ form.condutor }}
+                        <small class="text-muted d-block mt-1">Quem está conduzindo/acompanhando este processo</small>
+                        {% if form.condutor.errors %}
+                            <div class="invalid-feedback d-block">{{ form.condutor.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    <!-- Data da Ocorrência -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Data da Ocorrência <span class="text-danger">*</span></label>
+                        {{ form.data_ocorrencia }}
+                        {% if form.data_ocorrencia.errors %}
+                            <div class="invalid-feedback d-block">{{ form.data_ocorrencia.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row g-3 mt-1">
+                    <!-- Tipo de Ocorrência -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Tipo de Ocorrência <span class="text-danger">*</span></label>
+                        {{ form.tipo }}
+                        {% if form.tipo.errors %}
+                            <div class="invalid-feedback d-block">{{ form.tipo.errors }}</div>
+                        {% endif %}
+                    </div>
+                
+                <div class="row g-3 mt-1">
+                    <!-- Natureza -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Natureza <span class="text-danger">*</span></label>
+                        {{ form.natureza }}
+                        <small class="text-muted d-block mt-1"><i class="bi bi-info-circle"></i> Selecione a natureza da ocorrência (Positiva, Negativa ou Neutra).</small>
+                        {% if form.natureza.errors %}
+                            <div class="invalid-feedback d-block">{{ form.natureza.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Descrição -->
+                <div class="mt-4">
+                    <label class="form-label fw-bold">Descrição <span class="text-danger">*</span></label>
+                    {{ form.descricao }}
+                    <small class="text-muted d-block mt-1">Descreva detalhadamente o evento/situação.</small>
+                    {% if form.descricao.errors %}
+                        <div class="invalid-feedback d-block">{{ form.descricao.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Motivo -->
+                <div class="mt-4">
+                    <label class="form-label">Motivo (opcional)</label>
+                    {{ form.motivo }}
+                    <small class="text-muted d-block mt-1">Informações adicionais ou contexto da ocorrência.</small>
+                    {% if form.motivo.errors %}
+                        <div class="invalid-feedback d-block">{{ form.motivo.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Arquivo de Evidência -->
+                <div class="mt-4">
+                    <label class="form-label">Arquivo de Evidência (opcional)</label>
+                    {{ form.arquivo_evidencia }}
+                    <small class="text-muted d-block mt-1">Anexe documentos (PDF, fotos, etc.) que comprovem a ocorrência. Formatos: PDF, JPG, PNG, DOC, DOCX</small>
+                    {% if form.arquivo_evidencia.errors %}
+                        <div class="invalid-feedback d-block">{{ form.arquivo_evidencia.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <!-- Botões -->
+                <div class="d-flex gap-2 mt-5">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> 
+                        {% if edicao %}Atualizar Ocorrência{% else %}Registrar Ocorrência{% endif %}
+                    </button>
+                    {% if edicao %}
+                    <a href="{% url 'detalhe_colaborador' colab_id=ocorrencia.colaborador.id %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="bi bi-trash"></i> Excluir Ocorrência
+                    </button>
+                    {% else %}
+                    <a href="{% url 'modulo_rh' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+
+            <!-- Modal de Confirmação de Exclusão -->
+            {% if edicao %}
+            <div class="modal fade" id="deleteModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">Confirmar Exclusão</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Tem certeza que deseja excluir esta ocorrência?</p>
+                            <p class="text-muted small">Esta ação não pode ser desfeita.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <form method="post" action="{% url 'deletar_ocorrencia' occ_id=ocorrencia.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">Excluir Permanentemente</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control, .form-select {
+        border-radius: 0.25rem;
+    }
+    
+    .form-label {
+        margin-bottom: 0.5rem;
+        color: #333;
+    }
+    
+    .text-danger {
+        font-weight: bold;
+    }
+</style>
+{% endblock %}

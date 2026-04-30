@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">Editar Faixa de Medição</h2>
+            <p class="text-muted mb-0">{{ instrumento.tag }} - {{ instrumento.descricao }}</p>
+        </div>
+        <a href="{% url 'gerenciar_faixas_instrumento' instrumento.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-pencil-square"></i> Dados da Faixa
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="id_unidade" class="form-label fw-bold">Unidade <span class="text-danger">*</span></label>
+                            {{ form.unidade|add_class:"form-select" }}
+                            {% if form.unidade.errors %}<small class="text-danger">{{ form.unidade.errors.0 }}</small>{% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_valor_minimo" class="form-label fw-bold">Valor Mínimo <span class="text-danger">*</span></label>
+                                    {{ form.valor_minimo|add_class:"form-control" }}
+                                    {% if form.valor_minimo.errors %}<small class="text-danger">{{ form.valor_minimo.errors.0 }}</small>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_valor_maximo" class="form-label fw-bold">Valor Máximo <span class="text-danger">*</span></label>
+                                    {{ form.valor_maximo|add_class:"form-control" }}
+                                    {% if form.valor_maximo.errors %}<small class="text-danger">{{ form.valor_maximo.errors.0 }}</small>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_resolucao" class="form-label fw-bold">Resolução</label>
+                                    {{ form.resolucao|add_class:"form-control" }}
+                                    {% if form.resolucao.errors %}<small class="text-danger">{{ form.resolucao.errors.0 }}</small>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_nominal" class="form-label fw-bold">Valor Nominal</label>
+                                    {{ form.nominal|add_class:"form-control" }}
+                                    {% if form.nominal.errors %}<small class="text-danger">{{ form.nominal.errors.0 }}</small>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_tolerancia_mais_menos" class="form-label fw-bold">Tolerância ±</label>
+                            {{ form.tolerancia_mais_menos|add_class:"form-control" }}
+                            {% if form.tolerancia_mais_menos.errors %}<small class="text-danger">{{ form.tolerancia_mais_menos.errors.0 }}</small>{% endif %}
+                        </div>
+
+                        <hr>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-save"></i> Salvar Faixa
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light text-secondary">
+                    <i class="bi bi-info-circle"></i> Informações da Faixa
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Instrumento</label>
+                        <p class="form-control-plaintext">
+                            <a href="{% url 'visualizar_instrumento' instrumento.id %}">
+                                {{ instrumento.tag }} - {{ instrumento.descricao }}
+                            </a>
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Faixa Atual</label>
+                        <p class="form-control-plaintext">
+                            <strong>{{ faixa.valor_minimo }}</strong> a <strong>{{ faixa.valor_maximo }}</strong> {{ faixa.unidade.nome }}
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Data de Criação</label>
+                        <p class="form-control-plaintext">{{ faixa.created_at|default:"N/A" }}</p>
+                    </div>
+
+                    <div class="alert alert-info mt-4">
+                        <i class="bi bi-lightbulb"></i>
+                        <strong>Dica:</strong> Esta faixa pode estar associada a históricos de calibração. Qualquer alteração afetará os resultados históricos.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

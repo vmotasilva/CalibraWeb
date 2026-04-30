@@ -1,0 +1,140 @@
+📤 IMPORTAÇÃO EM MASSA - QUICK START
+=====================================
+
+🎯 EM 3 CLIQUES:
+
+1. Acesse: https://calibraweb.app/procedures/procedimentos/importar/
+
+2. Clique: "📥 Baixar Template Excel"
+
+3. Preencha com seus procedimentos e faça upload
+
+✅ PRONTO! Relatório aparece na tela
+
+
+📋 COLUNAS OBRIGATÓRIAS:
+========================
+
+Código    | Nome do Procedimento
+----------|---------------------
+POP.001   | Procedimento Operacional 1
+POP.002   | Procedimento Operacional 2
+IT.001    | Instrução de Trabalho
+...       | ...
+
+
+🔄 MODOS DISPONÍVEIS:
+====================
+
+UPSERT (Padrão) ← RECOMENDADO
+├─ Cria novos
+├─ Atualiza existentes
+└─ Mais seguro
+
+CREATE (Apenas novos)
+├─ Cria novos
+├─ Ignora existentes
+└─ Mais conservador
+
+DRY-RUN (Teste)
+├─ Simula operação
+├─ NÃO salva nada
+└─ Teste antes de fazer de verdade
+
+
+✅ VALIDAÇÕES AUTOMÁTICAS:
+==========================
+
+✓ Código: 3-50 caracteres, único
+✓ Nome: obrigatório, até 200 chars
+✓ Datas: múltiplos formatos aceitos
+✓ Sem duplicatas
+
+
+🛡️ SEGURANÇA:
+=============
+
+✓ Autenticação requerida
+✓ Validação completa
+✓ Rollback automático se erro
+✓ Nada é salvo se houver problema
+✓ Logs de auditoria
+
+
+📊 RELATÓRIO:
+=============
+
+Após importação, você vê:
+
+📈 Resumo:
+├─ Total linhas
+├─ Criados
+├─ Atualizados
+└─ Erros
+
+✅ Tabela de sucessos
+❌ Tabela de erros (detalhes)
+
+
+🚀 COMEÇAR AGORA:
+=================
+
+1. Clique em "Importar em Massa" na lista
+   URL: /procedures/procedimentos/importar/
+
+2. Baixe template Excel
+
+3. Preencha com dados
+
+4. Teste com DRY-RUN primeiro!
+
+5. Depois faz com UPSERT
+
+
+💡 DICA IMPORTANTE:
+===================
+
+SEMPRE teste com DRY-RUN antes de importação grande!
+
+1. Faz DRY-RUN (simula, não salva)
+2. Vê o resultado
+3. Se OK, faz de verdade com UPSERT
+
+
+📚 DOCUMENTAÇÃO COMPLETA:
+==========================
+
+Guia de Uso:
+→ GUIA_IMPORTACAO_PROCEDIMENTOS.md
+
+Documentação Técnica:
+→ IMPORTACAO_PROCEDIMENTOS_COMPLETA.md
+
+Resumo:
+→ IMPORTACAO_PROCEDIMENTOS_IMPLEMENTADO.md
+
+
+❓ PROBLEMAS?
+=============
+
+"Arquivo não suportado"
+→ Use .xlsx, .xls ou .csv
+
+"Coluna obrigatória faltando"
+→ Baixe template novamente
+
+"Código duplicado"
+→ Remova duplicatas do arquivo
+
+"Erro ao processar"
+→ Use DRY-RUN para testar antes
+
+
+✨ RECURSO NOVO - FÁCIL DE USAR!
+================================
+
+✅ Implementado: 22 de Dezembro de 2024
+✅ Status: Pronto para Produção
+✅ Deploy: Automático via GitHub → Railway
+
+Aproveite! 🎉

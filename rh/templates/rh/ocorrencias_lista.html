@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ocorrências Registradas{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-1">
+                <i class="bi bi-exclamation-circle"></i> Ocorrências Registradas
+            </h1>
+            <p class="text-muted">Total: <strong>{{ total_ocorrencias }}</strong> ocorrência(s)</p>
+        </div>
+        <div class="col-md-4">
+            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                <a href="{% url 'registrar_ocorrencia' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Nova Ocorrência
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicadores (respeitam filtros) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Total</div>
+                            <div class="fs-3 fw-bold">{{ indicadores.total }}</div>
+                        </div>
+                        <i class="bi bi-clipboard-data fs-3 text-muted"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-start border-success border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Positivas</div>
+                            <div class="fs-3 fw-bold text-success">{{ indicadores.positivas }}</div>
+                        </div>
+                        <i class="bi bi-hand-thumbs-up fs-3 text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-start border-danger border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Negativas</div>
+                            <div class="fs-3 fw-bold text-danger">{{ indicadores.negativas }}</div>
+                        </div>
+                        <i class="bi bi-hand-thumbs-down fs-3 text-danger"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-start border-secondary border-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small">Neutras</div>
+                            <div class="fs-3 fw-bold text-secondary">{{ indicadores.neutras }}</div>
+                        </div>
+                        <i class="bi bi-dash-circle fs-3 text-secondary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if indicadores_tipos %}
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-2">
+                {% for t in indicadores_tipos %}
+                    <span class="badge bg-light text-dark border">
+                        {{ t.label }}: <strong>{{ t.total }}</strong>
+                    </span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filtros -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                {% if colaboradores %}
+                <div class="col-md-3">
+                    <label for="id_colaborador" class="form-label">Colaborador</label>
+                    <select name="colaborador_id" id="id_colaborador" class="form-select">
+                        <option value="">Todos</option>
+                        {% for colab in colaboradores %}
+                            <option value="{{ colab.id }}" {% if request.GET.colaborador_id|add:"0" == colab.id %}selected{% endif %}>
+                                {{ colab.nome_completo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="col-md-3">
+                    <label for="id_tipo" class="form-label">Tipo</label>
+                    <select name="tipo" id="id_tipo" class="form-select">
+                        <option value="">Todos</option>
+                        {% for value, label in tipos %}
+                            <option value="{{ value }}" {% if request.GET.tipo == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label for="id_natureza" class="form-label">Natureza</label>
+                    <select name="natureza" id="id_natureza" class="form-select">
+                        <option value="">Todas</option>
+                        {% for value, label in naturezas %}
+                            <option value="{{ value }}" {% if request.GET.natureza == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-outline-primary flex-grow-1">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                    <a href="{% url 'listar_ocorrencias' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Listagem (lista) -->
+    {% if ocorrencias %}
+        {{ ocorrencias_modal_data|json_script:"ocorrenciasModalData" }}
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Colaborador</th>
+                                <th style="width: 140px;">Tipo</th>
+                                <th style="width: 120px;">Natureza</th>
+                                <th style="width: 120px;">Data</th>
+                                <th>Responsável</th>
+                                <th>Descrição</th>
+                                <th style="width: 90px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ocorrencia in ocorrencias %}
+                            <tr class="ocorrencia-row" role="button" tabindex="0" data-ocorrencia-id="{{ ocorrencia.id }}">
+                                <td class="fw-semibold">{{ ocorrencia.colaborador.nome_completo }}</td>
+                                <td><span class="badge bg-info">{{ ocorrencia.get_tipo_display }}</span></td>
+                                <td>
+                                    {% if ocorrencia.natureza == 'POSITIVA' %}
+                                        <span class="badge bg-success">{{ ocorrencia.get_natureza_display }}</span>
+                                    {% elif ocorrencia.natureza == 'NEGATIVA' %}
+                                        <span class="badge bg-danger">{{ ocorrencia.get_natureza_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ ocorrencia.get_natureza_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ ocorrencia.data_ocorrencia|date:"d/m/Y" }}</td>
+                                <td class="text-muted">{{ ocorrencia.condutor.get_full_name|default:ocorrencia.condutor.username|default:"-" }}</td>
+                                <td>
+                                    {% if ocorrencia.descricao %}
+                                        {{ ocorrencia.descricao|truncatewords:18 }}
+                                    {% else %}
+                                        <span class="text-muted"><em>Sem descrição</em></span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'editar_ocorrencia' ocorrencia.id %}" class="btn btn-sm btn-outline-primary js-row-action" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'deletar_ocorrencia' ocorrencia.id %}" class="btn btn-sm btn-outline-danger js-row-action" title="Deletar" onclick="return confirm('Tem certeza que deseja deletar esta ocorrência?');">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paginação -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Paginação" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if querystring %}&{{ querystring }}{% endif %}">Primeira</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Anterior</a>
+                </li>
+                {% endif %}
+
+                <li class="page-item disabled">
+                    <span class="page-link">
+                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">Próxima</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if querystring %}&{{ querystring }}{% endif %}">Última</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle"></i>
+            <strong>Nenhuma ocorrência encontrada</strong>
+            <p class="mb-0 mt-2">Não há ocorrências registradas com os filtros selecionados.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal de Visualização -->
+<div class="modal fade" id="ocorrenciaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ocorrenciaModalTitle">Ocorrência</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <tbody id="ocorrenciaModalBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function formatDateBR(iso) {
+        if (!iso) return '-';
+        const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!m) return String(iso);
+        return `${m[3]}/${m[2]}/${m[1]}`;
+    }
+
+    function buildRows(data) {
+        const rows = [
+            ['colaborador', 'Colaborador'],
+            ['tipo', 'Tipo'],
+            ['natureza', 'Natureza'],
+            ['data_ocorrencia', 'Data'],
+            ['responsavel', 'Responsável'],
+            ['motivo', 'Motivo'],
+            ['descricao', 'Descrição'],
+        ];
+
+        const tbody = document.createDocumentFragment();
+        rows.forEach(([key, label]) => {
+            let value = (data && Object.prototype.hasOwnProperty.call(data, key)) ? data[key] : '';
+            if (!value) value = '-';
+            if (key === 'data_ocorrencia') value = formatDateBR(value);
+
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            th.className = 'text-muted';
+            th.style.width = '180px';
+            th.textContent = label;
+            const td = document.createElement('td');
+            td.className = 'text-break';
+            td.textContent = String(value);
+            tr.appendChild(th);
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        });
+
+        // Evidência (link)
+        const evidenciaUrl = data && data.evidencia_url;
+        const tr = document.createElement('tr');
+        const th = document.createElement('th');
+        th.className = 'text-muted';
+        th.textContent = 'Evidência';
+        const td = document.createElement('td');
+        if (evidenciaUrl) {
+            const a = document.createElement('a');
+            a.href = evidenciaUrl;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = 'Ver arquivo';
+            td.appendChild(a);
+        } else {
+            td.textContent = '-';
+        }
+        tr.appendChild(th);
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+
+        return tbody;
+    }
+
+    function openOcorrenciaModal(ocorrenciaId) {
+        const dataEl = document.getElementById('ocorrenciasModalData');
+        if (!dataEl) return;
+
+        let all;
+        try {
+            all = JSON.parse(dataEl.textContent);
+        } catch (e) {
+            return;
+        }
+
+        const data = all && all[String(ocorrenciaId)];
+        if (!data) return;
+
+        const titleEl = document.getElementById('ocorrenciaModalTitle');
+        const bodyEl = document.getElementById('ocorrenciaModalBody');
+        if (!titleEl || !bodyEl) return;
+
+        titleEl.textContent = `${data.colaborador || 'Ocorrência'} — ${data.tipo || ''}`;
+        bodyEl.innerHTML = '';
+        bodyEl.appendChild(buildRows(data));
+
+        const modalEl = document.getElementById('ocorrenciaModal');
+        if (!modalEl || !window.bootstrap || !bootstrap.Modal) return;
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function bindOcorrenciaRows() {
+        document.querySelectorAll('tr.ocorrencia-row[data-ocorrencia-id]').forEach((row) => {
+            row.addEventListener('click', (ev) => {
+                if (ev.target && ev.target.closest('.js-row-action')) return;
+                openOcorrenciaModal(row.dataset.ocorrenciaId);
+            });
+            row.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    openOcorrenciaModal(row.dataset.ocorrenciaId);
+                }
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', bindOcorrenciaRows);
+</script>
+{% endblock %}

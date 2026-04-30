@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ title }}</h2>
+        <a href="{% if instrumento %}{% url 'visualizar_instrumento' instrumento.id %}{% else %}{% url 'modulo_metrologia' %}{% endif %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-pencil-square"></i> Informações do Instrumento
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_tag" class="form-label fw-bold">TAG <span class="text-danger">*</span></label>
+                                    {{ form.tag|add_class:"form-control" }}
+                                    {% if form.tag.errors %}<small class="text-danger">{{ form.tag.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_codigo" class="form-label fw-bold">Código</label>
+                                    {{ form.codigo|add_class:"form-control" }}
+                                    {% if form.codigo.errors %}<small class="text-danger">{{ form.codigo.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_descricao" class="form-label fw-bold">Descrição <span class="text-danger">*</span></label>
+                            {{ form.descricao|add_class:"form-control" }}
+                            {% if form.descricao.errors %}<small class="text-danger">{{ form.descricao.errors }}</small>{% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_categoria" class="form-label fw-bold">Categoria <span class="text-danger">*</span></label>
+                                    {{ form.categoria|add_class:"form-select" }}
+                                    {% if form.categoria.errors %}<small class="text-danger">{{ form.categoria.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_setor" class="form-label fw-bold">Setor</label>
+                                    {{ form.setor|add_class:"form-select" }}
+                                    {% if form.setor.errors %}<small class="text-danger">{{ form.setor.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_modelo" class="form-label fw-bold">Modelo</label>
+                                    {{ form.modelo|add_class:"form-control" }}
+                                    {% if form.modelo.errors %}<small class="text-danger">{{ form.modelo.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_serie" class="form-label fw-bold">Série</label>
+                                    {{ form.serie|add_class:"form-control" }}
+                                    {% if form.serie.errors %}<small class="text-danger">{{ form.serie.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_frequencia_meses" class="form-label fw-bold">Frequência (meses)</label>
+                                    {{ form.frequencia_meses|add_class:"form-control" }}
+                                    {% if form.frequencia_meses.errors %}<small class="text-danger">{{ form.frequencia_meses.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_tratativa_calibracao" class="form-label fw-bold">Tratativa de Calibração <span class="text-danger">*</span></label>
+                                    {{ form.tratativa_calibracao|add_class:"form-select" }}
+                                    {% if form.tratativa_calibracao.errors %}<small class="text-danger">{{ form.tratativa_calibracao.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_responsavel" class="form-label fw-bold">Responsável</label>
+                                    {{ form.responsavel|add_class:"form-select" }}
+                                    {% if form.responsavel.errors %}<small class="text-danger">{{ form.responsavel.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check pt-4">
+                                        {{ form.ativo|add_class:"form-check-input" }}
+                                        <label for="id_ativo" class="form-check-label">
+                                            Ativo
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_data_ultima_calibracao" class="form-label fw-bold">Última Calibração</label>
+                                    {{ form.data_ultima_calibracao|add_class:"form-control" }}
+                                    {% if form.data_ultima_calibracao.errors %}<small class="text-danger">{{ form.data_ultima_calibracao.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_data_proxima_calibracao" class="form-label fw-bold">Próxima Calibração</label>
+                                    {{ form.data_proxima_calibracao|add_class:"form-control" }}
+                                    {% if form.data_proxima_calibracao.errors %}<small class="text-danger">{{ form.data_proxima_calibracao.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-save"></i> Salvar Instrumento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {% if instrumento %}
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-rulers"></i> Ações Rápidas
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'gerenciar_faixas_instrumento' instrumento.id %}" class="btn btn-outline-info w-100 mb-2">
+                        <i class="bi bi-plus-circle"></i> Gerenciar Faixas
+                    </a>
+                    <a href="{% url 'registrar_historico_calibracao' instrumento.id %}" class="btn btn-outline-success w-100 mb-2">
+                        <i class="bi bi-calendar-check"></i> Novo Histórico
+                    </a>
+                    <a href="{% url 'visualizar_instrumento' instrumento.id %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-eye"></i> Ver Detalhes
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

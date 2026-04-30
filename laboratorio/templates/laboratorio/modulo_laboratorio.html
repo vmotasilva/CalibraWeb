@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-1">Laboratorio</h2>
+            <p class="text-muted mb-0">Ocorrencias gerais, categorias e analise por impacto.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:ocorrencia_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>Nova ocorrencia
+            </a>
+            <a href="{% url 'laboratorio:dashboard' %}" class="btn btn-outline-dark">
+                <i class="bi bi-graph-up me-1"></i>Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Total de ocorrencias</div>
+                    <div class="display-6 fw-semibold">{{ total_ocorrencias }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Ocorrencias abertas</div>
+                    <div class="display-6 fw-semibold text-danger">{{ ocorrencias_abertas }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Categorias ativas</div>
+                    <div class="display-6 fw-semibold text-primary">{{ categorias_ativas }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Tempo medio no mes</div>
+                    <div class="h3 fw-semibold mb-0">{{ media_mes }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Acesso rapido</span>
+                    <span class="badge text-bg-light">Ocorrencias gerais</span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <a href="{% url 'laboratorio:ocorrencia_create' %}" class="card card-body text-decoration-none border-primary h-100">
+                                <strong class="text-primary">Nova ocorrencia</strong>
+                                <span class="text-muted small">Registrar abertura, responsavel, assunto, detalhamento e consequencias.</span>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'laboratorio:ocorrencias_list' %}" class="card card-body text-decoration-none border-secondary h-100">
+                                <strong class="text-dark">Listagem de ocorrencias</strong>
+                                <span class="text-muted small">Aplicar filtros por periodo, status e impacto.</span>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'laboratorio:categorias_list' %}" class="card card-body text-decoration-none border-info h-100">
+                                <strong class="text-info-emphasis">Tabela de categorias</strong>
+                                <span class="text-muted small">Cadastrar assuntos padrao e impactos sugeridos.</span>
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'laboratorio:dashboard' %}" class="card card-body text-decoration-none border-warning h-100">
+                                <strong class="text-warning-emphasis">Dashboard por periodo</strong>
+                                <span class="text-muted small">Detalhamento de volume, impacto e recorrencia.</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-semibold">Ultimas ocorrencias</div>
+                <div class="list-group list-group-flush">
+                    {% for ocorrencia in ocorrencias_recentes %}
+                    <a href="{% url 'laboratorio:ocorrencia_detail' ocorrencia.pk %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-semibold">{{ ocorrencia.assunto }}</div>
+                                <div class="small text-muted">{{ ocorrencia.data_abertura|date:'d/m/Y H:i' }}</div>
+                            </div>
+                            <span class="badge text-bg-{{ ocorrencia.impacto_badge_class }}">{{ ocorrencia.get_impacto_display }}</span>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-muted">Nenhuma ocorrencia cadastrada ate o momento.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

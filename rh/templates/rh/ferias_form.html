@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-calendar-check"></i> Registrar Férias para {{ colaborador.nome_completo }}
+            </h4>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Status das Férias</label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                            <div class="invalid-feedback d-block">{{ form.status.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Data de Início <span class="text-danger">*</span></label>
+                        {{ form.data_inicio }}
+                        {% if form.data_inicio.errors %}
+                            <div class="invalid-feedback d-block">{{ form.data_inicio.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Data de Término <span class="text-danger">*</span></label>
+                        {{ form.data_fim }}
+                        {% if form.data_fim.errors %}
+                            <div class="invalid-feedback d-block">{{ form.data_fim.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Vencimento das Férias</label>
+                        {{ form.vencimento }}
+                        {% if form.vencimento.errors %}
+                            <div class="invalid-feedback d-block">{{ form.vencimento.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Dias Solicitados <span class="text-danger">*</span></label>
+                        {{ form.dias_solicitados }}
+                        {% if form.dias_solicitados.errors %}
+                            <div class="invalid-feedback d-block">{{ form.dias_solicitados.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 pt-4">
+                        <div class="form-check form-switch">
+                            {{ form.aprovada }}
+                            <label class="form-check-label">Aprovada?</label>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Observações</label>
+                        {{ form.descricao }}
+                    </div>
+                </div>
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-calendar-plus"></i> Registrar Férias
+                    </button>
+                    <a href="{% url 'detalhe_colaborador' colab_id=colaborador.id %}" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

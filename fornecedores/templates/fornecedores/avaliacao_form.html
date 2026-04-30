@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load fornecedor_extras %}
+{% block content %}
+<h3>{% if edicao %}Editar{% else %}Nova{% endif %} Avaliação/Monitoramento para {{ fornecedor.empresa }}</h3>
+<form method="post" class="row g-3">
+    {% csrf_token %}
+    <div class="col-12 col-md-4">
+        <label class="form-label">Data</label>
+        {{ form.data|add_class:'form-control' }}
+    </div>
+    <div class="col-12 col-md-4">
+        <label class="form-label">Nota fiscal</label>
+        {{ form.nota_fiscal|add_class:'form-control' }}
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Tipo nota</label>
+        {{ form.tipo_nota|add_class:'form-select' }}
+    </div>
+    <div class="col-12">
+        <label class="form-label">Observação</label>
+        {{ form.observacao|add_class:'form-control' }}
+    </div>
+    <div class="col-12">
+        <h5>Perguntas</h5>
+        <div id="perguntas-container">
+            {% if edicao and avaliacao %}
+                <script>
+                window.addEventListener('DOMContentLoaded', function() {
+                    fetchPerguntasEdit({{ avaliacao.id }});
+                });
+                </script>
+            {% else %}
+                <div class="alert alert-info" id="perguntas-msg">Selecione o Tipo nota para exibir as perguntas.</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-success">Salvar</button>
+        <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>
+<script>
+
+function renderPerguntas(perguntas, respostas) {
+    const container = document.getElementById('perguntas-container');
+    if (!perguntas.length) {
+        container.innerHTML = '<div class="alert alert-warning">Nenhuma pergunta encontrada para os filtros selecionados.</div>';
+        return;
+    }
+    let html = '<table class="table table-bordered align-middle">';
+    html += '<thead class="table-light"><tr><th>Pergunta</th><th>Resposta</th><th>Observação</th></tr></thead><tbody>';
+    perguntas.forEach(p => {
+        let checked = '';
+        let obs = '';
+        if (respostas && respostas[p.id]) {
+            checked = respostas[p.id].resposta ? 'checked' : '';
+            obs = respostas[p.id].observacao || '';
+        }
+        html += `<tr><td class="w-50">${p.texto} ${p.produto_servico ? ' - ' + p.produto_servico : ''}</td>` +
+            `<td class="text-center"><input type="checkbox" name="resposta_${p.id}" class="form-check-input" ${checked}></td>` +
+            `<td><input type="text" name="observacao_${p.id}" class="form-control" value="${obs}"></td></tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+
+function fetchPerguntas() {
+    const tipoNota = document.getElementById('id_tipo_nota').value;
+    if (!tipoNota) {
+        document.getElementById('perguntas-container').innerHTML = '<div class="alert alert-info" id="perguntas-msg">Selecione o Tipo nota para exibir as perguntas.</div>';
+        return;
+    }
+    fetch(`/fornecedores/perguntas-filtradas/?tipo=MONITORAMENTO&tipo_nota=${tipoNota}`)
+        .then(resp => resp.json())
+        .then(data => renderPerguntas(data.perguntas));
+}
+
+function fetchPerguntasEdit(avaliacaoId) {
+    const tipoNota = document.getElementById('id_tipo_nota').value;
+    if (!tipoNota) {
+        document.getElementById('perguntas-container').innerHTML = '<div class="alert alert-info" id="perguntas-msg">Selecione o Tipo nota para exibir as perguntas.</div>';
+        return;
+    }
+    Promise.all([
+        fetch(`/fornecedores/perguntas-filtradas/?tipo=MONITORAMENTO&tipo_nota=${tipoNota}`).then(resp => resp.json()),
+        fetch(`/fornecedores/api/respostas-avaliacao/${avaliacaoId}/`).then(resp => resp.json())
+    ]).then(([perguntasData, respostasData]) => {
+        renderPerguntas(perguntasData.perguntas, respostasData.respostas);
+    });
+}
+
+document.getElementById('id_tipo_nota').addEventListener('change', function() {
+    {% if edicao and avaliacao %}
+        fetchPerguntasEdit({{ avaliacao.id }});
+    {% else %}
+        fetchPerguntas();
+    {% endif %}
+});
+</script>
+</form>
+{% endblock %}

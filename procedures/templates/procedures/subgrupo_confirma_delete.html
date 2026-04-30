@@ -1,0 +1,32 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Confirmar Exclusão{% endblock %}
+{% block header_title %}Confirmar Exclusão de Subgrupo{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Confirmar Exclusão</h5>
+        </div>
+        <div class="card-body">
+            <p>Tem certeza que deseja excluir o subgrupo <strong>{{ subgrupo.nome }}</strong>?</p>
+            <p class="text-muted">
+                <i class="bi bi-info-circle"></i> 
+                Este subgrupo possui <strong>{{ subgrupo.procedimentos.count }} procedimentos</strong> associados.
+            </p>
+            <p class="small text-muted">Os procedimentos não serão excluídos, apenas a associação com este subgrupo.</p>
+            
+            <form method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Confirmar Exclusão
+                </button>
+                <a href="{% url 'procedures:detalhe_perfil' perfil.id %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

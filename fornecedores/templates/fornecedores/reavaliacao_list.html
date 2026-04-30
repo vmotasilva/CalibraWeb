@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% load nav_access %}
+
+{% can_nav_view user 'fornecedores:reavaliacao_create' 'fornecedores' as can_reavaliacao_create %}
+{% can_nav_view user 'fornecedores:avaliacao_reavaliacao_create' 'fornecedores' as can_avaliacao_reavaliacao_create %}
+{% can_nav_view user 'fornecedores:reavaliacao_delete' 'fornecedores' as can_reavaliacao_delete %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Histórico de Reavaliações - {{ fornecedor.empresa }}</h2>
+    
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <span class="badge bg-info">Total: {{ total_reavaliacoes }} reavaliação(ões)</span>
+        </div>
+        {% if can_reavaliacao_create %}
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#novaReavaliacao">
+                <i class="bi bi-plus-circle"></i> Adicionar Nova Reavaliação
+            </button>
+        {% endif %}
+    </div>
+    
+    {% if reavaliacoes_detalhes %}
+    <div class="accordion" id="reavalicoesAccordion">
+        {% for item in reavaliacoes_detalhes %}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading_{{ item.reavaliacao.id }}">
+                <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ item.reavaliacao.id }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">
+                    <strong>{{ item.reavaliacao.data|date:"d/m/Y" }}</strong>
+                    <span class="badge bg-success ms-2">{{ item.reavaliacao.pontuacao_ano|floatformat:1 }}%</span>
+                    <span class="badge ms-2" style="background-color: {% if item.reavaliacao.resultado == 'Aprovado' %}#28a745{% else %}#dc3545{% endif %}">
+                        {{ item.reavaliacao.resultado }}
+                    </span>
+                    <small class="text-muted ms-3">Avaliador: {{ item.reavaliacao.avaliador.get_full_name|default:item.reavaliacao.avaliador }}</small>
+                </button>
+            </h2>
+            <div id="collapse_{{ item.reavaliacao.id }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading_{{ item.reavaliacao.id }}" data-bs-parent="#reavalicoesAccordion">
+                <div class="accordion-body">
+                    <div class="mb-4">
+                        <h5>Resultado da Reavaliação</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <p class="mb-2"><strong>Data:</strong> {{ item.reavaliacao.data|date:"d/m/Y" }}</p>
+                                <p class="mb-2"><strong>Avaliador:</strong> {{ item.reavaliacao.avaliador.get_full_name|default:item.reavaliacao.avaliador }}</p>
+                                <p class="mb-2"><strong>Pontuação:</strong> 
+                                    <span class="badge bg-success">{{ item.reavaliacao.pontuacao_ano|floatformat:1 }}%</span>
+                                </p>
+                                <p class="mb-2"><strong>Resultado:</strong> 
+                                    <span class="badge" style="background-color: {% if item.reavaliacao.resultado == 'Aprovado' %}#28a745{% else %}#dc3545{% endif %}">
+                                        {{ item.reavaliacao.resultado }}
+                                    </span>
+                                </p>
+                                {% if item.reavaliacao.observacao %}
+                                <p class="mb-0"><strong>Observação:</strong> {{ item.reavaliacao.observacao }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Respostas do Critérios</h5>
+                        <div class="list-group">
+                            {% for resposta in item.respostas %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ resposta.pergunta.texto }}</h6>
+                                        <small class="text-muted">Ordem: {{ resposta.pergunta.ordem }}</small>
+                                    </div>
+                                    <span class="badge {% if resposta.resposta %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ resposta.resposta|yesno:"SIM,NÃO" }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if can_avaliacao_reavaliacao_create %}
+                            <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-sm btn-warning">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                        {% endif %}
+                        {% if can_reavaliacao_delete %}
+                            <form method="get" action="{% url 'fornecedores:reavaliacao_delete' fornecedor.pk %}" style="display: inline;">
+                                {% with data_formatada=item.reavaliacao.data|date:"d/m/Y" %}
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja deletar a última reavaliação de {{ data_formatada }}? Esta ação não pode ser desfeita.')">
+                                    <i class="bi bi-trash"></i> Deletar Última
+                                </button>
+                                {% endwith %}
+                            </form>
+                        {% endif %}
+                        <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-sm btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        <strong>Nenhuma reavaliação registrada ainda.</strong>
+        {% if can_reavaliacao_create %}
+            <button type="button" class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#novaReavaliacao">
+                Realizar Primeira Reavaliação
+            </button>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar ao Fornecedor
+        </a>
+    </div>
+</div>
+
+<!-- Modal para Nova Reavaliação -->
+{% if can_reavaliacao_create %}
+<div class="modal fade" id="novaReavaliacao" tabindex="-1" aria-labelledby="novaReavaliacaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="novaReavaliacaoLabel">
+                    <i class="bi bi-plus-circle"></i> Nova Reavaliação - {{ fornecedor.empresa }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning" role="alert">
+                    <strong>⚠️ Importante:</strong> A Reavaliação deve ser realizada <strong>a partir de janeiro</strong> (e apenas uma vez por ano). É permitido atrasos até o final do ano, mas a próxima reavaliação só poderá ser feita a partir de janeiro do próximo ano.
+                </div>
+                <form method="post" action="{% url 'fornecedores:reavaliacao_create' fornecedor.pk %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="data" class="form-label">Data da Reavaliação</label>
+                        <input 
+                            type="date" 
+                            name="data" 
+                            id="data" 
+                            class="form-control" 
+                            value="{{ today|date:'Y-m-d' }}"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observacao" class="form-label">Observação</label>
+                        <textarea name="observacao" id="observacao" class="form-control" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>Próximo passo:</strong> Após preencher essas informações, você será direcionado para responder os critérios de avaliação.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="document.querySelector('#novaReavaliacao form').submit()">
+                    <i class="bi bi-arrow-right"></i> Continuar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

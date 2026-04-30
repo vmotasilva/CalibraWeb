@@ -1,0 +1,2294 @@
+{% extends "base.html" %}
+
+{% block title %}Registros - {{ modelo.nome }} - Auditoria{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:modulo' %}">Auditoria</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ modelo.nome }}</li>
+        </ol>
+    </nav>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-file-earmark-text"></i> Registros Preenchidos: {{ modelo.nome }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Objeto de Auditoria:</strong> {{ modelo.objeto_auditoria }}</p>
+                            <p class="mb-2"><strong>Periodicidade:</strong> {{ modelo.get_periodicidade_completa }}</p>
+                            {% if modelo.responsaveis.all %}
+                            <p class="mb-2"><strong>Responsáveis:</strong>
+                                {% for u in modelo.responsaveis.all %}
+                                    {{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </p>
+                            {% elif modelo.responsavel %}
+                            <p class="mb-2"><strong>Responsável:</strong> {{ modelo.responsavel.get_full_name|default:modelo.responsavel.username }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 text-start text-md-end">
+                            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+                                <button type="button" class="btn btn-outline-dark btn-sm no-print" id="btnPrintPdf">
+                                    <i class="bi bi-printer"></i> Imprimir / PDF
+                                </button>
+                                {% if modelo.link_sharepoint %}
+                                <a href="{{ modelo.link_sharepoint }}" target="_blank" class="btn btn-outline-info btn-sm">
+                                    <i class="bi bi-link-45deg"></i> SharePoint
+                                </a>
+                                {% endif %}
+                                {% if not is_read_only %}
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modal-compartilhar-relatorio">
+                                    <i class="bi bi-share"></i> Compartilhar Relatório
+                                </button>
+                                {% endif %}
+                                {% if not is_read_only %}
+                                <a href="{% url 'auditoria:exportar_respostas_excel' modelo.id %}" class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                                </a>
+                                <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
+                                    <i class="bi bi-plus-circle"></i> Novo Registro
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Total de registros preenchidos: <strong>{{ registros_count }}</strong>
+                    </div>
+
+                    <style>
+                        @media print {
+                            .no-print,
+                            .btn,
+                            .modal,
+                            .pagination,
+                            .breadcrumb,
+                            .nav-tabs,
+                            .form-text {
+                                display: none !important;
+                            }
+                            .tab-pane {
+                                display: block !important;
+                                opacity: 1 !important;
+                            }
+                            .collapse {
+                                display: block !important;
+                            }
+                            .card {
+                                box-shadow: none !important;
+                                border: 1px solid #d0d0d0 !important;
+                                break-inside: avoid;
+                            }
+                            .container-fluid {
+                                margin-top: 0 !important;
+                                padding-top: 0 !important;
+                            }
+                            .table {
+                                font-size: 12px;
+                            }
+                            @page {
+                                size: A4;
+                                margin: 10mm;
+                            }
+                        }
+                    </style>
+
+                    {% if is_read_only %}
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-eye"></i> Visualização compartilhada: somente leitura.
+                        {% if targeted_share %}
+                            <span class="ms-2">Compartilhado por: <strong>{{ targeted_share.remetente.get_full_name|default:targeted_share.remetente.username }}</strong>.</span>
+                            {% if targeted_share.recebido_em %}
+                                <span class="ms-2">Recebido em: <strong>{{ targeted_share.recebido_em|date:"d/m/Y H:i" }}</strong>.</span>
+                            {% endif %}
+                        {% endif %}
+                        {% if inicio or fim %}
+                            <span class="ms-2">Período fixo: <strong>{{ inicio|default:'-' }}</strong> até <strong>{{ fim|default:'-' }}</strong>.</span>
+                        {% endif %}
+                        {% if subcategoria %}
+                            <span class="ms-2">Sub-categoria: <strong>{{ subcategoria }}</strong>.</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if estatisticas_perguntas %}
+                    <div class="card mb-3 border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Análise das Respostas</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if not is_read_only %}
+                            <form method="get" class="row g-2 mb-3 align-items-end">
+                                <div class="col-lg-2 col-md-3">
+                                    <label class="form-label">Período inicial</label>
+                                    <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
+                                    <div class="form-text">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
+                                </div>
+                                <div class="col-lg-2 col-md-3">
+                                    <label class="form-label">Período final</label>
+                                    <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
+                                    <div class="form-text">Formato: ANO-MÊS-DIA (AAAA-MM-DD)</div>
+                                </div>
+                                {% if subcategorias %}
+                                <div class="col-lg-2 col-md-4">
+                                    <label class="form-label">Sub-categoria</label>
+                                    <select name="subcategoria" class="form-select">
+                                        <option value="">Todas</option>
+                                        {% for sc in subcategorias %}
+                                        <option value="{{ sc }}" {% if subcategoria == sc %}selected{% endif %}>{{ sc }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% endif %}
+
+                                <div class="col-auto d-flex align-items-end gap-2">
+                                    <button type="submit" class="btn btn-outline-primary">Aplicar período</button>
+                                    <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-outline-secondary">Limpar</a>
+                                </div>
+                            </form>
+                            {% endif %}
+
+                            {% if chart_cards %}
+                            <!-- ── Tabs: Gráficos | Construtor ── -->
+                            <ul class="nav nav-tabs mb-0" id="tabsMainView" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="tab-graficos-btn"
+                                            data-bs-toggle="tab" data-bs-target="#tab-graficos"
+                                            type="button" role="tab">
+                                        <i class="bi bi-bar-chart-line me-1"></i>Gráficos por Pergunta
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="tab-construtor-btn"
+                                            data-bs-toggle="tab" data-bs-target="#tab-construtor"
+                                            type="button" role="tab">
+                                        <i class="bi bi-sliders me-1"></i>Construtor Dinâmico
+                                    </button>
+                                </li>
+                            </ul>
+                            <div class="tab-content border border-top-0 rounded-bottom mb-4">
+                            <!-- ─── TAB 1: Gráficos por Pergunta (padrão ativo) ─── -->
+                            <div class="tab-pane fade show active p-3" id="tab-graficos" role="tabpanel">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm fw-semibold">Tipo de campo</label>
+                                        <select class="form-select form-select-sm" id="globalTipoSelect">
+                                            {% for card in chart_cards %}
+                                            <option value="{{ card.key }}">{{ card.label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label form-label-sm fw-semibold">Pergunta</label>
+                                        <select class="form-select form-select-sm" id="globalPerguntaSelect"></select>
+                                    </div>
+                                </div>
+                                {% if subcategorias %}
+                                <ul class="nav nav-tabs mb-3" id="tabs-analise" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="tab-analise-pergunta-btn" data-bs-toggle="tab" data-bs-target="#tab-analise-pergunta" type="button" role="tab" aria-controls="tab-analise-pergunta" aria-selected="true">Por Pergunta</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="tab-analise-subcat-btn" data-bs-toggle="tab" data-bs-target="#tab-analise-subcat" type="button" role="tab" aria-controls="tab-analise-subcat" aria-selected="false">Sub-categorias</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content">
+                                    <div class="tab-pane fade show active" id="tab-analise-pergunta" role="tabpanel" aria-labelledby="tab-analise-pergunta-btn">
+                                {% endif %}
+
+                                {% for card in chart_cards %}
+                                <div class="card shadow-sm mb-3">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <div class="fw-semibold">{{ card.label }}</div>
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ card.key }}" aria-expanded="false" aria-controls="collapse-{{ card.key }}">
+                                            Expandir/Recolher
+                                        </button>
+                                    </div>
+                                    <div id="collapse-{{ card.key }}" class="collapse">
+                                        <div class="card-body">
+                                            <ul class="nav nav-tabs" id="tabs-{{ card.key }}" role="tablist">
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link active" id="tab-current-btn-{{ card.key }}" data-bs-toggle="tab" data-bs-target="#tab-current-{{ card.key }}" type="button" role="tab" aria-controls="tab-current-{{ card.key }}" aria-selected="true">Geral</button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link" id="tab-date-btn-{{ card.key }}" data-bs-toggle="tab" data-bs-target="#tab-date-{{ card.key }}" type="button" role="tab" aria-controls="tab-date-{{ card.key }}" aria-selected="false">Gráfico por data</button>
+                                                </li>
+                                            </ul>
+
+                                            <div class="tab-content pt-3">
+                                                <div class="tab-pane fade show active" id="tab-current-{{ card.key }}" role="tabpanel" aria-labelledby="tab-current-btn-{{ card.key }}">
+                                                    <div class="chart-frame chart-frame-sm">
+                                                        <canvas id="canvas-current-{{ card.key }}"></canvas>
+                                                    </div>
+                                                    <div id="fallback-current-{{ card.key }}" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
+                                                </div>
+                                                <div class="tab-pane fade" id="tab-date-{{ card.key }}" role="tabpanel" aria-labelledby="tab-date-btn-{{ card.key }}">
+                                                    <div class="chart-frame chart-frame-sm">
+                                                        <canvas id="canvas-date-{{ card.key }}"></canvas>
+                                                    </div>
+                                                    <div id="fallback-date-{{ card.key }}" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+
+                                {% if subcategorias %}
+                                    </div>
+                                    <div class="tab-pane fade" id="tab-analise-subcat" role="tabpanel" aria-labelledby="tab-analise-subcat-btn">
+                                        <div class="card shadow-sm">
+                                            <div class="card-body">
+                                                <div class="form-text mb-2">Distribuição de respostas (“situações”) agregada por sub-categoria.</div>
+                                                <div class="chart-frame chart-frame-sm">
+                                                    <canvas id="canvas-subcat"></canvas>
+                                                </div>
+                                                <div id="fallback-subcat" class="text-center text-muted py-2 d-none">Nenhum dado para exibir.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <!-- end tab-graficos -->
+                            <!-- ─── TAB 2: Construtor Dinâmico ─── -->
+                            <div class="tab-pane fade p-3" id="tab-construtor" role="tabpanel">
+                                <!-- Linha de controles -->
+                                <div class="row g-2 mb-2 align-items-end">
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Distribuição</label>
+                                        <select class="form-select form-select-sm" id="builderDistribuicaoSelect">
+                                            <option value="current">Geral</option>
+                                            <option value="date">Por data</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Visual</label>
+                                        <select class="form-select form-select-sm" id="builderVisualSelect">
+                                            <option value="auto">Automático</option>
+                                            <option value="bar">Barras</option>
+                                            <option value="line">Linha</option>
+                                            <option value="pie">Pizza</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Layout</label>
+                                        <select class="form-select form-select-sm" id="builderLayoutSelect">
+                                            <option value="stacked">Empilhado</option>
+                                            <option value="grouped">Agrupado</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Orientação</label>
+                                        <select class="form-select form-select-sm" id="builderEixoSelect">
+                                            <option value="vertical">Vertical</option>
+                                            <option value="horizontal">Horizontal</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Fórmula</label>
+                                        <select class="form-select form-select-sm" id="builderFormulaSelect">
+                                            <option value="none">Nenhuma</option>
+                                            <option value="multiply">A × B</option>
+                                            <option value="subtract">A − B</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">2º campo</label>
+                                        <select class="form-select form-select-sm" id="builderPerguntaSecundariaSelect">
+                                            <option value="">Nenhum</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <label class="form-label form-label-sm">Tendência</label>
+                                        <select class="form-select form-select-sm" id="builderTendenciaSelect">
+                                            <option value="none">Nenhuma</option>
+                                            <option value="moving_avg">Média móvel</option>
+                                            <option value="linear">Linear</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label form-label-sm d-block">Extras</label>
+                                        <div class="d-flex gap-3 align-items-center pt-1">
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="checkbox" id="builderAcumuladoCheck">
+                                                <label class="form-check-label small" for="builderAcumuladoCheck">Acumulado</label>
+                                            </div>
+                                            <div class="form-check mb-0">
+                                                <input class="form-check-input" type="checkbox" id="builderTabelaCheck">
+                                                <label class="form-check-label small" for="builderTabelaCheck">Tabela</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto ms-auto d-flex align-items-end">
+                                        <button type="button" class="btn btn-primary" id="btnCarregarVisual">
+                                            <i class="bi bi-play-fill me-1"></i>Carregar visual
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Campo lista -->
+                                <div class="row g-2 mb-3 align-items-end">
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm">Campo lista</label>
+                                        <select class="form-select form-select-sm" id="builderListaCampoSelect">
+                                            <option value="">Nenhum</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm">Uso do campo lista</label>
+                                        <select class="form-select form-select-sm" id="builderListaUsoSelect">
+                                            <option value="none">Nenhum</option>
+                                            <option value="axis">Rótulo no eixo</option>
+                                            <option value="filter">Filtro</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label form-label-sm">Valor do filtro <small class="text-muted">(Ctrl = múltiplo)</small></label>
+                                        <input type="text" class="form-control form-control-sm mb-1" id="builderListaValorSearch" placeholder="Buscar valor..." disabled>
+                                        <select class="form-select form-select-sm" id="builderListaValorSelect" multiple size="3" disabled></select>
+                                    </div>
+                                </div>
+
+                                    <!-- Gráfico — largura total -->
+                                    <div class="chart-frame chart-frame-builder">
+                                        <canvas id="builderChartCanvas"></canvas>
+                                    </div>
+                                    <div id="builderChartFallback" class="text-center text-muted py-3 d-none">
+                                        <i class="bi bi-bar-chart text-secondary" style="font-size:2rem;"></i>
+                                        <div class="mt-1">Adicione campos nos eixos abaixo e clique em <strong>Carregar visual</strong>.</div>
+                                    </div>
+                                    <div id="builderDataTableWrap" class="table-responsive mt-3 d-none"></div>
+
+                                    <!-- Três zonas de campo — abaixo do gráfico -->
+                                    <div class="row g-2 mt-3">
+
+                                        <!-- Eixo X -->
+                                        <div class="col-12 col-md-4">
+                                            <div class="border border-secondary rounded p-2 h-100" style="background:#f8f9fa;">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-semibold small"><i class="bi bi-arrows-horizontal text-secondary me-1"></i>Eixo horizontal (X)</span>
+                                                    <button type="button" class="btn btn-link btn-sm py-0 text-danger" id="btnClearXAxisVars" title="Limpar">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="input-group input-group-sm mb-2">
+                                                    <select class="form-select form-select-sm" id="builderAxisXSelect">
+                                                        <option value="">Selecione...</option>
+                                                    </select>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAddXAxisVar">+</button>
+                                                </div>
+                                                <div id="builderXAxisVars" class="d-flex flex-wrap gap-1 min-height-chips"></div>
+                                                <div class="form-text mt-1">Categorias / rótulos do eixo (1 campo).</div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Eixo Y -->
+                                        <div class="col-12 col-md-4">
+                                            <div class="border border-primary rounded p-2 h-100" style="background:#f0f4ff;">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-semibold small"><i class="bi bi-arrows-vertical text-primary me-1"></i>Eixo vertical (Y)</span>
+                                                    <button type="button" class="btn btn-link btn-sm py-0 text-danger" id="btnClearYAxisVars" title="Limpar">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="input-group input-group-sm mb-2">
+                                                    <select class="form-select form-select-sm" id="builderAxisYSelect">
+                                                        <option value="">Selecione...</option>
+                                                    </select>
+                                                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddYAxisVar">+</button>
+                                                </div>
+                                                <div id="builderYAxisVars" class="d-flex flex-wrap gap-1 min-height-chips"></div>
+                                                <div class="form-text mt-1">Séries exibidas no gráfico (múltiplos campos).</div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Valores -->
+                                        <div class="col-12 col-md-4">
+                                            <div class="border border-success rounded p-2 h-100" style="background:#f0fff4;">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="fw-semibold small"><i class="bi bi-hash text-success me-1"></i>Valores</span>
+                                                    <button type="button" class="btn btn-link btn-sm py-0 text-danger" id="btnClearValuesVars" title="Limpar">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="input-group input-group-sm mb-2">
+                                                    <select class="form-select form-select-sm" id="builderAxisValuesSelect">
+                                                        <option value="">Selecione...</option>
+                                                    </select>
+                                                    <button type="button" class="btn btn-outline-success btn-sm" id="btnAddValuesVar">+</button>
+                                                </div>
+                                                <div id="builderValuesVars" class="d-flex flex-wrap gap-1 min-height-chips"></div>
+                                                <div class="form-text mt-1">Métricas / dados a agregar nas séries.</div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <style>
+                                        .min-height-chips { min-height: 32px; }
+                                        .chart-frame {
+                                            position: relative;
+                                            width: 100%;
+                                        }
+                                        .chart-frame-sm {
+                                            height: clamp(220px, 34vh, 320px);
+                                        }
+                                        .chart-frame-builder {
+                                            height: clamp(240px, 42vh, 420px);
+                                        }
+                                        @media (max-width: 768px) {
+                                            .chart-frame-sm {
+                                                height: 220px;
+                                            }
+                                            .chart-frame-builder {
+                                                height: 260px;
+                                            }
+                                        }
+                                    </style>
+                                <small class="text-muted d-block mt-1" id="builderSelectionSummary"></small>
+                            </div>
+                            <!-- end tab-construtor -->
+                            </div><!-- end tab-content -->
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="bi bi-info-circle"></i> Este modelo ainda não possui perguntas ou respostas registradas para análise.
+                            </div>
+                            {% endif %}
+                            
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Pergunta</th>
+                                            <th>Tipo</th>
+                                            <th class="text-center">Respostas</th>
+                                            <th class="text-center">Estatísticas</th>
+                                            <th class="text-center">Comentários</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for est in estatisticas_perguntas %}
+                                        <tr>
+                                            <td>
+                                                <span
+                                                    {% if est.descricao_detalhada %}
+                                                    data-bs-toggle="tooltip"
+                                                    data-bs-placement="top"
+                                                    title="{{ est.descricao_detalhada }}"
+                                                    style="cursor: help;"
+                                                    {% endif %}>
+                                                    {{ est.pergunta }}
+                                                </span>
+                                            </td>
+                                            <td><span class="badge bg-secondary">{{ est.tipo }}</span></td>
+                                            <td class="text-center">{{ est.total_respostas }}</td>
+                                            <td class="text-center">
+                                                {% if est.sim is not None %}
+                                                    <span class="badge bg-success">Sim: {{ est.sim }}</span>
+                                                    <span class="badge bg-danger">Não: {{ est.nao }}</span>
+                                                {% elif est.media %}
+                                                    <span class="badge bg-info">Média: {{ est.media }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">
+                                                {% if not is_read_only %}
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-sm btn-outline-primary comment-open-btn"
+                                                    data-pergunta-id="{{ est.pergunta_id }}"
+                                                    data-pergunta-texto="{{ est.pergunta|escape }}"
+                                                    title="Ver comentários da pergunta no período">
+                                                    <i class="bi bi-chat-left-text"></i>
+                                                    <span class="badge text-bg-primary ms-1 comment-count">0</span>
+                                                </button>
+                                                {% else %}
+                                                <span class="text-muted small">Somente leitura</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if not is_read_only %}
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="fw-semibold"><i class="bi bi-chat-left-text"></i> Comentários</div>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="text-muted small">Filtrados pelo período selecionado</div>
+                                <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#modal-novo-comentario">
+                                    <i class="bi bi-plus-circle"></i> Novo Comentário
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#comentarios-body" aria-expanded="true" aria-controls="comentarios-body">
+                                    <i class="bi bi-arrows-collapse"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="comentarios-body" class="collapse show">
+                            <div class="card-body">
+                                {% if comentarios %}
+                                    <div class="list-group">
+                                        {% for c in comentarios %}
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                    <div class="fw-semibold">
+                                                        {% if c.autor %}
+                                                            {{ c.autor.get_full_name|default:c.autor.username }}
+                                                        {% else %}
+                                                            <span class="text-muted">-</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="text-muted small">{{ c.criado_em|date:"d/m/Y H:i" }}</div>
+                                                        {% if is_auditoria_admin or c.autor_id == request.user.id %}
+                                                            <a class="btn btn-outline-secondary btn-sm" href="{% url 'auditoria:comentario_edit' modelo.id c.id %}?{{ querystring_with_page }}" title="Editar">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </a>
+                                                            <a class="btn btn-outline-danger btn-sm" href="{% url 'auditoria:comentario_delete' modelo.id c.id %}?{{ querystring_with_page }}" title="Remover">
+                                                                <i class="bi bi-trash"></i>
+                                                            </a>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="mt-2" style="white-space: pre-wrap;">{{ c.texto }}</div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="text-muted">Nenhum comentário no período selecionado.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade" id="modal-novo-comentario" tabindex="-1" aria-labelledby="modal-novo-comentario-label" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_comment">
+
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modal-novo-comentario-label">Novo Comentário</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-2">
+                                            <label class="form-label fw-semibold">Comentário</label>
+                                            <textarea name="comentario" class="form-control" rows="5" placeholder="Digite seu comentário..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-plus-circle"></i> Adicionar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade" id="modal-comentarios-pergunta" tabindex="-1" aria-labelledby="modal-comentarios-pergunta-label" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_question_comment">
+                                    <input type="hidden" name="pergunta_id" id="modal-pergunta-id" value="">
+
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modal-comentarios-pergunta-label">Comentários da Pergunta</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-2 small text-muted" id="modal-pergunta-texto"></div>
+                                        <div class="alert alert-light border small py-2 mb-3">
+                                            Exibindo comentários vinculados a datas dentro do período filtrado (com ou sem registro existente).
+                                        </div>
+                                        <div id="modal-comentarios-lista" class="mb-3"></div>
+                                        <div id="modal-novo-comentario-fields" class="d-none">
+                                        <div class="mb-3">
+                                            <label class="form-label" for="modal-comentario-data">Data do comentário</label>
+                                            <input
+                                                type="date"
+                                                class="form-control"
+                                                id="modal-comentario-data"
+                                                name="comentario_data"
+                                                value="{{ comentario_data_default|default:'' }}"
+                                                required>
+                                            <div class="form-text">Esta data será usada para vincular o comentário ao período. Se ainda não houver registro nessa data, o comentário fica salvo e reaparece no próximo preenchimento correspondente.</div>
+                                        </div>
+                                        <label class="form-label" for="modal-comentario-texto">Novo comentário</label>
+                                        <textarea name="comentario" id="modal-comentario-texto" class="form-control" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar as respostas desta pergunta..."></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                        <button type="button" class="btn btn-outline-primary" id="btn-novo-comentario-modal">
+                                            <i class="bi bi-plus-circle"></i> Novo Comentário
+                                        </button>
+                                        <button type="submit" class="btn btn-primary d-none" id="btn-salvar-comentario-modal">
+                                            <i class="bi bi-plus-circle"></i> Adicionar comentário
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if not is_read_only %}
+                    <div class="modal fade" id="modal-compartilhar-relatorio" tabindex="-1" aria-labelledby="modal-compartilhar-relatorio-label" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="share_report_targeted">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="modal-compartilhar-relatorio-label">Compartilhar relatório (somente leitura)</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="mb-2">Direcione este recorte para um usuário específico. O sistema registra histórico e comprovante de recebimento.</p>
+                                        <div class="mb-3">
+                                            <label class="form-label" for="share-destinatario-id">Usuário destinatário</label>
+                                            <select class="form-select" id="share-destinatario-id" name="destinatario_id" required>
+                                                <option value="">Selecione...</option>
+                                                {% for u in share_recipients %}
+                                                    <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="small text-muted mb-3">
+                                            Validade padrão: 30 dias. Período compartilhado: <strong>{{ inicio|default:'-' }}</strong> até <strong>{{ fim|default:'-' }}</strong>.
+                                        </div>
+
+                                        {% if share_link %}
+                                        <div class="border rounded p-2 mb-3 bg-light">
+                                            <div class="small fw-semibold mb-1">Link recém-gerado</div>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="shared-report-link" value="{{ share_link }}" readonly>
+                                                <button type="button" class="btn btn-outline-primary" id="btn-copy-shared-report-link">
+                                                    <i class="bi bi-clipboard"></i> Copiar link
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Destinatário</th>
+                                                        <th>Enviado em</th>
+                                                        <th>Status</th>
+                                                        <th>Comprovante</th>
+                                                        <th class="text-center">Link</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for item in share_history %}
+                                                    <tr>
+                                                        <td>{{ item.destinatario.get_full_name|default:item.destinatario.username }}</td>
+                                                        <td>{{ item.criado_em|date:"d/m/Y H:i" }}</td>
+                                                        <td>
+                                                            {% if item.is_expired %}
+                                                                <span class="badge bg-secondary">Expirado</span>
+                                                            {% elif item.recebido_em %}
+                                                                <span class="badge bg-success">Recebido</span>
+                                                            {% else %}
+                                                                <span class="badge bg-warning text-dark">Aguardando</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if item.recebido_em %}
+                                                                <div class="small">{{ item.recebido_em|date:"d/m/Y H:i" }}</div>
+                                                                <div class="small text-muted">IP: {{ item.recebido_ip|default:'-' }}</div>
+                                                            {% else %}
+                                                                <span class="text-muted small">Sem leitura</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <button type="button" class="btn btn-outline-primary btn-sm btn-copy-share-history" data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'auditoria:registros_por_modelo_compartilhado' modelo.id %}?share_token={{ item.token }}">
+                                                                Copiar
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    {% empty %}
+                                                    <tr>
+                                                        <td colspan="5" class="text-muted text-center">Nenhum compartilhamento enviado ainda.</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-share"></i> Compartilhar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if registros_count %}
+                    <div class="card shadow-sm">
+                        <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                            <div class="fw-semibold"><i class="bi bi-list-ul"></i> Registros</div>
+                            <form method="get" class="d-flex flex-wrap gap-2 align-items-center mb-0">
+                                <input type="hidden" name="inicio" value="{{ inicio|default:'' }}">
+                                <input type="hidden" name="fim" value="{{ fim|default:'' }}">
+                                {% if is_read_only and share_token %}
+                                <input type="hidden" name="share_token" value="{{ share_token }}">
+                                {% endif %}
+                                {% if subcategoria %}
+                                <input type="hidden" name="subcategoria" value="{{ subcategoria }}">
+                                {% endif %}
+                                <label class="form-label mb-0 small text-muted">Itens por página</label>
+                                <select name="per_page" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    {% for opt in per_page_options %}
+                                        <option value="{{ opt }}" {% if per_page == opt %}selected{% endif %}>{{ opt }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover mb-0">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Criado em</th>
+                                            <th>Data</th>
+                                            <th>ITEM/O.S.</th>
+                                            <th>Observações</th>
+                                            <th class="text-center">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for registro in page_obj %}
+                                        <tr>
+                                            <td>{{ registro.criado_em|date:"d/m/Y H:i" }}</td>
+                                            <td>{{ registro.data_auditoria|date:"d/m/Y" }}</td>
+                                            <td>
+                                                {% if registro.item_os %}
+                                                    {{ registro.item_os }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if registro.observacoes %}
+                                                    {{ registro.observacoes }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">
+                                                {% if not is_read_only %}
+                                                <a href="{% url 'auditoria:registro_detail' registro.pk %}" class="btn btn-sm btn-info" title="Visualizar">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn btn-sm btn-warning" title="Editar">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                {% else %}
+                                                <span class="text-muted small">Somente leitura</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                            <div class="text-muted small">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} — {{ registros_count }} registro(s)
+                            </div>
+                            <nav aria-label="Paginação">
+                                <ul class="pagination pagination-sm mb-0">
+                                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                                        <a class="page-link" href="?{% if querystring_base %}{{ querystring_base }}&{% endif %}page=1">Primeira</a>
+                                    </li>
+                                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                                        <a class="page-link" href="?{% if querystring_base %}{{ querystring_base }}&{% endif %}page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% else %}1{% endif %}">Anterior</a>
+                                    </li>
+                                    <li class="page-item disabled">
+                                        <span class="page-link">{{ page_obj.number }}</span>
+                                    </li>
+                                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                                        <a class="page-link" href="?{% if querystring_base %}{{ querystring_base }}&{% endif %}page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% else %}{{ page_obj.number }}{% endif %}">Próxima</a>
+                                    </li>
+                                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                                        <a class="page-link" href="?{% if querystring_base %}{{ querystring_base }}&{% endif %}page={{ page_obj.paginator.num_pages }}">Última</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Nenhum registro encontrado para o período selecionado.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <a href="{% url 'auditoria:dashboard' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{{ chart_data|json_script:"auditoria-chart-data" }}
+{{ chart_cards|json_script:"auditoria-chart-cards" }}
+{{ comentarios_resposta_por_pergunta|json_script:"comentarios-resposta-por-pergunta" }}
+{% if subcat_chart %}
+{{ subcat_chart|json_script:"auditoria-subcat-chart" }}
+{% endif %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isReadOnly = {% if is_read_only %}true{% else %}false{% endif %};
+    const btnPrintPdf = document.getElementById('btnPrintPdf');
+
+    if (btnPrintPdf) {
+        btnPrintPdf.addEventListener('click', function() {
+            window.print();
+        });
+    }
+
+    const tooltipTriggers = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggers.forEach(function(el) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            bootstrap.Tooltip.getOrCreateInstance(el);
+        }
+    });
+
+    let comentariosPorPergunta = {};
+    try {
+        const scriptComentarios = document.getElementById('comentarios-resposta-por-pergunta');
+        comentariosPorPergunta = JSON.parse(scriptComentarios ? scriptComentarios.textContent : '{}') || {};
+    } catch (e) {
+        comentariosPorPergunta = {};
+    }
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderList(items) {
+        if (!items || !items.length) {
+            return '<div class="text-muted">Nenhum comentário para esta pergunta no período selecionado.</div>';
+        }
+        const rows = items.map(function(item) {
+            const isObj = item && typeof item === 'object';
+            const texto = isObj ? String(item.texto || '') : String(item || '');
+            const commentId = isObj ? Number(item.id || 0) : 0;
+            const canDelete = Boolean(isObj && item.can_delete && commentId);
+
+            let action = '';
+            if (canDelete) {
+                action =
+                    '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 ms-2" '
+                    + 'onclick="deleteQuestionComment(' + commentId + ')" title="Excluir comentário">'
+                    + '<i class="bi bi-trash"></i></button>';
+            }
+
+            return '<li class="mb-1 d-flex justify-content-between align-items-start gap-2">'
+                + '<span>' + escapeHtml(texto) + '</span>'
+                + action
+                + '</li>';
+        }).join('');
+        return '<ol class="mb-0 ps-3">' + rows + '</ol>';
+    }
+
+    const modalEl = document.getElementById('modal-comentarios-pergunta');
+    const modal = (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal)
+        ? bootstrap.Modal.getOrCreateInstance(modalEl)
+        : null;
+    const modalPerguntaId = document.getElementById('modal-pergunta-id');
+    const modalPerguntaTexto = document.getElementById('modal-pergunta-texto');
+    const modalLista = document.getElementById('modal-comentarios-lista');
+    const btnNovoComentario = document.getElementById('btn-novo-comentario-modal');
+    const btnSalvarComentario = document.getElementById('btn-salvar-comentario-modal');
+    const novoComentarioFields = document.getElementById('modal-novo-comentario-fields');
+    const comentarioDataInput = document.getElementById('modal-comentario-data');
+    const comentarioTextoInput = document.getElementById('modal-comentario-texto');
+    const csrfInputModal = modalEl ? modalEl.querySelector('input[name="csrfmiddlewaretoken"]') : null;
+    let activePerguntaId = '';
+
+    function hideNovoComentarioForm() {
+        if (!novoComentarioFields || !btnSalvarComentario || !btnNovoComentario) return;
+        novoComentarioFields.classList.add('d-none');
+        btnSalvarComentario.classList.add('d-none');
+        btnNovoComentario.classList.remove('d-none');
+    }
+
+    function showNovoComentarioForm() {
+        if (!novoComentarioFields || !btnSalvarComentario || !btnNovoComentario) return;
+        novoComentarioFields.classList.remove('d-none');
+        btnSalvarComentario.classList.remove('d-none');
+        btnNovoComentario.classList.add('d-none');
+        if (comentarioDataInput && !comentarioDataInput.value) {
+            comentarioDataInput.focus();
+        } else if (comentarioTextoInput) {
+            comentarioTextoInput.focus();
+        }
+    }
+
+    if (btnNovoComentario) {
+        btnNovoComentario.addEventListener('click', showNovoComentarioForm);
+    }
+
+    hideNovoComentarioForm();
+
+    document.querySelectorAll('.comment-open-btn').forEach(function(btn) {
+        const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
+        const itens = comentariosPorPergunta[perguntaId] || [];
+        const countEl = btn.querySelector('.comment-count');
+        if (countEl) countEl.textContent = String(itens.length || 0);
+
+        btn.addEventListener('click', function() {
+            const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
+            const perguntaTexto = String(btn.getAttribute('data-pergunta-texto') || '');
+            const list = comentariosPorPergunta[perguntaId] || [];
+
+            activePerguntaId = perguntaId;
+            if (modalPerguntaId) modalPerguntaId.value = perguntaId;
+            if (modalPerguntaTexto) modalPerguntaTexto.textContent = perguntaTexto;
+            if (modalLista) modalLista.innerHTML = renderList(list);
+            hideNovoComentarioForm();
+            if (modal) modal.show();
+        });
+    });
+
+    window.deleteQuestionComment = function(commentId) {
+        if (isReadOnly) return;
+        const id = Number(commentId || 0);
+        if (!id || !activePerguntaId) return;
+        if (!confirm('Deseja realmente excluir este comentário?')) return;
+
+        const body = new URLSearchParams();
+        body.set('action', 'delete_question_comment');
+        body.set('comentario_id', String(id));
+
+        const csrfToken = csrfInputModal ? csrfInputModal.value : '';
+        if (csrfToken) body.set('csrfmiddlewaretoken', csrfToken);
+
+        fetch(window.location.pathname + window.location.search, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+            },
+            body: body.toString(),
+        })
+        .then(function(response) {
+            return response.json().then(function(data) {
+                return { ok: response.ok, data: data };
+            });
+        })
+        .then(function(result) {
+            if (!result.ok || !result.data || !result.data.success) {
+                const msg = (result.data && result.data.message) ? result.data.message : 'Erro ao excluir comentário.';
+                alert(msg);
+                return;
+            }
+
+            const pid = String(result.data.pergunta_id || activePerguntaId);
+            const list = comentariosPorPergunta[pid] || [];
+            comentariosPorPergunta[pid] = list.filter(function(item) {
+                if (!item || typeof item !== 'object') return true;
+                return Number(item.id || 0) !== id;
+            });
+
+            if (modalLista) {
+                modalLista.innerHTML = renderList(comentariosPorPergunta[pid]);
+            }
+
+            document.querySelectorAll('.comment-open-btn[data-pergunta-id="' + pid + '"]').forEach(function(btn) {
+                const badge = btn.querySelector('.comment-count');
+                if (badge) badge.textContent = String((comentariosPorPergunta[pid] || []).length);
+            });
+        })
+        .catch(function() {
+            alert('Erro na requisição ao excluir comentário.');
+        });
+    };
+
+    const shareInput = document.getElementById('shared-report-link');
+    const shareCopyBtn = document.getElementById('btn-copy-shared-report-link');
+
+    async function copyTextValue(raw) {
+        const text = String(raw || '').trim();
+        if (!text) return false;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+        const temp = document.createElement('input');
+        temp.type = 'text';
+        temp.value = text;
+        document.body.appendChild(temp);
+        temp.focus();
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        return true;
+    }
+
+    if (shareInput && shareCopyBtn) {
+        shareCopyBtn.addEventListener('click', async function() {
+            try {
+                await copyTextValue(shareInput.value || '');
+                shareCopyBtn.classList.remove('btn-outline-primary');
+                shareCopyBtn.classList.add('btn-success');
+                shareCopyBtn.innerHTML = '<i class="bi bi-check2"></i> Copiado';
+                setTimeout(function() {
+                    shareCopyBtn.classList.remove('btn-success');
+                    shareCopyBtn.classList.add('btn-outline-primary');
+                    shareCopyBtn.innerHTML = '<i class="bi bi-clipboard"></i> Copiar link';
+                }, 1400);
+            } catch (_e) {
+                alert('Não foi possível copiar automaticamente. Copie manualmente o link.');
+            }
+        });
+    }
+
+    document.querySelectorAll('.btn-copy-share-history').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+            const link = btn.getAttribute('data-link') || '';
+            try {
+                await copyTextValue(link);
+                const old = btn.innerHTML;
+                btn.classList.remove('btn-outline-primary');
+                btn.classList.add('btn-success');
+                btn.innerHTML = 'Copiado';
+                setTimeout(function() {
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-primary');
+                    btn.innerHTML = old;
+                }, 1200);
+            } catch (_e) {
+                alert('Não foi possível copiar automaticamente. Copie manualmente o link.');
+            }
+        });
+    });
+
+    const raw = document.getElementById('auditoria-chart-data');
+    const chartsData = raw ? JSON.parse(raw.textContent || '{}') : {};
+    const rawCards = document.getElementById('auditoria-chart-cards');
+    const cardsData = rawCards ? JSON.parse(rawCards.textContent || '[]') : [];
+    const chartInstances = {};
+    let builderChart = null;
+    const builderAxisState = { x: [], y: [], values: [] };
+    const rawSubcat = document.getElementById('auditoria-subcat-chart');
+    const subcatData = rawSubcat ? JSON.parse(rawSubcat.textContent || '{}') : null;
+    let subcatInstance = null;
+
+    function cssVar(name, fallback) {
+        try {
+            const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+            const s = String(v || '').trim();
+            return s || fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    const seriesColors = [
+        cssVar('--bs-primary', '#0d6efd'),
+        cssVar('--bs-success', '#198754'),
+        cssVar('--bs-danger', '#dc3545'),
+        cssVar('--bs-warning', '#ffc107'),
+        cssVar('--bs-info', '#0dcaf0'),
+        cssVar('--bs-secondary', '#6c757d'),
+    ];
+
+    function isoToBr(iso) {
+        const s = String(iso || '').trim();
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return s;
+        return `${m[3]}/${m[2]}/${m[1]}`;
+    }
+
+    function destroyChart(key, which) {
+        if (chartInstances[key] && chartInstances[key][which]) {
+            chartInstances[key][which].destroy();
+            chartInstances[key][which] = null;
+        }
+    }
+
+    function destroySubcat() {
+        if (subcatInstance) {
+            subcatInstance.destroy();
+            subcatInstance = null;
+        }
+    }
+
+    function destroyBuilderChart() {
+        if (builderChart) {
+            builderChart.destroy();
+            builderChart = null;
+        }
+    }
+
+    function showFallback(canvasId, fallbackId, show) {
+        const canvas = document.getElementById(canvasId);
+        const fallback = document.getElementById(fallbackId);
+        if (!canvas || !fallback) return;
+        if (show) {
+            canvas.classList.add('d-none');
+            fallback.classList.remove('d-none');
+        } else {
+            canvas.classList.remove('d-none');
+            fallback.classList.add('d-none');
+        }
+    }
+
+    function buildCurrentConfig(tipo, q) {
+        if (!q || !q.current) return null;
+        const labels = q.current.labels || [];
+        const datasets = q.current.datasets || null;
+
+        // Formato "antigo" (por pergunta): { labels: [...], values: [...] }
+        if (!datasets && Array.isArray(q.current.values)) {
+            const values = q.current.values || [];
+            const safeLabels = Array.isArray(labels) && labels.length ? labels : values.map((_v, idx) => String(idx + 1));
+            const safeValues = Array.isArray(values) ? values : [];
+
+            return {
+                type: 'bar',
+                data: {
+                    labels: safeLabels,
+                    datasets: [
+                        {
+                            label: (tipo === 'SIM_NAO') ? '' : 'Respostas',
+                            data: safeValues,
+                            borderWidth: 1,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                }
+            };
+        }
+
+        const stackedBars = (tipo === 'SIM_NAO');
+
+        return {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: (datasets || []).map(ds => ({
+                    label: ds.label || '',
+                    data: ds.data || [],
+                    borderWidth: 1,
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { stacked: stackedBars, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                    y: { stacked: stackedBars, beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        };
+    }
+
+    function buildDateConfig(tipo, q) {
+        if (!q || !q.by_date) return null;
+        const labels = (q.by_date.labels || []).map(isoToBr);
+        const datasetsIn = q.by_date.datasets || [];
+        const singlePoint = (labels || []).length <= 1;
+
+        if (tipo === 'NUMERO' || tipo === 'DECIMAL') {
+            return {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: (datasetsIn || []).map((ds, idx) => ({
+                        label: ds.label || 'Valor',
+                        data: ds.data || [],
+                        borderColor: seriesColors[idx % seriesColors.length],
+                        pointBackgroundColor: seriesColors[idx % seriesColors.length],
+                        pointBorderColor: seriesColors[idx % seriesColors.length],
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        fill: false,
+                        tension: 0.3,
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                    scales: {
+                        x: { offset: singlePoint },
+                        y: { beginAtZero: true }
+                    }
+                }
+            };
+        }
+
+        // LISTA: exibir total no período (uma barra por opção)
+        if (tipo === 'LISTA') {
+            const optLabels = (datasetsIn || []).map(ds => String(ds.label || '').trim()).filter(Boolean);
+            const optTotals = (datasetsIn || []).map(ds => {
+                const arr = Array.isArray(ds.data) ? ds.data : [];
+                return arr.reduce((acc, v) => acc + (Number(v) || 0), 0);
+            });
+
+            return {
+                type: 'bar',
+                data: {
+                    labels: optLabels,
+                    datasets: [
+                        {
+                            label: 'Respostas',
+                            data: optTotals,
+                            borderWidth: 1,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { stacked: false, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                        y: { stacked: false, beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                }
+            };
+        }
+
+        // SIM_NAO: barras empilhadas por data
+        const stackedBars = (tipo === 'SIM_NAO');
+        return {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: (datasetsIn || []).map(ds => ({
+                    label: ds.label || '',
+                    data: ds.data || [],
+                    borderWidth: 1,
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { stacked: stackedBars, offset: singlePoint },
+                    y: { stacked: stackedBars, beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        };
+    }
+
+    function buildSubcatConfig(data) {
+        if (!data) return null;
+        const labels = data.labels || [];
+        const datasets = data.datasets || [];
+        return {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: (datasets || []).map(ds => ({
+                    label: ds.label || '',
+                    data: ds.data || [],
+                    borderWidth: 1,
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { stacked: true, ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        };
+    }
+
+    function renderSubcatChart() {
+        if (!subcatData) return;
+        const labels = subcatData.labels || [];
+        const datasets = subcatData.datasets || [];
+        const hasAny = (datasets || []).some(ds => (ds.data || []).some(v => (Number(v) || 0) > 0));
+        if (!labels.length || !hasAny) {
+            showFallback('canvas-subcat', 'fallback-subcat', true);
+            destroySubcat();
+            return;
+        }
+        showFallback('canvas-subcat', 'fallback-subcat', false);
+        destroySubcat();
+        const ctx = document.getElementById('canvas-subcat');
+        if (!ctx) return;
+        const cfg = buildSubcatConfig(subcatData);
+        if (!cfg) return;
+        subcatInstance = new Chart(ctx, cfg);
+    }
+
+    function renderCharts(key) {
+        const card = chartsData[key];
+        if (!card) return;
+        const tipo = card.tipo;
+        const globalTipo = document.getElementById('globalTipoSelect');
+        const globalPergunta = document.getElementById('globalPerguntaSelect');
+        if (!globalTipo || !globalPergunta) return;
+        if (String(globalTipo.value || '').trim() !== String(key || '').trim()) return;
+        const perguntaId = String(globalPergunta.value || '').trim();
+        const q = (card.perguntas && card.perguntas[perguntaId]) ? card.perguntas[perguntaId] : null;
+
+        const tabsEl = document.getElementById(`tabs-${key}`);
+        let active = 'current';
+        if (tabsEl) {
+            const activeBtn = tabsEl.querySelector('.nav-link.active');
+            const target = activeBtn ? (activeBtn.getAttribute('data-bs-target') || '') : '';
+            if (target && target.indexOf(`#tab-date-${key}`) === 0) active = 'date';
+        }
+
+        if (active === 'current') {
+            destroyChart(key, 'date');
+            destroyChart(key, 'current');
+            const currentCfg = buildCurrentConfig(tipo, q);
+            if (!currentCfg || !currentCfg.data || !currentCfg.data.labels || currentCfg.data.labels.length === 0) {
+                showFallback(`canvas-current-${key}`, `fallback-current-${key}`, true);
+            } else {
+                showFallback(`canvas-current-${key}`, `fallback-current-${key}`, false);
+                const ctx = document.getElementById(`canvas-current-${key}`);
+                if (ctx) {
+                    chartInstances[key] = chartInstances[key] || {};
+                    chartInstances[key].current = new Chart(ctx, currentCfg);
+                }
+            }
+        } else {
+            destroyChart(key, 'current');
+            destroyChart(key, 'date');
+            const dateCfg = buildDateConfig(tipo, q);
+            if (!dateCfg || !dateCfg.data || !dateCfg.data.labels || dateCfg.data.labels.length === 0) {
+                showFallback(`canvas-date-${key}`, `fallback-date-${key}`, true);
+            } else {
+                showFallback(`canvas-date-${key}`, `fallback-date-${key}`, false);
+                const ctx2 = document.getElementById(`canvas-date-${key}`);
+                if (ctx2) {
+                    chartInstances[key] = chartInstances[key] || {};
+                    chartInstances[key].date = new Chart(ctx2, dateCfg);
+                }
+            }
+        }
+    }
+
+    function setGlobalPerguntasForKey(key) {
+        const globalPergunta = document.getElementById('globalPerguntaSelect');
+        const secundaria = document.getElementById('builderPerguntaSecundariaSelect');
+        if (!globalPergunta) return;
+        const found = (cardsData || []).find(c => String(c.key || '') === String(key || ''));
+        const perguntas = (found && found.perguntas) ? found.perguntas : [];
+
+        const previous = String(globalPergunta.value || '').trim();
+        const previousSecondary = String((secundaria && secundaria.value) || '').trim();
+        globalPergunta.innerHTML = '';
+        if (secundaria) {
+            secundaria.innerHTML = '<option value="">Nenhum</option>';
+        }
+        (perguntas || []).forEach(p => {
+            const o = document.createElement('option');
+            o.value = String(p.id);
+            o.textContent = String(p.texto || '');
+            globalPergunta.appendChild(o);
+
+            if (secundaria) {
+                const os = document.createElement('option');
+                os.value = String(p.id);
+                os.textContent = String(p.texto || '');
+                secundaria.appendChild(os);
+            }
+        });
+
+        const values = Array.from(globalPergunta.options || []).map(o => o.value);
+        if (previous && values.includes(previous)) {
+            globalPergunta.value = previous;
+        } else if (values.includes('__all__')) {
+            globalPergunta.value = '__all__';
+        } else {
+            globalPergunta.value = (globalPergunta.options[0] ? globalPergunta.options[0].value : '');
+        }
+
+        if (secundaria) {
+            const secValues = Array.from(secundaria.options || []).map(o => o.value);
+            if (previousSecondary && secValues.includes(previousSecondary)) {
+                secundaria.value = previousSecondary;
+            }
+        }
+    }
+
+    function getListQuestions() {
+        const result = [];
+        Object.keys(chartsData || {}).forEach(key => {
+            const card = chartsData[key];
+            if (!card || String(card.tipo || '') !== 'LISTA' || !card.perguntas) return;
+
+            const metaCard = (cardsData || []).find(c => String(c.key || '') === String(key || ''));
+            const perguntasMeta = (metaCard && metaCard.perguntas) ? metaCard.perguntas : [];
+
+            perguntasMeta.forEach(p => {
+                const pid = String(p.id || '');
+                if (pid && card.perguntas[pid]) {
+                    result.push({
+                        key,
+                        id: pid,
+                        texto: String(p.texto || ''),
+                    });
+                }
+            });
+        });
+        return result;
+    }
+
+    function populateListaCampoSelect() {
+        const listaCampo = document.getElementById('builderListaCampoSelect');
+        if (!listaCampo) return;
+        const previous = String(listaCampo.value || '');
+        const listQuestions = getListQuestions();
+
+        listaCampo.innerHTML = '<option value="">Nenhum</option>';
+        listQuestions.forEach(item => {
+            const o = document.createElement('option');
+            o.value = `${item.key}::${item.id}`;
+            o.textContent = item.texto;
+            listaCampo.appendChild(o);
+        });
+
+        const values = Array.from(listaCampo.options || []).map(o => o.value);
+        if (previous && values.includes(previous)) {
+            listaCampo.value = previous;
+        }
+    }
+
+    function getListaAxisLabels(listaFieldValue) {
+        const token = String(listaFieldValue || '');
+        if (!token || token.indexOf('::') < 0) return [];
+        const parts = token.split('::');
+        const key = parts[0];
+        const pid = parts[1];
+        const card = chartsData[key];
+        const q = card && card.perguntas ? card.perguntas[pid] : null;
+        if (!q || !q.current) return [];
+        return (q.current.labels || []).map(v => String(v));
+    }
+
+    function populateListaValorSelect() {
+        const listaCampo = document.getElementById('builderListaCampoSelect');
+        const listaUso = document.getElementById('builderListaUsoSelect');
+        const listaValor = document.getElementById('builderListaValorSelect');
+        const listaBusca = document.getElementById('builderListaValorSearch');
+        if (!listaCampo || !listaUso || !listaValor) return;
+
+        const enabled = String(listaUso.value || 'none') === 'filter' && String(listaCampo.value || '');
+        const labels = enabled ? getListaAxisLabels(listaCampo.value) : [];
+        const previousSelected = Array.from(listaValor.selectedOptions || []).map(o => String(o.value || ''));
+
+        listaValor.innerHTML = '';
+        const uniqueLabels = Array.from(new Set(labels));
+        uniqueLabels.forEach(lbl => {
+            const o = document.createElement('option');
+            o.value = lbl;
+            o.textContent = lbl;
+            listaValor.appendChild(o);
+        });
+
+        listaValor.disabled = !enabled;
+        if (listaBusca) {
+            listaBusca.disabled = !enabled;
+        }
+        if (enabled) {
+            Array.from(listaValor.options || []).forEach(o => {
+                o.selected = previousSelected.includes(String(o.value || ''));
+            });
+        }
+
+        filterListaValorOptions();
+    }
+
+    function filterListaValorOptions() {
+        const listaValor = document.getElementById('builderListaValorSelect');
+        const listaBusca = document.getElementById('builderListaValorSearch');
+        if (!listaValor || !listaBusca) return;
+
+        const term = String(listaBusca.value || '').trim().toLowerCase();
+        Array.from(listaValor.options || []).forEach(o => {
+            const txt = String(o.textContent || '').toLowerCase();
+            o.hidden = Boolean(term) && !txt.includes(term);
+        });
+    }
+
+    function showBuilderFallback(show, msg) {
+        const canvas = document.getElementById('builderChartCanvas');
+        const fallback = document.getElementById('builderChartFallback');
+        if (!canvas || !fallback) return;
+        if (show) {
+            canvas.classList.add('d-none');
+            fallback.classList.remove('d-none');
+            if (msg) fallback.textContent = msg;
+        } else {
+            canvas.classList.remove('d-none');
+            fallback.classList.add('d-none');
+        }
+    }
+
+    function parseQuestionToken(token) {
+        const s = String(token || '');
+        if (!s || s.indexOf('::') < 0) return null;
+        const parts = s.split('::');
+        return { key: parts[0], id: parts[1] };
+    }
+
+    function getQuestionLabelByToken(token) {
+        const p = parseQuestionToken(token);
+        if (!p) return '';
+        const metaCard = (cardsData || []).find(c => String(c.key || '') === p.key);
+        const perguntasMeta = (metaCard && metaCard.perguntas) ? metaCard.perguntas : [];
+        const found = perguntasMeta.find(q => String(q.id || '') === p.id);
+        if (found) return String(found.texto || '');
+        return `${p.key} / ${p.id}`;
+    }
+
+    function getAllQuestionOptions() {
+        const options = [];
+        (cardsData || []).forEach(card => {
+            const key = String(card.key || '');
+            const tipoLabel = String(card.label || key || '');
+            (card.perguntas || []).forEach(p => {
+                const id = String(p.id || '');
+                if (!id) return;
+                options.push({
+                    token: `${key}::${id}`,
+                    label: `${p.texto} (${tipoLabel})`,
+                });
+            });
+        });
+        return options;
+    }
+
+    function populateAxisSelectors() {
+        const xSel = document.getElementById('builderAxisXSelect');
+        const ySel = document.getElementById('builderAxisYSelect');
+        const vSel = document.getElementById('builderAxisValuesSelect');
+        if (!xSel || !ySel) return;
+
+        const options = getAllQuestionOptions();
+        const blank = '<option value="">Selecione...</option>';
+        xSel.innerHTML = blank;
+        ySel.innerHTML = blank;
+        if (vSel) vSel.innerHTML = blank;
+
+        options.forEach(opt => {
+            [xSel, ySel, vSel].forEach(sel => {
+                if (!sel) return;
+                const o = document.createElement('option');
+                o.value = opt.token;
+                o.textContent = opt.label;
+                sel.appendChild(o);
+            });
+        });
+    }
+
+    const AXIS_STYLES = {
+        x: { cls: 'btn-outline-secondary', empty: 'Nenhum campo. Arraste ou adicione para definir categorias.' },
+        y: { cls: 'btn-outline-primary',   empty: 'Nenhum campo. Adicione perguntas que virarão séries.' },
+        values: { cls: 'btn-outline-success', empty: 'Nenhum campo. Adicione métricas/valores a agregar.' },
+    };
+
+    function renderAxisVariables() {
+        const wraps = {
+            x: document.getElementById('builderXAxisVars'),
+            y: document.getElementById('builderYAxisVars'),
+            values: document.getElementById('builderValuesVars'),
+        };
+
+        ['x', 'y', 'values'].forEach(axis => {
+            const wrap = wraps[axis];
+            if (!wrap) return;
+            const tokens = builderAxisState[axis] || [];
+            const style = AXIS_STYLES[axis];
+
+            if (!tokens.length) {
+                wrap.innerHTML = `<span class="text-muted small">${style.empty}</span>`;
+            } else {
+                wrap.innerHTML = tokens.map(token =>
+                    `<button type="button" class="btn ${style.cls} btn-sm py-0 px-2 rounded-pill" data-axis="${axis}" data-token="${escapeHtml(token)}">` +
+                    `${escapeHtml(getQuestionLabelByToken(token))} <span aria-hidden="true">&times;</span></button>`
+                ).join('');
+            }
+
+            wrap.querySelectorAll('button[data-axis][data-token]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const a = String(btn.getAttribute('data-axis') || '');
+                    const t = String(btn.getAttribute('data-token') || '');
+                    if (!a || !t) return;
+                    builderAxisState[a] = (builderAxisState[a] || []).filter(v => v !== t);
+                    renderAxisVariables();
+                });
+            });
+        });
+    }
+
+    const AXIS_SELECTORS = {
+        x: 'builderAxisXSelect',
+        y: 'builderAxisYSelect',
+        values: 'builderAxisValuesSelect',
+    };
+
+    function addAxisVariable(axis) {
+        const selId = AXIS_SELECTORS[axis];
+        if (!selId) return;
+        const sel = document.getElementById(selId);
+        if (!sel) return;
+        const token = String(sel.value || '').trim();
+        if (!token) return;
+        if (!(builderAxisState[axis] || []).includes(token)) {
+            if (axis === 'x') {
+                builderAxisState.x = [token];   // X aceita só 1
+            } else {
+                if (!builderAxisState[axis]) builderAxisState[axis] = [];
+                builderAxisState[axis].push(token);
+            }
+            renderAxisVariables();
+        }
+    }
+
+    function clearAxisVariables(axis) {
+        builderAxisState[axis] = [];
+        renderAxisVariables();
+    }
+
+    function normalizePieConfig(cfg) {
+        if (!cfg || !cfg.data) return null;
+        const labels = cfg.data.labels || [];
+        const datasets = cfg.data.datasets || [];
+        if (!datasets.length) return null;
+
+        let pieLabels = [];
+        let pieValues = [];
+
+        if (datasets.length === 1) {
+            pieLabels = labels;
+            pieValues = datasets[0].data || [];
+        } else {
+            pieLabels = datasets.map(ds => String(ds.label || 'Série'));
+            pieValues = datasets.map(ds => (ds.data || []).reduce((acc, v) => acc + (Number(v) || 0), 0));
+        }
+
+        return {
+            type: 'pie',
+            data: {
+                labels: pieLabels,
+                datasets: [{ data: pieValues, borderWidth: 1 }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+            },
+        };
+    }
+
+    function applyLayoutMode(cfg, mode) {
+        if (!cfg || cfg.type !== 'bar' || !cfg.options || !cfg.options.scales) return;
+        const stacked = String(mode || 'stacked') === 'stacked';
+        if (cfg.options.scales.x) cfg.options.scales.x.stacked = stacked;
+        if (cfg.options.scales.y) cfg.options.scales.y.stacked = stacked;
+    }
+
+    function applyAxisMode(cfg, eixo) {
+        if (!cfg || !cfg.options) return;
+        if (cfg.type === 'bar') {
+            cfg.options.indexAxis = (String(eixo || 'vertical') === 'horizontal') ? 'y' : 'x';
+        }
+    }
+
+    function safeNumber(v) {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function getQuestionSeries(card, perguntaId, distribuicao) {
+        if (!card || !card.perguntas || !card.perguntas[perguntaId]) {
+            return { labels: [], values: [] };
+        }
+        const q = card.perguntas[perguntaId];
+
+        if (distribuicao === 'date' && q.by_date) {
+            const labels = (q.by_date.labels || []).map(isoToBr);
+            const datasets = q.by_date.datasets || [];
+            const values = labels.map((_, idx) => {
+                return (datasets || []).reduce((acc, ds) => acc + safeNumber((ds.data || [])[idx]), 0);
+            });
+            return { labels, values };
+        }
+
+        if (q.current) {
+            const labels = q.current.labels || [];
+            if (Array.isArray(q.current.values)) {
+                return { labels, values: q.current.values.map(safeNumber) };
+            }
+            const datasets = q.current.datasets || [];
+            const values = labels.map((_, idx) => {
+                return (datasets || []).reduce((acc, ds) => acc + safeNumber((ds.data || [])[idx]), 0);
+            });
+            return { labels, values };
+        }
+
+        return { labels: [], values: [] };
+    }
+
+    function getSeriesByToken(token, distribuicao) {
+        const parsed = parseQuestionToken(token);
+        if (!parsed) return { labels: [], values: [] };
+        const card = chartsData[parsed.key];
+        return getQuestionSeries(card, parsed.id, distribuicao);
+    }
+
+    function alignSeriesToLabels(series, labels) {
+        const map = new Map();
+        (series.labels || []).forEach((lbl, idx) => {
+            map.set(String(lbl), safeNumber((series.values || [])[idx]));
+        });
+        return (labels || []).map(lbl => safeNumber(map.get(String(lbl))));
+    }
+
+    function buildAxisDrivenConfig(distribuicao, visual) {
+        const yTokens = builderAxisState.y || [];
+        const valueTokens = builderAxisState.values || [];
+        const xToken = (builderAxisState.x && builderAxisState.x[0]) ? builderAxisState.x[0] : '';
+
+        // Precisa pelo menos Y ou Values para montar o gráfico
+        const hasY = yTokens.length > 0;
+        const hasValues = valueTokens.length > 0;
+        if (!hasY && !hasValues) return null;
+
+        // Determina os labels do eixo X
+        let labels = [];
+        if (xToken) {
+            labels = getSeriesByToken(xToken, distribuicao).labels || [];
+        }
+
+        let datasets = [];
+
+        if (hasValues) {
+            // Modo pivot: cada token de Values vira uma série de dados;
+            // se Y também tiver campos, cada combinação (Y × Values) gera uma série.
+            if (hasY) {
+                yTokens.forEach((yToken, yi) => {
+                    const yLabel = getQuestionLabelByToken(yToken);
+                    valueTokens.forEach((vToken, vi) => {
+                        const vSeries = getSeriesByToken(vToken, distribuicao);
+                        const seriesLabels = vSeries.labels || [];
+                        const finalLabels = labels.length ? labels : seriesLabels;
+                        if (!finalLabels.length && !seriesLabels.length) return;
+                        if (!labels.length) labels = finalLabels;
+                        const idx = datasets.length;
+                        datasets.push({
+                            label: `${yLabel} / ${getQuestionLabelByToken(vToken)}`,
+                            data: alignSeriesToLabels(vSeries, finalLabels),
+                            borderWidth: 2,
+                            borderColor: seriesColors[idx % seriesColors.length],
+                            backgroundColor: seriesColors[idx % seriesColors.length],
+                            pointRadius: 3,
+                            fill: false,
+                            tension: 0.2,
+                        });
+                    });
+                });
+            } else {
+                // Só Values: cada token vira série
+                valueTokens.forEach((vToken, vi) => {
+                    const vSeries = getSeriesByToken(vToken, distribuicao);
+                    const seriesLabels = vSeries.labels || [];
+                    const finalLabels = labels.length ? labels : seriesLabels;
+                    if (!labels.length && seriesLabels.length) labels = seriesLabels;
+                    if (!finalLabels.length && !seriesLabels.length) return;
+                    datasets.push({
+                        label: getQuestionLabelByToken(vToken),
+                        data: alignSeriesToLabels(vSeries, finalLabels),
+                        borderWidth: 2,
+                        borderColor: seriesColors[vi % seriesColors.length],
+                        backgroundColor: seriesColors[vi % seriesColors.length],
+                        pointRadius: 3,
+                        fill: false,
+                        tension: 0.2,
+                    });
+                });
+            }
+        } else {
+            // Só Y (modo original): cada token Y vira série com sua distribuição
+            const ySeriesList = yTokens.map(token => ({ token, series: getSeriesByToken(token, distribuicao) }));
+            const validY = ySeriesList.filter(item => (item.series.labels || []).length);
+            if (!validY.length) return null;
+            if (!labels.length) labels = validY[0].series.labels || [];
+
+            datasets = validY.map((item, idx) => ({
+                label: getQuestionLabelByToken(item.token),
+                data: alignSeriesToLabels(item.series, labels),
+                borderWidth: 2,
+                borderColor: seriesColors[idx % seriesColors.length],
+                backgroundColor: seriesColors[idx % seriesColors.length],
+                pointRadius: 3,
+                fill: false,
+                tension: 0.2,
+            }));
+        }
+
+        if (!datasets.length || !labels.length) return null;
+
+        let chartType = 'bar';
+        if (visual === 'line' || visual === 'pie' || visual === 'bar') {
+            chartType = visual;
+        } else if (distribuicao === 'date') {
+            chartType = 'line';
+        }
+
+        let cfg = {
+            type: chartType,
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } },
+                    y: { beginAtZero: true },
+                },
+            },
+        };
+
+        if (chartType === 'pie') {
+            cfg = normalizePieConfig(cfg);
+        }
+
+        return cfg;
+    }
+
+    function alignSeriesByLabels(primary, secondary) {
+        const secMap = new Map();
+        (secondary.labels || []).forEach((lbl, idx) => {
+            secMap.set(String(lbl), safeNumber((secondary.values || [])[idx]));
+        });
+        const labels = (primary.labels || []).map(v => String(v));
+        const p = (primary.values || []).map(safeNumber);
+        const s = labels.map(lbl => safeNumber(secMap.get(lbl)));
+        return { labels, primary: p, secondary: s };
+    }
+
+    function applyFormula(primary, secondary, formula) {
+        if (formula === 'multiply') {
+            return primary.map((v, i) => safeNumber(v) * safeNumber(secondary[i]));
+        }
+        if (formula === 'subtract') {
+            return primary.map((v, i) => safeNumber(v) - safeNumber(secondary[i]));
+        }
+        return primary.slice();
+    }
+
+    function cumulative(values) {
+        let total = 0;
+        return (values || []).map(v => {
+            total += safeNumber(v);
+            return total;
+        });
+    }
+
+    function movingAverage(values, windowSize) {
+        const size = Math.max(2, Number(windowSize) || 3);
+        return (values || []).map((_, idx, arr) => {
+            const start = Math.max(0, idx - size + 1);
+            const slice = arr.slice(start, idx + 1).map(safeNumber);
+            const sum = slice.reduce((acc, v) => acc + v, 0);
+            return slice.length ? (sum / slice.length) : 0;
+        });
+    }
+
+    function linearTrend(values) {
+        const ys = (values || []).map(safeNumber);
+        const n = ys.length;
+        if (!n) return [];
+        const xs = Array.from({ length: n }, (_, i) => i + 1);
+        const sumX = xs.reduce((a, b) => a + b, 0);
+        const sumY = ys.reduce((a, b) => a + b, 0);
+        const sumXY = xs.reduce((acc, x, i) => acc + (x * ys[i]), 0);
+        const sumX2 = xs.reduce((acc, x) => acc + (x * x), 0);
+        const den = (n * sumX2) - (sumX * sumX);
+        const m = den ? (((n * sumXY) - (sumX * sumY)) / den) : 0;
+        const b = (sumY - (m * sumX)) / n;
+        return xs.map(x => (m * x) + b);
+    }
+
+    function renderBuilderTable(labels, datasets) {
+        const wrap = document.getElementById('builderDataTableWrap');
+        const showTable = document.getElementById('builderTabelaCheck');
+        if (!wrap || !showTable) return;
+        if (!showTable.checked || !labels.length || !(datasets || []).length) {
+            wrap.classList.add('d-none');
+            wrap.innerHTML = '';
+            return;
+        }
+
+        const headerCols = (datasets || []).map(ds => `<th>${escapeHtml(ds.label || 'Série')}</th>`).join('');
+        const bodyRows = labels.map((lbl, rowIdx) => {
+            const cols = datasets.map(ds => {
+                const val = safeNumber((ds.data || [])[rowIdx]);
+                return `<td class="text-end">${val.toLocaleString('pt-BR', { maximumFractionDigits: 3 })}</td>`;
+            }).join('');
+            return `<tr><td>${escapeHtml(lbl)}</td>${cols}</tr>`;
+        }).join('');
+
+        wrap.innerHTML = `
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Categoria</th>
+                        ${headerCols}
+                    </tr>
+                </thead>
+                <tbody>${bodyRows}</tbody>
+            </table>
+        `;
+        wrap.classList.remove('d-none');
+    }
+
+    function applyListFieldAssociation(cfg, listFieldValue, listUsage, listFilterValues) {
+        if (!cfg || !cfg.data || !cfg.data.labels || !cfg.data.datasets) return cfg;
+
+        const axisLabels = getListaAxisLabels(listFieldValue);
+        const usage = String(listUsage || 'none');
+        const selectedFilters = (listFilterValues || []).map(v => String(v || '')).filter(Boolean);
+
+        if (usage === 'axis' && axisLabels.length) {
+            const lenLabels = (cfg.data.labels || []).length;
+            const lenData = ((cfg.data.datasets[0] && cfg.data.datasets[0].data) || []).length;
+            if (axisLabels.length === lenLabels || axisLabels.length === lenData) {
+                cfg.data.labels = axisLabels.slice();
+            }
+        }
+
+        if (usage === 'filter' && selectedFilters.length) {
+            const labels = (cfg.data.labels || []).map(v => String(v));
+            let keepIdx = labels
+                .map((lbl, idx) => ({ lbl, idx }))
+                .filter(row => selectedFilters.includes(row.lbl))
+                .map(row => row.idx);
+
+            if (!keepIdx.length && axisLabels.length === labels.length) {
+                keepIdx = axisLabels
+                    .map((lbl, idx) => ({ lbl, idx }))
+                    .filter(row => selectedFilters.includes(row.lbl))
+                    .map(row => row.idx);
+                if (keepIdx.length) {
+                    cfg.data.labels = keepIdx.map(i => labels[i]);
+                }
+            }
+
+            if (keepIdx.length) {
+                cfg.data.labels = keepIdx.map(i => cfg.data.labels[i]);
+                cfg.data.datasets = (cfg.data.datasets || []).map(ds => ({
+                    ...ds,
+                    data: keepIdx.map(i => safeNumber((ds.data || [])[i])),
+                }));
+            }
+        }
+
+        return cfg;
+    }
+
+    function buildByBuilderSelection() {
+        const globalTipo = document.getElementById('globalTipoSelect');
+        const globalPergunta = document.getElementById('globalPerguntaSelect');
+        const perguntaSecundaria = document.getElementById('builderPerguntaSecundariaSelect');
+        const distribuicaoSelect = document.getElementById('builderDistribuicaoSelect');
+        const visualSelect = document.getElementById('builderVisualSelect');
+        const layoutSelect = document.getElementById('builderLayoutSelect');
+        const eixoSelect = document.getElementById('builderEixoSelect');
+        const formulaSelect = document.getElementById('builderFormulaSelect');
+        const listaCampoSelect = document.getElementById('builderListaCampoSelect');
+        const listaUsoSelect = document.getElementById('builderListaUsoSelect');
+        const listaValorSelect = document.getElementById('builderListaValorSelect');
+        const tendenciaSelect = document.getElementById('builderTendenciaSelect');
+        const acumuladoCheck = document.getElementById('builderAcumuladoCheck');
+        const summaryEl = document.getElementById('builderSelectionSummary');
+
+        if (!globalTipo || !globalPergunta) return;
+
+        const key = String(globalTipo.value || '').trim();
+        const perguntaId = String(globalPergunta.value || '').trim();
+        const perguntaSecundariaId = String(perguntaSecundaria ? perguntaSecundaria.value : '').trim();
+        const distribuicao = String(distribuicaoSelect ? distribuicaoSelect.value : 'current');
+        const visual = String(visualSelect ? visualSelect.value : 'auto');
+        const layout = String(layoutSelect ? layoutSelect.value : 'stacked');
+        const eixo = String(eixoSelect ? eixoSelect.value : 'vertical');
+        const formula = String(formulaSelect ? formulaSelect.value : 'none');
+        const listaCampo = String(listaCampoSelect ? listaCampoSelect.value : '');
+        const listaUso = String(listaUsoSelect ? listaUsoSelect.value : 'none');
+        const listaValores = listaValorSelect
+            ? Array.from(listaValorSelect.selectedOptions || []).map(o => String(o.value || '')).filter(Boolean)
+            : [];
+        const tendencia = String(tendenciaSelect ? tendenciaSelect.value : 'none');
+        const acumulado = Boolean(acumuladoCheck && acumuladoCheck.checked);
+
+        const card = chartsData[key];
+        const q = card && card.perguntas ? card.perguntas[perguntaId] : null;
+
+        let cfg = null;
+        const hasAxisVariables = (builderAxisState.y || []).length > 0
+            || (builderAxisState.x || []).length > 0
+            || (builderAxisState.values || []).length > 0;
+        if (hasAxisVariables) {
+            cfg = buildAxisDrivenConfig(distribuicao, visual);
+        }
+
+        if (!cfg || !cfg.data || !(cfg.data.labels || []).length) {
+            destroyBuilderChart();
+            showBuilderFallback(true, 'Nenhum dado disponível para os filtros selecionados.');
+            renderBuilderTable([], []);
+            if (summaryEl) summaryEl.textContent = 'Sem dados para a seleção atual.';
+            return;
+        }
+
+        if (visual === 'pie') {
+            cfg = normalizePieConfig(cfg);
+        } else if (visual === 'bar' || visual === 'line') {
+            cfg.type = visual;
+        }
+
+        if (!cfg) {
+            destroyBuilderChart();
+            showBuilderFallback(true, 'Não foi possível gerar a visualização para esta combinação.');
+            renderBuilderTable([], []);
+            return;
+        }
+
+        if (formula !== 'none' && perguntaSecundariaId) {
+            const primarySeries = getQuestionSeries(card, perguntaId, distribuicao);
+            const secondarySeries = getQuestionSeries(card, perguntaSecundariaId, distribuicao);
+            const aligned = alignSeriesByLabels(primarySeries, secondarySeries);
+            const formulaValues = applyFormula(aligned.primary, aligned.secondary, formula);
+
+            cfg.data.labels = aligned.labels;
+            cfg.data.datasets = [{
+                label: formula === 'multiply' ? 'A × B' : 'A - B',
+                data: formulaValues,
+                borderWidth: 2,
+                borderColor: seriesColors[0],
+                backgroundColor: seriesColors[0],
+                pointRadius: 3,
+                fill: false,
+                tension: 0.25,
+            }];
+            if (visual === 'auto') {
+                cfg.type = 'line';
+            }
+        }
+
+        if (acumulado && cfg.data && cfg.data.datasets) {
+            cfg.data.datasets = cfg.data.datasets.map(ds => ({
+                ...ds,
+                data: cumulative(ds.data || []),
+            }));
+        }
+
+        if (tendencia !== 'none' && cfg.data && cfg.data.datasets && cfg.data.datasets.length) {
+            const base = cfg.data.datasets[0];
+            const trendValues = tendencia === 'moving_avg'
+                ? movingAverage(base.data || [], 3)
+                : linearTrend(base.data || []);
+            cfg.data.datasets.push({
+                label: tendencia === 'moving_avg' ? 'Tendência (média móvel)' : 'Tendência (linear)',
+                data: trendValues,
+                borderColor: seriesColors[2],
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                borderDash: [6, 4],
+                pointRadius: 0,
+                fill: false,
+                tension: 0.2,
+            });
+            if (cfg.type !== 'line') {
+                cfg.type = 'line';
+            }
+        }
+
+        cfg = applyListFieldAssociation(cfg, listaCampo, listaUso, listaValores);
+
+        applyLayoutMode(cfg, layout);
+        applyAxisMode(cfg, eixo);
+
+        destroyBuilderChart();
+        showBuilderFallback(false);
+        const canvas = document.getElementById('builderChartCanvas');
+        if (canvas) {
+            builderChart = new Chart(canvas, cfg);
+        }
+
+        renderBuilderTable(cfg.data.labels || [], cfg.data.datasets || []);
+
+        if (summaryEl) {
+            const tipoTxt = globalTipo.options[globalTipo.selectedIndex]?.textContent || '';
+            const perguntaTxt = globalPergunta.options[globalPergunta.selectedIndex]?.textContent || '';
+            const pergunta2Txt = perguntaSecundaria?.options[perguntaSecundaria.selectedIndex]?.textContent || 'Nenhum';
+            const distTxt = distribuicaoSelect?.options[distribuicaoSelect.selectedIndex]?.textContent || '';
+            const visualTxt = visualSelect?.options[visualSelect.selectedIndex]?.textContent || '';
+            const listaTxt = listaCampoSelect?.options[listaCampoSelect.selectedIndex]?.textContent || 'Nenhum';
+            const listaUsoTxt = listaUsoSelect?.options[listaUsoSelect.selectedIndex]?.textContent || 'Nenhum';
+            summaryEl.textContent = `${tipoTxt} | ${perguntaTxt} | 2º: ${pergunta2Txt} | ${distTxt} | ${visualTxt} | Lista: ${listaTxt} (${listaUsoTxt})`;
+        }
+    }
+
+    function showCard(key) {
+        const collapseEl = document.getElementById(`collapse-${key}`);
+        if (!collapseEl) return;
+        try {
+            const instance = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+            instance.show();
+        } catch (e) {
+            // sem bootstrap
+        }
+    }
+
+    // Bind events for each card key present in JSON
+    Object.keys(chartsData || {}).forEach(key => {
+        const collapseEl = document.getElementById(`collapse-${key}`);
+        if (collapseEl) {
+            collapseEl.addEventListener('shown.bs.collapse', () => {
+                const globalTipo = document.getElementById('globalTipoSelect');
+                if (globalTipo) globalTipo.value = key;
+                setGlobalPerguntasForKey(key);
+                renderCharts(key);
+            });
+        }
+        const tabs = document.getElementById(`tabs-${key}`);
+        if (tabs) {
+            tabs.addEventListener('shown.bs.tab', () => renderCharts(key));
+        }
+    });
+
+    // Global selectors (tipo + pergunta)
+    const globalTipo = document.getElementById('globalTipoSelect');
+    const globalPergunta = document.getElementById('globalPerguntaSelect');
+    if (globalTipo && globalPergunta) {
+        const initialKey = String(globalTipo.value || '').trim();
+        if (initialKey) {
+            setGlobalPerguntasForKey(initialKey);
+        }
+
+        globalTipo.addEventListener('change', function() {
+            const key = String(globalTipo.value || '').trim();
+            if (!key) return;
+            setGlobalPerguntasForKey(key);
+        });
+
+        globalPergunta.addEventListener('change', function() {
+            // seleção apenas prepara o construtor; render ocorre no botão
+        });
+    }
+
+    const btnCarregarVisual = document.getElementById('btnCarregarVisual');
+    if (btnCarregarVisual) {
+        populateAxisSelectors();
+        renderAxisVariables();
+
+        const btnAddX = document.getElementById('btnAddXAxisVar');
+        const btnAddY = document.getElementById('btnAddYAxisVar');
+        const btnClearX = document.getElementById('btnClearXAxisVars');
+        const btnClearY = document.getElementById('btnClearYAxisVars');
+        const btnAddValues = document.getElementById('btnAddValuesVar');
+        const btnClearValues = document.getElementById('btnClearValuesVars');
+        if (btnAddX) btnAddX.addEventListener('click', function() { addAxisVariable('x'); });
+        if (btnAddY) btnAddY.addEventListener('click', function() { addAxisVariable('y'); });
+        if (btnAddValues) btnAddValues.addEventListener('click', function() { addAxisVariable('values'); });
+        if (btnClearX) btnClearX.addEventListener('click', function() { clearAxisVariables('x'); });
+        if (btnClearY) btnClearY.addEventListener('click', function() { clearAxisVariables('y'); });
+        if (btnClearValues) btnClearValues.addEventListener('click', function() { clearAxisVariables('values'); });
+
+        populateListaCampoSelect();
+        populateListaValorSelect();
+
+        const listaCampo = document.getElementById('builderListaCampoSelect');
+        const listaUso = document.getElementById('builderListaUsoSelect');
+        const listaValor = document.getElementById('builderListaValorSelect');
+        const listaBusca = document.getElementById('builderListaValorSearch');
+        if (listaCampo) {
+            listaCampo.addEventListener('change', populateListaValorSelect);
+        }
+        if (listaUso) {
+            listaUso.addEventListener('change', populateListaValorSelect);
+        }
+        if (listaBusca) {
+            listaBusca.addEventListener('input', filterListaValorOptions);
+        }
+        if (listaValor) {
+            listaValor.addEventListener('change', function() {
+                // filtro de lista aplicado no próximo carregamento explícito
+            });
+        }
+
+        btnCarregarVisual.addEventListener('click', buildByBuilderSelection);
+        showBuilderFallback(true, 'Adicione campos nos eixos abaixo e clique em Carregar visual.');
+    }
+
+    // Renderiza o gráfico de subcategorias ao abrir a aba
+    const subcatTabBtn = document.getElementById('tab-analise-subcat-btn');
+    if (subcatTabBtn) {
+        subcatTabBtn.addEventListener('shown.bs.tab', () => renderSubcatChart());
+    }
+
+});
+</script>
+{% endblock %}

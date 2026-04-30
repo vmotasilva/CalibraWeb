@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load static nav_access %}
+
+{% block title %}Mapear Placeholders - {{ template.nome }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'procedures/css/mapear_template_fields.css' %}">
+{% endblock %}
+
+{% block content %}
+{% can_nav_view user 'procedures:mapear_template_fields' 'procedures' as can_salvar_mapeamento %}
+{% can_nav_view user 'procedures:upload_pdf_template' 'procedures' as can_upload_pdf %}
+{% can_nav_view user 'procedures:remove_pdf_template' 'procedures' as can_remove_pdf %}
+
+<div class="container-fluid mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'procedures:lista_presenca_list' %}">Listas de Presença</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'procedures:gerenciar_templates_presenca' %}">Templates</a></li>
+            <li class="breadcrumb-item active">{{ template.nome }}</li>
+        </ol>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="header-section">
+        <div>
+            <h3><i class="fas fa-map"></i> Mapear Placeholders</h3>
+            <p>{{ template.nome }}</p>
+        </div>
+        <div class="progress-indicator">
+            <span id="progress-text">0 / {{ placeholders|length }} mapeados</span>
+            <div class="progress-bar-small">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-header">
+        <div class="stat-badge total">
+            <span class="stat-number">{{ placeholders|length }}</span>
+            <span class="stat-label">Placeholders</span>
+        </div>
+        <div class="stat-badge mapped">
+            <span class="stat-number" id="mapped-count">0</span>
+            <span class="stat-label">Mapeados</span>
+        </div>
+        <div class="stat-badge pending">
+            <span class="stat-number" id="pending-count">{{ placeholders|length }}</span>
+            <span class="stat-label">Pendentes</span>
+        </div>
+    </div>
+
+    <!-- Main Mapper Container -->
+    <form method="post" id="form-mapeamento">
+        {% csrf_token %}
+
+        <div class="mapper-container">
+            <!-- PDF Preview Section -->
+            <div class="pdf-preview-section">
+                <div class="pdf-header">
+                    <h5><i class="fas fa-file-pdf icon-pdf-red"></i> Preview do PDF</h5>
+                    {% if template.arquivo_pdf_template %}
+                        <div class="pdf-actions">
+                            {% if can_upload_pdf %}
+                                <label for="pdf-upload" class="btn-icon" title="Carregar novo PDF">
+                                    <i class="fas fa-upload"></i>
+                                </label>
+                            {% endif %}
+                            {% if can_remove_pdf %}
+                                <button type="button" class="btn-icon btn-danger" id="btn-remove-pdf" title="Remover PDF">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                {% if template.arquivo_pdf_template %}
+                    <div class="pdf-viewer-container">
+                        <div class="pdf-controls">
+                            <button type="button" class="btn-control" id="pdf-prev" title="Página anterior">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <span class="pdf-page-info">
+                                <input type="number" id="pdf-page-num" min="1" value="1" style="width: 50px; text-align: center;">
+                                <span> / <span id="pdf-total-pages">1</span></span>
+                            </span>
+                            <button type="button" class="btn-control" id="pdf-next" title="Próxima página">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                            <input type="text" id="pdf-search-input" class="pdf-search-input" placeholder="Buscar no PDF...">
+                            <label class="btn-control" style="cursor: pointer; flex: 0;" title="Modo de clique no PDF">
+                                <input type="checkbox" id="pdf-click-mode" style="margin-right: 4px;">
+                                <i class="fas fa-crosshairs"></i>
+                            </label>
+                        </div>
+                        <div id="pdf-canvas-container" class="pdf-canvas-container">
+                            <canvas id="pdf-canvas"></canvas>
+                            <div id="pdf-overlay" class="pdf-overlay"></div>
+                        </div>
+                    </div>
+                    <p class="pdf-instruction">
+                        <i class="fas fa-lightbulb"></i>
+                        <strong>Dica:</strong> Selecione quais campos do seu template serão preenchidos com dados do sistema. Os campos com <span style="color: #10b981; font-weight: bold;">✓</span> estão mapeados e prontos.
+                    </p>
+                    <input type="file" id="pdf-upload" accept=".pdf" style="display: none;" class="pdf-file-input">
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-file-pdf"></i>
+                        <p><strong>Nenhum PDF carregado</strong></p>
+                        <p class="empty-state-text">Faça upload de um arquivo PDF para visualizar</p>
+                        {% if can_upload_pdf %}
+                            <label for="pdf-upload" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Carregar PDF
+                            </label>
+                        {% endif %}
+                        <input type="file" id="pdf-upload" accept=".pdf" style="display: none;" class="pdf-file-input">
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Mapping Section -->
+            <div>
+                <h5><i class="fas fa-bars"></i> Mapeamento de Campos</h5>
+
+                {% if placeholders %}
+                    <div class="mapping-panel">
+                        <div class="mapping-info" style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 12px; margin-bottom: 16px; border-radius: 4px;">
+                            <i class="fas fa-info-circle" style="color: #10b981;"></i>
+                            <span>Mapeie os campos que deseja preencher no PDF. Os campos sem seleção serão ignorados.</span>
+                        </div>
+                        {% for placeholder in placeholders %}
+                            <div class="mapping-item incomplete" data-placeholder="{{ placeholder }}">
+                                <div class="mapping-placeholder">
+                                    <i class="fas fa-code"></i> &#123;&#123;{{ placeholder }}&#125;&#125;
+                                </div>
+                                <select class="mapping-select campo-select" name="campo_dados[{{ placeholder }}]" 
+                                        data-placeholder="{{ placeholder }}" title="Selecione um campo para {{ placeholder }}">
+                                    <option value="">-- Associe um campo --</option>
+                                    {% for valor, label in campos_disponiveis %}
+                                        <option value="{{ valor }}" 
+                                                data-label="{{ label }}">
+                                            {{ label }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="mapping-hint">
+                                    <i class="fas fa-mouse"></i> Selecione o campo correspondente
+                                </small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="mapping-panel">
+                        <div class="empty-state">
+                            <i class="fas fa-warning"></i>
+                            <p><strong>Nenhum PDF carregado</strong></p>
+                            <p class="empty-state-text">Você precisa fazer upload de um PDF antes de mapear campos</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons-container">
+            <a href="{% url 'procedures:gerenciar_templates_presenca' %}" class="btn btn-secondary btn-small">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+            {% if can_salvar_mapeamento %}
+                <button type="submit" class="btn btn-success btn-small" id="btn-submit">
+                    <i class="fas fa-check"></i> Salvar Mapeamento
+                </button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+    // URL do PDF para o viewer - definir como variável global
+    window.PDF_URL = '{% url "procedures:serve_pdf_template" template.id %}';
+    console.log('[Template] PDF_URL definida:', window.PDF_URL);
+</script>
+<script src="{% static 'procedures/js/pdf_viewer.js' %}"></script>
+<script src="{% static 'procedures/js/mapear_template_fields.js' %}"></script>
+{% endblock %}

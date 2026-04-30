@@ -1,0 +1,938 @@
+{% extends 'base.html' %}
+{% load widget_tweaks nav_access %}
+
+{% block content %}
+
+<style>
+    .card-header { font-weight: 600; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 0.5px; }
+    .label-detail { font-size: 0.8rem; color: #6c757d; text-transform: uppercase; margin-bottom: 2px; }
+    .value-detail { font-size: 1.1rem; font-weight: 500; color: #212529; margin-bottom: 15px; }
+    .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; }
+</style>
+
+<div class="container py-4">
+    {% can_nav_view user 'editar_instrumento_custom' 'metrologia' as can_editar_instrumento %}
+    {% can_nav_view user 'gerenciar_faixas_instrumento' 'metrologia' as can_gerenciar_faixas %}
+    {% can_nav_view user 'substituir_instrumento' 'metrologia' as can_substituir_instrumento %}
+    {% can_nav_view user 'atualizar_datas_calibracao' 'metrologia' as can_atualizar_datas %}
+    {% can_nav_view user 'registrar_historico_calibracao' 'metrologia' as can_registrar_historico %}
+
+    {% can_nav_view user 'editar_historico_calibracao' 'metrologia' as can_editar_historico %}
+    {% can_nav_view user 'download_certificado' 'metrologia' as can_download_certificado %}
+    {% can_nav_view user 'anexar_certificado_historico' 'metrologia' as can_anexar_certificado %}
+    {% can_nav_view user 'remover_certificado_historico' 'metrologia' as can_remover_certificado %}
+    {% can_nav_view user 'remover_historico' 'metrologia' as can_remover_historico %}
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0 fw-bold">{{ instrumento.tag }}</h2>
+            <p class="text-muted mb-0">{{ instrumento.descricao }}</p>
+            <span class="badge bg-light text-dark border mt-1">
+                <i class="bi bi-upc"></i> Cód: {{ instrumento.codigo|default:"-" }}
+            </span>
+        </div>
+        <div>
+            <a href="{% url 'modulo_metrologia' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            {% if instrumento.ativo %}
+                <span class="badge bg-success fs-6 px-3 py-2">ATIVO</span>
+            {% else %}
+                <span class="badge bg-secondary fs-6 px-3 py-2">INATIVO</span>
+            {% endif %}
+            
+            {% if can_editar_instrumento %}
+                <a href="{{ edit_url }}" class="btn btn-outline-secondary ms-2">
+                    <i class="bi bi-pencil"></i> Editar Instrumento
+                </a>
+            {% endif %}
+            {% if can_gerenciar_faixas %}
+                <a href="{% url 'gerenciar_faixas_instrumento' instrumento.id %}" class="btn btn-outline-info ms-2">
+                    <i class="bi bi-plus-circle"></i> Gerenciar Faixas
+                </a>
+            {% endif %}
+            {% if can_substituir_instrumento %}
+                <a href="{% url 'substituir_instrumento' instrumento.id %}" class="btn btn-outline-warning ms-2">
+                    <i class="bi bi-arrow-repeat"></i> Substituição
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light text-secondary">
+                    <i class="bi bi-box-seam"></i> Identificação
+                </div>
+                <div class="card-body">
+                    <div class="label-detail">Categoria</div>
+                    <div class="value-detail">{{ instrumento.categoria.nome|default:"-" }}</div>
+
+                    <div class="label-detail">Modelo / Série</div>
+                    <div class="value-detail">{{ instrumento.modelo|default:"-" }} / {{ instrumento.serie|default:"-" }}</div>
+                    
+                    <hr>
+                    
+                    <div class="label-detail">Setor / Localização</div>
+                    <div class="value-detail">{{ instrumento.setor.nome|default:"-" }} - {{ instrumento.localizacao|default:"-" }}</div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-calendar-check"></i> Status da Calibração</span>
+                    {% if can_atualizar_datas %}
+                        <form method="post" action="{% url 'atualizar_datas_calibracao' instrumento.id %}" style="margin: 0;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-light" title="Atualizar datas baseado no histórico mais recente">
+                                <i class="bi bi-arrow-clockwise"></i> Atualizar Datas
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="label-detail">Última</div>
+                            <div class="value-detail fs-6">
+                                {{ instrumento.data_ultima_calibracao|date:"d/m/Y"|default:"-" }}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="label-detail">Próxima</div>
+                            <div class="value-detail fs-6 {% if instrumento.data_proxima_calibracao < today %}text-danger fw-bold{% endif %}">
+                                {{ instrumento.data_proxima_calibracao|date:"d/m/Y"|default:"-" }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="label-detail">Tratativa de Calibração</div>
+                    <div class="value-detail">
+                        {% if instrumento.tratativa_calibracao == 'INTERNA' %}
+                            <span class="badge bg-info">
+                                <i class="bi bi-building"></i> Interna
+                            </span>
+                        {% else %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-briefcase"></i> Externa
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulário de ocorrência será implementado em versão futura -->
+
+        </div>
+
+        <div class="col-md-8">
+            
+            {% if instrumento.referencia %}
+            <div class="card shadow-sm mb-4 border-success">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-link-45deg"></i> Referência de Código</span>
+                    <span class="badge bg-light text-dark">{{ instrumento.referencia.codigo_referencia }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Código:</strong> {{ instrumento.referencia.codigo_referencia }}</p>
+                            <p class="text-muted mb-0">{{ instrumento.referencia.descricao|default:"Sem descrição" }}</p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <a href="{% url 'listar_substitucoes' instrumento.referencia.codigo_referencia %}" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-history"></i> Ver Histórico de Substituições
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-rulers"></i> Faixas de Medição</span>
+                    <span class="badge bg-light text-dark">{{ faixas.count }} Faixa(s)</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle text-center small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Mín</th>
+                                    <th>Máx</th>
+                                    <th>Unid.</th>
+                                    <th>Resolução</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for f in faixas %}
+                                <tr>
+                                    <td>{{ f.valor_minimo }}</td>
+                                    <td>{{ f.valor_maximo }}</td>
+                                    <td><strong>{{ f.unidade.nome }}</strong></td>
+                                    <td class="text-muted">{{ f.resolucao|default:"-" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="text-muted">Sem faixas cadastradas.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end mb-2">
+                {% if can_registrar_historico %}
+                    <form method="post" action="{% url 'registrar_historico_calibracao' instrumento.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus-circle"></i> Registrar novo histórico
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" id="calib-tab" data-bs-toggle="tab" data-bs-target="#calib" type="button">
+                        📜 Certificados
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="cotacoes-tab" data-bs-toggle="tab" data-bs-target="#cotacoes" type="button">
+                        📋 Cotações
+                        {% if cotacoes_calibracao or cotacoes_aquisicao %}
+                            <span class="badge bg-danger">{{ cotacoes_calibracao|length|add:cotacoes_aquisicao|length }}</span>
+                        {% endif %}
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="rastreio-tab" data-bs-toggle="tab" data-bs-target="#rastreio" type="button">
+                        🚚 Rastreio (Ordens)
+                        {% if rastreios_laboratorio %}
+                            <span class="badge bg-info">{{ rastreios_laboratorio|length }}</span>
+                        {% endif %}
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link text-danger" id="ocorr-tab" data-bs-toggle="tab" data-bs-target="#ocorr" type="button">
+                        ⚠️ Ocorrências
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content card shadow-sm border-top-0 p-0" id="myTabContent">
+                
+                <div class="tab-pane fade show active" id="calib">
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Certificado</th>
+                                    <th>Resultado</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in historicos %}
+                                <tr>
+                                    <td class="fw-bold">{{ item.data_calibracao|date:"d/m/Y" }}</td>
+                                    <td><small>{{ item.numero_certificado }}</small></td>
+                                    <td>
+                                        {% if item.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                            <span class="badge bg-success">✓ APROVADO</span>
+                                        {% elif item.resultado == 'APROVADO_COM_CORRECAO' %}
+                                            <span class="badge bg-warning text-dark">⚠ COND.</span>
+                                        {% elif item.resultado == 'REPROVADO' %}
+                                            <span class="badge bg-danger">✗ REPROVADO</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if can_editar_historico %}
+                                            <a href="{% url 'editar_historico_calibracao' item.id %}" class="btn btn-sm btn-primary" title="Editar histórico"><i class="bi bi-pencil-square"></i> Editar</a>
+                                        {% endif %}
+                                        {% if item.certificado %}
+                                            {% if can_download_certificado %}
+                                                <a href="/metrologia/historico/{{ item.id }}/download/" download class="btn btn-sm btn-outline-primary" title="Baixar PDF"><i class="bi bi-download"></i></a>
+                                            {% endif %}
+                                            {% if can_remover_certificado %}
+                                                <form method="post" action="/metrologia/historico/{{ item.id }}/remover-certificado/" class="d-inline" onsubmit="return confirm('Remover apenas o PDF deste registro?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning ms-1" title="Remover PDF"><i class="bi bi-trash"></i></button>
+                                                </form>
+                                            {% endif %}
+                                        {% else %}
+                                            {% if can_anexar_certificado %}
+                                                <form method="post" action="/metrologia/historico/{{ item.id }}/anexar-certificado/" enctype="multipart/form-data" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <input type="file" name="certificado_pdf" accept="application/pdf" class="form-control form-control-sm d-inline" style="width: 220px; display:inline-block;" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-success ms-1" title="Anexar PDF">
+                                                        <i class="bi bi-paperclip"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        {% endif %}
+                                        {% if can_remover_historico %}
+                                            <form method="post" action="/metrologia/historico/{{ item.id }}/remover/" class="d-inline" onsubmit="return confirm('Tem certeza que deseja remover este registro do histórico? Esta ação não pode ser desfeita.');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger ms-1" title="Apagar registro">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="text-center py-3 text-muted">Nenhum certificado.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- NEW: Cotações Tab - SIMPLIFICADA -->
+                <div class="tab-pane fade" id="cotacoes">
+                    <div class="p-3">
+                        <!-- SOLICITAÇÕES DE COTAÇÃO QUE CONTÊM ESTE INSTRUMENTO -->
+                        {% if solicitacoes_cotacao %}
+                            <div class="mb-4">
+                                <h5 class="mb-3"><i class="bi bi-file-earmark-text"></i> Solicitações de Cotação <span class="badge bg-info">{{ solicitacoes_cotacao|length }}</span></h5>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Solicitação</th>
+                                                <th>Data</th>
+                                                <th>Status</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for sol in solicitacoes_cotacao %}
+                                                <tr>
+                                                    <td><strong>{{ sol.numero }}</strong></td>
+                                                    <td><small>{{ sol.data_criacao|date:"d/m/Y H:i" }}</small></td>
+                                                    <td>
+                                                        {% if sol.status == 'ABERTA' %}
+                                                            <span class="badge bg-info">Aberta</span>
+                                                        {% elif sol.status == 'INSTRUMENTOS_SELECIONADOS' %}
+                                                            <span class="badge bg-secondary">Instrumentos Selecionados</span>
+                                                        {% elif sol.status == 'COTACAO_SOLICITADA' %}
+                                                            <span class="badge bg-primary">Cotação Solicitada</span>
+                                                        {% elif sol.status == 'AGUARDANDO_PLANEJAMENTO' %}
+                                                            <span class="badge bg-warning text-dark">Aguardando Planejamento</span>
+                                                        {% elif sol.status == 'PARCIALMENTE_PLANEJADA' %}
+                                                            <span class="badge bg-warning text-dark">Parcialmente Planejada</span>
+                                                        {% elif sol.status == 'PLANEJADA' %}
+                                                            <span class="badge bg-secondary">Planejada</span>
+                                                        {% elif sol.status == 'PARCIALMENTE_REALIZADO' %}
+                                                            <span class="badge bg-success">Parcialmente Realizado</span>
+                                                        {% elif sol.status == 'REALIZADO' %}
+                                                            <span class="badge bg-success">Realizado</span>
+                                                        {% elif sol.status == 'CONCLUIDA' %}
+                                                            <span class="badge bg-success">Concluída</span>
+                                                        {% elif sol.status == 'CANCELADA' %}
+                                                            <span class="badge bg-danger">Cancelada</span>
+                                                        {% else %}
+                                                            <span class="badge bg-light text-dark">{{ sol.status }}</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <a href="/metrologia/solicitacoes/{{ sol.id }}/" 
+                                                           class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-arrow-right"></i> Abrir
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <hr>
+                            </div>
+                        {% endif %}
+
+                        <!-- TODAS AS COTAÇÕES - Histórico completo -->
+                        {% if todas_cotacoes %}
+                            <div class="mb-4">
+                                <h5 class="mb-3"><i class="bi bi-list-ul"></i> Histórico de Cotações <span class="badge bg-secondary">{{ todas_cotacoes|length }}</span></h5>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Nº Cotação</th>
+                                                <th>Fornecedor</th>
+                                                <th>Tipo</th>
+                                                <th>Valor</th>
+                                                <th>Data</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for cotacao in todas_cotacoes %}
+                                                <tr>
+                                                    <td><strong>{{ cotacao.cotacao_fornecedor.numero }}</strong></td>
+                                                    <td>{{ cotacao.cotacao_fornecedor.fornecedor.nome_fantasia }}</td>
+                                                    <td>
+                                                        {% if cotacao.tipo_servico == 'CALIBRACAO' %}
+                                                            <span class="badge bg-primary">Calibração</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning text-dark">Aquisição</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-end">R$ {{ cotacao.valor_total|floatformat:2 }}</td>
+                                                    <td class="text-muted"><small>{{ cotacao.cotacao_fornecedor.data_criacao|date:"d/m/Y" }}</small></td>
+                                                    <td class="text-end">
+                                                        <a href="/metrologia/solicitacoes/{{ cotacao.item_solicitacao.solicitacao.id }}/" 
+                                                           class="btn btn-sm btn-outline-primary" title="Ver Solicitação">
+                                                            <i class="bi bi-arrow-right"></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <hr>
+                            </div>
+                        {% endif %}
+
+                        {% if cotacoes_calibracao or cotacoes_aquisicao %}
+                            <!-- Calibrações -->
+                            {% if cotacoes_calibracao %}
+                                <h5 class="mb-3"><i class="bi bi-clipboard-check"></i> Calibrações em Andamento <span class="badge bg-primary">{{ cotacoes_calibracao|length }}</span></h5>
+                                {% for atendimento in cotacoes_calibracao %}
+                                    <div class="card mb-3 border-start border-primary border-3">
+                                        <div class="card-header bg-white">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <strong>{{ atendimento.item_cotacao.cotacao_fornecedor.numero }}</strong> - 
+                                                    <span class="text-muted">{{ atendimento.item_cotacao.cotacao_fornecedor.fornecedor.nome_fantasia }}</span>
+                                                    {% if atendimento.status == 'CONCLUIDA' %}
+                                                        <span class="badge bg-success ms-2">✓ Concluído</span>
+                                                    {% elif atendimento.status == 'EXECUTANDO' %}
+                                                        <span class="badge bg-warning ms-2">⏳ Executando</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary ms-2">{{ atendimento.get_status_display }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                <small class="text-muted">
+                                                    <strong>R$</strong> {{ atendimento.item_cotacao.valor_total|floatformat:2 }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <small class="d-block text-muted">Local de Atendimento</small>
+                                                    {% if atendimento.item_cotacao.local_atendimento == 'NO_LOCAL' %}
+                                                        <span class="badge bg-info">No Local</span>
+                                                    {% elif atendimento.item_cotacao.local_atendimento == 'NO_LABORATORIO' %}
+                                                        <span class="badge bg-warning text-dark">No Laboratório</span>
+                                                    {% elif atendimento.item_cotacao.local_atendimento == 'COMPRAR_NOVO' %}
+                                                        <span class="badge bg-secondary">Comprar Novo</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <small class="d-block text-muted">Data Prevista</small>
+                                                    <strong>{{ atendimento.data_prevista_atendimento|date:"d/m/Y" }}</strong>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <small class="d-block text-muted">Prazo</small>
+                                                    <strong>{{ atendimento.item_cotacao.prazo_dias|default:"N/A" }} dias</strong>
+                                                </div>
+                                            </div>
+
+                                            <!-- Históricos -->
+                                            {% if atendimento.historicos_calibracao.all %}
+                                                <div class="mt-3 pt-3 border-top">
+                                                    <small class="text-muted d-block mb-2"><strong>Históricos:</strong></small>
+                                                    {% for historico in atendimento.historicos_calibracao.all %}
+                                                        <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background-color: #f8f9fa; border-radius: 0.25rem;">
+                                                            <div>
+                                                                <small>{{ historico.data_calibracao|date:"d/m/Y" }} - {{ historico.numero_certificado }}</small><br>
+                                                                {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                                    <span class="badge bg-success">✓ Aprovado</span>
+                                                                {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                                    <span class="badge bg-warning text-dark">⚠ Condicionado</span>
+                                                                {% else %}
+                                                                    <span class="badge bg-danger">✗ Reprovado</span>
+                                                                {% endif %}
+                                                            </div>
+                                                            <a href="{% url 'visualizar_historico_calibracao' historico.id %}" class="btn btn-xs btn-outline-secondary">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-footer bg-white">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="window.location.href='/metrologia/solicitacoes/{{ atendimento.item_solicitacao.solicitacao.id }}/'" style="margin-right: 0.5rem;">
+                                                <i class="bi bi-arrow-right"></i> Ver Solicitação
+                                            </button>
+                                            {% if not atendimento.historicos_calibracao.all %}
+                                                <button class="btn btn-sm btn-success" data-bs-toggle="modal" 
+                                                        data-bs-target="#modalRegistrarHistorico"
+                                                        onclick="prepareModalRegistrarHistorico({{ atendimento.id }}, '{{ instrumento.tag }}', '{{ atendimento.item_cotacao.cotacao_fornecedor.fornecedor.nome_fantasia }}')">
+                                                    <i class="bi bi-file-earmark-plus"></i> Registrar
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-info" data-bs-toggle="modal" 
+                                                        data-bs-target="#modalRegistrarHistorico"
+                                                        onclick="prepareModalRegistrarHistorico({{ atendimento.id }}, '{{ instrumento.tag }}', '{{ atendimento.item_cotacao.cotacao_fornecedor.fornecedor.nome_fantasia }}')">
+                                                    <i class="bi bi-file-earmark-plus"></i> Novo
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+
+                            <!-- Aquisições -->
+                            {% if cotacoes_aquisicao %}
+                                <h5 class="mb-3 mt-4"><i class="bi bi-arrow-repeat"></i> Aquisições em Andamento <span class="badge bg-warning">{{ cotacoes_aquisicao|length }}</span></h5>
+                                {% for atendimento in cotacoes_aquisicao %}
+                                    <div class="card mb-3 border-start border-warning border-3">
+                                        <div class="card-header bg-white">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <strong>{{ atendimento.item_cotacao.cotacao_fornecedor.numero }}</strong> - 
+                                                    <span class="text-muted">{{ atendimento.item_cotacao.cotacao_fornecedor.fornecedor.nome_fantasia }}</span>
+                                                    {% if atendimento.status == 'CONCLUIDA' %}
+                                                        <span class="badge bg-success ms-2">✓ Recebido</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary ms-2">{{ atendimento.get_status_display }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                <small class="text-muted">
+                                                    <strong>R$</strong> {{ atendimento.item_cotacao.valor_total|floatformat:2 }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <small class="d-block text-muted">Tipo</small>
+                                                    <span class="badge bg-warning text-dark">Aquisição</span>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <small class="d-block text-muted">Data Prevista</small>
+                                                    <strong>{{ atendimento.data_prevista_atendimento|date:"d/m/Y" }}</strong>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <small class="d-block text-muted">Data Chegada</small>
+                                                    {% if atendimento.data_chegada %}
+                                                        <span class="badge bg-success">{{ atendimento.data_chegada|date:"d/m/Y" }}</span>
+                                                    {% else %}
+                                                        <span class="badge bg-warning">Pendente</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card-footer bg-white">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="window.location.href='/metrologia/solicitacoes/{{ atendimento.item_solicitacao.solicitacao.id }}/'" style="margin-right: 0.5rem;">
+                                                <i class="bi bi-arrow-right"></i> Ver Solicitação
+                                            </button>
+                                            <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
+                                                    data-bs-target="#modalIniciarSubstituicao"
+                                                    onclick="prepareModalIniciarSubstituicao({{ atendimento.id }}, '{{ instrumento.tag }}', '{{ atendimento.item_cotacao.cotacao_fornecedor.fornecedor.nome_fantasia }}')">
+                                                <i class="bi bi-arrow-repeat"></i> Substituição
+                                            </button>
+                                            {% if not atendimento.data_chegada %}
+                                                <button class="btn btn-sm btn-success" data-bs-toggle="modal" 
+                                                        data-bs-target="#modalAtualizarChegada" 
+                                                        onclick="prepareModalAtualizarChegada({{ atendimento.id }})">
+                                                    <i class="bi bi-check-lg"></i> Marcar
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% elif not solicitacoes_cotacao and not todas_cotacoes %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> Nenhuma cotação pendente.
+                            </div>
+                        {% endif %}
+                    </div>
+
+                <div class="tab-pane fade" id="rastreio">
+                    {% if rastreios_laboratorio %}
+                        <div class="p-3">
+                            {% for rastreio in rastreios_laboratorio %}
+                                <div class="card mb-4">
+                                    <div class="card-header bg-light">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>{{ rastreio.item_cotacao.cotacao_fornecedor.numero }}</strong> - 
+                                                <span class="badge bg-info">{{ rastreio.item_cotacao.cotacao_fornecedor.fornecedor.nome }}</span>
+                                            </div>
+                                            <div>
+                                                {% if rastreio.data_retorno %}
+                                                    <span class="badge bg-success">✓ Recebido</span>
+                                                {% elif rastreio.data_envio %}
+                                                    <span class="badge bg-warning text-dark">⏳ Em Laboratório</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Pendente</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Timeline Visual -->
+                                        <div class="timeline">
+                                            <div class="timeline-item">
+                                                <div class="timeline-marker {% if rastreio.data_envio %}bg-success{% else %}bg-secondary{% endif %}"></div>
+                                                <div class="timeline-content">
+                                                    <h6>Envio para Laboratório</h6>
+                                                    <p>
+                                                        {% if rastreio.data_envio %}
+                                                            <span class="badge bg-success">{{ rastreio.data_envio|date:"d/m/Y" }}</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning">Pendente</span>
+                                                        {% endif %}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="timeline-item">
+                                                <div class="timeline-marker {% if rastreio.data_retorno_previsto %}bg-info{% else %}bg-secondary{% endif %}"></div>
+                                                <div class="timeline-content">
+                                                    <h6>Data de Retorno Prevista</h6>
+                                                    <p>
+                                                        {% if rastreio.data_retorno_previsto %}
+                                                            <span class="badge bg-info">{{ rastreio.data_retorno_previsto|date:"d/m/Y" }}</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning">Não definida</span>
+                                                        {% endif %}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="timeline-item">
+                                                <div class="timeline-marker {% if rastreio.data_retorno %}bg-success{% else %}bg-secondary{% endif %}"></div>
+                                                <div class="timeline-content">
+                                                    <h6>Retorno do Laboratório</h6>
+                                                    <p>
+                                                        {% if rastreio.data_retorno %}
+                                                            <span class="badge bg-success">{{ rastreio.data_retorno|date:"d/m/Y" }}</span>
+                                                        {% else %}
+                                                            <span class="badge bg-warning">Aguardando</span>
+                                                        {% endif %}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {% if rastreio.observacoes %}
+                                            <hr>
+                                            <p><strong>Observações:</strong> {{ rastreio.observacoes }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-footer bg-white">
+                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" 
+                                                data-bs-target="#modalAtualizarRastreio"
+                                                onclick="prepareModalAtualizarRastreio({{ rastreio.id }})">
+                                            <i class="bi bi-pencil"></i> Atualizar Datas
+                                        </button>
+                                        <a href="/metrologia/solicitacoes/{{ rastreio.solicitacao.id }}/" 
+                                           class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-arrow-right"></i> Ver Solicitação
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <!-- CSS para Timeline -->
+                        <style>
+                            .timeline {
+                                position: relative;
+                                padding: 20px 0;
+                            }
+                            .timeline-item {
+                                display: flex;
+                                margin-bottom: 30px;
+                            }
+                            .timeline-marker {
+                                width: 20px;
+                                height: 20px;
+                                border-radius: 50%;
+                                margin-right: 20px;
+                                margin-top: 5px;
+                                flex-shrink: 0;
+                                box-shadow: 0 0 0 4px white;
+                                border: 2px solid #dee2e6;
+                            }
+                            .timeline-content h6 {
+                                margin-bottom: 5px;
+                                font-weight: 600;
+                            }
+                        </style>
+                    {% else %}
+                        <div class="alert alert-info m-3">Nenhum rastreio em laboratório.</div>
+                    {% endif %}
+                </div>
+
+                <div class="tab-pane fade" id="ocorr">
+                    <div class="list-group list-group-flush">
+                        {% for oc in ocorrencias %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1 text-danger fw-bold">{{ oc.get_tipo_display }}</h6>
+                                <small class="text-muted">{{ oc.data_ocorrencia|date:"d/m/Y" }}</small>
+                            </div>
+                            <p class="mb-1 small">{{ oc.descricao }}</p>
+                            <small class="text-muted" style="font-size: 0.75rem;">Responsável:
+                                {% if oc.responsavel_colab_id %}
+                                    <a href="{% url 'detalhe_colaborador' oc.responsavel_colab_id %}" class="text-decoration-none">
+                                        {{ oc.usuario_responsavel.get_full_name|default:oc.usuario_responsavel.username }}
+                                    </a>
+                                {% else %}
+                                    {{ oc.usuario_responsavel.get_full_name|default:oc.usuario_responsavel.username }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4 text-muted">Nenhuma ocorrência registrada.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Atualizar Data de Calibração (NO_LOCAL) -->
+<div class="modal fade" id="modalAtualizarData" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atualizar Data de Calibração</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="formAtualizarData">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_data_realizada" class="form-label">Data Realizada *</label>
+                        <input type="date" class="form-control" id="id_data_realizada" name="data_realizada" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_tecnico_responsavel" class="form-label">Técnico Responsável</label>
+                        <input type="text" class="form-control" id="id_tecnico_responsavel" name="tecnico_responsavel" placeholder="Nome do técnico">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_observacoes" class="form-label">Observações</label>
+                        <textarea class="form-control" id="id_observacoes" name="observacoes" rows="3" placeholder="Observações sobre a calibração"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Atualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Atualizar Data de Chegada (COMPRAR_NOVO) -->
+<div class="modal fade" id="modalAtualizarChegada" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Data de Chegada</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="formAtualizarChegada">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_data_chegada" class="form-label">Data de Chegada *</label>
+                        <input type="date" class="form-control" id="id_data_chegada" name="data_chegada" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_observacoes_chegada" class="form-label">Observações</label>
+                        <textarea class="form-control" id="id_observacoes_chegada" name="observacoes" rows="3" placeholder="Obs. sobre o recebimento"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Atualizar Rastreio (NO_LABORATORIO) -->
+<div class="modal fade" id="modalAtualizarRastreio" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atualizar Rastreio em Laboratório</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="formAtualizarRastreio">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_data_envio" class="form-label">Data de Envio</label>
+                        <input type="date" class="form-control" id="id_data_envio" name="data_envio">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_data_retorno_previsto" class="form-label">Data de Retorno Prevista</label>
+                        <input type="date" class="form-control" id="id_data_retorno_previsto" name="data_retorno_previsto">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_data_retorno" class="form-label">Data de Retorno Real</label>
+                        <input type="date" class="form-control" id="id_data_retorno" name="data_retorno">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_observacoes_rastreio" class="form-label">Observações</label>
+                        <textarea class="form-control" id="id_observacoes_rastreio" name="observacoes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Atualizar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- NEW: Modal: Registrar Histórico de Calibração -->
+<div class="modal fade" id="modalRegistrarHistorico" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-plus"></i> Registrar Histórico de Calibração</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="formRegistrarHistorico">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Instrumento:</strong> <span id="lbl_historico_instrumento"></span><br>
+                        <strong>Fornecedor:</strong> <span id="lbl_historico_fornecedor"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_data_calibracao" class="form-label">Data de Calibração <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="id_data_calibracao" name="data_calibracao" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_numero_certificado" class="form-label">Número do Certificado</label>
+                        <input type="text" class="form-control" id="id_numero_certificado" name="numero_certificado" placeholder="Ex: TECL-2025-001">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_resultado" class="form-label">Resultado <span class="text-danger">*</span></label>
+                        <select class="form-select" id="id_resultado" name="resultado" required>
+                            <option value="">-- Selecione --</option>
+                            <option value="APROVADO_SEM_CORRECAO">✓ Aprovado sem correção</option>
+                            <option value="APROVADO_COM_CORRECAO">⚠ Aprovado com correção</option>
+                            <option value="REPROVADO">✗ Reprovado</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_responsavel" class="form-label">Responsável Técnico</label>
+                        <input type="text" class="form-control" id="id_responsavel" name="responsavel">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_observacoes_historico" class="form-label">Observações</label>
+                        <textarea class="form-control" id="id_observacoes_historico" name="observacoes" rows="3" placeholder="Descreva detalhes da calibração, ajustes feitos, etc."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Registrar Histórico</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- NEW: Modal: Iniciar Substituição -->
+<div class="modal fade" id="modalIniciarSubstituicao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="bi bi-arrow-repeat"></i> Iniciar Substituição do Instrumento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="formIniciarSubstituicao">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <strong>Instrumento:</strong> <span id="lbl_substituicao_instrumento"></span><br>
+                        <strong>Fornecedor:</strong> <span id="lbl_substituicao_fornecedor"></span>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> <strong>Processo de Substituição:</strong><br>
+                        A compra de um novo instrumento será registrada. O antigo será marcado como substituído.
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_data_entrega_novo" class="form-label">Data Prevista de Entrega <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="id_data_entrega_novo" name="data_entrega" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_numero_serie_novo" class="form-label">Número de Série do Novo Instrumento</label>
+                        <input type="text" class="form-control" id="id_numero_serie_novo" name="numero_serie" placeholder="(Preenchido após entrega)">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_observacoes_substituicao" class="form-label">Observações</label>
+                        <textarea class="form-control" id="id_observacoes_substituicao" name="observacoes" rows="3" placeholder="Ex: Motivo da substituição, detalhes da compra, etc."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning text-dark"><i class="bi bi-arrow-repeat"></i> Iniciar Substituição</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Preparar modal para atualizar data de calibração
+function prepareModalAtualizarData(atendimentoId, dataPrevista) {
+    const form = document.getElementById('formAtualizarData');
+    form.action = `/metrologia/atendimento/${atendimentoId}/atualizar-data/`;
+    document.getElementById('id_data_realizada').value = dataPrevista;
+}
+
+// Preparar modal para atualizar data de chegada
+function prepareModalAtualizarChegada(atendimentoId) {
+    const form = document.getElementById('formAtualizarChegada');
+    form.action = `/metrologia/atendimento/${atendimentoId}/atualizar-chegada/`;
+}
+
+// Preparar modal para atualizar rastreio
+function prepareModalAtualizarRastreio(atendimentoId) {
+    const form = document.getElementById('formAtualizarRastreio');
+    form.action = `/metrologia/atendimento/${atendimentoId}/atualizar-rastreio/`;
+}
+
+// NEW: Preparar modal para registrar histórico
+function prepareModalRegistrarHistorico(atendimentoId, instrumento, fornecedor) {
+    const form = document.getElementById('formRegistrarHistorico');
+    form.action = `/metrologia/atendimento/${atendimentoId}/registrar-historico/`;
+    document.getElementById('lbl_historico_instrumento').textContent = instrumento;
+    document.getElementById('lbl_historico_fornecedor').textContent = fornecedor;
+}
+
+// NEW: Preparar modal para iniciar substituição
+function prepareModalIniciarSubstituicao(atendimentoId, instrumento, fornecedor) {
+    const form = document.getElementById('formIniciarSubstituicao');
+    form.action = `/metrologia/atendimento/${atendimentoId}/iniciar-substituicao/`;
+    document.getElementById('lbl_substituicao_instrumento').textContent = instrumento;
+    document.getElementById('lbl_substituicao_fornecedor').textContent = fornecedor;
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger text-white text-center py-3">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Confirmar Remoção
+                    </h4>
+                </div>
+                
+                <div class="card-body p-4">
+                    <div class="alert alert-warning mb-4" role="alert">
+                        <i class="bi bi-exclamation-circle"></i> 
+                        <strong>Atenção!</strong> Esta ação não pode ser desfeita.
+                    </div>
+                    
+                    <p class="mb-3">
+                        Você está prestes a remover o histórico de calibração:
+                    </p>
+                    
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <div class="row mb-2">
+                                <div class="col-sm-4"><strong>Data:</strong></div>
+                                <div class="col-sm-8">{{ historico.data_calibracao|date:"d/m/Y" }}</div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-sm-4"><strong>Resultado:</strong></div>
+                                <div class="col-sm-8">
+                                    {% if historico.resultado == 'APROVADO' %}
+                                        <span class="badge bg-success">✓ APROVADO</span>
+                                    {% elif historico.resultado == 'REPROVADO' %}
+                                        <span class="badge bg-danger">✗ REPROVADO</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">-</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% if historico.numero_certificado %}
+                            <div class="row">
+                                <div class="col-sm-4"><strong>Certificado:</strong></div>
+                                <div class="col-sm-8">{{ historico.numero_certificado }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if historico.certificado %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        O certificado em PDF também será removido.
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{% url 'detalhe_instrumento' instrumento_id %}" class="btn btn-secondary">
+                            <i class="bi bi-x"></i> Cancelar
+                        </a>
+                        <form method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Remover Permanentemente
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

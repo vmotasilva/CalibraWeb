@@ -1,0 +1,1203 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load custom_tags %}
+
+{% block title %}{{ solicitacao.numero }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>
+                <i class="bi bi-file-earmark-text"></i> {{ solicitacao.numero }}
+            </h1>
+            <p class="text-muted mb-0">
+                Criado em {{ solicitacao.data_criacao|date:"d/m/Y H:i" }}
+            </p>
+            <p class="text-muted small">
+                <strong>Status:</strong>
+                <span class="badge bg-info">{{ solicitacao.get_status_display }}</span>
+                &nbsp; <strong>Responsável:</strong>
+                {{ solicitacao.responsavel.get_full_name|default:solicitacao.responsavel.username }}
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="btn-group" role="group">
+                <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+                <a href="{% url 'metrologia:solicitacao_delete' solicitacao.id %}" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Deletar
+                </a>
+                <button id="btn-concluir" class="btn btn-success" onclick="marcarSolicitacaoConcluida({{ solicitacao.id }})" {% if solicitacao.status == 'CONCLUIDA' %}disabled{% endif %}>
+                    <i class="bi bi-check-circle"></i> Solicitação Concluída
+                </button>
+                <button id="btn-cancelar" class="btn btn-outline-danger" onclick="marcarSolicitacaoCancelada({{ solicitacao.id }})" {% if solicitacao.status == 'CANCELADA' %}disabled{% endif %}>
+                    <i class="bi bi-x-circle"></i> Solicitação Cancelada
+                </button>
+                {% if solicitacao.status == 'CANCELADA' %}
+                <button id="btn-reativar" class="btn btn-warning" onclick="reativarSolicitacao({{ solicitacao.id }})">
+                    <i class="bi bi-arrow-repeat"></i> Reativar Solicitação
+                </button>
+                {% endif %}
+                {% if solicitacao.status == 'CONCLUIDA' %}
+                <button id="btn-reabrir" class="btn btn-warning" onclick="reabrirSolicitacao({{ solicitacao.id }})">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reabrir Solicitação
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Itens da Solicitação (colapsável) -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center bg-light cursor-pointer" onclick="toggleCotacao(this)" style="cursor: pointer;">
+            <div class="d-flex align-items-center flex-grow-1">
+                <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                <h6 class="mb-0">
+                    <i class="bi bi-list-check"></i> Itens ({{ itens.count }})
+                </h6>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalSelecionarInstrumentos">
+                <i class="bi bi-plus-square"></i> Adicionar Instrumentos
+            </button>
+        </div>
+        <div class="cotacao-content p-2" style="display: none;">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Instrumento</th>
+                            <th>Descrição</th>
+                            <th>Tipo de Pontos</th>
+                            <th>Faixas Selecionadas</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in itens %}
+                            <tr>
+                                <td><strong>{{ item.instrumento.tag }}</strong></td>
+                                <td>{{ item.instrumento.descricao }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ item.get_tipo_pontos_display }}</span>
+                                </td>
+                                <td>
+                                    {% if item.faixas_selecionadas.all %}
+                                        <div class="small">
+                                            {% for faixa_item in item.faixas_selecionadas.all %}
+                                                <div class="mb-2">
+                                                    <span class="badge bg-success">
+                                                        {{ faixa_item.faixa_medicao.valor_minimo }} - {{ faixa_item.faixa_medicao.valor_maximo }} {{ faixa_item.faixa_medicao.unidade.nome }}
+                                                    </span>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        {% for i in "1234567" %}
+                                                            {% with ponto=faixa_item|get_ponto:i %}
+                                                                {% if ponto %}
+                                                                    P{{ i }}: {{ ponto }}&nbsp;&nbsp;
+                                                                {% endif %}
+                                                            {% endwith %}
+                                                        {% endfor %}
+                                                    </small>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Nenhuma faixa selecionada</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'metrologia:item_solicitacao_edit' item.id %}" 
+                                       class="btn btn-sm btn-primary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'metrologia:item_solicitacao_delete' item.id %}" 
+                                       class="btn btn-sm btn-danger" 
+                                       onclick="return confirm('Tem certeza?')" title="Remover">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">
+                                    Nenhum item adicionado
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cotações de Fornecedores (colapsável) -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center bg-light cursor-pointer" onclick="toggleCotacao(this)" style="cursor: pointer;">
+            <div class="d-flex align-items-center flex-grow-1">
+                <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                <h6 class="mb-0">
+                    <i class="bi bi-currency-dollar"></i> Cotações ({{ cotacoes.count }})
+                </h6>
+            </div>
+            <a href="{% url 'metrologia:cotacao_fornecedor_create' solicitacao.id %}" class="btn btn-sm btn-success">
+                <i class="bi bi-plus-circle"></i> Adicionar Cotação
+            </a>
+        </div>
+        <div class="cotacao-content p-2" style="display: none;">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Número</th>
+                            <th>Fornecedor</th>
+                            <th>Status</th>
+                            <th>Itens</th>
+                            <th>Valor Total</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cotacao in cotacoes %}
+                            <tr>
+                                <td><strong>{{ cotacao.numero }}</strong></td>
+                                <td>{{ cotacao.fornecedor.empresa }}</td>
+                                <td><span class="badge bg-info">{{ cotacao.get_status_display }}</span></td>
+                                <td><span class="badge bg-light text-dark">{{ cotacao.itens.count }}</span></td>
+                                <td>
+                                    <strong>
+                                        R$ {{ cotacao.get_valor_total|default:0|floatformat:2 }}
+                                    </strong>
+                                </td>
+                                <td>
+                                    {% if cotacao.aprovada %}
+                                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalAtendimento{{ cotacao.id }}" title="Adicionar ao Atendimento">
+                                            <i class="bi bi-plus-circle"></i>
+                                        </button>
+                                    {% endif %}
+                                    <a href="{% url 'metrologia:cotacao_fornecedor_update' cotacao.id %}" 
+                                       class="btn btn-sm btn-warning" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'metrologia:cotacao_fornecedor_detail' cotacao.id %}" 
+                                       class="btn btn-sm btn-primary" title="Visualizar">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-3">
+                                    Nenhuma cotação adicionada
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Atendimentos -->
+    <div class="card">
+        <div class="card-header">
+            <h6 class="mb-0">
+                <i class="bi bi-check2-square"></i> Planejamento de Atendimentos
+            </h6>
+        </div>
+        <div class="card-body">
+            <!-- Faixa 1: NO LOCAL -->
+            <div class="mb-4">
+                <div class="alert alert-info mb-3" role="alert">
+                    <h6 class="mb-0">
+                        <i class="bi bi-geo-alt"></i> No Local (Cliente)
+                    </h6>
+                </div>
+                {% regroup atendimentos by item_cotacao.local_atendimento as atendimentos_por_tipo %}
+                {% for tipo_group in atendimentos_por_tipo %}
+                    {% if tipo_group.grouper == 'NO_LOCAL' %}
+                        {% regroup tipo_group.list by item_cotacao.cotacao_fornecedor as atendimentos_por_cotacao %}
+                        {% for cotacao_group in atendimentos_por_cotacao %}
+                            <div class="mb-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-center p-2 bg-light cursor-pointer" onclick="toggleCotacao(this)" style="cursor: pointer;">
+                                    <div class="d-flex align-items-center flex-grow-1">
+                                        <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                                        <h6 class="text-muted mb-0">
+                                            <strong>Cotação {{ cotacao_group.grouper.numero }}</strong> - {{ cotacao_group.grouper.fornecedor.empresa }}
+                                        </h6>
+                                    </div>
+                                    <small class="text-muted">{{ cotacao_group.list|length }} item(ns)</small>
+                                </div>
+                                <div class="cotacao-content p-2" style="display: none;">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-2">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Instrumento</th>
+                                                    <th>Data Prevista</th>
+                                                    <th>Data Realizada</th>
+                                                    <th>Técnico Responsável</th>
+                                                    <th>Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for atendimento in cotacao_group.list %}
+                                                    <tr>
+                                                        <td><strong>{{ atendimento.item_solicitacao.instrumento.tag }}</strong></td>
+                                                        <td>{{ atendimento.data_prevista_atendimento|date:"d/m/Y" }}</td>
+                                                        <td><input type="date" class="form-control form-control-sm" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="data_realizada"></td>
+                                                        <td><input type="text" class="form-control form-control-sm" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="tecnico" placeholder="Técnico"></td>
+                                                        <td>
+                                                            <a href="{% url 'metrologia:atendimento_detail' atendimento.id %}" class="btn btn-sm btn-outline-primary" title="Detalhes">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-success" onclick="salvarDadosAtendimento('NO_LOCAL', {{ cotacao_group.grouper.id }})">
+                                        <i class="bi bi-save"></i> Salvar {{ cotacao_group.grouper.numero }}
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Faixa 2: NO LABORATÓRIO -->
+            <div class="mb-4">
+                <div class="alert alert-warning mb-3" role="alert">
+                    <h6 class="mb-0">
+                        <i class="bi bi-building"></i> No Laboratório (Fornecedor)
+                    </h6>
+                </div>
+                {% regroup atendimentos by item_cotacao.local_atendimento as atendimentos_por_tipo2 %}
+                {% for tipo_group in atendimentos_por_tipo2 %}
+                    {% if tipo_group.grouper == 'NO_LABORATORIO' %}
+                        {% regroup tipo_group.list by item_cotacao.cotacao_fornecedor as atendimentos_por_cotacao2 %}
+                        {% for cotacao_group in atendimentos_por_cotacao2 %}
+                            <div class="mb-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-center p-2 bg-light cursor-pointer" onclick="toggleCotacao(this)" style="cursor: pointer;">
+                                    <div class="d-flex align-items-center flex-grow-1">
+                                        <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                                        <h6 class="text-muted mb-0">
+                                            <strong>Cotação {{ cotacao_group.grouper.numero }}</strong> - {{ cotacao_group.grouper.fornecedor.empresa }}
+                                        </h6>
+                                    </div>
+                                    <small class="text-muted">{{ cotacao_group.list|length }} item(ns)</small>
+                                </div>
+                                <div class="cotacao-content p-2" style="display: none;">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-2">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Instrumento</th>
+                                                    <th>Data Envio Previsto</th>
+                                                    <th>Data Envio Realizado</th>
+                                                    <th>Data Retorno Previsto</th>
+                                                    <th>Data Retorno Realizado</th>
+                                                    <th>Observações</th>
+                                                    <th>Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for atendimento in cotacao_group.list %}
+                                                    <tr>
+                                                        <td><strong>{{ atendimento.item_solicitacao.instrumento.tag }}</strong></td>
+                                                        <td>{{ atendimento.data_prevista_atendimento|date:"d/m/Y" }}</td>
+                                                        <td><input type="date" class="form-control form-control-sm" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="data_envio"></td>
+                                                        <td><input type="date" class="form-control form-control-sm" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="data_retorno_previsto"></td>
+                                                        <td><input type="date" class="form-control form-control-sm" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="data_retorno"></td>
+                                                        <td><textarea class="form-control form-control-sm" rows="1" placeholder="Observações" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="observacoes"></textarea></td>
+                                                        <td>
+                                                            <a href="{% url 'metrologia:atendimento_detail' atendimento.id %}" class="btn btn-sm btn-outline-primary" title="Detalhes">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-success" onclick="salvarDadosAtendimento('NO_LABORATORIO', {{ cotacao_group.grouper.id }})">
+                                        <i class="bi bi-save"></i> Salvar {{ cotacao_group.grouper.numero }}
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% empty %}
+                    <p class="text-center text-muted py-3">Nenhum atendimento no laboratório</p>
+                {% endfor %}
+            </div>
+
+            <!-- Faixa 3: COMPRAR NOVO -->
+            <div class="mb-4">
+                <div class="alert alert-success mb-3" role="alert">
+                    <h6 class="mb-0">
+                        <i class="bi bi-bag-plus"></i> Compra Novo
+                    </h6>
+                </div>
+                {% regroup atendimentos by item_cotacao.local_atendimento as atendimentos_por_tipo3 %}
+                {% for tipo_group in atendimentos_por_tipo3 %}
+                    {% if tipo_group.grouper == 'COMPRAR_NOVO' %}
+                        {% regroup tipo_group.list by item_cotacao.cotacao_fornecedor as atendimentos_por_cotacao3 %}
+                        {% for cotacao_group in atendimentos_por_cotacao3 %}
+                            <div class="mb-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-center p-2 bg-light cursor-pointer" onclick="toggleCotacao(this)" style="cursor: pointer;">
+                                    <div class="d-flex align-items-center flex-grow-1">
+                                        <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                                        <h6 class="text-muted mb-0">
+                                            <strong>Cotação {{ cotacao_group.grouper.numero }}</strong> - {{ cotacao_group.grouper.fornecedor.empresa }}
+                                        </h6>
+                                    </div>
+                                    <small class="text-muted">{{ cotacao_group.list|length }} item(ns)</small>
+                                </div>
+                                <div class="cotacao-content p-2" style="display: none;">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-2">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Instrumento</th>
+                                                    <th>Data Prevista</th>
+                                                    <th>Data Realizada</th>
+                                                    <th>Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for atendimento in cotacao_group.list %}
+                                                    <tr>
+                                                        <td><strong>{{ atendimento.item_solicitacao.instrumento.tag }}</strong></td>
+                                                        <td>{{ atendimento.data_prevista_atendimento|date:"d/m/Y" }}</td>
+                                                        <td class="bg-light">
+                                                            {% if atendimento.data_chegada %}
+                                                                <span class="badge bg-success">{{ atendimento.data_chegada|date:"d/m/Y" }}</span>
+                                                            {% else %}
+                                                                <span class="text-muted small">-</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            <a href="{% url 'metrologia:atendimento_detail' atendimento.id %}" class="btn btn-sm btn-outline-primary" title="Detalhes">
+                                                                <i class="bi bi-eye"></i>
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    <!-- Observações da Cotação -->
+                                    <div class="mt-3 p-2 bg-light rounded">
+                                        <small class="text-muted"><strong>Observações da Cotação:</strong></small>
+                                        <p class="mb-0 mt-1" style="white-space: pre-wrap;">{{ cotacao_group.grouper.observacoes_execucao|default:"Nenhuma observação registrada" }}</p>
+                                    </div>
+                                    
+                                    <!-- Botão para Modal -->
+                                    <button type="button" class="btn btn-sm btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#modalAtualizarCotacao{{ cotacao_group.grouper.id }}">
+                                        <i class="bi bi-pencil-square"></i> Atualizar Entrega
+                                    </button>
+                                </div>
+
+                                <!-- Modal de Atualização para esta Cotação -->
+                                <div class="modal fade" id="modalAtualizarCotacao{{ cotacao_group.grouper.id }}" tabindex="-1" aria-labelledby="modalAtualizarCotacao{{ cotacao_group.grouper.id }}Label" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="modalAtualizarCotacao{{ cotacao_group.grouper.id }}Label">
+                                                    Atualizar Entrega - Cotação {{ cotacao_group.grouper.numero }}
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                            </div>
+                                            <form id="formAtualizarCotacao{{ cotacao_group.grouper.id }}" onsubmit="salvarAtualizacaoCotacao(event, {{ cotacao_group.grouper.id }})">
+                                                {% csrf_token %}
+                                                <div class="modal-body">
+                                                    <!-- Seleção de Instrumentos -->
+                                                    <div class="mb-4">
+                                                        <label class="form-label fw-bold">
+                                                            <i class="bi bi-check-square"></i> Instrumentos a Atualizar
+                                                        </label>
+                                                        <div class="alert alert-info" role="alert">
+                                                            <small>Selecione quais instrumentos chegaram e deseja registrar a data</small>
+                                                        </div>
+                                                        <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                                                            {% for atendimento in cotacao_group.list %}
+                                                                <div class="form-check mb-2">
+                                                                    <input class="form-check-input atendimento-checkbox" type="checkbox" id="atend_{{ atendimento.id }}" value="{{ atendimento.id }}" data-cotacao-id="{{ cotacao_group.grouper.id }}">
+                                                                    <label class="form-check-label" for="atend_{{ atendimento.id }}">
+                                                                        {{ atendimento.item_solicitacao.instrumento.tag }} - {{ atendimento.item_solicitacao.instrumento.descricao }}
+                                                                    </label>
+                                                                </div>
+                                                            {% endfor %}
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Data de Chegada Realizada -->
+                                                    <div class="mb-4">
+                                                        <label for="dataChegada{{ cotacao_group.grouper.id }}" class="form-label fw-bold">
+                                                            <i class="bi bi-calendar-check"></i> Data de Chegada Realizada
+                                                        </label>
+                                                        <input type="date" class="form-control" id="dataChegada{{ cotacao_group.grouper.id }}" name="data_chegada" required>
+                                                    </div>
+
+                                                    <!-- Observações da Cotação -->
+                                                    <div class="mb-3">
+                                                        <label for="observacoes{{ cotacao_group.grouper.id }}" class="form-label fw-bold">
+                                                            <i class="bi bi-chat-left-text"></i> Observações da Cotação
+                                                        </label>
+                                                        <textarea class="form-control" id="observacoes{{ cotacao_group.grouper.id }}" name="observacoes" rows="3" placeholder="Observações gerais sobre a entrega desta cotação..."></textarea>
+                                                        <small class="text-muted">Será registrada uma única observação para toda a cotação</small>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-success">
+                                                        <i class="bi bi-check-circle"></i> Confirmar Atualização
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+                {% if atendimentos|length == 0 %}
+                    <p class="text-center text-muted py-3">Nenhuma compra de novo instrumento</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de seleção de instrumentos -->
+<div class="modal fade" id="modalSelecionarInstrumentos" tabindex="-1" aria-labelledby="modalSelecionarInstrumentosLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <form method="post" id="formSelecionarInstrumentos" action="{% url 'metrologia:solicitacao_itens' solicitacao.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalSelecionarInstrumentosLabel">Adicionar Instrumentos à Solicitação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    {% if instrumentos_disponiveis %}
+                        <!-- Filtros -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label"><strong>Filtrar por Período de Vencimento:</strong></label>
+                                <select class="form-select" id="filtroStatus" onchange="filtrarInstrumentos()">
+                                    <option value="">Todos os Períodos</option>
+                                    <option value="vencidos">Vencidos</option>
+                                    <option value="30dias">Até 30 dias</option>
+                                    <option value="60dias">Até 60 dias</option>
+                                    <option value="90dias">Até 90 dias</option>
+                                    <option value="120dias">Até 120 dias</option>
+                                    <option value="acima120">Acima de 120 dias</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label"><strong>Filtrar por Categoria:</strong></label>
+                                <select class="form-select" id="filtroCategoria" onchange="filtrarInstrumentos()">
+                                    <option value="">Todas as Categorias</option>
+                                    {% regroup instrumentos_disponiveis by categoria as categorias_list %}
+                                    {% for categoria_group in categorias_list %}
+                                        <option value="{{ categoria_group.grouper }}">{{ categoria_group.grouper }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Contadores de Status -->
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <div class="alert alert-danger mb-0 py-2" role="alert">
+                                            <small><strong>Vencidos:</strong></small><br>
+                                            <span id="countVencidos" class="badge bg-danger">0</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="alert alert-warning mb-0 py-2" role="alert">
+                                            <small><strong>Até 30d:</strong></small><br>
+                                            <span id="count30dias" class="badge bg-warning text-dark">0</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="alert alert-info mb-0 py-2" role="alert">
+                                            <small><strong>Até 120d:</strong></small><br>
+                                            <span id="count120dias" class="badge bg-info">0</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="alert alert-success mb-0 py-2" role="alert">
+                                            <small><strong>Acima 120d:</strong></small><br>
+                                            <span id="countAcima120" class="badge bg-success">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Info de Total e Selecionados -->
+                        <div class="alert alert-info mb-3">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <strong>Total de Instrumentos:</strong> <span id="totalInstrumentos" class="badge bg-info">{{ instrumentos_disponiveis|length }}</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Selecionados:</strong> <span id="contadorSelecionados" class="badge bg-success">0</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" class="btn btn-sm btn-success" onclick="selecionarFiltrados()">
+                                        <i class="bi bi-check2-square"></i> Marcar Filtrados
+                                    </button>
+                                </div>
+                                <div class="col-md-3 text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limparSelecao()">
+                                        <i class="bi bi-x-square"></i> Limpar Seleção
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabela de Instrumentos -->
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover align-middle" id="tabelaInstrumentos">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:40px"><input type="checkbox" id="checkAll" onclick="toggleAllCheckboxes(this)"></th>
+                                        <th>TAG</th>
+                                        <th>Descrição</th>
+                                        <th>Próxima Calibração</th>
+                                        <th style="width:100px">Status</th>
+                                        <th>Categoria</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for instrumento in instrumentos_disponiveis %}
+                                        {% if instrumento.data_proxima_calibracao < hoje %}
+                                            <tr class="table-danger status-vencidos" data-status="vencidos" data-dias="0" data-categoria="{{ instrumento.categoria }}">
+                                        {% elif instrumento.data_proxima_calibracao <= dias_30 %}
+                                            <tr class="table-warning status-30dias" data-status="30dias" data-dias="1" data-categoria="{{ instrumento.categoria }}">
+                                        {% elif instrumento.data_proxima_calibracao <= dias_60 %}
+                                            <tr class="table-info status-60dias" data-status="60dias" data-dias="2" data-categoria="{{ instrumento.categoria }}">
+                                        {% elif instrumento.data_proxima_calibracao <= dias_90 %}
+                                            <tr class="" data-status="90dias" data-dias="3" data-categoria="{{ instrumento.categoria }}">
+                                        {% elif instrumento.data_proxima_calibracao <= dias_120 %}
+                                            <tr class="" data-status="120dias" data-dias="4" data-categoria="{{ instrumento.categoria }}">
+                                        {% else %}
+                                            <tr class="table-light status-acima120" data-status="acima120" data-dias="5" data-categoria="{{ instrumento.categoria }}">
+                                        {% endif %}
+                                                <td><input type="checkbox" name="instrumentos_selecionados" value="{{ instrumento.id }}" class="checkbox-instrumento" onchange="atualizarContador()"></td>
+                                                <td><strong>{{ instrumento.tag }}</strong></td>
+                                                <td>{{ instrumento.descricao }}</td>
+                                                <td>{{ instrumento.data_proxima_calibracao|date:"d/m/Y" }}</td>
+                                                <td>
+                                                    {% if instrumento.data_proxima_calibracao < hoje %}
+                                                        <span class="badge bg-danger">Vencido</span>
+                                                    {% elif instrumento.data_proxima_calibracao <= dias_30 %}
+                                                        <span class="badge bg-warning text-dark">Até 30d</span>
+                                                    {% elif instrumento.data_proxima_calibracao <= dias_60 %}
+                                                        <span class="badge bg-info">Até 60d</span>
+                                                    {% elif instrumento.data_proxima_calibracao <= dias_90 %}
+                                                        <span class="badge bg-primary">Até 90d</span>
+                                                    {% elif instrumento.data_proxima_calibracao <= dias_120 %}
+                                                        <span class="badge bg-secondary">Até 120d</span>
+                                                    {% else %}
+                                                        <span class="badge bg-success">Acima 120d</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ instrumento.categoria }}</td>
+                                            </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">Nenhum instrumento disponível.</div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnAdicionar">Adicionar Selecionados</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAllCheckboxes(source) {
+    const tabela = document.querySelector('#tabelaInstrumentos tbody');
+    if (!tabela) return;
+    const checkboxes = tabela.querySelectorAll('input[type="checkbox"][name="instrumentos_selecionados"]:not([disabled])');
+    for (const cb of checkboxes) {
+        cb.checked = source.checked;
+    }
+    atualizarContador();
+}
+
+function selecionarFiltrados() {
+    const tabela = document.querySelector('#tabelaInstrumentos tbody');
+    if (!tabela) return;
+    const checkboxes = tabela.querySelectorAll('input[type="checkbox"][name="instrumentos_selecionados"]:not([disabled])');
+    for (const cb of checkboxes) {
+        cb.checked = true;
+    }
+    atualizarContador();
+}
+
+function atualizarContador() {
+    const checkboxes = document.querySelectorAll('#formSelecionarInstrumentos input[type="checkbox"][name="instrumentos_selecionados"]');
+    const selecionados = Array.from(checkboxes).filter(cb => cb.checked).length;
+    document.getElementById('contadorSelecionados').textContent = selecionados;
+}
+
+function limparSelecao() {
+    const checkboxes = document.querySelectorAll('#formSelecionarInstrumentos input[type="checkbox"][name="instrumentos_selecionados"]');
+    checkboxes.forEach(cb => cb.checked = false);
+    const checkAll = document.getElementById('checkAll');
+    if (checkAll) checkAll.checked = false;
+    atualizarContador();
+}
+
+function contarStatus() {
+    const linhas = document.querySelectorAll('#tabelaInstrumentos tbody tr');
+    let vencidos = 0;
+    let ate30 = 0;
+    let ate120 = 0;
+    let acima120 = 0;
+    
+    linhas.forEach(linha => {
+        const dias = parseInt(linha.getAttribute('data-dias'));
+        if (dias === 0) vencidos++;
+        if (dias === 0 || dias === 1) ate30++;
+        if (dias >= 0 && dias <= 4) ate120++;
+        if (dias === 5) acima120++;
+    });
+    
+    document.getElementById('countVencidos').textContent = vencidos;
+    document.getElementById('count30dias').textContent = ate30;
+    document.getElementById('count120dias').textContent = ate120;
+    document.getElementById('countAcima120').textContent = acima120;
+}
+
+function filtrarInstrumentos() {
+    const filtroStatus = document.getElementById('filtroStatus').value;
+    const filtroCategoria = document.getElementById('filtroCategoria').value;
+    const linhas = document.querySelectorAll('#tabelaInstrumentos tbody tr');
+    
+    linhas.forEach(linha => {
+        const categoria = linha.getAttribute('data-categoria');
+        const status = linha.getAttribute('data-status');
+        const dias = parseInt(linha.getAttribute('data-dias'));
+        
+        let mostrar = true;
+        
+        // Filtro de categoria
+        if (filtroCategoria !== '' && categoria !== filtroCategoria) {
+            mostrar = false;
+        }
+        
+        // Filtro de período (apenas se mostrar for verdadeiro)
+        if (mostrar && filtroStatus !== '') {
+            let mostrarPorStatus = false;
+            
+            switch(filtroStatus) {
+                case 'vencidos':
+                    mostrarPorStatus = dias === 0;
+                    break;
+                case '30dias':
+                    mostrarPorStatus = dias === 0 || dias === 1;
+                    break;
+                case '60dias':
+                    mostrarPorStatus = dias === 0 || dias === 1 || dias === 2;
+                    break;
+                case '90dias':
+                    mostrarPorStatus = dias === 0 || dias === 1 || dias === 2 || dias === 3;
+                    break;
+                case '120dias':
+                    mostrarPorStatus = dias === 0 || dias === 1 || dias === 2 || dias === 3 || dias === 4;
+                    break;
+                case 'acima120':
+                    mostrarPorStatus = dias === 5;
+                    break;
+            }
+            
+            mostrar = mostrarPorStatus;
+        }
+        
+        if (mostrar) {
+            linha.style.display = '';
+            linha.querySelector('input[type="checkbox"]').disabled = false;
+        } else {
+            linha.style.display = 'none';
+            linha.querySelector('input[type="checkbox"]').disabled = true;
+            linha.querySelector('input[type="checkbox"]').checked = false;
+        }
+    });
+    
+    atualizarContador();
+}
+
+// Inicializar contadores ao abrir modal
+document.getElementById('modalSelecionarInstrumentos').addEventListener('show.bs.modal', function() {
+    contarStatus();
+    atualizarContador();
+});
+
+// Atualizar contador ao marcar/desmarcar
+document.querySelectorAll('input[type="checkbox"][name="instrumentos_selecionados"]').forEach(cb => {
+    cb.addEventListener('change', atualizarContador);
+});
+
+function marcarSolicitacaoConcluida(solicitacaoId) {
+    if (!confirm('Deseja realmente marcar esta solicitação como CONCLUÍDA?')) return;
+    const btn = document.getElementById('btn-concluir');
+    btn.disabled = true;
+    fetch(`/metrologia/solicitacoes/${solicitacaoId}/concluir/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Solicitação marcada como CONCLUÍDA!');
+            location.reload();
+        } else {
+            alert('Erro ao concluir solicitação.');
+            btn.disabled = false;
+        }
+    })
+    .catch(() => {
+        alert('Erro de comunicação com o servidor.');
+        btn.disabled = false;
+    });
+}
+
+function marcarSolicitacaoCancelada(solicitacaoId) {
+    if (!confirm('Deseja realmente CANCELAR esta solicitação?')) return;
+    const btn = document.getElementById('btn-cancelar');
+    btn.disabled = true;
+    fetch(`/metrologia/solicitacoes/${solicitacaoId}/cancelar/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Solicitação CANCELADA!');
+            location.reload();
+        } else {
+            alert('Erro ao cancelar solicitação.');
+            btn.disabled = false;
+        }
+    })
+    .catch(() => {
+        alert('Erro de comunicação com o servidor.');
+        btn.disabled = false;
+    });
+}
+
+function reativarSolicitacao(solicitacaoId) {
+    if (!confirm('Deseja realmente reativar esta solicitação?')) return;
+    const btn = document.getElementById('btn-reativar');
+    btn.disabled = true;
+    fetch(`/metrologia/solicitacoes/${solicitacaoId}/reativar/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Solicitação reativada!');
+            location.reload();
+        } else {
+            alert('Erro ao reativar solicitação.');
+            btn.disabled = false;
+        }
+    })
+    .catch(() => {
+        alert('Erro de comunicação com o servidor.');
+        btn.disabled = false;
+    });
+}
+
+function reabrirSolicitacao(solicitacaoId) {
+    if (!confirm('Deseja realmente reabrir esta solicitação?')) return;
+    const btn = document.getElementById('btn-reabrir');
+    btn.disabled = true;
+    fetch(`/metrologia/solicitacoes/${solicitacaoId}/reabrir/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Solicitação reaberta!');
+            location.reload();
+        } else {
+            alert('Erro ao reabrir solicitação.');
+            btn.disabled = false;
+        }
+    })
+    .catch(() => {
+        alert('Erro de comunicação com o servidor.');
+        btn.disabled = false;
+    });
+}
+
+// Função utilitária para pegar o CSRF do cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Função para alternar (expandir/recolher) cotações
+function toggleCotacao(headerElement) {
+    const content = headerElement.nextElementSibling; // div.cotacao-content
+    const icon = headerElement.querySelector('.toggle-icon');
+    
+    if (content.style.display === 'none' || !content.style.display) {
+        // Expandir
+        content.style.display = 'block';
+        if (icon) {
+            icon.classList.remove('bi-chevron-down');
+            icon.classList.add('bi-chevron-up');
+        }
+    } else {
+        // Recolher
+        content.style.display = 'none';
+        if (icon) {
+            icon.classList.remove('bi-chevron-up');
+            icon.classList.add('bi-chevron-down');
+        }
+    }
+}
+</script>
+
+<!-- Modais para Adicionar ao Atendimento por Cotação -->
+{% for cotacao in cotacoes %}
+    {% if cotacao.aprovada %}
+    <div class="modal fade" id="modalAtendimento{{ cotacao.id }}" tabindex="-1" aria-labelledby="modalAtendimento{{ cotacao.id }}Label" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="post" action="{% url 'metrologia:atendimento_create_from_cotacao' cotacao.id %}">
+                    {% csrf_token %}
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalAtendimento{{ cotacao.id }}Label">
+                            Adicionar Itens da Cotação {{ cotacao.numero }} ao Atendimento
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        {% if cotacao.itens.all %}
+                            <p class="mb-3"><small class="text-muted">Selecione quais instrumentos deseja adicionar ao planejamento de atendimento:</small></p>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="40">
+                                                <input type="checkbox" class="selectAllCotacao" data-cotacao="{{ cotacao.id }}" onchange="toggleSelectAllCotacao(this)">
+                                            </th>
+                                            <th>Instrumento</th>
+                                            <th>Descrição</th>
+                                            <th>Tipo de Atendimento</th>
+                                            <th>Pode Atender?</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in cotacao.itens.all %}
+                                            <tr>
+                                                <td class="text-center">
+                                                    <input type="checkbox" name="itens_selecionados" value="{{ item.id }}" class="item-checkbox-{{ cotacao.id }}">
+                                                </td>
+                                                <td><strong>{{ item.instrumento.tag }}</strong></td>
+                                                <td>{{ item.instrumento.descricao }}</td>
+                                                <td>
+                                                    <span class="badge bg-info">
+                                                        {{ item.get_local_atendimento_display }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    {% if item.pode_atender %}
+                                                        <i class="bi bi-check-circle text-success"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-x-circle text-danger"></i>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Data prevista de atendimento -->
+                            <div class="mb-3 mt-3">
+                                <label for="dataPrevista{{ cotacao.id }}" class="form-label fw-bold">Data Prevista de Atendimento</label>
+                                <input type="date" class="form-control" id="dataPrevista{{ cotacao.id }}" name="data_prevista" required>
+                            </div>
+                        {% else %}
+                            <p class="text-center text-muted">Nenhum item disponível nesta cotação.</p>
+                        {% endif %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        {% if cotacao.itens.all %}
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-plus-circle"></i> Adicionar ao Atendimento
+                            </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+<script>
+function toggleSelectAllCotacao(checkbox) {
+    const cotacaoId = checkbox.dataset.cotacao;
+    const checkboxes = document.querySelectorAll('.item-checkbox-' + cotacaoId);
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+}
+
+function salvarAtualizacaoCotacao(event, cotacaoId) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formId = `formAtualizarCotacao${cotacaoId}`;
+    
+    if (form.id !== formId) {
+        return;
+    }
+    
+    console.log('=== SALVANDO ATUALIZAÇÃO DE COTAÇÃO ===');
+    console.log('Cotação ID:', cotacaoId);
+    
+    // Coletar instrumentos selecionados
+    const checkboxes = document.querySelectorAll(`#${formId} .atendimento-checkbox:checked`);
+    const atendimentoIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    
+    console.log('Atendimentos selecionados:', atendimentoIds);
+    
+    if (atendimentoIds.length === 0) {
+        alert('⚠️ Selecione pelo menos um instrumento para atualizar!');
+        return;
+    }
+    
+    // Coletar dados do formulário
+    const dataChegada = form.querySelector(`#dataChegada${cotacaoId}`).value;
+    const observacoes = form.querySelector(`#observacoes${cotacaoId}`).value;
+    
+    console.log('Data chegada:', dataChegada);
+    console.log('Observações:', observacoes);
+    
+    if (!dataChegada) {
+        alert('⚠️ Informe a data de chegada realizada!');
+        return;
+    }
+    
+    // Preparar dados
+    const dados = {
+        cotacao_id: cotacaoId,
+        atendimento_ids: atendimentoIds,
+        data_chegada: dataChegada,
+        observacoes: observacoes
+    };
+    
+    // Enviar via AJAX
+    const btn = form.querySelector('button[type="submit"]');
+    const btnTexto = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
+    
+    fetch('{% url "metrologia:atendimento_atualizar_cotacao" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(dados)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        console.log('Response result:', result);
+        btn.disabled = false;
+        btn.innerHTML = btnTexto;
+        
+        if (result.success) {
+            alert(`✅ Sucesso!\n\n${result.atualizados} instrumento(s) atualizado(s)`);
+            // Fechar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById(`modalAtualizarCotacao${cotacaoId}`));
+            if (modal) {
+                modal.hide();
+            }
+            // Recarregar página
+            location.reload();
+        } else {
+            alert('❌ Erro ao salvar:\n' + (result.error || result.message || 'Erro desconhecido'));
+            btn.disabled = false;
+            btn.innerHTML = btnTexto;
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro de requisição:', error);
+        btn.disabled = false;
+        btn.innerHTML = btnTexto;
+        alert('❌ Erro ao salvar os dados:\n' + error.message);
+    });
+}
+
+function salvarDadosAtendimento(tipo, cotacaoId) {
+    console.log('=== INICIANDO SALVAMENTO ===');
+    console.log('Tipo:', tipo);
+    console.log('Cotação ID:', cotacaoId);
+    
+    // Mostrar modal de confirmação
+    const confirmacao = confirm(`Tem certeza que deseja salvar os dados desta cotação?\n\nTipo: ${tipo}\nCotação: ${cotacaoId}`);
+    if (!confirmacao) {
+        console.log('Salvamento cancelado pelo usuário');
+        return;
+    }
+    
+    // Coletar todos os inputs para esta cotação
+    const cotacaoInputs = document.querySelectorAll(`[data-cotacao-id="${cotacaoId}"]`);
+    console.log('Inputs encontrados:', cotacaoInputs.length);
+    
+    let campos = {};
+    let totalCampos = 0;
+    
+    // Coletar dados de todos os atendimentos desta cotação
+    cotacaoInputs.forEach(field => {
+        const atendimentoId = field.dataset.atendimento;
+        const fieldType = field.dataset.fieldType;
+        
+        if (!campos[atendimentoId]) {
+            campos[atendimentoId] = {};
+        }
+        
+        campos[atendimentoId][fieldType] = field.value;
+        totalCampos++;
+    });
+    
+    console.log('Total de campos coletados:', totalCampos);
+    console.log('Dados coletados:', campos);
+    
+    if (totalCampos === 0 || Object.keys(campos).length === 0) {
+        alert('⚠️ Nenhum dado foi preenchido para salvar.');
+        return;
+    }
+    
+    // Mostrar indicador de progresso
+    const btn = event.target.closest('button');
+    const btnTextoOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
+    
+    // Preparar dados para envio
+    const data = {
+        tipo: tipo,
+        cotacao_id: cotacaoId,
+        campos: campos
+    };
+    
+    console.log('Enviando POST com dados:', data);
+    
+    // Enviar dados via AJAX
+    fetch('{% url "metrologia:atendimento_atualizar_dados" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        console.log('Response result:', result);
+        btn.disabled = false;
+        btn.innerHTML = btnTextoOriginal;
+        
+        if (result.success) {
+            alert(`✅ Sucesso!\n\n${result.atualizados} atendimento(s) atualizado(s)`);
+            location.reload();
+        } else {
+            alert('❌ Erro ao salvar:\n' + (result.error || result.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro de requisição:', error);
+        btn.disabled = false;
+        btn.innerHTML = btnTextoOriginal;
+        alert('❌ Erro ao salvar os dados:\n' + error.message);
+    });
+}
+
+// Função para alternar (expandir/recolher) cotações
+function toggleCotacao(headerElement) {
+    const content = headerElement.nextElementSibling; // div.cotacao-content
+    const icon = headerElement.querySelector('.toggle-icon');
+    
+    if (content.style.display === 'none' || !content.style.display) {
+        // Expandir
+        content.style.display = 'block';
+        if (icon) {
+            icon.classList.remove('bi-chevron-down');
+            icon.classList.add('bi-chevron-up');
+        }
+    } else {
+        // Recolher
+        content.style.display = 'none';
+        if (icon) {
+            icon.classList.remove('bi-chevron-up');
+            icon.classList.add('bi-chevron-down');
+        }
+    }
+}
+</script>
+
+{% endblock %}

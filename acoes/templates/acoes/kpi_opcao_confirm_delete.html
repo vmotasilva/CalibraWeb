@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Exclusao{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-6">
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger bg-opacity-10 border-danger">
+                    <h5 class="mb-0 text-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Confirmar Exclusao
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Esta acao <strong>nao pode ser desfeita</strong>. Tenha certeza antes de prosseguir.
+                    </div>
+
+                    <p class="mb-3">
+                        Voce esta prestes a deletar o seguinte KPI:
+                    </p>
+
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h6 class="mb-2">
+                                <i class="bi bi-graph-up text-primary"></i>
+                                {{ kpi.nome }}
+                            </h6>
+                            {% if kpi.codigo %}
+                                <p class="text-muted small mb-1">
+                                    <strong>Codigo:</strong>
+                                    <code>{{ kpi.codigo }}</code>
+                                </p>
+                            {% endif %}
+                            {% if kpi.descricao %}
+                                <p class="text-muted small mb-0">
+                                    <strong>Descricao:</strong>
+                                    {{ kpi.descricao|truncatewords:20 }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-question-circle me-2"></i>
+                        {% if kpi.ativo %}
+                            <strong>Dica:</strong> Este KPI esta ativo. Considere desativa-lo em vez de deletar
+                            para manter o historico de planos que o utilizam.
+                        {% else %}
+                            <strong>Nota:</strong> Este KPI esta inativo e pode ser deletado com seguranca.
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-footer bg-light d-flex gap-2 justify-content-end">
+                    <a href="{% url 'acoes:kpi_opcao_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-lg"></i> Cancelar
+                    </a>
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Deletar Permanentemente
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4 border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-lightbulb text-warning"></i> Dica de Melhor Pratica
+                    </h6>
+                </div>
+                <div class="card-body small">
+                    <p class="mb-0">
+                        <strong>Recomendacao:</strong> Em vez de deletar um KPI, considere
+                        <strong>desativa-lo</strong>. Isso preserva o historico de planos que
+                        utilizam esse KPI, permitindo rastreabilidade completa dos dados.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

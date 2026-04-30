@@ -1,0 +1,521 @@
+{% extends "procedures/procedimento_base.html" %}
+{% load custom_filters from qms.templatetags.custom_filters %}
+
+{% block title %}Avaliação de Habilidades - {{ matriz.codigo }}{% endblock %}
+{% block header_title %}Avaliação de Habilidades - {{ matriz.codigo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .matriz-container {
+        overflow-x: auto;
+        max-width: 100%;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+    }
+    
+    .matriz-table {
+        min-width: 800px;
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+    
+    .matriz-table th {
+        background: #f8f9fa;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        font-weight: 600;
+        vertical-align: middle !important;
+        text-align: center;
+        padding: 10px 8px;
+        border: 1px solid #dee2e6;
+        height: auto;
+        min-height: 50px;
+        line-height: 1.5;
+        overflow: visible !important;
+    }
+    
+    .matriz-table td {
+        text-align: center;
+        vertical-align: middle;
+        padding: 8px 4px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .nivel-select {
+        width: 100%;
+        padding: 6px 4px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+    
+    .nivel-select:focus {
+        outline: none;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .matriz-table tbody td {
+        transition: background-color 0.2s ease;
+    }
+    
+    .matriz-table tbody td:hover {
+        background-color: #f0f7ff !important;
+    }
+    
+    .matriz-table tbody td.colaborador-col:hover {
+        background-color: #f8f9fa !important;
+    }
+    
+    .colaborador-col {
+        position: sticky;
+        left: 0;
+        background: #f8f9fa;
+        z-index: 5;
+        font-weight: 500;
+        text-align: left;
+        min-width: 180px;
+    }
+    
+    .disciplina-header {
+        width: 100%;
+        white-space: normal;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        word-break: break-word;
+        text-align: center;
+        display: block;
+        overflow: visible !important;
+    }
+    
+    .info-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .badge-info {
+        display: flex;
+        gap: 20px;
+    }
+    
+    .nivel-1 { background: #ffc107; color: white; }
+    .nivel-2 { background: #17a2b8; color: white; }
+    .nivel-3 { background: #28a745; color: white; }
+    .nivel-4 { background: #0d6efd; color: white; }
+    .nivel-5 { background: #6f42c1; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Info da Matriz -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">{{ matriz.codigo }} - {{ matriz.nome }}</h5>
+            <div>
+                <a href="{% url 'procedures:detalhe_matriz' matriz.id %}" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="info-card">
+                <div>
+                    <p class="mb-2"><strong>Status:</strong> 
+                        {% if matriz.ativo %}
+                            <span class="badge bg-success">Ativo</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inativo</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="badge-info">
+                    <div>
+                        <small class="text-muted">Colaboradores</small>
+                        <p class="mb-0"><span class="badge bg-info">{{ colaboradores_count }}</span></p>
+                    </div>
+                    <div>
+                        <small class="text-muted">Disciplinas</small>
+                        <p class="mb-0"><span class="badge bg-warning">{{ disciplinas_count }}</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legenda de Níveis -->
+    {% if colaboradores_count > 0 and disciplinas_count > 0 %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <strong>Legenda de Níveis:</strong>
+                <span><span class="badge nivel-1">1</span> Iniciante</span>
+                <span><span class="badge nivel-2">2</span> Intermediário</span>
+                <span><span class="badge nivel-3">3</span> Competente</span>
+                <span><span class="badge nivel-4">4</span> Avançado</span>
+                <span><span class="badge nivel-5">5</span> Especialista</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid de Avaliação -->
+    <div class="card">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-grid-3x3"></i> Grid de Avaliação</h6>
+            <span class="badge bg-light text-dark">{{ colaboradores_count }} colaboradores × {{ disciplinas_count }} disciplinas</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="matriz-container">
+                <table class="table table-bordered matriz-table">
+                    <thead>
+                        <tr>
+                            <th class="colaborador-col">
+                                <div>Matrícula</div>
+                                <small class="text-muted">Colaborador</small>
+                            </th>
+                            {% for disc in disciplinas %}
+                            <th title="{{ disc.nome }}">
+                                <div class="disciplina-header">
+                                    <strong>{{ disc.nome }}</strong>
+                                </div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for linha in grid_data %}
+                        <tr>
+                            <td class="colaborador-col">
+                                <div>
+                                    <strong>{{ linha.matricula }}</strong>
+                                    <small class="d-block text-muted">{{ linha.colaborador_nome }}</small>
+                                </div>
+                            </td>
+                            {% for disc in disciplinas %}
+                            {% with avaliacao=linha.avaliacoes|dict_get:disc.id %}
+                            <td style="padding: 0; cursor: pointer;" 
+                                onclick="abrirModalAvaliacao({{ linha.colaborador_id }}, {{ disc.id }}, {{ matriz.id }}, '{{ disc.nome }}')">
+                                <div style="padding: 8px 4px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; position: relative;"
+                                     title="{% if avaliacao.avaliador_nome %}Avaliado por: {{ avaliacao.avaliador_nome }}
+Data: {{ avaliacao.atualizado_em|safe }}{% else %}Clique para avaliar{% endif %}">
+                                    {% if avaliacao.nivel %}
+                                        <span class="badge nivel-{{ avaliacao.nivel }} font-weight-bold">{{ avaliacao.nivel }}</span>
+                                        {% if avaliacao.data_avaliacao %}
+                                            <small class="text-muted" style="font-size: 10px; white-space: nowrap;">
+                                                {# Se for string ISO (YYYY-MM-DD), converter para d/m/Y #}
+                                                {% with data_parts=avaliacao.data_avaliacao|split:"-" %}
+                                                    {% if data_parts|length == 3 %}
+                                                        {{ data_parts.2 }}/{{ data_parts.1 }}/{{ data_parts.0 }}
+                                                    {% else %}
+                                                        {{ avaliacao.data_avaliacao }}
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span style="color: #999; font-size: 18px;">-</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            {% endwith %}
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning text-center py-5">
+        <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+        <h5 class="mt-3">Nenhum colaborador ou disciplina cadastrada</h5>
+        <p class="text-muted">Para avaliar colaboradores, é necessário ter:</p>
+        <ul class="list-unstyled text-muted">
+            <li><i class="bi bi-check-circle"></i> Pelo menos um colaborador associado à matriz</li>
+            <li><i class="bi bi-check-circle"></i> Pelo menos uma disciplina cadastrada</li>
+        </ul>
+        <a href="{% url 'procedures:detalhe_matriz' matriz.id %}" class="btn btn-primary mt-3">
+            <i class="bi bi-arrow-left"></i> Voltar e Associar Colaboradores/Disciplinas
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+<!-- Modal para Avaliação -->
+<div class="modal fade" id="modalAvaliacao" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square"></i> Avaliação de Habilidade
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label"><strong>Disciplina</strong></label>
+                    <p id="modalDisciplina" class="form-control-plaintext fw-bold text-primary"></p>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="modalNivel" class="form-label"><strong>Nível de Competência</strong></label>
+                    <select id="modalNivel" class="form-select form-select-lg">
+                        <option value="">-- Selecione um nível --</option>
+                        <option value="0">N/A - Sem conhecimento</option>
+                        <option value="1">1 - Básico</option>
+                        <option value="2">2 - Intermediário</option>
+                        <option value="3">3 - Avançado/Instrutor</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="modalData" class="form-label"><strong>Data da Avaliação</strong></label>
+                    <input type="date" id="modalData" class="form-control">
+                    <small class="text-muted">Data da avaliação (máximo: hoje)</small>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="modalObservacoes" class="form-label"><strong>Observações</strong></label>
+                    <textarea id="modalObservacoes" class="form-control" rows="3" placeholder="Deixe observações ou comentários sobre a avaliação..."></textarea>
+                </div>
+                
+                <div id="infoAvaliacao" class="alert alert-info d-none">
+                    <small>
+                        <strong>Última avaliação:</strong> <span id="infoData"></span> por <span id="infoAvaliador"></span>
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnRemover" onclick="removerAvaliacao()">Remover</button>
+                <button type="button" class="btn btn-primary" id="btnSalvar" onclick="salvarAvaliaoModal()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Variáveis globais para o modal
+let modalData = {
+    colaborador_id: null,
+    disciplina_id: null,
+    matriz_id: null,
+    disciplina_nome: null
+};
+
+function abrirModalAvaliacao(colaboradorId, disciplinaId, matrizId, disciplinaNome) {
+    modalData = {
+        colaborador_id: colaboradorId,
+        disciplina_id: disciplinaId,
+        matriz_id: matrizId,
+        disciplina_nome: disciplinaNome
+    };
+    
+    document.getElementById('modalDisciplina').textContent = disciplinaNome;
+    
+    // Preencher os dados atuais
+    const tableCells = document.querySelectorAll(`td`);
+    let nivelAtual = '';
+    let dataAtual = '';
+    let obsAtual = '';
+    let avaliadorAtual = '';
+    let atualizadoAtual = '';
+    
+    // Tentar encontrar na célula que foi clicada
+    for (let cell of tableCells) {
+        const badge = cell.querySelector('.badge');
+        if (badge) {
+            const badge_level = badge.textContent.trim();
+            // Verificar se essa célula é da disciplina que estamos editando
+            const onclickAttr = cell.getAttribute('onclick');
+            if (onclickAttr && onclickAttr.includes(`${disciplinaId}`)) {
+                nivelAtual = badge_level;
+                // Tentar extrair data do small
+                const small = cell.querySelector('small');
+                if (small) {
+                    dataAtual = small.textContent.trim();
+                }
+                break;
+            }
+        }
+    }
+    
+    document.getElementById('modalNivel').value = nivelAtual || '';
+    document.getElementById('modalObservacoes').value = obsAtual || '';
+    
+    // Converter data de DD/MM/YYYY para YYYY-MM-DD se necessário
+    if (dataAtual && dataAtual.match(/\d{2}\/\d{2}\/\d{4}/)) {
+        const [dia, mes, ano] = dataAtual.split('/');
+        dataAtual = `${ano}-${mes}-${dia}`;
+    }
+    
+    document.getElementById('modalData').value = dataAtual || '';
+    
+    // Se não tiver data, preencher com hoje
+    if (!dataAtual) {
+        const hoje = new Date();
+        const ano = hoje.getFullYear();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dia = String(hoje.getDate()).padStart(2, '0');
+        const dataHoje = `${ano}-${mes}-${dia}`;
+        document.getElementById('modalData').value = dataHoje;
+    }
+    
+    // Mostrar/ocultar info de avaliação anterior
+    if (avaliadorAtual) {
+        document.getElementById('infoData').textContent = atualizadoAtual || dataAtual || '';
+        document.getElementById('infoAvaliador').textContent = avaliadorAtual;
+        document.getElementById('infoAvaliacao').classList.remove('d-none');
+    } else {
+        document.getElementById('infoAvaliacao').classList.add('d-none');
+    }
+    
+    // Limitar data máxima para hoje
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const dataMax = `${ano}-${mes}-${dia}`;
+    document.getElementById('modalData').max = dataMax;
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalAvaliacao'));
+    modal.show();
+}
+
+function salvarAvaliaoModal() {
+    const nivel = document.getElementById('modalNivel').value;
+    const dataStr = document.getElementById('modalData').value;
+    const observacoes = document.getElementById('modalObservacoes').value;
+    
+    if (!nivel) {
+        alert('Por favor selecione um nível de competência');
+        return;
+    }
+    
+    // Validar data (não permitir futuras)
+    if (dataStr) {
+        const dataSelecionada = new Date(dataStr + 'T00:00:00');
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        
+        if (dataSelecionada > hoje) {
+            alert('A data de avaliação não pode ser no futuro!');
+            return;
+        }
+    }
+    
+    const payload = {
+        colaborador_id: modalData.colaborador_id,
+        disciplina_id: modalData.disciplina_id,
+        matriz_id: modalData.matriz_id,
+        nivel: nivel
+    };
+    
+    if (dataStr) {
+        payload.data_avaliacao = dataStr;
+    }
+    
+    if (observacoes) {
+        payload.observacoes = observacoes;
+    }
+    
+    // Desabilitar botão
+    const btnSalvar = document.getElementById('btnSalvar');
+    const originalText = btnSalvar.innerHTML;
+    btnSalvar.disabled = true;
+    btnSalvar.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
+    
+    fetch(`/procedures/avaliacoes/salvar/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        btnSalvar.disabled = false;
+        btnSalvar.innerHTML = originalText;
+        
+        if (data.success) {
+            // Fechar modal e atualizar página
+            bootstrap.Modal.getInstance(document.getElementById('modalAvaliacao')).hide();
+            location.reload();
+        } else {
+            alert('Erro ao salvar: ' + (data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        btnSalvar.disabled = false;
+        btnSalvar.innerHTML = originalText;
+        console.error('Erro:', error);
+        alert('Erro ao salvar avaliação');
+    });
+}
+
+function removerAvaliacao() {
+    if (!confirm('Tem certeza que deseja remover esta avaliação?')) {
+        return;
+    }
+    
+    const btnRemover = document.getElementById('btnRemover');
+    const originalText = btnRemover.innerHTML;
+    btnRemover.disabled = true;
+    btnRemover.innerHTML = '<i class="bi bi-hourglass-split"></i> Removendo...';
+    
+    fetch(`/procedures/avaliacoes/salvar/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            colaborador_id: modalData.colaborador_id,
+            disciplina_id: modalData.disciplina_id,
+            matriz_id: modalData.matriz_id,
+            nivel: null
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btnRemover.disabled = false;
+        btnRemover.innerHTML = originalText;
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalAvaliacao')).hide();
+            location.reload();
+        } else {
+            alert('Erro ao remover: ' + (data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        btnRemover.disabled = false;
+        btnRemover.innerHTML = originalText;
+        console.error('Erro:', error);
+        alert('Erro ao remover avaliação');
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}

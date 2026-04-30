@@ -1,0 +1,286 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% load nav_access %}
+
+{% can_nav_view user 'procedures:importar_estrutura' 'procedures' as can_importar_estrutura %}
+{% can_nav_view user 'procedures:importar_perfis' 'procedures' as can_importar_perfis %}
+{% can_nav_view user 'procedures:exportar_estrutura' 'procedures' as can_exportar_estrutura %}
+{% can_nav_view user 'procedures:novo_perfil' 'procedures' as can_novo_perfil %}
+{% can_nav_view user 'procedures:editar_perfil' 'procedures' as can_editar_perfil %}
+{% can_nav_view user 'procedures:api_delete_perfil' 'procedures' as can_deletar_perfil %}
+{% can_nav_view user 'procedures:api_delete_perfis_multiple' 'procedures' as can_deletar_perfis_em_massa %}
+
+{% block title %}Perfis de Treinamento{% endblock %}
+{% block header_title %}Perfis de Treinamento{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="mb-0">Perfis de Treinamento</h4>
+            <small class="text-muted" id="countDisplay">Total: {{ perfis_total|default:0 }} perfis</small>
+            {% if can_deletar_perfis_em_massa %}
+            <span class="badge bg-info bg-opacity-10 text-info border d-none ms-2" id="selectedBadge">
+                <i class="bi bi-check-circle"></i> <span id="selectedCount">0</span> selecionados
+            </span>
+            {% endif %}
+        </div>
+        <div>
+            <div class="btn-group me-2" role="group">
+                {% if can_importar_estrutura %}
+                <a href="{% url 'procedures:importar_estrutura' %}" class="btn btn-success" title="Importação completa de perfis, grupos, subgrupos e colaboradores">
+                    <i class="bi bi-file-earmark-excel"></i> Importar Estrutura
+                </a>
+                {% endif %}
+                {% if can_importar_perfis %}
+                <a href="{% url 'procedures:importar_perfis' %}" class="btn btn-outline-success" title="Importação simples - apenas perfis">
+                    <i class="bi bi-upload"></i> Importar Perfis
+                </a>
+                {% endif %}
+                {% if can_exportar_estrutura %}
+                <a href="{% url 'procedures:exportar_estrutura' %}" class="btn btn-outline-info" title="Exporta todos os perfis, grupos, subgrupos e procedimentos">
+                    <i class="bi bi-download"></i> Exportar Estrutura
+                </a>
+                {% endif %}
+            </div>
+            <div class="btn-group" role="group">
+                {% if can_deletar_perfis_em_massa %}
+                <button class="btn btn-sm btn-outline-danger d-none" id="deleteSelectedBtn" onclick="deleteSelected()">
+                    <i class="bi bi-trash"></i> Deletar Selecionados
+                </button>
+                {% endif %}
+                <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
+                    <i class="bi bi-arrow-counterclockwise"></i> Limpar
+                </button>
+                {% if can_novo_perfil %}
+                <a href="{% url 'procedures:novo_perfil' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Novo Perfil
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-5">
+                    <input type="text" name="q" class="form-control" placeholder="Buscar por código ou nome" value="{{ termo }}">
+                </div>
+                <div class="col-md-3">
+                    <select name="ativo" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="true" {% if ativo == 'true' %}selected{% endif %}>Ativos</option>
+                        <option value="false" {% if ativo == 'false' %}selected{% endif %}>Inativos</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for perfil in perfis %}
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        {% if can_deletar_perfis_em_massa %}
+                        <input type="checkbox" class="form-check-input perfil-checkbox" data-id="{{ perfil.id }}" onchange="updateSelectionBadge()">
+                        {% endif %}
+                        <div>
+                            <h6 class="mb-0"><strong>{{ perfil.codigo }}</strong> - {{ perfil.nome }}</h6>
+                        </div>
+                    </div>
+                    {% if perfil.ativo %}
+                        <span class="badge bg-success">Ativo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inativo</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if perfil.descricao %}
+                    <p class="small text-muted">{{ perfil.descricao|truncatewords:20 }}</p>
+                    {% endif %}
+                    <p class="mb-1"><i class="bi bi-folder"></i> <strong>Grupos:</strong> {{ perfil.num_grupos }}</p>
+                </div>
+                <div class="card-footer bg-white">
+                    <div class="btn-group w-100" role="group">
+                        <a href="{% url 'procedures:detalhe_perfil' perfil.id %}" class="btn btn-sm btn-outline-info flex-grow-1">
+                            <i class="bi bi-eye"></i> Detalhes
+                        </a>
+                        {% if can_editar_perfil %}
+                        <a href="{% url 'procedures:editar_perfil' perfil.id %}" class="btn btn-sm btn-outline-warning flex-grow-1">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                        {% endif %}
+                        {% if can_deletar_perfil %}
+                        <button class="btn btn-sm btn-outline-danger" onclick="deletePerfil({{ perfil.id }}, '{{ perfil.codigo }}')" title="Deletar perfil">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                Nenhum perfil encontrado
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Paginação">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if termo %}&q={{ termo }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}">Primeira</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if termo %}&q={{ termo }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}">Anterior</a>
+                </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if termo %}&q={{ termo }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}">Próxima</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if termo %}&q={{ termo }}{% endif %}{% if ativo %}&ativo={{ ativo }}{% endif %}">Última</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<script>
+// Atualizar badge de seleção
+function updateSelectionBadge() {
+    const selectedCount = document.querySelectorAll('.perfil-checkbox:checked').length;
+    const badge = document.getElementById('selectedBadge');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+
+    if (!badge) {
+        return;
+    }
+    
+    document.getElementById('selectedCount').textContent = selectedCount;
+    
+    if (selectedCount > 0) {
+        badge.classList.remove('d-none');
+        if (deleteBtn) {
+            deleteBtn.classList.remove('d-none');
+        }
+    } else {
+        badge.classList.add('d-none');
+        if (deleteBtn) {
+            deleteBtn.classList.add('d-none');
+        }
+    }
+}
+
+// Obter cookie CSRF com fallback para meta tag
+function getCsrfToken() {
+    // Primeiro, tenta obter do cookie
+    let csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    
+    if (csrftoken) {
+        return csrftoken;
+    }
+    
+    // Fallback: obter do cookie
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.startsWith('csrftoken=')) {
+            return decodeURIComponent(cookie.substring(10));
+        }
+    }
+    
+    return '';
+}
+
+// Deletar perfil individual
+async function deletePerfil(id, codigo) {
+    if (!confirm(`Tem certeza que deseja deletar o perfil ${codigo}?\n\nEsta ação não pode ser desfeita!`)) {
+        return;
+    }
+    
+    try {
+        const csrfToken = getCsrfToken();
+        const response = await fetch(`/procedures/api/perfil/${id}/delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            }
+        });
+        
+        if (response.ok) {
+            alert(`Perfil ${codigo} deletado com sucesso!`);
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(`Erro: ${data.error || 'Não foi possível deletar o perfil.'}`);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao deletar perfil. Tente novamente.');
+    }
+}
+
+// Deletar perfis selecionados
+async function deleteSelected() {
+    const selectedIds = Array.from(document.querySelectorAll('.perfil-checkbox:checked')).map(cb => cb.dataset.id);
+    
+    if (selectedIds.length === 0) {
+        alert('Nenhum perfil selecionado.');
+        return;
+    }
+    
+    if (!confirm(`Tem certeza que deseja deletar ${selectedIds.length} perfil(is)?\n\nEsta ação não pode ser desfeita!`)) {
+        return;
+    }
+    
+    try {
+        const csrfToken = getCsrfToken();
+        const response = await fetch('/procedures/api/perfis/delete-multiple/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ ids: selectedIds })
+        });
+        
+        if (response.ok) {
+            alert(`${selectedIds.length} perfil(is) deletado(s) com sucesso!`);
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(`Erro: ${data.error || 'Não foi possível deletar os perfis.'}`);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao deletar perfis. Tente novamente.');
+    }
+}
+
+// Limpar filtros
+function limparFiltros() {
+    window.location.href = window.location.pathname;
+}
+</script>
+{% endblock %}

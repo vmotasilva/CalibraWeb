@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Treinamentos{% endblock %}
+{% block content %}
+<div class="container py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="mb-0">Treinamentos</h2>
+        <a href="{% url 'novo_treinamento' %}" class="btn btn-sm btn-primary">Novo</a>
+    </div>
+    <form method="get" class="row g-2 mb-3" id="filtro-form">
+        <div class="col-md-3">
+            <input type="text" name="q" value="{% if busca and busca != 'None' %}{{ busca }}{% endif %}" placeholder="Colaborador, código ou título" class="form-control" />
+        </div>
+        <div class="col-md-3">
+            <input type="text" id="colaborador_busca" placeholder="Buscar colaborador..." class="form-control" list="colaboradores_list" />
+            <input type="hidden" name="colaborador" id="colaborador_id" value="{{ colaborador_id }}" />
+            <datalist id="colaboradores_list">
+                {% for c in colaboradores %}
+                    <option value="{{ c.nome_completo }}" data-id="{{ c.id }}">{{ c.nome_completo }}</option>
+                {% endfor %}
+            </datalist>
+        </div>
+        <div class="col-md-3">
+            <input type="text" id="procedimento_busca" placeholder="Buscar procedimento..." class="form-control" list="procedimentos_list" />
+            <input type="hidden" name="procedimento" id="procedimento_id" value="{{ procedimento_id }}" />
+            <datalist id="procedimentos_list">
+                {% for p in procedimentos %}
+                    <option value="{{ p.codigo }} - {{ p.titulo|default:p.nome }}" data-id="{{ p.id }}">{{ p.codigo }} - {{ p.titulo|default:p.nome }}</option>
+                {% endfor %}
+            </datalist>
+        </div>
+        <div class="col-md-2">
+            <select name="status" class="form-select">
+                <option value="">Status</option>
+                <option value="OK" {% if status == 'OK' %}selected{% endif %}>Vigente</option>
+                <option value="PENDENTE" {% if status == 'PENDENTE' %}selected{% endif %}>Pendente</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-1 d-flex flex-wrap gap-1 mt-2 mt-md-0">
+            <button type="submit" class="btn btn-primary flex-grow-1" title="Aplicar filtros">Filtrar</button>
+            <button type="button" class="btn btn-warning" id="btn-limpar" title="Limpar todos os filtros">⟲</button>
+        </div>
+    </form>
+    <div class="table-responsive bg-white shadow-sm rounded mt-3">
+        <table class="table table-sm table-striped mb-0">
+            <thead class="table-light">
+                <tr class="small text-uppercase">
+                    <th>Colaborador</th>
+                    <th>Procedimento</th>
+                    <th>Revisão</th>
+                    <th>Data Treinamento</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if treinamentos.object_list %}
+                    {% for t in treinamentos.object_list %}
+                        <tr class="align-middle">
+                            <td>{{ t.colaborador.nome_completo }}</td>
+                            <td>{{ t.procedimento.codigo }} - {{ t.procedimento.titulo }}</td>
+                            <td>{{ t.revisao_treinada }}</td>
+                            <td>{{ t.data_treinamento|date:'d/m/Y' }}</td>
+                            <td>{% if t.status_treinamento == "OK" %}<span class="badge bg-success">Vigente</span>{% else %}<span class="badge bg-warning text-dark">Pendente</span>{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="5" class="text-center py-4 text-muted">Nenhum treinamento encontrado.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Paginação -->
+    {% if treinamentos.has_other_pages %}
+    <nav aria-label="Navegação de páginas" class="mt-3">
+        <ul class="pagination justify-content-center mb-0">
+            <!-- Primeira página -->
+            {% if treinamentos.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if busca %}&q={{ busca }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}" title="Primeira página">
+                        <span aria-hidden="true">&laquo;&laquo;</span>
+                    </a>
+                </li>
+            {% endif %}
+            
+            <!-- Página anterior -->
+            {% if treinamentos.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ treinamentos.previous_page_number }}{% if busca %}&q={{ busca }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}" title="Página anterior">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo;</span>
+                </li>
+            {% endif %}
+            
+            <!-- Números das páginas -->
+            {% for num in treinamentos.paginator.page_range %}
+                {% if treinamentos.number == num %}
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link">
+                            {{ num }}
+                            <span class="visually-hidden">(página atual)</span>
+                        </span>
+                    </li>
+                {% elif num > treinamentos.number|add:'-3' and num < treinamentos.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if busca %}&q={{ busca }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            <!-- Página seguinte -->
+            {% if treinamentos.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ treinamentos.next_page_number }}{% if busca %}&q={{ busca }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}" title="Próxima página">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&raquo;</span>
+                </li>
+            {% endif %}
+            
+            <!-- Última página -->
+            {% if treinamentos.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ treinamentos.paginator.num_pages }}{% if busca %}&q={{ busca }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if colaborador_id %}&colaborador={{ colaborador_id }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}" title="Última página">
+                        <span aria-hidden="true">&raquo;&raquo;</span>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    
+    <!-- Informações da paginação -->
+    <div class="text-center text-muted small mt-2">
+        Página {{ treinamentos.number }} de {{ treinamentos.paginator.num_pages }} 
+        ({{ treinamentos.paginator.count }} registro{{ treinamentos.paginator.count|pluralize }})
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const colaboradoresData = {
+        {% for c in colaboradores %}'{{ c.nome_completo }}': {{ c.id }},{% endfor %}
+    };
+    
+    const procedimentosData = {
+        {% for p in procedimentos %}'{{ p.codigo }} - {{ p.titulo|default:p.nome }}': {{ p.id }},{% endfor %}
+    };
+    
+    const colaboradorInput = document.getElementById('colaborador_busca');
+    const colaboradorId = document.getElementById('colaborador_id');
+    const procedimentoInput = document.getElementById('procedimento_busca');
+    const procedimentoId = document.getElementById('procedimento_id');
+    const filtroForm = document.getElementById('filtro-form');
+    const btnLimpar = document.getElementById('btn-limpar');
+    
+    // Preencher campos de busca com valores pré-selecionados
+    if (colaboradorId.value) {
+        for (let nome in colaboradoresData) {
+            if (colaboradoresData[nome] == colaboradorId.value) {
+                colaboradorInput.value = nome;
+                break;
+            }
+        }
+    }
+    
+    if (procedimentoId.value) {
+        for (let codigo in procedimentosData) {
+            if (procedimentosData[codigo] == procedimentoId.value) {
+                procedimentoInput.value = codigo;
+                break;
+            }
+        }
+    }
+    
+    // Sincronizar quando usuário seleciona da datalist
+    colaboradorInput.addEventListener('change', function() {
+        colaboradorId.value = colaboradoresData[this.value] || '';
+    });
+    
+    procedimentoInput.addEventListener('change', function() {
+        procedimentoId.value = procedimentosData[this.value] || '';
+    });
+    
+    // Botão de limpar filtros
+    btnLimpar.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Limpar todos os campos
+        filtroForm.querySelector('input[name="q"]').value = '';
+        colaboradorInput.value = '';
+        colaboradorId.value = '';
+        procedimentoInput.value = '';
+        procedimentoId.value = '';
+        filtroForm.querySelector('select[name="status"]').value = '';
+        // Enviar o formulário
+        filtroForm.submit();
+    });
+});
+</script>
+
+{% endblock %}

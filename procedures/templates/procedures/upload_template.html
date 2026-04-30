@@ -1,0 +1,308 @@
+{% extends 'base.html' %}
+{% load static nav_access %}
+
+{% block title %}Upload de Template - Lista de Presença{% endblock %}
+
+{% block content %}
+{% can_nav_view user 'procedures:upload_template_lista_presenca' 'procedures' as can_upload_template %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'procedures:lista_presenca_list' %}">Listas de Presença</a></li>
+                    <li class="breadcrumb-item active">Upload de Template</li>
+                </ol>
+            </nav>
+
+            <!-- Card Principal -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-file-pdf"></i> Upload de Template PDF - Lista de Presença
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <!-- Informações Básicas -->
+                        <div class="form-section mb-4">
+                            <h4 class="mb-3">
+                                <i class="fas fa-info-circle"></i> Informações do Template
+                            </h4>
+
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="nome" class="form-label fw-bold">
+                                            Nome do Template <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="nome" name="nome" 
+                                               placeholder="Ex: Template Padrão 2024" required>
+                                        <small class="form-text text-muted">
+                                            Nome descritivo para identificar o template
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="descricao" class="form-label fw-bold">Descrição (Opcional)</label>
+                                <textarea class="form-control" id="descricao" name="descricao" rows="3" 
+                                          placeholder="Descrição detalhada sobre o template, seu uso, etc..."></textarea>
+                                <small class="form-text text-muted">
+                                    Informações adicionais que ajudem a identificar quando este template deve ser usado
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Upload do Arquivo PDF -->
+                        <div class="form-section mb-4">
+                            <h4 class="mb-3">
+                                <i class="fas fa-file-pdf"></i> Arquivo PDF Template
+                            </h4>
+
+                            <div class="mb-3">
+                                <label for="arquivo_pdf_template" class="form-label fw-bold">
+                                    Selecione o arquivo PDF <span class="text-danger">*</span>
+                                </label>
+                                <small class="form-text text-muted d-block mb-2">
+                                    Faça upload do PDF que será usado como base para gerar as listas de presença.
+                                    <br><strong>O PDF pode conter placeholders como:</strong> <code>{{titulo}}</code>, <code>{{facilitador}}</code>, <code>{{data}}</code>, etc.
+                                </small>
+                                <div class="input-group">
+                                    <input type="file" class="form-control" id="arquivo_pdf_template" name="arquivo_pdf_template" 
+                                           accept=".pdf" required>
+                                    <label class="input-group-text" for="arquivo_pdf_template">
+                                        <i class="fas fa-folder-open"></i>
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted d-block mt-2">
+                                    <strong>Formato aceito:</strong> .PDF<br>
+                                    <strong>Tamanho máximo:</strong> 10 MB
+                                </small>
+                            </div>
+
+                            <!-- Preview de arquivo selecionado -->
+                            <div id="file-preview" class="alert alert-info d-none" role="alert">
+                                <strong>Arquivo selecionado:</strong>
+                                <span id="file-name"></span>
+                                <span id="file-size" class="ms-2 text-muted"></span>
+                            </div>
+                        </div>
+
+                        <!-- Configurações de Assinatura -->
+                        <div class="form-section mb-4">
+                            <h4 class="mb-3">
+                                <i class="fas fa-pen-fancy"></i> Configurações de Assinatura
+                            </h4>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="tem_pagina_assinatura" 
+                                               name="tem_pagina_assinatura" checked>
+                                        <label class="form-check-label" for="tem_pagina_assinatura">
+                                            Adicionar página automática para assinaturas dos participantes
+                                        </label>
+                                        <small class="form-text text-muted d-block mt-1">
+                                            Se marcado, uma página com linhas para assinatura será adicionada automaticamente
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="num_linhas_assinatura" class="form-label fw-bold">
+                                            Número de Linhas para Assinatura
+                                        </label>
+                                        <input type="number" class="form-control" id="num_linhas_assinatura" 
+                                               name="num_linhas_assinatura" value="20" min="5" max="50">
+                                        <small class="form-text text-muted">
+                                            Quantas linhas caberão na página de assinatura
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Instruções para Adicionar Placeholders -->
+                        <div class="alert alert-warning" role="alert" style="background: #fff8f0; border-color: #f59e0b; border-left: 4px solid #f59e0b;">
+                            <h5 class="alert-heading mb-3" style="color: #92400e;">
+                                <i class="fas fa-book"></i> Como Adicionar Placeholders ao Seu PDF?
+                            </h5>
+                            
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <h6 style="color: #d97706; font-weight: 700; margin-bottom: 10px;">
+                                        <i class="fas fa-file-pdf"></i> Opção 1: Adobe Acrobat Reader/Pro
+                                    </h6>
+                                    <ol style="font-size: 14px; line-height: 1.6; color: #333;">
+                                        <li>Abra o PDF no Adobe Acrobat</li>
+                                        <li>Vá para <strong>Ferramentas → Editar PDF</strong></li>
+                                        <li>Clique no ícone de texto <i class="fas fa-font"></i></li>
+                                        <li>Adicione o placeholder (ex: <code style="background: #f3f4f6; padding: 2px 6px;">{{titulo}}</code>)</li>
+                                        <li>Salve o arquivo</li>
+                                    </ol>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <h6 style="color: #d97706; font-weight: 700; margin-bottom: 10px;">
+                                        <i class="fas fa-file-alt"></i> Opção 2: LibreOffice/Microsoft Word
+                                    </h6>
+                                    <ol style="font-size: 14px; line-height: 1.6; color: #333;">
+                                        <li>Abra o arquivo original (Word, LibreOffice)</li>
+                                        <li>Adicione os placeholders no documento</li>
+                                        <li>Formate-os com fontes/estilos (eles aparecerão no PDF)</li>
+                                        <li>Exporte como PDF</li>
+                                        <li>Envie para o sistema</li>
+                                    </ol>
+                                </div>
+                            </div>
+
+                            <hr style="margin: 15px 0; border-color: #f59e0b;">
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 style="color: #d97706; font-weight: 700; margin-bottom: 10px;">
+                                        <i class="fas fa-pen"></i> Opção 3: Ferramentas Online
+                                    </h6>
+                                    <p style="font-size: 14px; margin: 0; color: #333;">
+                                        Use ferramentas gratuitas como:
+                                    </p>
+                                    <ul style="font-size: 14px; line-height: 1.6; color: #333; margin-top: 8px;">
+                                        <li><strong>PDF.io</strong> - Editor PDF online</li>
+                                        <li><strong>SmallPDF</strong> - Edição de PDF</li>
+                                        <li><strong>PDFEscape</strong> - Adicionar texto em PDFs</li>
+                                    </ul>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <h6 style="color: #d97706; font-weight: 700; margin-bottom: 10px;">
+                                        <i class="fas fa-lightbulb"></i> Placeholders Disponíveis
+                                    </h6>
+                                    <p style="font-size: 13px; line-height: 1.6; color: #333; margin-bottom: 8px;">
+                                        Você pode usar estes placeholders no seu PDF:
+                                    </p>
+                                    <ul style="font-size: 12px; line-height: 1.5; color: #333; margin: 0;">
+                                        <li><code style="background: #f3f4f6; padding: 2px 4px;">{{titulo}}</code> - Título do Treinamento</li>
+                                        <li><code style="background: #f3f4f6; padding: 2px 4px;">{{facilitador}}</code> - Facilitador/Fornecedor</li>
+                                        <li><code style="background: #f3f4f6; padding: 2px 4px;">{{data}}</code> - Data</li>
+                                        <li><code style="background: #f3f4f6; padding: 2px 4px;">{{local}}</code> - Local</li>
+                                        <li><code style="background: #f3f4f6; padding: 2px 4px;">{{empresa}}</code> - Empresa</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <hr style="margin: 15px 0; border-color: #f59e0b;">
+
+                            <p style="font-size: 13px; color: #92400e; margin: 0; padding: 10px; background: #fef3c7; border-radius: 4px;">
+                                <i class="fas fa-info-circle"></i> <strong>Dica:</strong> Use nomes descritivos entre chaves duplas. 
+                                Exemplo: <code style="background: #fff; padding: 2px 4px;">{{titulo_treinamento}}</code>, <code style="background: #fff; padding: 2px 4px;">{{data_sessao}}</code>
+                            </p>
+                        </div>
+
+                        <!-- Informações sobre Mapeamento -->
+                        <div class="alert alert-info" role="alert">
+                            <h5 class="alert-heading">
+                                <i class="fas fa-lightbulb"></i> Como Funciona
+                            </h5>
+                            <p class="mb-2">
+                                <strong>1. Upload do PDF:</strong> Você envia um PDF que serve como base para suas listas de presença.
+                            </p>
+                            <p class="mb-2">
+                                <strong>2. Detecção de Placeholders:</strong> O sistema detecta placeholders como <code>{{titulo}}</code>, <code>{{data}}</code>, etc.
+                            </p>
+                            <p class="mb-0">
+                                <strong>3. Mapeamento:</strong> Você mapeia cada placeholder para um campo de dados (título do treinamento, data, facilitador, etc).
+                            </p>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="d-flex gap-2 justify-content-between">
+                            <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            {% if can_upload_template %}
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-cloud-upload-alt"></i> Fazer Upload do PDF
+                                </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS adicional para melhor aparência -->
+<style>
+    .form-section {
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #0d6efd;
+    }
+
+    .form-section h4 {
+        color: #0d6efd;
+        margin-bottom: 15px;
+    }
+
+    #arquivo {
+        min-height: 45px;
+    }
+</style>
+
+<script>
+    // Mostrar preview do arquivo selecionado
+    document.getElementById('arquivo').addEventListener('change', function(e) {
+        const preview = document.getElementById('file-preview');
+        const fileName = document.getElementById('file-name');
+        const fileSize = document.getElementById('file-size');
+
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            fileName.textContent = file.name;
+            fileSize.textContent = '(' + (file.size / 1024).toFixed(2) + ' KB)';
+            preview.classList.remove('d-none');
+
+            // Validar tipo de arquivo
+            const validTypes = ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+                              'application/pdf', 
+                              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+            if (!validTypes.includes(file.type)) {
+                alert('Tipo de arquivo não suportado. Use .DOCX, .PDF ou .XLSX');
+                this.value = '';
+                preview.classList.add('d-none');
+            }
+
+            // Validar tamanho
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Arquivo muito grande. Máximo 10 MB');
+                this.value = '';
+                preview.classList.add('d-none');
+            }
+        } else {
+            preview.classList.add('d-none');
+        }
+    });
+
+    // Atualizar tipo de arquivo automaticamente baseado no arquivo selecionado
+    document.getElementById('arquivo').addEventListener('change', function() {
+        const tipoArquivo = document.getElementById('tipo_arquivo');
+        const fileName = this.files[0]?.name || '';
+        
+        if (fileName.endsWith('.docx')) {
+            tipoArquivo.value = 'docx';
+        } else if (fileName.endsWith('.pdf')) {
+            tipoArquivo.value = 'pdf';
+        } else if (fileName.endsWith('.xlsx')) {
+            tipoArquivo.value = 'xlsx';
+        }
+    });
+</script>
+{% endblock %}

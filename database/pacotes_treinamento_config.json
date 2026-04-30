@@ -1,0 +1,30 @@
+[
+  {
+    "nome": "PACOTE_SURFACING_BASICO",
+    "descricao": "Operacao e controle basico de equipamentos Surfacing (Orbit, Spin, VFT, PRA, Duoflex, Toroflex). Edite livremente.",
+    "procedimentos": [
+      "POP.482", "POP.483", "POP.625", "POP.610", "POP.609", "POP.534", "POP.610", "POP.626", "POP.527", "POP.528", "POP.534", "POP.610", "POP.634", "POP.691", "DEX.247", "DEX.248", "DEX.305", "DEX.241", "DEX.242", "DEX.245", "DEX.247", "DEX.248", "DEX.249", "DEX.250", "DEX.251"
+    ]
+  },
+  {
+    "nome": "PACOTE_COATING_AR_HC",
+    "descricao": "Processos de AR/HC: testes de qualidade, viscosidade, extrato seco, adesao, material settings.",
+    "procedimentos": [
+      "POP.269", "POP.272", "POP.273", "POP.274", "POP.275", "POP.283", "POP.285", "POP.296", "POP.297", "POP.430", "POP.431", "POP.479", "POP.584", "POP.595", "POP.596", "POP.712", "POP.786", "POP.803", "POP.832", "POP.836", "DEX.283", "DEX.284", "DEX.285", "DEX.286", "DEX.287", "DEX.288", "DEX.289", "DEX.224", "DEX.225", "DEX.362", "DEX.363", "DEX.364"
+    ]
+  },
+  {
+    "nome": "PACOTE_BLOQUEIO_TRACE",
+    "descricao": "Equipamentos de bloqueio, trace e biselhamento (KAPPA/GAMMA, 4Racer, E-TESS, TESS, Biseladoras).",
+    "procedimentos": [
+      "POP.560", "POP.562", "POP.573", "POP.577", "POP.578", "POP.753", "POP.754", "POP.755", "POP.756", "POP.574", "POP.576", "POP.714"
+    ]
+  },
+  {
+    "nome": "PACOTE_QUALIDADE_TESTES",
+    "descricao": "Auditorias, testes de produto e conformidade (RCO2, Ink, Sal, Adesao, Espessura, Lista de lentes teste).",
+    "procedimentos": [
+      "DEX.232", "DEX.233", "DEX.234", "DEX.235", "DEX.349", "DEX.350", "DEX.351", "DEX.355", "POP.258", "POP.262", "POP.263", "POP.264", "POP.266", "POP.267", "POP.268", "POP.586", "POP.587", "POP.588", "POP.589", "POP.591", "POP.620", "POP.637", "POP.638"
+    ]
+  }
+]

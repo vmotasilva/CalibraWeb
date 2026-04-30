@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Substituir Instrumento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Substituir Instrumento</h5>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Informações do Instrumento Atual -->
+                    <div class="alert alert-info">
+                        <h6>Instrumento Atual</h6>
+                        <p><strong>Tag:</strong> {{ instrumento.tag }}</p>
+                        <p><strong>Descrição:</strong> {{ instrumento.descricao }}</p>
+                        <p><strong>Categoria:</strong> {{ instrumento.categoria.nome }}</p>
+                        <p><strong>Série:</strong> {{ instrumento.serie }}</p>
+                        {% if referencia_atual %}
+                            <p><strong>Referência Atual:</strong> <span class="badge bg-success">{{ referencia_atual.codigo_referencia }}</span></p>
+                        {% else %}
+                            <p><strong>Referência:</strong> <span class="badge bg-warning">Nenhuma</span></p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Formulário de Substituição -->
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+
+                        <!-- Seção: Dados do Novo Instrumento -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Informações do Novo Instrumento</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_fabricante" class="form-label">Fabricante</label>
+                                        <input type="text" class="form-control" id="id_fabricante" name="fabricante" 
+                                            value="{{ instrumento.fabricante|default:'' }}" placeholder="Ex: Nikon, Zeiss">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_modelo" class="form-label">Modelo</label>
+                                        <input type="text" class="form-control" id="id_modelo" name="modelo" 
+                                            value="{{ instrumento.modelo|default:'' }}" placeholder="Ex: LM500">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <label for="id_serie" class="form-label">Série</label>
+                                        <input type="text" class="form-control" id="id_serie" name="serie" 
+                                            value="{{ instrumento.serie|default:'' }}" placeholder="Ex: SN123456">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Opção de copiar faixas -->
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="copiar_faixas" name="copiar_faixas" value="on">
+                            <label class="form-check-label" for="copiar_faixas">
+                                Copiar faixas de medição da template ao vincular
+                            </label>
+                            <small class="d-block form-text text-muted mt-1">
+                                Esta opção criará automaticamente as faixas baseadas nos padrões da referência.
+                            </small>
+                        </div>
+
+                        <!-- Mostrar faixas disponíveis se houver -->
+                        {% if faixas_disponiveis %}
+                            <div class="alert alert-light border">
+                                <h6>Faixas de Medição Disponíveis na Template</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Unidade</th>
+                                                <th>Mínimo</th>
+                                                <th>Máximo</th>
+                                                <th>Resolução</th>
+                                                <th>Tolerância</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for faixa in faixas_disponiveis %}
+                                                <tr>
+                                                    <td>{{ faixa.unidade.simbolo }}</td>
+                                                    <td>{{ faixa.valor_minimo }}</td>
+                                                    <td>{{ faixa.valor_maximo }}</td>
+                                                    <td>{{ faixa.resolucao|default:"-" }}</td>
+                                                    <td>
+                                                        {% if faixa.tolerancia_mais_menos %}
+                                                            ± {{ faixa.tolerancia_mais_menos }}
+                                                        {% else %}
+                                                            -
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-link"></i> Vincular Referência
+                            </button>
+                            <a href="{% url 'visualizar_instrumento' instrumento.id %}" class="btn btn-secondary btn-lg">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- Informações de Ajuda -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Como Funciona a Substituição</h6>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li>Cada código de instrumento (ex: "LE-02") é gerenciado como uma <strong>Referência</strong></li>
+                        <li>Quando um instrumento é fisicamente substituído, o novo instrumento é vinculado à mesma referência</li>
+                        <li>O histórico de calibração permanece vinculado à referência (código), não ao instrumento específico</li>
+                        <li>As faixas de medição padrão (template) podem ser copiadas automaticamente ao vincular</li>
+                        <li>Você pode visualizar todos os instrumentos que usaram o mesmo código acessando o histórico de substituições</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar com Informações Adicionais -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Informações do Instrumento</h6>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-6">ID:</dt>
+                        <dd class="col-sm-6">{{ instrumento.id }}</dd>
+                        
+                        <dt class="col-sm-6">Fabricante:</dt>
+                        <dd class="col-sm-6">{{ instrumento.fabricante|default:"-" }}</dd>
+                        
+                        <dt class="col-sm-6">Modelo:</dt>
+                        <dd class="col-sm-6">{{ instrumento.modelo|default:"-" }}</dd>
+                        
+                        <dt class="col-sm-6">Série:</dt>
+                        <dd class="col-sm-6">{{ instrumento.serie|default:"-" }}</dd>
+                        
+                        <dt class="col-sm-6">Ativo:</dt>
+                        <dd class="col-sm-6">
+                            {% if instrumento.ativo %}
+                                <span class="badge bg-success">Sim</span>
+                            {% else %}
+                                <span class="badge bg-danger">Não</span>
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-6">Próxima Calibração:</dt>
+                        <dd class="col-sm-6">{{ instrumento.data_proxima_calibracao|date:"d/m/Y" }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            {% if referencia_atual %}
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">Referência Vinculada</h6>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>{{ referencia_atual.codigo_referencia }}</strong></p>
+                        <p class="text-muted mb-0">{{ referencia_atual.descricao }}</p>
+                        <hr>
+                        <a href="{% url 'listar_substitucoes' referencia_atual.codigo_referencia %}" class="btn btn-sm btn-outline-primary">
+                            Ver Histórico de Substituições
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

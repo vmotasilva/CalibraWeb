@@ -1,0 +1,414 @@
+{% extends "procedures/procedimento_base.html" %}
+{% load nav_access %}
+
+{% block title %}Treinamentos{% endblock %}
+{% block header_title %}Matriz de Treinamentos{% endblock %}
+
+{% block header_actions %}
+    {% can_nav_view user 'procedures:novo_treinamento' 'procedures' as can_novo_treinamento %}
+    {% can_nav_view user 'procedures:treinamentos_importar' 'procedures' as can_importar_treinamentos %}
+
+    <div class="d-flex gap-2">
+        {% if can_novo_treinamento %}
+            <a href="{% url 'procedures:novo_treinamento' %}" class="btn btn-primary btn-sm">+ Novo Treinamento</a>
+        {% endif %}
+        {% if can_importar_treinamentos %}
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
+                <i class="bi bi-upload"></i> Importar
+            </button>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{# Import modal (form posts to procedures:treinamentos_importar) #}
+{% if can_importar_treinamentos %}
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="post" id="form-import-modal" action="{% url 'procedures:treinamentos_importar' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="importModalLabel">Importar Treinamentos (Excel)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="importResultArea"></div>
+          <div class="mb-3">
+            <label class="form-label">Arquivo Excel</label>
+            <input type="file" name="arquivo" accept=".xlsx,.xls" class="form-control" required />
+            <input type="hidden" name="next" value="{% url 'procedures:treinamentos_list' %}" />
+            {% can_nav_view user 'procedures:treinamentos_template_download' 'procedures' as can_download_template_import %}
+            <small class="form-text text-muted">
+                Use o
+                {% if can_download_template_import %}
+                    <a href="{% url 'procedures:treinamentos_template_download' %}">template</a>
+                {% else %}
+                    template
+                {% endif %}
+                se necessário.
+            </small>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="criar_listas_automaticamente" id="opt_criar_listas" checked>
+            <label class="form-check-label" for="opt_criar_listas">Agrupar em listas de presença automaticamente</label>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="sobrescrever_existentes" id="opt_sobrescrever" checked>
+            <label class="form-check-label" for="opt_sobrescrever">Sobrescrever treinamentos existentes</label>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="criar_participante_externo" id="opt_criar_externo">
+            <label class="form-check-label" for="opt_criar_externo">Criar participante externo quando colaborador não for encontrado</label>
+          </div>
+
+          <div class="alert alert-info small mt-3">As colunas do arquivo devem seguir o template padrão (matricula, data_inicio_treinamento, codigo_documento, etc.).</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Iniciar Importação</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% block main_content %}
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">Filtros</h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label small">Buscar</label>
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Nome ou código" value="{% if busca and busca != 'None' %}{{ busca }}{% endif %}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Setor</label>
+                <select name="setor" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    {% for s in setores %}
+                        <option value="{{ s.id }}" {% if s.id|stringformat:"s" == setor_id %}selected{% endif %}>
+                            {{ s }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Turno</label>
+                <select name="turno" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    {% for t in turnos %}
+                        <option value="{{ t.value }}" {% if t.value == turno %}selected{% endif %}>{{ t.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Colaborador</label>
+                <select name="colaborador" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    {% for col in colaboradores %}
+                        <option value="{{ col.id }}" {% if col.id|stringformat:"s" == colaborador_id %}selected{% endif %}>
+                            {{ col.nome_completo }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Líder</label>
+                <select name="lider" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    {% for lider in lideres %}
+                        <option value="{{ lider.id }}" {% if lider.id|stringformat:"s" == lider_id %}selected{% endif %}>
+                            {{ lider.nome_completo }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Procedimento</label>
+                <select name="procedimento" class="form-select form-select-sm">
+                    <option value="">-- Todos --</option>
+                    {% for proc in procedimentos %}
+                        <option value="{{ proc.id }}" {% if proc.id|stringformat:"s" == procedimento_id %}selected{% endif %}>
+                            {{ proc.codigo }} - {{ proc.nome|truncatewords:5 }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Criticidade</label>
+                <select name="criticidade" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for value, label in criticidade_choices %}
+                        <option value="{{ value }}" {% if value|stringformat:"s" == criticidade %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Matriz</label>
+                <select name="matriz" class="form-select form-select-sm">
+                    <option value="">-- Todas --</option>
+                    {% for m in matrizes %}
+                        <option value="{{ m }}" {% if matriz == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Sub-Área</label>
+                <select name="sub_area" class="form-select form-select-sm">
+                    <option value="">-- Todas --</option>
+                    {% for sa in sub_areas %}
+                        <option value="{{ sa }}" {% if sub_area == sa %}selected{% endif %}>{{ sa }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="OK" {% if status == 'OK' %}selected{% endif %}>Em dias</option>
+                    <option value="PENDENTE" {% if status == 'PENDENTE' %}selected{% endif %}>Pendente</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Ativo</label>
+                <select name="ativo" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="1" {% if ativo == '1' %}selected{% endif %}>Ativos</option>
+                    <option value="0" {% if ativo == '0' %}selected{% endif %}>Inativos</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Perfil</label>
+                <div class="form-check mt-1">
+                    <input type="hidden" name="perfil_assoc" value="0">
+                    <input class="form-check-input" type="checkbox" name="perfil_assoc" value="1" id="perfil_assoc" {% if perfil_assoc == '1' %}checked{% endif %}>
+                    <label class="form-check-label small" for="perfil_assoc">Somente associados a perfil</label>
+                </div>
+            </div>
+            <div class="col-md-1 d-flex align-items-end gap-1">
+                <button type="submit" class="btn btn-outline-primary btn-sm w-100">Filtrar</button>
+                <a href="{% url 'procedures:treinamentos_list' %}" class="btn btn-outline-secondary btn-sm">Limpar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">
+                Registros 
+                <span class="badge bg-info">{{ total_registros }} total</span>
+            </h6>
+            {% can_nav_view user 'procedures:treinamentos_exportar_excel' 'procedures' as can_exportar_excel %}
+            {% if can_exportar_excel %}
+                <a href="{% url 'procedures:treinamentos_exportar_excel' %}{% if query_string %}?{{ query_string }}{% endif %}" class="btn btn-success btn-sm" title="Exportar para Excel">
+                    <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+                </a>
+            {% endif %}
+            {% if treinamentos.paginator.num_pages > 1 %}
+                <small class="text-muted">
+                    Página {{ treinamentos.number }} de {{ treinamentos.paginator.num_pages }}
+                </small>
+            {% endif %}
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Procedimento</th>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in treinamentos.object_list %}
+                <tr {% if not t.is_ultimo_registro %}style="opacity: 0.6; background-color: #f5f5f5;"{% endif %}>
+                    <td>
+                        <a href="{% url 'rh:detalhe_colaborador' t.colaborador.id %}" class="text-decoration-none">
+                            {{ t.colaborador.nome_completo }}
+                        </a>
+                    </td>
+                    <td>
+                        {{ t.procedimento.codigo }}
+                        <a href="{% url 'procedures:treinamentos_historico' %}?colaborador={{ t.colaborador.id }}&procedimento={{ t.procedimento.id }}" class="ms-2 text-info" title="Ver histórico deste treinamento">
+                            <i class="bi bi-clock-history"></i> Histórico
+                        </a>
+                    </td>
+                    <td>{{ t.data_treinamento|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if t.is_ultimo_registro %}
+                            {% if t.status_treinamento == 'OK' %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Em dias</span>
+                            {% elif t.status_treinamento == 'PENDENTE' %}
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Pendente</span>
+                            {% else %}
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Pendente</span>
+                            {% endif %}
+                        {% else %}
+                            <small class="text-muted">Histórico</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% can_nav_view user 'procedures:editar_treinamento' 'procedures' as can_editar_treinamento %}
+                        {% if can_editar_treinamento %}
+                            <a href="{% url 'procedures:editar_treinamento' t.id %}" class="btn btn-sm btn-warning">Editar</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-muted">Nenhum treinamento encontrado</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Paginação em estilo de livro -->
+    {% if treinamentos.has_other_pages %}
+    <nav aria-label="Navegação de páginas" class="mt-3">
+        <ul class="pagination justify-content-center mb-3">
+            <!-- Primeira página -->
+            {% if treinamentos.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if query_string %}&{{ query_string }}{% endif %}" title="Primeira página">
+                        <span aria-hidden="true">&laquo;&laquo;</span>
+                    </a>
+                </li>
+            {% endif %}
+            
+            <!-- Página anterior -->
+            {% if treinamentos.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ treinamentos.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" title="Página anterior">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&laquo;</span>
+                </li>
+            {% endif %}
+            
+            <!-- Números das páginas -->
+            {% for num in treinamentos.paginator.page_range %}
+                {% if treinamentos.number == num %}
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link">
+                            {{ num }}
+                            <span class="visually-hidden">(página atual)</span>
+                        </span>
+                    </li>
+                {% elif num > treinamentos.number|add:'-3' and num < treinamentos.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if query_string %}&{{ query_string }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            <!-- Próxima página -->
+            {% if treinamentos.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ treinamentos.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" title="Próxima página">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">&raquo;</span>
+                </li>
+            {% endif %}
+            
+            <!-- Última página -->
+            {% if treinamentos.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ treinamentos.paginator.num_pages }}{% if query_string %}&{{ query_string }}{% endif %}" title="Última página">
+                        <span aria-hidden="true">&raquo;&raquo;</span>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const btn = document.querySelector('[data-bs-target="#importModal"]');
+    if (btn) {
+        btn.addEventListener('click', function (e) {
+            // Ensure modal shows in case bootstrap data attributes didn't work
+            setTimeout(function(){
+                const modalEl = document.getElementById('importModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                }
+            }, 10);
+        });
+    }
+
+    // AJAX form submission for import modal
+    const form = document.getElementById('form-import-modal');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btnSubmit = form.querySelector('button[type="submit"]');
+            const originalText = btnSubmit ? btnSubmit.innerHTML : '';
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Importando...';
+            }
+
+            const fd = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: fd,
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+                credentials: 'same-origin'
+            }).then(r => r.json()).then(data => {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalText;
+                }
+                const area = document.getElementById('importResultArea');
+                if (!area) return;
+                area.innerHTML = '';
+                if (data.erros && data.erros > 0) {
+                    const linkHtml = data.download_url ? `<a href="${data.download_url}" class="btn btn-sm btn-outline-secondary ms-2">Download CSV</a>` : '';
+                    area.innerHTML = `<div class="alert alert-warning">⚠️ ${data.erros} erros encontrados. ${linkHtml}</div>`;
+                }
+                if (data.criados && data.criados > 0) {
+                    area.innerHTML += `<div class="alert alert-success">✅ ${data.criados} registros criados.</div>`;
+                    // Fechar modal automaticamente após sucesso
+                    setTimeout(() => {
+                        const modalEl = document.getElementById('importModal');
+                        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.hide();
+                    }, 1000);
+                }
+            }).catch(err => {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = originalText;
+                }
+                const area = document.getElementById('importResultArea');
+                if (area) area.innerHTML = `<div class="alert alert-danger">Erro no envio: ${err}</div>`;
+            });
+        });
+    }
+})();
+</script>
+{% endblock %}

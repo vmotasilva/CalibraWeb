@@ -1,0 +1,673 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Ações Corretivas/Preventivas</h1>
+                    <p class="text-muted small mt-1">Gerenciar ações corretivas e preventivas</p>
+                </div>
+                <div class="d-flex gap-2">
+                    {% if perms.core.nav_acoes_salvar_acao %}
+                        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAcao">
+                            <i class="bi bi-plus-circle me-1"></i>Nova Ação
+                        </button>
+                    {% endif %}
+
+                    {% if perms.core.nav_acoes_importar_controle_registros or perms.core.nav_acoes_importar_plano_acao %}
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Opcoes de importacao">
+                                <i class="bi bi-upload"></i> Importar
+                            </button>
+                            <ul class="dropdown-menu">
+                                {% if perms.core.nav_acoes_importar_controle_registros %}
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'acoes:importar_controle_registros' %}">
+                                            <i class="bi bi-file-earmark"></i> Importar Ações
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                {% if perms.core.nav_acoes_importar_plano_acao %}
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'acoes:importar_plano_acao' %}">
+                                            <i class="bi bi-file-earmark"></i> Atribuir Plano + Ações
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo de Status -->
+    <div class="row mb-4 g-3">
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-success text-white border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-0">Concluído</h6>
+                    <h2 class="mb-0 mt-2">{{ total_concluido }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-warning text-white border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-0">Em Andamento</h6>
+                    <h2 class="mb-0 mt-2">{{ total_em_andamento }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-danger text-white border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-0">Cancelado</h6>
+                    <h2 class="mb-0 mt-2">{{ total_cancelado }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-danger text-white border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="card-title mb-0">Atrasado</h6>
+                    <h2 class="mb-0 mt-2">{{ total_atrasado }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Busca</label>
+                            <input type="text" name="busca" class="form-control" placeholder="Nº ou descrição" value="{{ filtro_busca }}">
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Tipo de Solução</label>
+                            <select name="tipo_solucao" class="form-select">
+                                <option value="">Todos</option>
+                                {% for tipo in tipos_solucao %}
+                                    <option value="{{ tipo.nome }}" {% if filtro_tipo_solucao == tipo.nome %}selected{% endif %}>{{ tipo.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Origem do Problema</label>
+                            <select name="origem" class="form-select">
+                                <option value="">Todos</option>
+                                {% for origem in origens %}
+                                    <option value="{{ origem }}" {% if filtro_origem == origem %}selected{% endif %}>{{ origem }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Responsável</label>
+                            <select name="responsavel" class="form-select">
+                                <option value="">Todos</option>
+                                {% for responsavel in responsaveis %}
+                                    <option value="{{ responsavel.id }}" {% if filtro_responsavel == responsavel.id|stringformat:"s" %}selected{% endif %}>{{ responsavel.nome_completo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="aberta" {% if filtro_status == 'aberta' %}selected{% endif %}>Aberta</option>
+                                <option value="em_progresso" {% if filtro_status == 'em_progresso' %}selected{% endif %}>Em Andamento</option>
+                                <option value="concluida" {% if filtro_status == 'concluida' %}selected{% endif %}>Concluído</option>
+                                <option value="cancelada" {% if filtro_status == 'cancelada' %}selected{% endif %}>Cancelado</option>
+                                <option value="atrasada" {% if filtro_status == 'atrasada' %}selected{% endif %}>Atrasado</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Ano</label>
+                            <select name="ano" class="form-select">
+                                <option value="">Todos</option>
+                                {% for ano in anos %}
+                                    <option value="{{ ano }}" {% if filtro_ano|stringformat:"s" == ano|stringformat:"s" %}selected{% endif %}>{{ ano }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-12">
+                            <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-lg-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-funnel me-1"></i>Filtrar
+                                </button>
+                                <a href="{% url 'acoes:listar_acoes' %}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x me-1"></i>Limpar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Ações -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive table-fixed-header">
+                        <table class="table table-hover mb-0 table-sm table-acoes">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="col-abr-reg">Abertura<br>Registro<br>Tipo<br>Origem</th>
+                                    <th class="col-descricao">Descrição</th>
+                                    <th class="col-causa">Causa Raiz</th>
+                                    <th class="col-resp">Responsável</th>
+                                    <th class="col-obs">Observação</th>
+                                    <th class="col-link text-nowrap">Link</th>
+                                    <th class="col-status text-nowrap">Status</th>
+                                    <th class="col-acoes text-nowrap">Ações</th>
+                                </tr>
+                            </thead>
+                        <tbody>
+                            {% for acao in acoes %}
+                            <tr data-acao-id="{{ acao.id }}"
+                                data-numero-registro="{{ acao.numero_registro }}"
+                                data-data-abertura="{{ acao.data_abertura|date:'Y-m-d' }}"
+                                data-ano="{{ acao.ano }}"
+                                data-unidade="{{ acao.unidade }}"
+                                data-tipo-solucao="{{ acao.tipo_solucao }}"
+                                data-origem="{{ acao.origem }}"
+                                data-descricao="{{ acao.descricao }}"
+                                data-causa-raiz="{{ acao.causa_raiz }}"
+                                data-responsavel-id="{% if acao.responsavel %}{{ acao.responsavel.id }}{% endif %}"
+                                data-observacoes="{{ acao.observacoes }}"
+                                data-link-registro="{{ acao.link_registro }}"
+                                data-data-vencimento="{{ acao.data_vencimento|date:'Y-m-d' }}"
+                                data-data-conclusao="{{ acao.data_conclusao|date:'Y-m-d' }}"
+                                data-status="{{ acao.status }}">
+                                <td class="col-abr-reg">
+                                    <div class="text-nowrap">{{ acao.data_abertura|date:"d/m/Y" }}</div>
+                                    <div class="fw-semibold text-nowrap"
+                                         data-bs-toggle="tooltip" data-bs-placement="top"
+                                         title="{{ acao.acoes_status_resumo|default:'Sem ações associadas'|escape }}">
+                                        {{ acao.numero_registro }}
+                                    </div>
+                                    <div class="mt-1">
+                                        {% if acao.tipo_solucao %}
+                                            <span class="badge bg-info">{{ acao.tipo_solucao }}</span>
+                                        {% else %}
+                                            ---
+                                        {% endif %}
+                                    </div>
+                                    <div class="small text-muted mt-1">{{ acao.origem|default:"---" }}</div>
+                                </td>
+                                <td><small>{{ acao.descricao|truncatewords:10 }}</small></td>
+                                <td><small>{{ acao.causa_raiz|truncatewords:8|default:"---" }}</small></td>
+                                <td class="col-resp">
+                                    <div class="responsavel-stack" data-responsavel="{% if acao.responsavel %}{{ acao.responsavel.nome_completo }}{% endif %}"></div>
+                                </td>
+                                <td><small>{{ acao.observacoes|truncatewords:8|default:"---" }}</small></td>
+                                <td>
+                                    {% if acao.link_registro %}
+                                        <a href="{{ acao.link_registro }}" target="_blank" class="btn btn-sm btn-link p-0">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </a>
+                                    {% else %}
+                                        ---
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if acao.status == 'aberta' %}bg-secondary
+                                        {% elif acao.status == 'em_progresso' %}bg-warning
+                                        {% elif acao.status == 'concluida' %}bg-success
+                                        {% elif acao.status == 'atrasada' %}bg-danger
+                                        {% elif acao.status == 'cancelada' %}bg-dark
+                                        {% else %}bg-dark{% endif %}">
+                                        {{ acao.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if perms.core.nav_acoes_detalhe_acao %}
+                                        <a href="{% url 'acoes:detalhe_acao' acao.id %}" class="btn btn-sm btn-primary" title="Visualizar">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    {% endif %}
+                                    {% if perms.core.nav_acoes_salvar_acao %}
+                                        <button type="button" class="btn btn-sm btn-warning" title="Editar" data-bs-toggle="modal" data-bs-target="#modalAcao" onclick="editarAcao({{ acao.id }})">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <p class="text-muted mb-0">Nenhuma ação encontrada.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Modal para Criar/Editar Ação Corretiva -->
+<div class="modal fade" id="modalAcao" tabindex="-1" aria-labelledby="modalAcaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light border-bottom">
+                <h5 class="modal-title" id="modalAcaoLabel">Nova Ação Corretiva</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <form id="formAcao">
+                    {% csrf_token %}
+                    <input type="hidden" id="acaoId" name="id">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data de Abertura</label>
+                            <input type="date" class="form-control" name="data_abertura" id="data_abertura">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Ano</label>
+                            <input type="number" class="form-control" name="ano" id="ano" min="2000">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Unidade</label>
+                            <input type="text" class="form-control" name="unidade" id="unidade">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Nº do Registro *</strong></label>
+                            <input type="text" class="form-control" name="numero_registro" id="numero_registro" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo de Solução</label>
+                            <select class="form-select" name="tipo_solucao" id="tipo_solucao">
+                                <option value="">--- Selecionar ---</option>
+                                {% for tipo in tipos_solucao %}
+                                    <option value="{{ tipo.nome }}">{{ tipo.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Origem do Problema</label>
+                            <input type="text" class="form-control" name="origem" id="origem">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status" id="status">
+                                <option value="aberta">Aberta</option>
+                                <option value="em_progresso">Em Progresso</option>
+                                <option value="concluida">Concluída</option>
+                                <option value="cancelada">Cancelada</option>
+                                <option value="atrasada">Atrasada</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Descrição da NC e/ou Melhoria *</strong></label>
+                        <textarea class="form-control" name="descricao" id="descricao" rows="3" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Causa Raiz</label>
+                        <textarea class="form-control" name="causa_raiz" id="causa_raiz" rows="2"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Responsável</label>
+                            <select class="form-select" name="responsavel" id="responsavel">
+                                <option value="">--- Selecionar ---</option>
+                                {% for responsavel in responsaveis %}
+                                    <option value="{{ responsavel.id }}">{{ responsavel.nome_completo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Observação</label>
+                            <textarea class="form-control" name="observacoes" id="observacoes" rows="2"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Link do Registro</label>
+                        <input type="url" class="form-control" name="link_registro" id="link_registro" placeholder="https://...">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label"><strong>Data de Fechamento Programada *</strong></label>
+                            <input type="date" class="form-control" name="data_vencimento" id="data_vencimento" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data Fechamento</label>
+                            <input type="date" class="form-control" name="data_conclusao" id="data_conclusao">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light border-top">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarAcao()">
+                    <i class="bi bi-check-circle me-1"></i>Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 0.5rem;
+        transition: box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.6rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .table-acoes thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.3px;
+        padding: 0.6rem 0.45rem;
+        height: 56px;
+        vertical-align: middle;
+        white-space: normal;
+    }
+
+    .table-acoes tbody td {
+        padding: 0.4rem 0.45rem;
+        font-size: 0.85rem;
+        vertical-align: middle;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .btn-group {
+        gap: 0.25rem;
+    }
+
+    .modal-content {
+        border: none;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.15);
+    }
+
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .table-responsive {
+        border-radius: 0;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table-fixed-header {
+        max-height: 65vh;
+        overflow-y: auto;
+        overflow-x: auto;
+    }
+
+    .table-acoes {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .col-abr-reg { width: 170px; }
+    .col-descricao { width: 280px; }
+    .col-causa { width: 220px; }
+    .col-resp { width: 130px; }
+    .col-obs { width: 220px; }
+    .col-link { width: 42px; text-align: center; }
+    .col-status { width: 70px; }
+    .col-acoes { width: 80px; }
+
+    .responsavel-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .responsavel-chip {
+        display: inline-block;
+        background: #e7f1ff;
+        color: #0b5ed7;
+        padding: 0.2rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1200px) {
+        .table-acoes thead th,
+        .table-acoes tbody td {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.3rem;
+        }
+        .col-descricao { width: 240px; }
+        .col-causa { width: 190px; }
+        .col-obs { width: 190px; }
+    }
+
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        .table-acoes thead th,
+        .table-acoes tbody td {
+            font-size: 0.72rem;
+            padding: 0.3rem 0.25rem;
+        }
+        .badge {
+            font-size: 0.65rem;
+            padding: 0.25rem 0.4rem;
+        }
+        .table-fixed-header {
+            max-height: 60vh;
+        }
+    }
+</style>
+
+<script>
+function renderResponsaveis() {
+    document.querySelectorAll('.responsavel-stack').forEach((el) => {
+        const raw = (el.dataset.responsavel || '').trim();
+        if (!raw) {
+            el.textContent = '---';
+            return;
+        }
+
+        const shortName = (nome) => {
+            const parts = nome.trim().split(/\s+/).filter(Boolean);
+            if (parts.length <= 1) {
+                return parts[0] || '';
+            }
+            return `${parts[0]} ${parts[parts.length - 1]}`;
+        };
+
+        const nomes = raw.split(/\s*,\s*/).filter(Boolean);
+        el.innerHTML = nomes.map((nome, index) => {
+            const hue = (index * 47) % 360;
+            const curto = shortName(nome);
+            return `<span class="responsavel-chip" style="background: hsl(${hue}, 85%, 92%); color: hsl(${hue}, 45%, 28%);">${curto}</span>`;
+        }).join('');
+    });
+}
+
+function initTooltips() {
+    if (!window.bootstrap || !bootstrap.Tooltip) {
+        return;
+    }
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+        new bootstrap.Tooltip(el);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    renderResponsaveis();
+    initTooltips();
+});
+
+function novaAcao() {
+    // Limpa o formulário para criar nova ação
+    document.getElementById('formAcao').reset();
+    document.getElementById('acaoId').value = '';
+    document.getElementById('modalAcaoLabel').textContent = 'Nova Ação Corretiva';
+}
+
+function normalizeStatus(value) {
+    const key = (value || '').toString().trim().toLowerCase().replace(/_/g, ' ');
+    const map = {
+        'aberta': 'aberta',
+        'aberto': 'aberta',
+        'em progresso': 'em_progresso',
+        'em andamento': 'em_progresso',
+        'concluida': 'concluida',
+        'concluido': 'concluida',
+        'cancelada': 'cancelada',
+        'cancelado': 'cancelada',
+        'atrasada': 'atrasada',
+        'atrasado': 'atrasada'
+    };
+    return map[key] || '';
+}
+
+function editarAcao(acaoId) {
+    // Busca os dados da linha da tabela pelos data attributes
+    const row = document.querySelector(`[data-acao-id="${acaoId}"]`);
+    
+    if (!row) {
+        alert('Ação não encontrada na tabela');
+        return;
+    }
+    
+    // Popula o formulário com os dados da ação
+    document.getElementById('acaoId').value = acaoId;
+    document.getElementById('numero_registro').value = row.dataset.numeroRegistro || '';
+    document.getElementById('data_abertura').value = row.dataset.dataAbertura || '';
+    document.getElementById('ano').value = row.dataset.ano || '';
+    document.getElementById('unidade').value = row.dataset.unidade || '';
+    document.getElementById('tipo_solucao').value = row.dataset.tipoSolucao || '';
+    document.getElementById('origem').value = row.dataset.origem || '';
+    document.getElementById('descricao').value = row.dataset.descricao || '';
+    document.getElementById('causa_raiz').value = row.dataset.causaRaiz || '';
+    document.getElementById('responsavel').value = row.dataset.responsavelId || '';
+    document.getElementById('observacoes').value = row.dataset.observacoes || '';
+    document.getElementById('link_registro').value = row.dataset.linkRegistro || '';
+    document.getElementById('data_vencimento').value = row.dataset.dataVencimento || '';
+    document.getElementById('data_conclusao').value = row.dataset.dataConclusao || '';
+    const statusValue = normalizeStatus(row.dataset.status) || 'aberta';
+    document.getElementById('status').value = statusValue;
+    
+    // Atualiza o título do modal
+    document.getElementById('modalAcaoLabel').textContent = `Editar Ação - ${row.dataset.numeroRegistro}`;
+}
+
+function salvarAcao() {
+    const form = document.getElementById('formAcao');
+    const acaoId = document.getElementById('acaoId').value;
+    const numeroRegistro = document.getElementById('numero_registro').value;
+    
+    // Validação básica
+    if (!numeroRegistro.trim()) {
+        alert('O número de registro é obrigatório');
+        document.getElementById('numero_registro').focus();
+        return;
+    }
+    
+    if (!document.getElementById('descricao').value.trim()) {
+        alert('A descrição é obrigatória');
+        document.getElementById('descricao').focus();
+        return;
+    }
+    
+    if (!document.getElementById('data_vencimento').value) {
+        alert('A data de fechamento programada é obrigatória');
+        document.getElementById('data_vencimento').focus();
+        return;
+    }
+    
+    const statusField = document.getElementById('status');
+    if (!statusField.value) {
+        statusField.value = 'aberta';
+    }
+
+    const formData = new FormData(form);
+    
+    fetch('{% url "acoes:salvar_acao_corretiva_modal" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const mensagem = acaoId ? 'Ação atualizada com sucesso!' : 'Ação criada com sucesso!';
+            alert(mensagem);
+            bootstrap.Modal.getInstance(document.getElementById('modalAcao')).hide();
+            location.reload();
+        } else {
+            let errorMsg = data.message || 'Erro ao salvar a ação';
+            if (data.errors) {
+                const erros = Object.entries(data.errors)
+                    .map(([campo, msgs]) => `${campo}: ${msgs.join(', ')}`)
+                    .join('\n');
+                errorMsg += '\n\n' + erros;
+            }
+            alert('Erro: ' + errorMsg);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao salvar a ação. Verifique o console para mais detalhes.');
+    });
+}
+</script>
+
+{% endblock %}

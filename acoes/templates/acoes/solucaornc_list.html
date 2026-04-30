@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}RNCs - Registros de Não Conformidade{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0"><i class="bi bi-exclamation-triangle text-danger me-2"></i>Registros de Não Conformidade</h1>
+                    <p class="text-muted small mt-1">Gerenciar não conformidades detectadas</p>
+                </div>
+                <a href="{% url 'acoes:rnc_create' %}" class="btn btn-danger">
+                    <i class="bi bi-plus-circle me-1"></i>Nova RNC
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nº RNC</th>
+                                <th>Descrição</th>
+                                <th>Origem</th>
+                                <th>Classificação</th>
+                                <th>Risco</th>
+                                <th>Data de Abertura</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in object_list %}
+                            <tr>
+                                <td><strong>#{{ item.numero_rnc|default:"N/A" }}</strong></td>
+                                <td><div class="text-truncate">{{ item.descricao_nc|truncatewords:8 }}</div></td>
+                                <td>{{ item.get_origem_display|default:"-" }}</td>
+                                <td>
+                                    {% if item.classificacao == 'critica' %}
+                                        <span class="badge bg-danger">Crítica</span>
+                                    {% elif item.classificacao == 'maior' %}
+                                        <span class="badge bg-warning">Maior</span>
+                                    {% elif item.classificacao == 'menor' %}
+                                        <span class="badge bg-info">Menor</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ item.get_classificacao_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.risco == 'alto' %}
+                                        <span class="badge bg-danger">Alto</span>
+                                    {% elif item.risco == 'medio' %}
+                                        <span class="badge bg-warning">Médio</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Baixo</span>
+                                    {% endif %}
+                                </td>
+                                <td>{% if item.data_abertura %}{{ item.data_abertura|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                                <td>
+                                    <a href="{% url 'acoes:rnc_detail' item.id %}" class="btn btn-sm btn-info"><i class="bi bi-eye"></i></a>
+                                    <a href="{% url 'acoes:rnc_update' item.id %}" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">Nenhuma RNC encontrada</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

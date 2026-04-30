@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load nav_access %}
+
+{% can_nav_view user 'fornecedores:avaliacao_create' 'fornecedores' as can_avaliacao_create %}
+{% can_nav_view user 'fornecedores:avaliacao_edit' 'fornecedores' as can_avaliacao_edit %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h3 class="mb-0">Registros de monitoramento</h3>
+    {% if can_avaliacao_create %}
+        <a href="{% url 'fornecedores:avaliacao_create' fornecedor.pk %}" class="btn btn-primary">Nova Avaliação</a>
+    {% endif %}
+</div>
+<div class="table-responsive">
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Data</th>
+            <th>Tipo de Nota</th>
+            <th>Nota Fiscal</th>
+            <th>Avaliador</th>
+            <th>Perguntas com resposta NÃO</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for avinfo in avaliacoes_info %}
+        <tr>
+            <td>{{ avinfo.obj.data|date:'d/m/Y' }}</td>
+            <td>{{ avinfo.obj.get_tipo_nota_display }}</td>
+            <td>{{ avinfo.obj.nota_fiscal }}</td>
+            <td>{{ avinfo.obj.avaliador }}</td>
+            <td>
+                {% if avinfo.perguntas_nao %}
+                    <ul class="mb-0 ps-3">
+                    {% for resp in avinfo.perguntas_nao %}
+                        <li>{{ resp.pergunta.texto }}</li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <span class="text-success">Nenhuma</span>
+                {% endif %}
+            </td>
+            <td>
+                <div class="d-flex flex-wrap gap-2">
+                    {% if can_avaliacao_edit %}
+                        <a href="{% url 'fornecedores:avaliacao_edit' fornecedor.pk avinfo.obj.id %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                        <form method="post" action="" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="delete_id" value="{{ avinfo.obj.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja remover esta avaliação?');">Remover</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Nenhuma avaliação registrada.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+ </div>
+<a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary">Voltar</a>
+{% endblock %}

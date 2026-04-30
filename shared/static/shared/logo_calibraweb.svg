@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="CalibraWeb Logo">
+  <defs>
+    <linearGradient id="blueGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2b6edc"/>
+      <stop offset="100%" stop-color="#0b2f73"/>
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f4b43b"/>
+      <stop offset="100%" stop-color="#c66514"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="120" cy="120" r="78" fill="none" stroke="url(#blueGrad)" stroke-width="28" stroke-linecap="round" stroke-dasharray="330 210" transform="rotate(130 120 120)"/>
+  <circle cx="120" cy="120" r="78" fill="none" stroke="url(#orangeGrad)" stroke-width="28" stroke-linecap="round" stroke-dasharray="210 330" transform="rotate(130 120 120)"/>
+
+  <circle cx="120" cy="120" r="54" fill="#ffffff"/>
+
+  <text x="88" y="135" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" fill="url(#blueGrad)">C</text>
+  <text x="114" y="136" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="700" fill="url(#orangeGrad)">W</text>
+
+  <path d="M97 124 H178" stroke="#e29d28" stroke-width="5" stroke-linecap="round"/>
+  <path d="M178 124 l10 -6 v12 z" fill="#e29d28"/>
+
+  <circle cx="122" cy="162" r="11" fill="#1f4e9a"/>
+  <circle cx="122" cy="162" r="6" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Copiar Faixas de Medição{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Copiar Faixas de Medição da Template</h5>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Informações do Instrumento -->
+                    <div class="alert alert-info">
+                        <h6>Instrumento Destino</h6>
+                        <p><strong>Tag:</strong> {{ instrumento.tag }}</p>
+                        <p><strong>Descrição:</strong> {{ instrumento.descricao }}</p>
+                        <p><strong>Referência:</strong> <span class="badge bg-primary">{{ instrumento.referencia.codigo_referencia }}</span></p>
+                    </div>
+
+                    <!-- Lista de Faixas a Copiar -->
+                    {% if faixas_padrao %}
+                        <div class="mb-4">
+                            <h6 class="mb-3">Faixas de Medição Disponíveis na Template:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Unidade</th>
+                                            <th>Mínimo</th>
+                                            <th>Máximo</th>
+                                            <th>Resolução</th>
+                                            <th>Nominal</th>
+                                            <th>Tolerância (±)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for faixa in faixas_padrao %}
+                                            <tr>
+                                                <td><strong>{{ faixa.unidade.simbolo }}</strong></td>
+                                                <td>{{ faixa.valor_minimo }}</td>
+                                                <td>{{ faixa.valor_maximo }}</td>
+                                                <td>{{ faixa.resolucao|default:"-" }}</td>
+                                                <td>{{ faixa.nominal|default:"-" }}</td>
+                                                <td>{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted mb-0">
+                                <strong>Total:</strong> {{ faixas_padrao|length }} faixa(s) de medição
+                            </p>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Não há faixas de medição padrão ativas para esta referência.
+                        </div>
+                    {% endif %}
+
+                    <!-- Opções de Cópia -->
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+
+                        {% if faixas_padrao %}
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="remover_existentes" name="remover_existentes" value="on">
+                                <label class="form-check-label" for="remover_existentes">
+                                    Remover faixas existentes antes de copiar
+                                </label>
+                                <small class="d-block form-text text-muted mt-1">
+                                    Se desmarcado, as novas faixas serão adicionadas às existentes. Faixas duplicadas serão ignoradas.
+                                </small>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-copy"></i> Copiar Faixas
+                                </button>
+                                <a href="{% url 'visualizar_instrumento' instrumento.id %}" class="btn btn-secondary btn-lg">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </a>
+                            </div>
+                        {% else %}
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'visualizar_instrumento' instrumento.id %}" class="btn btn-secondary btn-lg">
+                                    <i class="fas fa-arrow-left"></i> Voltar
+                                </a>
+                            </div>
+                        {% endif %}
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- Card de Informações -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Sobre Templates de Faixas</h6>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Os templates de faixas de medição (<strong>FaixaMedicaoPadrao</strong>) são configurações
+                        padrão associadas a cada código de instrumento (Referência).
+                    </p>
+                    <p class="mb-0">
+                        Ao substituir um instrumento, você pode copiar automaticamente essas faixas, garantindo
+                        consistência e economizando tempo na reconfiguração.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

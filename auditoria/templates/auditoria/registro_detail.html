@@ -1,0 +1,485 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalhes do Registro - Auditoria{% endblock %}
+
+{% block extra_css %}
+<style>
+.audit-table th.col-pergunta,
+.audit-table td.col-pergunta {
+    min-width: 360px;
+}
+
+.audit-table th.col-comentarios,
+.audit-table td.col-comentarios {
+    min-width: 500px;
+}
+
+.audit-table th.col-dia,
+.audit-table td.col-dia {
+    width: 76px;
+    text-align: center;
+}
+
+.answer-semaphore {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.chart-frame-detail {
+    position: relative;
+    width: 100%;
+    height: 320px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:modulo' %}">Auditoria</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}">Registros</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Detalhes</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="mb-0"><i class="bi bi-file-text"></i> Detalhes do Registro de Auditoria</h2>
+        <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+            <a href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Novo Registro
+            </a>
+            <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn btn-warning">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+            <a href="{% url 'auditoria:registro_exportar_pdf' registro.pk %}" class="btn btn-danger">
+                <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+            </a>
+            {% if can_delete_registro %}
+            <form method="post" action="{% url 'auditoria:registro_delete' registro.pk %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este registro?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Excluir
+                </button>
+            </form>
+            {% endif %}
+            <a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informações Gerais</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <p class="mb-2"><strong>Modelo:</strong> {{ registro.modelo.nome }}</p>
+                    <p class="mb-2"><strong>Objeto de Auditoria:</strong> {{ registro.modelo.objeto_auditoria }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-2"><strong>Data da Auditoria:</strong> {{ registro.data_auditoria|date:'d/m/Y' }}</p>
+                    <p class="mb-2"><strong>Avaliador:</strong> {{ registro.avaliador.get_full_name|default:registro.avaliador.username }}</p>
+                    {% if registro.item_os %}
+                    <p class="mb-2"><strong>ITEM/O.S.:</strong> {{ registro.item_os }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-md-6">
+                    <p class="mb-2"><strong>Período:</strong> 
+                        {% if registro.periodo_inicio and registro.periodo_fim %}
+                        {{ registro.periodo_inicio|date:'d/m/Y' }} até {{ registro.periodo_fim|date:'d/m/Y' }}
+                        {% elif registro.periodo_inicio %}
+                        A partir de {{ registro.periodo_inicio|date:'d/m/Y' }}
+                        {% elif registro.periodo_fim %}
+                        Até {{ registro.periodo_fim|date:'d/m/Y' }}
+                        {% else %}
+                        <span class="text-muted">Não informado</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-2"><strong>Criado em:</strong> {{ registro.criado_em|date:'d/m/Y H:i' }}</p>
+                </div>
+            </div>
+            {% if registro.observacoes %}
+            <div class="mt-3">
+                <strong>Observações:</strong>
+                <p class="text-muted mb-0">{{ registro.observacoes }}</p>
+            </div>
+            {% endif %}
+            <div class="mt-3">
+                <div class="progress" role="progressbar" aria-label="Preenchimento" aria-valuenow="{{ percentual_preenchimento }}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar {% if percentual_preenchimento == 100 %}bg-success{% elif percentual_preenchimento >= 50 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ percentual_preenchimento }}%">
+                        {{ percentual_preenchimento }}% Preenchido
+                    </div>
+                </div>
+                <small class="text-muted">{{ preenchidas }} de {{ total_respostas }} perguntas respondidas</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-question-circle"></i> Respostas às Perguntas</h5>
+        </div>
+    </div>
+
+
+    {% for chart in chart_cards %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-light border-bottom d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 d-flex align-items-center">
+                <i class="bi bi-bar-chart-line me-2"></i> {{ chart.label }}
+            </h6>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-chart-{{ forloop.counter }}" aria-expanded="false" aria-controls="collapse-chart-{{ forloop.counter }}">
+                <span class="collapsed"><i class="bi bi-chevron-down"></i> Exibir gráfico</span>
+                <span class="not-collapsed"><i class="bi bi-chevron-up"></i> Ocultar gráfico</span>
+            </button>
+        </div>
+        <div class="collapse" id="collapse-chart-{{ forloop.counter }}">
+            <div class="card-body">
+                <div class="chart-frame-detail">
+                    <canvas id="canvas-chart-{{ forloop.counter }}"></canvas>
+                </div>
+                <div id="fallback-chart-{{ forloop.counter }}" class="text-muted text-center py-2 d-none">Sem dados suficientes para exibir o gráfico.</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for chart in chart_cards %}
+        (function() {
+            var collapse = document.getElementById('collapse-chart-{{ forloop.counter }}');
+            if (collapse) {
+                var btn = collapse.previousElementSibling.querySelector('button[data-bs-toggle="collapse"]');
+                var collapsedSpan = btn.querySelector('.collapsed');
+                var notCollapsedSpan = btn.querySelector('.not-collapsed');
+                var bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapse, {toggle: false});
+                bsCollapse.hide();
+                function updateBtn() {
+                    if (collapse.classList.contains('show')) {
+                        collapsedSpan.style.display = 'none';
+                        notCollapsedSpan.style.display = '';
+                    } else {
+                        collapsedSpan.style.display = '';
+                        notCollapsedSpan.style.display = 'none';
+                    }
+                }
+                collapse.addEventListener('show.bs.collapse', updateBtn);
+                collapse.addEventListener('hide.bs.collapse', updateBtn);
+                updateBtn();
+            }
+
+            var canvas = document.getElementById('canvas-chart-{{ forloop.counter }}');
+            var fallback = document.getElementById('fallback-chart-{{ forloop.counter }}');
+            var data = {{ chart.data|safe }};
+            var opcoes = {{ chart.opcoes|safe }};
+            var tipo = '{{ chart.tipo }}';
+            var labels = Object.keys(data);
+            var values = Object.values(data);
+            var hasAny = values.some(function(v) { return Number(v || 0) > 0; });
+            if (!hasAny || typeof Chart === 'undefined' || !canvas) {
+                if (fallback) fallback.classList.remove('d-none');
+            } else {
+                if (fallback) fallback.classList.add('d-none');
+                var backgroundColors = labels.map(function(label) {
+                    return opcoes[label] || '#0d6efd';
+                });
+                var chartType = (tipo === 'SIM_NAO') ? 'bar' : 'bar';
+                new Chart(canvas, {
+                    type: chartType,
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: tipo === 'SIM_NAO' ? 'Respostas' : 'Opções',
+                            data: values,
+                            backgroundColor: backgroundColors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: { ticks: { autoSkip: false, maxRotation: 35, minRotation: 0 } },
+                            y: { beginAtZero: true, ticks: { precision: 0 } }
+                        }
+                    }
+                });
+            }
+        })();
+        {% endfor %}
+    });
+    </script>
+
+    {% for bloco in blocos_respostas %}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-light border-bottom">
+            <h6 class="mb-0"><i class="bi bi-collection"></i> {{ bloco.nome }}</h6>
+        </div>
+        {% if bloco.tem_lista_resumo %}
+        <div class="card-body border-bottom py-2">
+            <div class="small fw-semibold mb-2">Legenda e Resumo (itens de lista)</div>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                {% for item in bloco.lista_resumo %}
+                <span class="badge rounded-pill text-dark border" style="border-color: {{ item.color }} !important;">
+                    <span class="answer-semaphore me-1" style="background-color: {{ item.color }}; width: 10px; height: 10px;"></span>
+                    {{ item.label }}: {{ item.percentual }}% ({{ item.count }})
+                </span>
+                {% endfor %}
+                <span class="text-muted small">Base: {{ bloco.lista_total_respostas }} respostas</span>
+            </div>
+        </div>
+        {% endif %}
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0 align-middle audit-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th width="80">Ordem</th>
+                            <th class="col-pergunta">Pergunta</th>
+                            {% if exibir_dia_semana %}
+                                {% for dia in dias_semana_colunas %}
+                                <th class="col-dia" title="{{ dia.label }}">{{ dia.short_label }}</th>
+                                {% endfor %}
+                            {% endif %}
+                            <th class="col-comentarios">Comentários</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for linha in bloco.linhas %}
+                        <tr>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ linha.ordem }}</span>
+                            </td>
+                            <td class="col-pergunta">
+                                <span
+                                    {% if linha.descricao_detalhada %}
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title="{{ linha.descricao_detalhada }}"
+                                    style="cursor: help;"
+                                    {% endif %}>
+                                    {{ linha.pergunta }}
+                                </span>
+                                {% if linha.obrigatoria %}
+                                <span class="text-danger">*</span>
+                                {% endif %}
+                            </td>
+                            {% if exibir_dia_semana %}
+                                {% for dia_cell in linha.dia_cells %}
+                                <td class="col-dia">
+                                    {% if dia_cell.value %}
+                                    <span
+                                        class="answer-semaphore"
+                                        data-bs-toggle="tooltip"
+                                        data-bs-placement="top"
+                                        title="{{ dia_cell.value }}"
+                                        style="background-color: {{ dia_cell.color|default:'#198754' }};"
+                                    ></span>
+                                    {% else %}
+                                    <span class="text-muted fst-italic">-</span>
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            {% endif %}
+                            <td class="col-comentarios">
+                                {% if linha.comentarios %}
+                                <ul class="mb-2 ps-3">
+                                    {% for comentario in linha.comentarios %}
+                                    <li>{{ comentario }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <span class="text-muted fst-italic d-block mb-2">Sem comentários</span>
+                                {% endif %}
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-primary comment-open-btn"
+                                    data-pergunta-id="{{ linha.pergunta_id }}"
+                                    data-pergunta-texto="{{ linha.pergunta|escape }}"
+                                    title="Adicionar comentário">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="alert alert-light border text-muted">Sem respostas registradas.</div>
+    {% endfor %}
+
+    <div class="mt-3">
+        <a href="{% url 'auditoria:registros_por_modelo' registro.modelo.id %}" class="btn btn-outline-info">
+            <i class="bi bi-folder2-open"></i> Ver Todos os Registros deste Modelo
+        </a>
+    </div>
+</div>
+
+<div class="modal fade" id="modalComentariosPergunta" tabindex="-1" aria-labelledby="modalComentariosPerguntaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_question_comment">
+                <input type="hidden" name="pergunta_id" id="modal-pergunta-id" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalComentariosPerguntaLabel">Comentários da Pergunta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2 small text-muted" id="modal-pergunta-texto"></div>
+                    <div id="modal-comentarios-lista" class="mb-3"></div>
+                    <label class="form-label" for="modal-comentario-texto">Novo comentário</label>
+                    <textarea class="form-control" id="modal-comentario-texto" name="comentario" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar esta resposta..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Adicionar comentário
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ comentarios_por_pergunta|json_script:"comentarios-por-pergunta" }}
+{{ subcat_chart|json_script:"auditoria-subcat-registro" }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltipTriggers = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggers.forEach(function(el) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            bootstrap.Tooltip.getOrCreateInstance(el);
+        }
+    });
+
+    const scriptEl = document.getElementById('comentarios-por-pergunta');
+    let comentarios = {};
+    try {
+        comentarios = JSON.parse(scriptEl ? scriptEl.textContent : '{}') || {};
+    } catch (e) {
+        comentarios = {};
+    }
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderList(items) {
+        if (!items || !items.length) {
+            return '<div class="text-muted">Nenhum comentário nesta pergunta.</div>';
+        }
+        const rows = items.map(function(texto) {
+            return '<li class="mb-1">' + escapeHtml(texto) + '</li>';
+        }).join('');
+        return '<ol class="mb-0 ps-3">' + rows + '</ol>';
+    }
+
+    const modalEl = document.getElementById('modalComentariosPergunta');
+    const modal = (typeof bootstrap !== 'undefined' && bootstrap.Modal) ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+    const idInput = document.getElementById('modal-pergunta-id');
+    const perguntaTextoEl = document.getElementById('modal-pergunta-texto');
+    const listaEl = document.getElementById('modal-comentarios-lista');
+
+    document.querySelectorAll('.comment-open-btn').forEach(function(btn) {
+        const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
+        btn.addEventListener('click', function() {
+            const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
+            const perguntaTexto = String(btn.getAttribute('data-pergunta-texto') || '');
+            const itens = comentarios[perguntaId] || [];
+
+            idInput.value = perguntaId;
+            perguntaTextoEl.textContent = perguntaTexto;
+            listaEl.innerHTML = renderList(itens);
+            if (modal) modal.show();
+        });
+    });
+
+    const subcatRaw = document.getElementById('auditoria-subcat-registro');
+    let subcatData = null;
+    try {
+        subcatData = subcatRaw ? JSON.parse(subcatRaw.textContent || '{}') : null;
+    } catch (e) {
+        subcatData = null;
+    }
+
+    const fallbackEl = document.getElementById('fallback-subcat-registro');
+    const canvas = document.getElementById('canvas-subcat-registro');
+    const labels = (subcatData && subcatData.labels) ? subcatData.labels : [];
+    const datasets = (subcatData && subcatData.datasets) ? subcatData.datasets : [];
+    const hasAny = labels.length > 0 && datasets.some(function(ds) {
+        return (ds.data || []).some(function(v) { return Number(v || 0) > 0; });
+    });
+
+    if (!hasAny || typeof Chart === 'undefined' || !canvas) {
+        if (fallbackEl) fallbackEl.classList.remove('d-none');
+    } else {
+        if (fallbackEl) fallbackEl.classList.add('d-none');
+
+        const colorMap = {
+            'Conforme': '#198754',
+            'Não conforme': '#dc3545',
+            'N/A': '#6c757d',
+            'Sim': '#20c997',
+            'Não': '#fd7e14',
+            'Outros': '#0d6efd'
+        };
+
+        const chartDatasets = datasets.map(function(ds) {
+            const label = String(ds.label || '');
+            return {
+                label: label,
+                data: ds.data || [],
+                borderWidth: 1,
+                backgroundColor: colorMap[label] || '#0d6efd'
+            };
+        });
+
+        new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: chartDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    x: { stacked: true, ticks: { autoSkip: false, maxRotation: 35, minRotation: 0 } },
+                    y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

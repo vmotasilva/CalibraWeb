@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="bi bi-arrow-repeat"></i> {{ titulo }}</h2>
+        <a href="{% url 'metrologia:categoria_detail' categoria.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- CARD: FAIXA ATUAL -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-info-circle"></i> Faixa Atual do Instrumento
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Instrumento:</strong></p>
+                            <p class="text-muted">{{ faixa_atual.instrumento.tag }} - {{ faixa_atual.instrumento.descricao }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Categoria:</strong></p>
+                            <p class="text-muted">{{ categoria.nome }}</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <p><strong>Unidade:</strong></p>
+                            <p class="text-muted">{{ faixa_atual.unidade.nome }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Mínimo:</strong></p>
+                            <p class="text-muted">{{ faixa_atual.valor_minimo }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Máximo:</strong></p>
+                            <p class="text-muted">{{ faixa_atual.valor_maximo }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <p><strong>Nominal:</strong></p>
+                            <p class="text-muted">{{ faixa_atual.nominal|default:"-" }}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Tolerância:</strong></p>
+                            <p class="text-muted">{{ faixa_atual.tolerancia_mais_menos|default:"-" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Resolução:</strong></p>
+                            <p class="text-muted">{{ faixa_atual.resolucao|default:"-" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD: FORMULÁRIO DE SUBSTITUIÇÃO -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-arrow-right"></i> Substituir Por Faixa Padrão
+                </div>
+                <div class="card-body">
+                    {% if faixas_padrao %}
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="faixa_padrao_id" class="form-label">
+                                <strong>Selecione a Faixa Padrão:</strong>
+                            </label>
+                            <select 
+                                id="faixa_padrao_id" 
+                                name="faixa_padrao_id" 
+                                class="form-select form-select-lg"
+                                required
+                                onchange="atualizarPreview()"
+                            >
+                                <option value="">-- Selecione uma faixa padrão --</option>
+                                {% for faixa in faixas_padrao %}
+                                <option value="{{ faixa.id }}" data-minimo="{{ faixa.valor_minimo }}" data-maximo="{{ faixa.valor_maximo }}" data-unidade="{{ faixa.unidade.nome }}" data-nominal="{{ faixa.nominal|default:'' }}" data-tolerancia="{{ faixa.tolerancia_mais_menos|default:'' }}" data-resolucao="{{ faixa.resolucao|default:'' }}">
+                                    {{ faixa.unidade.nome }}: {{ faixa.valor_minimo }} - {{ faixa.valor_maximo }}
+                                    {% if faixa.nominal %}
+                                        (Nominal: {{ faixa.nominal }})
+                                    {% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">
+                                Escolha a faixa padrão que substituirá a faixa atual.
+                            </small>
+                        </div>
+
+                        <!-- PREVIEW -->
+                        <div class="alert alert-info" id="preview" style="display: none;">
+                            <h6>Prévia da Substituição:</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Valores Atuais:</strong>
+                                    <ul class="small mb-0">
+                                        <li>Unidade: <span class="text-muted">{{ faixa_atual.unidade.nome }}</span></li>
+                                        <li>Mínimo: <span class="text-muted">{{ faixa_atual.valor_minimo }}</span></li>
+                                        <li>Máximo: <span class="text-muted">{{ faixa_atual.valor_maximo }}</span></li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>Novos Valores:</strong>
+                                    <ul class="small mb-0">
+                                        <li>Unidade: <span id="preview-unidade" class="text-success fw-bold">-</span></li>
+                                        <li>Mínimo: <span id="preview-minimo" class="text-success fw-bold">-</span></li>
+                                        <li>Máximo: <span id="preview-maximo" class="text-success fw-bold">-</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success btn-lg flex-grow-1">
+                                <i class="bi bi-check-circle"></i> Confirmar Substituição
+                            </button>
+                            <a href="{% url 'metrologia:categoria_detail' categoria.id %}" class="btn btn-secondary btn-lg">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        <strong>Nenhuma faixa padrão disponível</strong>
+                        <p class="mb-0 mt-2">Antes de substituir, você precisa criar faixas padrão para esta categoria.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-select-lg {
+        font-size: 1.1rem;
+        padding: 0.75rem 1rem;
+    }
+</style>
+
+<script>
+function atualizarPreview() {
+    const select = document.getElementById('faixa_padrao_id');
+    const option = select.options[select.selectedIndex];
+    const preview = document.getElementById('preview');
+    
+    if (option.value) {
+        document.getElementById('preview-unidade').textContent = option.dataset.unidade;
+        document.getElementById('preview-minimo').textContent = option.dataset.minimo;
+        document.getElementById('preview-maximo').textContent = option.dataset.maximo;
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

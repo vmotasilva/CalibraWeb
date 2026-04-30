@@ -1,0 +1,969 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    /* --- ESTILOS DE "APP" (SEM ROLAGEM NA PÁGINA) --- */
+    body { overflow: hidden; }
+
+    /* CARD DO FILTRO (SIDEBAR) */
+    .filter-card {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #dee2e6;
+        border-right: 2px solid #dee2e6;
+    }
+
+    .filter-card-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+
+    /* BARRA LATERAL (FILTROS) */
+    .sidebar-scroll {
+        height: 100%;
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+    /* CARD DA TABELA (MAIN) */
+    .table-card {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        height: 100%;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #dee2e6;
+        overflow: hidden;
+    }
+
+    .table-card-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .table-card-footer {
+        flex-shrink: 0;
+        border-top: 1px solid #dee2e6;
+        padding: 0.75rem 1rem;
+        background-color: #f8f9fa;
+    }
+
+    /* TABELA (ROLAGEM) */
+    .table-container-scroll {
+        height: 100%;
+        overflow-y: auto;
+        background-color: white;
+    }
+    .table-container-scroll thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* PAGINAÇÃO */
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .pagination-info {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .pagination-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .pagination-nav button {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .items-per-page-select {
+        max-width: 80px;
+        font-size: 0.875rem;
+    }
+
+    /* --- NOVO: ESTILO DOS FILTROS EXPANSÍVEIS (ACORDEÃO) --- */
+    .filter-group {
+        border-bottom: 1px solid #f0f0f0;
+        margin-bottom: 5px;
+    }
+    
+    .filter-header {
+        cursor: pointer;
+        padding: 10px 5px;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    
+    .filter-header:hover {
+        background-color: #f8f9fa;
+    }
+
+    .filter-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin: 0;
+        cursor: pointer;
+    }
+
+    /* Ícone da seta */
+    .filter-header i {
+        transition: transform 0.3s ease;
+        font-size: 0.8rem;
+        color: #adb5bd;
+    }
+
+    /* Quando o grupo está ABERTO (classe .open) */
+    .filter-group.open .filter-header i {
+        transform: rotate(180deg);
+        color: #0d6efd;
+    }
+    
+    .filter-group.open .filter-title {
+        color: #212529;
+    }
+
+    /* Conteúdo dos filtros (Checkboxes) */
+    .filter-content {
+        display: none;
+        padding: 5px 0 15px 10px;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    /* Mostra conteúdo quando aberto */
+    .filter-group.open .filter-content {
+        display: block;
+    }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* SCROLLBARS CUSTOMIZADAS */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    
+    .transition-all { transition: all 0.3s ease; }
+</style>
+
+<div class="container-fluid py-3" style="height: 100vh; display: flex; flex-direction: column; overflow: hidden;">
+    
+    <div class="d-flex flex-wrap justify-content-between align-items-start align-items-md-center gap-2 mb-3 border-bottom pb-2 flex-shrink-0">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-light border shadow-sm" onclick="toggleSidebar()" title="Expandir/Recolher Filtros">
+                <i class="bi bi-layout-sidebar-inset" id="sidebarIcon"></i>
+            </button>
+            <div>
+                <h4 class="fw-bold text-primary mb-0">Gestão de Pessoas</h4>
+                <p class="text-muted mb-0 small">Equipe e Hierarquia</p>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+            <a href="{% url 'rh:gestao_ferias' %}" class="btn btn-info text-white btn-sm shadow-sm" title="Gerenciar férias de todos os colaboradores">
+                <i class="bi bi-calendar-check"></i> Gestão de Férias
+            </a>
+            <a href="{% url 'qms:importar_colaboradores' %}" class="btn btn-success btn-sm shadow-sm">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Importar RH
+            </a>
+            <a href="{% url 'rh:criar_colaborador' %}" class="btn btn-primary btn-sm shadow-sm">
+                <i class="bi bi-plus-lg"></i> Novo
+            </a>
+            <div class="vr mx-1 d-none d-md-block"></div>
+            <a href="{% url 'dl_template_colab_dados' %}" class="btn btn-outline-secondary btn-sm d-none d-md-inline-block" title="Baixar Base de Dados em Excel">
+                <i class="bi bi-download"></i> Dados
+            </a>
+        </div>
+
+    </div>
+
+    <div style="display: flex; gap: 1rem; height: calc(100vh - 180px); width: 100%;">
+        
+        <!-- SIDEBAR COM FILTROS -->
+        <div id="sidebar-col" class="d-none" style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden;">
+            
+            <div class="card filter-card" style="border-box; box-sizing: border-box;">
+                <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
+                    <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
+                    <button class="btn btn-sm btn-link text-decoration-none text-muted p-0" onclick="limparFiltros()">
+                        <small>Limpar tudo</small>
+                    </button>
+                </div>
+
+                <div class="filter-card-body">
+                    <div class="sidebar-scroll">
+                        
+                        <div class="mb-3">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Nome ou Matrícula...">
+                            </div>
+                        </div>
+
+                <div class="filter-group open">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Status</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="ATIVO" data-category="status" id="st_ativo">
+                                <label class="form-check-label small" for="st_ativo">Ativo</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="FERIAS" data-category="status" id="st_ferias">
+                                <label class="form-check-label small" for="st_ferias">Em Férias</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="AFASTADO" data-category="status" id="st_afastado">
+                                <label class="form-check-label small" for="st_afastado">Afastado</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="INATIVO" data-category="status" id="st_inativo">
+                                <label class="form-check-label small" for="st_inativo">Desligado</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Líder / Gestor</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for lider in lideres_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ lider.id }}" data-category="lider" id="lid_{{ lider.id }}">
+                                <label class="form-check-label small text-truncate" for="lid_{{ lider.id }}" title="{{ lider.nome_completo }} (#{{ lider.id }})">
+                                    {{ lider.nome_completo|title }} <span class="badge bg-info bg-opacity-10 text-info border" style="font-size: 0.65rem; padding: 2px 4px;">#{{ lider.id }}</span>
+                                </label>
+                                <a href="{% url 'detalhe_colaborador' lider.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil de {{ lider.nome_completo }} (ID: {{ lider.id }})">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Supervisor</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for super in supervisores_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ super.id }}" data-category="supervisor" id="sup_{{ super.id }}">
+                                <label class="form-check-label small text-truncate" for="sup_{{ super.id }}" title="{{ super.nome_completo }} (#{{ super.id }})">
+                                    {{ super.nome_completo|title }} <span class="badge bg-info bg-opacity-10 text-info border" style="font-size: 0.65rem; padding: 2px 4px;">#{{ super.id }}</span>
+                                </label>
+                                <a href="{% url 'detalhe_colaborador' super.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil de {{ super.nome_completo }} (ID: {{ super.id }})">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Gerente</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for gerente in gerentes_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ gerente.id }}" data-category="gerente" id="ger_{{ gerente.id }}">
+                                <label class="form-check-label small text-truncate" for="ger_{{ gerente.id }}" title="{{ gerente.nome_completo }} (#{{ gerente.id }})">
+                                    {{ gerente.nome_completo|title }} <span class="badge bg-info bg-opacity-10 text-info border" style="font-size: 0.65rem; padding: 2px 4px;">#{{ gerente.id }}</span>
+                                </label>
+                                <a href="{% url 'detalhe_colaborador' gerente.id %}" target="_blank" class="ms-2 text-muted" title="Abrir perfil de {{ gerente.nome_completo }} (ID: {{ gerente.id }})">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Setor</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1"> 
+                            {% for setor in setores_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ setor.id }}" data-category="setor" id="set_{{ setor.id }}">
+                                <label class="form-check-label small text-truncate" for="set_{{ setor.id }}" title="{{ setor.nome }}">
+                                    {{ setor.nome }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Turno</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            {% for codigo, nome in turnos_filtro %}
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="{{ codigo }}" data-category="turno" id="tn_{{ codigo }}">
+                                <label class="form-check-label small" for="tn_{{ codigo }}">
+                                    {{ nome }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-header" onclick="toggleFilterGroup(this)">
+                        <label class="filter-title">Treinamentos</label>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-content">
+                        <div class="d-flex flex-column gap-1">
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="PENDENTE" data-category="treino" id="tre_pend">
+                                <label class="form-check-label small" for="tre_pend">Com pendências</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input filter-checkbox" type="checkbox" value="EM_DIA" data-category="treino" id="tre_ok">
+                                <label class="form-check-label small" for="tre_ok">Em dia</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                    </div><!-- fecha sidebar-scroll -->
+                </div><!-- fecha filter-card-body -->
+            </div><!-- fecha filter-card -->
+        </div><!-- fecha sidebar-col -->
+
+        <!-- NOVA BARRA COM TABELA -->
+        <div id="table-col" style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: visible; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 1rem;">
+            
+            <div class="d-flex justify-content-between align-items-center flex-shrink-0" style="padding: 0.75rem 0;">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border">
+                        <i class="bi bi-list-ul"></i> <span id="countDisplay">{{ total_colaboradores_filtrados }}/{{ total_colaboradores }}</span> colaboradores
+                    </span>
+                    {% if user.is_superuser %}
+                    <span class="badge bg-info bg-opacity-10 text-info border d-none" id="selectedBadge">
+                        <i class="bi bi-check-circle"></i> <span id="selectedCount">0</span> selecionados
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2">
+                    {% if user.is_superuser %}
+                    <button class="btn btn-sm btn-outline-danger d-none" id="deleteSelectedBtn" onclick="deleteSelected()">
+                        <i class="bi bi-trash"></i> Deletar Selecionados
+                    </button>
+                    {% endif %}
+                    <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
+                        <i class="bi bi-arrow-counterclockwise"></i> Limpar Filtros
+                    </button>
+                </div>
+            </div>
+
+            <div class="card table-card">
+                <div class="table-card-body">
+                    <div class="table-container-scroll">
+                        <table class="table table-hover align-middle mb-0" id="rhTable">
+                    <thead class="small text-uppercase text-muted font-monospace">
+                        <tr>
+                            {% if user.is_superuser %}
+                            <th class="ps-4 py-3" style="width: 40px;">
+                                <input type="checkbox" id="selectAllCheckbox" class="form-check-input" onchange="toggleSelectAll()" title="Selecionar todos">
+                            </th>
+                            {% endif %}
+                            <th class="py-3" style="min-width: 250px;">Colaborador</th>
+                            <th class="py-3">Cargo</th>
+                            <th class="py-3">Setor / CC</th>
+                            <th class="py-3">Turno</th>
+                            <th class="py-3">Treinamentos</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0 bg-white">
+                        {% for f in funcionarios %}
+                        <tr class="rh-row border-bottom" 
+                            data-nome="{{ f.nome_completo|default:''|lower }} {{ f.matricula|default:'' }}"
+                            data-status="{% if not f.is_active %}INATIVO{% elif f.afastado %}AFASTADO{% elif f.em_ferias %}FERIAS{% else %}ATIVO{% endif %}"
+                            data-setor="{{ f.setor.id|default:'' }}"
+                            data-lider="{{ f.lider.id|default:'' }}"
+                            data-supervisor="{{ f.supervisor.id|default:'' }}" 
+                            data-gerente="{{ f.gerente.id|default:'' }}"
+                            data-turno="{{ f.turno|default:'' }}"
+                            data-treino="{% if f.trein_pendentes %}PENDENTE{% else %}EM_DIA{% endif %}">
+                            
+                            {% if user.is_superuser %}
+                            <td class="ps-3 py-2">
+                                <input type="checkbox" class="form-check-input row-checkbox" data-id="{{ f.id }}" onchange="updateSelectionBadge()">
+                            </td>
+                            {% endif %}
+                            <td class="ps-4 py-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
+                                        {{ f.nome_completo|slice:":1" }}
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'detalhe_colaborador' f.id %}" class="fw-bold text-primary small text-uppercase text-decoration-none" style="cursor: pointer; display: block; transition: all 0.2s;">{{ f.nome_completo }}</a>
+                                        <div class="text-muted d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
+                                            <i class="bi bi-person-vcard me-1"></i> {{ f.matricula }} <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#{{ f.id }}</span> 
+                                            {% if not f.is_active %}
+                                                <span class="badge bg-danger ms-2 py-0" style="font-size: 0.6rem;">DESLIGADO</span>
+                                            {% elif f.afastado %}
+                                                <span class="badge bg-info ms-2 py-0" style="font-size: 0.6rem;">AFASTADO</span>
+                                            {% elif f.em_ferias %}
+                                                <span class="badge bg-warning text-dark ms-2 py-0" style="font-size: 0.6rem;">FÉRIAS</span>
+                                                {% with ferias_ativa=f.ferias_set.all|first %}
+                                                    {% if ferias_ativa %}
+                                                        <span class="text-warning fw-bold ms-2" title="Retorno em {{ ferias_ativa.data_fim|date:'d/m/Y' }}">
+                                                            Retorno: <span class="badge bg-warning text-dark">{{ ferias_ativa.data_fim|date:'d/m' }}</span>
+                                                        </span>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            
+                            <td class="py-2">
+                                <span class="d-block text-dark small fw-semibold">{{ f.cargo }}</span>
+                            </td>
+                            
+                            <td class="py-2">
+                                <div class="small text-dark fw-bold">{{ f.setor.nome|default:"-" }}</div>
+                                <div class="text-muted small" style="font-size: 0.7rem;" title="Centro de Custo">
+                                    CC: {{ f.centro_custo.codigo|default:"N/A" }}
+                                </div>
+                            </td>
+                            
+                            <td class="py-2">
+                                <span class="badge bg-light text-dark border fw-normal">{{ f.get_turno_display }}</span>
+                            </td>
+                            
+                            <td class="py-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-success bg-opacity-10 text-success border small">Vigentes: {{ f.trein_vigentes }}</span>
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border small">Pendentes: {{ f.trein_pendentes }}</span>
+                                    {% if f.trein_ultima_data %}
+                                    <span class="text-muted small" title="Última participação">Último: {{ f.trein_ultima_data|date:"d/m/Y" }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="{% if user.is_superuser %}6{% else %}5{% endif %}" class="text-center py-5 text-muted bg-light">
+                                <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
+                                <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-card-footer">
+                    <div class="pagination-controls">
+                        <div class="pagination-info">
+                            <span id="paginationInfo">Mostrando 1-10 de 0 colaboradores</span>
+                        </div>
+                        
+                        <div class="pagination-nav">
+                            <button class="btn btn-sm btn-outline-secondary" id="btnFirstPage" onclick="goToPage(1)" title="Primeira página">
+                                <i class="bi bi-chevron-bar-left"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="btnPrevPage" onclick="previousPage()" title="Página anterior">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            
+                            <div id="pageNumbers" style="display: flex; gap: 0.25rem;"></div>
+                            
+                            <button class="btn btn-sm btn-outline-secondary" id="btnNextPage" onclick="nextPage()" title="Próxima página">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="btnLastPage" onclick="goToPage('last')" title="Última página">
+                                <i class="bi bi-chevron-bar-right"></i>
+                            </button>
+                        </div>
+
+                        <div>
+                            <select id="itemsPerPageSelect" class="form-select form-select-sm items-per-page-select" onchange="changeItemsPerPage()">
+                                <option value="10">10 itens</option>
+                                <option value="25">25 itens</option>
+                                <option value="50">50 itens</option>
+                                <option value="100">100 itens</option>
+                                <option value="all">Todos</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const IS_SUPERUSER = {% if user.is_superuser %}true{% else %}false{% endif %};
+const TABLE_COLSPAN = IS_SUPERUSER ? 6 : 5;
+
+let allColaboradores = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const checkboxes = document.querySelectorAll('.filter-checkbox');
+
+    // Carregar dados iniciais e aplicar filtros
+    loadAndApplyFilters();
+
+    // Event listeners para mudanças em tempo real
+    searchInput.addEventListener('keyup', debounce(loadAndApplyFilters, 300));
+    searchInput.addEventListener('change', loadAndApplyFilters);
+    
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', loadAndApplyFilters);
+    });
+});
+
+// Debounce para evitar muitas requisições
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Construir query string dos filtros
+function buildFilterParams() {
+    const params = new URLSearchParams();
+    const searchInput = document.getElementById('searchInput');
+    
+    // Busca
+    const q = searchInput.value.trim();
+    if (q) params.append('q', q);
+    
+    // Checkboxes de status
+    document.querySelectorAll('input[data-category="status"]:checked').forEach(cb => {
+        params.append('status', cb.value);
+    });
+    
+    // Líderes
+    document.querySelectorAll('input[data-category="lider"]:checked').forEach(cb => {
+        params.append('lider', cb.value);
+    });
+    
+    // Supervisores
+    document.querySelectorAll('input[data-category="supervisor"]:checked').forEach(cb => {
+        params.append('supervisor', cb.value);
+    });
+    
+    // Gerentes
+    document.querySelectorAll('input[data-category="gerente"]:checked').forEach(cb => {
+        params.append('gerente', cb.value);
+    });
+    
+    // Setores
+    document.querySelectorAll('input[data-category="setor"]:checked').forEach(cb => {
+        params.append('setor', cb.value);
+    });
+    
+    // Turnos
+    document.querySelectorAll('input[data-category="turno"]:checked').forEach(cb => {
+        params.append('turno', cb.value);
+    });
+    
+    // Treinamentos
+    document.querySelectorAll('input[data-category="treino"]:checked').forEach(cb => {
+        params.append('treino', cb.value);
+    });
+    
+    return params.toString();
+}
+
+// Carregar dados do servidor e aplicar filtros
+async function loadAndApplyFilters() {
+    try {
+        const params = buildFilterParams();
+        const url = `/rh/api/colaboradores-filtrados/?${params}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        allColaboradores = data.colaboradores;
+        
+        // Resetar para primeira página
+        currentPage = 1;
+        
+        // Atualizar tabela e contador com paginação
+        updateCounter(allColaboradores.length);
+        renderTableWithPagination();
+        
+    } catch (error) {
+        console.error('Erro ao carregar colaboradores:', error);
+        showErrorMessage('Erro ao carregar colaboradores. Tente novamente.');
+    }
+}
+
+// Renderizar tabela com dados
+function renderTable(colaboradores) {
+    const tbody = document.querySelector('#rhTable tbody');
+    const tableHeader = document.querySelector('#rhTable thead');
+    
+    if (colaboradores.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="${TABLE_COLSPAN}" class="text-center py-5 text-muted bg-light">
+                    <i class="bi bi-people fs-1 d-block mb-2 opacity-25"></i>
+                    <p class="mb-0">Nenhum colaborador encontrado com estes filtros.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = colaboradores.map(c => `
+        <tr class="rh-row border-bottom">
+            ${IS_SUPERUSER ? `
+            <td class="ps-3 py-2">
+                <input type="checkbox" class="form-check-input row-checkbox" data-id="${c.id}" onchange="updateSelectionBadge()">
+            </td>
+            ` : ''}
+            <td class="py-2">
+                <div class="d-flex align-items-center">
+                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
+                        ${(c.nome[0] || 'C').toUpperCase()}
+                    </div>
+                    <div>
+                        <a href="/rh/colaborador/${c.id}/" class="fw-bold text-primary small text-uppercase text-decoration-none" style="cursor: pointer; display: block; transition: all 0.2s;">${c.nome}</a>
+                        <div class="text-muted d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
+                            <i class="bi bi-person-vcard me-1"></i> ${c.matricula} 
+                            <span class="badge bg-info bg-opacity-10 text-info border ms-1 py-0" style="font-size: 0.65rem;">#${c.id}</span>
+                            ${c.status === 'Em Férias' ? `<span class="badge bg-warning text-dark ms-2 py-0" style="font-size: 0.6rem;">Em Férias</span>` : 
+                              c.status !== 'ATIVO' ? `<span class="badge bg-danger ms-2 py-0" style="font-size: 0.6rem;">${c.status}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            </td>
+            <td class="py-2">
+                <span class="d-block text-dark small fw-semibold">${c.cargo || '-'}</span>
+            </td>
+            <td class="py-2">
+                <div class="small text-dark fw-bold">${c.setor || '-'}</div>
+                <div class="text-muted small" style="font-size: 0.7rem;" title="Centro de Custo">
+                    CC: ${c.centro_custo || 'N/A'}
+                </div>
+            </td>
+            <td class="py-2">
+                <span class="badge bg-light text-dark border fw-normal">${c.turno || '-'}</span>
+            </td>
+            <td class="py-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-success bg-opacity-10 text-success border small">Vigentes: ${c.vigentes}</span>
+                    <span class="badge bg-danger bg-opacity-10 text-danger border small">Pendentes: ${c.pendentes}</span>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Atualizar contador
+function updateCounter(count) {
+    const totalAll = parseInt(document.querySelector('#countDisplay').textContent.split('/')[1]) || 0;
+    document.querySelector('#countDisplay').textContent = `${count}/${totalAll}`;
+}
+
+// ========== PAGINAÇÃO ==========
+let currentPage = 1;
+let itemsPerPage = 10;
+
+// Renderizar paginação
+function renderPagination(total) {
+    const totalPages = Math.ceil(total / itemsPerPage);
+    const pageNumbers = document.getElementById('pageNumbers');
+    const paginationInfo = document.getElementById('paginationInfo');
+    
+    // Limpar números antigos
+    pageNumbers.innerHTML = '';
+    
+    if (totalPages <= 1) {
+        document.getElementById('btnFirstPage').disabled = true;
+        document.getElementById('btnPrevPage').disabled = true;
+        document.getElementById('btnNextPage').disabled = true;
+        document.getElementById('btnLastPage').disabled = true;
+        paginationInfo.textContent = `Mostrando ${total} de ${total} colaboradores`;
+        return;
+    }
+    
+    // Gerar números de página
+    const maxPagesShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesShow - 1);
+    
+    if (endPage - startPage < maxPagesShow - 1) {
+        startPage = Math.max(1, endPage - maxPagesShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement('button');
+        btn.className = `btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-outline-secondary'}`;
+        btn.textContent = i;
+        btn.onclick = () => goToPage(i);
+        pageNumbers.appendChild(btn);
+    }
+    
+    // Atualizar botões de navegação
+    document.getElementById('btnFirstPage').disabled = currentPage === 1;
+    document.getElementById('btnPrevPage').disabled = currentPage === 1;
+    document.getElementById('btnNextPage').disabled = currentPage === totalPages;
+    document.getElementById('btnLastPage').disabled = currentPage === totalPages;
+    
+    // Atualizar info de paginação
+    const start = (currentPage - 1) * itemsPerPage + 1;
+    const end = Math.min(currentPage * itemsPerPage, total);
+    paginationInfo.textContent = `Mostrando ${start}-${end} de ${total} colaboradores`;
+}
+
+// Ir para página específica
+function goToPage(page) {
+    if (page === 'last') {
+        const total = allColaboradores.length;
+        currentPage = Math.ceil(total / itemsPerPage);
+    } else {
+        currentPage = Math.max(1, Math.min(page, Math.ceil(allColaboradores.length / itemsPerPage)));
+    }
+    renderTableWithPagination();
+}
+
+// Próxima página
+function nextPage() {
+    const totalPages = Math.ceil(allColaboradores.length / itemsPerPage);
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderTableWithPagination();
+    }
+}
+
+// Página anterior
+function previousPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        renderTableWithPagination();
+    }
+}
+
+// Mudar quantidade de itens por página
+function changeItemsPerPage() {
+    const value = document.getElementById('itemsPerPageSelect').value;
+    itemsPerPage = value === 'all' ? allColaboradores.length || 9999 : parseInt(value);
+    currentPage = 1; // Voltar para primeira página
+    renderTableWithPagination();
+}
+
+// Renderizar tabela com paginação
+function renderTableWithPagination() {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const paginatedData = allColaboradores.slice(start, end);
+    
+    renderTable(paginatedData);
+    renderPagination(allColaboradores.length);
+
+    if (IS_SUPERUSER) {
+        const selectAll = document.getElementById('selectAllCheckbox');
+        if (selectAll) selectAll.checked = false;
+        updateSelectionBadge();
+    }
+}
+
+// Mostrar mensagem de erro
+function showErrorMessage(message) {
+    const tbody = document.querySelector('#rhTable tbody');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="${TABLE_COLSPAN}" class="text-center py-5 text-danger">
+                <i class="bi bi-exclamation-circle fs-1 d-block mb-2"></i>
+                <p class="mb-0">${message}</p>
+            </td>
+        </tr>
+    `;
+}
+
+// Atualizar badge de seleção (apenas superuser)
+function updateSelectionBadge() {
+    if (!IS_SUPERUSER) return;
+
+    const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+    const badge = document.getElementById('selectedBadge');
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const selectedCountSpan = document.getElementById('selectedCount');
+
+    if (selectedCountSpan) selectedCountSpan.textContent = selectedCount;
+
+    if (badge && deleteBtn) {
+        if (selectedCount > 0) {
+            badge.classList.remove('d-none');
+            deleteBtn.classList.remove('d-none');
+        } else {
+            badge.classList.add('d-none');
+            deleteBtn.classList.add('d-none');
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+        }
+    }
+}
+
+// Selecionar/Desselecionar todos (apenas superuser)
+function toggleSelectAll() {
+    if (!IS_SUPERUSER) return;
+
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (!selectAllCheckbox) return;
+
+    const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+    rowCheckboxes.forEach(cb => {
+        cb.checked = selectAllCheckbox.checked;
+    });
+
+    updateSelectionBadge();
+}
+
+// Deletar colaboradores selecionados (apenas superuser)
+async function deleteSelected() {
+    if (!IS_SUPERUSER) return;
+
+    const selectedIds = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.dataset.id);
+
+    if (selectedIds.length === 0) {
+        alert('Nenhum colaborador selecionado.');
+        return;
+    }
+
+    if (!confirm(`Tem certeza que deseja deletar ${selectedIds.length} colaborador(es)?\n\nEsta ação não pode ser desfeita!`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/rh/api/colaboradores/delete-multiple/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ ids: selectedIds })
+        });
+
+        if (response.ok) {
+            alert(`${selectedIds.length} colaborador(es) deletado(s) com sucesso!`);
+            loadAndApplyFilters();
+        } else if (response.status === 403) {
+            alert('Sem permissão para deletar colaboradores.');
+        } else {
+            alert('Erro ao deletar colaboradores. Tente novamente.');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao deletar colaboradores. Tente novamente.');
+    }
+}
+
+// Obter cookie CSRF
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// FUNÇÃO PARA EXPANDIR/RECOLHER FILTROS
+function toggleFilterGroup(element) {
+    const group = element.parentElement;
+    group.classList.toggle('open');
+}
+
+// Limpar todos os filtros
+function limparFiltros() {
+    document.getElementById('searchInput').value = '';
+    document.querySelectorAll('.filter-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    
+    // Recarregar dados
+    loadAndApplyFilters();
+}
+
+// Alternar sidebar
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar-col');
+    const content = document.getElementById('table-col');
+    const icon = document.getElementById('sidebarIcon');
+
+    if (sidebar.classList.contains('d-none')) {
+        // MOSTRAR SIDEBAR
+        sidebar.classList.remove('d-none');
+        if (content) content.style.flex = '1';
+        icon.classList.replace('bi-layout-sidebar-inset', 'bi-layout-sidebar');
+    } else {
+        // OCULTAR SIDEBAR
+        sidebar.classList.add('d-none');
+        if (content) content.style.flex = '1';
+        icon.classList.replace('bi-layout-sidebar', 'bi-layout-sidebar-inset');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,472 @@
+{% extends "procedures/procedimento_base.html" %}
+{% load nav_access %}
+
+{% block title %}Matrizes de Habilidades{% endblock %}
+{% block header_title %}Matrizes de Habilidades{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filters-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">Matrizes de Habilidades</h4>
+        <div class="d-flex gap-2">
+            {% can_nav_view user 'procedures:exportar_matrizes' 'procedures' as can_exportar %}
+            {% can_nav_view user 'procedures:importacao_matriz' 'procedures' as can_importar %}
+            {% can_nav_view user 'procedures:editar_matriz' 'procedures' as can_editar_matriz %}
+
+            {% if can_exportar %}
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-warning dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-download"></i> Exportar
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'csv' %}">
+                            <i class="bi bi-filetype-csv"></i> Exportar como CSV
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'procedures:exportar_matrizes' 'excel' %}">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar como Excel
+                        </a></li>
+                    </ul>
+                </div>
+            {% endif %}
+            {% if can_importar %}
+                <a href="{% url 'procedures:importacao_matriz' %}" class="btn btn-success">
+                    <i class="bi bi-cloud-upload"></i> Importação em Massa
+                </a>
+            {% endif %}
+            {% if can_editar_matriz %}
+                <a href="{% url 'procedures:nova_matriz' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Nova Matriz
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="filters-card">
+        <form method="get">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" name="q" class="form-control" placeholder="Código ou Nome" value="{{ termo }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <select name="ativo" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="true" {% if ativo == 'true' %}selected{% endif %}>Ativos</option>
+                        <option value="false" {% if ativo == 'false' %}selected{% endif %}>Inativos</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="row">
+        {% for matriz in matrizes %}
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><strong>{{ matriz.codigo }}</strong> - {{ matriz.nome }}</h6>
+                    {% if matriz.ativo %}
+                        <span class="badge bg-success">Ativo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inativo</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-2"><i class="bi bi-list-check"></i> <strong>Disciplinas:</strong> 
+                        <span class="badge bg-info">{{ matriz.disciplinas_matriz.count }}</span>
+                    </p>
+                    <p class="small text-muted">
+                        <i class="bi bi-calendar"></i> Criado em {{ matriz.criado_em|date:"d/m/Y" }}
+                    </p>
+                </div>
+                <div class="card-footer bg-white">
+                    <a href="{% url 'procedures:detalhe_matriz' matriz.id %}" class="btn btn-sm btn-outline-info">
+                        <i class="bi bi-eye"></i> Ver
+                    </a>
+                    {% if can_editar_matriz %}
+                        <a href="{% url 'procedures:editar_matriz' matriz.id %}" class="btn btn-sm btn-outline-warning">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                    {% endif %}
+                    <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalAssociarColaboradores" onclick="abrirModalAssociacoes({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
+                        <i class="bi bi-people"></i> Colaboradores 
+                        <span class="badge bg-success colab-count-{{ matriz.id }}">{{ matriz.colaboradores.count }}</span>
+                    </button>
+                    {% can_nav_view user 'procedures:deletar_matriz' 'procedures' as can_deletar_matriz %}
+                    {% if can_deletar_matriz %}
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalDeleteMatriz" onclick="abrirModalDeleteMatriz({{ matriz.id }}, '{{ matriz.codigo }}', '{{ matriz.nome }}')">
+                            <i class="bi bi-trash"></i> Deletar
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                Nenhuma matriz encontrada
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal Associar Colaboradores -->
+<div class="modal fade" id="modalAssociarColaboradores" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <div>
+                    <h5 class="modal-title mb-1"><i class="bi bi-people-fill"></i> Associar Colaboradores</h5>
+                    <small id="modal-matriz-info" class="text-white-50"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="" id="form-associar-colaboradores">
+                {% csrf_token %}
+                <input type="hidden" name="matriz_id" id="matriz-id">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Use os filtros abaixo para buscar colaboradores e selecione os que devem ser avaliados. <strong>Nota:</strong> Use o botão de remover na tabela abaixo para desassociar colaboradores.
+                    </div>
+                    
+                    <!-- Filtros de Busca -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Filtros de Busca</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Nome ou Matrícula</label>
+                                    <input type="text" class="form-control" id="filtro-termo" placeholder="Digite nome ou matrícula...">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Setor</label>
+                                    <select class="form-select" id="filtro-setor">
+                                        <option value="">-- Todos --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Líder</label>
+                                    <select class="form-select" id="filtro-lider">
+                                        <option value="">-- Todos --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Supervisor</label>
+                                    <select class="form-select" id="filtro-supervisor">
+                                        <option value="">-- Todos --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Turno</label>
+                                    <select class="form-select" id="filtro-turno">
+                                        <option value="">-- Todos --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button type="button" class="btn btn-primary w-100" onclick="buscarColaboradores()">
+                                        <i class="bi bi-search"></i> Buscar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de colaboradores -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label mb-0"><strong>Colaboradores encontrados:</strong></label>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selecionarTodos()">
+                                <i class="bi bi-check-all"></i> Selecionar Todos
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="desseleccionarTodos()">
+                                <i class="bi bi-x-circle"></i> Desselecionar Todos
+                            </button>
+                        </div>
+                    </div>
+                    <div id="lista-colaboradores" style="max-height: 350px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px; border-radius: 4px;">
+                        <p class="text-muted text-center py-3">Use os filtros acima para buscar colaboradores</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Salvar Associações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Dados dos colaboradores
+let colaboradoresData = [];
+let opcoesSetores = [];
+let opcoesLideres = [];
+let opcoesSupervisores = [];
+let opçõesTurnos = [];
+
+// Função para inicializar os selects de filtro
+function inicializarFiltros() {
+    fetch(`/procedures/api/filtros-colaboradores/`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        opcoesSetores = data.setores || [];
+        opcoesLideres = data.lideres || [];
+        opcoesSupervisores = data.supervisores || [];
+        opçõesTurnos = data.turnos || [];
+        
+        // Preencher selects
+        preencherSelect('filtro-setor', opcoesSetores, 'id', 'nome');
+        preencherSelect('filtro-lider', opcoesLideres, 'id', 'nome_completo');
+        preencherSelect('filtro-supervisor', opcoesSupervisores, 'id', 'nome_completo');
+        preencherSelect('filtro-turno', opçõesTurnos, 'valor', 'label');
+    })
+    .catch(error => console.error('Erro ao carregar filtros:', error));
+}
+
+// Função para preencher selects
+function preencherSelect(selectId, opcoes, valueKey, labelKey) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    
+    const atual = select.innerHTML;
+    let html = atual; // Manter a opção "-- Todos --"
+    
+    opcoes.forEach(opcao => {
+        html += `<option value="${opcao[valueKey]}">${opcao[labelKey]}</option>`;
+    });
+    
+    select.innerHTML = html;
+}
+
+// Função para abrir modal
+function abrirModalAssociacoes(matrizId, matrizCodigo, matrizNome) {
+    document.getElementById('matriz-id').value = matrizId;
+    document.getElementById('modal-matriz-info').textContent = `${matrizCodigo} - ${matrizNome}`;
+    inicializarFiltros();
+}
+
+// Função para buscar colaboradores
+function buscarColaboradores() {
+    const termo = document.getElementById('filtro-termo').value;
+    const setor = document.getElementById('filtro-setor').value;
+    const lider = document.getElementById('filtro-lider').value;
+    const supervisor = document.getElementById('filtro-supervisor').value;
+    const turno = document.getElementById('filtro-turno').value;
+    const matrizId = document.getElementById('matriz-id').value;
+    
+    // Validar se pelo menos um filtro foi preenchido
+    if (!termo && !setor && !lider && !supervisor && !turno) {
+        alert('Por favor, preencha pelo menos um filtro de busca');
+        return;
+    }
+    
+    // Construir query string
+    let params = new URLSearchParams();
+    if (termo) params.append('termo', termo);
+    if (setor) params.append('setor', setor);
+    if (lider) params.append('lider', lider);
+    if (supervisor) params.append('supervisor', supervisor);
+    if (turno) params.append('turno', turno);
+    
+    document.getElementById('lista-colaboradores').innerHTML = '<p class="text-center py-3">Carregando...</p>';
+    
+    fetch(`/procedures/matriz/${matrizId}/colaboradores/?${params}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        colaboradoresData = data.colaboradores;
+        renderizarColaboradores();
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        document.getElementById('lista-colaboradores').innerHTML = '<p class="text-danger text-center py-3">Erro ao carregar colaboradores. Tente novamente.</p>';
+    });
+}
+
+// Função para renderizar lista de colaboradores
+function renderizarColaboradores() {
+    const container = document.getElementById('lista-colaboradores');
+    
+    if (colaboradoresData.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center py-3">Nenhum colaborador encontrado com os filtros aplicados</p>';
+        return;
+    }
+    
+    let html = '';
+    colaboradoresData.forEach(colab => {
+        html += `
+            <div class="form-check mb-2 pb-2 border-bottom">
+                <input class="form-check-input colab-checkbox" 
+                       type="checkbox" 
+                       name="colaboradores" 
+                       value="${colab.id}" 
+                       id="colab-${colab.id}"
+                       ${colab.associado ? 'checked' : ''}>
+                <label class="form-check-label w-100" for="colab-${colab.id}" style="cursor: pointer;">
+                    <div>
+                        <strong>${colab.nome}</strong>
+                        <small class="text-muted d-block">Matrícula: ${colab.matricula} | Setor: ${colab.setor || '-'}</small>
+                    </div>
+                </label>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Função para selecionar todos os colaboradores
+function selecionarTodos() {
+    const checkboxes = document.querySelectorAll('.colab-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+// Função para desselecionar todos os colaboradores
+function desseleccionarTodos() {
+    const checkboxes = document.querySelectorAll('.colab-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+// Tratamento do formulário
+document.getElementById('form-associar-colaboradores').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const matrizId = document.getElementById('matriz-id').value;
+    const colaboradoresChecked = Array.from(
+        document.querySelectorAll('.colab-checkbox:checked')
+    ).map(cb => parseInt(cb.value));
+    
+    fetch(`/procedures/matriz/${matrizId}/colaboradores/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ colaboradores: colaboradoresChecked })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Atualizar o contador de colaboradores no botão
+            const contadorElement = document.querySelector(`.colab-count-${matrizId}`);
+            if (contadorElement) {
+                contadorElement.textContent = colaboradoresChecked.length;
+            }
+            alert('Colaboradores associados com sucesso!');
+            bootstrap.Modal.getInstance(document.getElementById('modalAssociarColaboradores')).hide();
+        } else {
+            alert('Erro ao associar colaboradores: ' + (data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        alert('Erro na requisição: ' + error);
+    });
+});
+
+// Função para abrir modal de delete da matriz
+function abrirModalDeleteMatriz(matrizId, codigo, nome) {
+    document.getElementById('delete-matriz-id').value = matrizId;
+    document.getElementById('delete-matriz-nome').textContent = `${codigo} - ${nome}`;
+    const modal = new bootstrap.Modal(document.getElementById('modalDeleteMatriz'));
+    modal.show();
+}
+
+// Confirmar delete da matriz
+function confirmarDeleteMatriz() {
+    const matrizId = document.getElementById('delete-matriz-id').value;
+    
+    fetch(`/procedures/matrizes/${matrizId}/deletar/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Matriz e todas as disciplinas associadas foram deletadas com sucesso!');
+            location.reload();
+        } else {
+            alert('Erro ao deletar matriz: ' + (data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        alert('Erro na requisição: ' + error);
+    });
+}
+</script>
+
+<!-- Modal Delete Matriz -->
+<div class="modal fade" id="modalDeleteMatriz" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Deletar Matriz
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-circle"></i> <strong>ATENÇÃO!</strong>
+                </div>
+                <p>Você está prestes a deletar a matriz:</p>
+                <p class="fw-bold text-danger">
+                    <i class="bi bi-folder"></i> <span id="delete-matriz-nome"></span>
+                </p>
+                <hr>
+                <p class="text-danger">
+                    <strong>Esta ação é irreversível e irá:</strong>
+                </p>
+                <ul class="text-danger">
+                    <li>Deletar a matriz e TODAS as suas disciplinas associadas</li>
+                    <li>Remover todas as avaliações relacionadas</li>
+                    <li>Desassociar todos os colaboradores da matriz</li>
+                </ul>
+                <input type="hidden" id="delete-matriz-id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="confirmarDeleteMatriz()">
+                    <i class="bi bi-trash"></i> Deletar Matriz
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,354 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h2 class="mb-1">{{ ocorrencia.assunto }}</h2>
+            <p class="text-muted mb-0">Detalhes completos da ocorrencia registrada no modulo Laboratorio.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:ocorrencias_list' %}" class="btn btn-outline-secondary">Voltar para listagem</a>
+            <button type="button" class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#anotacoesModal">Anotacoes</button>
+            {% if not ocorrencia.data_encerramento %}
+            <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#encerramentoModal">Encerrar agora</button>
+            {% endif %}
+            <form method="post" action="{% url 'laboratorio:ocorrencia_delete' ocorrencia.pk %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta ocorrencia?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger">Excluir ocorrencia</button>
+            </form>
+            <a href="{% url 'laboratorio:ocorrencia_update' ocorrencia.pk %}" class="btn btn-primary">Editar ocorrencia</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Status</div>
+                    {% if ocorrencia.data_encerramento %}
+                    <div class="h4 mb-0 text-success">Encerrada</div>
+                    {% else %}
+                    <div class="h4 mb-0 text-danger">Aberta</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Impacto</div>
+                    <div class="h4 mb-0"><span class="badge text-bg-{{ ocorrencia.impacto_badge_class }}">{{ ocorrencia.get_impacto_display }}</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Duracao</div>
+                    <div class="h4 mb-0">{{ ocorrencia.duracao_formatada }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Categoria</div>
+                    <div class="h4 mb-0">{{ ocorrencia.categoria|default:'Assunto livre' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-semibold">Dados da ocorrencia</div>
+                <div class="card-body">
+                    <div class="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xxl-5">
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Responsavel</div>
+                                <div class="fw-semibold">{{ ocorrencia.responsavel.get_full_name|default:ocorrencia.responsavel.username|default:'-' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Abertura</div>
+                                <div class="fw-semibold">{{ ocorrencia.data_abertura|date:'d/m/Y H:i' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Encerramento</div>
+                                <div class="fw-semibold">{{ ocorrencia.data_encerramento|date:'d/m/Y H:i'|default:'-' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Criado em</div>
+                                <div class="fw-semibold">{{ ocorrencia.criado_em|date:'d/m/Y H:i' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Atualizado em</div>
+                                <div class="fw-semibold">{{ ocorrencia.atualizado_em|date:'d/m/Y H:i' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-xl-7 d-flex flex-column gap-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-semibold">Detalhamento</div>
+                <div class="card-body">
+                    {{ ocorrencia.detalhamento|linebreaks }}
+                </div>
+            </div>
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-semibold">Consequencias</div>
+                <div class="card-body">
+                    {% if ocorrencia.consequencias %}
+                    {{ ocorrencia.consequencias|linebreaks }}
+                    {% else %}
+                    <p class="text-muted mb-0">Nenhuma consequencia registrada.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-5 d-flex flex-column gap-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-semibold">Impactos no encerramento</div>
+                <div class="card-body">
+                    {% if ocorrencia.data_encerramento or ocorrencia.possui_impacto_registrado %}
+                    <div class="row g-3 mb-3 row-cols-1 row-cols-md-3 row-cols-xl-1">
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase">Perda de producao</div>
+                                <div class="fw-semibold mt-1">
+                                    {% if ocorrencia.perda_producao %}
+                                    {{ ocorrencia.perda_producao|floatformat:2 }} {{ ocorrencia.unidade_perda_producao }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase">Horas indisponiveis</div>
+                                <div class="fw-semibold mt-1">
+                                    {% if ocorrencia.horas_indisponibilidade %}
+                                    {{ ocorrencia.horas_indisponibilidade|floatformat:2 }} h
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase">Impacto financeiro</div>
+                                <div class="fw-semibold mt-1">
+                                    {% if ocorrencia.impacto_financeiro %}
+                                    R$ {{ ocorrencia.impacto_financeiro|floatformat:2 }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-muted small text-uppercase mb-2">Observacoes do encerramento</div>
+                        {% if ocorrencia.observacoes_encerramento %}
+                        {{ ocorrencia.observacoes_encerramento|linebreaks }}
+                        {% else %}
+                        <p class="text-muted mb-0">O encerramento foi registrado sem observacoes complementares.</p>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Use o encerramento guiado para registrar perda de producao, horas indisponiveis, impacto financeiro e observacoes finais.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <span class="fw-semibold">Anotacoes internas</span>
+                    <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#anotacoesModal">Preencher</button>
+                </div>
+                <div class="card-body">
+                    {% if anotacoes_registradas %}
+                    <div class="d-flex flex-column gap-3">
+                        {% for anotacao in anotacoes_registradas %}
+                        <div class="border rounded-3 p-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <span class="badge text-bg-dark">{{ anotacao.autor_display }}</span>
+                                <span class="text-muted small">{{ anotacao.criado_em|date:'d/m/Y H:i:s' }}</span>
+                            </div>
+                            <div>{{ anotacao.texto|linebreaks }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Nenhuma anotacao registrada ate o momento.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<div class="modal fade" id="anotacoesModal" tabindex="-1" aria-labelledby="anotacoesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'laboratorio:ocorrencia_notes' ocorrencia.pk %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="anotacoesModalLabel">Nova anotacao da ocorrencia</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-text mb-2">Cada envio gera um registro separado com data, hora e usuario responsavel pela anotacao.</div>
+                    <label class="form-label" for="{{ notes_form.texto.id_for_label }}">{{ notes_form.texto.label }}</label>
+                    {{ notes_form.texto }}
+                    {% if notes_form.texto.errors %}
+                    <div class="text-danger small mt-2">{{ notes_form.texto.errors|join:', ' }}</div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Adicionar anotacao</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="encerramentoModal" tabindex="-1" aria-labelledby="encerramentoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'laboratorio:ocorrencia_close' ocorrencia.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ close_next }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="encerramentoModalLabel">Encerrar ocorrencia com avaliacao de impacto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    {% if close_form.non_field_errors %}
+                    <div class="alert alert-danger">{{ close_form.non_field_errors }}</div>
+                    {% endif %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ close_form.data_encerramento.id_for_label }}">{{ close_form.data_encerramento.label }}</label>
+                            {{ close_form.data_encerramento }}
+                            <div class="form-text">Este campo deve ser sempre posterior a data e hora de abertura.</div>
+                            {% if close_form.data_encerramento.errors %}
+                            <div class="text-danger small mt-1">{{ close_form.data_encerramento.errors|join:', ' }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch border rounded p-3">
+                                {{ close_form.registrar_medidas }}
+                                <label class="form-check-label fw-semibold ms-2" for="{{ close_form.registrar_medidas.id_for_label }}">{{ close_form.registrar_medidas.label }}</label>
+                                <div class="small text-muted mt-1">Marque para registrar perda de producao, indisponibilidade e impacto financeiro.</div>
+                            </div>
+                        </div>
+                        <div class="col-12" id="encerramento-medidas-wrapper">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                            <label class="form-label" for="{{ close_form.perda_producao.id_for_label }}">{{ close_form.perda_producao.label }}</label>
+                            {{ close_form.perda_producao }}
+                            {% if close_form.perda_producao.errors %}
+                            <div class="text-danger small mt-1">{{ close_form.perda_producao.errors|join:', ' }}</div>
+                            {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                            <label class="form-label" for="{{ close_form.unidade_perda_producao.id_for_label }}">{{ close_form.unidade_perda_producao.label }}</label>
+                            {{ close_form.unidade_perda_producao }}
+                            {% if close_form.unidade_perda_producao.errors %}
+                            <div class="text-danger small mt-1">{{ close_form.unidade_perda_producao.errors|join:', ' }}</div>
+                            {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                            <label class="form-label" for="{{ close_form.horas_indisponibilidade.id_for_label }}">{{ close_form.horas_indisponibilidade.label }}</label>
+                            {{ close_form.horas_indisponibilidade }}
+                            {% if close_form.horas_indisponibilidade.errors %}
+                            <div class="text-danger small mt-1">{{ close_form.horas_indisponibilidade.errors|join:', ' }}</div>
+                            {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                            <label class="form-label" for="{{ close_form.impacto_financeiro.id_for_label }}">{{ close_form.impacto_financeiro.label }}</label>
+                            {{ close_form.impacto_financeiro }}
+                            {% if close_form.impacto_financeiro.errors %}
+                            <div class="text-danger small mt-1">{{ close_form.impacto_financeiro.errors|join:', ' }}</div>
+                            {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="{{ close_form.observacoes_encerramento.id_for_label }}">{{ close_form.observacoes_encerramento.label }}</label>
+                            {{ close_form.observacoes_encerramento }}
+                            {% if close_form.observacoes_encerramento.errors %}
+                            <div class="text-danger small mt-1">{{ close_form.observacoes_encerramento.errors|join:', ' }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Confirmar encerramento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const medidasCheckbox = document.getElementById('{{ close_form.registrar_medidas.id_for_label }}');
+    const medidasWrapper = document.getElementById('encerramento-medidas-wrapper');
+    const medidasInputs = medidasWrapper ? medidasWrapper.querySelectorAll('input, select, textarea') : [];
+
+    function syncMedidasVisibility() {
+        if (!medidasCheckbox || !medidasWrapper) {
+            return;
+        }
+
+        const show = medidasCheckbox.checked;
+        medidasWrapper.classList.toggle('d-none', !show);
+        medidasInputs.forEach(function(input) {
+            input.disabled = !show;
+        });
+    }
+
+    if (medidasCheckbox && medidasWrapper) {
+        medidasCheckbox.addEventListener('change', syncMedidasVisibility);
+        syncMedidasVisibility();
+    }
+
+    const modalName = '{{ open_modal|escapejs }}';
+    if (!modalName || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+        return;
+    }
+
+    const modalId = modalName === 'anotacoes' ? 'anotacoesModal' : (modalName === 'encerramento' ? 'encerramentoModal' : '');
+    if (!modalId) {
+        return;
+    }
+
+    const modalEl = document.getElementById(modalId);
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+});
+</script>
+{% endblock %}

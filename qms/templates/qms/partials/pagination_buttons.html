@@ -1,0 +1,40 @@
+{# Compact pagination buttons (Prev/Next) #}
+{% load pagination_tags %}
+
+{% if total_pages|default:0|add:0 > 1 %}
+<div class="d-flex align-items-center justify-content-between gap-2 flex-wrap my-2">
+    <div class="small text-muted">
+        {% pagination_summary pagination %}
+    </div>
+
+    <div class="btn-group" role="group" aria-label="Paginação">
+        {% if prev_page %}
+            <a class="btn btn-sm btn-outline-secondary" href="?page={{ prev_page }}{% if query_params %}&{{ query_params.urlencode }}{% endif %}" aria-label="Página anterior">
+                <i class="bi bi-chevron-left"></i>
+                <span class="d-none d-sm-inline">Anterior</span>
+            </a>
+        {% else %}
+            <button class="btn btn-sm btn-outline-secondary" type="button" disabled aria-label="Sem página anterior">
+                <i class="bi bi-chevron-left"></i>
+                <span class="d-none d-sm-inline">Anterior</span>
+            </button>
+        {% endif %}
+
+        <button class="btn btn-sm btn-outline-secondary" type="button" disabled>
+            {{ current_page|default:1 }}/{{ total_pages|default:1 }}
+        </button>
+
+        {% if next_page %}
+            <a class="btn btn-sm btn-outline-secondary" href="?page={{ next_page }}{% if query_params %}&{{ query_params.urlencode }}{% endif %}" aria-label="Próxima página">
+                <span class="d-none d-sm-inline">Próxima</span>
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        {% else %}
+            <button class="btn btn-sm btn-outline-secondary" type="button" disabled aria-label="Sem próxima página">
+                <span class="d-none d-sm-inline">Próxima</span>
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

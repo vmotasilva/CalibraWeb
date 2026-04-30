@@ -1,0 +1,600 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">Registrar Histórico de Calibração</h2>
+            <p class="text-muted mb-0">{{ instrumento.tag }} - {{ instrumento.descricao }}</p>
+        </div>
+        <div>
+            <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- LAYOUT: Esquerda (Formulário) + Direita (Preview) -->
+    <div class="row mb-4 g-4">
+        <!-- COLUNA 1: DADOS PRINCIPAIS DO HISTÓRICO (Esquerda) -->
+        <div class="col-lg-6">
+            <form method="post" enctype="multipart/form-data" id="historico-form">
+                {% csrf_token %}
+
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-primary text-white">
+                        <i class="bi bi-calendar-check"></i> Dados do Histórico
+                    </div>
+                    <div class="card-body pb-2">
+
+                        <!-- Upload de Certificado -->
+                        <div class="mb-3">
+                            <label for="id_certificado" class="form-label fw-bold">
+                                Certificado (PDF) <span class="text-danger">*</span>
+                            </label>
+                            {{ form.certificado|add_class:"form-control" }}
+                            <small class="form-text text-muted d-block mt-2">
+                                <i class="bi bi-info-circle"></i> Faça upload do certificado para visualizá-lo ao lado enquanto preenche os dados
+                            </small>
+                            {% if form.certificado.errors %}
+                                <div class="text-danger small mt-1">{{ form.certificado.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Datas -->
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_data_calibracao" class="form-label fw-bold small">Data da Calibração <span class="text-danger">*</span></label>
+                                    {{ form.data_calibracao|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_proxima_calibracao" class="form-label fw-bold small">Próxima Calibração <span class="text-danger">*</span></label>
+                                    {{ form.proxima_calibracao|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Identificação -->
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_numero_certificado" class="form-label fw-bold small">Nº Certificado <span class="text-danger">*</span></label>
+                                    {{ form.numero_certificado|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_tipo_calibracao" class="form-label fw-bold small">Tipo de Calibração</label>
+                                    {{ form.tipo_calibracao|add_class:"form-select form-select-sm" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_responsavel" class="form-label fw-bold small">Responsável</label>
+                                    {{ form.responsavel|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_fornecedor" class="form-label fw-bold small">Laboratório</label>
+                                    {{ form.fornecedor|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="form-check">
+                                {{ form.tem_selo_rbc|add_class:"form-check-input" }}
+                                <label for="id_tem_selo_rbc" class="form-check-label small">
+                                    Possui Selo RBC?
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Upload de Padrões -->
+                        <div class="mb-2{% if form.instance.pk and form.instance.tem_selo_rbc %} d-none{% endif %}" id="arquivos-padroes-section">
+                            <div class="card bg-light border-info" style="font-size: 0.9rem;">
+                                <div class="card-header bg-info text-white p-2" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#padroes-collapse">
+                                    <i class="bi bi-chevron-down" id="padroes-icon"></i>
+                                    <i class="bi bi-file-pdf text-danger"></i> <small>Padrões de Calibração</small>
+                                </div>
+                                <div id="padroes-collapse" class="collapse show">
+                                    <div class="card-body p-2">
+                                        <label for="id_arquivos_padroes" class="form-label fw-bold small">Arquivos de Padrões (PDF)</label>
+                                        <input type="file" id="id_arquivos_padroes" name="arquivos_padroes[]" class="form-control form-control-sm" accept=".pdf" multiple>
+                                        <div class="form-text small">Anexe um ou mais arquivos PDF de padrões utilizados.</div>
+
+                                        {% if form.instance.pk and form.instance.arquivos_padroes.exists %}
+                                            <div class="mt-2">
+                                                <strong class="small">Arquivos já anexados:</strong>
+                                                <div class="list-group list-group-sm mt-1">
+                                                    {% for arquivo in form.instance.arquivos_padroes.all|dictsortreversed:'criado_em' %}
+                                                        <div class="list-group-item d-flex justify-content-between align-items-center py-2" style="font-size: 0.85rem;">
+                                                            <div class="small">
+                                                                <i class="bi bi-file-pdf text-danger"></i> {{ arquivo.nome|default:arquivo.arquivo.name }}
+                                                            </div>
+                                                            <div class="btn-group btn-group-sm">
+                                                                <a href="{{ arquivo.arquivo.url }}" download class="btn btn-sm btn-outline-primary">
+                                                                    <i class="bi bi-download"></i>
+                                                                </a>
+                                                                <form method="post" action="{% url 'remover_arquivo_padrao' arquivo.id %}" style="display:inline;">
+                                                                    {% csrf_token %}
+                                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover?');">
+                                                                        <i class="bi bi-trash"></i>
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-2">
+                    </div>
+
+                    <!-- SEÇÃO 2: RESULTADOS POR FAIXA -->
+                    <div class="card-header bg-info text-white py-2 mt-3">
+                        <i class="bi bi-table"></i> Resultados de Medição por Faixa
+                    </div>
+                    <div class="card-body p-0">
+                        {% if faixas_medicao %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" style="font-size: 0.85rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 5%;">
+                                            <input type="checkbox" id="toggle-all-faixas" checked title="Marcar/Desmarcar todas">
+                                        </th>
+                                        <th style="width: 20%;">Faixa</th>
+                                        <th style="width: 10%;">Unidade</th>
+                                        <th style="width: 13%;">Erro (E)</th>
+                                        <th style="width: 13%;">Incerteza (U)</th>
+                                        <th style="width: 13%;">Tolerância</th>
+                                        <th style="width: 26%;">Resultado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for faixa in faixas_medicao %}
+                                    <tr class="faixa-row" data-faixa-id="{{ faixa.id }}" data-frequencia="{{ faixa.instrumento.frequencia_meses }}">
+                                        <td class="text-center">
+                                            <input type="checkbox" 
+                                                   name="faixa_{{ faixa.id }}_ativa" 
+                                                   class="form-check-input faixa-checkbox" 
+                                                   checked
+                                                   data-faixa-id="{{ faixa.id }}">
+                                        </td>
+                                        <td>
+                                            <small><strong>{{ faixa.valor_minimo }} a {{ faixa.valor_maximo }}</strong></small>
+                                        </td>
+                                        <td>
+                                            <small>{{ faixa.unidade.nome }}</small>
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_erro" 
+                                                   class="form-control form-control-sm faixa-erro" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   placeholder="0.0000">
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_incerteza" 
+                                                   class="form-control form-control-sm faixa-incerteza" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   placeholder="0.0000">
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_tolerancia" 
+                                                   class="form-control form-control-sm faixa-tolerancia" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   value="{{ faixa.tolerancia_mais_menos|default:'' }}"
+                                                   readonly
+                                                   placeholder="0.0000">
+                                        </td>
+                                        <td>
+                                            <div class="resultado-preview-faixa" data-faixa-id="{{ faixa.id }}">
+                                                <span class="badge bg-secondary">Preencha</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning m-3 mb-0">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            Este instrumento não possui faixas de medição cadastradas.
+                            <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="alert-link">
+                                Cadastre faixas antes de registrar calibração.
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- BOTÕES -->
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-save"></i> Salvar Histórico
+                    </button>
+                    <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- COLUNA 2: PRÉ-VISUALIZAÇÃO DO CERTIFICADO (Direita) -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100 d-flex flex-column">
+                <div class="card-header bg-success text-white py-2">
+                    <i class="bi bi-file-pdf"></i> Pré-visualização do Certificado
+                </div>
+                <div class="card-body p-2 flex-grow-1 d-flex flex-column">
+                    <!-- Visualização do PDF Real ou Template -->
+                    <div id="pdf-viewer" class="pdf-viewer-container flex-grow-1 d-flex flex-column mb-2">
+                        <div class="pdf-toolbar">
+                            <button id="prev-page" class="btn btn-sm btn-outline-secondary" title="Página anterior">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <span id="page-info" class="pdf-page-info small">
+                                Página <span id="page-num">1</span>/<span id="page-total">0</span>
+                            </span>
+                            <button id="next-page" class="btn btn-sm btn-outline-secondary" title="Próxima página">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                            <div class="pdf-zoom-controls ms-auto">
+                                <button id="zoom-out" class="btn btn-sm btn-outline-secondary" title="Diminuir zoom">
+                                    <i class="bi bi-zoom-out"></i>
+                                </button>
+                                <span id="zoom-level" class="zoom-level small">100%</span>
+                                <button id="zoom-in" class="btn btn-sm btn-outline-secondary" title="Aumentar zoom">
+                                    <i class="bi bi-zoom-in"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="pdf-render" class="pdf-render-area flex-grow-1 overflow-auto">
+                            <div id="pdf-placeholder" class="d-flex align-items-center justify-content-center h-100 text-muted w-100">
+                                <div class="text-center p-4">
+                                    <i class="bi bi-cloud-upload display-1 mb-3"></i>
+                                    <h5>Nenhum PDF carregado</h5>
+                                    <p>Faça upload do certificado no campo ao lado para visualizá-lo aqui</p>
+                                </div>
+                            </div>
+                            <canvas id="pdf-canvas" class="pdf-canvas d-none"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+    // Inicializar PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const certificadoInput = document.getElementById('id_certificado');
+    const pdfViewer = document.getElementById('pdf-viewer');
+    const pdfRender = document.getElementById('pdf-render');
+    const pdfPlaceholder = document.getElementById('pdf-placeholder');
+    const pdfCanvas = document.getElementById('pdf-canvas');
+    const rbcCheckbox = document.getElementById('id_tem_selo_rbc');
+    const padroesSection = document.getElementById('arquivos-padroes-section');
+    const faixasTable = document.getElementById('faixas-table');
+    const toggleAllCheckbox = document.getElementById('toggle-all-faixas');
+
+    let pdfDoc = null;
+    let pageNum = 1;
+    let pageRendering = false;
+    let pageNumPending = null;
+    let currentScale = 1.5;
+    const MIN_SCALE = 0.5;
+    const MAX_SCALE = 3.0;
+    const SCALE_STEP = 0.25;
+    const frequenciaMeses = {{ instrumento.frequencia_meses }};
+
+    // Toggle padrões quando RBC muda
+    function togglePadroes() {
+        if (!rbcCheckbox) return;
+        if (rbcCheckbox.checked) {
+            padroesSection?.classList.add('d-none');
+        } else {
+            padroesSection?.classList.remove('d-none');
+        }
+    }
+    if (rbcCheckbox) {
+        rbcCheckbox.addEventListener('change', togglePadroes);
+        togglePadroes();
+    }
+
+    // Upload de PDF
+    certificadoInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        
+        if (file) {
+            if (file.type !== 'application/pdf') {
+                alert('Por favor, selecione apenas arquivos PDF');
+                certificadoInput.value = '';
+                return;
+            }
+            
+            const maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert('O arquivo é muito grande. Tamanho máximo: 10MB');
+                certificadoInput.value = '';
+                return;
+            }
+            
+            const fileReader = new FileReader();
+            fileReader.onload = function() {
+                const typedarray = new Uint8Array(fileReader.result);
+                pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                    pdfDoc = pdf;
+                    pageNum = 1;
+                    document.getElementById('page-total').textContent = pdf.numPages;
+                    renderPage(1);
+                    pdfPlaceholder.classList.add('d-none');
+                    pdfCanvas.classList.remove('d-none');
+                }).catch(error => {
+                    alert('Erro ao carregar PDF: ' + error.message);
+                    certificadoInput.value = '';
+                });
+            };
+            fileReader.readAsArrayBuffer(file);
+        } else {
+            pdfDoc = null;
+            pdfCanvas.classList.add('d-none');
+            pdfPlaceholder.classList.remove('d-none');
+            pageNum = 1;
+            document.getElementById('page-total').textContent = '0';
+        }
+    });
+
+    function renderPage(num) {
+        if (!pdfDoc) return;
+        pageRendering = true;
+        pdfDoc.getPage(num).then(function(page) {
+            const ctx = pdfCanvas.getContext('2d');
+            const viewport = page.getViewport({ scale: currentScale });
+            
+            pdfCanvas.height = viewport.height;
+            pdfCanvas.width = viewport.width;
+
+            page.render({
+                canvasContext: ctx,
+                viewport: viewport
+            }).promise.then(function() {
+                pageRendering = false;
+                document.getElementById('page-num').textContent = num;
+                if (pageNumPending !== null) {
+                    renderPage(pageNumPending);
+                    pageNumPending = null;
+                }
+            });
+        });
+    }
+
+    function queuePage(num) {
+        if (num < 1 || num > pdfDoc.numPages) return;
+        pageNum = num;
+        if (pageRendering) {
+            pageNumPending = num;
+        } else {
+            renderPage(num);
+        }
+    }
+
+    document.getElementById('prev-page').addEventListener('click', () => queuePage(pageNum - 1));
+    document.getElementById('next-page').addEventListener('click', () => queuePage(pageNum + 1));
+    
+    document.getElementById('zoom-out').addEventListener('click', function() {
+        if (currentScale > MIN_SCALE) {
+            currentScale = Math.max(MIN_SCALE, currentScale - SCALE_STEP);
+            updateZoomLevel();
+            if (pdfDoc) renderPage(pageNum);
+        }
+    });
+
+    document.getElementById('zoom-in').addEventListener('click', function() {
+        if (currentScale < MAX_SCALE) {
+            currentScale = Math.min(MAX_SCALE, currentScale + SCALE_STEP);
+            updateZoomLevel();
+            if (pdfDoc) renderPage(pageNum);
+        }
+    });
+
+    function updateZoomLevel() {
+        const percentage = Math.round(currentScale * 100 / 1.5);
+        document.getElementById('zoom-level').textContent = percentage + '%';
+    }
+
+    // Cálculos de faixa
+    function calcularResultadoFaixa(faixaId) {
+        const row = document.querySelector(`tr[data-faixa-id="${faixaId}"]`);
+        if (!row) return;
+        
+        const checkbox = row.querySelector('.faixa-checkbox');
+        const erroInput = row.querySelector('.faixa-erro');
+        const incertezaInput = row.querySelector('.faixa-incerteza');
+        const toleranciaInput = row.querySelector('.faixa-tolerancia');
+        const resultadoDiv = row.querySelector('.resultado-preview-faixa');
+        
+        if (!checkbox.checked) {
+            resultadoDiv.innerHTML = '<span class="badge bg-secondary">Desconsiderada</span>';
+            row.classList.add('table-secondary');
+            erroInput.disabled = true;
+            incertezaInput.disabled = true;
+            return;
+        } else {
+            row.classList.remove('table-secondary');
+            erroInput.disabled = false;
+            incertezaInput.disabled = false;
+        }
+        
+        const erro = parseFloat(erroInput.value);
+        const incerteza = parseFloat(incertezaInput.value);
+        const tolerancia = parseFloat(toleranciaInput.value);
+        
+        if (isNaN(erro) || isNaN(incerteza) || isNaN(tolerancia)) {
+            resultadoDiv.innerHTML = '<span class="badge bg-secondary">Preencha</span>';
+            return;
+        }
+        
+        const erroAbs = Math.abs(erro);
+        const incAbs = Math.abs(incerteza);
+        const EMA = Math.abs(tolerancia) / 2;
+        const EME = erroAbs + incAbs;
+        
+        let resultado = '';
+        let classe = '';
+        
+        if (EME <= EMA) {
+            resultado = 'Aprovado sem correção';
+            classe = 'success';
+        } else if (EME <= Math.abs(tolerancia)) {
+            resultado = 'Aprovado com Correção';
+            classe = 'warning';
+        } else {
+            resultado = 'Reprovado';
+            classe = 'danger';
+        }
+        
+        resultadoDiv.innerHTML = `<span class="badge bg-${classe}">${resultado}</span>`;
+    }
+    
+    function atualizarContagemFaixas() {
+        const ativas = document.querySelectorAll('.faixa-checkbox:checked').length;
+        const total = document.querySelectorAll('.faixa-checkbox').length;
+    }
+    
+    if (faixasTable) {
+        if (toggleAllCheckbox) {
+            toggleAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.faixa-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                    const faixaId = cb.dataset.faixaId;
+                    calcularResultadoFaixa(faixaId);
+                });
+                atualizarContagemFaixas();
+            });
+        }
+        
+        const faixaRows = document.querySelectorAll('.faixa-row');
+        faixaRows.forEach(row => {
+            const faixaId = row.dataset.faixaId;
+            const checkbox = row.querySelector('.faixa-checkbox');
+            const erroInput = row.querySelector('.faixa-erro');
+            const incertezaInput = row.querySelector('.faixa-incerteza');
+            
+            checkbox.addEventListener('change', function() {
+                calcularResultadoFaixa(faixaId);
+                atualizarContagemFaixas();
+            });
+            
+            [erroInput, incertezaInput].forEach(input => {
+                input.addEventListener('input', () => calcularResultadoFaixa(faixaId));
+                input.addEventListener('change', () => calcularResultadoFaixa(faixaId));
+            });
+        });
+    }
+</script>
+
+<style>
+    /* PDF Viewer */
+    .pdf-viewer-container {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+        background: #f5f5f5;
+    }
+    
+    .pdf-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: #f9f9f9;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .pdf-page-info {
+        display: inline-block;
+        font-size: 14px;
+        color: #666;
+        min-width: 150px;
+    }
+    
+    .pdf-zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .zoom-level {
+        min-width: 45px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 500;
+        color: #555;
+    }
+    
+    .pdf-render-area {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 10px;
+        background: #f9f9f9;
+        border: 1px solid #e0e0e0;
+        min-height: 400px;
+        flex: 1;
+    }
+    
+    .pdf-canvas {
+        border: 1px solid #ddd;
+        background: white;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        max-width: 100%;
+        height: auto;
+    }
+
+    .card {
+        border: none;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    @media (max-width: 991px) {
+        .sticky-top {
+            position: relative !important;
+            top: 0 !important;
+        }
+        
+        .pdf-render-area {
+            height: 500px !important;
+        }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,1453 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard de Treinamentos{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <!-- Cabeçalho Principal - Fixo no topo -->
+    <div class="dashboard-header">
+        <div class="d-flex justify-content-between align-items-center bg-white rounded shadow-sm px-4 py-2">
+            <div>
+                <h1 class="h5 mb-0"><i class="bi bi-graph-up text-primary me-2"></i>Dashboard de Treinamentos</h1>
+                <small class="text-muted" style="font-size: 0.75rem;">Visão geral de estatísticas e conformidade</small>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <button id="exportCsv" class="btn btn-outline-success btn-sm py-1">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Exportar CSV
+                </button>
+                <span class="badge bg-light text-dark" style="font-size: 0.7rem;">
+                    <i class="bi bi-clock me-1"></i>Atualizado: {% now "d/m/Y H:i" %}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-body">
+        <!-- Sidebar de Filtros (Recolhível) - Estilo RH -->
+        <div id="sidebarCol" class="col-auto sidebar-col">
+            <div id="filterSidebar" class="filter-card">
+                <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
+                    <h6 class="fw-bold mb-0 text-secondary"><i class="bi bi-funnel-fill"></i> FILTROS</h6>
+                </div>
+
+                <div class="filter-card-body">
+                    <div class="sidebar-scroll">
+                        
+                        <!-- Setor -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Setor</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for s in setores %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ s.id }}" data-category="setor" id="set_{{ s.id }}" {% if s.id|stringformat:"s" in filtro_setor_list %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="set_{{ s.id }}" title="{{ s.nome }}">
+                                            {{ s.nome }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Turno -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Turno</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for t in turnos %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ t.value }}" data-category="turno" id="turn_{{ t.value }}" {% if t.value in filtro_turno_list %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="turn_{{ t.value }}">
+                                            {{ t.label }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Líder -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Líder</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for l in lideres %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ l.id }}" data-category="lider" id="lider_{{ l.id }}" {% if l.id|stringformat:"s" in filtro_lider_list %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="lider_{{ l.id }}" title="{{ l.nome }}">
+                                            {{ l.nome }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Criticidade -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Criticidade</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for value, label in criticidade_choices %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ value }}" data-category="criticidade" id="crit_{{ value }}" {% if value|stringformat:"s" in filtro_criticidade_list %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="crit_{{ value }}" title="{{ label }}">
+                                            {{ label }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Matriz -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Matriz</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for m in matrizes %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ m }}" data-category="matriz" id="matriz_{{ forloop.counter }}" {% if m in filtro_matriz_list %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="matriz_{{ forloop.counter }}" title="{{ m }}">
+                                            {{ m }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sub-Área -->
+                        <div class="filter-group">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Sub-Área</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    {% for sa in sub_areas %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ sa }}" data-category="sub_area" id="subarea_{{ forloop.counter }}" {% if sa in filtro_sub_area_list %}checked{% endif %}>
+                                        <label class="form-check-label small text-truncate" for="subarea_{{ forloop.counter }}" title="{{ sa }}">
+                                            {{ sa }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Colaborador (texto) -->
+                        <div class="filter-group open">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="filter-title">Colaborador</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                    <input id="filterColaboradorQ" type="text" class="form-control form-control-sm" placeholder="Nome ou matrícula" value="{{ filtro_colaborador_q|default:'' }}" list="colabSuggestions" autocomplete="off">
+                                    <input id="filterColaboradorId" type="hidden" value="{{ filtro_colaborador_id|default:'' }}">
+                                    <datalist id="colabSuggestions"></datalist>
+                                <small class="text-muted" style="font-size: 0.7rem;">Filtro por nome ou matrícula</small>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <!-- Footer com Botões -->
+                <div class="filter-card-footer border-top">
+                    <div class="d-grid gap-2 p-2">
+                        <button type="button" id="applyFilters" class="btn btn-primary btn-sm">
+                            <i class="bi bi-funnel-fill me-1"></i>Filtrar
+                        </button>
+                        <button type="button" id="clearFilters" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-x-circle me-1"></i>Limpar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar 2 - Indicadores -->
+        <div id="sidebar2Col" class="col-auto sidebar2-col">
+            <div id="indicatorsSidebar" class="indicators-sidebar">
+                <div class="sidebar2-content">
+                    <h6 class="mb-2 fw-bold text-center" style="font-size: 0.8rem;"><i class="bi bi-speedometer2 text-primary me-1"></i>Indicadores</h6>
+                    
+                    <!-- Total Treinamentos -->
+                    <div class="indicator-card mb-1">
+                        <div class="d-flex align-items-center">
+                            <div class="indicator-icon bg-primary bg-opacity-10 rounded-circle">
+                                <i class="bi bi-journal-check text-primary"></i>
+                            </div>
+                            <div class="ms-2 flex-grow-1">
+                                <small class="text-muted d-block" style="font-size: 0.65rem;">Total</small>
+                                <span class="fw-bold text-primary" style="font-size: 1rem;">{{ total_treinamentos|default:"0" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Vigentes -->
+                    <div class="indicator-card mb-1">
+                        <div class="d-flex align-items-center">
+                            <div class="indicator-icon bg-success bg-opacity-10 rounded-circle">
+                                <i class="bi bi-check-circle text-success"></i>
+                            </div>
+                            <div class="ms-2 flex-grow-1">
+                                <small class="text-muted d-block" style="font-size: 0.65rem;">Vigentes</small>
+                                <span class="fw-bold text-success" style="font-size: 1rem;">{{ treinamentos_vigentes|default:"0" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pendentes -->
+                    <div class="indicator-card mb-1">
+                        <div class="d-flex align-items-center">
+                            <div class="indicator-icon bg-danger bg-opacity-10 rounded-circle">
+                                <i class="bi bi-exclamation-triangle text-danger"></i>
+                            </div>
+                            <div class="ms-2 flex-grow-1">
+                                <small class="text-muted d-block" style="font-size: 0.65rem;">Pendentes</small>
+                                <span class="fw-bold text-danger" style="font-size: 1rem;">{{ treinamentos_pendentes|default:"0" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Colaboradores -->
+                    <div class="indicator-card mb-1">
+                        <div class="d-flex align-items-center">
+                            <div class="indicator-icon bg-info bg-opacity-10 rounded-circle">
+                                <i class="bi bi-people text-info"></i>
+                            </div>
+                            <div class="ms-2 flex-grow-1">
+                                <small class="text-muted d-block" style="font-size: 0.65rem;">Colaboradores</small>
+                                <span class="fw-bold text-info" style="font-size: 1rem;">{{ total_colaboradores_treinados|default:"0" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Taxa de Conformidade -->
+                    <div class="indicator-card">
+                        <div class="text-center">
+                            <small class="text-muted d-block mb-1" style="font-size: 0.65rem;">Taxa de Conformidade</small>
+                            <div class="d-flex align-items-center justify-content-center">
+                                <div class="circular-progress-sm">
+                                    <svg viewBox="0 0 36 36" class="circular-chart-sm">
+                                        <path class="circle-bg-red" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path class="circle-green" stroke-dasharray="{{ taxa_conformidade|default:0 }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    </svg>
+                                </div>
+                                <span class="fw-bold text-success ms-1" style="font-size: 1rem;">{{ taxa_conformidade|default:"0" }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Conteúdo Principal -->
+        <div id="mainContent" class="col main-content">
+            <div class="charts-scroll-area">
+
+    <!-- Gráficos Linha 1 - Demanda -->
+    <div class="row mb-2 g-2">
+        <!-- Treinamentos por Líder -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-person-badge text-success me-1"></i>Demanda por Líder</h6>
+                </div>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartLider" class="dashboard-chart dashboard-chart--row"></canvas>
+                    <div id="chartLiderFallback" class="text-center text-muted py-2 d-none">
+                        <i class="bi bi-bar-chart fs-4 text-muted"></i>
+                        <p class="mt-1 small mb-0">Nenhum dado disponível</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Treinamentos por Setor/Turno -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-building text-warning me-1"></i>Demanda por Setor/Turno</h6>
+                </div>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
+                    <div id="chartSetorTurnoFallback" class="text-center text-muted py-2 d-none">
+                        <i class="bi bi-bar-chart fs-4 text-muted"></i>
+                        <p class="mt-1 small mb-0">Nenhum dado disponível</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos Linha 2 - Planejamento -->
+    <div class="row mb-2 g-2">
+        <!-- Planejamento por Instrutor -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-calendar-check text-primary me-1"></i>Planejamento por Instrutor</h6>
+                </div>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartPlanejamentoInstrutor" class="dashboard-chart dashboard-chart--row"></canvas>
+                    <div id="chartPlanejamentoInstrutorFallback" class="text-center text-muted py-2 d-none">
+                        <i class="bi bi-calendar-x fs-4 text-muted"></i>
+                        <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Planejamento por Setor/Turno -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-calendar2-week text-info me-1"></i>Planejamento por Setor/Turno</h6>
+                </div>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartPlanejamentoSetorTurno" class="dashboard-chart dashboard-chart--row"></canvas>
+                    <div id="chartPlanejamentoSetorTurnoFallback" class="text-center text-muted py-2 d-none">
+                        <i class="bi bi-calendar-x fs-4 text-muted"></i>
+                        <p class="mt-1 small mb-0">Nenhum planejamento encontrado</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Treinamentos por Mês -->
+    <div class="row mb-2 g-2">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-1 px-2">
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.75rem;"><i class="bi bi-bar-chart text-info me-1"></i>Treinamentos Últimos 12 Meses</h6>
+                </div>
+                <div class="card-body py-1 px-2">
+                    <canvas id="chartMeses" class="dashboard-chart dashboard-chart--wide"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+            </div><!-- Fim charts-scroll-area -->
+        </div><!-- Fim main-content -->
+    </div><!-- Fim dashboard-body -->
+</div><!-- Fim dashboard-wrapper -->
+
+<style>
+    /* Dashboard Layout - Full Height */
+    .dashboard-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 60px); /* Ajuste conforme altura do navbar */
+        overflow: hidden;
+        padding: 0.5rem;
+    }
+    
+    .dashboard-header {
+        flex-shrink: 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .dashboard-body {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        gap: 0.5rem;
+    }
+
+    .dashboard-chart {
+        width: 100% !important;
+        display: block;
+    }
+
+    .dashboard-chart--row {
+        height: clamp(180px, 27vh, 250px) !important;
+    }
+
+    .dashboard-chart--wide {
+        height: clamp(170px, 22vh, 230px) !important;
+    }
+    
+    /* Sidebar Styles */
+    .sidebar-col {
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+        width: clamp(220px, 18vw, 250px);
+    }
+    
+    .filter-sidebar {
+        width: 200px;
+        height: 100%;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        transition: all 0.3s ease;
+        overflow-y: auto;
+    }
+    
+    .filter-sidebar.collapsed {
+        width: 0;
+        padding: 0;
+        opacity: 0;
+    }
+    
+    .sidebar-content {
+        padding: 0.75rem;
+        min-width: 200px;
+    }
+    
+    .expand-btn {
+        position: fixed;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1000;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    
+    /* Main Content com Scroll */
+    .main-content {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.3s ease;
+    }
+    
+    .charts-scroll-area {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 0.25rem;
+    }
+    
+    /* Scrollbar customizada */
+    .charts-scroll-area::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .charts-scroll-area::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .charts-scroll-area::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    
+    .charts-scroll-area::-webkit-scrollbar-thumb:hover {
+        background: #a1a1a1;
+    }
+    
+    /* Sidebar 2 - Indicadores */
+    .sidebar2-col {
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+        width: clamp(136px, 12vw, 160px);
+    }
+    
+    .indicators-sidebar {
+        width: 160px;
+        height: 100%;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        transition: all 0.3s ease;
+        overflow-y: auto;
+    }
+    
+    .sidebar2-content {
+        padding: 0.5rem;
+    }
+    
+    .indicator-card {
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 0.35rem 0.5rem;
+    }
+    
+    .indicator-icon {
+        width: 26px;
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+    }
+    
+    .circular-progress-sm {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .circular-chart-sm {
+        width: 32px;
+        height: 32px;
+    }
+    
+    #toggleSidebar {
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    #toggleSidebar i {
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar-summary {
+        font-size: 0.9rem;
+    }
+    
+    .icon-box {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .card {
+        border-radius: 12px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .circular-chart {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .circle-bg {
+        fill: none;
+        stroke: #eee;
+        stroke-width: 3.8;
+    }
+    
+    .circle-bg-red {
+        fill: none;
+        stroke: #dc3545;
+        stroke-width: 3.8;
+    }
+    
+    .circle {
+        fill: none;
+        stroke: #28a745;
+        stroke-width: 2.8;
+        stroke-linecap: round;
+        transform: rotate(-90deg);
+        transform-origin: center;
+        transition: stroke-dasharray 0.6s ease;
+    }
+    
+    .circle-green {
+        fill: none;
+        stroke: #28a745;
+        stroke-width: 3.8;
+        stroke-linecap: round;
+        transform: rotate(-90deg);
+        transform-origin: center;
+        transition: stroke-dasharray 0.6s ease;
+    }
+    
+    .table th {
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+    }
+    
+    .table td {
+        vertical-align: middle;
+    }
+    
+    code {
+        background-color: #f8f9fa;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    
+    .badge {
+        font-weight: 500;
+    }
+    
+    /* ========================================
+       NOVO ESTILO - FILTRO TIPO RH (ACCORDION)
+       ======================================== */
+    
+    .filter-card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-width: 250px;
+    }
+    
+    .filter-card .card-header {
+        padding: 0.75rem 1rem;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .filter-card-body {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+    
+    .filter-card-footer {
+        flex-shrink: 0;
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+    }
+    
+    .sidebar-scroll {
+        height: 100%;
+        overflow-y: auto;
+        padding: 0;
+    }
+    
+    .sidebar-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .sidebar-scroll::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    
+    .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+        background: #a1a1a1;
+    }
+    
+    /* Filter Groups - Accordion Style */
+    .filter-group {
+        border-bottom: 1px solid #e9ecef;
+        margin: 0;
+    }
+    
+    .filter-group:last-child {
+        border-bottom: none;
+    }
+    
+    .filter-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        background-color: #fff;
+        user-select: none;
+        transition: background-color 0.2s ease;
+    }
+    
+    .filter-header:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .filter-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #495057;
+        margin: 0;
+        cursor: pointer;
+    }
+    
+    .filter-header i {
+        font-size: 0.8rem;
+        color: #6c757d;
+        transition: transform 0.3s ease;
+    }
+    
+    .filter-content {
+        display: none;
+        padding: 0 1rem 0.75rem 1rem;
+        background-color: #fafbfc;
+    }
+    
+    .filter-group.open .filter-content {
+        display: block;
+    }
+    
+    .filter-group.open .filter-header i {
+        transform: rotate(180deg);
+    }
+    
+    /* Filter Checkboxes */
+    .filter-checkbox {
+        width: 1rem;
+        height: 1rem;
+        margin-top: 0.25rem;
+    }
+    
+    .filter-checkbox:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    
+    .filter-checkbox:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    /* Responsivo */
+    @media (max-width: 1400px) {
+        .dashboard-wrapper {
+            padding: 0.35rem;
+        }
+
+        .dashboard-body {
+            gap: 0.35rem;
+        }
+
+        .sidebar-col {
+            width: clamp(200px, 16vw, 230px);
+        }
+
+        .sidebar2-col {
+            width: clamp(120px, 10vw, 145px);
+        }
+
+        .dashboard-chart--row {
+            height: clamp(170px, 24vh, 220px) !important;
+        }
+    }
+
+    @media (max-width: 1100px) {
+        .dashboard-wrapper {
+            height: auto;
+            min-height: calc(100dvh - 60px);
+            overflow: visible;
+        }
+
+        .dashboard-body {
+            flex-wrap: wrap;
+        }
+
+        .sidebar-col {
+            width: 100%;
+            order: 1;
+        }
+
+        .sidebar2-col {
+            width: 100%;
+            order: 2;
+        }
+
+        .main-content {
+            width: 100%;
+            order: 3;
+        }
+
+        .indicators-sidebar,
+        .filter-card {
+            width: 100%;
+            min-width: 0;
+            height: auto;
+        }
+
+        .charts-scroll-area {
+            overflow: visible;
+            padding-right: 0;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-wrapper {
+            height: auto;
+            min-height: calc(100dvh - 60px);
+        }
+
+        .dashboard-header .d-flex {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.5rem;
+        }
+
+        .dashboard-chart--row {
+            height: 200px !important;
+        }
+
+        .dashboard-chart--wide {
+            height: 190px !important;
+        }
+
+        .card-header h6 {
+            font-size: 0.72rem !important;
+        }
+    }
+</style>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const colaboradoresAutocompleteUrl = "{% url 'training:colaboradores_autocomplete' %}";
+
+    // =====================
+    // Toggle Filter Groups (Accordion)
+    // =====================
+    window.toggleFilterGroup = function(headerElement) {
+        const filterGroup = headerElement.parentElement;
+        filterGroup.classList.toggle('open');
+    };
+    
+    // =====================
+    // New Filter System (Checkboxes with Apply Button)
+    // =====================
+    function applyFilters() {
+        const selectedFilters = {};
+        
+        // Coletar todos os checkboxes selecionados
+        document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+            const category = checkbox.dataset.category;
+            if (!selectedFilters[category]) {
+                selectedFilters[category] = [];
+            }
+            selectedFilters[category].push(checkbox.value);
+        });
+        
+        console.log('Selected Filters:', selectedFilters);
+        
+        // Construir URL com parâmetros, preservando parâmetros invisíveis
+        // (ex.: supervisor/gerente usados pelo atalho do Home)
+        const params = new URLSearchParams(window.location.search);
+
+        // Remover apenas categorias controladas pelos checkboxes
+        ['setor', 'turno', 'lider', 'criticidade', 'matriz', 'sub_area'].forEach(category => {
+            params.delete(category);
+        });
+
+        // Remover filtros de colaborador (controlados pelos inputs)
+        params.delete('colaborador_id');
+        params.delete('colaborador_q');
+
+        // Aplicar seleção atual
+        Object.keys(selectedFilters).forEach(category => {
+            selectedFilters[category].forEach(value => {
+                params.append(category, value);
+            });
+        });
+
+        const colaboradorId = (document.getElementById('filterColaboradorId')?.value || '').trim();
+        const colaboradorQ = (document.getElementById('filterColaboradorQ')?.value || '').trim();
+        if (colaboradorId) {
+            params.set('colaborador_id', colaboradorId);
+        } else if (colaboradorQ) {
+            params.set('colaborador_q', colaboradorQ);
+        }
+        
+        const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        console.log('Navigating to:', url);
+        window.location.href = url;
+    }
+    
+    // Apply filters button (Only on button click, not on checkbox change)
+    const applyBtn = document.getElementById('applyFilters');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            applyFilters();
+        });
+    }
+    
+    // Clear all filters button
+    const clearBtn = document.getElementById('clearFilters');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.filter-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            const colabInput = document.getElementById('filterColaboradorQ');
+            if (colabInput) colabInput.value = '';
+            const colabIdInput = document.getElementById('filterColaboradorId');
+            if (colabIdInput) colabIdInput.value = '';
+            window.location.href = window.location.pathname;
+        });
+    }
+
+    // =====================
+    // Autocomplete de Colaborador (datalist)
+    // =====================
+    const colabInput = document.getElementById('filterColaboradorQ');
+    const colabIdInput = document.getElementById('filterColaboradorId');
+    const colabDatalist = document.getElementById('colabSuggestions');
+    let colabDebounce = null;
+    let lastColabQuery = '';
+    let colabSuggestionsMap = {};
+
+    async function fetchColaboradoresSuggestions(query) {
+        const url = colaboradoresAutocompleteUrl + '?q=' + encodeURIComponent(query);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!response.ok) return { results: [] };
+        return response.json();
+    }
+
+    if (colabInput && colabDatalist) {
+        colabInput.addEventListener('input', function() {
+            const query = (colabInput.value || '').trim();
+
+            // Se digitou manualmente, zera o ID até selecionar uma sugestão exata
+            if (colabIdInput) colabIdInput.value = '';
+
+            if (query.length < 2) {
+                colabDatalist.innerHTML = '';
+                colabSuggestionsMap = {};
+                lastColabQuery = '';
+                return;
+            }
+
+            if (query === lastColabQuery) return;
+            lastColabQuery = query;
+
+            if (colabDebounce) clearTimeout(colabDebounce);
+            colabDebounce = setTimeout(async () => {
+                try {
+                    const current = (colabInput.value || '').trim();
+                    if (current !== query) return;
+                    const data = await fetchColaboradoresSuggestions(query);
+                    if (((colabInput.value || '').trim()) !== query) return;
+
+                    const results = Array.isArray(data?.results) ? data.results : [];
+                    colabDatalist.innerHTML = '';
+                    colabSuggestionsMap = {};
+                    results.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.nome_completo;
+                        colabDatalist.appendChild(opt);
+                        colabSuggestionsMap[item.nome_completo] = String(item.id);
+                    });
+
+                    // Se o valor bate exatamente com uma sugestão, seta o ID
+                    const exact = colabSuggestionsMap[(colabInput.value || '').trim()];
+                    if (exact && colabIdInput) colabIdInput.value = exact;
+                } catch (err) {
+                    // Silencioso: autocomplete não pode quebrar o dashboard
+                }
+            }, 250);
+        });
+
+        // Ao perder foco, se bater exatamente com sugestão, setar ID
+        colabInput.addEventListener('change', function() {
+            const exact = colabSuggestionsMap[(colabInput.value || '').trim()];
+            if (exact && colabIdInput) colabIdInput.value = exact;
+        });
+    }
+    
+    // Sidebar Toggle (Old - Keep for compatibility)
+    const sidebar = document.getElementById('filterSidebar');
+    const toggleBtn = document.getElementById('toggleSidebar');
+    const expandBtn = document.getElementById('expandSidebar');
+    const sidebarCol = document.getElementById('sidebarCol');
+    
+    // Carregar estado salvo
+    const sidebarCollapsed = localStorage.getItem('dashboardSidebarCollapsed') === 'true';
+    if (sidebarCollapsed) {
+        collapseSidebar();
+    }
+    
+    toggleBtn?.addEventListener('click', function() {
+        collapseSidebar();
+    });
+    
+    expandBtn?.addEventListener('click', function() {
+        expandSidebar();
+    });
+    
+    function collapseSidebar() {
+        sidebar.classList.add('collapsed');
+        expandBtn.classList.remove('d-none');
+        sidebarCol.style.width = '0';
+        sidebarCol.style.padding = '0';
+        localStorage.setItem('dashboardSidebarCollapsed', 'true');
+    }
+    
+    function expandSidebar() {
+        sidebar.classList.remove('collapsed');
+        expandBtn.classList.add('d-none');
+        sidebarCol.style.width = '';
+        sidebarCol.style.padding = '';
+        localStorage.setItem('dashboardSidebarCollapsed', 'false');
+    }
+    
+    // Configuração global dos gráficos
+    Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial';
+    Chart.defaults.color = '#6c757d';
+    
+    // =====================
+    // Gráfico de Treinamentos por Mês
+    // =====================
+    const ctxMeses = document.getElementById('chartMeses');
+    if (ctxMeses) {
+        const meses = [{% for item in treinamentos_por_mes %}'{{ item.mes }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const mesesIso = [{% for item in treinamentos_por_mes %}'{{ item.mes_iso }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const valores = [{% for item in treinamentos_por_mes %}{{ item.total }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        
+        const chartMeses = new Chart(ctxMeses.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: meses,
+                datasets: [{
+                    label: 'Treinamentos Realizados',
+                    data: valores,
+                    backgroundColor: 'rgba(23, 162, 184, 0.7)',
+                    borderColor: 'rgba(23, 162, 184, 1)',
+                    borderWidth: 2,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    barThickness: 18
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end'
+                    }
+                },
+                onClick: function(evt, elements) {
+                    if (!elements || elements.length === 0) return;
+                    const idx = elements[0].index;
+                    const mesIso = mesesIso[idx];
+                    if (!mesIso) return;
+
+                    const selectedFilters = {};
+                    document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+                        const category = checkbox.dataset.category;
+                        if (!selectedFilters[category]) {
+                            selectedFilters[category] = [];
+                        }
+                        selectedFilters[category].push(checkbox.value);
+                    });
+
+                    const params = new URLSearchParams();
+                    Object.keys(selectedFilters).forEach(category => {
+                        selectedFilters[category].forEach(value => {
+                            params.append(category, value);
+                        });
+                    });
+
+                    // Levar filtro por colaborador para a lista
+                    const colaboradorId = (document.getElementById('filterColaboradorId')?.value || '').trim();
+                    const colaboradorQ = (document.getElementById('filterColaboradorQ')?.value || '').trim();
+                    if (colaboradorId) {
+                        params.set('colaborador', colaboradorId);
+                    } else if (colaboradorQ) {
+                        params.set('q', colaboradorQ);
+                    }
+
+                    // Treinamentos que ocorreram no mês clicado
+                    params.set('ocorridos', '1');
+                    params.set('mes', mesIso);
+
+                    const baseUrl = '{% url "procedures:treinamentos_list" %}';
+                    const url = baseUrl + (params.toString() ? '?' + params.toString() : '');
+                    window.location.href = url;
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Feedback visual para indicar que o gráfico é clicável
+        ctxMeses.style.cursor = 'pointer';
+    }
+    
+    // =====================
+    // Gráfico por Líder (Horizontal Bar)
+    // =====================
+    const ctxLider = document.getElementById('chartLider');
+    if (ctxLider) {
+        const liderLabels = [{% for item in treinamentos_por_lider %}'{{ item.nome|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const liderVigentes = [{% for item in treinamentos_por_lider %}{{ item.vigentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const liderPendentes = [{% for item in treinamentos_por_lider %}{{ item.pendentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        
+        if (liderLabels.length > 0) {
+            new Chart(ctxLider.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: liderLabels.slice(0, 10),
+                    datasets: [
+                        {
+                            label: 'Vigentes',
+                            data: liderVigentes.slice(0, 10),
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 12
+                        },
+                        {
+                            label: 'Pendentes',
+                            data: liderPendentes.slice(0, 10),
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 12
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartLiderFallback').classList.remove('d-none');
+            ctxLider.style.display = 'none';
+        }
+    }
+    
+    // =====================
+    // Gráfico por Setor/Turno (Horizontal Bar)
+    // =====================
+    const ctxSetorTurno = document.getElementById('chartSetorTurno');
+    if (ctxSetorTurno) {
+        const setorLabels = [{% for item in treinamentos_por_setor_turno %}'{{ item.nome|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const setorVigentes = [{% for item in treinamentos_por_setor_turno %}{{ item.vigentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const setorPendentes = [{% for item in treinamentos_por_setor_turno %}{{ item.pendentes }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        
+        if (setorLabels.length > 0) {
+            new Chart(ctxSetorTurno.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: setorLabels.slice(0, 10),
+                    datasets: [
+                        {
+                            label: 'Vigentes',
+                            data: setorVigentes.slice(0, 10),
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 12
+                        },
+                        {
+                            label: 'Pendentes',
+                            data: setorPendentes.slice(0, 10),
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 12
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartSetorTurnoFallback').classList.remove('d-none');
+            ctxSetorTurno.style.display = 'none';
+        }
+    }
+    
+    // =====================
+    // Gráfico Planejamento por Instrutor (Stacked Bar)
+    // =====================
+    const ctxPlanejamentoInstrutor = document.getElementById('chartPlanejamentoInstrutor');
+    if (ctxPlanejamentoInstrutor) {
+        // Função para pegar primeiro e último nome
+        function primeiroUltimoNome(nomeCompleto) {
+            const partes = nomeCompleto.trim().split(/\s+/);
+            if (partes.length <= 2) return nomeCompleto;
+            return partes[0] + ' ' + partes[partes.length - 1];
+        }
+        
+        const plInstrutorLabelsRaw = [{% for item in planejamento_por_instrutor %}'{{ item.instrutor__nome_completo|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorLabels = plInstrutorLabelsRaw.map(primeiroUltimoNome);
+        const plInstrutorPlanejado = [{% for item in planejamento_por_instrutor %}{{ item.planejado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorConfirmado = [{% for item in planejamento_por_instrutor %}{{ item.confirmado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorRealizado = [{% for item in planejamento_por_instrutor %}{{ item.realizado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plInstrutorAtrasado = [{% for item in planejamento_por_instrutor %}{{ item.atrasado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        
+        if (plInstrutorLabels.length > 0) {
+            new Chart(ctxPlanejamentoInstrutor.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: plInstrutorLabels.slice(0, 10),
+                    datasets: [
+                        {
+                            label: 'Planejado',
+                            data: plInstrutorPlanejado.slice(0, 10),
+                            backgroundColor: 'rgba(124, 58, 237, 0.8)',
+                            borderColor: 'rgba(124, 58, 237, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Confirmado',
+                            data: plInstrutorConfirmado.slice(0, 10),
+                            backgroundColor: 'rgba(23, 162, 184, 0.8)',
+                            borderColor: 'rgba(23, 162, 184, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Realizado',
+                            data: plInstrutorRealizado.slice(0, 10),
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Atrasado',
+                            data: plInstrutorAtrasado.slice(0, 10),
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartPlanejamentoInstrutorFallback').classList.remove('d-none');
+            ctxPlanejamentoInstrutor.style.display = 'none';
+        }
+    }
+    
+    // =====================
+    // Gráfico Planejamento por Setor/Turno (Stacked Bar)
+    // =====================
+    const ctxPlanejamentoSetorTurno = document.getElementById('chartPlanejamentoSetorTurno');
+    if (ctxPlanejamentoSetorTurno) {
+        const plSetorLabels = [{% for item in planejamento_por_setor_turno %}'{{ item.colaboradores__setor__nome|escapejs }} - {{ item.colaboradores__turno|default:"N/A"|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorPlanejado = [{% for item in planejamento_por_setor_turno %}{{ item.planejado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorConfirmado = [{% for item in planejamento_por_setor_turno %}{{ item.confirmado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorRealizado = [{% for item in planejamento_por_setor_turno %}{{ item.realizado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        const plSetorAtrasado = [{% for item in planejamento_por_setor_turno %}{{ item.atrasado }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+        
+        if (plSetorLabels.length > 0) {
+            new Chart(ctxPlanejamentoSetorTurno.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: plSetorLabels.slice(0, 10),
+                    datasets: [
+                        {
+                            label: 'Planejado',
+                            data: plSetorPlanejado.slice(0, 10),
+                            backgroundColor: 'rgba(124, 58, 237, 0.8)',
+                            borderColor: 'rgba(124, 58, 237, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Confirmado',
+                            data: plSetorConfirmado.slice(0, 10),
+                            backgroundColor: 'rgba(23, 162, 184, 0.8)',
+                            borderColor: 'rgba(23, 162, 184, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Realizado',
+                            data: plSetorRealizado.slice(0, 10),
+                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        },
+                        {
+                            label: 'Atrasado',
+                            data: plSetorAtrasado.slice(0, 10),
+                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            barThickness: 10
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            stacked: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('chartPlanejamentoSetorTurnoFallback').classList.remove('d-none');
+            ctxPlanejamentoSetorTurno.style.display = 'none';
+        }
+    }
+    
+    // =====================
+    // Exportar CSV - Todos os Dados Filtrados
+    // =====================
+    document.getElementById('exportCsv')?.addEventListener('click', function() {
+        const selectedFilters = {};
+
+        document.querySelectorAll('.filter-checkbox:checked').forEach(checkbox => {
+            const category = checkbox.dataset.category;
+            if (!selectedFilters[category]) {
+                selectedFilters[category] = [];
+            }
+            selectedFilters[category].push(checkbox.value);
+        });
+
+        const params = new URLSearchParams();
+        Object.keys(selectedFilters).forEach(category => {
+            selectedFilters[category].forEach(value => {
+                params.append(category, value);
+            });
+        });
+
+        const colaboradorId = (document.getElementById('filterColaboradorId')?.value || '').trim();
+        const colaboradorQ = (document.getElementById('filterColaboradorQ')?.value || '').trim();
+        if (colaboradorId) {
+            params.set('colaborador_id', colaboradorId);
+        } else if (colaboradorQ) {
+            params.set('colaborador_q', colaboradorQ);
+        }
+
+        const baseUrl = '{% url "training:dashboard_exportar_csv" %}';
+        const url = baseUrl + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = url;
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .badge-vencido { background-color: #dc3545 !important; }
+    .badge-avencer { background-color: #ffc107 !important; color: #000 !important; }
+    .badge-vigente { background-color: #28a745 !important; }
+    .badge-aprovado { background-color: #17a2b8 !important; }
+    .badge-reprovado { background-color: #dc3545 !important; }
+    .status-column { width: 120px; }
+    .resultado-column { width: 140px; }
+    .tipo-column { width: 100px; }
+    .historicos-table { font-size: 0.9rem; }
+    .filter-card { background-color: #f8f9fa; border-left: 4px solid #0d6efd; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h1 class="h2 mb-0">
+            <i class="bi bi-clock-history"></i> Históricos de Calibração
+        </h1>
+        <div class="d-flex flex-wrap gap-2 justify-content-start justify-content-md-end">
+            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#novoRegistroModal">
+                <i class="bi bi-plus-circle"></i> Novo Registro
+            </button>
+            <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card filter-card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" name="q" class="form-control form-control-sm" 
+                           placeholder="Instrumento, Código, Certificado..." value="{{ search_query }}">
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="vigentes" {% if status_filter == 'vigentes' %}selected{% endif %}>Vigentes</option>
+                        <option value="avencer" {% if status_filter == 'avencer' %}selected{% endif %}>A Vencer (30 dias)</option>
+                        <option value="vencidas" {% if status_filter == 'vencidas' %}selected{% endif %}>Vencidas</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Resultado</label>
+                    <select name="resultado" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="APROVADO_SEM_CORRECAO" {% if resultado_filter == 'APROVADO_SEM_CORRECAO' %}selected{% endif %}>Aprovado</option>
+                        <option value="APROVADO_COM_CORRECAO" {% if resultado_filter == 'APROVADO_COM_CORRECAO' %}selected{% endif %}>Aprv. c/ Correção</option>
+                        <option value="REPROVADO" {% if resultado_filter == 'REPROVADO' %}selected{% endif %}>Reprovado</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Tipo</label>
+                    <select name="tipo" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="EXTERNA" {% if tipo_filter == 'EXTERNA' %}selected{% endif %}>Externa</option>
+                        <option value="INTERNA" {% if tipo_filter == 'INTERNA' %}selected{% endif %}>Interna</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Categoria</label>
+                    <select name="categoria" class="form-select form-select-sm">
+                        <option value="">Todas</option>
+                        {% for categoria in categorias %}
+                        <option value="{{ categoria.id }}" {% if categoria_filter|stringformat:"s" == categoria.id|stringformat:"s" %}selected{% endif %}>
+                            {{ categoria.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                </div>
+
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <a href="{% url 'qms:listar_historicos_calibracao' %}" class="btn btn-secondary btn-sm w-100">
+                        <i class="bi bi-arrow-clockwise"></i> Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resultados -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h6 class="mb-0">
+                        <i class="bi bi-list-check"></i> 
+                        Total: <strong>{{ total_count }}</strong> históricos
+                    </h6>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            {% if historicos %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 historicos-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 100px;">Instrumento</th>
+                            <th style="width: 100px;">Categoria</th>
+                            <th style="width: 100px;">Data Calibração</th>
+                            <th style="width: 120px;">Próxima Calibração</th>
+                            <th class="status-column">Status</th>
+                            <th class="resultado-column">Resultado</th>
+                            <th class="tipo-column">Tipo</th>
+                            <th style="width: 100px;">Certificado</th>
+                            <th style="width: 80px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for historico in historicos %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'visualizar_instrumento' historico.instrumento.id %}" 
+                                   class="text-decoration-none fw-bold">
+                                    {{ historico.instrumento.tag }}
+                                </a>
+                                <div class="small text-muted">{{ historico.instrumento.descricao|truncatewords:5 }}</div>
+                            </td>
+                            <td>
+                                {% if historico.instrumento.categoria %}
+                                <span class="badge bg-info">{{ historico.instrumento.categoria.nome }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ historico.data_calibracao|date:"d/m/Y" }}
+                            </td>
+                            <td>
+                                {% if historico.proxima_calibracao %}
+                                    {% if historico.proxima_calibracao < hoje %}
+                                        <span class="badge badge-vencido">Vencido</span>
+                                    {% else %}
+                                        <span class="badge badge-vigente">Vigente</span>
+                                    {% endif %}
+                                    <div class="small">{{ historico.proxima_calibracao|date:"d/m/Y" }}</div>
+                                {% else %}
+                                    <span class="text-muted small">Não definida</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if historico.proxima_calibracao %}
+                                    {% if historico.proxima_calibracao < hoje %}
+                                        <span class="badge badge-vencido">Vencido</span>
+                                    {% else %}
+                                        <span class="badge badge-vigente">Vigente</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if historico.resultado == "APROVADO_SEM_CORRECAO" %}
+                                <span class="badge bg-success">Aprovado</span>
+                                {% elif historico.resultado == "APROVADO_COM_CORRECAO" %}
+                                <span class="badge bg-warning text-dark">Aprv. c/ Corr.</span>
+                                {% elif historico.resultado == "REPROVADO" %}
+                                <span class="badge bg-danger">Reprovado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if historico.tipo_calibracao == "EXTERNA" %}
+                                <span class="badge bg-primary">Externa</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Interna</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if historico.certificado %}
+                                <a href="{{ historico.certificado.url }}" target="_blank" 
+                                   class="btn btn-sm btn-outline-primary" title="Download">
+                                    <i class="bi bi-file-pdf"></i>
+                                </a>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                    <a href="{% url 'visualizar_historico_calibracao' historico.id %}" 
+                                       class="btn btn-sm btn-outline-secondary" title="Detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'editar_historico_calibracao' historico.id %}" 
+                                       class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" title="Excluir"
+                                            data-bs-toggle="modal" data-bs-target="#deleteModal{{ historico.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Modal de Confirmação de Exclusão -->
+                                <div class="modal fade" id="deleteModal{{ historico.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ historico.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title" id="deleteModalLabel{{ historico.id }}">
+                                                    <i class="bi bi-exclamation-triangle"></i> Confirmar Exclusão
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Tem certeza que deseja excluir este registro de calibração?</p>
+                                                <div class="alert alert-warning" role="alert">
+                                                    <strong>Instrumento:</strong> {{ historico.instrumento.tag }} - {{ historico.instrumento.descricao }}<br>
+                                                    <strong>Data:</strong> {{ historico.data_calibracao|date:"d/m/Y" }}<br>
+                                                    <strong>Status:</strong> 
+                                                    {% if historico.proxima_calibracao < hoje %}
+                                                        <span class="badge bg-danger">Vencido</span>
+                                                    {% else %}
+                                                        <span class="badge bg-success">Vigente</span>
+                                                    {% endif %}
+                                                </div>
+                                                <p class="text-muted small"><i class="bi bi-info-circle"></i> Esta ação não poderá ser desfeita.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <form method="post" action="{% url 'remover_historico' historico.id %}" style="display: inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="bi bi-trash"></i> Excluir
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            {% if page_obj.has_other_pages %}
+            <div class="card-footer bg-light">
+                <nav aria-label="Paginação">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if resultado_filter %}&resultado={{ resultado_filter }}{% endif %}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}">
+                                Primeira
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if resultado_filter %}&resultado={{ resultado_filter }}{% endif %}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}">
+                                Anterior
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if resultado_filter %}&resultado={{ resultado_filter }}{% endif %}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}">
+                                Próxima
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if resultado_filter %}&resultado={{ resultado_filter }}{% endif %}{% if tipo_filter %}&tipo={{ tipo_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}">
+                                Última
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div class="alert alert-info m-3">
+                <i class="bi bi-info-circle"></i> Nenhum histórico de calibração encontrado com os filtros aplicados.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Seleção de Instrumento -->
+<div class="modal fade" id="novoRegistroModal" tabindex="-1" aria-labelledby="novoRegistroModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="novoRegistroModalLabel">
+                    <i class="bi bi-plus-circle"></i> Novo Registro de Calibração
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="instrumentoBusca" class="form-label">Selecione um Instrumento</label>
+                    <input type="text" class="form-control" id="instrumentoBusca" placeholder="Buscar por tag, descrição ou categoria...">
+                    <div class="form-text">Digite para filtrar os instrumentos</div>
+                </div>
+                
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <div id="instrumentosLista" class="list-group">
+                        <!-- Carregado dinamicamente via JavaScript -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('novoRegistroModal');
+    const inputBusca = document.getElementById('instrumentoBusca');
+    const listaInstrumentos = document.getElementById('instrumentosLista');
+    let todosInstrumentos = [];
+
+    // Carregar instrumentos quando o modal é aberto
+    modal.addEventListener('show.bs.modal', function() {
+        if (todosInstrumentos.length === 0) {
+            carregarInstrumentos();
+        }
+        inputBusca.focus();
+        inputBusca.value = '';
+    });
+
+    function carregarInstrumentos() {
+        // Dados dos instrumentos são passados do template Django
+        const instrumentosData = {{ instrumentos_json|safe }};
+        todosInstrumentos = instrumentosData;
+        renderizarInstrumentos(todosInstrumentos);
+    }
+
+    function renderizarInstrumentos(instrumentos) {
+        listaInstrumentos.innerHTML = '';
+        
+        if (instrumentos.length === 0) {
+            listaInstrumentos.innerHTML = '<div class="alert alert-info mb-0">Nenhum instrumento encontrado.</div>';
+            return;
+        }
+
+        instrumentos.forEach(inst => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'list-group-item list-group-item-action';
+            item.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="fw-bold">${inst.tag}</div>
+                        <div class="text-muted small">${inst.descricao}</div>
+                        <div>
+                            <span class="badge bg-info">${inst.categoria}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            item.addEventListener('click', function() {
+                selecionarInstrumento(inst.id);
+            });
+            listaInstrumentos.appendChild(item);
+        });
+    }
+
+    inputBusca.addEventListener('keyup', function() {
+        const termoBusca = this.value.toLowerCase();
+        const instrumentosFiltrados = todosInstrumentos.filter(inst => 
+            inst.tag.toLowerCase().includes(termoBusca) ||
+            inst.descricao.toLowerCase().includes(termoBusca) ||
+            inst.categoria.toLowerCase().includes(termoBusca)
+        );
+        renderizarInstrumentos(instrumentosFiltrados);
+    });
+
+    function selecionarInstrumento(instrumentoId) {
+        // Redirecionar para a view que cria o novo registro
+        window.location.href = `/api/metrologia/novo-registro/${instrumentoId}/`;
+    }
+});
+</script>
+
+{% endblock %}

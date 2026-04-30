@@ -1,0 +1,93 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Fornecedores{% endblock %}
+{% block header_title %}Lista de Fornecedores{% endblock %}
+
+{% block header_actions %}
+    <a href="{% url 'procedures:novo_fornecedor' %}" class="btn btn-primary btn-sm">+ Novo Fornecedor</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="card">
+    <div class="card-header">
+        <h6 class="mb-0">Filtros</h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" name="q" class="form-control" placeholder="Buscar nome ou CNPJ" value="{{ termo }}">
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="HOMOLOGADO">Homologado</option>
+                    <option value="BLOQUEADO">Bloqueado</option>
+                    <option value="EM_ANALISE">Em Análise</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">Fornecedores</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Nome Fantasia</th>
+                    <th>CNPJ</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Nota Média</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in page_obj %}
+                <tr>
+                    <td>{{ f.nome_fantasia }}</td>
+                    <td>{{ f.cnpj }}</td>
+                    <td>{{ f.email }}</td>
+                    <td><span class="badge bg-info">{{ f.get_status_display }}</span></td>
+                    <td>{{ f.nota_media|default:"—" }}</td>
+                    <td>
+                        <a href="{% url 'procedures:detalhe_fornecedor' f.id %}" class="btn btn-sm btn-info">Ver</a>
+                        <a href="{% url 'procedures:editar_fornecedor' f.id %}" class="btn btn-sm btn-warning">Editar</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">Nenhum fornecedor encontrado</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1">Primeira</a>
+        </li>
+        {% endif %}
+        <li class="page-item active">
+            <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

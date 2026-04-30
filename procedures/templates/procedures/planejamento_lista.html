@@ -1,0 +1,430 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% load nav_access %}
+
+{% can_nav_view user 'procedures:novo_planejamento' 'procedures' as can_novo_planejamento %}
+{% can_nav_view user 'procedures:exportar_lista_planejamentos_excel' 'procedures' as can_exportar_planejamentos %}
+{% can_nav_view user 'procedures:excluir_planejamentos_massa' 'procedures' as can_excluir_planejamentos_massa %}
+{% can_nav_view user 'procedures:planejamentos_list' 'procedures' as can_ver_planejamento %}
+{% can_nav_view user 'procedures:editar_planejamento' 'procedures' as can_editar_planejamento %}
+
+{% block title %}Planejamento de Treinamentos{% endblock %}
+{% block header_title %}Planejamento de Treinamentos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-badge {
+        font-size: 0.85rem;
+        padding: 4px 10px;
+    }
+    .stats-card {
+        transition: transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-3px);
+    }
+    .bulk-actions {
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        background-color: #fff;
+        border-bottom: 2px solid #dee2e6;
+    }
+    #btn-delete-selected:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    /* Filtros Clean */
+    .filters-card {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+    
+    .filters-card .form-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.35rem;
+    }
+    
+    .filters-card .form-control,
+    .filters-card .form-select {
+        font-size: 0.9rem;
+        padding: 0.45rem 0.65rem;
+        border: 1px solid #dee2e6;
+    }
+    
+    .filters-card .form-control:focus,
+    .filters-card .form-select:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    }
+    
+    .filter-buttons {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+    }
+    
+    .filter-buttons .btn {
+        font-size: 0.9rem;
+        padding: 0.45rem 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Estatísticas -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card stats-card bg-primary text-white">
+                <div class="card-body">
+                    <h3 class="mb-0">{{ stats.total }}</h3>
+                    <small>Total de Planejamentos</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stats-card bg-warning">
+                <div class="card-body">
+                    <h3 class="mb-0">{{ stats.planejado }}</h3>
+                    <small>Planejados</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stats-card bg-info text-white">
+                <div class="card-body">
+                    <h3 class="mb-0">{{ stats.confirmado }}</h3>
+                    <small>Confirmados</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stats-card bg-success text-white">
+                <div class="card-body">
+                    <h3 class="mb-0">{{ stats.realizado }}</h3>
+                    <small>Realizados</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stats-card bg-danger text-white">
+                <div class="card-body">
+                    <h3 class="mb-0">{{ stats.atrasado }}</h3>
+                    <small>Atrasados</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            {% if user.is_superuser or user.is_staff or can_novo_planejamento %}
+                <a href="{% url 'procedures:novo_planejamento' %}" class="btn btn-primary btn-lg w-100 h-100 d-flex align-items-center justify-content-center">
+                    <i class="bi bi-plus-circle me-2"></i> Novo Planejamento
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-card mb-3">
+        <form method="get" class="row g-2">
+            <div class="col-md-3">
+                <label class="form-label">Buscar</label>
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Título ou procedimento" value="{{ termo }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="PLANEJADO" {% if status == 'PLANEJADO' %}selected{% endif %}>Planejado</option>
+                    <option value="CONFIRMADO" {% if status == 'CONFIRMADO' %}selected{% endif %}>Confirmado</option>
+                    <option value="REALIZADO" {% if status == 'REALIZADO' %}selected{% endif %}>Realizado</option>
+                    <option value="CANCELADO" {% if status == 'CANCELADO' %}selected{% endif %}>Cancelado</option>
+                    <option value="ATRASADO" {% if status == 'ATRASADO' %}selected{% endif %}>Atrasado</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Instrutor</label>
+                <select name="instrutor" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for inst in instrutores %}
+                    <option value="{{ inst.id }}" {% if instrutor_id == inst.id|stringformat:"s" %}selected{% endif %}>
+                        {{ inst.nome_completo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Colaborador</label>
+                <select name="colaborador" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    {% for colab in colaboradores %}
+                    <option value="{{ colab.id }}" {% if colaborador_id == colab.id|stringformat:"s" %}selected{% endif %}>
+                        {{ colab.nome_completo|truncatewords:3 }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label">Mês</label>
+                <input type="month" name="mes" class="form-control form-control-sm" value="{{ mes }}">
+            </div>
+            <div class="col-md-2 filter-buttons">
+                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+                    <i class="bi bi-search"></i> Filtrar
+                </button>
+                <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Botão de Export (antes da tabela) -->
+    {% if planejamentos %}
+    <div class="d-flex justify-content-end mb-3 mt-2">
+        {% if can_exportar_planejamentos %}
+            <form method="get" action="{% url 'procedures:exportar_lista_planejamentos_excel' %}">
+                {% for key, value in request.GET.items %}
+                    {% if key != 'page' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
+                {% endfor %}
+                <button type="submit" class="btn btn-success btn-sm" title="Baixar como Excel">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel
+                </button>
+            </form>
+        {% endif %}
+    </div>
+    {% endif %}
+    <div class="card">
+        {% if can_excluir_planejamentos_massa %}
+            <div class="card-header bulk-actions" id="bulk-actions" style="display: none;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span id="selected-count">0 selecionado(s)</span>
+                    <button type="button" class="btn btn-danger btn-sm" id="btn-delete-selected" disabled>
+                        <i class="bi bi-trash"></i> Excluir Selecionados
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+        <div class="card-body p-0">
+            {% if planejamentos %}
+            <form id="form-bulk-delete" method="post" action="{% url 'procedures:excluir_planejamentos_massa' %}">
+                {% csrf_token %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                {% if can_excluir_planejamentos_massa %}
+                                    <th width="40">
+                                        <input type="checkbox" id="select-all" class="form-check-input">
+                                    </th>
+                                {% endif %}
+                                <th>Título</th>
+                                <th>Procedimento</th>
+                                <th>Data Prevista</th>
+                                <th>Instrutor</th>
+                                <th class="text-center">Participantes</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                    <tbody>
+                        {% for p in planejamentos %}
+                        <tr>
+                            {% if can_excluir_planejamentos_massa %}
+                                <td>
+                                    <input type="checkbox" name="planejamentos_ids" value="{{ p.id }}" class="form-check-input select-item">
+                                </td>
+                            {% endif %}
+                            <td>
+                                <strong>{{ p.titulo }}</strong>
+                                {% if p.descricao %}
+                                <br><small class="text-muted">{{ p.descricao|truncatewords:10 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% with procedimentos=p.procedimentos.all %}
+                                    {% if procedimentos %}
+                                        {% for proc in procedimentos|slice:":2" %}
+                                            <span class="text-primary">{{ proc.codigo }}</span><br>
+                                            <small>{{ proc.nome|truncatewords:5 }}</small>
+                                            {% if not forloop.last %}<br>{% endif %}
+                                        {% endfor %}
+                                        {% if procedimentos|length > 2 %}
+                                            <br><small class="text-muted">+{{ procedimentos|length|add:"-2" }} mais</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">Nenhum procedimento</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            <td>
+                                {{ p.data_prevista|date:"d/m/Y" }}
+                                {% if p.hora_prevista %}
+                                <br><small class="text-muted">{{ p.hora_prevista }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.instrutor %}
+                                {{ p.instrutor.nome_completo }}
+                                {% else %}
+                                <span class="text-muted">Não definido</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ p.colaboradores.count }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if p.status == 'PLANEJADO' %}
+                                    <span class="badge bg-warning status-badge">Planejado</span>
+                                {% elif p.status == 'CONFIRMADO' %}
+                                    <span class="badge bg-info status-badge">Confirmado</span>
+                                {% elif p.status == 'REALIZADO' %}
+                                    <span class="badge bg-success status-badge">Realizado</span>
+                                {% elif p.status == 'CANCELADO' %}
+                                    <span class="badge bg-secondary status-badge">Cancelado</span>
+                                {% elif p.status == 'ATRASADO' %}
+                                    <span class="badge bg-danger status-badge">Atrasado</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if can_ver_planejamento or perms.procedures.view_planejamentotreinamento %}
+                                    <a href="{% url 'procedures:detalhe_planejamento' p.id %}" class="btn btn-sm btn-outline-info" title="Ver detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                {% endif %}
+                                {% if can_editar_planejamento or perms.procedures.change_planejamentotreinamento %}
+                                    <a href="{% url 'procedures:editar_planejamento' p.id %}" class="btn btn-sm btn-outline-warning" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </form>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-calendar-x"></i>
+                <p>Nenhum planejamento encontrado.</p>
+                {% if user.is_superuser or user.is_staff or can_novo_planejamento %}
+                    <a href="{% url 'procedures:novo_planejamento' %}" class="btn btn-primary">
+                        Criar Primeiro Planejamento
+                    </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Paginação -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Paginação" class="mt-3">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if termo %}&q={{ termo }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}">Primeira</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if termo %}&q={{ termo }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}">Anterior</a>
+                </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">{{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if termo %}&q={{ termo }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}">Próxima</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if termo %}&q={{ termo }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if procedimento_id %}&procedimento={{ procedimento_id }}{% endif %}{% if mes %}&mes={{ mes }}{% endif %}">Última</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('select-all');
+    const selectItems = document.querySelectorAll('.select-item');
+    const btnDelete = document.getElementById('btn-delete-selected');
+    const selectedCount = document.getElementById('selected-count');
+    const bulkActions = document.getElementById('bulk-actions');
+    const formBulkDelete = document.getElementById('form-bulk-delete');
+
+    // Selecionar/Desselecionar todos
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            selectItems.forEach(item => {
+                item.checked = this.checked;
+            });
+            updateBulkActions();
+        });
+    }
+
+    // Atualizar ao selecionar itens individuais
+    selectItems.forEach(item => {
+        item.addEventListener('change', function() {
+            // Atualizar "Selecionar todos" se todos estiverem selecionados
+            const allChecked = Array.from(selectItems).every(i => i.checked);
+            const someChecked = Array.from(selectItems).some(i => i.checked);
+            
+            if (selectAll) {
+                selectAll.checked = allChecked;
+                selectAll.indeterminate = someChecked && !allChecked;
+            }
+            
+            updateBulkActions();
+        });
+    });
+
+    // Atualizar barra de ações em massa
+    function updateBulkActions() {
+        const checkedCount = document.querySelectorAll('.select-item:checked').length;
+        
+        if (checkedCount > 0) {
+            bulkActions.style.display = 'block';
+            selectedCount.textContent = checkedCount + ' selecionado(s)';
+            btnDelete.disabled = false;
+        } else {
+            bulkActions.style.display = 'none';
+            btnDelete.disabled = true;
+        }
+    }
+
+    // Confirmação antes de excluir
+    if (btnDelete) {
+        btnDelete.addEventListener('click', function() {
+            const checkedCount = document.querySelectorAll('.select-item:checked').length;
+            
+            if (checkedCount === 0) {
+                alert('Selecione pelo menos um planejamento para excluir.');
+                return;
+            }
+
+            const confirmMsg = `Tem certeza que deseja excluir ${checkedCount} planejamento(s)?\n\nEsta ação não pode ser desfeita.`;
+            
+            if (confirm(confirmMsg)) {
+                formBulkDelete.submit();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

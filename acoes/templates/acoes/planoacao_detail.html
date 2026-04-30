@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Plano de Ação - {{ plano.numero_registro|default:"N/A" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-check-list text-primary me-2"></i>
+                        Plano de Ação - {{ plano.numero_registro|default:"N/A" }}
+                    </h1>
+                    <p class="text-muted small mt-1">{{ plano.laboratorio_area_projeto }}</p>
+                </div>
+                <div class="d-flex gap-2">
+                    {% if perms.core.nav_acoes_plano_create %}
+                        <a href="{% url 'acoes:plano_acao_create' %}?numero_registro={{ plano.numero_registro }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i>Adicionar ação
+                        </a>
+                    {% endif %}
+                    <a href="{% url 'acoes:plano_acao_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Total de Ações</h6>
+                    <strong>{{ total_acoes }}</strong>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Em Curso</h6>
+                    <strong>{{ acoes_em_curso }}</strong>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Concluídas</h6>
+                    <strong>{{ acoes_completas }}</strong>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Atrasadas</h6>
+                    <strong class="text-danger">{{ acoes_atrasadas }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <!-- Informações Básicas -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Informações Básicas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <strong class="text-muted">Input/Origem:</strong>
+                            <p>{{ plano.input_origem|default:"Não informado" }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <strong class="text-muted">Laboratório:</strong>
+                            <p>{{ plano.laboratorio|default:"Não informado" }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <strong class="text-muted">KPI:</strong>
+                            <p>{{ plano.kpi|default:"Não informado" }}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong class="text-muted">Classificação:</strong>
+                            <p>{{ plano.get_classificacao_display|default:"N/A" }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <strong class="text-muted">Prioridade:</strong>
+                            <p>{% if plano.prioridade %}Prioritária{% else %}Normal{% endif %}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <strong class="text-muted">Status:</strong>
+                            <p>{{ plano.get_status_display|default:"N/A" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Listagem de Ações -->
+            <div class="card mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-table me-2"></i>Ações do Plano
+                    </h5>
+                    {% if perms.core.nav_acoes_plano_create %}
+                        <a href="{% url 'acoes:plano_acao_create' %}?numero_registro={{ plano.numero_registro }}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus-circle me-1"></i>Adicionar ação
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    {% if acoes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Nº Ação</th>
+                                        <th>Descrição</th>
+                                        <th>Responsável</th>
+                                        <th>Status</th>
+                                        <th>1º Deadline</th>
+                                        <th>Deadline Final</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for acao in acoes %}
+                                        <tr class="{% if acao.is_atrasada %}table-danger{% endif %}">
+                                            <td>{{ acao.numero_acao|default:"-" }}</td>
+                                            <td>
+                                                <strong>{{ acao.descricao|default:"-" }}</strong>
+                                                {% if acao.problema %}
+                                                    <br>
+                                                    <small class="text-muted">{{ acao.problema|truncatewords:10 }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if acao.responsavel_acao %}
+                                                    {{ acao.responsavel_acao.nome_completo }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ acao.get_status_display|default:"-" }}</td>
+                                            <td>{% if acao.data_primeira_deadline %}{{ acao.data_primeira_deadline|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                                            <td>{% if acao.data_deadline %}{{ acao.data_deadline|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                                            <td class="text-nowrap">
+                                                {% if perms.core.nav_acoes_linha_update %}
+                                                    <a href="{% url 'acoes:linha_acao_update' acao.id %}" class="btn btn-sm btn-outline-secondary" title="Editar">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </a>
+                                                {% endif %}
+                                                {% if perms.core.nav_acoes_linha_delete %}
+                                                    <form method="post" action="{% url 'acoes:linha_acao_delete' acao.id %}" class="d-inline">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir" onclick="return confirm('Excluir esta ação?');">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="p-4 text-center text-muted">Nenhuma ação cadastrada.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Exclusão{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Confirmar Exclusão
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Tem certeza que deseja deletar a solicitação <strong>{{ solicitacao.numero }}</strong>?
+                    </p>
+                    <p class="text-muted">
+                        Esta ação é irreversível e deletará também:
+                    </p>
+                    <ul class="text-muted">
+                        <li>{{ solicitacao.itens.count }} instrumento(s)</li>
+                        <li>{{ solicitacao.cotacoes_fornecedores.count }} cotação(ões)</li>
+                        <li>{{ solicitacao.atendimentos.count }} atendimento(s)</li>
+                    </ul>
+                </div>
+                <div class="card-footer bg-light d-flex gap-2">
+                    <form method="post" class="flex-grow-1">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="bi bi-trash"></i> Sim, Deletar
+                        </button>
+                    </form>
+                    <a href="{% url 'metrologia:solicitacao_detail' solicitacao.id %}" 
+                       class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

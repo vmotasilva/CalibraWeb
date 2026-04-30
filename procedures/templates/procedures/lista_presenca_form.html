@@ -1,0 +1,670 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+{% if action == 'create' %}Nova Lista de Presença{% else %}Editar Lista{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #6c757d;
+        border: none;
+        border-bottom: 3px solid transparent;
+        margin-right: 1rem;
+        padding: 0.75rem 0;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        border-bottom-color: #0d6efd;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+        background-color: transparent;
+    }
+    
+    .tab-content {
+        padding-top: 2rem;
+    }
+    
+    .form-section {
+        margin-bottom: 2rem;
+    }
+    
+    .form-section-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .formset-row {
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: #f8f9fa;
+    }
+    
+    .btn-add-registro {
+        border-style: dashed;
+    }
+    
+    .campo-condicional {
+        display: none;
+    }
+    
+    .table-compact {
+        font-size: 0.9rem;
+    }
+    
+    .table-compact td {
+        padding: 0.5rem;
+    }
+    
+    .badge-count {
+        display: inline-block;
+        min-width: 2rem;
+        padding: 0.4rem 0.6rem;
+        border-radius: 0.25rem;
+        background-color: #e7f1ff;
+        color: #0d6efd;
+        font-weight: 600;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-lg py-4">
+    <!-- Header -->
+    <div class="page-header">
+        <h1 class="h3 mb-2">
+            <i class="bi bi-clipboard-check"></i>
+            {% if action == 'create' %}Nova Lista de Presença{% else %}{{ lista.codigo }}{% endif %}
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{% url 'procedures:lista_presenca_list' %}">Listas de Presença</a></li>
+                <li class="breadcrumb-item active">{% if action == 'create' %}Nova{% else %}Editar{% endif %}</li>
+            </ol>
+        </nav>
+    </div>
+
+    <form method="post" id="lista-form">
+        {% csrf_token %}
+        
+        <!-- Abas -->
+        <ul class="nav nav-tabs mb-4" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#info-sessao" role="tab">
+                    <i class="bi bi-info-circle"></i> Informações da Sessão
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#participantes-tab" role="tab">
+                    <i class="bi bi-people"></i> Participantes & Procedimentos
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#registros-tab" role="tab">
+                    <i class="bi bi-list-check"></i> Registros
+                </a>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Aba 1: Informações da Sessão -->
+            <div id="info-sessao" class="tab-pane fade show active">
+                <div class="form-section">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-500">Título da Sessão</label>
+                            {{ form.titulo }}
+                            {% if form.titulo.errors %}<div class="text-danger small mt-1">{{ form.titulo.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-500">Data</label>
+                            {{ form.data_sessao }}
+                            {% if form.data_sessao.errors %}<div class="text-danger small mt-1">{{ form.data_sessao.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-section-title">Instrutor</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nome (Texto Livre)</label>
+                            {{ form.instrutor_nome }}
+                            <small class="text-muted d-block mt-1">Digite como consta no registro</small>
+                            {% if form.instrutor_nome.errors %}<div class="text-danger small mt-1">{{ form.instrutor_nome.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Base de Dados (Opcional)</label>
+                            {{ form.instrutor }}
+                            {% if form.instrutor.errors %}<div class="text-danger small mt-1">{{ form.instrutor.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-section-title">Localização & Horário</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Local</label>
+                            {{ form.local }}
+                            {% if form.local.errors %}<div class="text-danger small mt-1">{{ form.local.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Início</label>
+                            {{ form.hora_inicio }}
+                            {% if form.hora_inicio.errors %}<div class="text-danger small mt-1">{{ form.hora_inicio.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Fim</label>
+                            {{ form.hora_fim }}
+                            {% if form.hora_fim.errors %}<div class="text-danger small mt-1">{{ form.hora_fim.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Carga (h)</label>
+                            {{ form.carga_horaria }}
+                            {% if form.carga_horaria.errors %}<div class="text-danger small mt-1">{{ form.carga_horaria.errors }}</div>{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label">Observações</label>
+                    {{ form.observacoes }}
+                    {% if form.observacoes.errors %}<div class="text-danger small mt-1">{{ form.observacoes.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-section">
+                    <label class="form-label">Template de Layout (Opcional)</label>
+                    <small class="text-muted d-block mb-2">
+                        <i class="fas fa-info-circle"></i> Selecione um template Excel para estruturar a lista de presença
+                    </small>
+                    {{ form.template }}
+                    {% if form.template.errors %}<div class="text-danger small mt-1">{{ form.template.errors }}</div>{% endif %}
+                </div>
+            </div>
+
+            <!-- Aba 2: Participantes & Procedimentos -->
+            <div id="participantes-tab" class="tab-pane fade">
+                <!-- Formulário para Adicionar em Massa -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Adicionar Colaboradores & Procedimentos em Massa</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label small fw-600">
+                                    <i class="bi bi-people"></i> Colaboradores
+                                    <span class="badge bg-secondary" id="colaboradores-count">0</span>
+                                </label>
+                                <input type="text" id="search-colaborador" class="form-control form-control-sm mb-2" 
+                                       placeholder="Digite para buscar...">
+                                <div id="colaboradores-list" class="border rounded p-2" style="height: 200px; overflow-y: auto; background-color: #f8f9fa;">
+                                    <div class="text-muted small p-2">Comece a digitar para buscar...</div>
+                                </div>
+                                <small class="text-muted d-block mt-2">
+                                    <a href="#" id="selecionar-todos-colab" class="text-decoration-none">Selecionar resultado</a> | 
+                                    <a href="#" id="desselecionar-todos-colab" class="text-decoration-none">Limpar</a>
+                                </small>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label class="form-label small fw-600">
+                                    <i class="bi bi-file-earmark"></i> Procedimentos
+                                    <span class="badge bg-secondary" id="procedimentos-count">0</span>
+                                </label>
+                                <input type="text" id="search-procedimento" class="form-control form-control-sm mb-2" 
+                                       placeholder="Digite código ou nome...">
+                                <div id="procedimentos-list" class="border rounded p-2" style="height: 200px; overflow-y: auto; background-color: #f8f9fa;">
+                                    <div class="text-muted small p-2">Comece a digitar para buscar...</div>
+                                </div>
+                                <small class="text-muted d-block mt-2">
+                                    <a href="#" id="selecionar-todos-proc" class="text-decoration-none">Selecionar resultado</a> | 
+                                    <a href="#" id="desselecionar-todos-proc" class="text-decoration-none">Limpar</a>
+                                </small>
+                            </div>
+
+                            <div class="col-md-2 d-flex flex-column">
+                                <label class="form-label small fw-600">Data (Opcional)</label>
+                                <input type="date" id="quick-data-massa" class="form-control form-control-sm mb-3">
+                                <button type="button" id="btn-add-massa" class="btn btn-primary btn-sm flex-grow-1">
+                                    <i class="bi bi-plus-circle"></i> Adicionar em Massa
+                                </button>
+                                <small class="text-muted d-block mt-2">
+                                    Cria para todas<br>as combinações
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de Colaboradores -->
+                {% if colaboradores_registrados %}
+                <div class="mb-4">
+                    <h6 class="mb-3"><i class="bi bi-people-fill"></i> Colaboradores ({{ colaboradores_registrados|length }})</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-compact">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nome</th>
+                                    <th style="width: 15%">Matrícula</th>
+                                    <th style="width: 10%">Tipo</th>
+                                    <th style="width: 10%" class="text-center">Registros</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for colab in colaboradores_registrados %}
+                                <tr>
+                                    <td class="fw-500">{{ colab.nome }}</td>
+                                    <td><small class="text-muted">{{ colab.matricula }}</small></td>
+                                    <td>
+                                        {% if colab.tipo == 'Interno' %}
+                                            <span class="badge bg-primary text-white">Interno</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Externo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center"><span class="badge-count">{{ colab.count }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info mb-4">
+                    <i class="bi bi-info-circle"></i> Nenhum colaborador registrado ainda. Use o formulário acima para adicionar.
+                </div>
+                {% endif %}
+
+                <!-- Lista de Procedimentos -->
+                {% if procedimentos_registrados %}
+                <div>
+                    <h6 class="mb-3"><i class="bi bi-file-earmark"></i> Procedimentos ({{ procedimentos_registrados|length }})</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-compact">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 15%">Código</th>
+                                    <th>Nome</th>
+                                    <th style="width: 10%">Rev.</th>
+                                    <th style="width: 10%" class="text-center">Registros</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for proc in procedimentos_registrados %}
+                                <tr>
+                                    <td><code class="text-dark">{{ proc.codigo }}</code></td>
+                                    <td>{{ proc.nome }}</td>
+                                    <td><small class="text-muted">{{ proc.revisao }}</small></td>
+                                    <td class="text-center"><span class="badge-count">{{ proc.count }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Nenhum procedimento registrado ainda. Use o formulário acima para adicionar.
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Aba 3: Registros -->
+            <div id="registros-tab" class="tab-pane fade">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="bi bi-list-check"></i> Adicionar Registros</h6>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-registro">
+                        <i class="bi bi-plus-circle"></i> Novo Registro
+                    </button>
+                </div>
+
+                {{ formset.management_form }}
+                
+                <div id="registros-container">
+                    {% for form in formset %}
+                    <div class="formset-row" data-form-index="{{ forloop.counter0 }}">
+                        {% if form.instance.pk %}{{ form.id }}{% endif %}
+                        
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-3">
+                                <label class="form-label small">Tipo</label>
+                                {{ form.tipo }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Nome Colaborador</label>
+                                {{ form.colaborador_nome }}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">Base de Dados</label>
+                                {{ form.colaborador }}
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Data</label>
+                                {{ form.data_treinamento }}
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label small">Procedimento</label>
+                                {{ form.procedimento }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">Título (se geral)</label>
+                                {{ form.titulo_treinamento }}
+                            </div>
+                        </div>
+
+                        {% if form.instance.pk %}
+                        <div class="mt-2 pt-2 border-top d-flex justify-content-between">
+                            <small class="text-muted">ID: {{ form.instance.pk }}</small>
+                            <label class="form-check-label small">
+                                {{ form.DELETE }}
+                                <span class="text-danger">Deletar</span>
+                            </label>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="d-flex gap-2 justify-content-between mt-4 pt-3 border-top">
+            <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle"></i> {% if action == 'create' %}Criar{% else %}Salvar Alterações{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let formCount = {{ formset.management_form.0.value }};
+    let colaboradoresSelecionados = new Map();
+    let procedimentosSelecionados = new Map();
+    let ultimaBuscaColab = '';
+    let ultimaBuscaProc = '';
+    
+    // ===== BUSCA DE COLABORADORES =====
+    const inputColab = document.getElementById('search-colaborador');
+    const listColab = document.getElementById('colaboradores-list');
+    
+    inputColab.addEventListener('input', debounce(function() {
+        const termo = this.value.trim();
+        
+        if (termo.length < 2) {
+            listColab.innerHTML = '<div class="text-muted small p-2">Digite pelo menos 2 caracteres...</div>';
+            return;
+        }
+        
+        if (termo === ultimaBuscaColab) return; // Evitar requisição duplicada
+        ultimaBuscaColab = termo;
+        
+        listColab.innerHTML = '<div class="text-muted small p-2"><i class="spinner-border spinner-border-sm me-2"></i>Buscando...</div>';
+        
+        fetch(`{% url "procedures:api_colaboradores_busca" %}?q=${encodeURIComponent(termo)}`)
+            .then(r => r.json())
+            .then(data => renderizarColaboradores(data))
+            .catch(e => {
+                listColab.innerHTML = '<div class="text-danger small p-2">Erro ao buscar</div>';
+                console.error(e);
+            });
+    }, 400));
+    
+    // ===== BUSCA DE PROCEDIMENTOS =====
+    const inputProc = document.getElementById('search-procedimento');
+    const listProc = document.getElementById('procedimentos-list');
+    
+    inputProc.addEventListener('input', debounce(function() {
+        const termo = this.value.trim();
+        
+        if (termo.length < 1) {
+            listProc.innerHTML = '<div class="text-muted small p-2">Digite código ou nome...</div>';
+            return;
+        }
+        
+        if (termo === ultimaBuscaProc) return;
+        ultimaBuscaProc = termo;
+        
+        listProc.innerHTML = '<div class="text-muted small p-2"><i class="spinner-border spinner-border-sm me-2"></i>Buscando...</div>';
+        
+        fetch(`{% url "procedures:api_procedimentos_busca" %}?q=${encodeURIComponent(termo)}`)
+            .then(r => r.json())
+            .then(data => renderizarProcedimentos(data))
+            .catch(e => {
+                listProc.innerHTML = '<div class="text-danger small p-2">Erro ao buscar</div>';
+                console.error(e);
+            });
+    }, 400));
+    
+    // ===== RENDERIZAR COLABORADORES =====
+    function renderizarColaboradores(colaboradores) {
+        if (colaboradores.length === 0) {
+            listColab.innerHTML = '<div class="text-muted small p-2">Nenhum resultado</div>';
+            return;
+        }
+        
+        listColab.innerHTML = colaboradores.map(c => `
+            <div class="form-check">
+                <input class="form-check-input colab-checkbox" type="checkbox" value="${c.id}" 
+                       id="colab_${c.id}" data-nome="${c.nome_completo}">
+                <label class="form-check-label small" for="colab_${c.id}">
+                    ${c.nome_completo}
+                </label>
+            </div>
+        `).join('');
+        
+        document.querySelectorAll('.colab-checkbox').forEach(cb => {
+            cb.checked = colaboradoresSelecionados.has(cb.value);
+            cb.addEventListener('change', function() {
+                if (this.checked) {
+                    colaboradoresSelecionados.set(this.value, this.dataset.nome);
+                } else {
+                    colaboradoresSelecionados.delete(this.value);
+                }
+                atualizarContadores();
+            });
+        });
+    }
+    
+    // ===== RENDERIZAR PROCEDIMENTOS =====
+    function renderizarProcedimentos(procedimentos) {
+        if (procedimentos.length === 0) {
+            listProc.innerHTML = '<div class="text-muted small p-2">Nenhum resultado</div>';
+            return;
+        }
+        
+        listProc.innerHTML = procedimentos.map(p => `
+            <div class="form-check">
+                <input class="form-check-input proc-checkbox" type="checkbox" value="${p.id}" 
+                       id="proc_${p.id}" data-codigo="${p.codigo}" data-nome="${p.nome}">
+                <label class="form-check-label small" for="proc_${p.id}">
+                    <code>${p.codigo}</code> ${p.nome}
+                </label>
+            </div>
+        `).join('');
+        
+        document.querySelectorAll('.proc-checkbox').forEach(cb => {
+            cb.checked = procedimentosSelecionados.has(cb.value);
+            cb.addEventListener('change', function() {
+                if (this.checked) {
+                    procedimentosSelecionados.set(this.value, {
+                        codigo: this.dataset.codigo,
+                        nome: this.dataset.nome
+                    });
+                } else {
+                    procedimentosSelecionados.delete(this.value);
+                }
+                atualizarContadores();
+            });
+        });
+    }
+    
+    // ===== ATUALIZAR CONTADORES =====
+    function atualizarContadores() {
+        document.getElementById('colaboradores-count').textContent = colaboradoresSelecionados.size;
+        document.getElementById('procedimentos-count').textContent = procedimentosSelecionados.size;
+    }
+    
+    // ===== SELECIONAR/DESSELECIONAR TODOS =====
+    document.getElementById('selecionar-todos-colab').addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.colab-checkbox').forEach(cb => {
+            cb.checked = true;
+            colaboradoresSelecionados.set(cb.value, cb.dataset.nome);
+        });
+        atualizarContadores();
+    });
+    
+    document.getElementById('desselecionar-todos-colab').addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.colab-checkbox').forEach(cb => cb.checked = false);
+        colaboradoresSelecionados.clear();
+        listColab.innerHTML = '<div class="text-muted small p-2">Digite para buscar...</div>';
+        document.getElementById('search-colaborador').value = '';
+        atualizarContadores();
+    });
+    
+    document.getElementById('selecionar-todos-proc').addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.proc-checkbox').forEach(cb => {
+            cb.checked = true;
+            procedimentosSelecionados.set(cb.value, {
+                codigo: cb.dataset.codigo,
+                nome: cb.dataset.nome
+            });
+        });
+        atualizarContadores();
+    });
+    
+    document.getElementById('desselecionar-todos-proc').addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.proc-checkbox').forEach(cb => cb.checked = false);
+        procedimentosSelecionados.clear();
+        listProc.innerHTML = '<div class="text-muted small p-2">Digite para buscar...</div>';
+        document.getElementById('search-procedimento').value = '';
+        atualizarContadores();
+    });
+    
+    // ===== ADICIONAR EM MASSA =====
+    document.getElementById('btn-add-massa').addEventListener('click', function() {
+        if (colaboradoresSelecionados.size === 0) {
+            alert('⚠️ Selecione pelo menos um colaborador');
+            return;
+        }
+        if (procedimentosSelecionados.size === 0) {
+            alert('⚠️ Selecione pelo menos um procedimento');
+            return;
+        }
+        
+        const data = document.getElementById('quick-data-massa').value;
+        const total = colaboradoresSelecionados.size * procedimentosSelecionados.size;
+        
+        if (!confirm(`✓ Adicionar ${total} registros?\n\n${colaboradoresSelecionados.size} colaboradores × ${procedimentosSelecionados.size} procedimentos`)) {
+            return;
+        }
+        
+        let adicionados = 0;
+        
+        colaboradoresSelecionados.forEach((nomeColab, idColab) => {
+            procedimentosSelecionados.forEach((proc, idProc) => {
+                const formRegex = new RegExp('__prefix__', 'g');
+                const templateRow = document.querySelector('.formset-row');
+                const formRow = templateRow.cloneNode(true);
+                
+                formRow.querySelectorAll('input, select, textarea').forEach(field => {
+                    field.name = field.name.replace(formRegex, formCount);
+                    field.id = field.id.replace(formRegex, formCount);
+                    field.value = '';
+                });
+                
+                formRow.querySelector(`select[name="registrotreinamento_set-${formCount}-tipo"]`).value = 'Treinamento em Procedimento';
+                formRow.querySelector(`input[name="registrotreinamento_set-${formCount}-colaborador_nome"]`).value = nomeColab;
+                formRow.querySelector(`select[name="registrotreinamento_set-${formCount}-procedimento"]`).value = idProc;
+                if (data) {
+                    formRow.querySelector(`input[name="registrotreinamento_set-${formCount}-data_treinamento"]`).value = data;
+                }
+                
+                document.getElementById('registros-container').appendChild(formRow);
+                document.querySelector('input[name="registrotreinamento_set-TOTAL_FORMS"]').value = ++formCount;
+                adicionados++;
+            });
+        });
+        
+        // Limpar
+        colaboradoresSelecionados.clear();
+        procedimentosSelecionados.clear();
+        document.getElementById('quick-data-massa').value = '';
+        document.getElementById('search-colaborador').value = '';
+        document.getElementById('search-procedimento').value = '';
+        listColab.innerHTML = '<div class="text-muted small p-2">Digite para buscar...</div>';
+        listProc.innerHTML = '<div class="text-muted small p-2">Digite para buscar...</div>';
+        atualizarContadores();
+        
+        alert(`✅ ${adicionados} registros adicionados!\n\nClique em "Salvar Alterações" para confirmar.`);
+        
+        // Ir para aba de registros
+        document.querySelector('.nav-link[data-bs-target="#registros-tab"]').click();
+        setTimeout(() => {
+            document.getElementById('registros-tab').scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+    });
+    
+    // ===== ADICIONAR REGISTRO MANUAL =====
+    document.getElementById('add-registro').addEventListener('click', function() {
+        const formRegex = new RegExp('__prefix__', 'g');
+        const templateRow = document.querySelector('.formset-row');
+        const formRow = templateRow.cloneNode(true);
+        
+        formRow.querySelectorAll('input, select, textarea').forEach(field => {
+            field.name = field.name.replace(formRegex, formCount);
+            field.id = field.id.replace(formRegex, formCount);
+            field.value = '';
+        });
+        
+        document.getElementById('registros-container').appendChild(formRow);
+        document.querySelector('input[name="registrotreinamento_set-TOTAL_FORMS"]').value = ++formCount;
+        
+        formRow.scrollIntoView({ behavior: 'smooth' });
+        formRow.querySelector('select').focus();
+    });
+    
+    // ===== DEBOUNCE FUNCTION =====
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func.apply(this, args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+});
+</script>
+{% endblock %}

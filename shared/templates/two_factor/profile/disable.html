@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Desativar 2FA - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-shield-x me-2"></i>
+                        Desativar Autenticação em Duas Etapas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Atenção!</strong>
+                        <p class="mb-0 mt-1">
+                            Ao desativar o 2FA, sua conta ficará menos segura. 
+                            Qualquer pessoa com sua senha poderá acessar sua conta.
+                        </p>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <p class="text-muted">
+                            Tem certeza que deseja desativar a autenticação em duas etapas?
+                        </p>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-shield-x me-2"></i>Sim, Desativar 2FA
+                            </button>
+                            <a href="{% url 'two_factor:profile' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i>Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

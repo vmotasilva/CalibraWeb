@@ -1,0 +1,994 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ planejamento.titulo }}{% endblock %}
+{% block header_title %}{{ planejamento.titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: none;
+        margin-bottom: 1.5rem;
+    }
+    
+    .card-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        color: white;
+        font-weight: 600;
+        padding: 1rem 1.25rem;
+    }
+    
+    .card-header h6 {
+        margin: 0;
+        font-size: 0.95rem;
+    }
+    
+    .table-clean {
+        margin-bottom: 0;
+    }
+    
+    .table-clean thead th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 0.65rem 0.75rem;
+        color: #495057;
+    }
+    
+    .table-clean tbody td {
+        padding: 0.65rem 0.75rem;
+        vertical-align: middle;
+        font-size: 0.9rem;
+    }
+    
+    .table-clean tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .badge-code {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.35rem 0.5rem;
+    }
+    
+    .btn-remove {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.85rem;
+    }
+    
+    .info-value {
+        color: #212529;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Informações Principais -->
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Informações do Planejamento</h5>
+            <div>
+                {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                <a href="{% url 'procedures:editar_planejamento' planejamento.id %}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+                {% endif %}
+                <a href="{% url 'procedures:alterar_status_planejamento' planejamento.id %}" class="btn btn-info btn-sm">
+                    <i class="bi bi-arrow-repeat"></i> Alterar Status
+                </a>
+                <a href="{% url 'procedures:exportar_detalhe_planejamento_excel' planejamento.id %}" class="btn btn-success btn-sm" title="Exportar para Excel">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Excel
+                </a>
+                <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <span class="info-label">Título:</span>
+                        <div class="info-value">{{ planejamento.titulo }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <span class="info-label">Status:</span>
+                        <div class="info-value">
+                            {% if planejamento.status == 'PLANEJADO' %}
+                                <span class="badge bg-warning">Planejado</span>
+                            {% elif planejamento.status == 'CONFIRMADO' %}
+                                <span class="badge bg-info">Confirmado</span>
+                            {% elif planejamento.status == 'REALIZADO' %}
+                                <span class="badge bg-success">Realizado</span>
+                            {% elif planejamento.status == 'CANCELADO' %}
+                                <span class="badge bg-danger">Cancelado</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <span class="info-label">Origem/Tipo:</span>
+                        <div class="info-value">
+                            {% if planejamento.origem == 'PROCEDIMENTO' %}
+                                <span class="badge bg-primary badge-code">
+                                    <i class="bi bi-file-text"></i> Procedimento Operacional
+                                </span>
+                            {% elif planejamento.origem == 'MATRIZ' %}
+                                <span class="badge bg-info badge-code">
+                                    <i class="bi bi-grid"></i> Matriz de Habilidades
+                                </span>
+                            {% elif planejamento.origem == 'LIVRE' %}
+                                <span class="badge bg-secondary badge-code">
+                                    <i class="bi bi-pencil"></i> Livre/Customizado
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if planejamento.descricao %}
+                    <div class="mb-3">
+                        <span class="info-label">Descrição:</span>
+                        <div class="info-value small">{{ planejamento.descricao|linebreaks }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <span class="info-label">Data Prevista:</span>
+                        <div class="info-value">{{ planejamento.data_prevista|date:"d/m/Y" }}</div>
+                    </div>
+                    {% if planejamento.horario_previsto %}
+                    <div class="mb-3">
+                        <span class="info-label">Horário Previsto:</span>
+                        <div class="info-value">{{ planejamento.horario_previsto|time:"H:i" }}</div>
+                    </div>
+                    {% endif %}
+                    {% if planejamento.data_realizada %}
+                    <div class="mb-3">
+                        <span class="info-label">Data Realizada:</span>
+                        <div class="info-value">{{ planejamento.data_realizada|date:"d/m/Y" }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <span class="info-label">Instrutor:</span>
+                        <div class="info-value">{{ planejamento.instrutor.nome_completo|default:"Não definido" }}</div>
+                    </div>
+                    {% if planejamento.local %}
+                    <div class="mb-3">
+                        <span class="info-label">Local:</span>
+                        <div class="info-value">{{ planejamento.local }}</div>
+                    </div>
+                    {% endif %}
+                    {% if planejamento.carga_horaria %}
+                    <div class="mb-3">
+                        <span class="info-label">Carga Horária:</span>
+                        <div class="info-value">{{ planejamento.carga_horaria }} minutos</div>
+                    </div>
+                    {% endif %}
+                    {% if planejamento.observacoes %}
+                    <div class="mb-3">
+                        <span class="info-label">Observações:</span>
+                        <div class="info-value small">{{ planejamento.observacoes|linebreaks }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Procedimentos -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6>
+                <i class="bi bi-file-text"></i> 
+                Procedimentos ({{ planejamento.procedimentos.count }})
+            </h6>
+            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+            <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#procedimentosModal">
+                <i class="bi bi-plus-circle"></i> Adicionar
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            {% if planejamento.procedimentos.exists %}
+            <div class="table-responsive">
+                <table class="table table-clean table-hover" id="procedimentos-list">
+                    <thead>
+                        <tr>
+                            <th width="100">Código</th>
+                            <th>Nome</th>
+                            <th width="140">Matriz</th>
+                            <th width="150">Sub-área</th>
+                            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                            <th width="60" class="text-center">Ação</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for proc in planejamento.procedimentos.all %}
+                        <tr data-proc-id="{{ proc.id }}">
+                            <td>
+                                <span class="badge bg-primary badge-code">{{ proc.codigo }}</span>
+                            </td>
+                            <td>{{ proc.nome }}</td>
+                            <td><span class="text-muted">{{ proc.matriz|default:"-" }}</span></td>
+                            <td><span class="text-muted">{{ proc.sub_area|default:"-" }}</span></td>
+                            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-danger btn-remove remover-proc-btn" data-proc-id="{{ proc.id }}" title="Remover">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-4">
+                Nenhum procedimento associado
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ações Rápidas -->
+    <div class="mb-4">
+        <div class="row g-2">
+            {% if planejamento.status == 'CONFIRMADO' %}
+            <div class="col-12">
+                <div class="alert alert-info d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Treinamento confirmado!</strong> Quando o treinamento for realizado, você pode gerar automaticamente os registros.
+                    </div>
+                    <a href="{% url 'procedures:criar_registros_planejamento' planejamento.id %}" class="btn btn-success btn-sm">
+                        <i class="bi bi-check-circle"></i> Marcar como Realizado
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Botão para Gerar Lista de Presença -->
+            {% if planejamento.procedimentos.exists and planejamento.colaboradores.exists %}
+            <div class="col-12">
+                <div class="alert alert-success d-flex justify-content-between align-items-center mb-0">
+                    <div>
+                        <i class="fas fa-list-check"></i>
+                        <strong>Lista de Presença!</strong> Gere uma lista de presença para coletar assinaturas dos participantes.
+                    </div>
+                    <a href="{% url 'procedures:gerar_lista_presenca_desde_planejamento' planejamento.id %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-file-pdf"></i> Gerar Lista de Presença
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Lista de Participantes -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6>
+                <i class="bi bi-people"></i> 
+                Participantes ({{ colaboradores_info|length }})
+            </h6>
+            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+            <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#colaboradoresModal">
+                <i class="bi bi-plus-circle"></i> Adicionar
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            {% if colaboradores_info %}
+            <div class="table-responsive">
+                <table class="table table-clean table-hover" id="colaboradores-list">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th width="110">Matrícula</th>
+                            <th width="180">Setor</th>
+                            <th width="120" class="text-center">Status</th>
+                            <th width="130" class="text-center">Último Treino</th>
+                            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                            <th width="60" class="text-center">Ação</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for info in colaboradores_info %}
+                        <tr data-colab-id="{{ info.colaborador.id }}">
+                            <td>
+                                {% if info.colaborador.nome_completo %}
+                                    {{ info.colaborador.nome_completo }}
+                                {% else %}
+                                    <span class="text-muted">Colaborador {{ info.colaborador.matricula|default:info.colaborador.id }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ info.colaborador.matricula|default:"-" }}</td>
+                            <td><span class="text-muted">{{ info.colaborador.setor|default:"-" }}</span></td>
+                            <td class="text-center">
+                                {% if info.treinado %}
+                                    <span class="badge bg-success badge-code">
+                                        <i class="bi bi-check-circle"></i> Treinado
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning badge-code">
+                                        <i class="bi bi-clock"></i> Pendente
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if info.registro %}
+                                    <span class="text-muted small">{{ info.registro.data_treinamento|date:"d/m/Y" }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            {% if planejamento.status != 'REALIZADO' and planejamento.status != 'CANCELADO' %}
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-danger btn-remove remover-colab-btn" data-colab-id="{{ info.colaborador.id }}" title="Remover">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Resumo -->
+            <div class="bg-light border-top p-3">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <div>
+                                <small class="text-muted d-block">Treinados</small>
+                                <strong>{{ treinados_count }} de {{ total_colaboradores }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-clock-fill text-warning me-2"></i>
+                            <div>
+                                <small class="text-muted d-block">Pendentes</small>
+                                <strong>{{ pendentes_count }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-4">
+                Nenhum participante cadastrado
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Ação Destrutiva -->
+    {% if planejamento.status == 'PLANEJADO' or planejamento.status == 'CANCELADO' %}
+    <div class="mt-3 text-end">
+        <a href="{% url 'procedures:deletar_planejamento' planejamento.id %}" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-trash"></i> Deletar Planejamento
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Procedimentos -->
+<div class="modal fade" id="procedimentosModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Selecionar Procedimentos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small">Grupo</label>
+                        <select id="procedimento_filtro_grupo" class="form-select form-select-sm">
+                            <option value="">Todos os grupos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Sub-área</label>
+                        <select id="procedimento_filtro_subgrupo" class="form-select form-select-sm">
+                            <option value="">Todos os sub-grupos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Busca -->
+                <div class="mb-3">
+                    <label class="form-label small">Pesquisar por código ou nome</label>
+                    <input type="text" id="procedimento_search" class="form-control form-control-sm" placeholder="Ex: PC001 ou Procedimento...">
+                </div>
+
+                <!-- Lista de procedimentos -->
+                <div id="procedimento_modal_list" style="max-height: 500px; overflow-y: auto;">
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-hourglass-split"></i> Carregando procedimentos...
+                    </div>
+                </div>
+
+                <!-- Botões de ação -->
+                <div class="mt-3 pt-3 border-top d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn_selecionar_filtrados">
+                        <i class="bi bi-check-all"></i> Selecionar Filtrados
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_limpar_selecao">
+                        <i class="bi bi-x"></i> Limpar Seleção
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success ms-auto" id="btn_confirmar_procedimentos" data-bs-dismiss="modal">
+                        <i class="bi bi-check-circle"></i> Adicionar Procedimentos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Colaboradores -->
+<div class="modal fade" id="colaboradoresModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Selecionar Colaboradores</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small">Turno</label>
+                        <select id="colaborador_filtro_turno" class="form-select form-select-sm">
+                            <option value="">Todos os turnos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Setor</label>
+                        <select id="colaborador_filtro_setor" class="form-select form-select-sm">
+                            <option value="">Todos os setores</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small">Líder</label>
+                        <select id="colaborador_filtro_lider" class="form-select form-select-sm">
+                            <option value="">Todos os líderes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Supervisor</label>
+                        <select id="colaborador_filtro_supervisor" class="form-select form-select-sm">
+                            <option value="">Todos os supervisores</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Busca -->
+                <div class="mb-3">
+                    <label class="form-label small">Pesquisar por nome ou matrícula</label>
+                    <input type="text" id="colaborador_search" class="form-control form-control-sm" placeholder="Ex: João Silva ou MAT001...">
+                </div>
+
+                <!-- Lista de colaboradores -->
+                <div id="colaborador_modal_list" style="max-height: 500px; overflow-y: auto;">
+                    <div class="text-center text-muted py-5">
+                        <i class="bi bi-hourglass-split"></i> Carregando colaboradores...
+                    </div>
+                </div>
+
+                <!-- Botões de ação -->
+                <div class="mt-3 pt-3 border-top d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn_selecionar_colaboradores_filtrados">
+                        <i class="bi bi-check-all"></i> Selecionar Filtrados
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn_limpar_colaboradores">
+                        <i class="bi bi-x"></i> Limpar Seleção
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success ms-auto" id="btn_confirmar_colaboradores" data-bs-dismiss="modal">
+                        <i class="bi bi-check-circle"></i> Adicionar Colaboradores
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const planejamentoId = {{ planejamento.id }};
+    const csrfToken = '{{ csrf_token }}';
+    
+    // ============================================
+    // MODAL PROCEDIMENTOS - CARREGAMENTO E FILTROS
+    // ============================================
+    const procedimentoModal = document.getElementById('procedimentosModal');
+    const filtroGrupo = document.getElementById('procedimento_filtro_grupo');
+    const filtroSubgrupo = document.getElementById('procedimento_filtro_subgrupo');
+    const searchInput = document.getElementById('procedimento_search');
+    const listaProcedimentos = document.getElementById('procedimento_modal_list');
+    
+    let todosProcedimentos = [];
+    let todosGrupos = new Set();
+    let mapeamentoGrupoSubgrupo = {}; // Map de grupo => [subgrupos]
+    let procedimentosSelecionados = new Set(); // Rastreia IDs dos procedimentos selecionados
+    
+    // Carregar procedimentos quando o modal é aberto
+    if (procedimentoModal) {
+        procedimentoModal.addEventListener('show.bs.modal', function() {
+            // Sempre carregar (não verificar se já foi carregado antes)
+            carregarProcedimentos();
+        });
+    }
+    
+    function carregarProcedimentos() {
+        fetch('/procedures/api/procedimentos/buscar/')
+            .then(response => response.json())
+            .then(data => {
+                todosProcedimentos = data.procedimentos || [];
+                
+                // Coletar grupos únicos e criar mapa grupo => subgrupos
+                todosProcedimentos.forEach(proc => {
+                    if (proc.grupo_nome && proc.grupo_nome !== '-') {
+                        todosGrupos.add(proc.grupo_nome);
+                        
+                        // Inicializar array de subgrupos para este grupo se não existe
+                        if (!mapeamentoGrupoSubgrupo[proc.grupo_nome]) {
+                            mapeamentoGrupoSubgrupo[proc.grupo_nome] = new Set();
+                        }
+                        
+                        // Adicionar subgrupo ao grupo
+                        if (proc.subgrupo_nome && proc.subgrupo_nome !== '-') {
+                            mapeamentoGrupoSubgrupo[proc.grupo_nome].add(proc.subgrupo_nome);
+                        }
+                    }
+                });
+                
+                // Popular select de grupos
+                populaSelectFiltro(filtroGrupo, Array.from(todosGrupos).sort());
+                
+                // Renderizar lista inicial
+                renderizarProcedimentos(todosProcedimentos);
+            })
+            .catch(error => {
+                console.error('Erro ao carregar procedimentos:', error);
+                listaProcedimentos.innerHTML = '<div class="alert alert-danger">Erro ao carregar procedimentos</div>';
+            });
+    }
+    
+    function populaSelectFiltro(selectElement, opcoes) {
+        opcoes.forEach(opcao => {
+            const option = document.createElement('option');
+            option.value = opcao;
+            option.textContent = opcao;
+            selectElement.appendChild(option);
+        });
+    }
+    
+    // Event listener para grupo - quando muda, atualiza os subgrupos
+    if (filtroGrupo) {
+        filtroGrupo.addEventListener('change', function() {
+            const grupoSelecionado = this.value;
+            
+            // Limpar e recarregar subgrupos
+            limparSelectExcetoPrimeira(filtroSubgrupo);
+            
+            if (grupoSelecionado) {
+                // Buscar subgrupos do grupo selecionado
+                const subgruprosDoGrupo = Array.from(mapeamentoGrupoSubgrupo[grupoSelecionado] || []).sort();
+                populaSelectFiltro(filtroSubgrupo, subgruprosDoGrupo);
+            }
+            
+            // Resetar filtro de subgrupo
+            filtroSubgrupo.value = '';
+            
+            // Aplicar filtros
+            aplicarFiltros();
+        });
+    }
+    
+    if (filtroSubgrupo) {
+        filtroSubgrupo.addEventListener('change', aplicarFiltros);
+    }
+    if (searchInput) {
+        searchInput.addEventListener('input', aplicarFiltros);
+    }
+    
+    // Event listeners para botões de ação
+    const btnSelecionarFiltrados = document.getElementById('btn_selecionar_filtrados');
+    const btnLimparSelecao = document.getElementById('btn_limpar_selecao');
+    const btnConfirmarProcedimentos = document.getElementById('btn_confirmar_procedimentos');
+    
+    if (btnSelecionarFiltrados) {
+        btnSelecionarFiltrados.addEventListener('click', function() {
+            // Selecionar todos os checkboxes visíveis
+            document.querySelectorAll('.procedimento-checkbox').forEach(checkbox => {
+                const procId = parseInt(checkbox.value);
+                checkbox.checked = true;
+                procedimentosSelecionados.add(procId);
+            });
+            atualizarProcedimentosSelecionados();
+        });
+    }
+    
+    if (btnLimparSelecao) {
+        btnLimparSelecao.addEventListener('click', function() {
+            // Desselecionar todos os checkboxes
+            document.querySelectorAll('.procedimento-checkbox').forEach(checkbox => {
+                const procId = parseInt(checkbox.value);
+                checkbox.checked = false;
+                procedimentosSelecionados.delete(procId);
+            });
+            atualizarProcedimentosSelecionados();
+        });
+    }
+    
+    if (btnConfirmarProcedimentos) {
+        btnConfirmarProcedimentos.addEventListener('click', function() {
+            // Adicionar os procedimentos selecionados
+            const ids = Array.from(procedimentosSelecionados);
+            
+            if (ids.length === 0) {
+                alert('Selecione pelo menos um procedimento');
+                return;
+            }
+            
+            const formData = new FormData();
+            ids.forEach(id => formData.append('procedimento_ids', id));
+            
+            fetch(`/procedures/planejamentos/${planejamentoId}/procedimentos/adicionar/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken},
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+    }
+    
+    function limparSelectExcetoPrimeira(selectElement) {
+        // Manter apenas a primeira opção (vazia)
+        while (selectElement.options.length > 1) {
+            selectElement.remove(1);
+        }
+    }
+    
+    function aplicarFiltros() {
+        let procedimentosFiltrados = todosProcedimentos;
+        
+        const grupoSelecionado = filtroGrupo.value;
+        const subgrupoSelecionado = filtroSubgrupo.value;
+        const busca = searchInput.value.toLowerCase();
+        
+        procedimentosFiltrados = procedimentosFiltrados.filter(proc => {
+            const matchGrupo = !grupoSelecionado || proc.grupo_nome === grupoSelecionado;
+            const matchSubgrupo = !subgrupoSelecionado || proc.subgrupo_nome === subgrupoSelecionado;
+            const matchBusca = !busca || 
+                               proc.codigo.toLowerCase().includes(busca) || 
+                               proc.nome.toLowerCase().includes(busca);
+            
+            return matchGrupo && matchSubgrupo && matchBusca;
+        });
+        
+        renderizarProcedimentos(procedimentosFiltrados);
+    }
+    
+    function renderizarProcedimentos(procedimentos) {
+        if (procedimentos.length === 0) {
+            listaProcedimentos.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle"></i> Nenhum procedimento encontrado</div>';
+            return;
+        }
+        
+        let html = '';
+        procedimentos.forEach(proc => {
+            const isSelected = procedimentosSelecionados.has(proc.id);
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input procedimento-checkbox" type="checkbox" id="proc_${proc.id}" value="${proc.id}" ${isSelected ? 'checked' : ''}>
+                    <label class="form-check-label" for="proc_${proc.id}">
+                        <strong>${proc.codigo}</strong> - ${proc.nome}
+                        <br>
+                        <small class="text-muted">${proc.grupo_nome} ${proc.subgrupo_nome !== '-' ? '/ ' + proc.subgrupo_nome : ''}</small>
+                    </label>
+                </div>
+            `;
+        });
+        
+        listaProcedimentos.innerHTML = html;
+        
+        // Adicionar event listeners aos checkboxes
+        document.querySelectorAll('.procedimento-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const procId = parseInt(this.value);
+                if (this.checked) {
+                    procedimentosSelecionados.add(procId);
+                } else {
+                    procedimentosSelecionados.delete(procId);
+                }
+            });
+        });
+    }
+    
+    function atualizarProcedimentosSelecionados() {
+        // Apenas para interface visual se necessário
+    }
+    
+    
+    // ============================================
+    // MODAL COLABORADORES - CARREGAMENTO E FILTROS
+    // ============================================
+    const colaboradorModal = document.getElementById('colaboradoresModal');
+    const filtroTurno = document.getElementById('colaborador_filtro_turno');
+    const filtroSetor = document.getElementById('colaborador_filtro_setor');
+    const filtroLider = document.getElementById('colaborador_filtro_lider');
+    const filtroSupervisor = document.getElementById('colaborador_filtro_supervisor');
+    const searchColaborador = document.getElementById('colaborador_search');
+    const listaColaboradores = document.getElementById('colaborador_modal_list');
+    
+    let todosColaboradores = [];
+    let colaboradoresSelecionados = new Set(); // Rastreia IDs dos colaboradores selecionados
+    
+    // Carregar colaboradores quando o modal é aberto
+    if (colaboradorModal) {
+        colaboradorModal.addEventListener('show.bs.modal', function() {
+            // Sempre carregar
+            carregarColaboradores();
+        });
+    }
+    
+    function carregarColaboradores() {
+        fetch('/procedures/api/colaboradores/buscar/')
+            .then(response => response.json())
+            .then(data => {
+                todosColaboradores = data.colaboradores || [];
+                const filtros = data.filtros || {};
+                
+                // Popular selects de filtro
+                if (filtros.turnos) {
+                    filtros.turnos.forEach(turno => {
+                        const option = document.createElement('option');
+                        option.value = turno;
+                        option.textContent = turno;
+                        filtroTurno.appendChild(option);
+                    });
+                }
+                
+                if (filtros.setores) {
+                    filtros.setores.forEach(setor => {
+                        const option = document.createElement('option');
+                        option.value = setor.id;
+                        option.textContent = setor.nome;
+                        filtroSetor.appendChild(option);
+                    });
+                }
+                
+                if (filtros.lideres) {
+                    filtros.lideres.forEach(lider => {
+                        const option = document.createElement('option');
+                        option.value = lider.id;
+                        option.textContent = lider.nome;
+                        filtroLider.appendChild(option);
+                    });
+                }
+                
+                if (filtros.supervisores) {
+                    filtros.supervisores.forEach(supervisor => {
+                        const option = document.createElement('option');
+                        option.value = supervisor.id;
+                        option.textContent = supervisor.nome;
+                        filtroSupervisor.appendChild(option);
+                    });
+                }
+                
+                // Renderizar lista inicial
+                renderizarColaboradores(todosColaboradores);
+            })
+            .catch(error => {
+                console.error('Erro ao carregar colaboradores:', error);
+                listaColaboradores.innerHTML = '<div class="alert alert-danger">Erro ao carregar colaboradores</div>';
+            });
+    }
+    
+    // Event listeners para filtros
+    if (filtroTurno) {
+        filtroTurno.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (filtroSetor) {
+        filtroSetor.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (filtroLider) {
+        filtroLider.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (filtroSupervisor) {
+        filtroSupervisor.addEventListener('change', aplicarFiltrosColaboradores);
+    }
+    if (searchColaborador) {
+        searchColaborador.addEventListener('input', aplicarFiltrosColaboradores);
+    }
+    
+    // Event listeners para botões de ação
+    const btnSelecionarColaboradoresFiltrados = document.getElementById('btn_selecionar_colaboradores_filtrados');
+    const btnLimparColaboradores = document.getElementById('btn_limpar_colaboradores');
+    const btnConfirmarColaboradores = document.getElementById('btn_confirmar_colaboradores');
+    
+    if (btnSelecionarColaboradoresFiltrados) {
+        btnSelecionarColaboradoresFiltrados.addEventListener('click', function() {
+            // Selecionar todos os checkboxes visíveis
+            document.querySelectorAll('.colaborador-checkbox').forEach(checkbox => {
+                const colabId = parseInt(checkbox.value);
+                checkbox.checked = true;
+                colaboradoresSelecionados.add(colabId);
+            });
+        });
+    }
+    
+    if (btnLimparColaboradores) {
+        btnLimparColaboradores.addEventListener('click', function() {
+            // Desselecionar todos os checkboxes
+            document.querySelectorAll('.colaborador-checkbox').forEach(checkbox => {
+                const colabId = parseInt(checkbox.value);
+                checkbox.checked = false;
+                colaboradoresSelecionados.delete(colabId);
+            });
+        });
+    }
+    
+    if (btnConfirmarColaboradores) {
+        btnConfirmarColaboradores.addEventListener('click', function() {
+            // Adicionar os colaboradores selecionados
+            const ids = Array.from(colaboradoresSelecionados);
+            
+            if (ids.length === 0) {
+                alert('Selecione pelo menos um colaborador');
+                return;
+            }
+            
+            const formData = new FormData();
+            ids.forEach(id => formData.append('colaborador_ids', id));
+            
+            fetch(`/procedures/planejamentos/${planejamentoId}/colaboradores/adicionar/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken},
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+    }
+    
+    function aplicarFiltrosColaboradores() {
+        let colaboradoresFiltrados = todosColaboradores;
+        
+        const turnoSelecionado = filtroTurno.value;
+        const setorSelecionado = filtroSetor.value;
+        const liderSelecionado = filtroLider.value;
+        const supervisorSelecionado = filtroSupervisor.value;
+        const busca = searchColaborador.value.toLowerCase();
+        
+        colaboradoresFiltrados = colaboradoresFiltrados.filter(colab => {
+            const matchTurno = !turnoSelecionado || colab.turno === turnoSelecionado;
+            const matchSetor = !setorSelecionado || (colab.setor_id && colab.setor_id === parseInt(setorSelecionado));
+            const matchLider = !liderSelecionado || (colab.lider_id && colab.lider_id === parseInt(liderSelecionado));
+            const matchSupervisor = !supervisorSelecionado || (colab.supervisor_id && colab.supervisor_id === parseInt(supervisorSelecionado));
+            const matchBusca = !busca || 
+                               colab.nome.toLowerCase().includes(busca) || 
+                               (colab.matricula && colab.matricula.toLowerCase().includes(busca));
+            
+            return matchTurno && matchSetor && matchLider && matchSupervisor && matchBusca;
+        });
+        
+        renderizarColaboradores(colaboradoresFiltrados);
+    }
+    
+    function renderizarColaboradores(colaboradores) {
+        if (colaboradores.length === 0) {
+            listaColaboradores.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle"></i> Nenhum colaborador encontrado</div>';
+            return;
+        }
+        
+        let html = '';
+        colaboradores.forEach(colab => {
+            const isSelected = colaboradoresSelecionados.has(colab.id);
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input colaborador-checkbox" type="checkbox" id="colab_${colab.id}" value="${colab.id}" ${isSelected ? 'checked' : ''}>
+                    <label class="form-check-label" for="colab_${colab.id}">
+                        <strong>${colab.nome}</strong> (${colab.matricula || 'S/M'})
+                        <br>
+                        <small class="text-muted">${colab.cargo || '-'} • ${colab.setor || '-'} • ${colab.turno || '-'}</small>
+                    </label>
+                </div>
+            `;
+        });
+        
+        listaColaboradores.innerHTML = html;
+        
+        // Adicionar event listeners aos checkboxes
+        document.querySelectorAll('.colaborador-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const colabId = parseInt(this.value);
+                if (this.checked) {
+                    colaboradoresSelecionados.add(colabId);
+                } else {
+                    colaboradoresSelecionados.delete(colabId);
+                }
+            });
+        });
+    }
+    
+    // Remover procedimento
+    document.querySelectorAll('.remover-proc-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('Remover este procedimento?')) return;
+            
+            const procId = this.dataset.procId;
+            fetch(`/procedures/planejamentos/${planejamentoId}/procedimentos/${procId}/remover/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+    });
+    
+    // Remover colaborador
+    document.querySelectorAll('.remover-colab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('Remover este colaborador?')) return;
+            
+            const colabId = this.dataset.colabId;
+            fetch(`/procedures/planejamentos/${planejamentoId}/colaboradores/${colabId}/remover/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': csrfToken}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

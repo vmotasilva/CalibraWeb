@@ -1,0 +1,22 @@
+# requirements.txt para produção CalibraWeb
+
+# Core Django
+Django>=5.0,<6.0
+
+# Banco de dados
+psycopg2>=2.9
+
+# Cache e fila
+redis>=5.0
+celery>=5.2
+django-redis>=5.3
+
+# Outras dependências comuns
+python-dotenv
+Pillow
+python-dateutil
+requests
+
+# Testes e dev
+pytest
+django-debug-toolbar

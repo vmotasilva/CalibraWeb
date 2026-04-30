@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+  <h3 class="mb-3">Importar Categorias</h3>
+  <p class="text-muted">Envie um arquivo <strong>CSV ou Excel</strong> com colunas: <code>nome, descricao, unidade_sigla</code>. A unidade é opcional e será associada como "Unidade Padrão" da categoria quando existir.</p>
+
+  <form method="post" enctype="multipart/form-data" class="card p-3 shadow-sm" style="max-width: 560px;">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label">Arquivo CSV/Excel</label>
+      <input type="file" name="arquivo" accept=".csv,text/csv,.xlsx,.xls,.xlsm,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="form-control" required>
+    </div>
+    <div class="d-flex justify-content-between">
+      <a href="/admin/qms/categoriainstrumento/" target="_blank" class="btn btn-outline-secondary">Gerenciar no Admin</a>
+      <button type="submit" class="btn btn-primary">Importar</button>
+    </div>
+  </form>
+
+  <div class="mt-4">
+    <details>
+      <summary>Modelo de importação</summary>
+      <div class="bg-light p-3 border rounded">
+        <p class="mb-2">Colunas obrigatórias: <code>nome</code>. Opcionais: <code>descricao</code>, <code>unidade_sigla</code>.</p>
+        <p class="mb-2">Baixe o modelo pronto em Excel:</p>
+        <a class="btn btn-sm btn-outline-primary" href="/dl-template-categorias/">Baixar Modelo (XLSX)</a>
+        <hr/>
+        <p class="mb-2">Exemplo em CSV:</p>
+        <pre class="bg-white p-3 border rounded">nome,descricao,unidade_sigla
+PAQUIMETROS,Instrumentos do tipo paquímetro,mm
+MICROMETROS,Instrumentos do tipo micrômetro,mm
+TORQUIMETROS,Instrumentos para torque,Nm</pre>
+      </div>
+    </details>
+  </div>
+</div>
+{% endblock %}

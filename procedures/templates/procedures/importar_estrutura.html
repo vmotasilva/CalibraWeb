@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Importar Estrutura Completa - Perfis{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'procedures:perfis_list' %}">Perfis</a></li>
+                    <li class="breadcrumb-item active">Importar Estrutura Completa</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-file-earmark-excel"></i> Importação em Massa - Estrutura Completa
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Instruções -->
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading"><i class="bi bi-info-circle"></i> Como usar:</h5>
+                        <ol class="mb-2">
+                            <li><strong>Baixe o template Excel</strong> clicando no botão abaixo</li>
+                            <li><strong>Preencha as abas</strong> seguindo as instruções:
+                                <ul>
+                                    <li><strong>Perfis</strong>: Código e nome dos perfis de treinamento</li>
+                                    <li><strong>Grupos</strong>: Grupos dentro de cada perfil</li>
+                                    <li><strong>Subgrupos</strong>: Subgrupos dentro dos grupos</li>
+                                    <li><strong>Procedimentos</strong>: Vincule procedimentos existentes aos subgrupos</li>
+                                    <li><strong>Colaboradores</strong>: Associe colaboradores cadastrados aos perfis</li>
+                                </ul>
+                            </li>
+                            <li><strong>Salve o arquivo</strong> mantendo o formato .xlsx</li>
+                            <li><strong>Faça upload</strong> usando o formulário abaixo</li>
+                        </ol>
+                        <hr>
+                        <p class="mb-0">
+                            <strong>Importante:</strong> Procedimentos e Colaboradores devem estar previamente cadastrados no sistema.
+                            Use os códigos e matrículas exatos para vinculação.
+                        </p>
+                    </div>
+
+                    <!-- Detecção de Duplicatas -->
+                    <div class="alert alert-success border-success">
+                        <h6 class="alert-heading"><i class="bi bi-shield-check"></i> Proteção contra Duplicatas</h6>
+                        <p class="mb-2">O sistema identifica automaticamente registros já existentes:</p>
+                        <ul class="mb-2 small">
+                            <li><strong>Perfis:</strong> Se o código já existe, os dados serão <u>atualizados</u></li>
+                            <li><strong>Grupos:</strong> Identifica por Perfil + Nome do Grupo (atualiza se existir)</li>
+                            <li><strong>Subgrupos:</strong> Identifica por Grupo + Nome do Subgrupo (atualiza se existir)</li>
+                            <li><strong>Procedimentos:</strong> Não duplica vínculos já existentes</li>
+                            <li><strong>Colaboradores:</strong> Não duplica associações já existentes</li>
+                        </ul>
+                        <p class="mb-0 small text-success">
+                            <i class="bi bi-check-circle"></i> <strong>Você pode reimportar o mesmo arquivo sem criar duplicatas!</strong>
+                            O sistema irá informar quantos registros foram criados vs. atualizados.
+                        </p>
+                    </div>
+
+                    <!-- Download Template -->
+                    <div class="text-center mb-4">
+                        <a href="{% url 'procedures:download_template_importacao' %}" class="btn btn-success btn-lg">
+                            <i class="bi bi-download"></i> Baixar Template Excel
+                        </a>
+                        {% if request.session.erros_importacao %}
+                        <a href="{% url 'procedures:exportar_erros_importacao' %}" class="btn btn-warning btn-lg ms-2">
+                            <i class="bi bi-file-earmark-excel"></i> Exportar Erros da Última Importação
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    <hr>
+
+                    <!-- Formulário de Upload -->
+                    <form method="POST" enctype="multipart/form-data" id="form-importar">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="arquivo" class="form-label fw-bold">
+                                <i class="bi bi-upload"></i> Selecione o arquivo Excel preenchido:
+                            </label>
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="arquivo" 
+                                   name="arquivo" 
+                                   accept=".xlsx,.xls" 
+                                   required>
+                            <small class="text-muted">Formatos aceitos: .xlsx, .xls</small>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            <strong>Atenção:</strong> A importação pode levar alguns minutos dependendo da quantidade de dados.
+                            Aguarde a confirmação antes de sair da página.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="btn-importar">
+                                <i class="bi bi-cloud-upload"></i> Importar Estrutura
+                            </button>
+                            <a href="{% url 'procedures:perfis_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Voltar para Lista de Perfis
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Card de Informações Adicionais -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Dicas para uma importação bem-sucedida</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>Códigos únicos:</strong> Cada perfil deve ter um código único</li>
+                        <li><strong>Nomes exatos:</strong> Ao vincular grupos e subgrupos, use os nomes exatamente como cadastrados</li>
+                        <li><strong>Ordem de importação:</strong> O sistema processa na ordem: Perfis → Grupos → Subgrupos → Procedimentos → Colaboradores</li>
+                        <li><strong>Validação prévia:</strong> Certifique-se de que procedimentos e colaboradores existem antes de importar</li>
+                        <li><strong>Matrículas:</strong> Use apenas números nas matrículas (ex: 141, não 141.0)</li>
+                        <li><strong>Backup:</strong> Mantenha uma cópia do arquivo Excel para referência futura</li>
+                        <li><strong>Demandas automáticas:</strong> Ao associar colaboradores, o sistema criará automaticamente as demandas de treinamento</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Card de Soluções para Erros Comuns -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Soluções para Erros Comuns</h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="accordionErros">
+                        <!-- Erro 1: Procedimentos não encontrados -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#erro1">
+                                    Procedimento não encontrado
+                                </button>
+                            </h2>
+                            <div id="erro1" class="accordion-collapse collapse" data-bs-parent="#accordionErros">
+                                <div class="accordion-body">
+                                    <strong>Causa:</strong> O código do procedimento na planilha não existe no sistema.<br>
+                                    <strong>Solução:</strong>
+                                    <ol>
+                                        <li>Verifique se o procedimento está cadastrado em Procedimentos</li>
+                                        <li>Confira se o código está digitado exatamente igual (letras maiúsculas/minúsculas, pontos, etc.)</li>
+                                        <li>Se o procedimento não existir, cadastre-o primeiro antes de importar</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Erro 2: Subgrupo não encontrado -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#erro2">
+                                    SubGrupoTreinamento matching query does not exist
+                                </button>
+                            </h2>
+                            <div id="erro2" class="accordion-collapse collapse" data-bs-parent="#accordionErros">
+                                <div class="accordion-body">
+                                    <strong>Causa:</strong> O sistema não encontrou o subgrupo especificado.<br>
+                                    <strong>Solução:</strong>
+                                    <ol>
+                                        <li>Verifique se o nome do Grupo e Subgrupo estão corretos</li>
+                                        <li>Certifique-se de que o Grupo pertence ao Perfil correto</li>
+                                        <li>Confira espaços extras ou caracteres especiais nos nomes</li>
+                                        <li>A ordem importa: Subgrupo deve estar vinculado ao Grupo correto</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Erro 3: Colaborador não encontrado -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#erro3">
+                                    Colaborador/Matrícula não encontrada
+                                </button>
+                            </h2>
+                            <div id="erro3" class="accordion-collapse collapse" data-bs-parent="#accordionErros">
+                                <div class="accordion-body">
+                                    <strong>Causa:</strong> A matrícula informada não existe no cadastro de colaboradores.<br>
+                                    <strong>Solução:</strong>
+                                    <ol>
+                                        <li>Verifique se o colaborador está cadastrado em RH → Colaboradores</li>
+                                        <li>Confirme se a matrícula está correta (sem .0, sem espaços)</li>
+                                        <li>Cadastre o colaborador primeiro se ele não existir</li>
+                                        <li>Use apenas números na coluna Matrícula</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('form-importar').addEventListener('submit', function() {
+    const btn = document.getElementById('btn-importar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importando...';
+});
+</script>
+{% endblock %}

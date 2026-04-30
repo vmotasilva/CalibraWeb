@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Selecionar Cotação{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="bi bi-check-circle"></i> Selecionar Cotação</h1>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6 class="text-muted">Solicitação</h6>
+                        <h5>{{ solicitacao.numero }}</h5>
+                    </div>
+                    <div class="mb-4">
+                        <h6 class="text-muted">Necessidade</h6>
+                        <p>
+                            <strong>{{ item_solicitacao.instrumento.tag }}</strong><br>
+                            {{ item_solicitacao.necessidade }}
+                        </p>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% for field in form %}
+                            <div class="mb-3">
+                                {{ field.label_tag }}
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="alert alert-danger mt-2 py-1">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Selecionar
+                            </button>
+                            <a href="{% url 'metrologia:solicitacao_detail' solicitacao.id %}" 
+                               class="btn btn-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

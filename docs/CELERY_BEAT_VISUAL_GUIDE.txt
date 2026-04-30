@@ -1,0 +1,271 @@
+# CELERY BEAT NO RAILWAY - SOLUÇÃO VISUAL
+
+```
+═══════════════════════════════════════════════════════════════════════════════
+                    CELERY BEAT DEPLOYMENT - FLUXO COMPLETO
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                         O SEU PROBLEMA ORIGINAL                            │
+│                                                                             │
+│  Railway Service Status:                                                    │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ postgres-service      ✓ UP                                           │  │
+│  │ redis-service         ✓ UP                                           │  │
+│  │ web-app               ✓ UP                                           │  │
+│  │ [FAILING] ❌          337+ healthcheck failures                      │  │
+│  │                      → Tentando rodar Gunicorn como Celery Beat      │  │
+│  │                      → Healthcheck HTTP falha constantemente        │  │
+│  │                      → Service fica em FAILED                        │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│                                    ⬇️                                       │
+│                                                                             │
+│                         ❌ O QUE ESTAVA ACONTECENDO                        │
+│                                                                             │
+│  [FAILING Service]                                                         │
+│  ├─ Dockerfile: Dockerfile (web)                                          │
+│  ├─ Entrypoint: entrypoint.py (Gunicorn)                                 │
+│  ├─ Esperado: Servidor HTTP em :8000                                      │
+│  └─ Healthcheck: HTTP GET /healthz → Falha!                               │
+│                                                                             │
+│  ❌ Razão da Falha:                                                         │
+│     Celery Beat não é um servidor HTTP!                                    │
+│     Não responde em localhost:8000                                         │
+│     Healthcheck nunca passa                                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                         ✅ A SOLUÇÃO IMPLEMENTADA                          │
+│                                                                             │
+│  Criar 2 SERVIÇOS SEPARADOS:                                               │
+│                                                                             │
+│  Serviço 1: CalibraWeb (Web App)          ← EXISTENTE                      │
+│  ├─ Dockerfile: Dockerfile                                                 │
+│  ├─ Entrypoint: entrypoint.py (Gunicorn)                                  │
+│  ├─ Porta: 8000 (HTTP)                                                    │
+│  ├─ Healthcheck: HTTP GET /healthz                                        │
+│  └─ Status: ✓ UP                                                          │
+│                                                                             │
+│  Serviço 2: celery-beat (Scheduler)      ← NOVO!                          │
+│  ├─ Dockerfile: Dockerfile.beat          ← CRIADO                         │
+│  ├─ Entrypoint: entrypoint-beat.py       ← CRIADO                         │
+│  ├─ Porta: NENHUMA (não é servidor HTTP)                                  │
+│  ├─ Healthcheck: NENHUM (desnecessário)                                   │
+│  └─ Status: ✓ UP                                                          │
+│                                                                             │
+│  Resultado: Ambos os serviços rodam simultaneamente no Railway             │
+│             Cada um faz seu trabalho                                       │
+│             Sem conflitos                                                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                     ARQUIVOS QUE FORAM CRIADOS                             │
+│                                                                             │
+│  Code (3):                                                                 │
+│  ├─ Dockerfile.beat ..................... Novo container de Celery Beat  │
+│  ├─ entrypoint-beat.py .................. Script para iniciar Beat      │
+│  └─ check_celery_beat_setup.py ......... Validador pré-deploy          │
+│                                                                             │
+│  Documentation (9):                                                         │
+│  ├─ README_CELERY_BEAT.md ⭐ ........... Leia ISTO PRIMEIRO!            │
+│  ├─ CELERY_BEAT_FIX_QUICK.md ⭐ ....... 3 passos de deploy             │
+│  ├─ RAILWAY_STEP_BY_STEP.md ⭐ ........ Guia visual do Railway         │
+│  ├─ DEPLOYMENT_CHECKLIST.txt ........... Lista de verificação           │
+│  ├─ RAILWAY_VARIABLES_EXAMPLE.md ....... Como configurar variáveis     │
+│  ├─ CELERY_BEAT_RAILWAY_DEPLOYMENT.md . Documentação completa          │
+│  ├─ CELERY_BEAT_SOLUTION_SUMMARY.md ... Resumo executivo               │
+│  ├─ CELERY_BEAT_DOCUMENTATION_INDEX.md  Índice navegável               │
+│  └─ railroad.yml ........................ Referência de configuração     │
+│                                                                             │
+│  TOTAL: 12 arquivos novos!                                                 │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                        DIAGRAMA DE DEPLOY (3 PASSOS)                       │
+│                                                                             │
+│  PASSO 1: No Railway Dashboard                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  1. Clique em "+ Create"                                            │  │
+│  │  2. GitHub → vmotasilva/CalibraWeb → main                          │  │
+│  │  3. Aguarde o build iniciar                                         │  │
+│  │                                                                      │  │
+│  │  Resultado: New service "celery-beat" em construção                │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                  ⬇️                                         │
+│  PASSO 2: Configurar o Serviço                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  1. Settings → Dockerfile                                           │  │
+│  │  2. Mude para: Dockerfile.beat                                      │  │
+│  │  3. Clique em Save                                                  │  │
+│  │                                                                      │  │
+│  │  Resultado: Novo build usando o Dockerfile.beat                    │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                  ⬇️                                         │
+│  PASSO 3: Adicionar Variáveis de Ambiente                                   │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  1. Variables → "+ New Variable"                                    │  │
+│  │  2. Copie as 11 variáveis necessárias                              │  │
+│  │     (ver RAILWAY_VARIABLES_EXAMPLE.md)                             │  │
+│  │  3. ⚠️ NÃO use ${REDIS_URL}, copie a URL REAL                      │  │
+│  │  4. Clique em Save                                                  │  │
+│  │                                                                      │  │
+│  │  Resultado: Deploy automático iniciado                             │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                  ⬇️                                         │
+│                           Aguarde 5-10 min                                  │
+│                                  ⬇️                                         │
+│  RESULTADO: Service UP ✓                                                    │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  celery-beat Status: UP                                             │  │
+│  │  Logs mostram:                                                       │  │
+│  │  > [CELERY_BEAT_ENTRYPOINT] Starting Celery Beat Scheduler...      │  │
+│  │  > beat: Scheduler: celery.beat.PersistentScheduler                │  │
+│  │  > beat: Entering tick loop                                         │  │
+│  │                                                                      │  │
+│  │  Tarefas agendadas: 6                                               │  │
+│  │  ✓ relatorio-diario-vencidos                                        │  │
+│  │  ✓ relatorio-semanal-estatisticas                                   │  │
+│  │  ✓ alerta-critico-vencidos                                          │  │
+│  │  ✓ warm-instrumentos-cache                                          │  │
+│  │  ✓ warm-statistics-cache                                            │  │
+│  │  ✓ warm-categories-cache                                            │  │
+│  │                                                                      │  │
+│  │  ✅ SUCESSO!                                                        │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                    ARQUITETURA FINAL NO RAILWAY                            │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    Railway Project: CalibraWeb                     │   │
+│  ├─────────────────────────────────────────────────────────────────────┤   │
+│  │                                                                     │   │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │   │
+│  │  │ PostgreSQL                              STATUS: ✓ UP         │  │   │
+│  │  │ └─ Armazena dados da aplicação                             │  │   │
+│  │  │ └─ Armazena histórico de tarefas agendadas                 │  │   │
+│  │  └──────────────────────────────────────────────────────────────┘  │   │
+│  │                                                                     │   │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │   │
+│  │  │ Redis                                   STATUS: ✓ UP         │  │   │
+│  │  │ └─ Fila de mensagens para Celery                           │  │   │
+│  │  │ └─ Cache da aplicação                                       │  │   │
+│  │  └──────────────────────────────────────────────────────────────┘  │   │
+│  │                                                                     │   │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │   │
+│  │  │ CalibraWeb (Web App)  [EXISTENTE]  STATUS: ✓ UP            │  │   │
+│  │  │ ├─ Dockerfile: Dockerfile                                   │  │   │
+│  │  │ ├─ Entrypoint: entrypoint.py (Gunicorn)                    │  │   │
+│  │  │ ├─ Porta: 8000 (HTTP)                                       │  │   │
+│  │  │ └─ Healthcheck: /healthz ✓                                  │  │   │
+│  │  └──────────────────────────────────────────────────────────────┘  │   │
+│  │                                                                     │   │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │   │
+│  │  │ Celery Beat [NOVO!]                    STATUS: ✓ UP         │  │   │
+│  │  │ ├─ Dockerfile: Dockerfile.beat ← NOVO                      │  │   │
+│  │  │ ├─ Entrypoint: entrypoint-beat.py ← NOVO                   │  │   │
+│  │  │ ├─ Porta: NENHUMA (scheduler, não web)                     │  │   │
+│  │  │ ├─ Healthcheck: NENHUM (scheduler)                         │  │   │
+│  │  │ └─ Função: Agendar tarefas a cada X minutos/horas          │  │   │
+│  │  └──────────────────────────────────────────────────────────────┘  │   │
+│  │                                                                     │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                        GUIA DE LEITURA RECOMENDADO                         │
+│                                                                             │
+│  ⏱️  5 MINUTOS?                                                             │
+│  ├─ Leia: CELERY_BEAT_FIX_QUICK.md                                         │
+│  └─ Depois: Deploy!                                                         │
+│                                                                             │
+│  ⏱️  15 MINUTOS?                                                            │
+│  ├─ Leia: CELERY_BEAT_FIX_QUICK.md (5 min)                                 │
+│  ├─ Siga: RAILWAY_STEP_BY_STEP.md (10 min)                                 │
+│  └─ Depois: Deploy!                                                         │
+│                                                                             │
+│  ⏱️  30 MINUTOS?                                                            │
+│  ├─ Leia: README_CELERY_BEAT.md (10 min)                                   │
+│  ├─ Leia: RAILWAY_VARIABLES_EXAMPLE.md (5 min)                             │
+│  ├─ Siga: RAILWAY_STEP_BY_STEP.md (15 min)                                 │
+│  └─ Depois: Deploy!                                                         │
+│                                                                             │
+│  ⏱️  60 MINUTOS?                                                            │
+│  ├─ Leia: CELERY_BEAT_SOLUTION_SUMMARY.md (10 min)                         │
+│  ├─ Leia: CELERY_BEAT_RAILWAY_DEPLOYMENT.md (20 min)                       │
+│  ├─ Siga: DEPLOYMENT_CHECKLIST.txt (20 min)                                │
+│  ├─ Estude: RAILWAY_VARIABLES_EXAMPLE.md (5 min)                           │
+│  └─ Depois: Deploy com confiança!                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+                    PRÓXIMAS AÇÕES (Em Ordem de Prioridade)
+
+1️⃣  AGORA:   Abra [README_CELERY_BEAT.md](README_CELERY_BEAT.md)
+2️⃣  5 MIN:   Leia [CELERY_BEAT_FIX_QUICK.md](CELERY_BEAT_FIX_QUICK.md)
+3️⃣  10 MIN:  Siga [RAILWAY_STEP_BY_STEP.md](RAILWAY_STEP_BY_STEP.md)
+4️⃣  20 MIN:  Execute [DEPLOYMENT_CHECKLIST.txt](DEPLOYMENT_CHECKLIST.txt)
+5️⃣  30 MIN:  Deploy no Railway
+6️⃣  5 MIN:   Verifique os logs para "Entering tick loop"
+7️⃣  ✅:      Pronto! Celery Beat rodando!
+
+═══════════════════════════════════════════════════════════════════════════════
+
+                              BOA SORTE! 🚀
+
+                Você tem TUDO que precisa para suceder.
+                        30 minutos e pronto!
+
+═══════════════════════════════════════════════════════════════════════════════
+```
+
+---
+
+## 📖 LEIA PRIMEIRO
+
+**[README_CELERY_BEAT.md](README_CELERY_BEAT.md)** - Visão geral completa
+
+---
+
+## 🚀 DEPLOY AGORA
+
+**[RAILWAY_STEP_BY_STEP.md](RAILWAY_STEP_BY_STEP.md)** - Passo a passo no Railway
+
+---
+
+## 📞 PRECISA DE AJUDA?
+
+Veja: **[CELERY_BEAT_DOCUMENTATION_INDEX.md](CELERY_BEAT_DOCUMENTATION_INDEX.md)**
+
+Lá você encontrará qual documento ler para cada tipo de problema.
+
+---
+
+**Status**: ✅ Pronto para Deploy  
+**Data**: 2026-01-07  
+**Tempo Estimado**: 30 minutos

@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Ação{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{% url 'acoes:detalhe_solucao' object.plano_acao.solucao.id %}" class="btn btn-outline-secondary btn-sm mb-3">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <h1 class="mb-2">
+                <i class="bi bi-pencil"></i> Editar Ação #{{ object.numero_acao }}
+            </h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12 col-lg-10">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Número da Ação</label>
+                                {{ form.numero_acao }}
+                                {% if form.numero_acao.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.numero_acao.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Input/Origem</label>
+                                {{ form.input_origem }}
+                                {% if form.input_origem.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.input_origem.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Problema</label>
+                            {{ form.problema }}
+                            {% if form.problema.errors %}
+                                <div class="invalid-feedback d-block">{{ form.problema.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Descrição *</label>
+                            {{ form.descricao }}
+                            {% if form.descricao.errors %}
+                                <div class="invalid-feedback d-block">{{ form.descricao.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">KPI</label>
+                                {{ form.kpi }}
+                                {% if form.kpi.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.kpi.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Classificação</label>
+                                {{ form.classificacao }}
+                                {% if form.classificacao.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.classificacao.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Status</label>
+                                {{ form.status }}
+                                {% if form.status.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.status.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check mt-4">
+                                    {{ form.prioridade }}
+                                    <label class="form-check-label" for="{{ form.prioridade.id_for_label }}">
+                                        Prioridade
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Responsável Principal</label>
+                                {{ form.responsavel_acao }}
+                                {% if form.responsavel_acao.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.responsavel_acao.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Responsáveis (Múltiplos)</label>
+                                {{ form.responsaveis_multiplos }}
+                                <small class="form-text text-muted">Use Ctrl/Cmd para selecionar múltiplos</small>
+                                {% if form.responsaveis_multiplos.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.responsaveis_multiplos.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">1º Deadline</label>
+                                {{ form.data_primeira_deadline }}
+                                {% if form.data_primeira_deadline.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.data_primeira_deadline.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Deadline Final</label>
+                                {{ form.data_deadline }}
+                                {% if form.data_deadline.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.data_deadline.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Data de Conclusão</label>
+                                {{ form.data_conclusao }}
+                                {% if form.data_conclusao.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.data_conclusao.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Comentários</label>
+                            {{ form.comentarios }}
+                            {% if form.comentarios.errors %}
+                                <div class="invalid-feedback d-block">{{ form.comentarios.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Ação Eficaz?</label>
+                            {{ form.acao_eficaz }}
+                            {% if form.acao_eficaz.errors %}
+                                <div class="invalid-feedback d-block">{{ form.acao_eficaz.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'acoes:detalhe_solucao' object.plano_acao.solucao.id %}" class="btn btn-outline-secondary">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i>Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

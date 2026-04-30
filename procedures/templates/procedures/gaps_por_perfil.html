@@ -1,0 +1,142 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Gaps do Perfil - {{ perfil.nome }}{% endblock %}
+{% block header_title %}Análise de Gaps por Perfil{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="card mb-3">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-diagram-3"></i> {{ perfil.nome }}
+            </h5>
+            <div>
+                <a href="{% url 'procedures:detalhe_perfil' perfil.id %}" class="btn btn-light btn-sm">
+                    <i class="bi bi-eye"></i> Ver Perfil
+                </a>
+                <a href="{% url 'procedures:dashboard_gaps' %}" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Código:</strong> {{ perfil.codigo }}</p>
+                    {% if perfil.descricao %}
+                    <p><strong>Descrição:</strong> {{ perfil.descricao }}</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Total de Colaboradores:</strong> {{ total_colaboradores }}</p>
+                    <p><strong>Procedimentos Requeridos:</strong> {{ procedimentos_stats|length }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Colaboradores -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-people"></i> Colaboradores com este Perfil</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for colab in colaboradores %}
+                <div class="col-md-3 mb-2">
+                    <a href="{% url 'procedures:gap_detalhado' colab.id %}" class="btn btn-outline-primary btn-sm w-100">
+                        {{ colab.nome }}
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Análise de Procedimentos -->
+    <div class="card">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-bar-chart-line"></i> Status de Treinamentos por Procedimento</h6>
+        </div>
+        <div class="card-body">
+            {% if procedimentos_stats %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Procedimento</th>
+                            <th class="text-center">Total Colaboradores</th>
+                            <th class="text-center">Treinados</th>
+                            <th class="text-center">Pendentes</th>
+                            <th class="text-center">Completude</th>
+                            <th>Progresso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in procedimentos_stats %}
+                        <tr>
+                            <td>
+                                <strong>{{ stat.procedimento.codigo }}</strong> - {{ stat.procedimento.nome }}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ stat.total_colaboradores }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-success">{{ stat.treinados }}</span>
+                            </td>
+                            <td class="text-center">
+                                {% if stat.pendentes > 0 %}
+                                    <span class="badge bg-danger">{{ stat.pendentes }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">0</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if stat.percentual >= 80 %}
+                                    <span class="badge bg-success">{{ stat.percentual }}%</span>
+                                {% elif stat.percentual >= 50 %}
+                                    <span class="badge bg-warning">{{ stat.percentual }}%</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ stat.percentual }}%</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 25px;">
+                                    {% if stat.percentual >= 80 %}
+                                        <div class="progress-bar bg-success" style="width: {{ stat.percentual }}%">
+                                            {{ stat.percentual }}%
+                                        </div>
+                                    {% elif stat.percentual >= 50 %}
+                                        <div class="progress-bar bg-warning" style="width: {{ stat.percentual }}%">
+                                            {{ stat.percentual }}%
+                                        </div>
+                                    {% else %}
+                                        <div class="progress-bar bg-danger" style="width: {{ stat.percentual }}%">
+                                            {{ stat.percentual }}%
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Ação Sugerida -->
+            <div class="alert alert-info mt-3">
+                <i class="bi bi-lightbulb"></i>
+                <strong>Sugestão:</strong> 
+                Os procedimentos com maior número de pendentes devem ser priorizados no planejamento de treinamentos.
+                <a href="{% url 'procedures:novo_planejamento' %}" class="btn btn-sm btn-primary ms-2">
+                    <i class="bi bi-plus-circle"></i> Criar Planejamento
+                </a>
+            </div>
+            {% else %}
+            <p class="text-muted text-center">Nenhum procedimento requerido encontrado para este perfil.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

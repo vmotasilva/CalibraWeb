@@ -1,0 +1,55 @@
+# Build stage - compile dependencies with build tools
+FROM python:3.12-slim as builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Install only build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only production requirements and install
+COPY requirements-prod.txt .
+RUN pip install --upgrade pip && \
+    pip wheel --no-cache-dir --wheel-dir /wheels -r requirements-prod.txt
+
+# Runtime stage - lean production image for Celery Beat
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Install only runtime dependencies (no build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy wheels from builder and install
+COPY --from=builder /wheels /wheels
+COPY requirements-prod.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache /wheels/*
+
+# Copy application code
+COPY . .
+
+# Make entrypoint executable
+RUN chmod +x start-beat.sh
+
+# Celery Beat does NOT need HTTP ports
+# No EXPOSE directive needed (background scheduler)
+
+# No HEALTHCHECK needed (not an HTTP service)
+
+# Use shell script as entrypoint for Celery Beat scheduler
+CMD ["/bin/sh", "start-beat.sh"]

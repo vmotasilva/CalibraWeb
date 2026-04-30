@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Solução{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{% url 'acoes:detalhe_solucao' solucao.id %}" class="btn btn-outline-secondary btn-sm mb-3">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            
+            <h1 class="mb-2">
+                <i class="bi bi-pencil"></i> Editar Solução
+            </h1>
+            <p class="text-muted">{{ solucao.titulo }}</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label">Título</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo" value="{{ solucao.titulo }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="4">{{ solucao.descricao }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="planejamento" {% if solucao.status == 'planejamento' %}selected{% endif %}>Planejamento</option>
+                                <option value="analise" {% if solucao.status == 'analise' %}selected{% endif %}>Análise</option>
+                                <option value="implementacao" {% if solucao.status == 'implementacao' %}selected{% endif %}>Implementação</option>
+                                <option value="validacao" {% if solucao.status == 'validacao' %}selected{% endif %}>Validação</option>
+                                <option value="encerrada" {% if solucao.status == 'encerrada' %}selected{% endif %}>Encerrada</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="responsavel" class="form-label">Responsável</label>
+                            <select class="form-select" id="responsavel" name="responsavel">
+                                <option value="">-- Sem responsável --</option>
+                                <!-- Colaboradores seriam carregados aqui -->
+                            </select>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Salvar Alterações
+                            </button>
+                            <a href="{% url 'acoes:detalhe_solucao' solucao.id %}" class="btn btn-outline-secondary">
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle"></i> Informações
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Tipo de Solução</label>
+                        <p class="mb-0">
+                            <strong>
+                                {% if solucao.tipo == 'plano_acao' %}
+                                    Plano de Ação
+                                {% elif solucao.tipo == 'a3' %}
+                                    A3
+                                {% elif solucao.tipo == '8d' %}
+                                    8D
+                                {% elif solucao.tipo == 'rnc' %}
+                                    RNC
+                                {% elif solucao.tipo == 'gestao_mudanca' %}
+                                    Gestão de Mudança
+                                {% elif solucao.tipo == 'revisao_gerencial' %}
+                                    Revisão Gerencial
+                                {% endif %}
+                            </strong>
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small">Criada em</label>
+                        <p class="mb-0">
+                            <strong>{{ solucao.data_criacao|date:"d/m/Y H:i" }}</strong>
+                        </p>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label text-muted small">Ação Relacionada</label>
+                        <p class="mb-0">
+                            <a href="{% url 'acoes:detalhe_acao' solucao.acao_corretiva.id %}" class="text-decoration-none">
+                                <strong>{{ solucao.acao_corretiva.numero_registro }}</strong>
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

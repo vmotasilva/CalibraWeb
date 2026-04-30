@@ -1,0 +1,317 @@
+{% extends 'base.html' %}
+{% load nav_access %}
+
+{% can_nav_view user 'fornecedores:fornecedor_update' 'fornecedores' as can_fornecedor_update %}
+{% can_nav_view user 'fornecedores:documento_create' 'fornecedores' as can_documento_create %}
+{% can_nav_view user 'fornecedores:documento_delete' 'fornecedores' as can_documento_delete %}
+{% can_nav_view user 'fornecedores:avaliacao_matriz_create' 'fornecedores' as can_avaliacao_matriz_create %}
+{% can_nav_view user 'fornecedores:avaliacao_selecao_create' 'fornecedores' as can_avaliacao_selecao_create %}
+{% can_nav_view user 'fornecedores:avaliacao_reavaliacao_create' 'fornecedores' as can_avaliacao_reavaliacao_create %}
+{% block content %}
+<h2>Detalhes do Fornecedor</h2>
+<table class="table">
+    <tr><th>Empresa</th><td>{{ fornecedor.empresa }}</td></tr>
+    <tr><th>Nome Fantasia</th><td>{{ fornecedor.nome_fantasia }}</td></tr>
+    <tr><th>Endereço</th><td>{{ fornecedor.endereco }}</td></tr>
+    <tr><th>CNPJ</th><td>{{ fornecedor.cnpj }}</td></tr>
+    <tr><th>SIRET</th><td>{{ fornecedor.siret }}</td></tr>
+    <tr><th>EIN</th><td>{{ fornecedor.ein }}</td></tr>
+    <tr><th>Telefone</th><td>{{ fornecedor.telefone }}</td></tr>
+    <tr><th>UF</th><td>{{ fornecedor.uf }}</td></tr>
+    <tr><th>Tipo</th><td>{{ fornecedor.get_tipo_display }}</td></tr>
+    <tr><th>Ativo</th><td>{{ fornecedor.ativo|yesno:"Sim,Não" }}</td></tr>
+    <tr><th>Licença de funcionamento</th><td>{{ fornecedor.licenca_funcionamento|yesno:"Sim,Não" }}</td></tr>
+    <tr><th>Autorização de funcionamento</th><td>{{ fornecedor.autorizacao_funcionamento|yesno:"Sim,Não" }}</td></tr>
+    <tr><th>Certificado ISO 9001, ISO 13485 ou ISO 17025</th><td>{{ fornecedor.certificado_iso|yesno:"Sim,Não" }}</td></tr>
+</table>
+{% if can_fornecedor_update %}
+<a href="{% url 'fornecedores:fornecedor_update' fornecedor.pk %}" class="btn btn-warning">Editar</a>
+{% endif %}
+<a href="{% url 'fornecedores:fornecedor_list' %}" class="btn btn-secondary">Voltar</a>
+
+<h3>Documentos</h3>
+{% if can_documento_create %}
+<a href="{% url 'fornecedores:documento_create' fornecedor.pk %}" class="btn btn-sm btn-primary mb-2">Novo Documento</a>
+{% endif %}
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Categoria</th>
+            <th>Arquivo</th>
+            <th>Validade</th>
+            <th>Observação</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for doc in fornecedor.documentos.all %}
+        <tr>
+            <td>{{ doc.categoria }}</td>
+            <td><a href="{{ doc.arquivo.url }}" target="_blank">Download</a></td>
+            <td>{{ doc.data_validade|date:'d/m/Y' }}</td>
+            <td>{{ doc.observacao }}</td>
+            <td>
+                {% if can_documento_delete %}
+                    <a href="{% url 'fornecedores:documento_delete' fornecedor.pk doc.pk %}" class="btn btn-sm btn-danger">Remover</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Nenhum documento cadastrado.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
+
+<h3>Avaliação
+    <span class="badge bg-success">Pontuação: {{ percentual_avaliacao|floatformat:1 }}</span>
+    {% if can_avaliacao_matriz_create %}
+        <a href="{% url 'fornecedores:avaliacao_matriz_create' fornecedor.pk %}" class="btn btn-sm btn-info ms-2">
+            <i class="bi bi-table"></i> Matriz
+        </a>
+    {% endif %}
+</h3>
+<div class="accordion" id="avaliacaoAccordion">
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingAvaliacao">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAvaliacao" aria-expanded="true" aria-controls="collapseAvaliacao">
+                Requisitos 
+                {% if ultima_avaliacao_selecao %}
+                <span class="badge bg-success ms-2">{{ percentual_avaliacao|floatformat:1 }}%</span>
+                <span class="badge ms-2" style="background-color: {% if ultima_avaliacao_selecao.resultado == 'Excelente' %}#28a745{% elif ultima_avaliacao_selecao.resultado == 'Bom' %}#17a2b8{% elif ultima_avaliacao_selecao.resultado == 'Satisfatório' %}#ffc107{% else %}#dc3545{% endif %}">{{ ultima_avaliacao_selecao.resultado }}</span>
+                {% endif %}
+            </button>
+        </h2>
+        <div id="collapseAvaliacao" class="accordion-collapse collapse show" aria-labelledby="headingAvaliacao" data-bs-parent="#avaliacaoAccordion">
+            <div class="accordion-body">
+                {% if perguntas_avaliacao %}
+                    {% if ultima_avaliacao_selecao %}
+                    <div class="mb-3">
+                        <p class="mb-2"><strong>Última Avaliação:</strong> {{ ultima_avaliacao_selecao.data|date:"d/m/Y" }}</p>
+                        <p class="mb-3"><strong>Resultado da Avaliação:</strong> 
+                            <span class="badge" style="background-color: 
+                                {% if ultima_avaliacao_selecao.resultado == 'Excelente' %}#28a745
+                                {% elif ultima_avaliacao_selecao.resultado == 'Bom' %}#17a2b8
+                                {% elif ultima_avaliacao_selecao.resultado == 'Satisfatório' %}#ffc107
+                                {% else %}#dc3545
+                                {% endif %}">
+                                {{ percentual_avaliacao|floatformat:0 }}% - {{ ultima_avaliacao_selecao.resultado }}
+                            </span>
+                        </p>
+                        <div class="list-group">
+                            {% for resposta in respostas_avaliacao %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span>{{ resposta.pergunta.texto }}</span>
+                                        <small class="d-block text-muted">Ordem: {{ resposta.pergunta.ordem }}</small>
+                                        {% if resposta.observacao %}
+                                        <small class="d-block text-muted"><em>Obs: {{ resposta.observacao }}</em></small>
+                                        {% endif %}
+                                    </div>
+                                    <span class="badge {% if resposta.resposta %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ resposta.resposta|yesno:"SIM,NÃO" }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info" role="alert">
+                        <strong>Nenhuma avaliação respondida ainda.</strong>
+                    </div>
+                    <div class="list-group mb-3">
+                        {% for pergunta in perguntas_avaliacao %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span>{{ pergunta.texto }}</span>
+                                <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
+                            </div>
+                            <span class="badge bg-secondary">Pendente</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if can_avaliacao_selecao_create %}
+                        <a href="{% url 'fornecedores:avaliacao_selecao_create' fornecedor.pk %}" class="btn btn-primary">
+                            {% if ultima_avaliacao_selecao %}Responder Novamente{% else %}Responder Avaliação{% endif %}
+                        </a>
+                    {% endif %}
+                {% else %}
+                <p class="text-muted"><em>Nenhuma pergunta de avaliação cadastrada.</em></p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<h3>Monitoramento <span class="badge bg-success">Pontuação: {{ pontuacao_geral|floatformat:1 }}</span></h3>
+<div class="accordion" id="monitoramentoAccordion">
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingProduto">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProduto" aria-expanded="true" aria-controls="collapseProduto">
+                Produto <span class="badge bg-danger ms-2">{{ soma_produto|floatformat:1 }}</span>
+            </button>
+        </h2>
+        <div id="collapseProduto" class="accordion-collapse collapse" aria-labelledby="headingProduto" data-bs-parent="#monitoramentoAccordion">
+            <div class="accordion-body p-0">
+                <table class="table table-bordered mb-0">
+                    <thead><tr><th>Pergunta</th><th>Ocorrências</th><th>Saldo</th></tr></thead>
+                    <tbody>
+                        {% for item in monitoramento_produto %}
+                        <tr>
+                            <td>{{ item.pergunta.texto }}</td>
+                            <td>{{ item.ocorrencias }}</td>
+                            <td>{{ item.saldo|floatformat:1 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3">Nenhuma pergunta de produto.</td></tr>
+                        {% endfor %}
+                        <tr class="table-secondary fw-bold"><td colspan="2">Total Produto</td><td>{{ soma_produto|floatformat:1 }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingServico">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseServico" aria-expanded="false" aria-controls="collapseServico">
+                Serviço <span class="badge bg-danger ms-2">{{ soma_servico|floatformat:1 }}</span>
+            </button>
+        </h2>
+        <div id="collapseServico" class="accordion-collapse collapse" aria-labelledby="headingServico" data-bs-parent="#monitoramentoAccordion">
+            <div class="accordion-body p-0">
+                <table class="table table-bordered mb-0">
+                    <thead><tr><th>Pergunta</th><th>Ocorrências</th><th>Saldo</th></tr></thead>
+                    <tbody>
+                        {% for item in monitoramento_servico %}
+                        <tr>
+                            <td>{{ item.pergunta.texto }}</td>
+                            <td>{{ item.ocorrencias }}</td>
+                            <td>{{ item.saldo|floatformat:1 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3">Nenhuma pergunta de serviço.</td></tr>
+                        {% endfor %}
+                        <tr class="table-secondary fw-bold"><td colspan="2">Total Serviço</td><td>{{ soma_servico|floatformat:1 }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingAmbos">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAmbos" aria-expanded="false" aria-controls="collapseAmbos">
+                Ambos <span class="badge bg-danger ms-2">{{ soma_ambos|floatformat:1 }}</span>
+            </button>
+        </h2>
+        <div id="collapseAmbos" class="accordion-collapse collapse" aria-labelledby="headingAmbos" data-bs-parent="#monitoramentoAccordion">
+            <div class="accordion-body p-0">
+                <table class="table table-bordered mb-0">
+                    <thead><tr><th>Pergunta</th><th>Ocorrências</th><th>Saldo</th></tr></thead>
+                    <tbody>
+                        {% for item in monitoramento_ambos %}
+                        <tr>
+                            <td>{{ item.pergunta.texto }}</td>
+                            <td>{{ item.ocorrencias }}</td>
+                            <td>{{ item.saldo|floatformat:1 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3">Nenhuma pergunta de ambos.</td></tr>
+                        {% endfor %}
+                        <tr class="table-secondary fw-bold"><td colspan="2">Total Ambos</td><td>{{ soma_ambos|floatformat:1 }}</td></tr>
+                    <tr class="table-info fw-bold"><td colspan="2">Saldo Total</td><td>{{ saldo_total|floatformat:1 }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="my-3">
+    <a href="{% url 'fornecedores:avaliacao_list' fornecedor.pk %}" class="btn btn-primary btn-lg fw-bold shadow">Ver Registros de Monitoramento</a>
+</div>
+
+<h3 class="mt-4">Reavaliação <span class="badge bg-success">Pontuação: {{ percentual_reavaliacao|floatformat:1 }}</span></h3>
+<div class="accordion" id="reavaliaoAccordion">
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingReavaliacao">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseReavaliacao" aria-expanded="true" aria-controls="collapseReavaliacao">
+                Critérios 
+                {% if ultima_reavaliacao %}
+                <span class="badge bg-success ms-2">{{ percentual_reavaliacao|floatformat:1 }}%</span>
+                <span class="badge ms-2" style="background-color: {% if ultima_reavaliacao.resultado == 'Aprovado' %}#28a745{% elif ultima_reavaliacao.resultado == 'Reprovado' %}#dc3545{% else %}#6c757d{% endif %}">{{ ultima_reavaliacao.resultado }}</span>
+                {% endif %}
+            </button>
+        </h2>
+        <div id="collapseReavaliacao" class="accordion-collapse collapse show" aria-labelledby="headingReavaliacao" data-bs-parent="#reavaliaoAccordion">
+            <div class="accordion-body">
+                {% if perguntas_reavaliacao %}
+                    {% if ultima_reavaliacao %}
+                    <div class="mb-3">
+                        <p class="mb-2"><strong>Última reavaliação:</strong> {{ ultima_reavaliacao.data|date:"d/m/Y" }}</p>
+                        <p class="mb-3"><strong>Resultado da Reavaliação:</strong> 
+                            <span class="badge" style="background-color: 
+                                {% if ultima_reavaliacao.resultado == 'Aprovado' %}#28a745
+                                {% elif ultima_reavaliacao.resultado == 'Reprovado' %}#dc3545
+                                {% else %}#6c757d
+                                {% endif %}">
+                                {{ percentual_reavaliacao|floatformat:0 }}% - {{ ultima_reavaliacao.resultado }}
+                            </span>
+                        </p>
+                        <div class="list-group">
+                            {% for resposta in respostas_reavaliacao %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span>{{ resposta.pergunta.texto }}</span>
+                                        <small class="d-block text-muted">Ordem: {{ resposta.pergunta.ordem }}</small>
+                                    </div>
+                                    <span class="badge {% if resposta.resposta %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ resposta.resposta|yesno:"SIM,NÃO" }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info" role="alert">
+                        <strong>Nenhuma reavaliação respondida ainda.</strong>
+                    </div>
+                    <div class="list-group mb-3">
+                        {% for pergunta in perguntas_reavaliacao %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span>{{ pergunta.texto }}</span>
+                                <small class="d-block text-muted">Ordem: {{ pergunta.ordem }}</small>
+                            </div>
+                            <span class="badge bg-secondary">Pendente</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2">
+                        {% if can_avaliacao_reavaliacao_create %}
+                            <a href="{% url 'fornecedores:avaliacao_reavaliacao_create' fornecedor.pk %}" class="btn btn-primary">
+                                {% if ultima_reavaliacao %}Responder Novamente{% else %}Responder Reavaliação{% endif %}
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'fornecedores:reavaliacao_list' fornecedor.pk %}" class="btn btn-outline-primary">
+                            <i class="bi bi-list-check"></i> Ver Histórico
+                        </a>
+                    </div>
+                {% else %}
+                <p class="text-muted"><em>Nenhuma pergunta de reavaliação cadastrada.</em></p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

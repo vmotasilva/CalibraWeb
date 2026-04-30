@@ -1,0 +1,283 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Resultado da Importação{% endblock %}
+{% block header_title %}Resultado da Importação{% endblock %}
+
+{% block extra_css %}
+<style>
+    .result-card {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .result-header {
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .result-icon {
+        font-size: 2.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .result-success .result-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+    }
+    
+    .result-error .result-header {
+        background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+        color: white;
+    }
+    
+    .result-content {
+        padding: 25px;
+    }
+    
+    .stat-box {
+        text-align: center;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 10px;
+    }
+    
+    .stat-box .stat-number {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+    
+    .stat-box .stat-label {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 5px;
+    }
+    
+    .stat-box.created .stat-number {
+        color: #28a745;
+    }
+    
+    .stat-box.updated .stat-number {
+        color: #17a2b8;
+    }
+    
+    .stat-box.error .stat-number {
+        color: #dc3545;
+    }
+    
+    .message-list {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 0;
+    }
+    
+    .message-item {
+        padding: 12px 15px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        gap: 10px;
+        font-size: 0.9rem;
+    }
+    
+    .message-item:last-child {
+        border-bottom: none;
+    }
+    
+    .message-item-icon {
+        flex-shrink: 0;
+        width: 20px;
+    }
+    
+    .message-item-text {
+        flex-grow: 1;
+    }
+    
+    .message-item.error .message-item-icon {
+        color: #dc3545;
+    }
+    
+    .message-item.warning .message-item-icon {
+        color: #ffc107;
+    }
+    
+    .message-item.success .message-item-icon {
+        color: #28a745;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 30px;
+        color: #999;
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 10px;
+        opacity: 0.3;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'procedures:matrizes_list' %}">Matrizes</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'procedures:importacao_matriz' %}">Importação</a></li>
+            <li class="breadcrumb-item active">Resultado</li>
+        </ol>
+    </nav>
+
+    <!-- Card de Resultado -->
+    <div class="card result-card mb-4 {% if sucesso %}result-success{% else %}result-error{% endif %}">
+        <div class="result-header">
+            <div class="result-icon">
+                {% if sucesso %}
+                    <i class="bi bi-check-circle"></i>
+                {% else %}
+                    <i class="bi bi-exclamation-triangle"></i>
+                {% endif %}
+            </div>
+            <div>
+                <h3 class="mb-1">
+                    {% if sucesso %}
+                        Importação Concluída com Sucesso!
+                    {% else %}
+                        Importação Concluída com Erros
+                    {% endif %}
+                </h3>
+                <p class="mb-0 opacity-75">
+                    {% if sucesso %}
+                        Todos os dados foram processados sem problemas.
+                    {% else %}
+                        Alguns erros foram encontrados durante o processamento.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo Estatístico -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Resumo da Importação</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-box created">
+                        <div class="stat-number">{{ resumo.resumo.matrizes_criadas }}</div>
+                        <div class="stat-label">Matrizes Criadas</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-box updated">
+                        <div class="stat-number">{{ resumo.resumo.matrizes_atualizadas }}</div>
+                        <div class="stat-label">Matrizes Atualizadas</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-box created">
+                        <div class="stat-number">{{ resumo.resumo.disciplinas_criadas }}</div>
+                        <div class="stat-label">Disciplinas Criadas</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-box updated">
+                        <div class="stat-number">{{ resumo.resumo.disciplinas_atualizadas }}</div>
+                        <div class="stat-label">Disciplinas Atualizadas</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-box created">
+                        <div class="stat-number">{{ resumo.resumo.colaboradores_associados }}</div>
+                        <div class="stat-label">Colaboradores Associados</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-box error">
+                        <div class="stat-number">{{ resumo.resumo.colaboradores_nao_encontrados }}</div>
+                        <div class="stat-label">Colaboradores Não Encontrados</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção de Erros -->
+    {% if resumo.erros %}
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-exclamation-circle"></i>
+                Erros ({{ resumo.erros|length }})
+            </h5>
+        </div>
+        <div class="message-list">
+            {% for erro in resumo.erros %}
+            <div class="message-item error">
+                <div class="message-item-icon"><i class="bi bi-x-circle-fill"></i></div>
+                <div class="message-item-text">{{ erro }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Seção de Avisos -->
+    {% if resumo.avisos %}
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">
+                <i class="bi bi-exclamation-triangle"></i>
+                Avisos ({{ resumo.avisos|length }})
+            </h5>
+        </div>
+        <div class="message-list">
+            {% for aviso in resumo.avisos %}
+            <div class="message-item warning">
+                <div class="message-item-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                <div class="message-item-text">{{ aviso }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Seção de Sucesso -->
+    {% if not resumo.erros %}
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-check-circle"></i>
+                Processamento Concluído
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-success mb-0">
+                <i class="bi bi-check-circle"></i>
+                <strong>Sucesso!</strong> Todos os dados foram importados sem erros. 
+                Você pode agora acessar as matrizes e disciplinas criadas.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Botões de Ação -->
+    <div class="d-flex gap-2 justify-content-center">
+        <a href="{% url 'procedures:matrizes_list' %}" class="btn btn-primary">
+            <i class="bi bi-list-ul"></i> Ver Matrizes
+        </a>
+        <a href="{% url 'procedures:importacao_matriz' %}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-repeat"></i> Nova Importação
+        </a>
+    </div>
+</div>
+{% endblock %}

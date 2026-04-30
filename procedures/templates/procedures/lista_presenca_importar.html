@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load nav_access %}
+
+{% block title %}Importar Treinamentos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-info {
+        background-color: #f0f8ff;
+        border-left: 4px solid #0056b3;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .step-card {
+        border-left: 4px solid #28a745;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {% can_nav_view user 'procedures:lista_presenca_importar' 'procedures' as can_importar %}
+    {% can_nav_view user 'procedures:lista_presenca_download_template' 'procedures' as can_download_template %}
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="bi bi-upload"></i> Importar Treinamentos em Massa</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'procedures:lista_presenca_list' %}">Listas de Presença</a></li>
+                    <li class="breadcrumb-item active">Importar</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="import-info">
+        <h5><i class="bi bi-info-circle"></i> Como Funciona a Importação</h5>
+        <p class="mb-2">
+            Esta funcionalidade permite importar múltiplos registros de treinamento a partir de um arquivo Excel.
+            O sistema pode automaticamente detectar treinamentos que fazem parte da mesma sessão e agrupá-los em listas de presença.
+        </p>
+        <ul class="mb-0">
+            <li>Treinamentos com <strong>mesma data, instrutor e horário</strong> são agrupados automaticamente</li>
+            <li>Colaboradores e procedimentos são validados automaticamente</li>
+            <li>Registros duplicados podem ser ignorados ou sobrescritos</li>
+        </ul>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Formulário de Importação -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-file-earmark-spreadsheet"></i> Upload do Arquivo</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label">{{ form.arquivo.label }}</label>
+                            {{ form.arquivo }}
+                            <div class="form-text">{{ form.arquivo.help_text }}</div>
+                            {% if form.arquivo.errors %}
+                            <div class="text-danger">{{ form.arquivo.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.criar_listas_automaticamente }}
+                                <label class="form-check-label" for="{{ form.criar_listas_automaticamente.id_for_label }}">
+                                    {{ form.criar_listas_automaticamente.label }}
+                                </label>
+                            </div>
+                            <div class="form-text">{{ form.criar_listas_automaticamente.help_text }}</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="form-check">
+                                {{ form.sobrescrever_existentes }}
+                                <label class="form-check-label" for="{{ form.sobrescrever_existentes.id_for_label }}">
+                                    {{ form.sobrescrever_existentes.label }}
+                                </label>
+                            </div>
+                            <div class="form-text">{{ form.sobrescrever_existentes.help_text }}</div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancelar
+                            </a>
+                            {% if can_importar %}
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-upload"></i> Importar Arquivo
+                                </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Download do Template -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-download"></i> Template Excel</h5>
+                </div>
+                <div class="card-body">
+                    <p>Baixe o template Excel para facilitar a importação:</p>
+                    {% if can_download_template %}
+                        <a href="{% url 'procedures:lista_presenca_download_template' %}" class="btn btn-success w-100">
+                            <i class="bi bi-file-earmark-excel"></i> Baixar Template
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Instruções Rápidas -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-list-ol"></i> Passo a Passo</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item step-card">
+                            <strong>1. Baixe o template</strong>
+                            <br><small class="text-muted">Clique no botão acima</small>
+                        </div>
+                        <div class="list-group-item step-card">
+                            <strong>2. Preencha os dados</strong>
+                            <br><small class="text-muted">Use as colunas corretas</small>
+                        </div>
+                        <div class="list-group-item step-card">
+                            <strong>3. Faça o upload</strong>
+                            <br><small class="text-muted">Selecione o arquivo</small>
+                        </div>
+                        <div class="list-group-item step-card">
+                            <strong>4. Revise os resultados</strong>
+                            <br><small class="text-muted">Verifique mensagens</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formato do Arquivo -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-table"></i> Formato do Arquivo</h5>
+        </div>
+        <div class="card-body">
+            <h6>Colunas Obrigatórias:</h6>
+            <ul>
+                <li><strong>matricula:</strong> Matrícula do colaborador</li>
+                <li><strong>procedimento_codigo:</strong> Código do procedimento (ex: PO-001)</li>
+                <li><strong>data_treinamento:</strong> Data do treinamento (formato: AAAA-MM-DD)</li>
+            </ul>
+            
+            <h6 class="mt-3">Colunas Opcionais (para agrupamento automático):</h6>
+            <ul>
+                <li><strong>instrutor_matricula:</strong> Matrícula do instrutor</li>
+                <li><strong>hora_inicio:</strong> Hora de início (formato: HH:MM)</li>
+                <li><strong>hora_fim:</strong> Hora de término (formato: HH:MM)</li>
+                <li><strong>local:</strong> Local do treinamento</li>
+                <li><strong>titulo:</strong> Título da sessão</li>
+                <li><strong>observacoes:</strong> Observações adicionais</li>
+            </ul>
+            
+            <div class="alert alert-warning mt-3">
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Importante:</strong> Para o agrupamento automático funcionar corretamente, 
+                certifique-se de que os treinamentos da mesma sessão tenham os mesmos valores para 
+                <strong>data_treinamento, instrutor_matricula, hora_inicio e hora_fim</strong>.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

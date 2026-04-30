@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-edit"></i> Editar Instrumento
+                        </h4>
+                        <a href="{% url 'visualizar_instrumento' instrumento.id %}" class="btn btn-light btn-sm">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        <!-- Botão Voltar para lista de instrumentos com filtros -->
+                        <a href="{% url 'modulo_metrologia' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary ms-2">
+                            <i class="bi bi-arrow-left"></i> Voltar para lista
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+
+                        <!-- Seção: Identificação -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-tag"></i> Identificação</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_tag" class="form-label">TAG / Identificação <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="id_tag" name="tag" value="{{ instrumento.tag }}" required>
+                                        <small class="form-text text-muted">Identificação única do instrumento</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_codigo" class="form-label">Código Interno</label>
+                                        <input type="text" class="form-control" id="id_codigo" name="codigo" value="{{ instrumento.codigo|default:'' }}">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="id_descricao" class="form-label">Descrição <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="id_descricao" name="descricao" value="{{ instrumento.descricao }}" required>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="id_fabricante" class="form-label">Fabricante</label>
+                                        <input type="text" class="form-control" id="id_fabricante" name="fabricante" value="{{ instrumento.fabricante|default:'' }}">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="id_modelo" class="form-label">Modelo</label>
+                                        <input type="text" class="form-control" id="id_modelo" name="modelo" value="{{ instrumento.modelo|default:'' }}">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="id_serie" class="form-label">Série</label>
+                                        <input type="text" class="form-control" id="id_serie" name="serie" value="{{ instrumento.serie|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Seção: Classificação -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-folder"></i> Classificação</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_categoria" class="form-label">Categoria</label>
+                                        <select class="form-select" id="id_categoria" name="categoria">
+                                            <option value="">-- Selecionar --</option>
+                                            {% for categoria in categorias %}
+                                                <option value="{{ categoria.id }}" {% if instrumento.categoria.id == categoria.id %}selected{% endif %}>
+                                                    {{ categoria.nome }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_setor" class="form-label">Setor / Localização</label>
+                                        <select class="form-select" id="id_setor" name="setor">
+                                            <option value="">-- Selecionar --</option>
+                                            {% for setor in setores %}
+                                                <option value="{{ setor.id }}" {% if instrumento.setor.id == setor.id %}selected{% endif %}>
+                                                    {{ setor.nome }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_localizacao" class="form-label">Localização Específica</label>
+                                        <input type="text" class="form-control" id="id_localizacao" name="localizacao" value="{{ instrumento.localizacao|default:'' }}">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_responsavel" class="form-label">Responsável</label>
+                                        <select class="form-select" id="id_responsavel" name="responsavel">
+                                            <option value="">-- Selecionar --</option>
+                                            {% for responsavel in responsaveis %}
+                                                <option value="{{ responsavel.id }}" {% if instrumento.responsavel.id == responsavel.id %}selected{% endif %}>
+                                                    {{ responsavel.nome }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Seção: Calibração -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-calendar-check"></i> Calibração</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_data_ultima_calibracao" class="form-label">Última Calibração</label>
+                                        <input type="date" class="form-control" id="id_data_ultima_calibracao" name="data_ultima_calibracao" 
+                                            value="{% if instrumento.data_ultima_calibracao %}{{ instrumento.data_ultima_calibracao|date:'Y-m-d' }}{% endif %}">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_data_proxima_calibracao" class="form-label">Próxima Calibração</label>
+                                        <input type="date" class="form-control" id="id_data_proxima_calibracao" name="data_proxima_calibracao"
+                                            value="{% if instrumento.data_proxima_calibracao %}{{ instrumento.data_proxima_calibracao|date:'Y-m-d' }}{% endif %}">
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="id_frequencia_meses" class="form-label">Frequência (meses)</label>
+                                        <input type="number" class="form-control" id="id_frequencia_meses" name="frequencia_meses" 
+                                            value="{{ instrumento.frequencia_meses|default:'12' }}" min="1">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="id_tolerancia_processo" class="form-label">Tolerância do Processo (+/-)</label>
+                                        <input type="text" class="form-control" id="id_tolerancia_processo" name="tolerancia_processo"
+                                            value="{% if instrumento.tolerancia_processo %}{{ instrumento.tolerancia_processo }}{% endif %}"
+                                            placeholder="Ex: 0.1000">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="id_tratativa_calibracao" class="form-label">Tratativa de Calibração <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="id_tratativa_calibracao" name="tratativa_calibracao" required>
+                                            <option value="">-- Selecione --</option>
+                                            <option value="INTERNA" {% if instrumento.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>Interna</option>
+                                            <option value="EXTERNA" {% if instrumento.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>Externa</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Seção: Status -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-toggle-on"></i> Status</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="id_ativo" name="ativo" {% if instrumento.ativo %}checked{% endif %}>
+                                    <label class="form-check-label" for="id_ativo">
+                                        Instrumento Ativo
+                                    </label>
+                                    <small class="form-text text-muted d-block mt-1">
+                                        Desmarque para marcar como inativo/descontinuado
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'visualizar_instrumento' instrumento.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card-header {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        letter-spacing: 0.5px;
+    }
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+{% endblock %}

@@ -1,0 +1,389 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-tags"></i> {{ titulo }}</h2>
+            {% if categoria %}
+            <p class="text-muted mb-0">ID: {{ categoria.id }}</p>
+            {% endif %}
+        </div>
+        <a href="{% url 'metrologia:categorias_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <!-- CARD DO FORMULÁRIO -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-pencil-square"></i> Informações da Categoria
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+
+                        <!-- NOME -->
+                        <div class="mb-3">
+                            <label for="id_nome" class="form-label fw-bold">
+                                Nome da Categoria <span class="text-danger">*</span>
+                            </label>
+                            {{ form.nome|add_class:"form-control form-control-lg" }}
+                            {% if form.nome.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.nome.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Ex: Paquímetro, Micrometro, Termômetro, Manômetro, etc
+                            </small>
+                        </div>
+
+                        <!-- SIGLA -->
+                        <div class="mb-3">
+                            <label for="id_sigla" class="form-label fw-bold">Sigla (Prefixo)</label>
+                            {{ form.sigla|add_class:"form-control form-control-lg" }}
+                            {% if form.sigla.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.sigla.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Prefixo padrão para códigos de instrumentos. Ex: TH para termohigrômetros, PA para paquímetros
+                            </small>
+                        </div>
+
+                        <!-- DESCRIÇÃO -->
+                        <div class="mb-3">
+                            <label for="id_descricao" class="form-label fw-bold">Descrição</label>
+                            {{ form.descricao|add_class:"form-control" }}
+                            {% if form.descricao.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.descricao.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Descreva características, especificações ou observações importantes sobre esta categoria
+                            </small>
+                        </div>
+
+                        <!-- TRATATIVA DE CALIBRAÇÃO -->
+                        <div class="mb-3">
+                            <label for="id_tratativa_calibracao" class="form-label fw-bold">
+                                Tratativa de Calibração <span class="text-danger">*</span>
+                            </label>
+                            {{ form.tratativa_calibracao|add_class:"form-select form-select-lg" }}
+                            {% if form.tratativa_calibracao.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.tratativa_calibracao.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Define se os instrumentos desta categoria são calibrados internamente ou externamente
+                            </small>
+                        </div>
+
+                        <!-- FREQUÊNCIA DE CALIBRAÇÃO -->
+                        <div class="mb-3">
+                            <label for="id_frequencia_calibracao_meses" class="form-label fw-bold">
+                                Frequência de Calibração (Meses) <span class="text-danger">*</span>
+                            </label>
+                            {{ form.frequencia_calibracao_meses|add_class:"form-control form-control-lg" }}
+                            {% if form.frequencia_calibracao_meses.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.frequencia_calibracao_meses.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Intervalo em meses entre as calibrações. Será usado para calcular automaticamente a próxima calibração dos instrumentos
+                            </small>
+                        </div>
+
+                        <!-- UNIDADE PADRÃO -->
+                        <div class="mb-3">
+                            <label for="id_unidade_padrao" class="form-label fw-bold">Unidade Padrão</label>
+                            {{ form.unidade_padrao|add_class:"form-select" }}
+                            {% if form.unidade_padrao.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.unidade_padrao.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Unidade de medida padrão para instrumentos desta categoria (opcional)
+                            </small>
+                        </div>
+
+                        <!-- BOTÕES -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle"></i> {{ acao }} Categoria
+                            </button>
+                            <a href="{% url 'metrologia:categorias_list' %}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- INFORMAÇÕES LATERAL -->
+        <div class="col-lg-4">
+            {% if categoria %}
+            <!-- CARD DE ESTATÍSTICAS -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-info text-white">
+                    <i class="bi bi-graph-up"></i> Estatísticas
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h3 class="mb-0">{{ total_instrumentos }}</h3>
+                                <small class="text-muted">Instrumento(s)</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h3 class="mb-0">{{ total_faixas_padrao|default:0 }}</h3>
+                                <small class="text-muted">Faixa(s)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD DE ATUALIZAÇÃO EM MASSA -->
+            {% if total_instrumentos > 0 %}
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-warning text-white">
+                    <i class="bi bi-lightning"></i> Atualizar em Massa
+                </div>
+                <div class="card-body">
+                    <!-- Atualizar Sigla -->
+                    <div class="mb-3">
+                        <form method="post" action="{% url 'metrologia:categoria_bulk_update_sigla' categoria.id %}" class="w-100">
+                            {% csrf_token %}
+                            <label class="form-label small fw-bold mb-2">
+                                <i class="bi bi-tag"></i> Atualizar Sigla
+                            </label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" name="sigla" class="form-control" 
+                                       value="{{ categoria.sigla|default:'' }}" placeholder="Ex: TH" 
+                                       maxlength="3" required>
+                                <button type="submit" class="btn btn-primary" title="Atualizar sigla">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-check form-check-sm">
+                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input" id="aplSigla">
+                                <label class="form-check-label" for="aplSigla">
+                                    Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+
+                    <hr class="my-2">
+
+                    <!-- Atualizar Tratativa -->
+                    <div class="mb-3">
+                        <form method="post" action="{% url 'metrologia:categoria_bulk_update_tratativa' categoria.id %}" class="w-100">
+                            {% csrf_token %}
+                            <label class="form-label small fw-bold mb-2">
+                                <i class="bi bi-arrow-repeat"></i> Atualizar Tratativa
+                            </label>
+                            <div class="input-group input-group-sm mb-2">
+                                <select name="tratativa_calibracao" class="form-select form-select-sm">
+                                    <option value="INTERNA" {% if categoria.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>🔧 Interna</option>
+                                    <option value="EXTERNA" {% if categoria.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>🏢 Externa</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary" title="Atualizar tratativa">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-check form-check-sm">
+                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input" id="aplTratativa">
+                                <label class="form-check-label" for="aplTratativa">
+                                    Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+
+                    <hr class="my-2">
+
+                    <!-- Atualizar Frequência -->
+                    <div class="mb-0">
+                        <form method="post" action="{% url 'metrologia:categoria_bulk_update_frequencia' categoria.id %}" class="w-100">
+                            {% csrf_token %}
+                            <label class="form-label small fw-bold mb-2">
+                                <i class="bi bi-hourglass-split"></i> Atualizar Frequência
+                            </label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="number" name="frequencia_calibracao_meses" class="form-control" 
+                                       value="{{ categoria.frequencia_calibracao_meses|default:'' }}" placeholder="Meses" 
+                                       min="1" max="120" required>
+                                <button type="submit" class="btn btn-primary" title="Atualizar frequência">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-check form-check-sm">
+                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input" id="aplFrequencia">
+                                <label class="form-check-label" for="aplFrequencia">
+                                    Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                                </label>
+                            </div>
+                            <small class="form-text text-muted d-block mt-1">
+                                ℹ️ Só atualiza instrumentos sem frequência específica. Recalcula próximas datas automaticamente.
+                            </small>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- CARD DE INFORMAÇÕES -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <i class="bi bi-info-circle"></i> Informações
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">Criada em:</small><br>
+                        <strong>-</strong>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Última atualização:</small><br>
+                        <strong>-</strong>
+                    </div>
+                    <hr>
+                    <p class="small text-muted mb-0">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Instrumentos associados a esta categoria não podem ser deletados enquanto a categoria existir.
+                    </p>
+                </div>
+            </div>
+            {% else %}
+            <!-- CARD DE DICAS -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-lightbulb"></i> Dicas de Preenchimento
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Nome:</strong>
+                        <p class="small text-muted">Deve ser descritivo e único. Exemplos:
+                            <br>• Paquímetro
+                            <br>• Micrometro
+                            <br>• Termômetro Digital
+                            <br>• Manômetro
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Descrição:</strong>
+                        <p class="small text-muted">Use para adicionar contexto, características técnicas ou notas de importância.</p>
+                    </div>
+                    <div>
+                        <strong>Unidade Padrão:</strong>
+                        <p class="small text-muted">Será sugerida ao criar faixas de medição para instrumentos desta categoria.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- SEÇÃO DE FAIXAS PADRÃO (se editando) -->
+    {% if categoria and faixas_padrao is not None %}
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-star"></i> Faixas Padrão de Medição ({{ total_faixas_padrao }})</span>
+            <a href="{% url 'metrologia:faixa_categoria_create' categoria.id %}" class="btn btn-sm btn-light">
+                <i class="bi bi-plus-circle"></i> Adicionar Faixa
+            </a>
+        </div>
+        <div class="card-body p-0">
+            {% if faixas_padrao %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="12%">Unidade</th>
+                            <th width="12%">Mín.</th>
+                            <th width="12%">Máx.</th>
+                            <th width="12%">Nominal</th>
+                            <th width="12%">Tolerância</th>
+                            <th width="12%">Resolução</th>
+                            <th width="8%">Status</th>
+                            <th width="18%">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for faixa in faixas_padrao %}
+                        <tr>
+                            <td><strong>{{ faixa.unidade.nome }}</strong></td>
+                            <td>{{ faixa.valor_minimo }}</td>
+                            <td>{{ faixa.valor_maximo }}</td>
+                            <td>{{ faixa.nominal|default:"-" }}</td>
+                            <td>{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
+                            <td>{{ faixa.resolucao|default:"-" }}</td>
+                            <td>
+                                {% if faixa.ativa %}
+                                <span class="badge bg-success">Ativa</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inativa</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'metrologia:faixa_categoria_update' faixa.id %}" class="btn btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </a>
+                                    <form method="post" action="{% url 'metrologia:faixa_categoria_delete' faixa.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Remover faixa padrão?')">
+                                            <i class="bi bi-trash"></i> Remover
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-inbox" style="font-size: 1.5rem;"></i>
+                <p class="mt-2">Nenhuma faixa padrão cadastrada.</p>
+                <a href="{% url 'metrologia:faixa_categoria_create' categoria.id %}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-plus-circle"></i> Criar Primeira Faixa
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- INFORMAÇÕES SOBRE FAIXAS PADRÃO -->
+    <div class="alert alert-info mt-4" role="alert">
+        <i class="bi bi-info-circle"></i> <strong>Faixas Padrão:</strong> 
+        As faixas definidas aqui serão sugeridas ao criar novos instrumentos desta categoria, facilitando o preenchimento rápido. 
+        Os valores podem ser ajustados durante o cadastro do instrumento sem qualquer restrição.
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .needs-validation .form-control:invalid {
+        border-color: #dc3545;
+    }
+    .needs-validation .form-control:valid {
+        border-color: #198754;
+    }
+</style>
+{% endblock %}

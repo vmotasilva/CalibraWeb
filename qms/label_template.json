@@ -1,0 +1,23 @@
+{
+  "header_bar": { "h": 0.14 },
+  "header_font": "Helvetica-Bold",
+  "header_size": 12,
+  "header_left": "EssilorLuxottica",
+  "header_right": "FOR.152.R1",
+  "label_font": "Helvetica-Bold",
+  "label_size": 11,
+  "bullet_calibracao": { "x": 0.07, "y": 0.80 },
+  "bullet_verificacao": { "x": 0.50, "y": 0.80 },
+  "field_font": "Helvetica",
+  "field_size": 9,
+  "fields": [
+    { "label": "Cód do instrumento:", "x": 0.05, "y": 0.66 },
+    { "label": "N° Certificado:",      "x": 0.05, "y": 0.56 },
+    { "label": "Realizado em:",        "x": 0.05, "y": 0.46 },
+    { "label": "Vencimento (mês/ano):","x": 0.05, "y": 0.36 }
+  ],
+  "badge_font": "Helvetica-Bold",
+  "badge_size": 8,
+  "badge_pos": { "x": 0.95, "y": 0.08 },
+  "background_image": "static/labels/etiqueta_unitaria.png"
+}

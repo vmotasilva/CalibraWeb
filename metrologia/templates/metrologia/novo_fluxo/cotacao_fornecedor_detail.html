@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ cotacao.numero }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>
+                <i class="bi bi-currency-dollar"></i> {{ cotacao.numero }}
+            </h1>
+            <p class="text-muted">
+                Fornecedor: <strong>{{ cotacao.fornecedor.empresa }}</strong>
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            {% if cotacao.aprovada %}
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAdicionarAtendimento">
+                    <i class="bi bi-plus-circle"></i> Adicionar ao Atendimento
+                </button>
+            {% endif %}
+            <a href="{% url 'metrologia:cotacao_fornecedor_update' cotacao.id %}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+            <a href="{% url 'metrologia:solicitacao_detail' cotacao.solicitacao.id %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Informações Gerais</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Status:</strong> <span class="badge bg-info">{{ cotacao.get_status_display }}</span></p>
+                    <p><strong>Fornecedor:</strong> {{ cotacao.fornecedor.empresa }}</p>
+                    <p><strong>Data Criação:</strong> {{ cotacao.data_criacao|date:"d/m/Y H:i" }}</p>
+                    {% if cotacao.data_envio_para_fornecedor %}
+                        <p><strong>Data Envio:</strong> {{ cotacao.data_envio_para_fornecedor|date:"d/m/Y H:i" }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Resumo Financeiro</h6>
+                </div>
+                <div class="card-body">
+                    <h4>
+                        R$ <strong>{{ valor_total|floatformat:2 }}</strong>
+                    </h4>
+                    <p class="text-muted">Valor total da cotação</p>
+                    <p><small>{{ itens.count }} item(ns)</small></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h6 class="mb-0"><i class="bi bi-list-check"></i> Itens da Cotação</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Instrumento</th>
+                        <th>Tipo</th>
+                        <th>Valor Unit.</th>
+                        <th>Qtd</th>
+                        <th>Total</th>
+                        <th>Prazo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in itens %}
+                        <tr>
+                            <td><strong>{{ item.instrumento.tag }}</strong></td>
+                            <td>
+                                {% if item.tipo_servico == 'CALIBRACAO' %}
+                                    <span class="badge bg-info">Calibração</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Aquisição</span>
+                                {% endif %}
+                            </td>
+                            <td>R$ {{ item.valor_unitario|floatformat:2 }}</td>
+                            <td>{{ item.quantidade }}</td>
+                            <td><strong>R$ {{ item.valor_total|floatformat:2 }}</strong></td>
+                            <td>
+                                {% if item.prazo_dias %}
+                                    {{ item.prazo_dias }} dias
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-3">
+                                Nenhum item adicionado
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para adicionar itens da cotação ao atendimento -->
+<div class="modal fade" id="modalAdicionarAtendimento" tabindex="-1" aria-labelledby="modalAdicionarAtendimentoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'metrologia:atendimento_create_from_cotacao' cotacao.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAdicionarAtendimentoLabel">
+                        Adicionar Itens da Cotação ao Atendimento
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    {% if itens %}
+                        <p class="mb-3"><small class="text-muted">Selecione quais instrumentos deseja adicionar ao planejamento de atendimento:</small></p>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="40">
+                                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                        </th>
+                                        <th>Instrumento</th>
+                                        <th>Descrição</th>
+                                        <th>Tipo de Atendimento</th>
+                                        <th>Pode Atender?</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in itens %}
+                                        <tr>
+                                            <td class="text-center">
+                                                <input type="checkbox" name="itens_selecionados" value="{{ item.id }}" class="item-checkbox">
+                                            </td>
+                                            <td><strong>{{ item.instrumento.tag }}</strong></td>
+                                            <td>{{ item.instrumento.descricao }}</td>
+                                            <td>
+                                                <span class="badge bg-info">
+                                                    {{ item.get_local_atendimento_display }}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                {% if item.pode_atender %}
+                                                    <i class="bi bi-check-circle text-success"></i>
+                                                {% else %}
+                                                    <i class="bi bi-x-circle text-danger"></i>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Data prevista de atendimento -->
+                        <div class="mb-3 mt-3">
+                            <label for="dataPrevista" class="form-label fw-bold">Data Prevista de Atendimento</label>
+                            <input type="date" class="form-control" id="dataPrevista" name="data_prevista" required>
+                        </div>
+                    {% else %}
+                        <p class="text-center text-muted">Nenhum item disponível nesta cotação.</p>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {% if itens %}
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-plus-circle"></i> Adicionar ao Atendimento
+                        </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const selectAll = document.getElementById('selectAll');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base_auth.html" %}
+
+{% block title %}Login - Calibra QMS{% endblock %}
+
+{% block auth_content %}
+    <div class="text-center mb-4">
+        <div class="h3 fw-bold text-primary mb-1">🏭 Calibra QMS</div>
+        <div class="text-muted small">Acesso ao sistema</div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% if form.errors %}
+            <div class="alert alert-danger p-2 small text-center">
+                Usuário ou senha incorretos.
+            </div>
+        {% endif %}
+
+        <div class="mb-3">
+            <label class="form-label">Usuário (Matrícula ou Login):</label>
+            <input type="text" name="username" class="form-control" required autofocus>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Senha:</label>
+            <input type="password" name="password" class="form-control" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">ENTRAR NO SISTEMA</button>
+    </form>
+{% endblock %}

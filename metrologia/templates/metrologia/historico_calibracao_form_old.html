@@ -1,0 +1,753 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">Registrar Histórico de Calibração</h2>
+            <p class="text-muted mb-0">{{ instrumento.tag }} - {{ instrumento.descricao }}</p>
+        </div>
+        <div>
+            <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4 g-4">
+        <!-- COLUNA ESQUERDA: FORMULÁRIO -->
+        <div class="col-lg-6">
+            <form method="post" enctype="multipart/form-data" id="historico-form">
+
+                <!-- UPLOAD DE CERTIFICADO (PRIMEIRO CAMPO) -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <i class="bi bi-file-earmark-pdf"></i> 1. Upload do Certificado
+                    </div>
+                    <div class="card-body">
+                        <label for="id_certificado" class="form-label fw-bold">
+                            Certificado (PDF)
+                            <span class="text-danger">*</span>
+                        </label>
+                        {{ form.certificado|add_class:"form-control" }}
+                        <small class="form-text text-muted d-block mt-2">
+                            <i class="bi bi-info-circle"></i> Faça upload do certificado para visualizá-lo ao lado enquanto preenche os dados
+                        </small>
+                        {% if form.certificado.errors %}
+                            <div class="text-danger small mt-1">{{ form.certificado.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- UPLOAD DE PADRÕES PDF -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <i class="bi bi-file-earmark-pdf"></i> 1b. Arquivos de Padrões (PDF)
+                    </div>
+                    <div class="card-body">
+                        <label for="id_arquivos_padroes" class="form-label fw-bold">
+                            Arquivos de Padrões (PDF)
+                        </label>
+                        <input type="file" id="id_arquivos_padroes" name="arquivos_padroes[]" class="form-control" accept=".pdf" multiple>
+                        <div class="form-text">Anexe um ou mais arquivos PDF de padrões utilizados.</div>
+
+                        {% if form.instance.pk and form.instance.arquivos_padroes.exists %}
+                            <div class="mt-3">
+                                <strong>Arquivos já anexados:</strong>
+                                <ul id="arquivos-padroes-list">
+                                    {% for arquivo in form.instance.arquivos_padroes.all|dictsortreversed:'criado_em' %}
+                                        <li style="display:flex; align-items:center; gap:10px; position:relative;">
+                                            <span class="bi bi-file-earmark-pdf text-danger" style="font-size:1.2em;" title="PDF"></span>
+                                            <a href="{{ arquivo.arquivo.url }}" target="_blank" title="Abrir PDF">{{ arquivo.nome|default:arquivo.arquivo.name }}</a>
+                                            <span class="text-muted small" title="Data do upload">({{ arquivo.criado_em|date:'d/m/Y H:i' }})</span>
+                                            <form method="post" action="{% url 'remover_arquivo_padrao' arquivo.id %}" style="display:inline; margin-left:10px;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-danger" title="Remover" onclick="return confirm('Remover este arquivo?');">Remover</button>
+                                            </form>
+                                            <form method="post" action="{% url 'renomear_arquivo_padrao' arquivo.id %}" style="display:inline; margin-left:10px;">
+                                                {% csrf_token %}
+                                                <input type="text" name="novo_nome" value="{{ arquivo.nome|default:arquivo.arquivo.name }}" class="form-control form-control-sm d-inline-block" style="width:150px;" required title="Renomear arquivo">
+                                                <button type="submit" class="btn btn-sm btn-secondary" title="Renomear">Renomear</button>
+                                            </form>
+                                            <button class="btn btn-sm btn-outline-primary ms-2" type="button" onclick="togglePdfPreview('pdf-preview-{{ arquivo.id }}')" title="Visualizar PDF"><i class="bi bi-eye"></i></button>
+                                            <div id="pdf-preview-{{ arquivo.id }}" class="pdf-preview mt-2" style="display:none; position:absolute; left:0; top:2.2em; z-index:10; background:#fff; border:1px solid #ccc; box-shadow:0 2px 8px #0002; padding:8px;">
+                                                <iframe src="{{ arquivo.arquivo.url }}#toolbar=0" width="400" height="300" style="border:none;"></iframe>
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                                <div id="arquivos-loading" style="display:none;"><span class="spinner-border spinner-border-sm"></span> Carregando...</div>
+                                {% if messages %}
+                                    {% for message in messages %}
+                                        {% if message.tags == 'success' %}
+                                            <div class="alert alert-success mt-2">{{ message }}</div>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            <script>
+                                function togglePdfPreview(id) {
+                                    var el = document.getElementById(id);
+                                    if (el.style.display === 'none') {
+                                        el.style.display = 'block';
+                                    } else {
+                                        el.style.display = 'none';
+                                    }
+                                }
+                                // Loading animation for file actions
+                                document.querySelectorAll('#arquivos-padroes-list form').forEach(function(form) {
+                                    form.addEventListener('submit', function() {
+                                        document.getElementById('arquivos-loading').style.display = 'block';
+                                    });
+                                });
+                            </script>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- DADOS DA CALIBRAÇÃO -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <i class="bi bi-calendar-event"></i> 2. Datas da Calibração
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="id_data_calibracao" class="form-label fw-bold">
+                                Data da Calibração <span class="text-danger">*</span>
+                            </label>
+                            {{ form.data_calibracao|add_class:"form-control" }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_proxima_calibracao" class="form-label fw-bold">
+                                Próxima Calibração <span class="text-danger">*</span>
+                            </label>
+                            {{ form.proxima_calibracao|add_class:"form-control" }}
+                            <small class="form-text text-muted">
+                                <i class="bi bi-lightning"></i> Calculado automaticamente com base na frequência
+                            </small>
+                        </div>
+                        
+                        <!-- Prévia do Cálculo da Data -->
+                        <div id="preview-box" class="alert alert-success d-none">
+                            <strong><i class="bi bi-calendar-check"></i> Prévia:</strong>
+                            <span id="preview-data-calib">-</span> + {{ instrumento.frequencia_meses }} meses = 
+                            <span id="preview-proxima" class="fw-bold">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IDENTIFICAÇÃO -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <i class="bi bi-card-text"></i> 3. Identificação
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="id_numero_certificado" class="form-label fw-bold">
+                                Número do Certificado <span class="text-danger">*</span>
+                            </label>
+                            {{ form.numero_certificado|add_class:"form-control" }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_tipo_calibracao" class="form-label fw-bold">
+                                Tipo de Calibração
+                            </label>
+                            {{ form.tipo_calibracao|add_class:"form-select" }}
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_responsavel" class="form-label fw-bold">
+                                Responsável Técnico
+                            </label>
+                            {{ form.responsavel|add_class:"form-control" }}
+                            <small class="text-muted d-block mt-1">
+                                Este nome será impresso no carimbo do certificado.
+                            </small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_fornecedor" class="form-label fw-bold">
+                                Laboratório/Fornecedor
+                            </label>
+                            {{ form.fornecedor|add_class:"form-control" }}
+                        </div>
+                        <div class="form-check mb-3">
+                            {{ form.tem_selo_rbc|add_class:"form-check-input" }}
+                            <label for="id_tem_selo_rbc" class="form-check-label">
+                                Possui Selo RBC?
+                            </label>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- TABELA DE FAIXAS -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="bi bi-calculator"></i> 4. Resultados por Faixa de Medição
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            <i class="bi bi-info-circle"></i> Preencha os resultados para cada faixa. Desmarque as que não foram calibradas neste certificado.
+                        </p>
+                        
+                        {% if faixas_medicao %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="faixas-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 5%;">
+                                            <input type="checkbox" id="toggle-all-faixas" checked title="Marcar/Desmarcar todas">
+                                        </th>
+                                        <th style="width: 20%;">Faixa</th>
+                                        <th style="width: 10%;">Unidade</th>
+                                        <th style="width: 13%;">Erro (E)</th>
+                                        <th style="width: 13%;">Incerteza (U)</th>
+                                        <th style="width: 13%;">Tolerância</th>
+                                        <th style="width: 26%;">Resultado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for faixa in faixas_medicao %}
+                                    <tr class="faixa-row" data-faixa-id="{{ faixa.id }}" data-frequencia="{{ faixa.instrumento.frequencia_meses }}">
+                                        <td class="text-center">
+                                            <input type="checkbox" 
+                                                   name="faixa_{{ faixa.id }}_ativa" 
+                                                   class="form-check-input faixa-checkbox" 
+                                                   checked
+                                                   data-faixa-id="{{ faixa.id }}">
+                                        </td>
+                                        <td>
+                                            <small><strong>{{ faixa.valor_minimo }} a {{ faixa.valor_maximo }}</strong></small>
+                                        </td>
+                                        <td>
+                                            <small>{{ faixa.unidade.nome }}</small>
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_erro" 
+                                                   class="form-control form-control-sm faixa-erro" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   placeholder="0.0000">
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_incerteza" 
+                                                   class="form-control form-control-sm faixa-incerteza" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   placeholder="0.0000">
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   step="0.0001" 
+                                                   name="faixa_{{ faixa.id }}_tolerancia" 
+                                                   class="form-control form-control-sm faixa-tolerancia" 
+                                                   data-faixa-id="{{ faixa.id }}"
+                                                   value="{{ faixa.tolerancia_mais_menos|default:'' }}"
+                                                   readonly
+                                                   placeholder="0.0000">
+                                        </td>
+                                        <td>
+                                            <div class="resultado-preview-faixa" data-faixa-id="{{ faixa.id }}">
+                                                <span class="badge bg-secondary">Preencha os dados</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Resumo de Faixas Ativas -->
+                        <div class="alert alert-info mt-3" id="faixas-resumo">
+                            <strong><i class="bi bi-check2-square"></i> Faixas selecionadas:</strong>
+                            <span id="faixas-count">{{ faixas_medicao|length }}</span> de {{ faixas_medicao|length }}
+                        </div>
+                        
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            Este instrumento não possui faixas de medição cadastradas.
+                            <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="alert-link">
+                                Cadastre faixas antes de registrar calibração.
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- BOTÕES -->
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-save"></i> Salvar Histórico
+                    </button>
+                    <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- COLUNA DIREITA: VISUALIZADOR DE PDF -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-dark text-white">
+                    <i class="bi bi-file-pdf"></i> Visualização do Certificado
+                </div>
+                <div class="card-body p-0" style="height: calc(100vh - 180px); min-height: 600px;">
+                    <div id="pdf-placeholder" class="d-flex align-items-center justify-content-center h-100 text-muted">
+                        <div class="text-center p-4">
+                            <i class="bi bi-cloud-upload display-1 mb-3"></i>
+                            <h5>Nenhum PDF carregado</h5>
+                            <p>Faça upload do certificado no campo ao lado para visualizá-lo aqui</p>
+                        </div>
+                    </div>
+                    <iframe id="pdf-viewer" class="w-100 h-100 d-none" frameborder="0"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dataCalibInput = document.getElementById('id_data_calibracao');
+    const proximaCalibInput = document.getElementById('id_proxima_calibracao');
+    const previewBox = document.getElementById('preview-box');
+    const previewDataCalib = document.getElementById('preview-data-calib');
+    const previewProxima = document.getElementById('preview-proxima');
+    const frequenciaMeses = {{ instrumento.frequencia_meses }};
+    
+    // Elementos do visualizador de PDF
+    const certificadoInput = document.getElementById('id_certificado');
+    const pdfViewer = document.getElementById('pdf-viewer');
+    const pdfPlaceholder = document.getElementById('pdf-placeholder');
+    
+    // Elementos da tabela de faixas
+    const faixasTable = document.getElementById('faixas-table');
+    const toggleAllCheckbox = document.getElementById('toggle-all-faixas');
+    const faixasCount = document.getElementById('faixas-count');
+
+    function formatarData(dataStr) {
+        if (!dataStr) return '-';
+        const [ano, mes, dia] = dataStr.split('-');
+        return `${dia}/${mes}/${ano}`;
+    }
+
+    function calcularProximaCalibracao(dataCalibStr) {
+        if (!dataCalibStr || !frequenciaMeses) return null;
+        
+        const dataCalib = new Date(dataCalibStr);
+        if (isNaN(dataCalib.getTime())) return null;
+        
+        // Adiciona os meses de frequência
+        const proximaData = new Date(dataCalib);
+        proximaData.setMonth(proximaData.getMonth() + frequenciaMeses);
+        
+        // Formata para YYYY-MM-DD (formato do input date)
+        const ano = proximaData.getFullYear();
+        const mes = String(proximaData.getMonth() + 1).padStart(2, '0');
+        const dia = String(proximaData.getDate()).padStart(2, '0');
+        
+        return `${ano}-${mes}-${dia}`;
+    }
+
+    function calcularResultadoFaixa(faixaId) {
+        const row = document.querySelector(`tr[data-faixa-id="${faixaId}"]`);
+        if (!row) return;
+        
+        const checkbox = row.querySelector('.faixa-checkbox');
+        const erroInput = row.querySelector('.faixa-erro');
+        const incertezaInput = row.querySelector('.faixa-incerteza');
+        const toleranciaInput = row.querySelector('.faixa-tolerancia');
+        const resultadoDiv = row.querySelector('.resultado-preview-faixa');
+        
+        // Se desconsiderada, limpa resultado
+        if (!checkbox.checked) {
+            resultadoDiv.innerHTML = '<span class="badge bg-secondary">Desconsiderada</span>';
+            row.classList.add('table-secondary');
+            erroInput.disabled = true;
+            incertezaInput.disabled = true;
+            return;
+        } else {
+            row.classList.remove('table-secondary');
+            erroInput.disabled = false;
+            incertezaInput.disabled = false;
+        }
+        
+        const erro = parseFloat(erroInput.value);
+        const incerteza = parseFloat(incertezaInput.value);
+        const tolerancia = parseFloat(toleranciaInput.value);
+        
+        if (isNaN(erro) || isNaN(incerteza) || isNaN(tolerancia)) {
+            resultadoDiv.innerHTML = '<span class="badge bg-secondary">Preencha os dados</span>';
+            return;
+        }
+        
+        // Lógica de cálculo
+        const erroAbs = Math.abs(erro);
+        const incAbs = Math.abs(incerteza);
+        const tolAbs = Math.abs(tolerancia);
+        
+        const EMA = tolAbs / 2;
+        const EME = erroAbs + incAbs;
+        
+        let resultado = '';
+        let classe = '';
+        let icone = '';
+        
+        if (EME <= EMA) {
+            resultado = 'Aprovado sem correção';
+            classe = 'success';
+            icone = '✓';
+        } else if (EME <= tolAbs) {
+            resultado = 'Aprovado com Correção';
+            classe = 'warning';
+            icone = '⚠';
+        } else {
+            resultado = 'Reprovado';
+            classe = 'danger';
+            icone = '✗';
+        }
+        
+        resultadoDiv.innerHTML = `
+            <span class="badge bg-${classe}">${icone} ${resultado}</span>
+            <small class="d-block mt-1 text-muted">
+                EME=${EME.toFixed(4)} ${EME <= EMA ? '≤' : '>'} EMA=${EMA.toFixed(4)}
+            </small>
+        `;
+        
+        // Recalcula próxima calibração baseada nas faixas ativas
+        calcularProximaCalibracaoInteligente();
+    }
+    
+    function calcularProximaCalibracaoInteligente() {
+        const dataCalibValue = dataCalibInput.value;
+        if (!dataCalibValue) return;
+        
+        // Coleta frequências das faixas ativas
+        const faixasAtivas = document.querySelectorAll('.faixa-checkbox:checked');
+        let menorFrequencia = frequenciaMeses; // Usa a frequência do instrumento como padrão
+        
+        faixasAtivas.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            const freq = parseInt(row.dataset.frequencia);
+            if (!isNaN(freq) && freq < menorFrequencia) {
+                menorFrequencia = freq;
+            }
+        });
+        
+        // Calcula próxima calibração com a menor frequência
+        const dataCalib = new Date(dataCalibValue);
+        const proximaData = new Date(dataCalib);
+        proximaData.setMonth(proximaData.getMonth() + menorFrequencia);
+        
+        const ano = proximaData.getFullYear();
+        const mes = String(proximaData.getMonth() + 1).padStart(2, '0');
+        const dia = String(proximaData.getDate()).padStart(2, '0');
+        
+        proximaCalibInput.value = `${ano}-${mes}-${dia}`;
+        
+        // Atualiza prévia
+        previewBox.classList.remove('d-none');
+        previewDataCalib.textContent = formatarData(dataCalibValue);
+        previewProxima.textContent = formatarData(`${ano}-${mes}-${dia}`);
+        
+        // Atualiza badge de frequência se mudou
+        const freqBadge = document.getElementById('freq-badge');
+        if (menorFrequencia !== frequenciaMeses) {
+            freqBadge.textContent = `${menorFrequencia} meses (menor período entre faixas)`;
+            freqBadge.classList.remove('bg-primary');
+            freqBadge.classList.add('bg-warning');
+        } else {
+            freqBadge.textContent = `${frequenciaMeses} meses`;
+            freqBadge.classList.remove('bg-warning');
+            freqBadge.classList.add('bg-primary');
+        }
+    }
+    
+    function atualizarContagemFaixas() {
+        const ativas = document.querySelectorAll('.faixa-checkbox:checked').length;
+        const total = document.querySelectorAll('.faixa-checkbox').length;
+        faixasCount.textContent = `${ativas} de ${total}`;
+    }
+    
+    function atualizarPrevia() {
+        const dataCalibValue = dataCalibInput.value;
+        
+        if (dataCalibValue) {
+            const proximaCalculada = calcularProximaCalibracao(dataCalibValue);
+            
+            if (proximaCalculada) {
+                // Atualiza campo de próxima calibração automaticamente
+                proximaCalibInput.value = proximaCalculada;
+                
+                // Mostra prévia
+                previewBox.classList.remove('d-none');
+                previewDataCalib.textContent = formatarData(dataCalibValue);
+                previewProxima.textContent = formatarData(proximaCalculada);
+                
+                // Adiciona efeito visual
+                previewProxima.classList.add('animate__animated', 'animate__pulse');
+                setTimeout(() => {
+                    previewProxima.classList.remove('animate__animated', 'animate__pulse');
+                }, 1000);
+            }
+        } else {
+            // Esconde prévia se não há data
+            previewBox.classList.add('d-none');
+            previewDataCalib.textContent = '-';
+            previewProxima.textContent = '-';
+        }
+    }
+
+    // Evento para calcular quando mudar a data de calibração
+    dataCalibInput.addEventListener('change', atualizarPrevia);
+    dataCalibInput.addEventListener('input', atualizarPrevia);
+    
+    // Calcula ao carregar se já houver valor preenchido
+    if (dataCalibInput.value) {
+        atualizarPrevia();
+    }
+
+    // Adiciona tooltip informativo
+    if (frequenciaMeses) {
+        dataCalibInput.setAttribute('title', `A próxima calibração será calculada automaticamente (+ ${frequenciaMeses} meses)`);
+    }
+    
+    // ===== EVENTOS DA TABELA DE FAIXAS =====
+    if (faixasTable) {
+        // Marcar/Desmarcar todas as faixas
+        if (toggleAllCheckbox) {
+            toggleAllCheckbox.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.faixa-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                    const faixaId = cb.dataset.faixaId;
+                    calcularResultadoFaixa(faixaId);
+                });
+                atualizarContagemFaixas();
+                calcularProximaCalibracaoInteligente();
+            });
+        }
+        
+        // Eventos para cada linha da tabela
+        const faixaRows = document.querySelectorAll('.faixa-row');
+        faixaRows.forEach(row => {
+            const faixaId = row.dataset.faixaId;
+            
+            // Checkbox individual
+            const checkbox = row.querySelector('.faixa-checkbox');
+            checkbox.addEventListener('change', function() {
+                calcularResultadoFaixa(faixaId);
+                atualizarContagemFaixas();
+                calcularProximaCalibracaoInteligente();
+            });
+            
+            // Inputs de erro, incerteza, tolerância
+            const erroInput = row.querySelector('.faixa-erro');
+            const incertezaInput = row.querySelector('.faixa-incerteza');
+            const toleranciaInput = row.querySelector('.faixa-tolerancia');
+            
+            [erroInput, incertezaInput, toleranciaInput].forEach(input => {
+                input.addEventListener('input', () => calcularResultadoFaixa(faixaId));
+                input.addEventListener('change', () => calcularResultadoFaixa(faixaId));
+            });
+        });
+    }
+    
+    // Toggle de Padrões (quando não RBC)
+    const rbcCheckbox = document.getElementById('id_tem_selo_rbc');
+    const padroesSection = document.getElementById('padroes-section');
+    function togglePadroes() {
+        if (!rbcCheckbox) return;
+        if (rbcCheckbox.checked) {
+            padroesSection?.classList.add('d-none');
+        } else {
+            padroesSection?.classList.remove('d-none');
+        }
+    }
+    if (rbcCheckbox) {
+        rbcCheckbox.addEventListener('change', togglePadroes);
+        togglePadroes();
+    }
+
+    // ===== VISUALIZADOR DE PDF =====
+    certificadoInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        
+        if (file) {
+            // Valida tipo de arquivo
+            if (file.type !== 'application/pdf') {
+                alert('Por favor, selecione apenas arquivos PDF');
+                certificadoInput.value = '';
+                return;
+            }
+            
+            // Valida tamanho (máx 10MB)
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            if (file.size > maxSize) {
+                alert('O arquivo é muito grande. Tamanho máximo: 10MB');
+                certificadoInput.value = '';
+                return;
+            }
+            
+            // Cria URL para o arquivo e exibe no iframe
+            const fileURL = URL.createObjectURL(file);
+            pdfViewer.src = fileURL;
+            
+            // Mostra o viewer e esconde o placeholder
+            pdfPlaceholder.classList.add('d-none');
+            pdfViewer.classList.remove('d-none');
+            
+            // Adiciona feedback visual
+            const cardBody = pdfViewer.parentElement;
+            cardBody.style.border = '3px solid #28a745';
+            setTimeout(() => {
+                cardBody.style.border = '';
+            }, 2000);
+            
+            console.log('PDF carregado:', file.name, 'Tamanho:', (file.size / 1024).toFixed(2), 'KB');
+        } else {
+            // Remove o PDF se o usuário cancelar
+            pdfViewer.src = '';
+            pdfViewer.classList.add('d-none');
+            pdfPlaceholder.classList.remove('d-none');
+        }
+    });
+    
+    // Limpa o objeto URL quando o componente for destruído
+    window.addEventListener('beforeunload', function() {
+        if (pdfViewer.src) {
+            URL.revokeObjectURL(pdfViewer.src);
+        }
+    });
+    
+});
+</script>
+
+<style>
+/* Prévia de datas */
+#preview-box {
+    border-left: 4px solid #28a745;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    animation: fadeIn 0.3s ease-in;
+}
+
+#preview-proxima {
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Cards organizados */
+.card-header {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.form-label {
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+/* Visualizador de PDF */
+#pdf-viewer {
+    border: none;
+    background: #f8f9fa;
+}
+
+#pdf-placeholder {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.sticky-top {
+    z-index: 100;
+}
+
+/* Tabela de faixas */
+#faixas-table {
+    font-size: 0.9rem;
+}
+
+#faixas-table thead th {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+#faixas-table input.form-control-sm {
+    font-size: 0.85rem;
+}
+
+#faixas-table .table-secondary {
+    opacity: 0.6;
+}
+
+#faixas-table .resultado-preview-faixa {
+    min-height: 40px;
+}
+
+#faixas-table .badge {
+    font-size: 0.75rem;
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Resultado preview - cores dinâmicas */
+.alert-success {
+    border-left: 5px solid #28a745;
+}
+
+.alert-warning {
+    border-left: 5px solid #ffc107;
+}
+
+.alert-danger {
+    border-left: 5px solid #dc3545;
+}
+
+/* Responsive */
+@media (max-width: 991px) {
+    .sticky-top {
+        position: relative !important;
+        top: 0 !important;
+    }
+    
+    #pdf-viewer, #pdf-placeholder {
+        height: 500px !important;
+    }
+}
+
+/* Melhorias visuais */
+.card {
+    transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
+}
+
+small.text-muted {
+    font-size: 0.8rem;
+}
+
+.bi {
+    margin-right: 5px;
+}
+</style>
+{% endblock %}

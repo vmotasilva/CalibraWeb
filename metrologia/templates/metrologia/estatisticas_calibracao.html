@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Estatísticas de Calibração{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'metrologia/export-buttons.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-9">
+            <h2><i class="bi bi-bar-chart"></i> Estatísticas de Calibração</h2>
+        </div>
+        <div class="col-md-3 text-end">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle export-dropdown-btn" 
+                        data-bs-toggle="dropdown"
+                        title="Escolha o formato de exportação"
+                        aria-label="Menu de exportação de estatísticas">
+                    <i class="bi bi-download"></i> Exportar
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end export-dropdown-menu">
+                    <li class="dropdown-header">
+                        <i class="bi bi-file-earmark-arrow-down"></i> Estatísticas Gerais
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item export-menu-item" 
+                           href="{% url 'exportar_estatisticas' %}?formato=excel"
+                           data-export-format="excel"
+                           data-export-page="estatisticas"
+                           data-format="excel"
+                           title="Exportar estatísticas em Excel">
+                            <i class="bi bi-file-earmark-excel export-format-excel"></i>
+                            <div class="flex-grow-1">
+                                <strong>Excel</strong>
+                                <p class="export-format-desc">Completo com gráficos</p>
+                            </div>
+                            <span class="export-badge export-badge-excel">Melhor</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item export-menu-item" 
+                           href="{% url 'exportar_estatisticas' %}?formato=pdf"
+                           data-export-format="pdf"
+                           data-export-page="estatisticas"
+                           data-format="pdf"
+                           title="Exportar estatísticas em PDF">
+                            <i class="bi bi-file-earmark-pdf export-format-pdf"></i>
+                            <div class="flex-grow-1">
+                                <strong>PDF</strong>
+                                <p class="export-format-desc">Pronto para impressão</p>
+                            </div>
+                            <span class="export-badge export-badge-pdf">Imprimir</span>
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li class="dropdown-header">
+                        <i class="bi bi-exclamation-circle"></i> Relatórios Específicos
+                    </li>
+                    <li>
+                        <a class="dropdown-item export-menu-item" 
+                           href="{% url 'relatorio_vencidos' %}?formato=excel"
+                           data-export-format="excel"
+                           data-export-page="relatorio_vencidos"
+                           data-format="excel"
+                           title="Relatório de instrumentos vencidos em Excel">
+                            <i class="bi bi-exclamation-circle text-danger"></i>
+                            <div class="flex-grow-1">
+                                <strong>Vencidos (Excel)</strong>
+                                <p class="export-format-desc">Ação imediata necessária</p>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item export-menu-item" 
+                           href="{% url 'relatorio_vencidos' %}?formato=pdf"
+                           data-export-format="pdf"
+                           data-export-page="relatorio_vencidos"
+                           data-format="pdf"
+                           title="Relatório de instrumentos vencidos em PDF">
+                            <i class="bi bi-exclamation-circle text-danger"></i>
+                            <div class="flex-grow-1">
+                                <strong>Vencidos (PDF)</strong>
+                                <p class="export-format-desc">Para gerenciamento</p>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main KPI Cards -->
+    <div class="row mb-4">
+        <!-- Total Instruments -->
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Total de Instrumentos</h6>
+                            <h3 class="mb-0">{{ total_instrumentos }}</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-tools text-primary" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expired -->
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Vencidos</h6>
+                            <h3 class="mb-0 text-danger">{{ total_vencidos }}</h3>
+                            <small class="text-muted">{{ percentage_vencidos }}%</small>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-exclamation-circle text-danger" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expiring Soon -->
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">A Vencer (30 dias)</h6>
+                            <h3 class="mb-0 text-warning">{{ vencer_30_dias }}</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-clock text-warning" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vigent -->
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Vigentes</h6>
+                            <h3 class="mb-0 text-success">{{ total_vigentes }}</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calibration History Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0"><i class="bi bi-file-earmark-check"></i> Histórico de Calibrações</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <h4 class="text-success">{{ aprovados }}</h4>
+                                <p class="text-muted small mb-0">Aprovados sem Correção</p>
+                                <small class="text-muted">{{ percentage_aprovados }}%</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <h4 class="text-info">{{ com_correcao }}</h4>
+                                <p class="text-muted small mb-0">Aprovados com Correção</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <h4 class="text-danger">{{ reprovados }}</h4>
+                                <p class="text-muted small mb-0">Reprovados</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <h4 class="text-primary">{{ total_historicos }}</h4>
+                                <p class="text-muted small mb-0">Total de Calibrações</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0"><i class="bi bi-lightning"></i> Ações Rápidas</h6>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'listar_instrumentos' %}" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                        <i class="bi bi-list"></i> Ver Todos os Instrumentos
+                    </a>
+                    <a href="{% url 'listar_instrumentos' %}?status=vencidos" class="btn btn-outline-danger btn-sm w-100 mb-2">
+                        <i class="bi bi-exclamation-circle"></i> Instrumentos Vencidos
+                    </a>
+                    <a href="{% url 'listar_instrumentos' %}?status=avencer" class="btn btn-outline-warning btn-sm w-100 mb-2">
+                        <i class="bi bi-clock"></i> A Vencer em 30 Dias
+                    </a>
+                    <a href="{% url 'novo_instrumento' %}" class="btn btn-outline-success btn-sm w-100">
+                        <i class="bi bi-plus-circle"></i> Novo Instrumento
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category and Sector Breakdown -->
+    <div class="row">
+        <!-- By Category -->
+        {% if por_categoria %}
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-light border-bottom">
+                        <h6 class="mb-0"><i class="bi bi-tag"></i> Por Categoria</h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Categoria</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-end">Vencidos</th>
+                                    <th class="text-end">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cat in por_categoria %}
+                                    {% widthratio cat.vencidos cat.total 100 as percent_vencidos %}
+                                    <tr>
+                                        <td>{{ cat.nome }}</td>
+                                        <td class="text-end">
+                                            <span class="badge bg-light text-dark">{{ cat.total }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            {% if cat.vencidos > 0 %}
+                                                <span class="badge bg-danger">{{ cat.vencidos }}</span>
+                                            {% else %}
+                                                <span class="badge bg-success">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            {{ percent_vencidos }}%
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- By Sector -->
+        {% if por_setor %}
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-light border-bottom">
+                        <h6 class="mb-0"><i class="bi bi-building"></i> Por Setor</h6>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Setor</th>
+                                    <th class="text-end">Total</th>
+                                    <th class="text-end">Vencidos</th>
+                                    <th class="text-end">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for setor in por_setor %}
+                                    {% widthratio setor.vencidos setor.total 100 as percent_vencidos %}
+                                    <tr>
+                                        <td>{{ setor.nome }}</td>
+                                        <td class="text-end">
+                                            <span class="badge bg-light text-dark">{{ setor.total }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            {% if setor.vencidos > 0 %}
+                                                <span class="badge bg-danger">{{ setor.vencidos }}</span>
+                                            {% else %}
+                                                <span class="badge bg-success">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            {{ percent_vencidos }}%
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+<style>
+    .card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+    }
+</style>
+
+<!-- Export Buttons Enhancement Script -->
+{% block extra_js %}
+    <script src="{% static 'metrologia/export-buttons.js' %}"></script>
+{% endblock %}

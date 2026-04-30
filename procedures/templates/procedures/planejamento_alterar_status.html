@@ -1,0 +1,72 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Alterar Status{% endblock %}
+{% block header_title %}Alterar Status do Planejamento{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-arrow-repeat"></i> Alterar Status</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Planejamento:</strong> {{ planejamento.titulo }}</p>
+                    <p><strong>Status Atual:</strong> 
+                        {% if planejamento.status == 'PLANEJADO' %}
+                            <span class="badge bg-warning">Planejado</span>
+                        {% elif planejamento.status == 'CONFIRMADO' %}
+                            <span class="badge bg-info">Confirmado</span>
+                        {% elif planejamento.status == 'REALIZADO' %}
+                            <span class="badge bg-success">Realizado</span>
+                        {% elif planejamento.status == 'CANCELADO' %}
+                            <span class="badge bg-danger">Cancelado</span>
+                        {% endif %}
+                    </p>
+                    
+                    <hr>
+                    
+                    <p class="mb-3">Selecione o novo status:</p>
+                    
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" name="status" value="PLANEJADO" class="btn btn-warning btn-lg text-start" 
+                                    {% if planejamento.status == 'PLANEJADO' %}disabled{% endif %}>
+                                <i class="bi bi-calendar"></i> <strong>Planejado</strong>
+                                <br><small>Treinamento em fase de planejamento</small>
+                            </button>
+                            
+                            <button type="submit" name="status" value="CONFIRMADO" class="btn btn-info btn-lg text-start text-white"
+                                    {% if planejamento.status == 'CONFIRMADO' %}disabled{% endif %}>
+                                <i class="bi bi-calendar-check"></i> <strong>Confirmado</strong>
+                                <br><small>Data e participantes confirmados</small>
+                            </button>
+                            
+                            <button type="submit" name="status" value="REALIZADO" class="btn btn-success btn-lg text-start"
+                                    {% if planejamento.status == 'REALIZADO' %}disabled{% endif %}>
+                                <i class="bi bi-check-circle"></i> <strong>Realizado</strong>
+                                <br><small>Treinamento já foi realizado</small>
+                            </button>
+                            
+                            <button type="submit" name="status" value="CANCELADO" class="btn btn-danger btn-lg text-start"
+                                    {% if planejamento.status == 'CANCELADO' %}disabled{% endif %}>
+                                <i class="bi bi-x-circle"></i> <strong>Cancelado</strong>
+                                <br><small>Treinamento foi cancelado</small>
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <a href="{% url 'procedures:detalhe_planejamento' planejamento.id %}" class="btn btn-secondary w-100">
+                                <i class="bi bi-arrow-left"></i> Voltar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

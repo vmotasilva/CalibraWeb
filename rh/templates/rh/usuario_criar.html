@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Criar Novo Usuário - Calibra QMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .password-requirements {
+        font-size: 0.85rem;
+    }
+    
+    .password-requirements li {
+        color: #6c757d;
+    }
+    
+    .password-requirements li.valid {
+        color: #198754;
+    }
+    
+    .password-requirements li.valid::before {
+        content: '✓ ';
+    }
+    
+    .toggle-password {
+        cursor: pointer;
+    }
+    
+    /* Dropdown de colaboradores */
+    .colaborador-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1050;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .colaborador-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.15s;
+    }
+    
+    .colaborador-item:hover {
+        background-color: #e9f5ff;
+    }
+    
+    .colaborador-item:last-child {
+        border-bottom: none;
+    }
+    
+    .colaborador-item .nome {
+        font-weight: 500;
+        color: #212529;
+    }
+    
+    .colaborador-item .info {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .colaborador-dropdown .no-results {
+        padding: 15px;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    .colaborador-dropdown .loading {
+        padding: 15px;
+        text-align: center;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="form-container">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 d-flex align-items-center gap-2">
+                    <i class="bi bi-person-plus-fill text-success"></i>
+                    Criar Novo Usuário
+                </h1>
+                <p class="text-muted mb-0">Preencha os dados para criar um novo usuário no sistema</p>
+            </div>
+            <a href="{% url 'rh:listar_usuarios' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+        </div>
+
+        <!-- Mensagens -->
+        {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <i class="bi bi-{% if message.tags == 'error' %}exclamation-triangle{% else %}check-circle{% endif %}-fill me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Formulário -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Dados do Usuário</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="formCriarUsuario">
+                    {% csrf_token %}
+                    
+                    <!-- Credenciais -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-muted border-bottom pb-2 mb-3">
+                                <i class="bi bi-key me-1"></i> Credenciais de Acesso
+                            </h6>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label fw-bold">
+                                Nome de Usuário <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       required minlength="3" pattern="[^\s]+"
+                                       value="{{ form_data.username|default:'' }}"
+                                       placeholder="Ex: joao.silva">
+                            </div>
+                            <div class="form-text">Mínimo 3 caracteres, sem espaços</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label fw-bold">E-mail</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ form_data.email|default:'' }}"
+                                       placeholder="Ex: joao.silva@empresa.com">
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label fw-bold">
+                                Senha <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       required minlength="6" placeholder="Digite a senha">
+                                <span class="input-group-text toggle-password" data-target="password">
+                                    <i class="bi bi-eye"></i>
+                                </span>
+                            </div>
+                            <ul class="password-requirements list-unstyled mt-2 mb-0">
+                                <li id="req-length">Mínimo 6 caracteres</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="password_confirm" class="form-label fw-bold">
+                                Confirmar Senha <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                                <input type="password" class="form-control" id="password_confirm" name="password_confirm" 
+                                       required minlength="6" placeholder="Confirme a senha">
+                                <span class="input-group-text toggle-password" data-target="password_confirm">
+                                    <i class="bi bi-eye"></i>
+                                </span>
+                            </div>
+                            <div class="form-text" id="password-match"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Informações Pessoais -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-muted border-bottom pb-2 mb-3">
+                                <i class="bi bi-person-vcard me-1"></i> Informações Pessoais (Opcional)
+                            </h6>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="first_name" class="form-label fw-bold">Nome</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" 
+                                   value="{{ form_data.first_name|default:'' }}"
+                                   placeholder="Ex: João">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="last_name" class="form-label fw-bold">Sobrenome</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" 
+                                   value="{{ form_data.last_name|default:'' }}"
+                                   placeholder="Ex: Silva">
+                        </div>
+                    </div>
+                    
+                    <!-- Vinculação e Permissões -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-muted border-bottom pb-2 mb-3">
+                                <i class="bi bi-link-45deg me-1"></i> Vinculação e Permissões
+                            </h6>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="searchColaborador" class="form-label fw-bold">Vincular Colaborador</label>
+                            <div class="position-relative">
+                                <input type="text" class="form-control mb-2" id="searchColaborador" 
+                                       placeholder="Digite para buscar colaborador..." autocomplete="off">
+                                <div id="colaboradorResults" class="colaborador-dropdown d-none">
+                                    <!-- Resultados aparecem aqui -->
+                                </div>
+                            </div>
+                            <div class="selected-colaborador d-none mb-2" id="selectedColaborador">
+                                <div class="alert alert-success py-2 mb-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                    <span id="selectedColaboradorName"></span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="clearColaborador">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <input type="hidden" id="colaborador_id" name="colaborador_id" value="{{ form_data.colaborador_id|default:'' }}">
+                            <div class="form-text">Apenas colaboradores ainda não vinculados a usuários</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Permissões</label>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="is_staff" name="is_staff"
+                                       {% if form_data.is_staff %}checked{% endif %}>
+                                <label class="form-check-label" for="is_staff">
+                                    <span class="badge bg-warning text-dark me-1">Staff</span>
+                                    Acesso ao painel administrativo do Django
+                                </label>
+                            </div>
+                            <div class="form-text mt-2">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Permissões individuais podem ser configuradas após a criação.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botões -->
+                    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                        <a href="{% url 'rh:listar_usuarios' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-lg me-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success" id="btnSubmit">
+                            <i class="bi bi-check-lg me-1"></i> Criar Usuário
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Informações adicionais -->
+        <div class="card mt-4 border-info">
+            <div class="card-body">
+                <h6 class="card-title text-info">
+                    <i class="bi bi-info-circle me-1"></i> Informações Importantes
+                </h6>
+                <ul class="mb-0 small">
+                    <li>O usuário deverá configurar a <strong>autenticação de dois fatores (2FA)</strong> no primeiro acesso.</li>
+                    <li>As permissões detalhadas por módulo podem ser configuradas na página de detalhes do usuário.</li>
+                    <li>Vincular um colaborador permite que o usuário acesse suas próprias informações no módulo RH.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordInput = document.getElementById('password');
+    const confirmInput = document.getElementById('password_confirm');
+    const reqLength = document.getElementById('req-length');
+    const matchText = document.getElementById('password-match');
+    
+    // Toggle de visibilidade da senha
+    document.querySelectorAll('.toggle-password').forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            const targetId = this.dataset.target;
+            const input = document.getElementById(targetId);
+            const icon = this.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        });
+    });
+    
+    // Validação de senha em tempo real
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        
+        // Verificar comprimento
+        if (password.length >= 6) {
+            reqLength.classList.add('valid');
+        } else {
+            reqLength.classList.remove('valid');
+        }
+        
+        // Verificar match
+        checkPasswordMatch();
+    });
+    
+    confirmInput.addEventListener('input', checkPasswordMatch);
+    
+    function checkPasswordMatch() {
+        const password = passwordInput.value;
+        const confirm = confirmInput.value;
+        
+        if (confirm.length === 0) {
+            matchText.innerHTML = '';
+            confirmInput.classList.remove('is-valid', 'is-invalid');
+        } else if (password === confirm) {
+            matchText.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>Senhas conferem</span>';
+            confirmInput.classList.remove('is-invalid');
+            confirmInput.classList.add('is-valid');
+        } else {
+            matchText.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>Senhas não conferem</span>';
+            confirmInput.classList.remove('is-valid');
+            confirmInput.classList.add('is-invalid');
+        }
+    }
+    
+    // Validação no submit
+    document.getElementById('formCriarUsuario').addEventListener('submit', function(e) {
+        const username = document.getElementById('username').value.trim();
+        const password = passwordInput.value;
+        const confirm = confirmInput.value;
+        
+        if (username.includes(' ')) {
+            e.preventDefault();
+            alert('Nome de usuário não pode conter espaços.');
+            return;
+        }
+        
+        if (password.length < 6) {
+            e.preventDefault();
+            alert('Senha deve ter pelo menos 6 caracteres.');
+            return;
+        }
+        
+        if (password !== confirm) {
+            e.preventDefault();
+            alert('As senhas não conferem.');
+            return;
+        }
+        
+        // Desabilitar botão para evitar duplo clique
+        document.getElementById('btnSubmit').disabled = true;
+        document.getElementById('btnSubmit').innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Criando...';
+    });
+    
+    // ============================================
+    // Busca de Colaboradores
+    // ============================================
+    const searchInput = document.getElementById('searchColaborador');
+    const resultsDiv = document.getElementById('colaboradorResults');
+    const selectedDiv = document.getElementById('selectedColaborador');
+    const selectedName = document.getElementById('selectedColaboradorName');
+    const hiddenInput = document.getElementById('colaborador_id');
+    const clearBtn = document.getElementById('clearColaborador');
+    
+    let searchTimeout = null;
+    
+    // Buscar colaboradores via API
+    async function searchColaboradores(query) {
+        resultsDiv.classList.remove('d-none');
+        resultsDiv.innerHTML = '<div class="loading"><span class="spinner-border spinner-border-sm me-2"></span>Buscando...</div>';
+        
+        try {
+            const url = new URL("{% url 'rh:api_colaboradores_sem_vinculo' %}", window.location.origin);
+            if (query) {
+                url.searchParams.set('search', query);
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success && data.colaboradores.length > 0) {
+                // Filtrar apenas colaboradores sem vínculo
+                const disponiveis = data.colaboradores.filter(c => !c.vinculado_outro);
+                
+                if (disponiveis.length === 0) {
+                    resultsDiv.innerHTML = '<div class="no-results"><i class="bi bi-search me-2"></i>Nenhum colaborador disponível encontrado</div>';
+                    return;
+                }
+                
+                resultsDiv.innerHTML = disponiveis.map(c => `
+                    <div class="colaborador-item" data-id="${c.id}" data-nome="${c.nome}" data-setor="${c.setor}" data-cargo="${c.cargo}">
+                        <div class="nome">${c.nome}</div>
+                        <div class="info">${c.setor} • ${c.cargo}</div>
+                    </div>
+                `).join('');
+                
+                // Adicionar handlers de clique
+                resultsDiv.querySelectorAll('.colaborador-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        selectColaborador(
+                            this.dataset.id,
+                            this.dataset.nome,
+                            this.dataset.setor,
+                            this.dataset.cargo
+                        );
+                    });
+                });
+            } else {
+                resultsDiv.innerHTML = '<div class="no-results"><i class="bi bi-search me-2"></i>Nenhum colaborador encontrado</div>';
+            }
+        } catch (error) {
+            console.error('Erro na busca:', error);
+            resultsDiv.innerHTML = '<div class="no-results text-danger"><i class="bi bi-exclamation-circle me-2"></i>Erro ao buscar</div>';
+        }
+    }
+    
+    // Selecionar colaborador
+    function selectColaborador(id, nome, setor, cargo) {
+        hiddenInput.value = id;
+        selectedName.innerHTML = `<strong>${nome}</strong><br><small class="text-muted">${setor} • ${cargo}</small>`;
+        selectedDiv.classList.remove('d-none');
+        searchInput.value = '';
+        resultsDiv.classList.add('d-none');
+    }
+    
+    // Limpar seleção
+    clearBtn.addEventListener('click', function() {
+        hiddenInput.value = '';
+        selectedDiv.classList.add('d-none');
+        searchInput.focus();
+    });
+    
+    // Evento de digitação com debounce
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+        
+        if (query.length < 2) {
+            resultsDiv.classList.add('d-none');
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => {
+            searchColaboradores(query);
+        }, 300);
+    });
+    
+    // Mostrar todos ao focar (se campo vazio)
+    searchInput.addEventListener('focus', function() {
+        if (this.value.trim().length >= 2) {
+            resultsDiv.classList.remove('d-none');
+        }
+    });
+    
+    // Esconder dropdown ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.classList.add('d-none');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load nav_access %}
+
+{% can_nav_view user 'metrologia:unidade_update' 'metrologia' as can_unidade_update %}
+{% can_nav_view user 'metrologia:unidade_delete' 'metrologia' as can_unidade_delete %}
+
+{% block title %}{{ unidade.nome }} - CalibraWeb{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <a href="{% url 'metrologia:unidades_list' %}" class="btn btn-outline-secondary mb-3">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <h1 class="display-5">
+                <i class="bi bi-rulers"></i> {{ unidade.nome }}
+            </h1>
+            {% if unidade.descricao %}
+                <p class="text-muted">{{ unidade.descricao }}</p>
+            {% endif %}
+        </div>
+        <div class="col-md-4 text-end">
+            {% if can_unidade_update %}
+                <a href="{% url 'metrologia:unidade_update' unidade.id %}" class="btn btn-warning btn-lg">
+                    <i class="bi bi-pencil-square"></i> Editar
+                </a>
+            {% endif %}
+            {% if can_unidade_delete %}
+                <a href="{% url 'metrologia:unidade_delete' unidade.id %}" class="btn btn-danger btn-lg">
+                    <i class="bi bi-trash"></i> Deletar
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Informações Gerais -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informações Gerais</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Nome da Unidade:</strong></p>
+                            <p class="text-muted"><code>{{ unidade.nome }}</code></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>ID:</strong></p>
+                            <p class="text-muted">{{ unidade.id }}</p>
+                        </div>
+                    </div>
+                    {% if unidade.descricao %}
+                        <div class="row">
+                            <div class="col-md-12">
+                                <p><strong>Descrição:</strong></p>
+                                <p class="text-muted">{{ unidade.descricao }}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Faixas Padrão Usando Esta Unidade -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-list"></i> Faixas Padrão de Categorias</h5>
+                    <span class="badge bg-info">{{ faixas_padrao_count }}</span>
+                </div>
+                <div class="card-body">
+                    {% if faixas_padrao %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Categoria</th>
+                                        <th>Faixa de Medição</th>
+                                        <th>Resolução</th>
+                                        <th class="text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for faixa in faixas_padrao %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ faixa.categoria.nome }}</strong>
+                                            </td>
+                                            <td>
+                                                {{ faixa.valor_minimo }} a {{ faixa.valor_maximo }}
+                                                {% if faixa.nominal %}
+                                                    (Nominal: {{ faixa.nominal }})
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if faixa.resolucao %}
+                                                    {{ faixa.resolucao }}
+                                                {% else %}
+                                                    <em class="text-muted">Não definida</em>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="{% url 'metrologia:faixa_categoria_update' faixa.id %}" 
+                                                   class="btn btn-sm btn-warning" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="{% url 'metrologia:categoria_detail' faixa.categoria.id %}" 
+                                                   class="btn btn-sm btn-info" title="Ver categoria">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox" style="font-size: 2rem; color: #ccc;"></i>
+                            <p class="text-muted mt-2">Nenhuma faixa padrão usa esta unidade</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Faixas de Instrumentos Usando Esta Unidade -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Faixas de Instrumentos</h5>
+                    <span class="badge bg-success">{{ faixas_instrumento_count }}</span>
+                </div>
+                <div class="card-body">
+                    {% if faixas_instrumento %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Instrumento</th>
+                                        <th>Categoria</th>
+                                        <th>Faixa de Medição</th>
+                                        <th>Resolução</th>
+                                        <th class="text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for faixa in faixas_instrumento %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ faixa.instrumento.codigo_instrumento }}</strong>
+                                            </td>
+                                            <td>
+                                                {{ faixa.instrumento.categoria.nome|default:"—" }}
+                                            </td>
+                                            <td>
+                                                {{ faixa.valor_minimo }} a {{ faixa.valor_maximo }}
+                                                {% if faixa.nominal %}
+                                                    (Nominal: {{ faixa.nominal }})
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if faixa.resolucao %}
+                                                    {{ faixa.resolucao }}
+                                                {% else %}
+                                                    <em class="text-muted">Não definida</em>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-center">
+                                                <a href="{% url 'metrologia:instrumento_detail' faixa.instrumento.id %}" 
+                                                   class="btn btn-sm btn-info" title="Ver instrumento">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox" style="font-size: 2rem; color: #ccc;"></i>
+                            <p class="text-muted mt-2">Nenhum instrumento usa esta unidade</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo de Uso -->
+    {% if faixas_padrao_count > 0 or faixas_instrumento_count > 0 %}
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="alert alert-info" role="alert">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Resumo de Uso:</strong>
+                    Esta unidade está sendo utilizada em <strong>{{ faixas_padrao_count }} faixa(s) padrão</strong> 
+                    e <strong>{{ faixas_instrumento_count }} faixa(s) de instrumento</strong>.
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

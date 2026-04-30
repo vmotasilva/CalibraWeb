@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Procedimentos</h2>
+    <div class="d-flex gap-2">
+      <a href="{% url 'novo_procedimento' %}" class="btn btn-sm btn-primary">Novo</a>
+      <a href="{% url 'export_procedimentos_excel' %}?{{ querystring_base }}" class="btn btn-sm btn-outline-success" title="Exportar Excel">Excel</a>
+      <a href="{% url 'export_procedimentos_pdf' %}?{{ querystring_base }}" class="btn btn-sm btn-outline-danger" title="Exportar PDF">PDF</a>
+      <a href="{% url 'importar_procedimentos' %}" class="btn btn-sm btn-outline-info" title="Importar em lote">Importar</a>
+    </div>
+  </div>
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-md-3">
+      <input type="text" name="q" value="{{ termo }}" placeholder="Código ou título" class="form-control" />
+    </div>
+    <!-- Filtro por tipo removido pois campo não existe mais no modelo -->
+    <div class="col-md-2">
+      <input type="text" name="rev" value="{{ rev }}" placeholder="Revisão" class="form-control" />
+    </div>
+    <div class="col-md-2">
+      <select name="setor" class="form-select">
+        <option value="">Setor</option>
+        {% for s in setores %}
+          <option value="{{ s.id }}" {% if setor_id == s.id|stringformat:'s' %}selected{% endif %}>{{ s.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select name="area" class="form-select">
+        <option value="">Área</option>
+        {% for a in areas %}
+          <option value="{{ a.id }}" {% if area_id == a.id|stringformat:'s' %}selected{% endif %}>{{ a.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select name="elaborador" class="form-select">
+        <option value="">Elaborador</option>
+        {% for c in colaboradores %}
+          <option value="{{ c.id }}" {% if elaborador_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.nome_completo }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select name="revisor" class="form-select">
+        <option value="">Revisor</option>
+        {% for c in colaboradores %}
+          <option value="{{ c.id }}" {% if revisor_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.nome_completo }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <select name="aprovador" class="form-select">
+        <option value="">Aprovador</option>
+        {% for c in colaboradores %}
+          <option value="{{ c.id }}" {% if aprovador_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.nome_completo }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-primary w-100">Filtrar</button>
+    </div>
+    <div class="col-md-2">
+      <a href="?" class="btn btn-secondary w-100">Limpar</a>
+    </div>
+  </form>
+  <div class="table-responsive bg-white shadow-sm rounded">
+    <table class="table table-sm table-striped mb-0">
+      <thead class="table-light">
+        <tr class="small text-uppercase">
+          <th style="width:120px;">Código</th>
+          <th style="width:220px;">Nome</th>
+          <th style="width:120px;">Classificação</th>
+          <th style="width:100px;">Autor</th>
+          <th style="width:80px;">Revisão</th>
+          <th style="width:110px;">Últ. Revisão</th>
+          <th style="width:110px;">Aprovação</th>
+          <th style="width:110px;">Próx. Revisão</th>
+          <th style="width:110px;">Validade</th>
+          <th style="width:120px;">Pasta</th>
+          <th style="width:120px;">Doc. Controlados</th>
+          <th style="width:120px;">Matriz</th>
+          <th style="width:120px;">Sub-Área</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if procedimentos %}
+          {% for p in procedimentos %}
+            <tr class="align-middle">
+              <td class="fw-semibold"><a href="{% url 'detalhe_procedimento' p.id %}" class="text-decoration-none">{{ p.codigo|default_if_none:"-" }}</a></td>
+              <td class="small">{{ p.nome|default_if_none:"-"|truncatechars:80 }}</td>
+              <td class="small">{{ p.classificacao|default_if_none:"-" }}</td>
+              <td class="small">{{ p.autor|default_if_none:"-" }}</td>
+              <td class="small">{{ p.numero_revisao|default_if_none:"-" }}</td>
+              <td class="small">{% if p.ultima_revisao %}{{ p.ultima_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+              <td class="small">{% if p.data_aprovacao %}{{ p.data_aprovacao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+              <td class="small">{% if p.proxima_revisao %}{{ p.proxima_revisao|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+              <td class="small">{% if p.data_validade %}{{ p.data_validade|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+              <td class="small">{{ p.pasta|default_if_none:"-" }}</td>
+              <td class="small">{{ p.documentos_controlados|default_if_none:"-" }}</td>
+              <td class="small">{{ p.matriz|default_if_none:"-" }}</td>
+              <td class="small">{{ p.sub_area|default_if_none:"-" }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="11" class="text-center py-4 text-muted">Nenhum procedimento encontrado.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% if page_obj %}
+  <nav class="mt-3" aria-label="Paginação de Procedimentos">
+    <ul class="pagination pagination-sm mb-0">
+      <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+        <a class="page-link" href="?{{ querystring_base }}&page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% else %}1{% endif %}" aria-label="Anterior">&laquo;</a>
+      </li>
+      {% for num in page_obj.paginator.page_range %}
+        {% if num >= page_obj.number|add:-2 and num <= page_obj.number|add:2 %}
+        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+          <a class="page-link" href="?{{ querystring_base }}&page={{ num }}">{{ num }}</a>
+        </li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+        <a class="page-link" href="?{{ querystring_base }}&page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% else %}{{ page_obj.number }}{% endif %}" aria-label="Próxima">&raquo;</a>
+      </li>
+    </ul>
+    <p class="text-muted small mt-2">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} registros)</p>
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

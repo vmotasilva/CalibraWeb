@@ -1,0 +1,1906 @@
+{% extends 'base.html' %}
+{% load widget_tweaks custom_tags nav_access %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    {% can_nav_view user 'download_certificado' 'metrologia' as can_cert_download %}
+    {% can_nav_view user 'remover_certificado_historico' 'metrologia' as can_cert_remove %}
+    {% can_nav_view user 'remover_carimbo_certificado' 'metrologia' as can_carimbo_remove %}
+    {% can_nav_view user 'editar_historico_calibracao' 'metrologia' as can_editar_historico %}
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">Editar Histórico de Calibração</h2>
+            <p class="text-muted mb-0">{{ instrumento.tag }} - {{ instrumento.descricao }}</p>
+        </div>
+        <a href="{% url 'visualizar_historico_calibracao' historico.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <!-- LAYOUT: Esquerda (Formulário) + Direita (Preview) -->
+    <div class="row mb-4 g-4">
+        <!-- COLUNA 1: DADOS PRINCIPAIS DO HISTÓRICO (Esquerda) -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-calendar-check"></i> Dados do Histórico
+                </div>
+                <div class="card-body pb-2">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_history">
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_data_calibracao" class="form-label fw-bold small">Data da Calibração <span class="text-danger">*</span></label>
+                                    {{ historico_form.data_calibracao|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_proxima_calibracao" class="form-label fw-bold small">Próxima Calibração</label>
+                                    {{ historico_form.proxima_calibracao|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_numero_certificado" class="form-label fw-bold small">Nº Certificado</label>
+                                    {{ historico_form.numero_certificado|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_tipo_calibracao" class="form-label fw-bold small">Tipo de Calibração</label>
+                                    {{ historico_form.tipo_calibracao|add_class:"form-select form-select-sm" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_responsavel" class="form-label fw-bold small">Responsável</label>
+                                    {{ historico_form.responsavel|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2">
+                                    <label for="id_fornecedor" class="form-label fw-bold small">Laboratório</label>
+                                    {{ historico_form.fornecedor|add_class:"form-control form-control-sm" }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="form-check form-check-inline">
+                                {{ historico_form.tem_selo_rbc|add_class:"form-check-input" }}
+                                <label for="id_tem_selo_rbc" class="form-check-label fw-bold small">
+                                    Possui Selo RBC?
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Campo Arquivos de Padrões (visível apenas quando NÃO for RBC) -->
+                        <div class="mb-2 hidden" id="arquivos-padroes-section">
+                            <div class="card bg-light border-info" style="font-size: 0.9rem;">
+                                <!-- Header com collapse -->
+                                <div class="card-header bg-info text-white p-2" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#padroes-collapse">
+                                    <i class="bi bi-chevron-down" id="padroes-icon"></i>
+                                    <i class="bi bi-file-pdf text-danger"></i> <small>Padrões de Calibração ({{ historico.padroes_arquivo.count }})</small>
+                                </div>
+                                <!-- Conteúdo colapsável -->
+                                <div id="padroes-collapse" class="collapse">
+                                    <div class="card-body p-2">
+                                        <!-- Upload de Novos Arquivos -->
+                                        <div class="mb-2">
+                                            <label for="id_novos_arquivos_padroes" class="form-label fw-bold small">
+                                                <i class="bi bi-cloud-upload"></i> Upload de Padrões
+                                            </label>
+                                            <small class="text-muted d-block mb-1">PDFs dos padrões utilizados (pode selecionar múltiplos)</small>
+                                            {% if historico_form.novos_arquivos_padroes %}
+                                                {{ historico_form.novos_arquivos_padroes|add_class:"form-control form-control-sm" }}
+                                            {% else %}
+                                                <input type="file" id="id_novos_arquivos_padroes" name="novos_arquivos_padroes" class="form-control form-control-sm" accept=".pdf" multiple>
+                                            {% endif %}
+                                        </div>
+                                        <div class="mb-2 d-grid">
+                                            <button type="submit" class="btn btn-primary btn-sm" name="action" value="upload_padroes">
+                                                <i class="bi bi-plus-circle"></i> Anexar Padrões
+                                            </button>
+                                        </div>
+                                        <!-- Padrões Anexados (lista simples com download) -->
+                                        {% if historico.padroes_arquivo.all %}
+                                        <div class="mb-2">
+                                            <label class="form-label fw-bold small">
+                                                <i class="bi bi-file-earmark-pdf text-danger"></i> Padrões Anexados
+                                            </label>
+                                            <div class="list-group list-group-sm">
+                                                {% for padrao in historico.padroes_arquivo.all %}
+                                                <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                                    <div class="small">
+                                                        <i class="bi bi-file-pdf text-danger"></i> {{ padrao.nome }}<br>
+                                                        <small class="text-muted">{{ padrao.arquivo|safe_filesize }}</small>
+                                                    </div>
+                                                    <div class="btn-group btn-group-sm">
+                                                        <a href="{% url 'download_arquivo_padrao' padrao.id %}" class="btn btn-sm btn-outline-primary">
+                                                            <i class="bi bi-download"></i> Download
+                                                        </a>
+                                                        <button type="submit" name="acao" value="remover_padrao_{{ padrao.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remover padrão {{ padrao.nome }}?')">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <div class="alert alert-info alert-sm p-2 mb-0">
+                                            <small>Nenhum padrão anexado ainda.</small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label for="id_observacoes" class="form-label fw-bold small">Observações</label>
+                            {{ historico_form.observacoes|add_class:"form-control form-control-sm" }}
+                        </div>
+
+                        <!-- SEÇÃO DE CERTIFICADO -->
+                        <div class="card bg-light border-primary mt-3">
+                            <div class="card-header bg-primary text-white py-2">
+                                <i class="bi bi-file-pdf"></i> Certificado (PDF)
+                            </div>
+                            <div class="card-body p-3">
+                                {% if historico.certificado %}
+                                <div class="mb-3">
+                                    <small class="text-muted">Certificado Atual:</small>
+                                    <a href="{{ historico.certificado.url }}" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                </div>
+                                <hr class="my-2">
+                                {% endif %}
+                                <label for="id_certificado" class="form-label fw-bold small">Selecionar novo certificado:</label>
+                                <div class="input-group">
+                                    <input type="file" id="id_certificado" name="certificado" class="form-control form-control-sm" accept=".pdf">
+                                    <button type="submit" class="btn btn-primary btn-sm" name="action" value="anexar_certificado">
+                                        <i class="bi bi-paperclip"></i> Anexar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg fw-bold" name="action" value="update_history">
+                                <i class="bi bi-save"></i> Salvar Histórico
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+
+                <!-- SEÇÃO 2: RESULTADOS POR FAIXA -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-info text-white py-2">
+                        <i class="bi bi-table"></i> Resultados de Medição por Faixa
+                    </div>
+                    <div class="card-body p-0">
+                        {% if resultados_faixa %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Faixa (Min-Max)</th>
+                                        <th>Unidade</th>
+                                        <th>Tolerância</th>
+                                        <th>Erro</th>
+                                        <th>Incerteza</th>
+                                        <th>EMA</th>
+                                        <th>EME</th>
+                                        <th>Resultado</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rf in resultados_faixa %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ rf.faixa.valor_minimo }}</strong> a <strong>{{ rf.faixa.valor_maximo }}</strong>
+                                        </td>
+                                        <td>{{ rf.faixa.unidade.nome }}</td>
+                                        <td>
+                                            {% if rf.tolerancia %}
+                                                ± {{ rf.tolerancia }}
+                                            {% elif rf.faixa.tolerancia_mais_menos %}
+                                                ± {{ rf.faixa.tolerancia_mais_menos }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ rf.erro|default:"-" }}</td>
+                                        <td>{{ rf.incerteza|default:"-" }}</td>
+                                        <td>
+                                            {% if rf.ema %}
+                                                {{ rf.ema }}
+                                            {% elif rf.tolerancia %}
+                                                {{ rf.tolerancia|floatformat:-4 }}
+                                            {% elif rf.faixa.tolerancia_mais_menos %}
+                                                {{ rf.faixa.tolerancia_mais_menos|floatformat:-4 }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if rf.eme %}
+                                                {{ rf.eme }}
+                                            {% elif rf.erro and rf.incerteza %}
+                                                {{ rf.erro|add:rf.incerteza|floatformat:-4 }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                <span class="badge bg-success">✓ OK</span>
+                                            {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                <span class="badge bg-warning text-dark">⚠ OK</span>
+                                            {% elif rf.resultado == 'REPROVADO' %}
+                                                <span class="badge bg-danger">✗ NOK</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editResultModal{{ rf.id }}">
+                                                <i class="bi bi-pencil"></i> Editar
+                                            </button>
+                                            <form method="post" style="display: inline;" onsubmit="return confirm('Remover resultado desta faixa?');">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="delete_resultado">
+                                                <input type="hidden" name="resultado_id" value="{{ rf.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+
+                                            <!-- Modal de Edição -->
+                                            <div class="modal fade" id="editResultModal{{ rf.id }}" tabindex="-1">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Editar Resultado - Faixa {{ rf.faixa.valor_minimo }}-{{ rf.faixa.valor_maximo }} {{ rf.faixa.unidade.nome }}</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                        </div>
+                                                        <form method="post">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="action" value="update_resultado">
+                                                            <input type="hidden" name="resultado_id" value="{{ rf.id }}">
+                                                            <input type="hidden" name="resultado" id="resultado_hidden_{{ rf.id }}" value="{{ rf.resultado }}">
+                                                            <div class="modal-body">
+                                                                <div class="alert alert-info">
+                                                                    <small><strong>Tolerância da Faixa:</strong> ± {{ rf.tolerancia|default:rf.faixa.tolerancia_mais_menos|default:"N/A" }}</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-bold">Erro</label>
+                                                                    <input type="number" name="erro" step="0.0001" class="form-control" value="{{ rf.erro|default:'' }}" placeholder="0.0000">
+                                                                    <small class="text-muted">Erro encontrado na medição (pode ser positivo ou negativo)</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-bold">Incerteza</label>
+                                                                    <input type="number" name="incerteza" step="0.0001" class="form-control" value="{{ rf.incerteza|default:'' }}" placeholder="0.0000">
+                                                                    <small class="text-muted">Incerteza da medição</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-bold">Erro Máximo Admissível (EMA)</label>
+                                                                    <input type="number" name="ema" step="0.0001" class="form-control" value="{{ rf.ema|default:'' }}" placeholder="0.0000" readonly disabled>
+                                                                    <small class="text-muted">Calculado automaticamente como Tolerância ÷ 2</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-bold">Erro Máximo do Equipamento (EME)</label>
+                                                                    <input type="number" name="eme" step="0.0001" class="form-control" value="{{ rf.eme|default:'' }}" placeholder="0.0000" readonly disabled>
+                                                                    <small class="text-muted">Calculado automaticamente como |Erro| + Incerteza</small>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-bold">Resultado (Calculado automaticamente)</label>
+                                                                    <div class="alert alert-light border">
+                                                                        {% if rf.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                                            <span class="badge bg-success">✓ Aprovado sem Correção</span>
+                                                                        {% elif rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                                            <span class="badge bg-warning text-dark">⚠ Aprovado com Correção</span>
+                                                                        {% elif rf.resultado == 'REPROVADO' %}
+                                                                            <span class="badge bg-danger">✗ Reprovado</span>
+                                                                        {% else %}
+                                                                            <span class="badge bg-secondary">Preencha Erro e Incerteza</span>
+                                                                        {% endif %}
+                                                                    </div>
+                                                                    <small class="text-muted">O resultado é calculado automaticamente com base no erro, incerteza e tolerância</small>
+                                                                </div>
+
+                                                                <!-- TABELA DE CORREÇÃO - Visível apenas para APROVADO_COM_CORRECAO -->
+                                                                {% if rf.resultado == 'APROVADO_COM_CORRECAO' %}
+                                                                <div class="mb-3 p-3 bg-light border border-warning rounded">
+                                                                    <label class="form-label fw-bold text-warning">
+                                                                        <i class="bi bi-table"></i> Tabela de Correção (Para Approved com Correção)
+                                                                    </label>
+                                                                    <small class="text-muted d-block mb-2">
+                                                                        Defina a tabela de correção a aplicar nas medições. Adicione faixas de valores e suas respectivas correções.
+                                                                    </small>
+                                                                    
+                                                                    <div class="table-responsive mb-2">
+                                                                        <table class="table table-sm table-bordered mb-0">
+                                                                            <thead class="table-warning">
+                                                                                <tr>
+                                                                                    <th>Valor Min</th>
+                                                                                    <th>Valor Max</th>
+                                                                                    <th>Correção</th>
+                                                                                    <th width="50">Ação</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody id="correcao_tbody_{{ rf.id }}">
+                                                                                {% if rf.tabela_correcao %}
+                                                                                    {% for linha in rf.tabela_correcao %}
+                                                                                    <tr>
+                                                                                        <td>
+                                                                                            <input type="number" step="0.0001" class="form-control form-control-sm valor_min" value="{{ linha.valor_min }}" placeholder="Min">
+                                                                                        </td>
+                                                                                        <td>
+                                                                                            <input type="number" step="0.0001" class="form-control form-control-sm valor_max" value="{{ linha.valor_max }}" placeholder="Max">
+                                                                                        </td>
+                                                                                        <td>
+                                                                                            <input type="number" step="0.0001" class="form-control form-control-sm correcao_valor" value="{{ linha.correcao }}" placeholder="0.0000">
+                                                                                        </td>
+                                                                                        <td class="text-center">
+                                                                                            <button type="button" class="btn btn-sm btn-outline-danger remove-correcao-row">
+                                                                                                <i class="bi bi-trash"></i>
+                                                                                            </button>
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                    {% endfor %}
+                                                                                {% endif %}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                    
+                                                                    <button type="button" class="btn btn-sm btn-outline-warning add-correcao-row" data-result-id="{{ rf.id }}">
+                                                                        <i class="bi bi-plus-circle"></i> Adicionar Linha
+                                                                    </button>
+                                                                    
+                                                                    <!-- Campo hidden para armazenar JSON -->
+                                                                    <input type="hidden" name="tabela_correcao_{{ rf.id }}" id="tabela_correcao_{{ rf.id }}" value='{{ rf.tabela_correcao|safe }}'>
+                                                                </div>
+                                                                {% endif %}
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                                <button type="submit" class="btn btn-primary">Salvar Resultado</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info m-3">
+                            <i class="bi bi-info-circle"></i> Nenhum resultado de faixa cadastrado ainda. 
+                            {% if faixas_sem_resultados %}
+                            Selecione as faixas abaixo para adicionar resultados.
+                            {% else %}
+                            Todas as faixas do instrumento já estão cadastradas ou o instrumento não possui faixas.
+                            {% endif %}
+                        </div>
+                        
+                        {% if faixas_sem_resultados %}
+                        <div class="alert alert-success m-3">
+                            <h6 class="mb-3"><i class="bi bi-plus-circle"></i> Adicionar Faixas de Medição</h6>
+                            <p class="text-muted mb-3">Selecione uma faixa disponível do instrumento para adicionar resultados:</p>
+                            
+                            <div class="row g-2">
+                                {% for faixa in faixas_sem_resultados %}
+                                <div class="col-md-6 col-lg-4">
+                                    <form method="post" action="{% url 'editar_historico_calibracao' historico.id %}" class="d-flex gap-2">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="add_faixa">
+                                        <input type="hidden" name="faixa_id" value="{{ faixa.id }}">
+                                        <div class="flex-grow-1 p-2 bg-light rounded border">
+                                            <small class="d-block text-muted">Faixa de Medição</small>
+                                            <strong>{{ faixa.valor_minimo }} a {{ faixa.valor_maximo }} {{ faixa.unidade.nome }}</strong>
+                                            {% if faixa.tolerancia %}
+                                            <small class="d-block text-muted">Tol: ± {{ faixa.tolerancia }}</small>
+                                            {% endif %}
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-success align-self-center btn-add-faixa" data-faixa-id="{{ faixa.id }}" data-faixa-label="{{ faixa.valor_minimo }}-{{ faixa.valor_maximo }}">
+                                            <i class="bi bi-plus"></i> Adicionar
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- SEÇÃO 3: GESTÃO DE CERTIFICADOS -->
+                {% if historico.certificado or historico.certificado_carimbado %}
+                <div class="card shadow-sm mt-4 border-primary">
+                    <div class="card-header bg-primary text-white py-2">
+                        <i class="bi bi-files"></i> Certificados Disponíveis
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="list-group list-group-sm">
+                            <!-- Certificado Original -->
+                            {% if historico.certificado %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold small">
+                                        <i class="bi bi-file-pdf text-danger"></i>
+                                        Certificado Original
+                                    </div>
+                                    <small class="text-muted">{{ historico.certificado|safe_filesize }}</small>
+                                </div>
+                                <div class="btn-group btn-group-sm ms-2">
+                                    {% if can_cert_download %}
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('original', '{% url 'get_certificado_bytes' historico.id %}?tipo=original')">
+                                        <i class="bi bi-eye"></i> Visualizar
+                                    </button>
+                                    <a href="{% url 'download_certificado' historico.id %}?tipo=original" class="btn btn-outline-success btn-sm">
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                    {% endif %}
+                                    {% if can_cert_remove %}
+                                    <form method="post" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" name="acao" value="remover_certificado_original" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover o certificado original?')">
+                                            <i class="bi bi-trash"></i> Remover
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Certificado Carimbado -->
+                            {% if historico.certificado_carimbado %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold small">
+                                        <i class="bi bi-file-pdf text-danger"></i>
+                                        Certificado Carimbado
+                                        <span class="badge bg-success ms-1">✓ Validado</span>
+                                    </div>
+                                    <small class="text-muted">{{ historico.certificado_carimbado|safe_filesize }}</small>
+                                </div>
+                                <div class="btn-group btn-group-sm ms-2">
+                                    {% if can_cert_download %}
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="visualizarCertificado('carimbado', '{% url 'get_certificado_bytes' historico.id %}?tipo=carimbado')">
+                                        <i class="bi bi-eye"></i> Visualizar
+                                    </button>
+                                    <a href="{% url 'download_certificado' historico.id %}?tipo=carimbado" class="btn btn-outline-success btn-sm">
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                    {% endif %}
+                                    {% if can_cert_remove %}
+                                    <form method="post" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" name="acao" value="remover_certificado_carimbado" class="btn btn-outline-danger btn-sm" onclick="return confirm('Tem certeza que deseja remover o certificado carimbado?')">
+                                            <i class="bi bi-trash"></i> Remover
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- SEÇÃO 4: CARIMBO DO CERTIFICADO -->
+                {% if historico.certificado or historico.certificado_carimbado %}
+                <div class="card shadow-sm mt-4 border-warning">
+                    <div class="card-header bg-warning text-dark py-2">
+                        <i class="bi bi-stamp"></i> {% if historico.certificado_carimbado %}Re-{% endif %}Aplicar Carimbo de Validação
+                    </div>
+                    <div class="card-body p-2">
+                        {% if not historico.certificado and historico.certificado_carimbado %}
+                        <div class="alert alert-warning small mb-2">
+                            <i class="bi bi-exclamation-triangle"></i> <strong>Reaplicando carimbo:</strong> Usando certificado carimbado anterior como base.
+                        </div>
+                        {% endif %}
+                        <div class="alert alert-info small mb-2">
+                            <i class="bi bi-info-circle"></i> Preencha os dados abaixo e clique no PDF (direita) para posicionar o carimbo.
+                        </div>
+
+                        {% if can_editar_historico %}
+                        <form method="post" action="{% url 'aplicar_carimbo_certificado' historico.id %}" id="carimboForm" class="mt-2" novalidate>
+                            {% csrf_token %}
+                            
+                            <div class="row g-2">
+                                <!-- Resultado - Campo Calculado -->
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <label for="resultado_carimbo" class="form-label small fw-bold mb-1">Resultado (Calculado)</label>
+                                        <div class="alert alert-light border p-2 mb-0" id="resultado_display">
+                                            <small class="text-muted">Analisando resultados das faixas...</small>
+                                        </div>
+                                        <input type="hidden" id="resultado_carimbo" name="resultado" value="">
+                                    </div>
+                                </div>
+
+                                <!-- Data de Validação -->
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <label for="data_validacao_carimbo" class="form-label small fw-bold mb-1">Data</label>
+                                        <input type="date" id="data_validacao_carimbo" name="data_validacao" class="form-control form-control-sm" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Nome do Validador -->
+                            <div class="mb-2">
+                                <label for="nome_validador_carimbo" class="form-label small fw-bold mb-1">Validador</label>
+                                <input type="text" id="nome_validador_carimbo" name="nome_validador" class="form-control form-control-sm" value="{{ historico.responsavel|default:user.get_full_name|default:user.username }}" required>
+                            </div>
+
+                            <!-- Campos ocultos para posição -->
+                            <input type="hidden" name="carimbo_x" id="carimbo_x" value="0">
+                            <input type="hidden" name="carimbo_y" id="carimbo_y" value="0">
+                            <input type="hidden" name="carimbo_page" id="carimbo_page" value="1">
+                            <input type="hidden" name="carimbo_pdf_width" id="carimbo_pdf_width" value="595">
+                            <input type="hidden" name="carimbo_pdf_height" id="carimbo_pdf_height" value="842">
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-warning btn-sm flex-grow-1 mt-2" id="btnAplicarCarimbo" disabled>
+                                    <i class="bi bi-stamp"></i> Aplicar Carimbo (clique no PDF primeiro)
+                                </button>
+                            </div>
+                        </form>
+                        {% endif %}
+
+                        <!-- Formulário para Remover Carimbo -->
+                        {% if historico.certificado_carimbado %}
+                            {% if can_carimbo_remove %}
+                            <form method="post" action="{% url 'remover_carimbo_certificado' historico.id %}" class="d-inline" onsubmit="return confirm('Tem certeza? Isso removerá o carimbo atual.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm mt-2 ms-2" title="Remover carimbo para poder aplicar novamente">
+                                    <i class="bi bi-trash"></i> Remover Carimbo
+                                </button>
+                            </form>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>        <!-- COLUNA 2: PRÉ-VISUALIZAÇÃO DO CERTIFICADO (Direita) -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100 d-flex flex-column">
+                <div class="card-header bg-success text-white py-2">
+                    <i class="bi bi-file-pdf"></i> Pré-visualização do Certificado
+                </div>
+                <div class="card-body p-2 flex-grow-1 d-flex flex-column">
+                    <!-- Visualização do PDF Real ou Template -->
+                    {% if historico.certificado_carimbado or historico.certificado %}
+                        {% if can_cert_download %}
+                        <!-- Visualizador PDF com PDF.js -->
+                        <div id="pdf-viewer" class="pdf-viewer-container flex-grow-1 d-flex flex-column mb-2">
+                            <div class="pdf-toolbar">
+                                <button id="prev-page" class="btn btn-sm btn-outline-secondary" title="Página anterior">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <span id="page-info" class="pdf-page-info small">
+                                    Página <span id="page-num">1</span>/<span id="page-total">0</span>
+                                </span>
+                                <button id="next-page" class="btn btn-sm btn-outline-secondary" title="Próxima página">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                                <div class="pdf-zoom-controls ms-auto">
+                                    <button id="zoom-out" class="btn btn-sm btn-outline-secondary" title="Diminuir zoom">
+                                        <i class="bi bi-zoom-out"></i>
+                                    </button>
+                                    <span id="zoom-level" class="zoom-level small">100%</span>
+                                    <button id="zoom-in" class="btn btn-sm btn-outline-secondary" title="Aumentar zoom">
+                                        <i class="bi bi-zoom-in"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="pdf-render" class="pdf-render-area flex-grow-1 overflow-auto">
+                                <canvas id="pdf-canvas" class="pdf-canvas"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Status do Certificado -->
+                        {% if historico.certificado_carimbado %}
+                        <div class="alert alert-success mb-0 py-2">
+                            <small class="mb-0">
+                                <i class="bi bi-check-circle"></i> Certificado com carimbo
+                            </small>
+                        </div>
+                        {% endif %}
+
+                        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+                        <script>
+                            // Função para calcular resultado baseado nas faixas
+                            function calcularResultadoDosCertificado() {
+                                const badges = document.querySelectorAll('table tbody tr .badge');
+                                const resultados = [];
+                                
+                                badges.forEach(badge => {
+                                    const text = badge.textContent.trim();
+                                    if (text.includes('OK') && badge.classList.contains('bg-success')) {
+                                        resultados.push('APROVADO_SEM_CORRECAO');
+                                    } else if (text.includes('OK') && badge.classList.contains('bg-warning')) {
+                                        resultados.push('APROVADO_COM_CORRECAO');
+                                    } else if (text.includes('NOK')) {
+                                        resultados.push('REPROVADO');
+                                    }
+                                });
+
+                                // Lógica de cálculo:
+                                // Se tem algum REPROVADO, resultado é REPROVADO
+                                // Se tem algum COM_CORRECAO e nenhum REPROVADO, é APROVADO_COM_CORRECAO
+                                // Se todos SEM_CORRECAO, é APROVADO_SEM_CORRECAO
+                                let resultadoFinal = 'APROVADO_SEM_CORRECAO'; // padrão
+                                let displayText = '';
+                                let badgeClass = 'bg-success';
+
+                                if (resultados.includes('REPROVADO')) {
+                                    resultadoFinal = 'REPROVADO';
+                                    displayText = '✗ REPROVADO';
+                                    badgeClass = 'bg-danger';
+                                } else if (resultados.includes('APROVADO_COM_CORRECAO')) {
+                                    resultadoFinal = 'APROVADO_COM_CORRECAO';
+                                    displayText = '⚠ APROVADO COM CORREÇÃO';
+                                    badgeClass = 'bg-warning text-dark';
+                                } else if (resultados.length > 0) {
+                                    resultadoFinal = 'APROVADO_SEM_CORRECAO';
+                                    displayText = '✓ APROVADO SEM CORREÇÃO';
+                                    badgeClass = 'bg-success';
+                                } else {
+                                    displayText = 'Nenhum resultado de faixa encontrado';
+                                    badgeClass = 'bg-secondary';
+                                }
+
+                                // Atualizar campo oculto
+                                document.getElementById('resultado_carimbo').value = resultadoFinal;
+                                console.log('Resultado calculado:', resultadoFinal);
+
+                                // Atualizar display
+                                const displayDiv = document.getElementById('resultado_display');
+                                if (displayText) {
+                                    displayDiv.innerHTML = '<span class="badge ' + badgeClass + '">' + displayText + '</span>';
+                                } else {
+                                    displayDiv.innerHTML = '<small class="text-muted">Sem resultados de faixa</small>';
+                                }
+                            }
+
+                            // Pré-preencher data de validação com hoje
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const dataValidacaoInput = document.getElementById('data_validacao_carimbo');
+                                if (dataValidacaoInput) {
+                                    const today = new Date().toISOString().split('T')[0];
+                                    dataValidacaoInput.value = today;
+                                }
+                                
+                                // Calcular resultado inicial
+                                calcularResultadoDosCertificado();
+                            });
+
+                            // Inicializar PDF.js
+                            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                            
+                            const certificadoBytesUrl = "{% url 'get_certificado_bytes' historico.id %}?tipo=auto";
+                            console.log('Carregando PDF de:', certificadoBytesUrl);
+                            
+                            let pdfDoc = null;
+                            let pageNum = 1;
+                            let pageRendering = false;
+                            let pageNumPending = null;
+                            let currentScale = 1.5; // Escala inicial
+                            const MIN_SCALE = 0.5;
+                            const MAX_SCALE = 3.0;
+                            const SCALE_STEP = 0.25;
+                            
+                            // Carregar PDF via AJAX como ArrayBuffer (similar ao carimbo.html)
+                            fetch(certificadoBytesUrl)
+                                .then(response => {
+                                    if (!response.ok) throw new Error('Erro ao carregar PDF');
+                                    return response.arrayBuffer();
+                                })
+                                .then(arrayBuffer => {
+                                    const typedarray = new Uint8Array(arrayBuffer);
+                                    return pdfjsLib.getDocument(typedarray).promise;
+                                })
+                                .then(pdf => {
+                                    console.log('PDF carregado com sucesso. Páginas:', pdf.numPages);
+                                    pdfDoc = pdf;
+                                    document.getElementById('page-total').textContent = pdf.numPages;
+                                    renderPage(pageNum);
+                                })
+                                .catch(error => {
+                                    console.error('Erro ao carregar PDF:', error);
+                                    document.getElementById('pdf-render').innerHTML = 
+                                        '<div class="alert alert-danger"><strong>Erro ao carregar PDF:</strong><br>' +
+                                        'Erro: ' + error.message + '<br>' +
+                                        'URL: ' + certificadoBytesUrl + '</div>';
+                                });
+
+                            function renderPage(num) {
+                                pageRendering = true;
+                                pdfDoc.getPage(num).then(function(page) {
+                                    const canvas = document.getElementById('pdf-canvas');
+                                    const ctx = canvas.getContext('2d');
+                                    const viewport = page.getViewport({ scale: currentScale });
+                                    
+                                    canvas.height = viewport.height;
+                                    canvas.width = viewport.width;
+
+                                    const renderContext = {
+                                        canvasContext: ctx,
+                                        viewport: viewport
+                                    };
+                                    
+                                    page.render(renderContext).promise.then(function() {
+                                        pageRendering = false;
+                                        document.getElementById('page-num').textContent = num;
+                                        
+                                        if (pageNumPending !== null) {
+                                            renderPage(pageNumPending);
+                                            pageNumPending = null;
+                                        }
+                                    });
+                                });
+                            }
+
+                            function queuePage(num) {
+                                if (num < 1 || num > pdfDoc.numPages) return;
+                                pageNum = num;
+                                if (pageRendering) {
+                                    pageNumPending = num;
+                                } else {
+                                    renderPage(num);
+                                }
+                            }
+
+                            document.getElementById('prev-page').addEventListener('click', function() {
+                                queuePage(pageNum - 1);
+                            });
+
+                            document.getElementById('next-page').addEventListener('click', function() {
+                                queuePage(pageNum + 1);
+                            });
+
+                            // Controles de Zoom
+                            document.getElementById('zoom-out').addEventListener('click', function() {
+                                if (currentScale > MIN_SCALE) {
+                                    currentScale = Math.max(MIN_SCALE, currentScale - SCALE_STEP);
+                                    updateZoomLevel();
+                                    renderPage(pageNum);
+                                }
+                            });
+
+                            document.getElementById('zoom-in').addEventListener('click', function() {
+                                if (currentScale < MAX_SCALE) {
+                                    currentScale = Math.min(MAX_SCALE, currentScale + SCALE_STEP);
+                                    updateZoomLevel();
+                                    renderPage(pageNum);
+                                }
+                            });
+
+                            function updateZoomLevel() {
+                                const percentage = Math.round(currentScale * 100 / 1.5); // Normalizar em relação ao 100%
+                                document.getElementById('zoom-level').textContent = percentage + '%';
+                            }
+
+                            // --- Funcionalidade de Clique para Carimbo ---
+                            const canvas = document.getElementById('pdf-canvas');
+                            const btnAplicarCarimbo = document.getElementById('btnAplicarCarimbo');
+                            const carimboForm = document.getElementById('carimboForm');
+                            
+                            if (carimboForm) {
+                                carimboForm.addEventListener('submit', function(e) {
+                                    console.log('Form submitted!');
+                                    console.log('Resultado:', document.getElementById('resultado_carimbo').value);
+                                    console.log('Data:', document.getElementById('data_validacao_carimbo').value);
+                                    console.log('Validador:', document.getElementById('nome_validador_carimbo').value);
+                                    console.log('X:', document.getElementById('carimbo_x').value);
+                                    console.log('Y:', document.getElementById('carimbo_y').value);
+                                    console.log('Page:', document.getElementById('carimbo_page').value);
+                                });
+                            }
+                            
+                            if (canvas && btnAplicarCarimbo) {
+                                canvas.style.cursor = 'crosshair';
+                                
+                                canvas.addEventListener('click', function(e) {
+                                    // Get canvas position and size on screen
+                                    const canvasRect = canvas.getBoundingClientRect();
+                                    
+                                    // Get mouse position relative to canvas
+                                    const clickX = e.clientX - canvasRect.left;
+                                    const clickY = e.clientY - canvasRect.top;
+                                    
+                                    // Get PDF page dimensions (UNSCALED - scale 1)
+                                    if (pdfDoc) {
+                                        pdfDoc.getPage(pageNum).then(function(page) {
+                                            const viewportUnscaled = page.getViewport({ scale: 1 });
+                                            const pageWidth = viewportUnscaled.width;
+                                            const pageHeight = viewportUnscaled.height;
+                                            
+                                            // Canvas dimensions are in ACTUAL PIXELS (already scaled by renderPage)
+                                            // canvas.width and canvas.height contain the actual rendered pixel dimensions
+                                            const canvasPixelWidth = canvas.width;
+                                            const canvasPixelHeight = canvas.height;
+                                            
+                                            console.log('DEBUG: Click at screen=' + clickX + ',' + clickY);
+                                            console.log('DEBUG: Canvas rect width=' + canvasRect.width + ', height=' + canvasRect.height);
+                                            console.log('DEBUG: Canvas pixel width=' + canvasPixelWidth + ', height=' + canvasPixelHeight);
+                                            console.log('DEBUG: PDF page width=' + pageWidth + ', height=' + pageHeight);
+                                            
+                                            // The canvas is rendered at currentScale, so canvas.width = pageWidth * currentScale
+                                            // To convert screen click to PDF coordinates:
+                                            // clickX is in screen pixels (within the canvas display area)
+                                            // We need to scale it: screen pixels -> canvas pixels -> PDF coordinates
+                                            const scaleScreenToCanvas = canvasPixelWidth / canvasRect.width;
+                                            const canvasPixelX = clickX * scaleScreenToCanvas;
+                                            const canvasPixelY = clickY * scaleScreenToCanvas;
+                                            
+                                            // Canvas pixels to PDF coordinates (unscaled)
+                                            const pdfX = (canvasPixelX / canvasPixelWidth) * pageWidth;
+                                            const pdfY = (canvasPixelY / canvasPixelHeight) * pageHeight;
+                                            
+                                            // pdfY está com Y=0 no TOPO (como canvas)
+                                            // Enviar direto ao backend SEM inverter - deixar backend converter
+                                            const pdfXCorrect = pdfX;
+                                            const pdfYCorrect = pdfY;  // NÃO INVERT - backend faz isso
+                                            
+                                            console.log('DEBUG: Screen->Canvas scale=' + scaleScreenToCanvas);
+                                            console.log('DEBUG: Canvas pixel pos=' + canvasPixelX + ',' + canvasPixelY);
+                                            console.log('DEBUG: PDF coords (top-origin Y)=' + pdfX + ',' + pdfY);
+                                            console.log('DEBUG: Enviando sem inversão - backend converte');
+                                            console.log('DEBUG: Canvas display size: ' + canvasRect.width + 'x' + canvasRect.height);
+                                            console.log('DEBUG: Canvas pixel size: ' + canvas.width + 'x' + canvas.height);
+                                            console.log('DEBUG: PDF dimensions: ' + pageWidth + 'x' + pageHeight);
+                                            
+                                            // Ensure coordinates are within page bounds
+                                            const boundedX = Math.max(0, Math.min(pdfXCorrect, pageWidth - 120));
+                                            const boundedY = Math.max(0, Math.min(pdfYCorrect, pageHeight - 100));
+                                            
+                                            // Store ONLY the PDF coordinates that match the preview
+                                            // These are already calculated correctly for PDF space
+                                            document.getElementById('carimbo_x').value = Math.round(boundedX);
+                                            document.getElementById('carimbo_y').value = Math.round(boundedY);
+                                            document.getElementById('carimbo_page').value = pageNum;
+                                            // IMPORTANT: Also send the PDF dimensions used for calculation
+                                            document.getElementById('carimbo_pdf_width').value = Math.round(pageWidth);
+                                            document.getElementById('carimbo_pdf_height').value = Math.round(pageHeight);
+                                            
+                                            // Clear previous preview by re-rendering the page
+                                            renderPage(pageNum);
+                                            
+                                            // Re-get canvas context after rendering
+                                            setTimeout(function() {
+                                                const ctx = canvas.getContext('2d');
+                                                
+                                                // Get form values for preview
+                                                const resultado = document.getElementById('resultado_carimbo').value;
+                                                const data_validacao = document.getElementById('data_validacao_carimbo').value;
+                                                const nome_validador = document.getElementById('nome_validador_carimbo').value;
+                                                
+                                                // Color mapping for preview
+                                                const colorMap = {
+                                                    'APROVADO_SEM_CORRECAO': '#008000',  // Green
+                                                    'APROVADO_COM_CORRECAO': '#FFC800',  // Yellow/Orange
+                                                    'REPROVADO': '#FF0000'  // Red
+                                                };
+                                                const stampColor = colorMap[resultado] || '#808080';
+                                                
+                                                // boundedX and boundedY are in TOP-ORIGIN space (same as canvas)
+                                                // Use them directly for canvas drawing
+                                                const previewX = boundedX;
+                                                const previewY = boundedY;  // NO inversion - already in canvas space
+                                                
+                                                // Convert preview coordinates to canvas pixel coordinates
+                                                // The stamp in PDF is 120x90 points, so scale it properly
+                                                const displayX = (previewX / pageWidth) * canvasPixelWidth;
+                                                const displayY = (previewY / pageHeight) * canvasPixelHeight;
+                                                
+                                                console.log('=== PREVIEW DRAWING ===');
+                                                console.log('boundedX (PDF)=' + boundedX + ', boundedY (PDF)=' + boundedY);
+                                                console.log('previewX (PDF)=' + previewX + ', previewY (PDF)=' + previewY);
+                                                console.log('displayX (pixels)=' + displayX + ', displayY (pixels)=' + displayY);
+                                                console.log('PREVIEW WILL DRAW AT: x=' + displayX + ', y=' + displayY);
+                                                console.log('=======================');
+                                                
+                                                // Stamp dimensions: always 120x90 in PDF points
+                                                // Don't scale these - they should be rendered at actual size proportional to PDF
+                                                const stampPdfWidth = 120;
+                                                const stampPdfHeight = 90;
+                                                const stampPixelWidth = (stampPdfWidth / pageWidth) * canvasPixelWidth;
+                                                const stampPixelHeight = (stampPdfHeight / pageHeight) * canvasPixelHeight;
+                                                
+                                                console.log('DEBUG PREVIEW: boundedX=' + boundedX + ', boundedY=' + boundedY);
+                                                console.log('DEBUG PREVIEW: previewX=' + previewX + ', previewY=' + previewY);
+                                                console.log('DEBUG PREVIEW: Display position=' + displayX + ',' + displayY);
+                                                console.log('DEBUG PREVIEW: Stamp size=' + stampPixelWidth + 'x' + stampPixelHeight);
+                                                
+                                                // Draw preview rectangle to show stamp area
+                                                ctx.fillStyle = 'rgba(200, 200, 200, 0.3)';  // Light gray semi-transparent
+                                                ctx.fillRect(displayX, displayY, stampPixelWidth, stampPixelHeight);
+                                                
+                                                // Draw preview stamp text - SAME ORDER as backend
+                                                ctx.fillStyle = stampColor;
+                                                ctx.font = 'bold 9px Helvetica';
+                                                
+                                                const resultMap = {
+                                                    'APROVADO_SEM_CORRECAO': 'Aprovado sem Correção',
+                                                    'APROVADO_COM_CORRECAO': 'Aprovado com Correção',
+                                                    'REPROVADO': 'Reprovado/Restrição'
+                                                };
+                                                const resultDisplay = resultMap[resultado] || resultado;
+                                                // Draw resultado FIRST at Y+65
+                                                ctx.fillText(resultDisplay, displayX + 3, displayY + 65);
+                                                
+                                                // Draw black text for date and validator
+                                                ctx.fillStyle = '#000000';
+                                                ctx.font = '8px Helvetica';
+                                                // Draw date at Y+45 (SECOND)
+                                                ctx.fillText(data_validacao, displayX + 3, displayY + 45);
+                                                // Draw validator at Y+25 (THIRD)
+                                                ctx.fillText(nome_validador.substring(0, 25), displayX + 3, displayY + 25);
+                                                
+                                                // Draw border around preview
+                                                ctx.strokeStyle = '#FF6B6B';
+                                                ctx.lineWidth = 2;
+                                                ctx.strokeRect(displayX, displayY, stampPixelWidth, stampPixelHeight);
+                                            }, 50);  // Wait for renderPage to complete
+                                            
+                                            console.log('=== STAMP COORDINATE CALCULATION ===');
+                                            console.log('Click position on screen: x=' + Math.round(clickX) + ', y=' + Math.round(clickY));
+                                            console.log('Canvas rect size: ' + Math.round(canvasRect.width) + 'x' + Math.round(canvasRect.height));
+                                            console.log('Canvas pixel size: ' + canvasPixelWidth + 'x' + canvasPixelHeight);
+                                            console.log('PDF page dimensions (unscaled): ' + Math.round(pageWidth) + 'x' + Math.round(pageHeight));
+                                            console.log('Current scale: ' + currentScale);
+                                            console.log('PDF coordinates (before Y flip): x=' + Math.round(pdfX) + ', y=' + Math.round(pdfY));
+                                            console.log('PDF coordinates (after Y flip): x=' + Math.round(pdfXCorrect) + ', y=' + Math.round(pdfYCorrect));
+                                            console.log('Final coordinates (bounded): x=' + Math.round(boundedX) + ', y=' + Math.round(boundedY));
+                                            console.log('SENDING TO BACKEND: x=' + document.getElementById('carimbo_x').value + ', y=' + document.getElementById('carimbo_y').value);
+                                            console.log('Page number: ' + pageNum);
+                                            console.log('=====================================');
+                                            
+                                            // Update button
+                                            btnAplicarCarimbo.disabled = false;
+                                            btnAplicarCarimbo.innerHTML = '<i class="bi bi-stamp"></i> Aplicar Carimbo (página ' + pageNum + ' - X:' + Math.round(boundedX) + ' Y:' + Math.round(boundedY) + ')';
+                                            btnAplicarCarimbo.classList.add('btn-success');
+                                            btnAplicarCarimbo.classList.remove('btn-warning');
+                                            
+                                            // Scroll to show button
+                                            document.getElementById('carimboForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                        });
+                                    }
+                                });
+                            }
+
+                            // Função para visualizar diferentes certificados
+                            window.visualizarCertificado = function(tipo, url) {
+                                console.log('Carregando certificado:', tipo, 'URL:', url);
+                                
+                                // Limpar canvas
+                                const canvas = document.getElementById('pdf-canvas');
+                                if (canvas) {
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                }
+                                
+                                // Resetar variáveis
+                                pdfDoc = null;
+                                pageNum = 1;
+                                
+                                // Carregar novo PDF
+                                pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                                    pdfDoc = pdf;
+                                    console.log('PDF carregado:', pdf.numPages, 'páginas');
+                                    renderPage(pageNum);
+                                    
+                                    // Atualizar info (com verificação)
+                                    const pageNumElem = document.getElementById('page-num');
+                                    const pageCountElem = document.getElementById('page-count');
+                                    
+                                    if (pageNumElem) pageNumElem.textContent = pageNum;
+                                    if (pageCountElem) pageCountElem.textContent = pdfDoc.numPages;
+                                }).catch(function(error) {
+                                    console.error('Erro ao carregar PDF:', error);
+                                    alert('Erro ao carregar o certificado: ' + error.message);
+                                });
+                            };
+                        </script>
+                        {% else %}
+                            <div class="alert alert-warning mb-0">
+                                <i class="bi bi-lock"></i> Você não tem permissão para visualizar/download do certificado.
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <!-- Template Simulado (fallback) -->
+                        <div class="cert-preview">
+                        <!-- Cabeçalho -->
+                        <div class="cert-header">
+                            <h3>CERTIFICADO DE CALIBRAÇÃO</h3>
+                            <p>Nº {{ historico.numero_certificado|default:"000000" }}</p>
+                        </div>
+
+                        <!-- Informações do Instrumento -->
+                        <div class="cert-section">
+                            <h4>INSTRUMENTO</h4>
+                            <table class="cert-table">
+                                <tr>
+                                    <td><strong>Descrição:</strong></td>
+                                    <td>{{ instrumento.descricao }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Tag:</strong></td>
+                                    <td>{{ instrumento.tag }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Marca:</strong></td>
+                                    <td>{{ instrumento.fabricante|default:"---" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Modelo:</strong></td>
+                                    <td>{{ instrumento.modelo|default:"---" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Série:</strong></td>
+                                    <td>{{ instrumento.numero_serie|default:"---" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Informações da Calibração -->
+                        <div class="cert-section">
+                            <h4>CALIBRAÇÃO</h4>
+                            <table class="cert-table">
+                                <tr>
+                                    <td class="cert-half-width"><strong>Data:</strong> {{ historico.data_calibracao|date:"d/m/Y"|default:"---" }}</td>
+                                    <td class="cert-half-width"><strong>Próxima:</strong> {{ historico.proxima_calibracao|date:"d/m/Y"|default:"---" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Responsável:</strong> {{ historico.responsavel|default:"---" }}</td>
+                                    <td><strong>Laboratório:</strong> {{ historico.fornecedor|default:"---" }}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2"><strong>Tipo:</strong> {{ historico.tipo_calibracao|default:"---" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Resultado -->
+                        <div class="cert-section">
+                            <h4>RESULTADO</h4>
+                            <div class="cert-result">
+                                {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                    <p class="cert-result-approved">✓ APROVADO</p>
+                                {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
+                                    <p class="cert-result-approved-correction">⚠ APROVADO COM CORREÇÃO</p>
+                                {% elif historico.resultado == 'REPROVADO' %}
+                                    <p class="cert-result-reproved">✗ REPROVADO</p>
+                                {% else %}
+                                    <p class="cert-result-pending">SEM RESULTADO</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Observações -->
+                        {% if historico.observacoes %}
+                        <div class="cert-section">
+                            <h4>OBSERVAÇÕES</h4>
+                            <p class="cert-observations">{{ historico.observacoes }}</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Selo/Carimbo (Placeholder) -->
+                        <div class="cert-stamp">
+                            <div class="cert-stamp-text">
+                                <i>CARIMBO</i>
+                                <span>(Futuro)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nota -->
+                    <div class="alert alert-info mt-3 mb-0">
+                        <small><i class="bi bi-info-circle"></i> Use o certificado como referência para preencher os erros e incertezas do aparelho. Navegue pelas páginas usando os botões de página.</small>
+                    </div>
+                    {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Melhoramentos visuais */
+    .card {
+        border: none;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .modal-body .alert {
+        border-left: 4px solid #0d6efd;
+    }
+    
+    /* Estilos para Pré-visualização do Certificado */
+    .cert-preview {
+        background: white;
+        border: 1px solid #ddd;
+        padding: 20px;
+        min-height: 600px;
+        position: relative;
+        font-family: 'Times New Roman', serif;
+        font-size: 11px;
+    }
+    
+    .cert-header {
+        text-align: center;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #333;
+    }
+    
+    .cert-header h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    
+    .cert-header p {
+        margin: 5px 0;
+        font-weight: bold;
+    }
+    
+    .cert-section {
+        margin-bottom: 15px;
+    }
+    
+    .cert-section h4 {
+        font-size: 12px;
+        font-weight: bold;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #999;
+    }
+    
+    .cert-table {
+        width: 100%;
+        font-size: 10px;
+    }
+    
+    .cert-table td {
+        padding: 4px;
+    }
+    
+    .cert-result {
+        text-align: center;
+        padding: 15px;
+        background: #f5f5f5;
+        border-radius: 4px;
+    }
+    
+    .cert-result p {
+        margin: 0;
+        font-size: 14px;
+        font-weight: bold;
+    }
+    
+    .cert-stamp {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 80px;
+        height: 80px;
+        border: 2px dashed #ccc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: #f9f9f9;
+    }
+    
+    .cert-stamp-text {
+        text-align: center;
+        color: #999;
+        font-size: 9px;
+    }
+    
+    .cert-stamp-text i {
+        display: block;
+        margin-bottom: 4px;
+    }
+    
+    .cert-stamp-text span {
+        font-size: 8px;
+    }
+    
+    /* Estilos para Visualização do PDF */
+    .pdf-iframe {
+        width: 100%;
+        height: 600px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .pdf-alert {
+        margin-top: 12px;
+        margin-bottom: 0;
+    }
+    
+    /* PDF Viewer com PDF.js */
+    .pdf-viewer-container {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        overflow: hidden;
+        background: #f5f5f5;
+    }
+    
+    .pdf-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: #f9f9f9;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .pdf-page-info {
+        display: inline-block;
+        font-size: 14px;
+        color: #666;
+        min-width: 150px;
+    }
+    
+    .pdf-zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .zoom-level {
+        min-width: 45px;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 500;
+        color: #555;
+    }
+    
+    .pdf-render-area {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 10px;
+        background: #f9f9f9;
+        border: 1px solid #e0e0e0;
+        min-height: 400px;
+        flex: 1;
+    }
+    
+    .pdf-canvas {
+        border: 1px solid #ddd;
+        background: white;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        max-width: 100%;
+        height: auto;
+    }
+    
+    /* Classes de apoio para template simulado */
+    .cert-half-width {
+        width: 50%;
+    }
+    
+    .cert-result-approved {
+        color: green;
+    }
+    
+    .cert-result-approved-correction {
+        color: orange;
+    }
+    
+    .cert-result-reproved {
+        color: red;
+    }
+    
+    .cert-result-pending {
+        color: #999;
+    }
+    
+    .cert-observations {
+        margin: 0;
+        font-size: 9px;
+        line-height: 1.4;
+    }
+    
+    /* Seção de Padrões - visível/oculta condicionalmente */
+    #arquivos-padroes-section.hidden {
+        display: none;
+    }
+    
+    #arquivos-padroes-section .card {
+        background-color: #f0f7ff !important;
+        border-left: 4px solid #0d6efd;
+    }
+    
+    /* Estilos para checkboxes de padrões */
+    .padroes-checkbox {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .padroes-checkbox label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 0;
+        padding: 8px 12px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .padroes-checkbox label:hover {
+        background: #f8f9fa;
+        border-color: #0d6efd;
+    }
+    
+    .padroes-checkbox input[type="checkbox"] {
+        margin-right: 4px;
+        cursor: pointer;
+    }
+    
+    .padroes-checkbox input[type="checkbox"]:checked + label,
+    .padroes-checkbox label:has(input[type="checkbox"]:checked) {
+        background: #e7f1ff;
+        border-color: #0d6efd;
+    }
+    
+    /* Estilos para a seção de padrões associados */
+    .list-group-item {
+        padding: 12px;
+        gap: 10px;
+    }
+    
+    .list-group-item input[type="checkbox"] {
+        cursor: pointer;
+        margin-top: 2px;
+    }
+    
+    .list-group-item label {
+        cursor: pointer;
+        margin-bottom: 0;
+    }
+    
+    .list-group-item .btn {
+        white-space: nowrap;
+    }
+
+</style>
+
+<script>
+    // Controla a visibilidade do campo de padrões baseado no checkbox RBC
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxRBC = document.getElementById('id_tem_selo_rbc');
+        const secaoPadroes = document.getElementById('arquivos-padroes-section');
+        
+        function atualizarVisibilidade() {
+            if (checkboxRBC.checked) {
+                // Tem selo RBC - ocultar padrões
+                secaoPadroes.classList.add('hidden');
+            } else {
+                // Não tem selo RBC - mostrar padrões
+                secaoPadroes.classList.remove('hidden');
+            }
+        }
+        
+        // Inicializar visibilidade na carga
+        atualizarVisibilidade();
+        
+        // Atualizar quando mudar o checkbox
+        checkboxRBC.addEventListener('change', atualizarVisibilidade);
+        
+        // Adicionar handler para adicionar faixas via AJAX
+        const adicionarFaixaButtons = document.querySelectorAll('.btn-add-faixa');
+        const currentUrl = window.location.href.split('?')[0]; // Get current page URL without query params
+        
+        adicionarFaixaButtons.forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                
+                const form = this.closest('form');
+                const formData = new FormData(form);
+                
+                try {
+                    console.log('Enviando requisição AJAX para:', currentUrl);
+                    console.log('FormData:', Object.fromEntries(formData));
+                    
+                    const response = await fetch(currentUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        },
+                        body: formData
+                    });
+                    
+                    console.log('Response status:', response.status);
+                    
+                    if (response.ok) {
+                        // Mostrar mensagem de sucesso
+                        showNotification('Faixa adicionada com sucesso!', 'success');
+                        
+                        // Remover o botão da lista de faixas disponíveis
+                        const faixaCard = this.closest('.col-md-6');
+                        faixaCard.style.opacity = '0.5';
+                        this.disabled = true;
+                        this.textContent = '✓ Adicionada';
+                        this.classList.remove('btn-success');
+                        this.classList.add('btn-secondary');
+                        
+                        // Recarregar a página após um delay para mostrar a tabela atualizada
+                        setTimeout(() => {
+                            console.log('Recarregando a página...');
+                            window.location.reload(true); // Force hard reload
+                        }, 1500);
+                    } else {
+                        console.error('Response not ok:', response.status);
+                        showNotification('Erro ao adicionar faixa', 'danger');
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    showNotification('Erro ao processar requisição', 'danger');
+                }
+            });
+        });
+    });
+    
+    // Função auxiliar para mostrar notificações
+    function showNotification(message, type = 'info') {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        const container = document.querySelector('.container-fluid');
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Auto-dismiss após 3 segundos
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 3000);
+    }
+    
+    // Atualizar EMA e EME em tempo real quando Erro e Incerteza são modificados
+    document.addEventListener('DOMContentLoaded', function() {
+        // Usar delegação de eventos para capturar modais abertos dinamicamente
+        document.addEventListener('shown.bs.modal', function(e) {
+            const modal = e.target;
+            
+            if (!modal.id.startsWith('editResultModal')) return;
+            
+            const erroInput = modal.querySelector('input[name="erro"]');
+            const incertezaInput = modal.querySelector('input[name="incerteza"]');
+            const emaInput = modal.querySelector('input[name="ema"]');
+            const emeInput = modal.querySelector('input[name="eme"]');
+            const resultadoDiv = modal.querySelector('.alert-light.border');
+            
+            // Get tolerance value from the alert info
+            const toleranciaText = modal.querySelector('.alert-info small')?.textContent || '';
+            const toleranciaMatch = toleranciaText.match(/[±]?\s*([\d.]+)/);
+            const tolerancia = toleranciaMatch ? parseFloat(toleranciaMatch[1]) : 0;
+            
+            console.log('Modal aberto:', modal.id, 'Tolerância:', tolerancia);
+            
+            function atualizarCalculos() {
+                console.log('Atualizando cálculos...');
+                
+                // EMA = Tolerância / 2
+                let emaNum = 0;
+                if (tolerancia > 0) {
+                    emaNum = tolerancia / 2;
+                    const ema = emaNum.toFixed(4);
+                    if (emaInput) {
+                        emaInput.value = ema;
+                        console.log('EMA atualizado:', ema);
+                    }
+                }
+                
+                // EME = |Erro| + Incerteza
+                const erro = parseFloat(erroInput?.value || 0);
+                const incerteza = parseFloat(incertezaInput?.value || 0);
+                
+                console.log('Erro:', erro, 'Incerteza:', incerteza);
+                
+                if (!isNaN(erro) && !isNaN(incerteza) && erroInput?.value !== '' && incertezaInput?.value !== '') {
+                    const emeNum = Math.abs(erro) + incerteza;
+                    const eme = emeNum.toFixed(4);
+                    if (emeInput) {
+                        emeInput.value = eme;
+                        console.log('EME atualizado:', eme);
+                    }
+                    
+                    // Calcular resultado baseado em EME vs Tolerância (critério metrológico padrão)
+                    console.log('Comparando: EME=' + emeNum + ' vs Tolerância=' + tolerancia);
+                    
+                    let resultado = '';
+                    let badgeClass = 'bg-secondary';
+                    let badgeText = 'Preencha Erro e Incerteza';
+                    
+                    if (emeNum > tolerancia) {
+                        resultado = 'REPROVADO';
+                        badgeClass = 'bg-danger';
+                        badgeText = '✗ Reprovado';
+                        console.log('Resultado: REPROVADO (EME > Tolerância)');
+                    } else if (emeNum <= emaNum) {
+                        resultado = 'APROVADO_SEM_CORRECAO';
+                        badgeClass = 'bg-success';
+                        badgeText = '✓ Aprovado sem Correção';
+                        console.log('Resultado: APROVADO_SEM_CORRECAO (EME ≤ EMA)');
+                    } else {
+                        resultado = 'APROVADO_COM_CORRECAO';
+                        badgeClass = 'bg-warning text-dark';
+                        badgeText = '⚠ Aprovado com Correção';
+                        console.log('Resultado: APROVADO_COM_CORRECAO (EMA < EME ≤ Tolerância)');
+                    }
+                    
+                    // Atualizar exibição do resultado
+                    if (resultadoDiv) {
+                        resultadoDiv.innerHTML = `<span class="badge ${badgeClass}">${badgeText}</span>`;
+                        console.log('Resultado atualizado:', resultado);
+                        
+                        // Atualizar o campo hidden com o resultado calculado
+                        const resultadoHidden = modal.querySelector('input[id^="resultado_hidden_"]');
+                        if (resultadoHidden) {
+                            resultadoHidden.value = resultado;
+                            console.log('Campo hidden atualizado com:', resultado);
+                        }
+                    }
+                } else {
+                    // Sem valores suficientes
+                    if (resultadoDiv) {
+                        resultadoDiv.innerHTML = '<span class="badge bg-secondary">Preencha Erro e Incerteza</span>';
+                    }
+                    // Resetar o campo hidden
+                    const resultadoHidden = modal.querySelector('input[id^="resultado_hidden_"]');
+                    if (resultadoHidden) {
+                        resultadoHidden.value = '';
+                    }
+                }
+            }
+            
+            if (erroInput) {
+                erroInput.addEventListener('input', atualizarCalculos);
+                erroInput.addEventListener('change', atualizarCalculos);
+            }
+            if (incertezaInput) {
+                incertezaInput.addEventListener('input', atualizarCalculos);
+                incertezaInput.addEventListener('change', atualizarCalculos);
+            }
+            
+            // Inicializar cálculos
+            atualizarCalculos();
+        });
+    });
+
+    // Gerenciar tabela de correção
+    document.addEventListener('shown.bs.modal', function(e) {
+        const modal = e.target;
+        if (!modal.id.startsWith('editResultModal')) return;
+        
+        const resultado = modal.querySelector('input[id^="resultado_hidden_"]')?.value;
+        const tabelaCorrecaoDiv = modal.querySelector('.bg-light.border.border-warning.rounded');
+        
+        if (!tabelaCorrecaoDiv) return;
+        
+        // Quando há mudanças nos inputs de erro/incerteza, sincronizar a tabela JSON
+        function sincronizarTabelaJSON(resultIdStr) {
+            const tbodyId = 'correcao_tbody_' + resultIdStr;
+            const tbody = modal.querySelector('#' + tbodyId);
+            const hiddenField = modal.querySelector('#tabela_correcao_' + resultIdStr);
+            
+            if (!tbody || !hiddenField) return;
+            
+            const linhas = [];
+            tbody.querySelectorAll('tr').forEach(row => {
+                const minVal = row.querySelector('.valor_min')?.value;
+                const maxVal = row.querySelector('.valor_max')?.value;
+                const correcao = row.querySelector('.correcao_valor')?.value;
+                
+                if (minVal !== '' && maxVal !== '' && correcao !== '') {
+                    linhas.push({
+                        valor_min: parseFloat(minVal),
+                        valor_max: parseFloat(maxVal),
+                        correcao: parseFloat(correcao)
+                    });
+                }
+            });
+            
+            hiddenField.value = JSON.stringify(linhas);
+            console.log('Tabela JSON sincronizada:', linhas);
+        }
+        
+        // Extrair ID do resultado do modal
+        const modalId = modal.id;
+        const resultIdMatch = modalId.match(/editResultModal(\d+)/);
+        const resultId = resultIdMatch ? resultIdMatch[1] : null;
+        
+        if (!resultId) return;
+        
+        // Adicionar evento para adicionar linhas
+        const addBtns = modal.querySelectorAll('.add-correcao-row');
+        addBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tbody = modal.querySelector('#correcao_tbody_' + resultId);
+                
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>
+                        <input type="number" step="0.0001" class="form-control form-control-sm valor_min" placeholder="Min">
+                    </td>
+                    <td>
+                        <input type="number" step="0.0001" class="form-control form-control-sm valor_max" placeholder="Max">
+                    </td>
+                    <td>
+                        <input type="number" step="0.0001" class="form-control form-control-sm correcao_valor" placeholder="0.0000">
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-correcao-row">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(newRow);
+                
+                // Adicionar evento ao novo botão de remover
+                const removeBtn = newRow.querySelector('.remove-correcao-row');
+                removeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    newRow.remove();
+                    sincronizarTabelaJSON(resultId);
+                });
+                
+                sincronizarTabelaJSON(resultId);
+            });
+        });
+        
+        // Adicionar evento para remover linhas existentes
+        const removeBtns = modal.querySelectorAll('.remove-correcao-row');
+        removeBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                btn.closest('tr').remove();
+                sincronizarTabelaJSON(resultId);
+            });
+        });
+        
+        // Adicionar listeners aos inputs existentes para sincronizar JSON
+        const tbody = modal.querySelector('#correcao_tbody_' + resultId);
+        if (tbody) {
+            tbody.addEventListener('input', function() {
+                sincronizarTabelaJSON(resultId);
+            });
+        }
+    });
+
+    // ===== AUTOSAVE DOS CAMPOS DO FORMULÁRIO =====
+    // Salva automaticamente os dados do histórico a cada alteração (com debounce)
+    let autoSaveTimeout;
+    const formFields = [
+        'id_data_calibracao',
+        'id_proxima_calibracao',
+        'id_numero_certificado',
+        'id_tipo_calibracao',
+        'id_responsavel',
+        'id_fornecedor',
+        'id_tem_selo_rbc',
+        'id_observacoes',
+        'id_resultado'
+    ];
+
+    function salvarAutomaticamente() {
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(() => {
+            const form = document.querySelector('form[action*="editar_historico"]');
+            if (!form) return;
+
+            // Coletar dados do formulário
+            const formData = new FormData(form);
+            formData.set('action', 'update_history');
+
+            // Mostrar aviso de salvamento
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-info alert-dismissible fade show';
+            alertDiv.style.position = 'fixed';
+            alertDiv.style.bottom = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando dados...';
+            document.body.appendChild(alertDiv);
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                    alertDiv.innerHTML = '<i class="bi bi-check-circle"></i> Dados salvos automaticamente!';
+                    setTimeout(() => alertDiv.remove(), 3000);
+                } else {
+                    alertDiv.className = 'alert alert-warning alert-dismissible fade show';
+                    alertDiv.innerHTML = '<i class="bi bi-exclamation-circle"></i> Erro ao salvar. Tente novamente.';
+                    setTimeout(() => alertDiv.remove(), 5000);
+                }
+            })
+            .catch(err => {
+                alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                alertDiv.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Erro na requisição.';
+                setTimeout(() => alertDiv.remove(), 5000);
+            });
+        }, 1000); // Aguarda 1 segundo após a última alteração
+    }
+
+    // Adicionar listeners a todos os campos do formulário
+    formFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('change', salvarAutomaticamente);
+            field.addEventListener('blur', salvarAutomaticamente);
+        }
+    });
+
+    // Salvar também quando texto é digitado (com debounce maior)
+    const textFields = document.querySelectorAll('input[type="text"], textarea, select');
+    textFields.forEach(field => {
+        field.addEventListener('input', salvarAutomaticamente);
+    });
+</script>
+{% endblock %}
+
+{% block extra_style %}
+<style>
+    .cert-preview {
+        background: white;
+        border: 1px solid #ddd;
+        padding: 20px;
+        font-family: 'Times New Roman', serif;
+        font-size: 11px;
+        line-height: 1.6;
+        color: #333;
+    }
+
+    .cert-header {
+        text-align: center;
+        border-bottom: 2px solid #000;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+    }
+
+    .cert-header h3 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: bold;
+        letter-spacing: 1px;
+    }
+
+    .cert-header p {
+        margin: 5px 0 0 0;
+        font-size: 10px;
+    }
+
+    .cert-section {
+        margin-bottom: 12px;
+        page-break-inside: avoid;
+    }
+
+    .cert-section h4 {
+        margin: 0 0 8px 0;
+        font-size: 11px;
+        font-weight: bold;
+        text-transform: uppercase;
+        border-bottom: 1px solid #999;
+        padding-bottom: 3px;
+    }
+
+    .cert-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10px;
+    }
+
+    .cert-table tr {
+        border-bottom: 1px solid #eee;
+    }
+
+    .cert-table td {
+        padding: 4px 0;
+        vertical-align: top;
+    }
+
+    .cert-table tr:last-child {
+        border-bottom: none;
+    }
+
+    .cert-result {
+        text-align: center;
+        padding: 10px;
+        background: #f9f9f9;
+        border: 1px dashed #ddd;
+    }
+
+    .cert-result p {
+        margin: 0;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .cert-stamp {
+        text-align: right;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+    }
+
+    .cert-stamp-text {
+        display: inline-block;
+        border: 2px solid #999;
+        padding: 10px 20px;
+        text-align: center;
+        transform: rotate(-15deg);
+        opacity: 0.5;
+        font-style: italic;
+    }
+
+    .cert-stamp-text i {
+        display: block;
+        font-size: 12px;
+    }
+
+    .cert-stamp-text span {
+        display: block;
+        font-size: 8px;
+        margin-top: 2px;
+    }
+
+    /* Print styles */
+    @media print {
+        .cert-preview {
+            border: none;
+            box-shadow: none;
+        }
+    }
+</style>
+{% endblock %}

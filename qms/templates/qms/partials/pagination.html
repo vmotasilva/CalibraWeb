@@ -1,0 +1,151 @@
+{# Pagination controls component #}
+{% load pagination_tags %}
+
+<nav aria-label="Page navigation" class="pagination-container">
+    {% if pagination.total_pages > 1 %}
+        <div class="pagination-info">
+            {% pagination_summary pagination %}
+        </div>
+        
+        <ul class="pagination">
+            {# First page #}
+            {% if pagination.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if query_params %}&{{ query_params.urlencode }}{% endif %}" 
+                       title="First page">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                </li>
+            {% endif %}
+            
+            {# Previous page #}
+            {% if pagination.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ pagination.previous_page }}{% if query_params %}&{{ query_params.urlencode }}{% endif %}" 
+                       title="Previous page">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                </li>
+            {% endif %}
+            
+            {# Page numbers #}
+            {% with pagination|page_range as pages %}
+                {% if pages.0 > 1 %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+                
+                {% for page_num in pages %}
+                    {% if page_num == pagination.current_page %}
+                        <li class="page-item active">
+                            <span class="page-link">
+                                {{ page_num }}
+                                <span class="sr-only">(current)</span>
+                            </span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_num }}{% if query_params %}&{{ query_params.urlencode }}{% endif %}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pages|last < pagination.total_pages %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                {% endif %}
+            {% endwith %}
+            
+            {# Next page #}
+            {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ pagination.next_page }}{% if query_params %}&{{ query_params.urlencode }}{% endif %}" 
+                       title="Next page">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                </li>
+            {% endif %}
+            
+            {# Last page #}
+            {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ pagination.total_pages }}{% if query_params %}&{{ query_params.urlencode }}{% endif %}" 
+                       title="Last page">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                </li>
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
+                </li>
+            {% endif %}
+        </ul>
+    {% endif %}
+</nav>
+
+<style>
+    .pagination-container {
+        margin: 20px 0;
+    }
+    
+    .pagination-info {
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 10px;
+    }
+    
+    .pagination {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .page-item {
+        list-style: none;
+    }
+    
+    .page-link {
+        padding: 8px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        color: #007bff;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+    
+    .page-link:hover:not(.disabled) {
+        background-color: #f8f9fa;
+        border-color: #007bff;
+    }
+    
+    .page-item.active .page-link {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: white;
+        cursor: default;
+    }
+    
+    .page-item.disabled .page-link {
+        color: #6c757d;
+        pointer-events: none;
+        background-color: #fff;
+        border-color: #dee2e6;
+    }
+</style>

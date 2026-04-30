@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.id %}Editar{% else %}Nova{% endif %} Revisão Gerencial{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0"><i class="bi bi-clipboard-check text-success me-2"></i>{% if form.instance.id %}Editar{% else %}Nova{% endif %} Revisão Gerencial</h1>
+                </div>
+                <a href="{% url 'acoes:revisao_gerencial_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" class="needs-validation" novalidate>
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Informações Básicas -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informações Básicas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.numero_rg.label }}</label>
+                                {{ form.numero_rg }}
+                                {% if form.numero_rg.errors %}
+                                    <div class="text-danger small mt-1">{{ form.numero_rg.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_revisao.label }}</label>
+                                {{ form.data_revisao }}
+                                {% if form.data_revisao.errors %}
+                                    <div class="text-danger small mt-1">{{ form.data_revisao.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.laboratorio.label }}</label>
+                                {{ form.laboratorio }}
+                                {% if form.laboratorio.errors %}
+                                    <div class="text-danger small mt-1">{{ form.laboratorio.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.gerente_laboratorio.label }}</label>
+                                {{ form.gerente_laboratorio }}
+                                {% if form.gerente_laboratorio.errors %}
+                                    <div class="text-danger small mt-1">{{ form.gerente_laboratorio.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.periodo_inicio.label }}</label>
+                                {{ form.periodo_inicio }}
+                                {% if form.periodo_inicio.errors %}
+                                    <div class="text-danger small mt-1">{{ form.periodo_inicio.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.periodo_fim.label }}</label>
+                                {{ form.periodo_fim }}
+                                {% if form.periodo_fim.errors %}
+                                    <div class="text-danger small mt-1">{{ form.periodo_fim.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Entradas da Revisão -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-box-arrow-in me-2"></i>Entradas da Revisão</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.desempenho_processos.label }}</label>
+                            {{ form.desempenho_processos }}
+                            {% if form.desempenho_processos.errors %}
+                                <div class="text-danger small mt-1">{{ form.desempenho_processos.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.conformidade_requisitos.label }}</label>
+                            {{ form.conformidade_requisitos }}
+                            {% if form.conformidade_requisitos.errors %}
+                                <div class="text-danger small mt-1">{{ form.conformidade_requisitos.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.satisfacao_cliente.label }}</label>
+                            {{ form.satisfacao_cliente }}
+                            {% if form.satisfacao_cliente.errors %}
+                                <div class="text-danger small mt-1">{{ form.satisfacao_cliente.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.nao_conformidades_rnc.label }}</label>
+                            {{ form.nao_conformidades_rnc }}
+                            {% if form.nao_conformidades_rnc.errors %}
+                                <div class="text-danger small mt-1">{{ form.nao_conformidades_rnc.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.resultado_auditorias.label }}</label>
+                            {{ form.resultado_auditorias }}
+                            {% if form.resultado_auditorias.errors %}
+                                <div class="text-danger small mt-1">{{ form.resultado_auditorias.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.situacao_acoes_anteriores.label }}</label>
+                            {{ form.situacao_acoes_anteriores }}
+                            {% if form.situacao_acoes_anteriores.errors %}
+                                <div class="text-danger small mt-1">{{ form.situacao_acoes_anteriores.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.mudancas_contexto.label }}</label>
+                            {{ form.mudancas_contexto }}
+                            {% if form.mudancas_contexto.errors %}
+                                <div class="text-danger small mt-1">{{ form.mudancas_contexto.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.desempenho_rh.label }}</label>
+                            {{ form.desempenho_rh }}
+                            {% if form.desempenho_rh.errors %}
+                                <div class="text-danger small mt-1">{{ form.desempenho_rh.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Saídas da Revisão -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-box-arrow-out me-2"></i>Saídas da Revisão</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.adequacao_sqi.label }}</label>
+                            {{ form.adequacao_sqi }}
+                            {% if form.adequacao_sqi.errors %}
+                                <div class="text-danger small mt-1">{{ form.adequacao_sqi.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.oportunidades_melhoria.label }}</label>
+                            {{ form.oportunidades_melhoria }}
+                            {% if form.oportunidades_melhoria.errors %}
+                                <div class="text-danger small mt-1">{{ form.oportunidades_melhoria.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.acoes_recomendadas.label }}</label>
+                            {{ form.acoes_recomendadas }}
+                            {% if form.acoes_recomendadas.errors %}
+                                <div class="text-danger small mt-1">{{ form.acoes_recomendadas.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.necessidade_recursos.label }}</label>
+                            {{ form.necessidade_recursos }}
+                            {% if form.necessidade_recursos.errors %}
+                                <div class="text-danger small mt-1">{{ form.necessidade_recursos.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.resultado_satisfacao.label }}</label>
+                            {{ form.resultado_satisfacao }}
+                            {% if form.resultado_satisfacao.errors %}
+                                <div class="text-danger small mt-1">{{ form.resultado_satisfacao.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Perspectivas -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-binoculars me-2"></i>Perspectivas e Indicadores</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.indicadores_qualidade.label }}</label>
+                            {{ form.indicadores_qualidade }}
+                            {% if form.indicadores_qualidade.errors %}
+                                <div class="text-danger small mt-1">{{ form.indicadores_qualidade.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.perspectiva_desempenho.label }}</label>
+                            {{ form.perspectiva_desempenho }}
+                            {% if form.perspectiva_desempenho.errors %}
+                                <div class="text-danger small mt-1">{{ form.perspectiva_desempenho.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.estrategia_laboratorio.label }}</label>
+                            {{ form.estrategia_laboratorio }}
+                            {% if form.estrategia_laboratorio.errors %}
+                                <div class="text-danger small mt-1">{{ form.estrategia_laboratorio.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Conclusão</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.status.label }}</label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                                <div class="text-danger small mt-1">{{ form.status.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.conclusoes.label }}</label>
+                            {{ form.conclusoes }}
+                            {% if form.conclusoes.errors %}
+                                <div class="text-danger small mt-1">{{ form.conclusoes.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.assinado_por.label }}</label>
+                            {{ form.assinado_por }}
+                            {% if form.assinado_por.errors %}
+                                <div class="text-danger small mt-1">{{ form.assinado_por.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botões -->
+                <div class="d-flex gap-2 mb-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>{% if form.instance.id %}Atualizar{% else %}Criar{% endif %}
+                    </button>
+                    <a href="{% url 'acoes:revisao_gerencial_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-1"></i>Cancelar
+                    </a>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Estrutura ISO 9001</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="small"><strong>Entradas:</strong> Dados sobre o desempenho do SGQ</p>
+                        <p class="small"><strong>Análise:</strong> Avaliação crítica de adequação e efetividade</p>
+                        <p class="small"><strong>Saídas:</strong> Decisões sobre melhorias necessárias</p>
+                        <p class="small mb-0"><strong>Frequência:</strong> Recomendado anualmente</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Dicas para RG</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="small">📊 Use dados reais de auditorias e KPIs</p>
+                        <p class="small">🎯 Foque em oportunidades de melhoria</p>
+                        <p class="small">📋 Documente decisões gerenciais</p>
+                        <p class="small mb-0">✅ Comunique resultados a equipes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// Preencher campos sugeridos do modal
+document.addEventListener('DOMContentLoaded', function() {
+    const codigoSugerido = sessionStorage.getItem('codigo_sugerido');
+    const dataAbertura = sessionStorage.getItem('data_abertura');
+    const unidade = sessionStorage.getItem('unidade');
+    const dataVencimento = sessionStorage.getItem('data_vencimento');
+    const origemProblema = sessionStorage.getItem('origem_problema');
+    const descricao = sessionStorage.getItem('descricao');
+    const causaRaiz = sessionStorage.getItem('causa_raiz');
+    const responsavel = sessionStorage.getItem('responsavel');
+    const observacao = sessionStorage.getItem('observacao');
+    const link = sessionStorage.getItem('link');
+
+    if (codigoSugerido) {
+        const campoNumero = document.getElementById('id_numero_rg');
+        if (campoNumero) campoNumero.value = codigoSugerido;
+    }
+
+    if (dataAbertura) {
+        const campo = document.getElementById('id_data_realizacao') || 
+                     document.querySelector('input[name="data_realizacao"]');
+        if (campo) {
+            if (campo.type === 'date') {
+                campo.value = dataAbertura;
+            } else {
+                const [ano, mes, dia] = dataAbertura.split('-');
+                campo.value = `${dia}/${mes}/${ano}`;
+            }
+        }
+    }
+
+    if (unidade) {
+        const campo = document.getElementById('id_laboratorio') || 
+                     document.querySelector('input[name="laboratorio"]');
+        if (campo) campo.value = unidade;
+    }
+
+    if (descricao || observacao) {
+        const campo = document.getElementById('id_saidas_observacoes') || 
+                     document.querySelector('textarea[name="saidas_observacoes"]');
+        if (campo) campo.value = descricao || observacao;
+    }
+
+    if (link) {
+        const campo = document.getElementById('id_link') || 
+                     document.querySelector('input[name="link"]');
+        if (campo) campo.value = link;
+    }
+
+    // Limpar sessionStorage
+    sessionStorage.removeItem('codigo_sugerido');
+    sessionStorage.removeItem('data_abertura');
+    sessionStorage.removeItem('unidade');
+    sessionStorage.removeItem('data_vencimento');
+    sessionStorage.removeItem('origem_problema');
+    sessionStorage.removeItem('descricao');
+    sessionStorage.removeItem('causa_raiz');
+    sessionStorage.removeItem('responsavel');
+    sessionStorage.removeItem('observacao');
+    sessionStorage.removeItem('link');
+});
+</script>
+
+{% endblock %}

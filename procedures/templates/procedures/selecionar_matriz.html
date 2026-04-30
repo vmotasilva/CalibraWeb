@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-matrix"></i> {{ titulo }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Selecione uma Matriz de Habilidades para gerar planejamentos de treinamento
+                        automaticamente baseado nas disciplinas com avaliação abaixo de 2.
+                    </p>
+                    
+                    {% if matrizes %}
+                        <div class="list-group">
+                            {% for matriz in matrizes %}
+                                <a href="{% url 'procedures:gerar_planejamentos_matriz' matriz.id %}" 
+                                   class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">
+                                            <i class="bi bi-grid-3x2"></i>
+                                            {{ matriz.nome }}
+                                        </h6>
+                                        <small class="badge bg-info">{{ matriz.disciplinas.count }} disciplinas</small>
+                                    </div>
+                                    <p class="mb-1 text-muted">{{ matriz.descricao }}</p>
+                                    <small>Criada em: {{ matriz.criada_em|date:"d/m/Y" }}</small>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Nenhuma Matriz de Habilidades disponível.
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'procedures:planejamentos_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

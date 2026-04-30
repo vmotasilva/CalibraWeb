@@ -1,0 +1,157 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python venv (CRITICAL - can be 200+ MB each!)
+.venv/
+venv/
+ENV/
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Documentation (EXCLUDE ALL)
+*.md
+docs/
+README*
+DOCUMENTO*
+CHECKLIST*
+ANALISE*
+ATUALIZACAO*
+ARCHITECTURE*
+BUILD*
+CACHE*
+CALIBRA*
+CELERY*
+CHECKLIST*
+COLABORADOR*
+COMO*
+CONFIGURACAO*
+CONFIRMACAO*
+CONSOLIDACAO*
+CORRECAO*
+COTACAO*
+coverage.xml
+debug*.py
+check*.py
+analyze*.py
+apply*.py
+create*.py
+CRIAR*
+DEPLOY*
+DEPLOYMENT*
+FINAL*
+INDICE*
+MIGRATION*
+OTIMIZACAO*
+PROCEDIMENTO*
+PROJETO*
+README*
+RAILWAY*
+RELATORIO*
+SOLUCAO*
+TASK*
+TUDO*
+VERIFICACAO*
+
+# Tests
+tests/
+test_*.py
+*_test.py
+.pytest_cache/
+conftest.py
+
+# Local development
+.env
+.env.local
+*.sqlite3
+db.sqlite3
+local_settings.py
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (if used)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Misc
+*.log
+*.pot
+*.csv
+.cache/
+temp/
+tmp/
+__MACOSX/
+
+# Django specific
+staticfiles/
+media/
+.venv
+
+# Celery
+celerybeat-schedule
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+
+# Database files
+*.sqlite3
+*.sqlite
+db.sqlite3
+
+# Log files
+*.log
+server.log
+server_output.log
+railway_logs.txt
+
+# Test files
+test_*.txt
+test_full*.txt
+coverage.xml
+.coverage
+
+# CSV exports
+*.csv
+*_export*.csv
+*_import*.csv
+*_para_importar.csv

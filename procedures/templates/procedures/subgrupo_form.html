@@ -1,0 +1,342 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block header_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header">
+            <h5>{{ titulo }}</h5>
+            <p class="text-muted mb-0 small">
+                <i class="bi bi-diagram-3"></i> Perfil: <strong>{{ perfil.codigo }}</strong> - {{ perfil.nome }}
+                <i class="bi bi-arrow-right mx-2"></i> Grupo: {{ grupo.nome }}
+            </p>
+        </div>
+        <div class="card-body">
+            <form method="POST" id="subgrupo-form">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label">{{ form.nome.label }} *</label>
+                        {{ form.nome }}
+                        <small class="text-muted">Ex: Calibração de Instrumentos Dimensionais</small>
+                        {% if form.nome.errors %}
+                            <div class="text-danger small">{{ form.nome.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ form.ordem.label }} *</label>
+                        {{ form.ordem }}
+                        <small class="text-muted">Define a ordem de exibição</small>
+                        {% if form.ordem.errors %}
+                            <div class="text-danger small">{{ form.ordem.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">{{ form.descricao.label }}</label>
+                    {{ form.descricao }}
+                    {% if form.descricao.errors %}
+                        <div class="text-danger small">{{ form.descricao.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                {% if not subgrupo %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Atenção:</strong> Após criar o subgrupo, você poderá adicionar procedimentos na página de edição.
+                </div>
+                {% endif %}
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Salvar
+                    </button>
+                    <a href="{% url 'procedures:detalhe_perfil' perfil.id %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+            
+            {% if subgrupo %}
+            <!-- Seção de Procedimentos (apenas na edição) -->
+            <hr class="my-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Procedimentos Associados</h6>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalProcedimentos">
+                        <i class="bi bi-plus-circle"></i> Adicionar Procedimentos
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="lista-procedimentos" class="list-group">
+                        {% if subgrupo.procedimentos.all %}
+                            {% for proc in subgrupo.procedimentos.all %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center" id="proc-{{ proc.id }}">
+                                <div>
+                                    <strong>{{ proc.codigo }}</strong> - {{ proc.nome }}
+                                    <br><small class="text-muted">{{ proc.get_classificacao_display }}</small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerProcedimento({{ proc.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="alert alert-info" id="msg-sem-procedimentos">
+                                <i class="bi bi-info-circle"></i> Nenhum procedimento associado ainda.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal para buscar procedimentos -->
+            <div class="modal fade" id="modalProcedimentos" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title"><i class="bi bi-search"></i> Buscar Procedimentos</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- Linha 1: Busca e Classificação -->
+                            <div class="row mb-2">
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control form-control-sm" id="filtro-busca" placeholder="Buscar por código ou nome...">
+                                </div>
+                                <div class="col-md-6">
+                                    <select class="form-select form-select-sm" id="filtro-classificacao">
+                                        <option value="">Todas classificações</option>
+                                        <option value="PR">Procedimento</option>
+                                        <option value="IT">Instrução de Trabalho</option>
+                                        <option value="PO">Padrão Operacional</option>
+                                        <option value="RE">Registro</option>
+                                        <option value="FO">Formulário</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Linha 2: Matriz e Área -->
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <select class="form-select form-select-sm" id="filtro-matriz">
+                                        <option value="">Todas matrizes</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <select class="form-select form-select-sm" id="filtro-area">
+                                        <option value="">Todas áreas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" class="btn btn-sm btn-primary w-100" onclick="buscarProcedimentos()">
+                                        <i class="bi bi-search"></i> Buscar
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="resultados-busca" style="max-height: 400px; overflow-y: auto;">
+                                <div class="alert alert-info text-center">
+                                    <i class="bi bi-info-circle"></i> Use os filtros e clique em buscar.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+            const subgrupoId = {{ subgrupo.id }};
+            const csrfToken = '{{ csrf_token }}';
+            let procedimentosAtuais = [{% for p in subgrupo.procedimentos.all %}{{ p.id }},{% endfor %}];
+            
+            // Carregar opções de filtro ao abrir o modal
+            function inicializarFiltros() {
+                carregarMatrizes();
+                carregarAreas();
+            }
+            
+            // Carregar matrizes disponíveis
+            function carregarMatrizes() {
+                fetch('/procedures/api/matrizes/')
+                    .then(r => r.json())
+                    .then(data => {
+                        const select = document.getElementById('filtro-matriz');
+                        select.innerHTML = '<option value="">Todas matrizes</option>';
+                        data.matrizes.forEach(matriz => {
+                            const option = document.createElement('option');
+                            option.value = matriz;
+                            option.textContent = matriz;
+                            select.appendChild(option);
+                        });
+                    })
+                    .catch(err => console.error('Erro ao carregar matrizes:', err));
+            }
+            
+            // Carregar áreas disponíveis
+            function carregarAreas() {
+                fetch('/procedures/api/areas/')
+                    .then(r => r.json())
+                    .then(data => {
+                        const select = document.getElementById('filtro-area');
+                        select.innerHTML = '<option value="">Todas áreas</option>';
+                        data.areas.forEach(area => {
+                            const option = document.createElement('option');
+                            option.value = area;
+                            option.textContent = area;
+                            select.appendChild(option);
+                        });
+                    })
+                    .catch(err => console.error('Erro ao carregar áreas:', err));
+            }
+            
+            function buscarProcedimentos() {
+                const busca = document.getElementById('filtro-busca').value;
+                const classificacao = document.getElementById('filtro-classificacao').value;
+                const matriz = document.getElementById('filtro-matriz').value;
+                const area = document.getElementById('filtro-area').value;
+                const resultados = document.getElementById('resultados-busca');
+                
+                resultados.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></div>';
+                
+                let url = `/procedures/api/procedimentos/?page_size=100`;
+                if (busca) url += `&q=${encodeURIComponent(busca)}`;
+                if (classificacao) url += `&classificacao=${classificacao}`;
+                if (matriz) url += `&matriz=${encodeURIComponent(matriz)}`;
+                if (area) url += `&sub_area=${encodeURIComponent(area)}`;
+                
+                fetch(url)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.items.length === 0) {
+                            resultados.innerHTML = '<div class="alert alert-warning">Nenhum procedimento encontrado com os filtros especificados.</div>';
+                            return;
+                        }
+                        
+                        resultados.innerHTML = '';
+                        data.items.forEach(proc => {
+                            const jaAdicionado = procedimentosAtuais.includes(proc.id);
+                            const div = document.createElement('div');
+                            div.className = 'border-bottom p-2';
+                            
+                            // Criar informações adicionais
+                            let infoExtra = '';
+                            if (proc.matriz) infoExtra += `<span class="badge bg-info me-1">${proc.matriz}</span>`;
+                            if (proc.sub_area) infoExtra += `<span class="badge bg-secondary me-1">${proc.sub_area}</span>`;
+                            if (proc.classificacao) infoExtra += `<span class="badge bg-light text-dark">${proc.classificacao}</span>`;
+                            
+                            div.innerHTML = `
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <strong>${proc.codigo}</strong> - ${proc.nome}
+                                        <br><small class="text-muted">${infoExtra}</small>
+                                    </div>
+                                    <button type="button" 
+                                            class="btn btn-sm ${jaAdicionado ? 'btn-success' : 'btn-primary'}" 
+                                            ${jaAdicionado ? 'disabled' : ''}
+                                            onclick="adicionarProcedimento(${proc.id}, '${proc.codigo}', '${proc.nome.replace(/'/g, "\\'")}')">
+                                        <i class="bi bi-${jaAdicionado ? 'check' : 'plus'}"></i> 
+                                        ${jaAdicionado ? 'Adicionado' : 'Adicionar'}
+                                    </button>
+                                </div>
+                            `;
+                            resultados.appendChild(div);
+                        });
+                    })
+                    .catch(err => {
+                        console.error('Erro:', err);
+                        resultados.innerHTML = '<div class="alert alert-danger">Erro ao buscar procedimentos. Verifique o console.</div>';
+                    });
+            }
+            
+            function adicionarProcedimento(procId, codigo, nome) {
+                fetch(`/procedures/subgrupos/${subgrupoId}/adicionar-procedimento/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ procedimento_id: procId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        procedimentosAtuais.push(procId);
+                        
+                        // Remover mensagem de "nenhum procedimento"
+                        const msgSem = document.getElementById('msg-sem-procedimentos');
+                        if (msgSem) msgSem.remove();
+                        
+                        // Adicionar na lista
+                        const lista = document.getElementById('lista-procedimentos');
+                        const div = document.createElement('div');
+                        div.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        div.id = `proc-${procId}`;
+                        div.innerHTML = `
+                            <div>
+                                <strong>${codigo}</strong> - ${nome}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerProcedimento(${procId})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        `;
+                        lista.appendChild(div);
+                        
+                        // Atualizar modal
+                        buscarProcedimentos();
+                    }
+                });
+            }
+            
+            function removerProcedimento(procId) {
+                if (!confirm('Deseja remover este procedimento?')) return;
+                
+                fetch(`/procedures/subgrupos/${subgrupoId}/remover-procedimento/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ procedimento_id: procId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        procedimentosAtuais = procedimentosAtuais.filter(id => id !== procId);
+                        document.getElementById(`proc-${procId}`).remove();
+                        
+                        // Se não sobrou nenhum, mostrar mensagem
+                        const lista = document.getElementById('lista-procedimentos');
+                        if (lista.children.length === 0) {
+                            lista.innerHTML = '<div class="alert alert-info" id="msg-sem-procedimentos"><i class="bi bi-info-circle"></i> Nenhum procedimento associado ainda.</div>';
+                        }
+                    }
+                });
+            }
+            
+            // Buscar ao pressionar Enter
+            document.getElementById('filtro-busca').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    buscarProcedimentos();
+                }
+            });
+            
+            // Inicializar filtros quando o modal abre
+            document.addEventListener('DOMContentLoaded', function() {
+                const modalProcedimentos = document.getElementById('modalProcedimentos');
+                if (modalProcedimentos) {
+                    modalProcedimentos.addEventListener('shown.bs.modal', function() {
+                        inicializarFiltros();
+                    });
+                }
+            });
+            </script>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

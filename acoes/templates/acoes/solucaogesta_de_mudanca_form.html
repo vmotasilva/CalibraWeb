@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if form.instance.id %}Editar{% else %}Nova{% endif %} Gestão de Mudança{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0"><i class="bi bi-arrow-repeat text-info me-2"></i>{% if form.instance.id %}Editar{% else %}Nova{% endif %} Gestão de Mudança</h1>
+                </div>
+                <a href="{% url 'acoes:mudanca_list' %}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" class="needs-validation" novalidate>
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Identificação da Mudança -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Identificação da Mudança</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.numero_registro.label }}</label>
+                                {{ form.numero_registro }}
+                                {% if form.numero_registro.errors %}
+                                    <div class="text-danger small mt-1">{{ form.numero_registro.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_solicitacao.label }}</label>
+                                {{ form.data_solicitacao }}
+                                {% if form.data_solicitacao.errors %}
+                                    <div class="text-danger small mt-1">{{ form.data_solicitacao.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.solicitante.label }}</label>
+                                {{ form.solicitante }}
+                                {% if form.solicitante.errors %}
+                                    <div class="text-danger small mt-1">{{ form.solicitante.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.laboratorio.label }}</label>
+                                {{ form.laboratorio }}
+                                {% if form.laboratorio.errors %}
+                                    <div class="text-danger small mt-1">{{ form.laboratorio.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.titulo.label }}</label>
+                            {{ form.titulo }}
+                            {% if form.titulo.errors %}
+                                <div class="text-danger small mt-1">{{ form.titulo.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.descricao.label }}</label>
+                            {{ form.descricao }}
+                            {% if form.descricao.errors %}
+                                <div class="text-danger small mt-1">{{ form.descricao.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tipo e Prioridade -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-tag me-2"></i>Classificação</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.tipo_mudanca.label }}</label>
+                                {{ form.tipo_mudanca }}
+                                {% if form.tipo_mudanca.errors %}
+                                    <div class="text-danger small mt-1">{{ form.tipo_mudanca.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.prioridade.label }}</label>
+                                {{ form.prioridade }}
+                                {% if form.prioridade.errors %}
+                                    <div class="text-danger small mt-1">{{ form.prioridade.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.justificativa.label }}</label>
+                            {{ form.justificativa }}
+                            {% if form.justificativa.errors %}
+                                <div class="text-danger small mt-1">{{ form.justificativa.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Análise de Impacto -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Análise de Impacto</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.areas_impactadas.label }}</label>
+                            {{ form.areas_impactadas }}
+                            <small class="form-text text-muted">Selecione todas as áreas que serão afetadas</small>
+                            {% if form.areas_impactadas.errors %}
+                                <div class="text-danger small mt-1">{{ form.areas_impactadas.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.processos_afetados.label }}</label>
+                            {{ form.processos_afetados }}
+                            {% if form.processos_afetados.errors %}
+                                <div class="text-danger small mt-1">{{ form.processos_afetados.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.impacto_ehs.label }}</label>
+                            {{ form.impacto_ehs }}
+                            {% if form.impacto_ehs.errors %}
+                                <div class="text-danger small mt-1">{{ form.impacto_ehs.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.impacto_cliente.label }}</label>
+                            {{ form.impacto_cliente }}
+                            {% if form.impacto_cliente.errors %}
+                                <div class="text-danger small mt-1">{{ form.impacto_cliente.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plano de Implementação -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-hammer me-2"></i>Plano de Implementação</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.plano_implementacao.label }}</label>
+                            {{ form.plano_implementacao }}
+                            {% if form.plano_implementacao.errors %}
+                                <div class="text-danger small mt-1">{{ form.plano_implementacao.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.responsavel_implementacao.label }}</label>
+                                {{ form.responsavel_implementacao }}
+                                {% if form.responsavel_implementacao.errors %}
+                                    <div class="text-danger small mt-1">{{ form.responsavel_implementacao.errors }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">{{ form.data_implementacao.label }}</label>
+                                {{ form.data_implementacao }}
+                                {% if form.data_implementacao.errors %}
+                                    <div class="text-danger small mt-1">{{ form.data_implementacao.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.recursos_necessarios.label }}</label>
+                            {{ form.recursos_necessarios }}
+                            {% if form.recursos_necessarios.errors %}
+                                <div class="text-danger small mt-1">{{ form.recursos_necessarios.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Análise de Risco -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-shield-exclamation me-2"></i>Análise de Risco</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.riscos_identificados.label }}</label>
+                            {{ form.riscos_identificados }}
+                            {% if form.riscos_identificados.errors %}
+                                <div class="text-danger small mt-1">{{ form.riscos_identificados.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.plano_mitigacao.label }}</label>
+                            {{ form.plano_mitigacao }}
+                            {% if form.plano_mitigacao.errors %}
+                                <div class="text-danger small mt-1">{{ form.plano_mitigacao.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.status.label }}</label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                                <div class="text-danger small mt-1">{{ form.status.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.observacoes.label }}</label>
+                            {{ form.observacoes }}
+                            {% if form.observacoes.errors %}
+                                <div class="text-danger small mt-1">{{ form.observacoes.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botões -->
+                <div class="d-flex gap-2 mb-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>{% if form.instance.id %}Atualizar{% else %}Criar{% endif %}
+                    </button>
+                    <a href="{% url 'acoes:mudanca_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-1"></i>Cancelar
+                    </a>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Dicas</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="small"><strong>Tipo:</strong> Preventiva (evita problemas), Corretiva (corrige problema), Adaptativa (adapta ao novo)</p>
+                        <p class="small"><strong>Prioridade:</strong> Considera urgência e impacto do negócio</p>
+                        <p class="small"><strong>Impacto:</strong> Descreva efeitos em qualidade, segurança, custos</p>
+                        <p class="small mb-0"><strong>Risco:</strong> Sempre considere o que pode dar errado na implementação</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Fluxo de Aprovação</h6>
+                    </div>
+                    <div class="card-body">
+                        <ol class="small" style="padding-left: 1rem;">
+                            <li>Solicitação criada</li>
+                            <li>Análise de impacto</li>
+                            <li>Aprovação gerencial</li>
+                            <li>Implementação planejada</li>
+                            <li>Execução</li>
+                            <li>Verificação e fechamento</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// Preencher campos sugeridos do modal
+document.addEventListener('DOMContentLoaded', function() {
+    const codigoSugerido = sessionStorage.getItem('codigo_sugerido');
+    const dataAbertura = sessionStorage.getItem('data_abertura');
+    const unidade = sessionStorage.getItem('unidade');
+    const dataVencimento = sessionStorage.getItem('data_vencimento');
+    const origemProblema = sessionStorage.getItem('origem_problema');
+    const descricao = sessionStorage.getItem('descricao');
+    const causaRaiz = sessionStorage.getItem('causa_raiz');
+    const responsavel = sessionStorage.getItem('responsavel');
+    const observacao = sessionStorage.getItem('observacao');
+    const link = sessionStorage.getItem('link');
+
+    if (codigoSugerido) {
+        const campoNumero = document.getElementById('id_numero_registro');
+        if (campoNumero) campoNumero.value = codigoSugerido;
+    }
+
+    if (dataAbertura) {
+        const campo = document.getElementById('id_data_solicitacao') || 
+                     document.querySelector('input[name="data_solicitacao"]');
+        if (campo) {
+            if (campo.type === 'date') {
+                campo.value = dataAbertura;
+            } else {
+                const [ano, mes, dia] = dataAbertura.split('-');
+                campo.value = `${dia}/${mes}/${ano}`;
+            }
+        }
+    }
+
+    if (unidade) {
+        const campo = document.getElementById('id_area_responsavel') || 
+                     document.querySelector('input[name="area_responsavel"]');
+        if (campo) campo.value = unidade;
+    }
+
+    if (descricao) {
+        const campo = document.getElementById('id_descricao_mudanca') || 
+                     document.querySelector('textarea[name="descricao_mudanca"]');
+        if (campo) campo.value = descricao;
+    }
+
+    if (causaRaiz) {
+        const campo = document.getElementById('id_justificativa') || 
+                     document.querySelector('textarea[name="justificativa"]');
+        if (campo) campo.value = causaRaiz;
+    }
+
+    if (observacao) {
+        const campo = document.getElementById('id_observacoes') || 
+                     document.querySelector('textarea[name="observacoes"]');
+        if (campo) campo.value = observacao;
+    }
+
+    if (link) {
+        const campo = document.getElementById('id_link') || 
+                     document.querySelector('input[name="link"]');
+        if (campo) campo.value = link;
+    }
+
+    // Limpar sessionStorage
+    sessionStorage.removeItem('codigo_sugerido');
+    sessionStorage.removeItem('data_abertura');
+    sessionStorage.removeItem('unidade');
+    sessionStorage.removeItem('data_vencimento');
+    sessionStorage.removeItem('origem_problema');
+    sessionStorage.removeItem('descricao');
+    sessionStorage.removeItem('causa_raiz');
+    sessionStorage.removeItem('responsavel');
+    sessionStorage.removeItem('observacao');
+    sessionStorage.removeItem('link');
+});
+</script>
+
+{% endblock %}

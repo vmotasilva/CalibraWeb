@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Reavaliação - {{ fornecedor.empresa }}</h2>
+    
+    <div class="alert alert-warning" role="alert">
+        <strong>⚠️ Importante:</strong> A Reavaliação deve ser realizada <strong>a partir de janeiro</strong> (e apenas uma vez por ano). É permitido atrasos até o final do ano, mas a próxima reavaliação só poderá ser feita a partir de janeiro do próximo ano.
+    </div>
+    
+    {% if ultima_reavaliacao %}
+    <div class="alert alert-info" role="alert">
+        <strong>Última reavaliação:</strong> {{ ultima_reavaliacao.data|date:"d/m/Y" }} 
+        <strong>Resultado:</strong> {{ ultima_reavaliacao.resultado }}
+        <strong>Pontuação:</strong> {{ ultima_reavaliacao.pontuacao_ano|floatformat:1 }}%
+    </div>
+    {% endif %}
+    
+    <form method="post" class="mt-4">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="data" class="form-label">Data da Reavaliação</label>
+            <input 
+                type="date" 
+                name="data" 
+                id="data" 
+                class="form-control" 
+                value="{% if ultima_reavaliacao %}{{ ultima_reavaliacao.data|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}"
+                required
+            >
+        </div>
+        
+        <div class="mb-3">
+            <label for="observacao" class="form-label">Observação</label>
+            <textarea name="observacao" id="observacao" class="form-control" rows="3"></textarea>
+        </div>
+        
+        <h4 class="mt-4 mb-3">Critérios</h4>
+        <div class="list-group">
+            {% for item in perguntas_com_respostas %}
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">{{ item.pergunta.texto }}</h6>
+                        <small class="text-muted">Ordem: {{ item.pergunta.ordem }}</small>
+                    </div>
+                </div>
+                
+                <div class="form-check">
+                    <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="resposta_{{ item.pergunta.id }}" 
+                        name="resposta_{{ item.pergunta.id }}"
+                        {% if item.resposta_anterior %}checked{% endif %}
+                    >
+                    <label class="form-check-label" for="resposta_{{ item.pergunta.id }}">
+                        Sim
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="mt-5 p-3" style="background-color: #f8f9fa; border-left: 4px solid #333;">
+            <strong>Legenda:</strong>
+            <div class="table-responsive mt-3">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="text-center" style="width: 20%;">Pontuação</th>
+                            <th class="text-center" style="width: 20%;">Critério</th>
+                            <th class="text-center" style="width: 60%;">Significado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center fw-bold">100%</td>
+                            <td class="text-center">Sim</td>
+                            <td>Existe evidências</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center fw-bold">0%</td>
+                            <td class="text-center">Não</td>
+                            <td>Não possui controle e/ou não existe evidências</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center fw-bold">N/A</td>
+                            <td class="text-center">Não existe esta atividade</td>
+                            <td>Requisito não aplicável</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-3 p-2" style="background-color: white; border: 1px solid #dee2e6; border-radius: 4px;">
+                <small class="text-muted">
+                    <strong>Avaliação:</strong><br>
+                    Total de Pontos Possíveis = 100 pontos<br>
+                    Avaliação do Fornecedor = 60 pontos<br>
+                    <em>Abrir relatório de não conformidade (RNC) para fornecedor abaixo de 60 pontos ou não cumprir os critérios de avaliação obrigatórios.</em>
+                </small>
+            </div>
+        </div>
+        
+        <div class="mt-5">
+            <button type="submit" class="btn btn-success btn-lg">Salvar Reavaliação</button>
+            <a href="{% url 'fornecedores:fornecedor_detail' fornecedor.pk %}" class="btn btn-secondary btn-lg">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dataInput = document.getElementById('data');
+    
+    // Preencher data com hoje se vazio
+    if (!dataInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dataInput.value = today;
+    }
+});
+</script>
+{% endblock %}

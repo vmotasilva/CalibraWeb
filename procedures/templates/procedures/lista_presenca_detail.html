@@ -1,0 +1,521 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ lista.titulo }} - Detalhes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #6c757d;
+        border: none;
+        border-bottom: 3px solid transparent;
+        margin-right: 1rem;
+        padding: 0.75rem 0;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        border-bottom-color: #0d6efd;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+        background-color: transparent;
+    }
+    
+    .tab-content {
+        padding-top: 2rem;
+    }
+    
+    .form-section {
+        margin-bottom: 2rem;
+    }
+    
+    .form-section-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+        display: block;
+        margin-bottom: 0.35rem;
+    }
+    
+    .table-compact {
+        font-size: 0.9rem;
+    }
+    
+    .badge-count {
+        display: inline-block;
+        padding: 0.35rem 0.65rem;
+        background-color: #cfe2ff;
+        color: #084298;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    
+    .status-ok {
+        color: #28a745;
+        font-weight: 600;
+    }
+    
+    .status-pendente {
+        color: #dc3545;
+        font-weight: 600;
+    }
+    
+    .stat-card {
+        padding: 1.5rem;
+        border-left: 4px solid #0d6efd;
+    }
+    
+    .stat-card.success {
+        border-left-color: #28a745;
+    }
+    
+    .stat-card.info {
+        border-left-color: #0dcaf0;
+    }
+    
+    .stat-card.warning {
+        border-left-color: #ffc107;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: #0d6efd;
+    }
+    
+    .stat-card.success .stat-number {
+        color: #28a745;
+    }
+    
+    .stat-card.info .stat-number {
+        color: #0dcaf0;
+    }
+    
+    .stat-card.warning .stat-number {
+        color: #ffc107;
+    }
+    
+    .stat-label {
+        font-size: 0.95rem;
+        color: #6c757d;
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-lg">
+    <div class="page-header d-flex justify-content-between align-items-start">
+        <div>
+            <h1>{{ lista.titulo }}</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{% url 'procedures:lista_presenca_list' %}">Listas de Presença</a></li>
+                    <li class="breadcrumb-item active">{{ lista.titulo }}</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'procedures:lista_presenca_edit' lista.pk %}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+            <a href="{% url 'procedures:lista_presenca_export_pdf' lista.pk %}" class="btn btn-success" target="_blank">
+                <i class="bi bi-file-pdf"></i> PDF
+            </a>
+            <a href="{% url 'procedures:upload_lista_presenca_assinada' lista.pk %}" class="btn btn-info">
+                <i class="fas fa-file-upload"></i> Upload Assinada
+            </a>
+            <a href="{% url 'procedures:lista_presenca_delete' lista.pk %}" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta lista?')">
+                <i class="bi bi-trash"></i> Excluir
+            </a>
+        </div>
+    </div>
+
+    <!-- Abas -->
+    <ul class="nav nav-tabs mb-4" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#info-sessao" role="tab">
+                <i class="bi bi-info-circle"></i> Informações da Sessão
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#estatisticas-tab" role="tab">
+                <i class="bi bi-graph-up"></i> Estatísticas
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#registros-tab" role="tab">
+                <i class="bi bi-list-check"></i> Registros
+            </a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- Aba 1: Informações da Sessão -->
+        <div id="info-sessao" class="tab-pane fade show active">
+            <div class="form-section">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <span class="info-label">Título da Sessão</span>
+                        <p class="mb-0">{{ lista.titulo }}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="info-label">Data</span>
+                        <p class="mb-0">{{ lista.data_sessao|date:"d/m/Y" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Instrutor</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <span class="info-label">Nome</span>
+                        <p class="mb-0">
+                            {% if lista.instrutor_nome %}
+                                {{ lista.instrutor_nome }}
+                                {% if lista.instrutor %}
+                                    <br><small class="text-muted">({{ lista.instrutor.nome_completo }} - BD)</small>
+                                {% else %}
+                                    <br><small><span class="badge bg-warning">Sem vinculação</span></small>
+                                {% endif %}
+                            {% elif lista.instrutor %}
+                                {{ lista.instrutor.nome_completo }}
+                            {% else %}
+                                <span class="text-muted">Não definido</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <span class="info-label">Matrícula</span>
+                        <p class="mb-0">
+                            {% if lista.instrutor %}
+                                {{ lista.instrutor.matricula }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Localização & Horário</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <span class="info-label">Local</span>
+                        <p class="mb-0">{{ lista.local|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="info-label">Início</span>
+                        <p class="mb-0">{{ lista.hora_inicio|time:"H:i"|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="info-label">Fim</span>
+                        <p class="mb-0">{{ lista.hora_fim|time:"H:i"|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="info-label">Carga (h)</span>
+                        <p class="mb-0">{{ lista.carga_horaria|default:"-" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            {% if lista.observacoes %}
+            <div class="form-section">
+                <span class="info-label">Observações</span>
+                <p class="mb-0">{{ lista.observacoes|linebreaks }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Seção de Template Excel -->
+            {% if lista.template %}
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="fas fa-table"></i> Template de Layout
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <span class="info-label">Arquivo Excel</span>
+                        <p class="mb-3">
+                            <strong>{{ lista.template.nome }}</strong><br>
+                            <small class="text-muted">
+                                Versão: 1.0 | 
+                                Criado em: {{ lista.template.criado_em|date:"d/m/Y"|default:"N/A" }}
+                            </small>
+                        </p>
+                        
+                        {% if template_mapeamentos %}
+                        <span class="info-label mt-3">Placeholders Mapeados</span>
+                        <div class="row g-2">
+                            {% for placeholder, dados in template_mapeamentos.items %}
+                            <div class="col-md-6 mb-2">
+                                <div class="card border-light p-2">
+                                    <small class="text-muted">{{ dados.label }}</small>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <code style="font-size: 0.9rem;">{{ dados.placeholder }}</code>
+                                        {% if dados.formato %}
+                                        <span class="badge bg-light text-dark" title="Formato">
+                                            <i class="fas fa-cog"></i> {{ dados.formato }}
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-light text-dark" title="Campo">
+                                            <i class="fas fa-font"></i> Texto
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'procedures:detalhes_template' lista.template.pk %}" class="btn btn-sm btn-info w-100 mb-2">
+                            <i class="fas fa-eye"></i> Ver Template
+                        </a>
+                        <a href="{% url 'procedures:lista_presenca_edit' lista.pk %}" class="btn btn-sm btn-warning w-100">
+                            <i class="fas fa-pencil-alt"></i> Alterar Template
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Seção de Arquivo Assinado (Evidência Documental) -->
+            <div class="form-section">
+                <div class="form-section-title">
+                    <i class="fas fa-shield-alt"></i> Evidência Documental
+                </div>
+                {% if lista.arquivo_assinado %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i>
+                        <strong>Arquivo Assinado Disponível</strong>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <span class="info-label">Arquivo</span>
+                            <p class="mb-2">
+                                <strong>{{ lista.arquivo_assinado.name|truncatechars:50 }}</strong>
+                            </p>
+                            <span class="info-label">Data do Upload</span>
+                            <p class="mb-0">{{ lista.data_upload_assinado|date:"d/m/Y H:i" }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{% url 'procedures:visualizar_lista_presenca_assinada' lista.pk %}" class="btn btn-sm btn-info w-100 mb-2" target="_blank">
+                                <i class="fas fa-eye"></i> Visualizar
+                            </a>
+                            <form method="post" action="{% url 'procedures:remover_lista_presenca_assinada' lista.pk %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" onclick="return confirm('Remover o arquivo assinado?')">
+                                    <i class="fas fa-trash"></i> Remover
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Nenhum arquivo assinado anexado</strong><br>
+                        <small>Após imprimir e coletar as assinaturas dos participantes, faça upload da lista.</small>
+                    </div>
+                    <a href="{% url 'procedures:upload_lista_presenca_assinada' lista.pk %}" class="btn btn-info">
+                        <i class="fas fa-file-upload"></i> Fazer Upload Agora
+                    </a>
+                {% endif %}
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Auditoria</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <span class="info-label">Criado em</span>
+                        <p class="mb-0">
+                            <small class="text-muted">{{ lista.criado_em|date:"d/m/Y H:i" }}
+                            {% if lista.criado_por %}
+                                por {{ lista.criado_por.get_full_name|default:lista.criado_por.username }}
+                            {% endif %}
+                            </small>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <span class="info-label">Última atualização</span>
+                        <p class="mb-0"><small class="text-muted">{{ lista.atualizado_em|date:"d/m/Y H:i" }}</small></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aba 2: Estatísticas -->
+        <div id="estatisticas-tab" class="tab-pane fade">
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card stat-card">
+                        <div class="stat-number">{{ stats.total_participantes }}</div>
+                        <p class="stat-label">Participantes</p>
+                        <small class="text-muted">{{ stats.total_colaboradores }} internos + {{ stats.total_externos }} externos</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card success">
+                        <div class="stat-number">{{ stats.total_procedimentos }}</div>
+                        <p class="stat-label">Procedimento{{ stats.total_procedimentos|pluralize }}</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card info">
+                        <div class="stat-number">{{ stats.total_registros }}</div>
+                        <p class="stat-label">Registro{{ stats.total_registros|pluralize }}</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card warning">
+                        <p class="stat-label mb-2">Tipos de Registro</p>
+                        <div class="d-flex flex-column gap-2">
+                            {% for tipo_registro in stats.tipos_registro %}
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-secondary">{{ tipo_registro.tipo }}</span>
+                                <span class="badge-count">{{ tipo_registro.count }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>Resumo:</strong>
+                <br>
+                Total de <strong>{{ stats.total_registros }}</strong> registro{{ stats.total_registros|pluralize }} envolvendo
+                <strong>{{ stats.total_participantes }}</strong> participante{{ stats.total_participantes|pluralize }} e
+                <strong>{{ stats.total_procedimentos }}</strong> procedimento{{ stats.total_procedimentos|pluralize }}.
+            </div>
+        </div>
+
+        <!-- Aba 3: Registros -->
+        <div id="registros-tab" class="tab-pane fade">
+            {% if registros %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover table-compact">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Participante</th>
+                            <th style="width: 15%">Matrícula/Empresa</th>
+                            <th>Assunto</th>
+                            <th style="width: 10%">Data</th>
+                            <th style="width: 8%">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for registro in registros %}
+                        <tr>
+                            <td>
+                                {% if registro.tipo == 'PROCEDIMENTO' %}
+                                <span class="badge bg-primary">Procedimento</span>
+                                {% elif registro.tipo == 'ALINHAMENTO' %}
+                                <span class="badge bg-info">Alinhamento</span>
+                                {% elif registro.tipo == 'REUNIAO' %}
+                                <span class="badge bg-warning">Reunião</span>
+                                {% elif registro.tipo == 'CAPACITACAO' %}
+                                <span class="badge bg-success">Capacitação</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ registro.tipo }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if registro.colaborador %}
+                                    <a href="{% url 'detalhe_colaborador' registro.colaborador.id %}">
+                                        {{ registro.colaborador.nome_completo }}
+                                    </a>
+                                {% elif registro.participante_externo %}
+                                    <i class="bi bi-person-fill-add text-info"></i> {{ registro.participante_externo.nome_completo }}
+                                {% else %}
+                                    {{ registro.colaborador_nome|default:"-" }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {% if registro.colaborador %}
+                                        {{ registro.colaborador.matricula }}
+                                    {% elif registro.participante_externo and registro.participante_externo.empresa %}
+                                        {{ registro.participante_externo.empresa }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                {% if registro.procedimento %}
+                                <a href="{% url 'procedures:detalhe_procedimento' registro.procedimento.id %}">
+                                    <code>{{ registro.procedimento.codigo }}</code> {{ registro.procedimento.nome|truncatewords:5 }}
+                                </a>
+                                {% else %}
+                                <strong>{{ registro.titulo_treinamento }}</strong>
+                                {% if registro.descricao %}
+                                <br><small class="text-muted">{{ registro.descricao|truncatewords:10 }}</small>
+                                {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if registro.lista_presenca.data_sessao %}
+                                    {{ registro.lista_presenca.data_sessao|date:"d/m/Y" }}
+                                {% elif registro.data_treinamento %}
+                                    {{ registro.data_treinamento|date:"d/m/Y" }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if registro.status_treinamento == 'OK' %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> Em dias</span>
+                                {% elif registro.status_treinamento == 'PENDENTE' %}
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Pendente</span>
+                                {% else %}
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-circle"></i> Pendente</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                Nenhum registro de treinamento vinculado a esta lista.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Botões de Rodapé -->
+    <div class="d-flex gap-2 justify-content-between mt-4 pt-3 border-top">
+        <a href="{% url 'procedures:lista_presenca_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <a href="{% url 'procedures:lista_presenca_edit' lista.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+    </div>
+</div>
+{% endblock %}

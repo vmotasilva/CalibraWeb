@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+
+{% block title %}Origens de Problema{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-diagram-3 text-warning me-2"></i>
+                        Origens de Problema
+                    </h1>
+                    <p class="text-muted small mt-1">
+                        Cadastre e gerencie as possíveis origens de problemas para registros e soluções
+                    </p>
+                </div>
+                <a href="{% url 'acoes:origem_problema_create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle me-1"></i> Nova Origem
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Estatísticas -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1">Total de Origens</p>
+                            <h3 class="mb-0">{{ total_origens }}</h3>
+                        </div>
+                        <i class="bi bi-list-check text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1">Ativas</p>
+                            <h3 class="text-success mb-0">{{ total_ativas }}</h3>
+                        </div>
+                        <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small mb-1">Inativas</p>
+                            <h3 class="text-danger mb-0">{{ total_inativas }}</h3>
+                        </div>
+                        <i class="bi bi-x-circle text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Buscar</label>
+                            <input 
+                                type="text" 
+                                name="busca" 
+                                class="form-control" 
+                                placeholder="Nome, código ou descrição..."
+                                value="{{ busca }}"
+                            >
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Status</label>
+                            <select name="ativo" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="true">Ativas</option>
+                                <option value="false">Inativas</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                            <a href="{% url 'acoes:origem_problema_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-clockwise"></i> Limpar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Origens -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0">
+                        <i class="bi bi-table"></i> Lista de Origens
+                        {% if origens.count %}
+                            <span class="badge bg-secondary">{{ origens.count }}</span>
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if origens %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 25%;">Nome</th>
+                                        <th style="width: 15%;">Código</th>
+                                        <th style="width: 40%;">Descrição</th>
+                                        <th style="width: 10%;">Status</th>
+                                        <th style="width: 10%;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for origem in origens %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ origem.nome }}</strong>
+                                            </td>
+                                            <td>
+                                                {% if origem.codigo %}
+                                                    <code class="bg-light px-2 py-1 rounded">{{ origem.codigo }}</code>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if origem.descricao %}
+                                                    <small class="text-muted">{{ origem.descricao|truncatewords:15 }}</small>
+                                                {% else %}
+                                                    <span class="text-muted">Sem descrição</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if origem.ativo %}
+                                                    <span class="badge bg-success">Ativa</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Inativa</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'acoes:origem_problema_update' origem.pk %}" class="btn btn-sm btn-outline-primary" title="Editar">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                                <a href="{% url 'acoes:origem_problema_delete' origem.pk %}" class="btn btn-sm btn-outline-danger" title="Deletar">
+                                                    <i class="bi bi-trash"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Paginação -->
+                        {% if is_paginated %}
+                            <nav aria-label="Paginação" class="mt-3">
+                                <ul class="pagination justify-content-center">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=1">Primeira</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                                        </li>
+                                    {% endif %}
+
+                                    {% for num in page_obj.paginator.page_range %}
+                                        {% if page_obj.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Próxima</a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info m-4">
+                            <i class="bi bi-info-circle"></i> Nenhuma origem de problema encontrada. 
+                            <a href="{% url 'acoes:origem_problema_create' %}">Crie uma nova origem</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

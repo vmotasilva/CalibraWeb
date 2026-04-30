@@ -1,0 +1,206 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Criar Registros{% endblock %}
+{% block header_title %}Criar Registros de Treinamento{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-check-circle"></i> Confirmar Conclusão do Treinamento</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        Antes de concluir, confirme <strong>participantes reais</strong>, <strong>data</strong>,
+                        <strong>horário</strong> e <strong>duração</strong>.
+                    </div>
+                    
+                    <p><strong>Planejamento:</strong> {{ planejamento.titulo }}</p>
+                    <p><strong>Procedimento(s):</strong></p>
+                    <ul class="list-unstyled ms-3">
+                        {% for proc in planejamento.procedimentos.all %}
+                        <li>{{ proc.codigo }} - {{ proc.nome }}</li>
+                        {% empty %}
+                        <li class="text-muted">Nenhum procedimento</li>
+                        {% endfor %}
+                    </ul>
+                    <p><strong>Data Prevista:</strong> {{ planejamento.data_prevista|date:"d/m/Y" }}</p>
+                    <p><strong>Instrutor:</strong> {{ planejamento.instrutor.nome_completo|default:"Não definido" }}</p>
+                    
+                    <hr>
+                    
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                            <label class="form-label"><strong>Data da Realização *</strong></label>
+                            <input type="date" name="data_treinamento" class="form-control" 
+                                   value="{{ planejamento.data_prevista|date:'Y-m-d' }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label"><strong>Horário *</strong></label>
+                                <input type="time" name="horario_realizado" class="form-control"
+                                       value="{{ planejamento.horario_previsto|time:'H:i'|default:'' }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label"><strong>Duração (minutos) *</strong></label>
+                                <input type="number" name="duracao_minutos" class="form-control" min="1"
+                                       value="{{ planejamento.carga_horaria|default:'' }}" required>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Participantes</h6>
+                                        <small class="text-muted">Desmarque quem não participou.</small>
+                                    </div>
+                                    <div class="card-body" id="box-participantes" style="max-height: 280px; overflow:auto;">
+                                        {% for colab in participantes_planejados %}
+                                        <div class="form-check mb-2" data-colab-id="{{ colab.id }}">
+                                            <input class="form-check-input" type="checkbox" name="participantes_planejados" value="{{ colab.id }}" id="colab-pl-{{ colab.id }}" checked>
+                                            <label class="form-check-label" for="colab-pl-{{ colab.id }}">
+                                                {{ colab.nome_completo|default:"Sem nome" }}
+                                            </label>
+                                        </div>
+                                        {% empty %}
+                                        <div class="text-muted">Nenhum participante planejado.</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Adicionar participantes extras</h6>
+                                        <small class="text-muted">Selecione quem participou, mesmo sem estar no planejamento inicial.</small>
+                                    </div>
+                                    <div class="card-body">
+                                        <input type="text" id="buscar-participantes-extras" class="form-control form-control-sm mb-2" placeholder="Buscar participante...">
+                                        <select id="participantes-adicionais-select" class="form-select" multiple size="9">
+                                            {% for colab in participantes_adicionais %}
+                                            <option value="{{ colab.id }}">{{ colab.nome_completo|default:"Sem nome" }}</option>
+                                            {% empty %}
+                                            <option value="" disabled>Nenhum colaborador adicional disponível</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <small class="text-muted">Use Ctrl/Cmd para selecionar vários.</small>
+                                            <button type="button" id="btn-adicionar-participantes" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-plus-circle"></i> Adicionar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning mt-3">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Atenção:</strong> Ao confirmar, o planejamento será marcado como <strong>REALIZADO</strong>
+                            e os registros serão gerados para os participantes finais selecionados.
+                        </div>
+                        
+                        <div class="mt-4 d-flex justify-content-between">
+                            <a href="{% url 'procedures:detalhe_planejamento' planejamento.id %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle"></i> Confirmar Conclusão e Gerar Registros
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const busca = document.getElementById('buscar-participantes-extras');
+    const extrasSelect = document.getElementById('participantes-adicionais-select');
+    const btnAdicionar = document.getElementById('btn-adicionar-participantes');
+    const boxParticipantes = document.getElementById('box-participantes');
+
+    function normalizar(texto) {
+        return String(texto || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '');
+    }
+
+    if (busca && extrasSelect) {
+        busca.addEventListener('input', function () {
+            const termo = normalizar(busca.value);
+            Array.from(extrasSelect.options).forEach(function (opt) {
+                const texto = normalizar(opt.textContent || '');
+                opt.hidden = !!termo && !texto.includes(termo);
+            });
+        });
+    }
+
+    if (btnAdicionar && extrasSelect && boxParticipantes) {
+        btnAdicionar.addEventListener('click', function () {
+            const selecionados = Array.from(extrasSelect.selectedOptions).filter(function (opt) {
+                return opt.value && !opt.disabled;
+            });
+
+            if (!selecionados.length) {
+                return;
+            }
+
+            selecionados.forEach(function (opt) {
+                const id = String(opt.value);
+                const nome = String(opt.textContent || '').trim();
+
+                if (!id || !nome) {
+                    return;
+                }
+
+                const existente = boxParticipantes.querySelector('[data-colab-id="' + id + '"] input[name="participantes_planejados"]');
+                if (existente) {
+                    existente.checked = true;
+                } else {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'form-check mb-2';
+                    wrapper.setAttribute('data-colab-id', id);
+
+                    const input = document.createElement('input');
+                    input.className = 'form-check-input';
+                    input.type = 'checkbox';
+                    input.name = 'participantes_planejados';
+                    input.value = id;
+                    input.id = 'colab-pl-extra-' + id;
+                    input.checked = true;
+
+                    const label = document.createElement('label');
+                    label.className = 'form-check-label';
+                    label.setAttribute('for', input.id);
+                    label.textContent = nome;
+
+                    wrapper.appendChild(input);
+                    wrapper.appendChild(label);
+                    boxParticipantes.appendChild(wrapper);
+                }
+
+                opt.remove();
+            });
+
+            if (busca) {
+                busca.value = '';
+                busca.dispatchEvent(new Event('input'));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

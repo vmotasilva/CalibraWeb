@@ -1,0 +1,69 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}{{ cotacao.titulo }}{% endblock %}
+{% block header_title %}{{ cotacao.titulo }}{% endblock %}
+
+{% block main_content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>Informações da Cotação</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Título:</strong> {{ cotacao.titulo }}</p>
+                <p><strong>Status:</strong> <span class="badge bg-info">{{ cotacao.get_status_display }}</span></p>
+                <p><strong>Data de Abertura:</strong> {{ cotacao.data_abertura|date:"d/m/Y" }}</p>
+                <p><strong>Prazo Limite:</strong> {{ cotacao.prazo_limite|date:"d/m/Y" }}</p>
+                <p><strong>Responsável:</strong> {{ cotacao.responsavel.nome_completo }}</p>
+            </div>
+        </div>
+
+        {% if orcamentos %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Orçamentos Recebidos</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fornecedor</th>
+                            <th>Valor Total</th>
+                            <th>Prazo (dias)</th>
+                            <th>Vencedor</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for orc in orcamentos %}
+                        <tr>
+                            <td>{{ orc.fornecedor.nome_fantasia }}</td>
+                            <td>R$ {{ orc.valor_total|floatformat:2 }}</td>
+                            <td>{{ orc.prazo_execucao_dias }}</td>
+                            <td>{% if orc.vencedor %}✓{% endif %}</td>
+                            <td>
+                                <a href="{% url 'procedures:editar_orcamento' orc.id %}" class="btn btn-sm btn-warning">Editar</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6>Ações</h6>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'procedures:novo_orcamento' %}" class="btn btn-success w-100 mb-2">Novo Orçamento</a>
+                <a href="{% url 'procedures:editar_cotacao' cotacao.id %}" class="btn btn-warning w-100 mb-2">Editar</a>
+                <a href="{% url 'procedures:cotacoes_list' %}" class="btn btn-secondary w-100">Voltar</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

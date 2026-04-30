@@ -1,0 +1,9 @@
+{
+  "rules": [
+    { "categoria": "PAQUÍMETROS", "contains_any": ["PAQUIMETRO", "PAQUÍMETRO", "PAQUI"] },
+    { "categoria": "MICRÔMETROS", "contains_any": ["MICROMETRO", "MICRÔMETRO", "MICRO"] },
+    { "categoria": "TORQUÍMETROS", "contains_any": ["TORQUE", "TORQUIMETRO", "TORQUÍMETRO"] },
+    { "categoria": "BALANÇAS", "contains_any": ["BALANCA", "BALANÇA", "BALTH"] },
+    { "categoria": "TERMÔMETROS", "contains_any": ["TERMOMETRO", "TERMÔMETRO", "TEMPERAT"] }
+  ]
+}

@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Ações Registradas - CalibraWeb{% endblock %}
+
+{% block extra_css %}
+<style>
+    .table-responsive {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    
+    .badge-tipo {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .badge-plano_acao { background-color: #007bff; }
+    .badge-a3 { background-color: #28a745; }
+    .badge-8d { background-color: #ffc107; color: #000; }
+    .badge-rnc { background-color: #dc3545; }
+    .badge-mudanca { background-color: #17a2b8; }
+    .badge-rg { background-color: #6f42c1; }
+    
+    .status-planejada { background-color: #e9ecef; color: #495057; }
+    .status-em_curso { background-color: #ffc107; color: #000; }
+    .status-completa { background-color: #28a745; color: #fff; }
+    .status-retardo { background-color: #fd7e14; color: #fff; }
+    .status-cancelada { background-color: #6c757d; color: #fff; }
+    
+    .filtros-container {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .coluna-numero {
+        width: 80px;
+        text-align: center;
+    }
+    
+    .coluna-responsaveis {
+        width: 150px;
+        font-size: 0.9rem;
+    }
+    
+    .coluna-descricao {
+        width: 200px;
+        word-break: break-word;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1><i class="fas fa-check-circle"></i> Ações Registradas</h1>
+            <p class="text-muted">Visão consolidada de todas as ações de {{ total_acoes }} soluções</p>
+        </div>
+    </div>
+    
+    <!-- FILTROS -->
+    <div class="filtros-container">
+        <form method="GET" class="form-inline" id="filtrosForm">
+            <div class="form-group mr-3">
+                <label for="tipo" class="mr-2">Tipo de Solução:</label>
+                <select name="tipo" id="tipo" class="form-control form-control-sm">
+                    <option value="todas" {% if filtro_tipo == 'todas' %}selected{% endif %}>Todas</option>
+                    <option value="plano_acao" {% if filtro_tipo == 'plano_acao' %}selected{% endif %}>Plano de Ação</option>
+                    <option value="a3" {% if filtro_tipo == 'a3' %}selected{% endif %}>A3</option>
+                    <option value="8d" {% if filtro_tipo == '8d' %}selected{% endif %}>8D</option>
+                    <option value="rnc" {% if filtro_tipo == 'rnc' %}selected{% endif %}>RNC</option>
+                    <option value="mudanca" {% if filtro_tipo == 'mudanca' %}selected{% endif %}>Mudança</option>
+                    <option value="rg" {% if filtro_tipo == 'rg' %}selected{% endif %}>Revisão Gerencial</option>
+                </select>
+            </div>
+            
+            <div class="form-group mr-3">
+                <label for="status" class="mr-2">Status:</label>
+                <select name="status" id="status" class="form-control form-control-sm">
+                    <option value="">Todos os status</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if filtro_status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group mr-3">
+                <label for="prioridade" class="mr-2">Prioridade:</label>
+                <select name="prioridade" id="prioridade" class="form-control form-control-sm">
+                    <option value="">Todas</option>
+                    <option value="sim" {% if filtro_prioridade == 'sim' %}selected{% endif %}>Sim</option>
+                    <option value="não" {% if filtro_prioridade == 'não' %}selected{% endif %}>Não</option>
+                </select>
+            </div>
+            
+            <div class="form-group mr-3">
+                <label for="busca" class="mr-2">Buscar:</label>
+                <input type="text" name="busca" id="busca" placeholder="Nº, Origem, Problema..." class="form-control form-control-sm" value="{{ busca }}">
+            </div>
+            
+            <button type="submit" class="btn btn-sm btn-primary mr-2">
+                <i class="fas fa-search"></i> Filtrar
+            </button>
+            <a href="{% url 'acoes:acoes_registradas' %}" class="btn btn-sm btn-secondary">
+                <i class="fas fa-redo"></i> Limpar
+            </a>
+        </form>
+    </div>
+    
+    <!-- TABELA DE AÇÕES -->
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered table-sm table-hover">
+            <thead class="thead-dark sticky-top">
+                <tr>
+                    <th class="coluna-numero">Tipo</th>
+                    <th class="coluna-numero">Nº Ação</th>
+                    <th>Input/Origem</th>
+                    <th class="coluna-descricao">Problema</th>
+                    <th>Lab</th>
+                    <th>KPI</th>
+                    <th>Descrição</th>
+                    <th>Classificação</th>
+                    <th>Status</th>
+                    <th>Prioridade</th>
+                    <th class="coluna-responsaveis">Responsáveis</th>
+                    <th>1º Deadline</th>
+                    <th>2º Deadline</th>
+                    <th>Comentários</th>
+                    <th>Eficácia</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for acao in acoes %}
+                <tr>
+                    <td>
+                        <span class="badge badge-tipo badge-{{ acao.tipo_slug }}" title="{{ acao.tipo_solucao }}">
+                            {{ acao.tipo_slug|upper }}
+                        </span>
+                    </td>
+                    <td class="coluna-numero font-weight-bold">{{ acao.numero_acao }}</td>
+                    <td><small>{{ acao.input_origem|truncatewords:3 }}</small></td>
+                    <td><small>{{ acao.problema|truncatewords:5 }}</small></td>
+                    <td><small>{{ acao.laboratorio }}</small></td>
+                    <td><small>{{ acao.kpi }}</small></td>
+                    <td><small>{{ acao.classificacao }}</small></td>
+                    <td><small>{{ acao.classificacao }}</small></td>
+                    <td>
+                        {% if acao.status %}
+                        <span class="badge badge-pill status-{{ acao.status|slugify }}">
+                            {{ acao.status }}
+                        </span>
+                        {% else %}
+                        <span class="badge badge-secondary">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if acao.prioridade == 'Sim' %}
+                        <span class="badge badge-danger">PRIORIDADE</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="coluna-responsaveis"><small>{{ acao.responsaveis|truncatewords:3 }}</small></td>
+                    <td><small>{{ acao.data_primeira_deadline }}</small></td>
+                    <td><small>{{ acao.data_segunda_deadline }}</small></td>
+                    <td><small>{{ acao.comentarios|truncatewords:3 }}</small></td>
+                    <td>
+                        {% if acao.acao_eficaz == 'Eficaz' %}
+                        <span class="badge badge-success">✓ Eficaz</span>
+                        {% elif acao.acao_eficaz == 'Não Eficaz' %}
+                        <span class="badge badge-warning">✗ Não Eficaz</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="#" class="btn btn-sm btn-info" title="Ver detalhes">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        <a href="#" class="btn btn-sm btn-warning" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="16" class="text-center text-muted py-4">
+                        <i class="fas fa-inbox"></i> Nenhuma ação encontrada com os filtros selecionados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- PAGINAÇÃO -->
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">Primeira</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">Anterior</a>
+            </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">Próxima</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">Última</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+    
+    <!-- RESUMO -->
+    <div class="alert alert-info mt-4" role="alert">
+        <strong>{{ total_acoes }}</strong> ações registradas no total
+        {% if filtro_tipo != 'todas' %} • Filtrado por tipo: <strong>{{ filtro_tipo|upper }}</strong>{% endif %}
+        {% if filtro_status %} • Status: <strong>{{ filtro_status }}</strong>{% endif %}
+        {% if busca %} • Busca: <strong>{{ busca }}</strong>{% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('filtrosForm').addEventListener('submit', function(e) {
+        // Serializar e validar filtros antes de enviar
+        console.log('Filtros aplicados');
+    });
+</script>
+{% endblock %}
+

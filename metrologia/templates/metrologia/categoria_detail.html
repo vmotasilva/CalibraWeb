@@ -1,0 +1,606 @@
+{% extends 'base.html' %}
+{% load custom_tags %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- CABEÇALHO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-tags"></i> {{ categoria.nome }}</h2>
+            <p class="text-muted mb-0">ID: {{ categoria.id }}</p>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{% url 'metrologia:categoria_update' categoria.id %}" class="btn btn-warning">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+            <a href="{% url 'metrologia:categorias_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- LAYOUT: Esquerda (Info) + Direita (Instrumentos) -->
+    <div class="row mb-4 g-4">
+        <!-- COLUNA 1: INFORMAÇÕES DA CATEGORIA -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-info-circle"></i> Informações da Categoria
+                </div>
+                <div class="card-body">
+                    <!-- NOME -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Nome</label>
+                        <p class="mb-0"><strong>{{ categoria.nome }}</strong></p>
+                    </div>
+
+                    <!-- UNIDADE PADRÃO -->
+                    {% if categoria.unidade_padrao %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Unidade Padrão</label>
+                        <p class="mb-0"><strong>{{ categoria.unidade_padrao.nome }}</strong></p>
+                    </div>
+                    {% endif %}
+
+                    <!-- SIGLA -->
+                    {% if categoria.sigla %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Sigla (Prefixo)</label>
+                        <p class="mb-0"><span class="badge bg-primary fs-6">{{ categoria.sigla }}</span></p>
+                    </div>
+                    {% endif %}
+
+                    <!-- TRATATIVA DE CALIBRAÇÃO -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Tratativa de Calibração</label>
+                        <p class="mb-0">
+                            {% if categoria.tratativa_calibracao == 'INTERNA' %}
+                                <span class="badge bg-success">Interna</span>
+                            {% elif categoria.tratativa_calibracao == 'EXTERNA' %}
+                                <span class="badge bg-warning">Externa</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- DESCRIÇÃO -->
+                    {% if categoria.descricao %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Descrição</label>
+                        <p class="mb-0 text-muted" style="white-space: pre-wrap;">{{ categoria.descricao }}</p>
+                    </div>
+                    {% endif %}
+
+                    <hr>
+
+                    <!-- ESTATÍSTICAS -->
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div>
+                                <h3 class="mb-1">{{ total_instrumentos }}</h3>
+                                <small class="text-muted">Instrumento(s)</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div>
+                                <h3 class="mb-1">{{ total_faixas }}</h3>
+                                <small class="text-muted">Faixa(s)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUNA 2: INSTRUMENTOS -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseInstrumentos" aria-expanded="false" aria-controls="collapseInstrumentos">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-hourglass-split"></i> Instrumentos Cadastrados ({{ total_instrumentos }})</span>
+                        <i class="bi bi-chevron-down" id="iconInstrumentos"></i>
+                    </div>
+                </div>
+                <div class="collapse" id="collapseInstrumentos">
+                <div class="card-body p-0">
+                    <!-- BARRA DE AÇÕES EM MASSA PARA INSTRUMENTOS -->
+                    <div id="acoesInstrumentos" class="bg-light border-bottom p-3" style="display: none;">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <span class="badge bg-info me-2"><span id="totalSelecionadosInst">0</span> instrumento(s) selecionado(s)</span>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="moverParaEstaCategoria()">
+                                    <i class="bi bi-arrow-right"></i> Mover para esta categoria
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if instrumentos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="tabelaInstrumentos">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="3%"><input type="checkbox" id="selecionarTodosInst" title="Selecionar todos"></th>
+                                    <th width="15%">TAG</th>
+                                    <th width="25%">Descrição</th>
+                                    <th width="15%">Fabricante</th>
+                                    <th width="15%">Setor</th>
+                                    <th width="15%">Faixas</th>
+                                    <th width="15%">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for instrumento in instrumentos %}
+                                <tr>
+                                    <td><input type="checkbox" class="checkbox-instrumento" value="{{ instrumento.id }}" onchange="atualizarContadorSelecionadosInst()"></td>
+                                    <td>
+                                        <strong>{{ instrumento.tag }}</strong>
+                                        {% if not instrumento.ativo %}
+                                        <br><span class="badge bg-danger">INATIVO</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ instrumento.descricao }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ instrumento.fabricante|default:"-" }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ instrumento.setor.nome|default:"-" }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ instrumento.faixas.count }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'detalhe_instrumento' instrumento.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-4 text-center text-muted">
+                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                        <p class="mt-3">Nenhum instrumento cadastrado nesta categoria.</p>
+                    </div>
+                    {% endif %}
+                </div>
+                </div>
+            </div>
+
+            <!-- FAIXAS DE MEDIÇÃO -->
+            {% if faixas_instrumentos %}
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-warning text-white" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseFaixasInstrumentos" aria-expanded="false" aria-controls="collapseFaixasInstrumentos">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-bar-chart"></i> Faixas de Medição dos Instrumentos ({{ total_faixas_instrumentos }})</span>
+                        <i class="bi bi-chevron-down" id="iconFaixasInstrumentos"></i>
+                    </div>
+                </div>
+                <div class="collapse" id="collapseFaixasInstrumentos">
+                <div class="card-body p-0">
+                    <!-- BARRA DE AÇÕES EM MASSA -->
+                    <div id="acoesMassa" class="bg-light border-bottom p-3" style="display: none;">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <span class="badge bg-primary me-2"><span id="totalSelecionadas">0</span> selecionada(s)</span>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button type="button" class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#modalSubstituirMassa">
+                                    <i class="bi bi-arrow-repeat"></i> Substituir
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="removerEmMassa()">
+                                    <i class="bi bi-trash"></i> Remover
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 small" id="tabelaFaixas">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="3%"><input type="checkbox" id="selecionarTodas" title="Selecionar todas"></th>
+                                    <th width="15%">Instrumento</th>
+                                    <th width="10%">Unidade</th>
+                                    <th width="12%">Mín.</th>
+                                    <th width="12%">Máx.</th>
+                                    <th width="12%">Nominal</th>
+                                    <th width="12%">Tolerância</th>
+                                    <th width="12%">Resolução</th>
+                                    <th width="15%">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for faixa in faixas_instrumentos %}
+                                <tr>
+                                    <td><input type="checkbox" class="checkbox-faixa" value="{{ faixa.id }}" onchange="atualizarContadorSelecionadas()"></td>
+                                    <td><strong>{{ faixa.instrumento.tag }}</strong></td>
+                                    <td>{{ faixa.unidade.nome }}</td>
+                                    <td>{{ faixa.valor_minimo }}</td>
+                                    <td>{{ faixa.valor_maximo }}</td>
+                                    <td>{{ faixa.nominal|default:"-" }}</td>
+                                    <td>{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
+                                    <td>{{ faixa.resolucao|default:"-" }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'metrologia:faixa_instrumento_replace' categoria.id faixa.id %}" class="btn btn-outline-primary" title="Substituir por faixa padrão">
+                                                <i class="bi bi-arrow-repeat"></i>
+                                            </a>
+                                            <form method="post" action="{% url 'metrologia:faixa_instrumento_delete' categoria.id faixa.id %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Remover essa faixa?')" title="Remover">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- FAIXAS PADRÃO DA CATEGORIA -->
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseFaixasPadrao" aria-expanded="false" aria-controls="collapseFaixasPadrao">
+                    <span><i class="bi bi-star"></i> Faixas Padrão da Categoria ({{ total_faixas_padrao }})</span>
+                    <div style="pointer-events: auto;">
+                        <a href="{% url 'metrologia:faixa_categoria_create' categoria.id %}" class="btn btn-sm btn-success me-2" onclick="event.stopPropagation()" title="Criar nova faixa padrão">
+                            <i class="bi bi-plus-lg"></i> <strong>Nova Faixa</strong>
+                        </a>
+                        <i class="bi bi-chevron-down" id="iconFaixasPadrao"></i>
+                    </div>
+                </div>
+                <div class="collapse" id="collapseFaixasPadrao">
+                <div class="card-body">
+                    {% if faixas_padrao %}
+                    <!-- SEÇÃO: ADICIONAR RÁPIDO FAIXA A INSTRUMENTO -->
+                    {% if instrumentos %}
+                    <div class="alert alert-light border border-primary mb-4">
+                        <h6 class="mb-3"><i class="bi bi-lightning"></i> <strong>Atalho: Adicionar Faixa a Instrumento</strong></h6>
+                        <form method="post" action="{% url 'metrologia:faixa_categoria_add_to_instrument' categoria.id %}" class="row g-2 align-items-end">
+                            {% csrf_token %}
+                            
+                            <div class="col-md-4">
+                                <label class="form-label small">Instrumento</label>
+                                <select name="instrumento_id" class="form-select form-select-sm" required>
+                                    <option value="">-- Selecione um instrumento --</option>
+                                    {% for instr in instrumentos %}
+                                    <option value="{{ instr.id }}">{{ instr.tag }} - {{ instr.descricao }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label small">Faixa Padrão</label>
+                                <select name="faixa_padrao_id" class="form-select form-select-sm" required>
+                                    <option value="">-- Selecione uma faixa --</option>
+                                    {% for faixa in faixas_padrao %}
+                                    <option value="{{ faixa.id }}">
+                                        {{ faixa.unidade.nome }}: {{ faixa.valor_minimo }} - {{ faixa.valor_maximo }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-sm btn-success w-100">
+                                    <i class="bi bi-plus-circle"></i> Adicionar Faixa
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <!-- TABELA DE FAIXAS PADRÃO -->
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="12%">Unidade</th>
+                                    <th width="12%">Mín.</th>
+                                    <th width="12%">Máx.</th>
+                                    <th width="12%">Nominal</th>
+                                    <th width="12%">Tolerância</th>
+                                    <th width="12%">Resolução</th>
+                                    <th width="8%">Status</th>
+                                    <th width="18%">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for faixa in faixas_padrao %}
+                                <tr>
+                                    <td><strong>{{ faixa.unidade.nome }}</strong></td>
+                                    <td>{{ faixa.valor_minimo }}</td>
+                                    <td>{{ faixa.valor_maximo }}</td>
+                                    <td>{{ faixa.nominal|default:"-" }}</td>
+                                    <td>{{ faixa.tolerancia_mais_menos|default:"-" }}</td>
+                                    <td>{{ faixa.resolucao|default:"-" }}</td>
+                                    <td>
+                                        {% if faixa.ativa %}
+                                        <span class="badge bg-success">Ativa</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inativa</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'metrologia:faixa_categoria_update' faixa.id %}" class="btn btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Editar
+                                            </a>
+                                            <form method="post" action="{% url 'metrologia:faixa_categoria_delete' faixa.id %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Remover faixa padrão?')">
+                                                    <i class="bi bi-trash"></i> Remover
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-5 text-center">
+                        <i class="bi bi-inbox" style="font-size: 3rem; color: #6c757d;"></i>
+                        <p class="mt-3 text-muted fs-5">Nenhuma faixa padrão cadastrada.</p>
+                        <p class="text-muted small mb-4">Comece criando uma faixa padrão para esta categoria.</p>
+                        <a href="{% url 'metrologia:faixa_categoria_create' categoria.id %}" class="btn btn-lg btn-success">
+                            <i class="bi bi-plus-lg"></i> <strong>Criar Primeira Faixa</strong>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFORMAÇÕES ÚTEIS -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="alert alert-info" role="alert">
+                <i class="bi bi-info-circle"></i> <strong>Como funcionam as faixas padrão:</strong> 
+                As faixas padrão definidas aqui serão sugeridas ao criar novos instrumentos desta categoria, 
+                facilitando o preenchimento rápido. Porém, os valores podem ser ajustados durante o cadastro do instrumento sem qualquer restrição.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: SUBSTITUIR EM MASSA -->
+<div class="modal fade" id="modalSubstituirMassa" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-arrow-repeat"></i> Substituir Faixas em Massa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'metrologia:faixa_instrumento_bulk_replace' categoria.id %}" id="formSubstituirMassa">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="faixaPadraoMassa" class="form-label"><strong>Selecione a Faixa Padrão:</strong></label>
+                        <select id="faixaPadraoMassa" name="faixa_padrao_id" class="form-select" required>
+                            <option value="">-- Selecione uma faixa padrão --</option>
+                            {% for faixa in faixas_padrao %}
+                            <option value="{{ faixa.id }}">
+                                {{ faixa.unidade.nome }}: {{ faixa.valor_minimo }} - {{ faixa.valor_maximo }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <p class="small text-muted">
+                        <i class="bi bi-info-circle"></i> As faixas selecionadas serão substituídas pelos valores da faixa padrão escolhida.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Substituir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card-header[data-bs-toggle="collapse"] {
+        transition: all 0.3s ease;
+    }
+    
+    .card-header[data-bs-toggle="collapse"]:hover {
+        opacity: 0.85;
+    }
+    
+    .bi-chevron-down {
+        transition: transform 0.3s ease;
+    }
+    
+    .card-header[data-bs-toggle="collapse"][aria-expanded="false"] .bi-chevron-down {
+        transform: rotate(-90deg);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animar ícone de chevron ao expandir/recolher
+    ['collapseInstrumentos', 'collapseFaixasInstrumentos', 'collapseFaixasPadrao'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('hidden.bs.collapse', function() {
+                const icon = document.getElementById('icon' + id.charAt(0).toUpperCase() + id.slice(1));
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            });
+            element.addEventListener('shown.bs.collapse', function() {
+                const icon = document.getElementById('icon' + id.charAt(0).toUpperCase() + id.slice(1));
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            });
+        }
+    });
+
+    // Gerenciar seleção de faixas em massa
+    const selecionarTodas = document.getElementById('selecionarTodas');
+    const checkboxesFaixas = document.querySelectorAll('.checkbox-faixa');
+    
+    if (selecionarTodas) {
+        selecionarTodas.addEventListener('change', function() {
+            checkboxesFaixas.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            atualizarContadorSelecionadas();
+        });
+    }
+});
+
+function atualizarContadorSelecionadas() {
+    const checkboxesFaixas = document.querySelectorAll('.checkbox-faixa:checked');
+    const totalSelecionadas = checkboxesFaixas.length;
+    const acoesMassa = document.getElementById('acoesMassa');
+    const totalSpan = document.getElementById('totalSelecionadas');
+    
+    if (totalSelecionadas > 0) {
+        acoesMassa.style.display = 'block';
+        totalSpan.textContent = totalSelecionadas;
+        
+        // Adicionar IDs ao formulário modal
+        const form = document.getElementById('formSubstituirMassa');
+        if (form) {
+            const inputsExistentes = form.querySelectorAll('input[name="faixa_ids"]');
+            inputsExistentes.forEach(input => input.remove());
+            
+            checkboxesFaixas.forEach(checkbox => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'faixa_ids';
+                input.value = checkbox.value;
+                form.appendChild(input);
+            });
+        }
+    } else {
+        acoesMassa.style.display = 'none';
+    }
+    
+    // Atualizar checkbox "Selecionar todas"
+    const selecionarTodas = document.getElementById('selecionarTodas');
+    const totalCheckboxes = document.querySelectorAll('.checkbox-faixa').length;
+    if (selecionarTodas) {
+        selecionarTodas.checked = totalSelecionadas === totalCheckboxes && totalCheckboxes > 0;
+    }
+}
+
+function removerEmMassa() {
+    const checkboxesFaixas = document.querySelectorAll('.checkbox-faixa:checked');
+    
+    if (checkboxesFaixas.length === 0) {
+        alert('Selecione pelo menos uma faixa para remover.');
+        return;
+    }
+    
+    if (!confirm(`Remover ${checkboxesFaixas.length} faixa(s)? Esta ação não pode ser desfeita.`)) {
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "metrologia:faixa_instrumento_bulk_delete" categoria.id %}';
+    
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrf) {
+        form.appendChild(csrf.cloneNode(true));
+    }
+    
+    checkboxesFaixas.forEach(checkbox => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'faixa_ids';
+        input.value = checkbox.value;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// ============================================================================
+// GERENCIAR INSTRUMENTOS EM MASSA
+// ============================================================================
+
+function atualizarContadorSelecionadosInst() {
+    const checkboxesInst = document.querySelectorAll('.checkbox-instrumento:checked');
+    const totalSelecionados = checkboxesInst.length;
+    const acoesInst = document.getElementById('acoesInstrumentos');
+    const totalSpan = document.getElementById('totalSelecionadosInst');
+    
+    if (totalSelecionados > 0) {
+        acoesInst.style.display = 'block';
+        totalSpan.textContent = totalSelecionados;
+    } else {
+        acoesInst.style.display = 'none';
+    }
+    
+    // Atualizar checkbox "Selecionar todos"
+    const selecionarTodosInst = document.getElementById('selecionarTodosInst');
+    const totalCheckboxesInst = document.querySelectorAll('.checkbox-instrumento').length;
+    if (selecionarTodosInst) {
+        selecionarTodosInst.checked = totalSelecionados === totalCheckboxesInst && totalCheckboxesInst > 0;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const selecionarTodosInst = document.getElementById('selecionarTodosInst');
+    const checkboxesInst = document.querySelectorAll('.checkbox-instrumento');
+    
+    if (selecionarTodosInst) {
+        selecionarTodosInst.addEventListener('change', function() {
+            checkboxesInst.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            atualizarContadorSelecionadosInst();
+        });
+    }
+});
+
+function moverParaEstaCategoria() {
+    const checkboxesInst = document.querySelectorAll('.checkbox-instrumento:checked');
+    
+    if (checkboxesInst.length === 0) {
+        alert('Selecione pelo menos um instrumento para mover.');
+        return;
+    }
+    
+    if (!confirm(`Mover ${checkboxesInst.length} instrumento(s) para a categoria "{{ categoria.nome }}"?`)) {
+        return;
+    }
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "metrologia:instrumento_bulk_change_category" categoria.id %}';
+    
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrf) {
+        form.appendChild(csrf.cloneNode(true));
+    }
+    
+    checkboxesInst.forEach(checkbox => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'instrumento_ids';
+        input.value = checkbox.value;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+{% endblock %}

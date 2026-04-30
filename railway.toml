@@ -1,0 +1,13 @@
+[build]
+builder = "dockerfile"
+# Use .dockerignore to exclude unnecessary files
+
+# Main web service (Django + Gunicorn)
+[deploy]
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
+
+# Persistent storage for media files
+[deploy.volumes]
+media = "/data/media"
+
