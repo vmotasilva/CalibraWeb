@@ -82,9 +82,8 @@
                             <td class="text-muted small">{{ categoria.descricao|default:'Sem descricao cadastrada.' }}</td>
                             <td class="text-end">
                                 <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
-                                    {% if can_categoria_update %}<a href="{% url 'maquinas:categoria_update' categoria.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>{% endif %}
+                                    <a href="{% url 'maquinas:categoria_update' categoria.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
                                     {% if can_categoria_delete %}<a href="{% url 'maquinas:categoria_delete' categoria.pk %}" class="btn btn-sm btn-outline-danger">Excluir</a>{% endif %}
-                                    {% if not can_categoria_update and not can_categoria_delete %}<span class="text-muted small">Sem acoes</span>{% endif %}
                                 </div>
                             </td>
                         </tr>

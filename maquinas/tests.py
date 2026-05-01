@@ -161,3 +161,5 @@ class MaquinasViewsTests(TestCase):
         self.assertTrue(has_view_access(module_user, "maquinas:categoria_create"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Nova categoria")
+        self.assertContains(response, "Editar")
+        self.assertNotContains(response, "Sem acoes")
