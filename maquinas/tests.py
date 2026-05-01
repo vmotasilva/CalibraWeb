@@ -1,9 +1,11 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from django.urls import reverse
 
 from laboratorio.models import OcorrenciaLaboratorio
-from shared.permissions import VIEW_NAME_TO_PERMISSION
+from shared.permissions import VIEW_NAME_TO_PERMISSION, has_view_access
+from shared.templatetags.nav_access import can_nav_block
 
 from .models import CategoriaMaquina, Maquina
 
@@ -115,3 +117,25 @@ class MaquinasViewsTests(TestCase):
             self.assertIn(view_name, VIEW_NAME_TO_PERMISSION)
             self.assertEqual(VIEW_NAME_TO_PERMISSION[view_name]["perm"], perm)
             self.assertEqual(VIEW_NAME_TO_PERMISSION[view_name]["module"], "laboratorio")
+
+    def test_legacy_laboratorio_group_keeps_machine_category_create_visible(self):
+        legacy_user = get_user_model().objects.create_user(
+            username="maquinas_legado",
+            password="senha-forte-123",
+        )
+        legacy_group, _ = Group.objects.get_or_create(name="Laboratorio")
+        legacy_user.groups.add(legacy_group)
+        legacy_user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="core",
+                codename="nav_laboratorio_categorias",
+            )
+        )
+
+        self.client.force_login(legacy_user)
+
+        response = self.client.get(reverse("maquinas:categorias_list"))
+
+        self.assertTrue(can_nav_block(legacy_user, "laboratorio", "maquinas"))
+        self.assertTrue(has_view_access(legacy_user, "maquinas:categoria_create"))
+        self.assertEqual(response.status_code, 200)

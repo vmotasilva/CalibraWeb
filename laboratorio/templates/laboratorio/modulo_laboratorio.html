@@ -90,7 +90,7 @@
                                 <span class="text-muted small">Detalhamento de volume, impacto e recorrencia.</span>
                             </a>
                         </div>
-                        {% if can_lab_maquinas and can_maquinas_list %}
+                        {% if can_lab_maquinas %}
                         <div class="col-md-6">
                             <a href="{% url 'maquinas:maquinas_list' %}" class="card card-body text-decoration-none border-success h-100">
                                 <strong class="text-success-emphasis">Cadastro de maquinas</strong>
@@ -98,7 +98,7 @@
                             </a>
                         </div>
                         {% endif %}
-                        {% if can_lab_maquinas and can_maquinas_categorias %}
+                        {% if can_lab_maquinas %}
                         <div class="col-md-6">
                             <a href="{% url 'maquinas:categorias_list' %}" class="card card-body text-decoration-none border-dark h-100">
                                 <strong class="text-dark">Categorias de maquinas</strong>

@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load nav_access %}
 
+{% can_nav_block user 'laboratorio' 'maquinas' as can_lab_maquinas %}
 {% can_nav_view user 'maquinas:maquinas_list' 'laboratorio' as can_maquinas_list %}
 {% can_nav_view user 'maquinas:categoria_create' 'laboratorio' as can_categoria_create %}
 {% can_nav_view user 'maquinas:categoria_update' 'laboratorio' as can_categoria_update %}
@@ -14,8 +15,8 @@
             <p class="text-muted mb-0">Agrupe as maquinas por familia para facilitar o cadastro e a analise no laboratorio.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            {% if can_maquinas_list %}<a href="{% url 'maquinas:maquinas_list' %}" class="btn btn-outline-secondary">Maquinas</a>{% endif %}
-            {% if can_categoria_create %}<a href="{% url 'maquinas:categoria_create' %}" class="btn btn-primary">Nova categoria</a>{% endif %}
+            {% if can_lab_maquinas or can_maquinas_list %}<a href="{% url 'maquinas:maquinas_list' %}" class="btn btn-outline-secondary">Maquinas</a>{% endif %}
+            {% if can_lab_maquinas or can_categoria_create %}<a href="{% url 'maquinas:categoria_create' %}" class="btn btn-primary">Nova categoria</a>{% endif %}
         </div>
     </div>
 

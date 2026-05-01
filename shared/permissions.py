@@ -979,6 +979,19 @@ def get_view_permission_map() -> dict[str, dict[str, str]]:
 VIEW_NAME_TO_PERMISSION = get_view_permission_map()
 
 
+def _has_legacy_module_group_access(user, module_key: str) -> bool:
+    module_info = MODULES_PERMISSIONS.get(module_key)
+    if not user or not module_info:
+        return False
+
+    try:
+        group = Group.objects.get(name=module_info["name"])
+    except Group.DoesNotExist:
+        return False
+
+    return user.groups.filter(id=group.id).exists()
+
+
 def _user_has_direct_perm(user, full_perm: str | None) -> bool:
     """Checa permissão APENAS nas permissões diretas do usuário (não considera grupos).
 
@@ -1015,6 +1028,21 @@ def _user_has_nav_perm(user, full_perm: str | None) -> bool:
     if app_label == "core" and str(codename).startswith("nav_"):
         return _user_has_direct_perm(user, full_perm)
     return bool(user and user.has_perm(full_perm))
+
+
+def is_legacy_module_transition_mode(user, module_key: str) -> bool:
+    """Indica se o usuário ainda depende do grupo legado para entrar no módulo.
+
+    Nesse cenário, mantemos as funções não destrutivas disponíveis até que o
+    flag `nav_mod_*` seja explicitamente atribuído ao usuário.
+    """
+    if not user or not module_key:
+        return False
+
+    return bool(
+        _has_legacy_module_group_access(user, module_key)
+        and not has_module_nav_flag(user, module_key)
+    )
 
 
 def user_has_any_nav_perm_for_module(user, module_key: str) -> bool:
@@ -1090,11 +1118,11 @@ def has_view_access(user, view_name: str) -> bool:
         )
         return any(key in codename for key in destructive_keywords)
 
-    # Legado: se o usuário tem acesso ao módulo via grupo e ainda não tem nenhum nav_* do módulo,
-    # permitir transição suave, EXCETO para ações destrutivas (delete/remover/excluir).
-    if module_key and has_module_access(user, module_key) and not user_has_any_nav_perm_for_module(user, module_key):
+    # Legado/transição: se o usuário ainda entra no módulo pelo grupo legado e
+    # não recebeu o flag nav_mod_*, manter as funções não destrutivas visíveis.
+    if module_key and is_legacy_module_transition_mode(user, module_key):
         if _is_destructive_nav_perm(required_perm):
-            return bool(required_perm and user.has_perm(required_perm))
+            return bool(required_perm and _user_has_nav_perm(user, required_perm))
         return True
 
     # Novo modelo (usuário já está "configurado" no nav_*):
@@ -1162,22 +1190,14 @@ def has_module_access(user, module_key):
     # Novo modelo: permissão nav do módulo
     module = _nav_module_config(module_key)
     if module:
-        # Se o usuário já está no novo modelo para este módulo (tem algum nav_* do módulo),
-        # considerar acesso ao módulo SOMENTE quando o flag do módulo (nav_mod_*) estiver ativo.
-        if user_has_any_nav_perm_for_module(user, module_key):
-            module_perm = module.get("module_perm")
-            return bool(module_perm and _user_has_nav_perm(user, module_perm))
+        module_perm = module.get("module_perm")
+        if module_perm and _user_has_nav_perm(user, module_perm):
+            return True
 
-        # Caso contrário (ainda não configurado no novo modelo), segue fallback legado via grupo.
+        if _has_legacy_module_group_access(user, module_key):
+            return True
+
+        return False
 
     # Legado: acesso via grupo
-    module_info = MODULES_PERMISSIONS.get(module_key)
-    if not module_info:
-        return False
-
-    try:
-        group = Group.objects.get(name=module_info["name"])
-    except Group.DoesNotExist:
-        return False
-
-    return user.groups.filter(id=group.id).exists()
+    return _has_legacy_module_group_access(user, module_key)

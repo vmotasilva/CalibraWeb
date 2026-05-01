@@ -6,6 +6,7 @@ from shared.permissions import (
     has_block_nav_flag,
     has_module_access,
     has_view_access,
+    is_legacy_module_transition_mode,
     user_has_any_nav_perm_for_module,
 )
 
@@ -45,6 +46,9 @@ def can_nav_block(user, module_key: str, block_key: str) -> bool:
 
     if not has_module_access(user, module_key):
         return False
+
+    if is_legacy_module_transition_mode(user, module_key):
+        return True
 
     if not user_has_any_nav_perm_for_module(user, module_key):
         return True

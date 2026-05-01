@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load nav_access %}
 
+{% can_nav_block user 'laboratorio' 'maquinas' as can_lab_maquinas %}
 {% can_nav_view user 'maquinas:maquina_create' 'laboratorio' as can_maquina_create %}
 {% can_nav_view user 'maquinas:maquina_update' 'laboratorio' as can_maquina_update %}
 {% can_nav_view user 'maquinas:maquina_delete' 'laboratorio' as can_maquina_delete %}
@@ -15,8 +16,8 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'laboratorio:modulo' %}" class="btn btn-outline-secondary">Modulo laboratorio</a>
-            {% if can_categoria_list %}<a href="{% url 'maquinas:categorias_list' %}" class="btn btn-outline-dark">Categorias</a>{% endif %}
-            {% if can_maquina_create %}<a href="{% url 'maquinas:maquina_create' %}" class="btn btn-primary">Nova maquina</a>{% endif %}
+            {% if can_lab_maquinas or can_categoria_list %}<a href="{% url 'maquinas:categorias_list' %}" class="btn btn-outline-dark">Categorias</a>{% endif %}
+            {% if can_lab_maquinas or can_maquina_create %}<a href="{% url 'maquinas:maquina_create' %}" class="btn btn-primary">Nova maquina</a>{% endif %}
         </div>
     </div>
 
