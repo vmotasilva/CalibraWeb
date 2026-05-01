@@ -64,6 +64,99 @@ def _build_ocorrencia_detail_context(
     }
 
 
+def _build_ocorrencia_form_context(form):
+    categorias_sugestoes = CategoriaLaboratorio.objects.order_by("nome")
+    maquinas_modal = []
+    colaboradores_modal = []
+    maquinas_categorias_map = {}
+    colaboradores_setores_map = {}
+
+    for maquina in form.fields["maquina"].queryset.select_related("categoria", "setor"):
+        categoria_filtro = str(maquina.categoria_id) if maquina.categoria_id else "__none__"
+        categoria_nome = maquina.categoria.nome if maquina.categoria_id else "Sem categoria"
+        maquinas_categorias_map[categoria_filtro] = categoria_nome
+        maquinas_modal.append(
+            {
+                "id": maquina.pk,
+                "nome": maquina.display_name,
+                "categoria_filtro": categoria_filtro,
+                "categoria_nome": categoria_nome,
+                "setor_nome": maquina.setor.nome if maquina.setor_id else "",
+            }
+        )
+
+    for colaborador in form.fields["colaborador"].queryset.select_related("setor"):
+        setor_filtro = str(colaborador.setor_id) if colaborador.setor_id else "__none__"
+        setor_nome = colaborador.setor.nome if colaborador.setor_id else "Sem setor"
+        colaboradores_setores_map[setor_filtro] = setor_nome
+        colaboradores_modal.append(
+            {
+                "id": colaborador.pk,
+                "nome": colaborador.nome_completo,
+                "setor_filtro": setor_filtro,
+                "setor_nome": setor_nome,
+                "matricula": colaborador.matricula,
+            }
+        )
+
+    maquina_atual = next(
+        (
+            maquina
+            for maquina in maquinas_modal
+            if str(maquina["id"]) == str(form["maquina"].value() or "")
+        ),
+        None,
+    )
+    colaborador_atual = next(
+        (
+            colaborador
+            for colaborador in colaboradores_modal
+            if str(colaborador["id"]) == str(form["colaborador"].value() or "")
+        ),
+        None,
+    )
+
+    maquinas_categorias_modal = [
+        {"id": filtro, "nome": nome}
+        for filtro, nome in sorted(
+            maquinas_categorias_map.items(),
+            key=lambda item: (item[1] == "Sem categoria", item[1].lower()),
+        )
+    ]
+    colaboradores_setores_modal = [
+        {"id": filtro, "nome": nome}
+        for filtro, nome in sorted(
+            colaboradores_setores_map.items(),
+            key=lambda item: (item[1] == "Sem setor", item[1].lower()),
+        )
+    ]
+
+    return {
+        "categorias_sugestoes": categorias_sugestoes,
+        "categorias_json": list(categorias_sugestoes.values("id", "nome", "impacto")),
+        "maquinas_modal": maquinas_modal,
+        "maquinas_categorias_modal": maquinas_categorias_modal,
+        "colaboradores_modal": colaboradores_modal,
+        "colaboradores_setores_modal": colaboradores_setores_modal,
+        "maquina_resumo": maquina_atual["nome"] if maquina_atual else "Nenhuma máquina selecionada.",
+        "maquina_detalhe": (
+            "Categoria: "
+            + maquina_atual["categoria_nome"]
+            + (f" | Setor: {maquina_atual['setor_nome']}" if maquina_atual and maquina_atual["setor_nome"] else "")
+        )
+        if maquina_atual
+        else "Abra o pop-up para filtrar por categoria e escolher a máquina.",
+        "colaborador_resumo": colaborador_atual["nome"] if colaborador_atual else "Nenhum colaborador selecionado.",
+        "colaborador_detalhe": (
+            "Setor: "
+            + colaborador_atual["setor_nome"]
+            + (f" | Matrícula: {colaborador_atual['matricula']}" if colaborador_atual and colaborador_atual["matricula"] else "")
+        )
+        if colaborador_atual
+        else "Abra o pop-up para filtrar por setor e escolher o colaborador.",
+    }
+
+
 @login_required
 def modulo_laboratorio_view(request):
     ocorrencias = list(
@@ -93,6 +186,7 @@ def ocorrencias_list(request):
     ocorrencias = OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel")
     filtros = {
         "q": (request.GET.get("q") or "").strip(),
+        "categoria": request.GET.get("categoria") or "",
         "impacto": request.GET.get("impacto") or "",
         "status": request.GET.get("status") or "",
         "inicio": request.GET.get("inicio") or "",
@@ -110,6 +204,9 @@ def ocorrencias_list(request):
             | Q(consequencias__icontains=termo)
         )
 
+    if filtros["categoria"]:
+        ocorrencias = ocorrencias.filter(categoria_id=filtros["categoria"])
+
     if filtros["impacto"]:
         ocorrencias = ocorrencias.filter(impacto=filtros["impacto"])
 
@@ -125,6 +222,7 @@ def ocorrencias_list(request):
 
     context = {
         "ocorrencias": ocorrencias.order_by("-data_abertura"),
+        "categorias": CategoriaLaboratorio.objects.order_by("nome"),
         "impacto_choices": CategoriaLaboratorio.IMPACTO_CHOICES,
         "filtros": filtros,
     }
@@ -142,15 +240,13 @@ def ocorrencia_create(request):
     else:
         form = OcorrenciaLaboratorioForm(user=request.user)
 
-    categorias = list(CategoriaLaboratorio.objects.order_by("nome").values("id", "nome", "impacto"))
     context = {
         "form": form,
         "titulo": "Nova ocorrencia",
         "acao": "Registrar ocorrencia",
-        "categorias_sugestoes": CategoriaLaboratorio.objects.order_by("nome"),
-        "categorias_json": categorias,
         "duracao_atual": "Sera calculada automaticamente ao informar o encerramento.",
     }
+    context.update(_build_ocorrencia_form_context(form))
     return render(request, "laboratorio/ocorrencia_form.html", context)
 
 
@@ -166,16 +262,14 @@ def ocorrencia_update(request, pk):
     else:
         form = OcorrenciaLaboratorioForm(instance=ocorrencia, user=request.user)
 
-    categorias = list(CategoriaLaboratorio.objects.order_by("nome").values("id", "nome", "impacto"))
     context = {
         "form": form,
         "titulo": "Atualizar ocorrencia",
         "acao": "Salvar alteracoes",
-        "categorias_sugestoes": CategoriaLaboratorio.objects.order_by("nome"),
-        "categorias_json": categorias,
         "duracao_atual": ocorrencia.duracao_formatada,
         "ocorrencia": ocorrencia,
     }
+    context.update(_build_ocorrencia_form_context(form))
     return render(request, "laboratorio/ocorrencia_form.html", context)
 
 

@@ -63,14 +63,32 @@
                 </div>
                 <div class="col-md-6" id="div-colaborador" style="display:none;">
                     <label class="form-label">{{ form.colaborador.label }}</label>
-                    {{ form.colaborador }}
-                    <div class="form-text">Selecione o colaborador relacionado à ocorrência.</div>
+                    <div class="d-none">{{ form.colaborador }}</div>
+                    <div class="border rounded-3 bg-light px-3 py-3">
+                        <div class="small text-muted text-uppercase mb-1">Selecao atual</div>
+                        <div class="fw-semibold" id="colaborador-resumo">{{ colaborador_resumo }}</div>
+                        <div class="small text-muted" id="colaborador-detalhe">{{ colaborador_detalhe }}</div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#colaboradorModal">Selecionar colaborador</button>
+                        <button type="button" class="btn btn-outline-secondary" id="limpar-colaborador">Limpar</button>
+                    </div>
+                    <div class="form-text">Abra o pop-up para filtrar por setor e escolher o colaborador.</div>
                     {% if form.colaborador.errors %}<div class="text-danger small mt-1">{{ form.colaborador.errors|join:', ' }}</div>{% endif %}
                 </div>
                 <div class="col-md-6" id="div-maquina" style="display:none;">
                     <label class="form-label">{{ form.maquina.label }}</label>
-                    {{ form.maquina }}
-                    <div class="form-text">Selecione a máquina relacionada à ocorrência.</div>
+                    <div class="d-none">{{ form.maquina }}</div>
+                    <div class="border rounded-3 bg-light px-3 py-3">
+                        <div class="small text-muted text-uppercase mb-1">Selecao atual</div>
+                        <div class="fw-semibold" id="maquina-resumo">{{ maquina_resumo }}</div>
+                        <div class="small text-muted" id="maquina-detalhe">{{ maquina_detalhe }}</div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#maquinaModal">Selecionar maquina</button>
+                        <button type="button" class="btn btn-outline-secondary" id="limpar-maquina">Limpar</button>
+                    </div>
+                    <div class="form-text">Abra o pop-up para filtrar por categoria e escolher a máquina.</div>
                     {% if form.maquina.errors %}<div class="text-danger small mt-1">{{ form.maquina.errors|join:', ' }}</div>{% endif %}
                 </div>
                 <div class="col-12">
@@ -96,23 +114,223 @@
         </div>
     </form>
 </div>
+
+<div class="modal fade" id="maquinaModal" tabindex="-1" aria-labelledby="maquinaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="maquinaModalLabel">Selecionar máquina</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label" for="maquina-categoria-filtro">Categoria da máquina</label>
+                        <select class="form-select" id="maquina-categoria-filtro">
+                            <option value="">Todas</option>
+                            {% for categoria in maquinas_categorias_modal %}
+                            <option value="{{ categoria.id }}">{{ categoria.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="maquina-modal-select">Máquina da categoria</label>
+                        <select class="form-select" id="maquina-modal-select">
+                            <option value="">Selecione uma máquina</option>
+                        </select>
+                    </div>
+                    <div class="col-12 small text-muted" id="maquina-modal-detalhe">Filtre por categoria para localizar a máquina com mais rapidez.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmar-maquina">Aplicar máquina</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="colaboradorModal" tabindex="-1" aria-labelledby="colaboradorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="colaboradorModalLabel">Selecionar colaborador</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label" for="colaborador-setor-filtro">Setor</label>
+                        <select class="form-select" id="colaborador-setor-filtro">
+                            <option value="">Todos</option>
+                            {% for setor in colaboradores_setores_modal %}
+                            <option value="{{ setor.id }}">{{ setor.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="colaborador-modal-select">Colaborador do setor</label>
+                        <select class="form-select" id="colaborador-modal-select">
+                            <option value="">Selecione um colaborador</option>
+                        </select>
+                    </div>
+                    <div class="col-12 small text-muted" id="colaborador-modal-detalhe">Filtre por setor para localizar o colaborador com mais rapidez.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmar-colaborador">Aplicar colaborador</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock content %}
 
 {% block extra_js %}
 {{ categorias_json|json_script:"categorias-laboratorio" }}
+{{ maquinas_modal|json_script:"maquinas-laboratorio" }}
+{{ colaboradores_modal|json_script:"colaboradores-laboratorio" }}
 <script>
     (function() {
         const categoriaSelect = document.getElementById('id_categoria');
         const assuntoInput = document.getElementById('id_assunto');
         const impactoSelect = document.getElementById('id_impacto');
+        const colaboradorSelect = document.getElementById('id_colaborador');
+        const maquinaSelect = document.getElementById('id_maquina');
         const divColaborador = document.getElementById('div-colaborador');
         const divMaquina = document.getElementById('div-maquina');
+        const maquinaResumo = document.getElementById('maquina-resumo');
+        const maquinaDetalhe = document.getElementById('maquina-detalhe');
+        const colaboradorResumo = document.getElementById('colaborador-resumo');
+        const colaboradorDetalhe = document.getElementById('colaborador-detalhe');
+        const maquinaCategoriaFiltro = document.getElementById('maquina-categoria-filtro');
+        const maquinaModalSelect = document.getElementById('maquina-modal-select');
+        const maquinaModalDetalhe = document.getElementById('maquina-modal-detalhe');
+        const colaboradorSetorFiltro = document.getElementById('colaborador-setor-filtro');
+        const colaboradorModalSelect = document.getElementById('colaborador-modal-select');
+        const colaboradorModalDetalhe = document.getElementById('colaborador-modal-detalhe');
+        const limparMaquinaBtn = document.getElementById('limpar-maquina');
+        const limparColaboradorBtn = document.getElementById('limpar-colaborador');
+        const confirmarMaquinaBtn = document.getElementById('confirmar-maquina');
+        const confirmarColaboradorBtn = document.getElementById('confirmar-colaborador');
+        const maquinaModal = document.getElementById('maquinaModal');
+        const colaboradorModal = document.getElementById('colaboradorModal');
         const categorias = JSON.parse(document.getElementById('categorias-laboratorio').textContent);
+        const maquinas = JSON.parse(document.getElementById('maquinas-laboratorio').textContent);
+        const colaboradores = JSON.parse(document.getElementById('colaboradores-laboratorio').textContent);
         const porId = {};
+        const maquinasPorId = {};
+        const colaboradoresPorId = {};
 
         categorias.forEach((categoria) => {
             porId[String(categoria.id)] = categoria;
         });
+        maquinas.forEach((maquina) => {
+            maquinasPorId[String(maquina.id)] = maquina;
+        });
+        colaboradores.forEach((colaborador) => {
+            colaboradoresPorId[String(colaborador.id)] = colaborador;
+        });
+
+        function preencherOpcoes(selectElement, items, placeholder) {
+            selectElement.innerHTML = '';
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = placeholder;
+            selectElement.appendChild(defaultOption);
+
+            items.forEach((item) => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.nome;
+                selectElement.appendChild(option);
+            });
+        }
+
+        function atualizarResumoMaquina() {
+            const maquina = maquinasPorId[String(maquinaSelect.value)] || null;
+            if (!maquina) {
+                maquinaResumo.textContent = 'Nenhuma máquina selecionada.';
+                maquinaDetalhe.textContent = 'Abra o pop-up para filtrar por categoria e escolher a máquina.';
+                return;
+            }
+            const detalhes = ['Categoria: ' + maquina.categoria_nome];
+            if (maquina.setor_nome) {
+                detalhes.push('Setor: ' + maquina.setor_nome);
+            }
+            maquinaResumo.textContent = maquina.nome;
+            maquinaDetalhe.textContent = detalhes.join(' | ');
+        }
+
+        function atualizarResumoColaborador() {
+            const colaborador = colaboradoresPorId[String(colaboradorSelect.value)] || null;
+            if (!colaborador) {
+                colaboradorResumo.textContent = 'Nenhum colaborador selecionado.';
+                colaboradorDetalhe.textContent = 'Abra o pop-up para filtrar por setor e escolher o colaborador.';
+                return;
+            }
+            const detalhes = ['Setor: ' + colaborador.setor_nome];
+            if (colaborador.matricula) {
+                detalhes.push('Matrícula: ' + colaborador.matricula);
+            }
+            colaboradorResumo.textContent = colaborador.nome;
+            colaboradorDetalhe.textContent = detalhes.join(' | ');
+        }
+
+        function atualizarMaquinasDoFiltro() {
+            const categoriaFiltro = maquinaCategoriaFiltro.value;
+            const maquinasFiltradas = maquinas.filter((maquina) => {
+                return !categoriaFiltro || maquina.categoria_filtro === categoriaFiltro;
+            });
+            preencherOpcoes(maquinaModalSelect, maquinasFiltradas, 'Selecione uma máquina');
+            if (maquinaSelect.value && maquinasPorId[String(maquinaSelect.value)]) {
+                const maquinaAtual = maquinasPorId[String(maquinaSelect.value)];
+                if (!categoriaFiltro || maquinaAtual.categoria_filtro === categoriaFiltro) {
+                    maquinaModalSelect.value = String(maquinaAtual.id);
+                }
+            }
+            const maquinaSelecionada = maquinasPorId[String(maquinaModalSelect.value)] || null;
+            maquinaModalDetalhe.textContent = maquinaSelecionada
+                ? 'Categoria: ' + maquinaSelecionada.categoria_nome + (maquinaSelecionada.setor_nome ? ' | Setor: ' + maquinaSelecionada.setor_nome : '')
+                : 'Filtre por categoria para localizar a máquina com mais rapidez.';
+        }
+
+        function atualizarColaboradoresDoFiltro() {
+            const setorFiltro = colaboradorSetorFiltro.value;
+            const colaboradoresFiltrados = colaboradores.filter((colaborador) => {
+                return !setorFiltro || colaborador.setor_filtro === setorFiltro;
+            });
+            preencherOpcoes(colaboradorModalSelect, colaboradoresFiltrados, 'Selecione um colaborador');
+            if (colaboradorSelect.value && colaboradoresPorId[String(colaboradorSelect.value)]) {
+                const colaboradorAtual = colaboradoresPorId[String(colaboradorSelect.value)];
+                if (!setorFiltro || colaboradorAtual.setor_filtro === setorFiltro) {
+                    colaboradorModalSelect.value = String(colaboradorAtual.id);
+                }
+            }
+            const colaboradorSelecionado = colaboradoresPorId[String(colaboradorModalSelect.value)] || null;
+            colaboradorModalDetalhe.textContent = colaboradorSelecionado
+                ? 'Setor: ' + colaboradorSelecionado.setor_nome + (colaboradorSelecionado.matricula ? ' | Matrícula: ' + colaboradorSelecionado.matricula : '')
+                : 'Filtre por setor para localizar o colaborador com mais rapidez.';
+        }
+
+        function sincronizarModalMaquina() {
+            const maquinaAtual = maquinasPorId[String(maquinaSelect.value)] || null;
+            maquinaCategoriaFiltro.value = maquinaAtual ? maquinaAtual.categoria_filtro : '';
+            atualizarMaquinasDoFiltro();
+        }
+
+        function sincronizarModalColaborador() {
+            const colaboradorAtual = colaboradoresPorId[String(colaboradorSelect.value)] || null;
+            colaboradorSetorFiltro.value = colaboradorAtual ? colaboradorAtual.setor_filtro : '';
+            atualizarColaboradoresDoFiltro();
+        }
+
+        function fecharModal(modalElement) {
+            if (typeof bootstrap === 'undefined' || !bootstrap.Modal || !modalElement) {
+                return;
+            }
+            bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+        }
 
         function toggleCamposExtras() {
             let categoria = porId[categoriaSelect.value];
@@ -134,7 +352,7 @@
             }
         }
 
-        if (!categoriaSelect || !assuntoInput || !impactoSelect) {
+        if (!categoriaSelect || !assuntoInput || !impactoSelect || !colaboradorSelect || !maquinaSelect) {
             return;
         }
 
@@ -152,7 +370,66 @@
             toggleCamposExtras();
         });
 
-        // Inicializa ao carregar
+        maquinaCategoriaFiltro.addEventListener('change', function() {
+            atualizarMaquinasDoFiltro();
+        });
+
+        colaboradorSetorFiltro.addEventListener('change', function() {
+            atualizarColaboradoresDoFiltro();
+        });
+
+        maquinaModalSelect.addEventListener('change', function() {
+            const maquina = maquinasPorId[String(this.value)] || null;
+            maquinaModalDetalhe.textContent = maquina
+                ? 'Categoria: ' + maquina.categoria_nome + (maquina.setor_nome ? ' | Setor: ' + maquina.setor_nome : '')
+                : 'Filtre por categoria para localizar a máquina com mais rapidez.';
+        });
+
+        colaboradorModalSelect.addEventListener('change', function() {
+            const colaborador = colaboradoresPorId[String(this.value)] || null;
+            colaboradorModalDetalhe.textContent = colaborador
+                ? 'Setor: ' + colaborador.setor_nome + (colaborador.matricula ? ' | Matrícula: ' + colaborador.matricula : '')
+                : 'Filtre por setor para localizar o colaborador com mais rapidez.';
+        });
+
+        confirmarMaquinaBtn.addEventListener('click', function() {
+            maquinaSelect.value = maquinaModalSelect.value;
+            atualizarResumoMaquina();
+            fecharModal(maquinaModal);
+        });
+
+        confirmarColaboradorBtn.addEventListener('click', function() {
+            colaboradorSelect.value = colaboradorModalSelect.value;
+            atualizarResumoColaborador();
+            fecharModal(colaboradorModal);
+        });
+
+        limparMaquinaBtn.addEventListener('click', function() {
+            maquinaSelect.value = '';
+            maquinaCategoriaFiltro.value = '';
+            atualizarMaquinasDoFiltro();
+            atualizarResumoMaquina();
+        });
+
+        limparColaboradorBtn.addEventListener('click', function() {
+            colaboradorSelect.value = '';
+            colaboradorSetorFiltro.value = '';
+            atualizarColaboradoresDoFiltro();
+            atualizarResumoColaborador();
+        });
+
+        if (maquinaModal) {
+            maquinaModal.addEventListener('show.bs.modal', sincronizarModalMaquina);
+        }
+
+        if (colaboradorModal) {
+            colaboradorModal.addEventListener('show.bs.modal', sincronizarModalColaborador);
+        }
+
+        atualizarResumoMaquina();
+        atualizarResumoColaborador();
+        sincronizarModalMaquina();
+        sincronizarModalColaborador();
         toggleCamposExtras();
     })();
 </script>

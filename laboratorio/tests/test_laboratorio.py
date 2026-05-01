@@ -7,6 +7,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from laboratorio.models import CategoriaLaboratorio, OcorrenciaLaboratorio, OcorrenciaLaboratorioAnotacao
+from maquinas.models import CategoriaMaquina, Maquina
+from organization.models import Setor
+from rh.models import Colaborador
 
 
 class LaboratorioModuleTests(TestCase):
@@ -68,6 +71,33 @@ class LaboratorioModuleTests(TestCase):
         self.assertEqual(ocorrencia.assunto, categoria.nome)
         self.assertEqual(ocorrencia.impacto, categoria.impacto)
         self.assertEqual(ocorrencia.responsavel, self.user)
+
+    def test_formulario_exibe_modais_para_selecao_de_maquina_e_colaborador(self):
+        setor = Setor.objects.create(nome="Laboratorio")
+        colaborador = Colaborador.objects.create(
+            matricula="1001",
+            nome_completo="Ana Paula Teste",
+            grupo="Laboratorio",
+            setor=setor,
+        )
+        categoria_maquina = CategoriaMaquina.objects.create(nome="Polidora")
+        maquina = Maquina.objects.create(
+            codigo="POL-01",
+            categoria=categoria_maquina,
+            setor=setor,
+        )
+
+        response = self.client.get(reverse("laboratorio:ocorrencia_create"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-bs-target="#maquinaModal"', html=False)
+        self.assertContains(response, 'data-bs-target="#colaboradorModal"', html=False)
+        self.assertContains(response, 'id="maquina-categoria-filtro"', html=False)
+        self.assertContains(response, 'id="colaborador-setor-filtro"', html=False)
+        self.assertContains(response, categoria_maquina.nome)
+        self.assertContains(response, maquina.display_name)
+        self.assertContains(response, setor.nome)
+        self.assertContains(response, colaborador.nome_completo)
 
     def test_dashboard_exibe_ocorrencias_filtradas(self):
         categoria = CategoriaLaboratorio.objects.create(
@@ -143,6 +173,46 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(detail_response, "Falha de incubadora")
         self.assertContains(detail_response, "3h 15min")
         self.assertContains(detail_response, reverse("laboratorio:ocorrencia_notes", args=[ocorrencia.pk]))
+
+    def test_listagem_filtra_por_categoria(self):
+        categoria_parada = CategoriaLaboratorio.objects.create(
+            nome="Parada de maquina",
+            impacto=CategoriaLaboratorio.IMPACTO_ALTO,
+        )
+        categoria_colaborador = CategoriaLaboratorio.objects.create(
+            nome="Falta de colaborador",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+        )
+        abertura = timezone.now().replace(second=0, microsecond=0)
+
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria_parada,
+            assunto="Ocorrencia da categoria parada",
+            detalhamento="Linha interrompida por falha mecanica.",
+            consequencias="Producao impactada.",
+            impacto=categoria_parada.impacto,
+            responsavel=self.user,
+            data_abertura=abertura,
+        )
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria_colaborador,
+            assunto="Ocorrencia da categoria colaborador",
+            detalhamento="Ausencia no turno da noite.",
+            consequencias="Redistribuicao da equipe.",
+            impacto=categoria_colaborador.impacto,
+            responsavel=self.user,
+            data_abertura=abertura - timedelta(hours=1),
+        )
+
+        response = self.client.get(
+            reverse("laboratorio:ocorrencias_list"),
+            {"categoria": categoria_parada.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ocorrencia da categoria parada")
+        self.assertNotContains(response, "Ocorrencia da categoria colaborador")
+        self.assertEqual(response.context["filtros"]["categoria"], str(categoria_parada.pk))
 
     def test_detail_view_registra_anotacoes_por_modal_com_autor_e_historico(self):
         ocorrencia = OcorrenciaLaboratorio.objects.create(
