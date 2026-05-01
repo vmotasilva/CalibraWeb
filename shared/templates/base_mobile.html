@@ -243,28 +243,31 @@
                         {% endif %}
 
                         {% can_nav_view user 'insumos:selecionar_modelo_preenchimento' 'insumos' as nav_ins_novo %}
-                        {% if nav_ins_novo %}
-                            <li><a class="dropdown-item fw-bold text-success" href="{% url 'insumos:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVO REGISTRO DE INSUMO</a></li>
-                        {% endif %}
-
-                        {% can_nav_block user 'insumos' 'cadastro' as nav_ins_cad %}
-                        {% if nav_ins_cad %}
-                            {% can_nav_view user 'insumos:modelos_list' 'insumos' as nav_ins_modelos %}
-                            {% can_nav_view user 'insumos:perguntas_list' 'insumos' as nav_ins_perg %}
-                            {% if nav_ins_novo or nav_ins_modelos or nav_ins_perg %}
-                                <li><h6 class="dropdown-header text-muted">INSUMOS - CADASTRO</h6></li>
-                                {% if nav_ins_modelos %}<li><a class="dropdown-item" href="{% url 'insumos:modelos_list' %}">Modelos de Insumos</a></li>{% endif %}
-                                {% if nav_ins_perg %}<li><a class="dropdown-item" href="{% url 'insumos:perguntas_list' %}">Perguntas por Modelo</a></li>{% endif %}
-                                <li><hr class="dropdown-divider"></li>
-                            {% endif %}
-                        {% endif %}
-
+                        {% can_nav_view user 'insumos:modelos_list' 'insumos' as nav_ins_modelos %}
+                        {% can_nav_view user 'insumos:perguntas_list' 'insumos' as nav_ins_perg %}
                         {% can_nav_block user 'insumos' 'analise' as nav_ins_an %}
                         {% if nav_ins_an %}
                             {% can_nav_view user 'insumos:dashboard' 'insumos' as nav_ins_dash %}
-                            {% if nav_ins_dash %}
-                                <li><h6 class="dropdown-header text-muted">INSUMOS - ANÁLISE</h6></li>
-                                <li><a class="dropdown-item" href="{% url 'insumos:dashboard' %}">Dashboard Insumos</a></li>
+                        {% endif %}
+                        {% if nav_ins_novo or nav_ins_modelos or nav_ins_perg or nav_ins_dash %}
+                            <li><h6 class="dropdown-header text-muted">INSUMOS</h6></li>
+                            {% if nav_ins_novo %}<li><a class="dropdown-item fw-bold text-success" href="{% url 'insumos:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVO REGISTRO DE INSUMO</a></li>{% endif %}
+                            {% if nav_ins_modelos %}<li><a class="dropdown-item" href="{% url 'insumos:modelos_list' %}">Modelos de Insumos</a></li>{% endif %}
+                            {% if nav_ins_perg %}<li><a class="dropdown-item" href="{% url 'insumos:perguntas_list' %}">Perguntas por Modelo</a></li>{% endif %}
+                            {% if nav_ins_dash %}<li><a class="dropdown-item" href="{% url 'insumos:dashboard' %}">Dashboard Insumos</a></li>{% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                        {% endif %}
+
+                        {% can_nav_block user 'laboratorio' 'maquinas' as nav_lab_maquinas %}
+                        {% if nav_lab_maquinas %}
+                            {% can_nav_view user 'maquinas:maquinas_list' 'laboratorio' as nav_maq_lista %}
+                            {% can_nav_view user 'maquinas:maquina_create' 'laboratorio' as nav_maq_nova %}
+                            {% can_nav_view user 'maquinas:categorias_list' 'laboratorio' as nav_maq_categorias %}
+                            {% if nav_maq_lista or nav_maq_nova or nav_maq_categorias %}
+                                <li><h6 class="dropdown-header text-muted">MAQUINAS</h6></li>
+                                {% if nav_maq_lista %}<li><a class="dropdown-item" href="{% url 'maquinas:maquinas_list' %}"><i class="bi bi-cpu"></i> Cadastro de Maquinas</a></li>{% endif %}
+                                {% if nav_maq_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'maquinas:maquina_create' %}"><i class="bi bi-plus-circle me-1"></i>Nova Maquina</a></li>{% endif %}
+                                {% if nav_maq_categorias %}<li><a class="dropdown-item" href="{% url 'maquinas:categorias_list' %}"><i class="bi bi-diagram-3"></i> Categorias de Maquinas</a></li>{% endif %}
                             {% endif %}
                         {% endif %}
                     </ul>

@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load nav_access %}
+
+{% can_nav_view user 'maquinas:maquinas_list' 'laboratorio' as can_maquinas_list %}
+{% can_nav_view user 'maquinas:categoria_delete' 'laboratorio' as can_categoria_delete %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-8 col-lg-9">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                <div>
+                    <h2 class="mb-1">{{ titulo }}</h2>
+                    <p class="text-muted mb-0">Defina agrupamentos reutilizaveis para o cadastro das maquinas do laboratorio.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    {% if can_maquinas_list %}<a href="{% url 'maquinas:maquinas_list' %}" class="btn btn-outline-dark">Maquinas</a>{% endif %}
+                    <a href="{% url 'maquinas:categorias_list' %}" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label for="{{ form.nome.id_for_label }}" class="form-label">Nome da categoria</label>
+                                {{ form.nome }}
+                                {% for error in form.nome.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-12">
+                                <label for="{{ form.descricao.id_for_label }}" class="form-label">Descricao</label>
+                                {{ form.descricao }}
+                                {% for error in form.descricao.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check">
+                                    {{ form.ativo }}
+                                    <label for="{{ form.ativo.id_for_label }}" class="form-check-label">{{ form.ativo.label }}</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap justify-content-end gap-2 mt-4">
+                            {% if categoria and can_categoria_delete %}<a href="{% url 'maquinas:categoria_delete' categoria.pk %}" class="btn btn-outline-danger">Excluir</a>{% endif %}
+                            <a href="{% url 'maquinas:categorias_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">{{ acao }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if categoria %}
+            <div class="alert alert-light border mt-4 mb-0">
+                <strong>Maquinas vinculadas:</strong> {{ total_maquinas }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock content %}

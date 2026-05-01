@@ -1,4 +1,9 @@
 {% extends 'base.html' %}
+{% load nav_access %}
+
+{% can_nav_block user 'laboratorio' 'maquinas' as can_lab_maquinas %}
+{% can_nav_view user 'maquinas:maquinas_list' 'laboratorio' as can_maquinas_list %}
+{% can_nav_view user 'maquinas:categorias_list' 'laboratorio' as can_maquinas_categorias %}
 
 {% block content %}
 <div class="container mt-4">
@@ -85,6 +90,22 @@
                                 <span class="text-muted small">Detalhamento de volume, impacto e recorrencia.</span>
                             </a>
                         </div>
+                        {% if can_lab_maquinas and can_maquinas_list %}
+                        <div class="col-md-6">
+                            <a href="{% url 'maquinas:maquinas_list' %}" class="card card-body text-decoration-none border-success h-100">
+                                <strong class="text-success-emphasis">Cadastro de maquinas</strong>
+                                <span class="text-muted small">Gerenciar codigo, categoria e status operacional das maquinas.</span>
+                            </a>
+                        </div>
+                        {% endif %}
+                        {% if can_lab_maquinas and can_maquinas_categorias %}
+                        <div class="col-md-6">
+                            <a href="{% url 'maquinas:categorias_list' %}" class="card card-body text-decoration-none border-dark h-100">
+                                <strong class="text-dark">Categorias de maquinas</strong>
+                                <span class="text-muted small">Organizar os equipamentos por familia para uso nas ocorrencias.</span>
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>

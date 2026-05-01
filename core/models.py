@@ -75,6 +75,15 @@ class NavigationPermission(models.Model):
             ("nav_laboratorio_categoria_create", "NAV: Laboratório / Nova Categoria"),
             ("nav_laboratorio_categoria_update", "NAV: Laboratório / Editar Categoria"),
             ("nav_laboratorio_dashboard", "NAV: Laboratório / Dashboard"),
+            ("nav_laboratorio_maquinas", "NAV: Laboratório / Bloco Máquinas"),
+            ("nav_laboratorio_maquinas_lista", "NAV: Laboratório / Cadastro de Máquinas"),
+            ("nav_laboratorio_maquina_create", "NAV: Laboratório / Nova Máquina"),
+            ("nav_laboratorio_maquina_update", "NAV: Laboratório / Editar Máquina"),
+            ("nav_laboratorio_maquina_delete", "NAV: Laboratório / Excluir Máquina"),
+            ("nav_laboratorio_maquinas_categorias", "NAV: Laboratório / Categorias de Máquinas"),
+            ("nav_laboratorio_categoria_maquina_create", "NAV: Laboratório / Nova Categoria de Máquina"),
+            ("nav_laboratorio_categoria_maquina_update", "NAV: Laboratório / Editar Categoria de Máquina"),
+            ("nav_laboratorio_categoria_maquina_delete", "NAV: Laboratório / Excluir Categoria de Máquina"),
 
             # --- METROLOGIA: blocos ---
             ("nav_metrologia_visao_geral", "NAV: Metrologia / Bloco Visão Geral"),

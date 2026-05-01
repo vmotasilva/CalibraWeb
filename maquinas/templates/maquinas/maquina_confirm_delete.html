@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-7">
+            <div class="card border-danger shadow-sm">
+                <div class="card-header bg-danger bg-opacity-10 border-danger">
+                    <h5 class="mb-0 text-danger">Confirmar exclusao da maquina</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning mb-4">
+                        Esta acao nao pode ser desfeita.
+                    </div>
+
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <div class="fw-semibold">{{ maquina.nome }}</div>
+                            <div class="small text-muted">Codigo: {{ maquina.codigo }}</div>
+                            <div class="small text-muted">Categoria: {{ maquina.categoria.nome|default:'Sem categoria' }}</div>
+                        </div>
+                    </div>
+
+                    {% if total_ocorrencias > 0 %}
+                    <div class="alert alert-danger mb-0">
+                        Nao e possivel excluir esta maquina porque ela esta vinculada a {{ total_ocorrencias }} ocorrencia(s) do laboratorio.
+                    </div>
+                    {% else %}
+                    <p class="mb-0">Confirme abaixo para excluir a maquina permanentemente.</p>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-light d-flex gap-2 justify-content-end">
+                    <a href="{% url 'maquinas:maquinas_list' %}" class="btn btn-secondary">Cancelar</a>
+                    {% if total_ocorrencias == 0 %}
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Excluir maquina</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

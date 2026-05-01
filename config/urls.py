@@ -228,6 +228,7 @@ urlpatterns = [
     path("insumos/", include("insumos.urls")),
 
     # 8d. Laboratorio app URLs
+    path("laboratorio/maquinas/", include(("maquinas.urls", "maquinas"), namespace="maquinas")),
     path("laboratorio/", include("laboratorio.urls")),
     
     # 7. Procedures app URLs (Procedimentos, Treinamentos, Fornecedores, Cotações)

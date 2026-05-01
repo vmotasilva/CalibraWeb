@@ -843,6 +843,21 @@ NAV_STRUCTURE = [
                     {"nome": "Dashboard Laboratorio", "view_name": "laboratorio:dashboard", "perm": "core.nav_laboratorio_dashboard"},
                 ],
             },
+            {
+                "key": "maquinas",
+                "nome": "MAQUINAS",
+                "perm": "core.nav_laboratorio_maquinas",
+                "funcoes": [
+                    {"nome": "Cadastro de Maquinas", "view_name": "maquinas:maquinas_list", "perm": "core.nav_laboratorio_maquinas_lista"},
+                    {"nome": "Nova Maquina", "view_name": "maquinas:maquina_create", "perm": "core.nav_laboratorio_maquina_create"},
+                    {"nome": "Editar Maquina", "view_name": "maquinas:maquina_update", "perm": "core.nav_laboratorio_maquina_update"},
+                    {"nome": "Excluir Maquina", "view_name": "maquinas:maquina_delete", "perm": "core.nav_laboratorio_maquina_delete"},
+                    {"nome": "Categorias de Maquinas", "view_name": "maquinas:categorias_list", "perm": "core.nav_laboratorio_maquinas_categorias"},
+                    {"nome": "Nova Categoria de Maquina", "view_name": "maquinas:categoria_create", "perm": "core.nav_laboratorio_categoria_maquina_create"},
+                    {"nome": "Editar Categoria de Maquina", "view_name": "maquinas:categoria_update", "perm": "core.nav_laboratorio_categoria_maquina_update"},
+                    {"nome": "Excluir Categoria de Maquina", "view_name": "maquinas:categoria_delete", "perm": "core.nav_laboratorio_categoria_maquina_delete"},
+                ],
+            },
         ],
     },
     {
