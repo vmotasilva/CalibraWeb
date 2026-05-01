@@ -825,7 +825,7 @@ NAV_STRUCTURE = [
         "key": "laboratorio",
         "nome": "Laboratorio",
         "cor": "warning",
-        "icone": "bi bi-beaker",
+        "icone": "bi bi-eyedropper",
         "module_perm": "core.nav_mod_laboratorio",
         "blocos": [
             {
