@@ -79,7 +79,7 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top shadow">
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top shadow calibra-topbar">
     <div class="container-fluid">
         <a class="navbar-brand ms-1 d-flex align-items-center gap-2" href="{% url 'home' %}">
             <img src="{% static 'shared/logo_calibraweb.svg' %}" alt="CalibraWeb Logo" height="38" style="max-width:120px;object-fit:contain;" onerror="this.onerror=null;this.src='{% static 'favicon.png' %}';">
@@ -92,17 +92,16 @@
                 {% can_nav_module user 'acoes' as nav_acoes %}
                 {% can_nav_module user 'auditoria' as nav_auditoria %}
                 {% can_nav_module user 'fornecedores' as nav_forn %}
-                {% can_nav_module user 'insumos' as nav_insumos %}
                 {% can_nav_module user 'laboratorio' as nav_laboratorio %}
                 {% can_nav_module user 'metrologia' as nav_metrologia %}
                 {% can_nav_module user 'rh' as nav_pessoas %}
                 {% can_nav_module user 'procedures' as nav_treinamentos %}
 
-                {# Ordem alfabética crescente: Ações, Auditoria, Fornecedores, Insumos, Laboratorio, Metrologia, Pessoas, Treinamentos, Usuários #}
+                {# Ordem do menu superior: Ações, Auditoria, Fornecedores, Laboratorio, Metrologia, Pessoas, Treinamentos, Usuários #}
 
                 {% if nav_acoes %}
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Ações Corretivas">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-exclamation-triangle nav-icon"></i><span class="nav-text">Ações Corretivas</span>
                     </a>
                     <ul class="dropdown-menu shadow">
@@ -137,7 +136,7 @@
                 {% if nav_auditoria %}
                 {% if nav_acoes %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Auditoria">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-clipboard2-check nav-icon"></i><span class="nav-text">Auditoria</span>
                     </a>
                     <ul class="dropdown-menu shadow">
@@ -174,7 +173,7 @@
                 {% if nav_forn %}
                 {% if nav_acoes or nav_auditoria %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Fornecedores">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-truck nav-icon"></i><span class="nav-text">Fornecedores</span>
                     </a>
                     <ul class="dropdown-menu shadow">
@@ -203,39 +202,10 @@
                 {% if nav_laboratorio %}
                 {% if nav_acoes or nav_auditoria or nav_forn %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Laboratorio">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-beaker nav-icon"></i><span class="nav-text">Laboratorio</span>
                     </a>
                     <ul class="dropdown-menu shadow">
-                        {% can_nav_block user 'laboratorio' 'ocorrencias_gerais' as nav_lab_ocorrencias %}
-                        {% if nav_lab_ocorrencias %}
-                            {% can_nav_view user 'laboratorio:modulo' 'laboratorio' as nav_lab_modulo %}
-                            {% can_nav_view user 'laboratorio:ocorrencia_create' 'laboratorio' as nav_lab_nova %}
-                            {% can_nav_view user 'laboratorio:ocorrencias_list' 'laboratorio' as nav_lab_lista %}
-                            {% can_nav_view user 'laboratorio:categorias_list' 'laboratorio' as nav_lab_categorias %}
-                            {% can_nav_view user 'laboratorio:dashboard' 'laboratorio' as nav_lab_dashboard %}
-                            {% if nav_lab_nova or nav_lab_modulo or nav_lab_lista or nav_lab_categorias or nav_lab_dashboard %}
-                                <li><h6 class="dropdown-header text-muted">OCORRENCIAS GERAIS</h6></li>
-                                {% if nav_lab_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:ocorrencia_create' %}"><i class="bi bi-plus-circle me-1"></i>Nova Ocorrencia</a></li>{% endif %}
-                                {% if nav_lab_modulo %}<li><a class="dropdown-item" href="{% url 'laboratorio:modulo' %}"><i class="bi bi-card-text"></i> Modulo de Observacoes Gerais</a></li>{% endif %}
-                                {% if nav_lab_lista %}<li><a class="dropdown-item" href="{% url 'laboratorio:ocorrencias_list' %}"><i class="bi bi-list-ul"></i> Listagem de Ocorrencias</a></li>{% endif %}
-                                {% if nav_lab_categorias %}<li><a class="dropdown-item" href="{% url 'laboratorio:categorias_list' %}"><i class="bi bi-tags"></i> Tabela de Categorias</a></li>{% endif %}
-                                {% if nav_lab_dashboard %}<li><a class="dropdown-item" href="{% url 'laboratorio:dashboard' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
-                            {% endif %}
-                        {% endif %}
-                    </ul>
-                </li>
-                {% endif %}
-
-                {# INÍCIO: Itens de Insumos dentro do menu Laboratório #}
-                {% if nav_laboratorio %}
-                {% if nav_acoes or nav_auditoria or nav_forn %}<li class="nav-divider"></li>{% endif %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Laboratorio">
-                        <i class="bi bi-beaker nav-icon"></i><span class="nav-text">Laboratorio</span>
-                    </a>
-                    <ul class="dropdown-menu shadow">
-                        {# Ocorrências Gerais #}
                         {% can_nav_block user 'laboratorio' 'ocorrencias_gerais' as nav_lab_ocorrencias %}
                         {% if nav_lab_ocorrencias %}
                             {% can_nav_view user 'laboratorio:modulo' 'laboratorio' as nav_lab_modulo %}
@@ -254,7 +224,6 @@
                             {% endif %}
                         {% endif %}
 
-                        {# Itens de Insumos #}
                         {% can_nav_view user 'insumos:selecionar_modelo_preenchimento' 'insumos' as nav_ins_novo %}
                         {% if nav_ins_novo %}
                             <li><a class="dropdown-item fw-bold text-success" href="{% url 'insumos:selecionar_modelo_preenchimento' %}"><i class="bi bi-plus-circle me-1"></i>NOVO REGISTRO DE INSUMO</a></li>
@@ -264,10 +233,11 @@
                         {% if nav_ins_cad %}
                             {% can_nav_view user 'insumos:modelos_list' 'insumos' as nav_ins_modelos %}
                             {% can_nav_view user 'insumos:perguntas_list' 'insumos' as nav_ins_perg %}
-                            {% if nav_ins_modelos or nav_ins_perg %}
+                            {% if nav_ins_novo or nav_ins_modelos or nav_ins_perg %}
                                 <li><h6 class="dropdown-header text-muted">INSUMOS - CADASTRO</h6></li>
                                 {% if nav_ins_modelos %}<li><a class="dropdown-item" href="{% url 'insumos:modelos_list' %}">Modelos de Insumos</a></li>{% endif %}
                                 {% if nav_ins_perg %}<li><a class="dropdown-item" href="{% url 'insumos:perguntas_list' %}">Perguntas por Modelo</a></li>{% endif %}
+                                <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
 
@@ -282,12 +252,11 @@
                     </ul>
                 </li>
                 {% endif %}
-                {# FIM: Itens de Insumos dentro do menu Laboratório #}
 
                 {% if nav_metrologia %}
-                {% if nav_acoes or nav_auditoria or nav_forn or nav_laboratorio or nav_insumos %}<li class="nav-divider"></li>{% endif %}
+                {% if nav_acoes or nav_auditoria or nav_forn or nav_laboratorio %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Metrologia">
+                    <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-tools nav-icon"></i><span class="nav-text">Metrologia</span>
                     </a>
                     <ul class="dropdown-menu shadow">
@@ -348,7 +317,7 @@
                 {% if nav_pessoas %}
                 {% if nav_acoes or nav_auditoria or nav_forn or nav_insumos or nav_metrologia %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Pessoas">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-people nav-icon"></i><span class="nav-text">Pessoas</span>
                     </a>
                     <ul class="dropdown-menu shadow">
@@ -388,7 +357,7 @@
                 {% if nav_acoes or nav_auditoria or nav_forn or nav_insumos or nav_metrologia or nav_pessoas %}<li class="nav-divider"></li>{% endif %}
 
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" data-tooltip="Treinamentos">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-mortarboard nav-icon"></i><span class="nav-text">Treinamentos</span>
                     </a>
                     <ul class="dropdown-menu shadow">
@@ -457,9 +426,9 @@
                 {% endif %}
 
                 {% if user.is_superuser or user.is_staff %}
-                {% if nav_acoes or nav_auditoria or nav_forn or nav_insumos or nav_metrologia or nav_pessoas or nav_treinamentos %}<li class="nav-divider"></li>{% endif %}
+                {% if nav_acoes or nav_auditoria or nav_forn or nav_laboratorio or nav_metrologia or nav_pessoas or nav_treinamentos %}<li class="nav-divider"></li>{% endif %}
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'rh:listar_usuarios' %}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Usuários">
+                    <a class="nav-link" href="{% url 'rh:listar_usuarios' %}">
                         <i class="bi bi-person-gear nav-icon"></i><span class="nav-text">Usuários</span>
                     </a>
                 </li>
@@ -676,14 +645,6 @@
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         tooltipTriggerList.forEach((tooltipTriggerEl) => {
             new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-
-        const dropdownTooltipList = [].slice.call(document.querySelectorAll('[data-tooltip]'));
-        dropdownTooltipList.forEach((tooltipTriggerEl) => {
-            new bootstrap.Tooltip(tooltipTriggerEl, {
-                title: tooltipTriggerEl.getAttribute('data-tooltip') || '',
-                placement: 'bottom'
-            });
         });
 
         // Fecha dropdowns ao clicar fora

@@ -1,17 +1,46 @@
-/* Remove highlight/hover nos menus dropdown do navbar */
-.dropdown-menu .dropdown-item:active,
-.dropdown-menu .dropdown-item:focus,
-.dropdown-menu .dropdown-item:hover {
-    background-color: transparent !important;
-    color: inherit !important;
+.calibra-topbar {
+    background: #0d2f63 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-/* Remove highlight do item ativo do menu principal */
-.navbar .nav-link.active,
-.navbar .nav-link:focus,
-.navbar .nav-link:hover {
-    background-color: transparent !important;
-    color: inherit !important;
+.calibra-topbar .navbar-brand,
+.calibra-topbar .navbar-brand span,
+.calibra-topbar .nav-link,
+.calibra-topbar .nav-link .nav-text,
+.calibra-topbar .nav-link i,
+.calibra-topbar .navbar-toggler,
+.calibra-topbar .navbar-toggler-icon,
+.calibra-topbar .dropdown-toggle::after {
+    color: #ffffff !important;
+    border-top-color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+.calibra-topbar .navbar-user .fw-bold,
+.calibra-topbar .navbar-user .text-muted,
+.calibra-topbar .text-white,
+.calibra-topbar .text-muted {
+    color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.calibra-topbar .nav-link {
+    border-radius: 0.45rem;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.calibra-topbar .nav-link.active,
+.calibra-topbar .nav-link:focus,
+.calibra-topbar .nav-link:hover,
+.calibra-topbar .nav-link.show {
+    background-color: rgba(255, 255, 255, 0.14) !important;
+    color: #ffffff !important;
     box-shadow: none !important;
     outline: none !important;
+}
+
+.calibra-topbar .dropdown-menu .dropdown-item:active,
+.calibra-topbar .dropdown-menu .dropdown-item:focus,
+.calibra-topbar .dropdown-menu .dropdown-item:hover {
+    background-color: #e7f0ff !important;
+    color: #0d2f63 !important;
 }
