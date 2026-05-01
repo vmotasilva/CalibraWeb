@@ -44,3 +44,14 @@
     background-color: #e7f0ff !important;
     color: #0d2f63 !important;
 }
+
+.calibra-topbar .dropdown-header {
+    display: block;
+    margin: 0.35rem 0.5rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.35rem;
+    background: #e5e7eb !important;
+    color: #24364d !important;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
