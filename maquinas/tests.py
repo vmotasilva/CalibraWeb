@@ -152,6 +152,12 @@ class MaquinasViewsTests(TestCase):
             )
         )
 
+        self.client.force_login(module_user)
+
+        response = self.client.get(reverse("maquinas:categorias_list"))
+
         self.assertTrue(can_nav_block(module_user, "laboratorio", "maquinas"))
         self.assertTrue(has_view_access(module_user, "maquinas:maquina_create"))
         self.assertTrue(has_view_access(module_user, "maquinas:categoria_create"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nova categoria")
