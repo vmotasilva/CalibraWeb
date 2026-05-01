@@ -139,3 +139,19 @@ class MaquinasViewsTests(TestCase):
         self.assertTrue(can_nav_block(legacy_user, "laboratorio", "maquinas"))
         self.assertTrue(has_view_access(legacy_user, "maquinas:categoria_create"))
         self.assertEqual(response.status_code, 200)
+
+    def test_laboratorio_module_flag_shows_machine_ctas_without_block_permission(self):
+        module_user = get_user_model().objects.create_user(
+            username="maquinas_modulo",
+            password="senha-forte-123",
+        )
+        module_user.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="core",
+                codename="nav_mod_laboratorio",
+            )
+        )
+
+        self.assertTrue(can_nav_block(module_user, "laboratorio", "maquinas"))
+        self.assertTrue(has_view_access(module_user, "maquinas:maquina_create"))
+        self.assertTrue(has_view_access(module_user, "maquinas:categoria_create"))
