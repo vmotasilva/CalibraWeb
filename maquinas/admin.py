@@ -12,6 +12,6 @@ class CategoriaMaquinaAdmin(admin.ModelAdmin):
 
 @admin.register(Maquina)
 class MaquinaAdmin(admin.ModelAdmin):
-    list_display = ("nome", "codigo", "categoria", "status")
-    list_filter = ("status", "categoria")
-    search_fields = ("nome", "codigo", "descricao")
+    list_display = ("codigo", "numero_serie", "fabricante", "setor", "categoria", "status")
+    list_filter = ("status", "categoria", "setor")
+    search_fields = ("codigo", "numero_serie", "fabricante", "setor__nome", "nome", "descricao")

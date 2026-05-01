@@ -26,7 +26,7 @@
                     </div>
                     <div class="small text-muted">
                         {% for maquina in maquinas_vinculadas %}
-                        <div>{{ maquina.nome }} ({{ maquina.codigo }})</div>
+                        <div>{{ maquina.display_name }}</div>
                         {% endfor %}
                         {% if remaining_maquinas > 0 %}
                         <div>e mais {{ remaining_maquinas }} registro(s).</div>

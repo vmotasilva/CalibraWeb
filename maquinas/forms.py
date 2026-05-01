@@ -1,5 +1,7 @@
 from django import forms
 
+from organization.models import Setor
+
 from .models import CategoriaMaquina, Maquina
 
 
@@ -35,16 +37,16 @@ class CategoriaMaquinaForm(forms.ModelForm):
 class MaquinaForm(forms.ModelForm):
     class Meta:
         model = Maquina
-        fields = ["nome", "codigo", "categoria", "descricao", "status"]
+        fields = ["codigo", "numero_serie", "fabricante", "setor", "categoria", "status"]
         labels = {
+            "numero_serie": "Numero de serie",
             "status": "Maquina ativa",
-        }
-        widgets = {
-            "descricao": forms.Textarea(attrs={"rows": 3}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["categoria"].queryset = CategoriaMaquina.objects.order_by("nome")
         self.fields["categoria"].empty_label = "Sem categoria"
+        self.fields["setor"].queryset = Setor.objects.order_by("nome")
+        self.fields["setor"].empty_label = "Sem setor"
         _apply_bootstrap_classes(self)

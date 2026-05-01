@@ -10,7 +10,7 @@ from .models import CategoriaMaquina, Maquina
 
 @login_required
 def maquinas_list(request):
-    maquinas = Maquina.objects.select_related("categoria")
+    maquinas = Maquina.objects.select_related("categoria", "setor")
     filtros = {
         "q": (request.GET.get("q") or "").strip(),
         "categoria": (request.GET.get("categoria") or "").strip(),
@@ -20,10 +20,13 @@ def maquinas_list(request):
     if filtros["q"]:
         termo = filtros["q"]
         maquinas = maquinas.filter(
-            Q(nome__icontains=termo)
-            | Q(codigo__icontains=termo)
-            | Q(descricao__icontains=termo)
+            Q(codigo__icontains=termo)
+            | Q(numero_serie__icontains=termo)
+            | Q(fabricante__icontains=termo)
+            | Q(setor__nome__icontains=termo)
             | Q(categoria__nome__icontains=termo)
+            | Q(nome__icontains=termo)
+            | Q(descricao__icontains=termo)
         )
 
     if filtros["categoria"]:
@@ -35,7 +38,7 @@ def maquinas_list(request):
         maquinas = maquinas.filter(status=False)
 
     context = {
-        "maquinas": maquinas.order_by("nome", "codigo"),
+        "maquinas": maquinas.order_by("codigo", "numero_serie", "fabricante"),
         "categorias": CategoriaMaquina.objects.order_by("nome"),
         "filtros": filtros,
         "total_maquinas": Maquina.objects.count(),
@@ -52,7 +55,7 @@ def maquina_create(request):
         form = MaquinaForm(request.POST)
         if form.is_valid():
             maquina = form.save()
-            messages.success(request, f"Maquina '{maquina.nome}' cadastrada com sucesso.")
+            messages.success(request, f"Maquina '{maquina}' cadastrada com sucesso.")
             return redirect("maquinas:maquinas_list")
     else:
         form = MaquinaForm()
@@ -68,18 +71,18 @@ def maquina_create(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def maquina_delete(request, pk):
-    maquina = get_object_or_404(Maquina.objects.select_related("categoria"), pk=pk)
+    maquina = get_object_or_404(Maquina.objects.select_related("categoria", "setor"), pk=pk)
     total_ocorrencias = maquina.ocorrencias_laboratorio_maquina.count()
 
     if request.method == "POST":
         if total_ocorrencias > 0:
             messages.error(
                 request,
-                f"Nao e possivel excluir a maquina '{maquina.nome}' porque ela esta vinculada a {total_ocorrencias} ocorrencia(s) do laboratorio.",
+                f"Nao e possivel excluir a maquina '{maquina}' porque ela esta vinculada a {total_ocorrencias} ocorrencia(s) do laboratorio.",
             )
             return redirect("maquinas:maquinas_list")
 
-        nome = maquina.nome
+        nome = str(maquina)
         maquina.delete()
         messages.success(request, f"Maquina '{nome}' excluida com sucesso.")
         return redirect("maquinas:maquinas_list")
@@ -93,13 +96,13 @@ def maquina_delete(request, pk):
 
 @login_required
 def maquina_update(request, pk):
-    maquina = get_object_or_404(Maquina, pk=pk)
+    maquina = get_object_or_404(Maquina.objects.select_related("categoria", "setor"), pk=pk)
 
     if request.method == "POST":
         form = MaquinaForm(request.POST, instance=maquina)
         if form.is_valid():
             maquina = form.save()
-            messages.success(request, f"Maquina '{maquina.nome}' atualizada com sucesso.")
+            messages.success(request, f"Maquina '{maquina}' atualizada com sucesso.")
             return redirect("maquinas:maquinas_list")
     else:
         form = MaquinaForm(instance=maquina)
@@ -107,7 +110,7 @@ def maquina_update(request, pk):
     context = {
         "form": form,
         "maquina": maquina,
-        "titulo": f"Editar maquina: {maquina.nome}",
+        "titulo": f"Editar maquina: {maquina.codigo}",
         "acao": "Salvar alteracoes",
     }
     return render(request, "maquinas/maquina_form.html", context)

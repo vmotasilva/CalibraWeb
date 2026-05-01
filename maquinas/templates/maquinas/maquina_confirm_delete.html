@@ -15,8 +15,11 @@
 
                     <div class="card bg-light mb-4">
                         <div class="card-body">
-                            <div class="fw-semibold">{{ maquina.nome }}</div>
+                            <div class="fw-semibold">{{ maquina.display_name }}</div>
                             <div class="small text-muted">Codigo: {{ maquina.codigo }}</div>
+                            <div class="small text-muted">Numero de serie: {{ maquina.numero_serie|default:'Nao informado' }}</div>
+                            <div class="small text-muted">Fabricante: {{ maquina.fabricante|default:maquina.nome|default:'Nao informado' }}</div>
+                            <div class="small text-muted">Setor: {{ maquina.setor.nome|default:'Sem setor' }}</div>
                             <div class="small text-muted">Categoria: {{ maquina.categoria.nome|default:'Sem categoria' }}</div>
                         </div>
                     </div>

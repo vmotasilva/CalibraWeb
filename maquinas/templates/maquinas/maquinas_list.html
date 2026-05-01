@@ -17,7 +17,7 @@
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'laboratorio:modulo' %}" class="btn btn-outline-secondary">Modulo laboratorio</a>
             {% if can_lab_maquinas or can_categoria_list %}<a href="{% url 'maquinas:categorias_list' %}" class="btn btn-outline-dark">Categorias</a>{% endif %}
-            {% if can_lab_maquinas or can_maquina_create %}<a href="{% url 'maquinas:maquina_create' %}" class="btn btn-primary">Nova maquina</a>{% endif %}
+            <a href="{% url 'maquinas:maquina_create' %}" class="btn btn-primary">Nova maquina</a>
         </div>
     </div>
 
@@ -61,7 +61,7 @@
             <form method="get" class="row g-3 align-items-end">
                 <div class="col-lg-5">
                     <label for="id_q" class="form-label">Busca</label>
-                    <input id="id_q" type="text" name="q" value="{{ filtros.q }}" class="form-control" placeholder="Nome, codigo, categoria ou descricao">
+                    <input id="id_q" type="text" name="q" value="{{ filtros.q }}" class="form-control" placeholder="Codigo, numero de serie, fabricante ou setor">
                 </div>
                 <div class="col-md-4 col-lg-3">
                     <label for="id_categoria" class="form-label">Categoria</label>
@@ -95,10 +95,11 @@
                     <thead class="table-light">
                         <tr>
                             <th>Codigo</th>
-                            <th>Maquina</th>
+                            <th>Numero de serie</th>
+                            <th>Fabricante</th>
+                            <th>Setor</th>
                             <th>Categoria</th>
                             <th>Status</th>
-                            <th>Descricao</th>
                             <th class="text-end">Acoes</th>
                         </tr>
                     </thead>
@@ -106,7 +107,9 @@
                         {% for maquina in maquinas %}
                         <tr>
                             <td class="fw-semibold">{{ maquina.codigo }}</td>
-                            <td>{{ maquina.nome }}</td>
+                            <td>{{ maquina.numero_serie|default:'Nao informado' }}</td>
+                            <td>{{ maquina.fabricante|default:maquina.nome|default:'Nao informado' }}</td>
+                            <td>{{ maquina.setor.nome|default:'Sem setor' }}</td>
                             <td>{{ maquina.categoria.nome|default:'Sem categoria' }}</td>
                             <td>
                                 {% if maquina.status %}
@@ -115,7 +118,6 @@
                                 <span class="badge text-bg-secondary">Inativa</span>
                                 {% endif %}
                             </td>
-                            <td class="text-muted small">{{ maquina.descricao|default:'Sem descricao cadastrada.' }}</td>
                             <td class="text-end">
                                 <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
                                     {% if can_maquina_update %}<a href="{% url 'maquinas:maquina_update' maquina.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>{% endif %}
@@ -126,7 +128,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
+                            <td colspan="7" class="text-center py-5 text-muted">
                                 Nenhuma maquina encontrada com os filtros informados.
                             </td>
                         </tr>

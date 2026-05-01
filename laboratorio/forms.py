@@ -76,7 +76,7 @@ class OcorrenciaLaboratorioForm(forms.ModelForm):
         self.fields["responsavel"].queryset = get_user_model().objects.order_by("first_name", "username")
         self.fields["categoria"].queryset = CategoriaLaboratorio.objects.order_by("nome")
         self.fields["colaborador"].queryset = Colaborador.objects.order_by("nome_completo")
-        self.fields["maquina"].queryset = Maquina.objects.order_by("nome")
+        self.fields["maquina"].queryset = Maquina.objects.order_by("codigo", "fabricante", "numero_serie")
 
         if user and not self.instance.pk and not self.initial.get("responsavel"):
             self.initial["responsavel"] = user

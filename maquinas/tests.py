@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from laboratorio.models import OcorrenciaLaboratorio
+from organization.models import Setor
 from shared.permissions import VIEW_NAME_TO_PERMISSION, has_view_access
 from shared.templatetags.nav_access import can_nav_block
 
@@ -18,32 +19,42 @@ class MaquinasViewsTests(TestCase):
             is_staff=True,
         )
         self.client.force_login(self.user)
+        self.setor = Setor.objects.create(nome="Producao")
         self.categoria = CategoriaMaquina.objects.create(nome="Bombas")
 
     def test_create_machine_flow(self):
         response = self.client.post(
             reverse("maquinas:maquina_create"),
             {
-                "nome": "Bomba de Vácuo",
                 "codigo": "MQ-001",
+                "numero_serie": "SER-001",
+                "fabricante": "Atlas Copco",
+                "setor": self.setor.pk,
                 "categoria": self.categoria.pk,
-                "descricao": "Equipamento da linha de preparo.",
                 "status": "on",
             },
         )
 
         self.assertRedirects(response, reverse("maquinas:maquinas_list"))
-        self.assertTrue(Maquina.objects.filter(codigo="MQ-001", categoria=self.categoria).exists())
+        self.assertTrue(
+            Maquina.objects.filter(
+                codigo="MQ-001",
+                numero_serie="SER-001",
+                fabricante="Atlas Copco",
+                categoria=self.categoria,
+                setor=self.setor,
+            ).exists()
+        )
 
     def test_list_filters_by_status(self):
-        Maquina.objects.create(nome="Misturador", codigo="MQ-AT", categoria=self.categoria, status=True)
-        Maquina.objects.create(nome="Homogeneizador", codigo="MQ-IN", categoria=self.categoria, status=False)
+        Maquina.objects.create(codigo="MQ-AT", fabricante="Misturador", categoria=self.categoria, status=True)
+        Maquina.objects.create(codigo="MQ-IN", fabricante="Homogeneizador", categoria=self.categoria, status=False)
 
         response = self.client.get(reverse("maquinas:maquinas_list"), {"status": "inativas"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Homogeneizador")
-        self.assertNotContains(response, "Misturador")
+        self.assertContains(response, "MQ-IN")
+        self.assertNotContains(response, "MQ-AT")
 
     def test_category_list_shows_machine_count(self):
         Maquina.objects.create(nome="Agitador", codigo="MQ-002", categoria=self.categoria, status=True)
@@ -82,6 +93,7 @@ class MaquinasViewsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Confirmar exclusao da maquina")
+        self.assertContains(response, "MQ-006")
         self.assertContains(response, "Rotuladora")
 
     def test_delete_category_is_blocked_when_it_has_machines(self):
@@ -155,11 +167,14 @@ class MaquinasViewsTests(TestCase):
         self.client.force_login(module_user)
 
         response = self.client.get(reverse("maquinas:categorias_list"))
+        maquinas_response = self.client.get(reverse("maquinas:maquinas_list"))
 
         self.assertTrue(can_nav_block(module_user, "laboratorio", "maquinas"))
         self.assertTrue(has_view_access(module_user, "maquinas:maquina_create"))
         self.assertTrue(has_view_access(module_user, "maquinas:categoria_create"))
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(maquinas_response.status_code, 200)
         self.assertContains(response, "Nova categoria")
         self.assertContains(response, "Editar")
         self.assertNotContains(response, "Sem acoes")
+        self.assertContains(maquinas_response, "Nova maquina")
