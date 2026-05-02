@@ -1,10 +1,12 @@
 import json
+import io
 from collections import Counter
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
 from django.shortcuts import get_object_or_404, redirect, render
@@ -469,7 +471,7 @@ def categoria_update(request, pk):
 
 
 @login_required
-def dashboard_laboratorio(request):
+def _build_dashboard_context(request):
     hoje = timezone.localdate()
     inicio_padrao = hoje.replace(day=1)
 
@@ -631,4 +633,164 @@ def dashboard_laboratorio(request):
         "chart_periodo_labels": json.dumps([item["periodo"] for item in por_periodo]),
         "chart_periodo_values": json.dumps([item["total"] for item in por_periodo]),
     }
+    return context
+
+
+@login_required
+def dashboard_laboratorio(request):
+    context = _build_dashboard_context(request)
     return render(request, "laboratorio/dashboard_laboratorio.html", context)
+
+
+@login_required
+def dashboard_laboratorio_pdf(request):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    context = _build_dashboard_context(request)
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=24,
+        rightMargin=24,
+        topMargin=24,
+        bottomMargin=24,
+        title="Dashboard gerencial do laboratorio",
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = styles["Title"]
+    subtitle_style = styles["Heading3"]
+    label_style = ParagraphStyle(
+        "LabelStyle",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor("#4B5563"),
+    )
+    small_style = ParagraphStyle(
+        "SmallStyle",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10,
+    )
+
+    periodo_exibicao = f"{context['inicio']} a {context['fim']}"
+    if context.get("semana_filtro_label"):
+        periodo_exibicao = context["semana_filtro_label"]
+
+    impacto_filtro = "Todos"
+    if context.get("impacto"):
+        impacto_filtro = dict(CategoriaLaboratorio.IMPACTO_CHOICES).get(context["impacto"], context["impacto"])
+
+    story = [
+        Paragraph("Relatorio Gerencial - Dashboard Laboratorio", title_style),
+        Paragraph(
+            f"Gerado em: {timezone.localtime().strftime('%d/%m/%Y %H:%M')} | Periodo: {periodo_exibicao} | Impacto: {impacto_filtro}",
+            label_style,
+        ),
+        Spacer(1, 10),
+        Paragraph("Indicadores principais", subtitle_style),
+        Spacer(1, 6),
+    ]
+
+    indicadores_data = [
+        ["Total", "Abertas", "Encerradas", "Taxa encerramento", "Duracao media", "Absenteismo (h)"],
+        [
+            str(context["total"]),
+            str(context["abertas"]),
+            str(context["encerradas"]),
+            f"{context['taxa_encerramento']:.1f}%",
+            context["media_duracao"],
+            f"{context['total_absenteismo_horas']:.2f}",
+        ],
+    ]
+    indicadores_table = Table(indicadores_data, colWidths=[95, 95, 95, 130, 130, 130])
+    indicadores_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E5E7EB")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#111827")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#D1D5DB")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                ("TOPPADDING", (0, 0), (-1, 0), 8),
+            ]
+        )
+    )
+    story.append(indicadores_table)
+    story.append(Spacer(1, 12))
+
+    story.append(Paragraph("Resumo executivo", subtitle_style))
+    for linha in context["resumo_executivo"]:
+        story.append(Paragraph(f"- {linha}", small_style))
+    story.append(Spacer(1, 10))
+
+    story.append(Paragraph("Categorias mais recorrentes", subtitle_style))
+    categorias_data = [["Categoria", "Total"]]
+    categorias_data.extend([[item["nome"], str(item["total"])] for item in context["por_categoria"]])
+    if len(categorias_data) == 1:
+        categorias_data.append(["Sem dados", "0"])
+    categorias_table = Table(categorias_data, colWidths=[560, 120])
+    categorias_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F3F4F6")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#D1D5DB")),
+                ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+    story.append(categorias_table)
+    story.append(Spacer(1, 12))
+
+    story.append(Paragraph("Ocorrencias recentes por categoria", subtitle_style))
+    if not context["ocorrencias_recentes_por_categoria"]:
+        story.append(Paragraph("Sem ocorrencias para o recorte selecionado.", label_style))
+    else:
+        for grupo in context["ocorrencias_recentes_por_categoria"]:
+            story.append(Spacer(1, 4))
+            story.append(Paragraph(f"Categoria: {grupo['categoria']} ({grupo['total']} registros)", label_style))
+
+            ocorrencias_data = [["Informacao", "Detalhamento", "Abertura", "Duracao", "Impacto"]]
+            for item in grupo["ocorrencias"]:
+                ocorrencia = item["obj"]
+                ocorrencias_data.append(
+                    [
+                        Paragraph(item["contexto_personalizado"], small_style),
+                        Paragraph((ocorrencia.detalhamento or "-")[:220], small_style),
+                        ocorrencia.data_abertura.strftime("%d/%m/%Y %H:%M"),
+                        ocorrencia.duracao_formatada,
+                        ocorrencia.get_impacto_display(),
+                    ]
+                )
+
+            ocorrencias_table = Table(ocorrencias_data, colWidths=[160, 330, 90, 70, 70])
+            ocorrencias_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F9FAFB")),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#E5E7EB")),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ]
+                )
+            )
+            story.append(ocorrencias_table)
+
+    doc.build(story)
+    buffer.seek(0)
+
+    response = HttpResponse(buffer, content_type="application/pdf")
+    data_arquivo = timezone.localdate().strftime("%Y%m%d")
+    response["Content-Disposition"] = (
+        f'attachment; filename="dashboard_laboratorio_{data_arquivo}.pdf"'
+    )
+    return response

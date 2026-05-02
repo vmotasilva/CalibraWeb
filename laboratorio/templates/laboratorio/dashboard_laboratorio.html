@@ -9,6 +9,7 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'laboratorio:modulo' %}" class="btn btn-outline-secondary">Modulo</a>
+            <a href="{% url 'laboratorio:dashboard_pdf' %}?inicio={{ inicio }}&amp;fim={{ fim }}&amp;semana={{ semana }}&amp;impacto={{ impacto }}" class="btn btn-outline-dark">Exportar PDF</a>
             <a href="{% url 'laboratorio:ocorrencia_create' %}" class="btn btn-primary">Nova ocorrencia</a>
         </div>
     </div>

@@ -253,6 +253,36 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, "Semana 18/2026 (27/04/2026 a 03/05/2026)")
         self.assertContains(response, "Limpar filtros")
 
+    def test_dashboard_exporta_pdf_com_filtros(self):
+        categoria = CategoriaLaboratorio.objects.create(
+            nome="Controle ambiental",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+        )
+        abertura = timezone.now().replace(second=0, microsecond=0)
+
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria,
+            assunto="Registro para PDF",
+            detalhamento="Ocorrencia usada para validar exportacao em PDF.",
+            consequencias="Sem consequencias criticas.",
+            impacto=categoria.impacto,
+            responsavel=self.user,
+            data_abertura=abertura,
+        )
+
+        response = self.client.get(
+            reverse("laboratorio:dashboard_pdf"),
+            {
+                "inicio": abertura.date().strftime("%Y-%m-%d"),
+                "fim": abertura.date().strftime("%Y-%m-%d"),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("attachment;", response["Content-Disposition"])
+        self.assertTrue(response.content.startswith(b"%PDF"))
+
     def test_detail_view_exibe_ocorrencia_e_link_na_listagem(self):
         abertura = timezone.now().replace(second=0, microsecond=0)
         ocorrencia = OcorrenciaLaboratorio.objects.create(

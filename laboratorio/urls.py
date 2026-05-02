@@ -17,4 +17,5 @@ urlpatterns = [
     path("categorias/nova/", views.categoria_create, name="categoria_create"),
     path("categorias/<int:pk>/editar/", views.categoria_update, name="categoria_update"),
     path("dashboard/", views.dashboard_laboratorio, name="dashboard"),
+    path("dashboard/pdf/", views.dashboard_laboratorio_pdf, name="dashboard_pdf"),
 ]
