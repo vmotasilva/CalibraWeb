@@ -201,6 +201,7 @@ class LaboratorioModuleTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["total_absenteismo_horas"], Decimal("8"))
         self.assertContains(response, "Absenteismo (h)")
+        self.assertNotContains(response, "Colaborador ausente:")
 
     def test_dashboard_filtra_por_semana_com_sobreposicao_de_encerramento(self):
         categoria = CategoriaLaboratorio.objects.create(

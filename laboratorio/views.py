@@ -66,13 +66,10 @@ def _duracao_em_horas(ocorrencia):
 
 def _build_contexto_personalizado(ocorrencia):
     if ocorrencia.colaborador:
-        colaborador_nome = ocorrencia.colaborador.nome_completo
-        if _is_absenteismo_ocorrencia(ocorrencia):
-            return f"Colaborador ausente: {colaborador_nome}"
-        return f"Colaborador: {colaborador_nome}"
+        return ocorrencia.colaborador.nome_completo
 
     if ocorrencia.maquina:
-        return f"Maquina: {ocorrencia.maquina}"
+        return str(ocorrencia.maquina)
 
     return "-"
 
