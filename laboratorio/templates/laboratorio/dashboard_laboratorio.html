@@ -16,17 +16,22 @@
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label">Periodo inicial</label>
-                    <input type="date" name="inicio" class="form-control" value="{{ inicio }}">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Periodo final</label>
-                    <input type="date" name="fim" class="form-control" value="{{ fim }}">
+                <div class="col-md-3">
+                    <label for="dashboard-inicio" class="form-label">Periodo inicial</label>
+                    <input type="date" id="dashboard-inicio" name="inicio" class="form-control" value="{{ inicio }}" placeholder="aaaa-mm-dd" title="Filtrar por periodo inicial">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Impacto</label>
-                    <select name="impacto" class="form-select">
+                    <label for="dashboard-fim" class="form-label">Periodo final</label>
+                    <input type="date" id="dashboard-fim" name="fim" class="form-control" value="{{ fim }}" placeholder="aaaa-mm-dd" title="Filtrar por periodo final">
+                </div>
+                <div class="col-md-3">
+                    <label for="dashboard-semana-picker" class="form-label">Semana</label>
+                    <input type="hidden" name="semana" id="dashboard-semana" value="{{ semana }}">
+                    <input type="text" id="dashboard-semana-picker" class="form-control" value="{{ semana_filtro_label }}" placeholder="Selecione uma semana" title="Selecione uma semana" autocomplete="off">
+                </div>
+                <div class="col-md-2">
+                    <label for="dashboard-impacto" class="form-label">Impacto</label>
+                    <select id="dashboard-impacto" name="impacto" class="form-select" title="Filtrar por impacto">
                         <option value="">Todos</option>
                         {% for codigo, nome in impacto_choices %}
                         <option value="{{ codigo }}" {% if impacto == codigo %}selected{% endif %}>{{ nome }}</option>
@@ -135,11 +140,11 @@
                         <span class="badge text-bg-light">Assunto lider: {{ por_assunto.0.nome }}</span>
                         {% endif %}
                     </div>
-                    <ul class="mb-0 ps-3">
+                    <div class="mb-0">
                         {% for item in resumo_executivo %}
-                        <li class="mb-2">{{ item }}</li>
+                        <p class="mb-2">{{ item }}</p>
                         {% endfor %}
-                    </ul>
+                    </div>
                 </div>
             </div>
         </div>
@@ -347,6 +352,99 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     (function() {
+        const hiddenWeekInput = document.getElementById('dashboard-semana');
+        const visibleWeekInput = document.getElementById('dashboard-semana-picker');
+
+        if (hiddenWeekInput && visibleWeekInput && typeof flatpickr !== 'undefined') {
+            const pad = (value) => String(value).padStart(2, '0');
+
+            const getStartOfIsoWeek = (selectedDate) => {
+                const date = new Date(selectedDate);
+                date.setHours(12, 0, 0, 0);
+                const day = date.getDay() || 7;
+                date.setDate(date.getDate() - day + 1);
+                return date;
+            };
+
+            const getIsoWeekValue = (selectedDate) => {
+                const date = getStartOfIsoWeek(selectedDate);
+                const target = new Date(date.valueOf());
+                target.setDate(target.getDate() + 3);
+                const firstThursday = new Date(target.getFullYear(), 0, 4);
+                firstThursday.setHours(12, 0, 0, 0);
+                firstThursday.setDate(firstThursday.getDate() - ((firstThursday.getDay() || 7) - 4));
+                const weekNumber = 1 + Math.round((target - firstThursday) / 604800000);
+                return `${target.getFullYear()}-W${pad(weekNumber)}`;
+            };
+
+            const formatPtBr = (selectedDate) => new Intl.DateTimeFormat('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            }).format(selectedDate);
+
+            const buildWeekLabel = (selectedDate) => {
+                const weekStart = getStartOfIsoWeek(selectedDate);
+                const weekEnd = new Date(weekStart.valueOf());
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                const [, week] = getIsoWeekValue(selectedDate).split('-W');
+                return `Semana ${week}/${weekStart.getFullYear()} (${formatPtBr(weekStart)} a ${formatPtBr(weekEnd)})`;
+            };
+
+            const parseIsoWeek = (weekValue) => {
+                if (!weekValue || !/^\d{4}-W\d{2}$/.test(weekValue)) {
+                    return null;
+                }
+
+                const [yearPart, weekPart] = weekValue.split('-W');
+                const year = Number(yearPart);
+                const week = Number(weekPart);
+                const jan4 = new Date(year, 0, 4);
+                const jan4Day = jan4.getDay() || 7;
+                jan4.setDate(jan4.getDate() - jan4Day + 1 + ((week - 1) * 7));
+                return jan4;
+            };
+
+            const updateWeekSelection = (selectedDate) => {
+                if (!selectedDate) {
+                    hiddenWeekInput.value = '';
+                    visibleWeekInput.value = '';
+                    return;
+                }
+
+                hiddenWeekInput.value = getIsoWeekValue(selectedDate);
+                visibleWeekInput.value = buildWeekLabel(selectedDate);
+            };
+
+            const initialDate = parseIsoWeek(hiddenWeekInput.value);
+            const picker = flatpickr(visibleWeekInput, {
+                allowInput: false,
+                clickOpens: true,
+                disableMobile: true,
+                defaultDate: initialDate,
+                locale: { firstDayOfWeek: 1 },
+                onChange: ([selectedDate]) => {
+                    updateWeekSelection(selectedDate);
+                    picker.close();
+                },
+                onReady: (_, __, instance) => {
+                    if (initialDate) {
+                        updateWeekSelection(initialDate);
+                        instance.jumpToDate(initialDate);
+                    }
+                }
+            });
+
+            visibleWeekInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Backspace' || event.key === 'Delete') {
+                    hiddenWeekInput.value = '';
+                    visibleWeekInput.value = '';
+                    picker.clear();
+                    event.preventDefault();
+                }
+            });
+        }
+
         const impactoLabels = {{ chart_impacto_labels|safe }};
         const impactoValues = {{ chart_impacto_values|safe }};
         const periodoLabels = {{ chart_periodo_labels|safe }};

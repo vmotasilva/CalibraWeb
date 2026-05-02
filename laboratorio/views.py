@@ -440,17 +440,37 @@ def dashboard_laboratorio(request):
     hoje = timezone.localdate()
     inicio_padrao = hoje.replace(day=1)
 
-    inicio_str = request.GET.get("inicio") or inicio_padrao.strftime("%Y-%m-%d")
-    fim_str = request.GET.get("fim") or hoje.strftime("%Y-%m-%d")
+    semana = request.GET.get("semana") or ""
+    inicio_param = request.GET.get("inicio") or ""
+    fim_param = request.GET.get("fim") or ""
+
+    semana_inicio = _parse_week(semana)
+    semana_fim = semana_inicio + timedelta(days=6) if semana_inicio else None
+
+    if semana_inicio and semana_fim and not inicio_param and not fim_param:
+        inicio_str = ""
+        fim_str = ""
+    else:
+        inicio_str = inicio_param or inicio_padrao.strftime("%Y-%m-%d")
+        fim_str = fim_param or hoje.strftime("%Y-%m-%d")
+
     impacto = request.GET.get("impacto") or ""
 
-    inicio = _parse_date(inicio_str) or inicio_padrao
-    fim = _parse_date(fim_str) or hoje
+    inicio = _parse_date(inicio_str)
+    fim = _parse_date(fim_str)
 
-    ocorrencias = OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel").filter(
-        data_abertura__date__gte=inicio,
-        data_abertura__date__lte=fim,
-    )
+    ocorrencias = OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel")
+
+    if semana_inicio and semana_fim:
+        ocorrencias = ocorrencias.filter(data_abertura__date__lte=semana_fim).filter(
+            Q(data_encerramento__isnull=True) | Q(data_encerramento__date__gte=semana_inicio)
+        )
+
+    if inicio:
+        ocorrencias = ocorrencias.filter(data_abertura__date__gte=inicio)
+    if fim:
+        ocorrencias = ocorrencias.filter(data_abertura__date__lte=fim)
+
     if impacto:
         ocorrencias = ocorrencias.filter(impacto=impacto)
 
@@ -560,6 +580,8 @@ def dashboard_laboratorio(request):
     context = {
         "inicio": inicio_str,
         "fim": fim_str,
+        "semana": semana,
+        "semana_filtro_label": _format_week_label(semana_inicio),
         "impacto": impacto,
         "impacto_choices": CategoriaLaboratorio.IMPACTO_CHOICES,
         "total": total,

@@ -152,6 +152,54 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia_encerrada.pk]))
         self.assertContains(response, "modal=encerramento")
 
+    def test_dashboard_filtra_por_semana_com_sobreposicao_de_encerramento(self):
+        categoria = CategoriaLaboratorio.objects.create(
+            nome="Controle ambiental",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+        )
+
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria,
+            assunto="Encerrada na semana",
+            detalhamento="Abriu antes e encerrou na semana.",
+            consequencias="Deve entrar no dashboard semanal.",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+            responsavel=self.user,
+            data_abertura=datetime(2026, 4, 26, 9, 0, tzinfo=timezone.get_current_timezone()),
+            data_encerramento=datetime(2026, 4, 29, 12, 0, tzinfo=timezone.get_current_timezone()),
+        )
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria,
+            assunto="Aberta na semana",
+            detalhamento="Registrada dentro da semana selecionada.",
+            consequencias="Tambem deve entrar.",
+            impacto=CategoriaLaboratorio.IMPACTO_BAIXO,
+            responsavel=self.user,
+            data_abertura=datetime(2026, 5, 1, 14, 0, tzinfo=timezone.get_current_timezone()),
+        )
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria,
+            assunto="Fora do recorte semanal",
+            detalhamento="Nao cruza a semana solicitada.",
+            consequencias="Nao deve aparecer.",
+            impacto=CategoriaLaboratorio.IMPACTO_ALTO,
+            responsavel=self.user,
+            data_abertura=datetime(2026, 5, 8, 10, 0, tzinfo=timezone.get_current_timezone()),
+        )
+
+        response = self.client.get(
+            reverse("laboratorio:dashboard"),
+            {"semana": "2026-W18"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total"], 2)
+        self.assertContains(response, "Encerrada na semana")
+        self.assertContains(response, "Aberta na semana")
+        self.assertNotContains(response, "Fora do recorte semanal")
+        self.assertContains(response, 'id="dashboard-semana-picker"')
+        self.assertContains(response, "Semana 18/2026 (27/04/2026 a 03/05/2026)")
+
     def test_detail_view_exibe_ocorrencia_e_link_na_listagem(self):
         abertura = timezone.now().replace(second=0, microsecond=0)
         ocorrencia = OcorrenciaLaboratorio.objects.create(
