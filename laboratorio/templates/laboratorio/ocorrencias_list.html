@@ -20,7 +20,7 @@
                     <label class="form-label">Busca</label>
                     <input type="text" name="q" class="form-control" value="{{ filtros.q }}" placeholder="Assunto, detalhamento ou consequencias">
                 </div>
-                <div class="col-xl-3 col-md-6">
+                <div class="col-xl-2 col-md-6">
                     <label class="form-label">Categoria</label>
                     <select name="categoria" class="form-select">
                         <option value="">Todas</option>
@@ -28,6 +28,10 @@
                         <option value="{{ categoria.pk }}" {% if filtros.categoria == categoria.pk|stringformat:'s' %}selected{% endif %}>{{ categoria.nome }}</option>
                         {% endfor %}
                     </select>
+                </div>
+                <div class="col-xl-2 col-md-6">
+                    <label class="form-label">Semana</label>
+                    <input type="week" name="semana" class="form-control" value="{{ filtros.semana }}">
                 </div>
                 <div class="col-xl-2 col-md-6">
                     <label class="form-label">Impacto</label>

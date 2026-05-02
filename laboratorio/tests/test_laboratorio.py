@@ -1,5 +1,5 @@
 from decimal import Decimal
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -213,6 +213,53 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, "Ocorrencia da categoria parada")
         self.assertNotContains(response, "Ocorrencia da categoria colaborador")
         self.assertEqual(response.context["filtros"]["categoria"], str(categoria_parada.pk))
+
+    def test_listagem_filtra_por_semana_considerando_abertura_ou_encerramento_na_semana(self):
+        semana_referencia = date.fromisocalendar(2026, 18, 1)
+        categoria = CategoriaLaboratorio.objects.create(
+            nome="Parada de maquina",
+            impacto=CategoriaLaboratorio.IMPACTO_ALTO,
+        )
+
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria,
+            assunto="Encerrada dentro da semana",
+            detalhamento="Iniciou antes da semana e encerrou dentro dela.",
+            consequencias="Entrou no consolidado semanal.",
+            impacto=categoria.impacto,
+            responsavel=self.user,
+            data_abertura=datetime(2026, 4, 26, 8, 0, tzinfo=timezone.get_current_timezone()),
+            data_encerramento=datetime(2026, 4, 29, 17, 0, tzinfo=timezone.get_current_timezone()),
+        )
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria,
+            assunto="Aberta durante a semana",
+            detalhamento="Registrada no meio da semana filtrada.",
+            consequencias="Tambem precisa aparecer.",
+            impacto=categoria.impacto,
+            responsavel=self.user,
+            data_abertura=datetime(2026, 4, 30, 9, 30, tzinfo=timezone.get_current_timezone()),
+        )
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria,
+            assunto="Fora da semana",
+            detalhamento="Nao cruza a semana informada.",
+            consequencias="Nao deve aparecer.",
+            impacto=categoria.impacto,
+            responsavel=self.user,
+            data_abertura=datetime(2026, 5, 5, 10, 0, tzinfo=timezone.get_current_timezone()),
+        )
+
+        response = self.client.get(
+            reverse("laboratorio:ocorrencias_list"),
+            {"semana": semana_referencia.strftime("%G-W%V")},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Encerrada dentro da semana")
+        self.assertContains(response, "Aberta durante a semana")
+        self.assertNotContains(response, "Fora da semana")
+        self.assertEqual(response.context["filtros"]["semana"], "2026-W18")
 
     def test_detail_view_registra_anotacoes_por_modal_com_autor_e_historico(self):
         ocorrencia = OcorrenciaLaboratorio.objects.create(

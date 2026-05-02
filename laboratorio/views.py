@@ -1,6 +1,6 @@
 import json
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib import messages
@@ -26,6 +26,16 @@ def _parse_date(value):
     try:
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError:
+        return None
+
+
+def _parse_week(value):
+    if not value:
+        return None
+    try:
+        iso_year, iso_week = value.split("-W", maxsplit=1)
+        return date.fromisocalendar(int(iso_year), int(iso_week), 1)
+    except (TypeError, ValueError):
         return None
 
 
@@ -187,12 +197,15 @@ def ocorrencias_list(request):
     filtros = {
         "q": (request.GET.get("q") or "").strip(),
         "categoria": request.GET.get("categoria") or "",
+        "semana": request.GET.get("semana") or "",
         "impacto": request.GET.get("impacto") or "",
         "status": request.GET.get("status") or "",
         "inicio": request.GET.get("inicio") or "",
         "fim": request.GET.get("fim") or "",
     }
 
+    semana_inicio = _parse_week(filtros["semana"])
+    semana_fim = semana_inicio + timedelta(days=6) if semana_inicio else None
     inicio = _parse_date(filtros["inicio"])
     fim = _parse_date(filtros["fim"])
 
@@ -214,6 +227,11 @@ def ocorrencias_list(request):
         ocorrencias = ocorrencias.filter(data_encerramento__isnull=True)
     elif filtros["status"] == "encerradas":
         ocorrencias = ocorrencias.filter(data_encerramento__isnull=False)
+
+    if semana_inicio and semana_fim:
+        ocorrencias = ocorrencias.filter(data_abertura__date__lte=semana_fim).filter(
+            Q(data_encerramento__isnull=True) | Q(data_encerramento__date__gte=semana_inicio)
+        )
 
     if inicio:
         ocorrencias = ocorrencias.filter(data_abertura__date__gte=inicio)
