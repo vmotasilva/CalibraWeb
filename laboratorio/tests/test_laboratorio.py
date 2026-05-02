@@ -149,6 +149,10 @@ class LaboratorioModuleTests(TestCase):
             [item["nome"] for item in response.context["por_assunto"]],
         )
         self.assertEqual(response.context["total_absenteismo_horas"], Decimal("0"))
+        self.assertContains(response, "Ocorrencias recentes por categoria no periodo filtrado")
+        self.assertContains(response, "<th>Informacao</th>", html=True)
+        self.assertContains(response, "<th>Detalhamento</th>", html=True)
+        self.assertNotContains(response, "<th>Responsavel</th>", html=True)
         self.assertContains(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia_encerrada.pk]))
         self.assertContains(response, "modal=encerramento")
 

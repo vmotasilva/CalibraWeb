@@ -62,6 +62,19 @@ def _duracao_em_horas(ocorrencia):
     return Decimal(str(duracao.total_seconds())) / Decimal("3600")
 
 
+def _build_contexto_personalizado(ocorrencia):
+    if ocorrencia.colaborador:
+        colaborador_nome = ocorrencia.colaborador.nome_completo
+        if _is_absenteismo_ocorrencia(ocorrencia):
+            return f"Colaborador ausente: {colaborador_nome}"
+        return f"Colaborador: {colaborador_nome}"
+
+    if ocorrencia.maquina:
+        return f"Maquina: {ocorrencia.maquina}"
+
+    return "-"
+
+
 def _calcular_media_duracao(ocorrencias):
     duracoes = [ocorrencia.duracao for ocorrencia in ocorrencias if ocorrencia.duracao]
     if not duracoes:
@@ -217,7 +230,12 @@ def modulo_laboratorio_view(request):
 @login_required
 def ocorrencias_list(request):
     total_registros = OcorrenciaLaboratorio.objects.count()
-    ocorrencias = OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel")
+    ocorrencias = OcorrenciaLaboratorio.objects.select_related(
+        "categoria",
+        "responsavel",
+        "colaborador",
+        "maquina",
+    )
     filtros = {
         "q": (request.GET.get("q") or "").strip(),
         "categoria": request.GET.get("categoria") or "",
@@ -474,7 +492,12 @@ def dashboard_laboratorio(request):
     inicio = _parse_date(inicio_str)
     fim = _parse_date(fim_str)
 
-    ocorrencias = OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel")
+    ocorrencias = OcorrenciaLaboratorio.objects.select_related(
+        "categoria",
+        "responsavel",
+        "colaborador",
+        "maquina",
+    )
 
     if semana_inicio and semana_fim:
         ocorrencias = ocorrencias.filter(data_abertura__date__lte=semana_fim).filter(
@@ -563,6 +586,29 @@ def dashboard_laboratorio(request):
         if item["periodo"]
     ]
 
+    ocorrencias_recentes = ocorrencias_lista[:20]
+    ocorrencias_recentes_por_categoria = []
+    grupos_recentes = {}
+
+    for ocorrencia in ocorrencias_recentes:
+        categoria_nome = ocorrencia.categoria.nome if ocorrencia.categoria else "Sem categoria definida"
+        if categoria_nome not in grupos_recentes:
+            grupos_recentes[categoria_nome] = {
+                "categoria": categoria_nome,
+                "ocorrencias": [],
+            }
+            ocorrencias_recentes_por_categoria.append(grupos_recentes[categoria_nome])
+
+        grupos_recentes[categoria_nome]["ocorrencias"].append(
+            {
+                "obj": ocorrencia,
+                "contexto_personalizado": _build_contexto_personalizado(ocorrencia),
+            }
+        )
+
+    for grupo in ocorrencias_recentes_por_categoria:
+        grupo["total"] = len(grupo["ocorrencias"])
+
     context = {
         "inicio": inicio_str,
         "fim": fim_str,
@@ -581,7 +627,7 @@ def dashboard_laboratorio(request):
         "por_assunto": por_assunto,
         "por_periodo": por_periodo,
         "resumo_executivo": resumo_executivo,
-        "ocorrencias_recentes": ocorrencias_lista[:10],
+        "ocorrencias_recentes_por_categoria": ocorrencias_recentes_por_categoria,
         "chart_periodo_labels": json.dumps([item["periodo"] for item in por_periodo]),
         "chart_periodo_values": json.dumps([item["total"] for item in por_periodo]),
     }
