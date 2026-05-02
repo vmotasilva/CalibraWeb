@@ -447,9 +447,9 @@ def dashboard_laboratorio(request):
     semana_inicio = _parse_week(semana)
     semana_fim = semana_inicio + timedelta(days=6) if semana_inicio else None
 
-    if semana_inicio and semana_fim and not inicio_param and not fim_param:
-        inicio_str = ""
-        fim_str = ""
+    if semana_inicio and semana_fim:
+        inicio_str = semana_inicio.strftime("%Y-%m-%d")
+        fim_str = semana_fim.strftime("%Y-%m-%d")
     else:
         inicio_str = inicio_param or inicio_padrao.strftime("%Y-%m-%d")
         fim_str = fim_param or hoje.strftime("%Y-%m-%d")
@@ -465,11 +465,11 @@ def dashboard_laboratorio(request):
         ocorrencias = ocorrencias.filter(data_abertura__date__lte=semana_fim).filter(
             Q(data_encerramento__isnull=True) | Q(data_encerramento__date__gte=semana_inicio)
         )
-
-    if inicio:
-        ocorrencias = ocorrencias.filter(data_abertura__date__gte=inicio)
-    if fim:
-        ocorrencias = ocorrencias.filter(data_abertura__date__lte=fim)
+    else:
+        if inicio:
+            ocorrencias = ocorrencias.filter(data_abertura__date__gte=inicio)
+        if fim:
+            ocorrencias = ocorrencias.filter(data_abertura__date__lte=fim)
 
     if impacto:
         ocorrencias = ocorrencias.filter(impacto=impacto)

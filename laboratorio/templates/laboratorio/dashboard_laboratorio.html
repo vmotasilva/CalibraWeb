@@ -41,6 +41,9 @@
                 <div class="col-md-1 d-grid">
                     <button type="submit" class="btn btn-outline-primary">Filtrar</button>
                 </div>
+                <div class="col-md-2 d-grid">
+                    <a href="{% url 'laboratorio:dashboard' %}" class="btn btn-outline-secondary">Limpar filtros</a>
+                </div>
             </form>
         </div>
     </div>
@@ -354,6 +357,8 @@
     (function() {
         const hiddenWeekInput = document.getElementById('dashboard-semana');
         const visibleWeekInput = document.getElementById('dashboard-semana-picker');
+        const inicioInput = document.getElementById('dashboard-inicio');
+        const fimInput = document.getElementById('dashboard-fim');
 
         if (hiddenWeekInput && visibleWeekInput && typeof flatpickr !== 'undefined') {
             const pad = (value) => String(value).padStart(2, '0');
@@ -383,6 +388,13 @@
                 year: 'numeric'
             }).format(selectedDate);
 
+            const formatIsoDate = (selectedDate) => {
+                const year = selectedDate.getFullYear();
+                const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                const day = String(selectedDate.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
             const buildWeekLabel = (selectedDate) => {
                 const weekStart = getStartOfIsoWeek(selectedDate);
                 const weekEnd = new Date(weekStart.valueOf());
@@ -409,11 +421,19 @@
                 if (!selectedDate) {
                     hiddenWeekInput.value = '';
                     visibleWeekInput.value = '';
+                    if (inicioInput) inicioInput.value = '';
+                    if (fimInput) fimInput.value = '';
                     return;
                 }
 
+                const weekStart = getStartOfIsoWeek(selectedDate);
+                const weekEnd = new Date(weekStart.valueOf());
+                weekEnd.setDate(weekEnd.getDate() + 6);
+
                 hiddenWeekInput.value = getIsoWeekValue(selectedDate);
                 visibleWeekInput.value = buildWeekLabel(selectedDate);
+                if (inicioInput) inicioInput.value = formatIsoDate(weekStart);
+                if (fimInput) fimInput.value = formatIsoDate(weekEnd);
             };
 
             const initialDate = parseIsoWeek(hiddenWeekInput.value);

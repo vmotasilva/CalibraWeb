@@ -194,11 +194,14 @@ class LaboratorioModuleTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["total"], 2)
+        self.assertEqual(response.context["inicio"], "2026-04-27")
+        self.assertEqual(response.context["fim"], "2026-05-03")
         self.assertContains(response, "Encerrada na semana")
         self.assertContains(response, "Aberta na semana")
         self.assertNotContains(response, "Fora do recorte semanal")
         self.assertContains(response, 'id="dashboard-semana-picker"')
         self.assertContains(response, "Semana 18/2026 (27/04/2026 a 03/05/2026)")
+        self.assertContains(response, "Limpar filtros")
 
     def test_detail_view_exibe_ocorrencia_e_link_na_listagem(self):
         abertura = timezone.now().replace(second=0, microsecond=0)
