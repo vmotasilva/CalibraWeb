@@ -39,6 +39,14 @@ def _parse_week(value):
         return None
 
 
+def _format_week_label(week_start):
+    if not week_start:
+        return ""
+    week_end = week_start + timedelta(days=6)
+    iso_year, iso_week, _ = week_start.isocalendar()
+    return f"Semana {iso_week:02d}/{iso_year} ({week_start.strftime('%d/%m/%Y')} a {week_end.strftime('%d/%m/%Y')})"
+
+
 def _calcular_media_duracao(ocorrencias):
     duracoes = [ocorrencia.duracao for ocorrencia in ocorrencias if ocorrencia.duracao]
     if not duracoes:
@@ -193,6 +201,7 @@ def modulo_laboratorio_view(request):
 
 @login_required
 def ocorrencias_list(request):
+    total_registros = OcorrenciaLaboratorio.objects.count()
     ocorrencias = OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel")
     filtros = {
         "q": (request.GET.get("q") or "").strip(),
@@ -238,11 +247,16 @@ def ocorrencias_list(request):
     if fim:
         ocorrencias = ocorrencias.filter(data_abertura__date__lte=fim)
 
+    total_filtrados = ocorrencias.count()
+
     context = {
         "ocorrencias": ocorrencias.order_by("-data_abertura"),
         "categorias": CategoriaLaboratorio.objects.order_by("nome"),
         "impacto_choices": CategoriaLaboratorio.IMPACTO_CHOICES,
         "filtros": filtros,
+        "semana_filtro_label": _format_week_label(semana_inicio),
+        "total_filtrados": total_filtrados,
+        "total_registros": total_registros,
     }
     return render(request, "laboratorio/ocorrencias_list.html", context)
 

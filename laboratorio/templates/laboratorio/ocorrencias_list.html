@@ -6,6 +6,7 @@
         <div>
             <h2 class="mb-1">Listagem de ocorrencias</h2>
             <p class="text-muted mb-0">Controle geral das ocorrencias do modulo Laboratorio.</p>
+            <p class="text-muted small mb-0">Exibindo {{ total_filtrados }} de {{ total_registros }} registros.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'laboratorio:modulo' %}" class="btn btn-outline-secondary">Modulo</a>
@@ -17,12 +18,12 @@
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
                 <div class="col-xl-3 col-md-6">
-                    <label class="form-label">Busca</label>
-                    <input type="text" name="q" class="form-control" value="{{ filtros.q }}" placeholder="Assunto, detalhamento ou consequencias">
+                    <label for="filtro-busca" class="form-label">Busca</label>
+                    <input type="text" id="filtro-busca" name="q" class="form-control" value="{{ filtros.q }}" placeholder="Assunto, detalhamento ou consequencias" title="Busca por assunto, detalhamento ou consequencias">
                 </div>
                 <div class="col-xl-2 col-md-6">
-                    <label class="form-label">Categoria</label>
-                    <select name="categoria" class="form-select">
+                    <label for="filtro-categoria" class="form-label">Categoria</label>
+                    <select id="filtro-categoria" name="categoria" class="form-select" title="Filtrar por categoria">
                         <option value="">Todas</option>
                         {% for categoria in categorias %}
                         <option value="{{ categoria.pk }}" {% if filtros.categoria == categoria.pk|stringformat:'s' %}selected{% endif %}>{{ categoria.nome }}</option>
@@ -30,12 +31,13 @@
                     </select>
                 </div>
                 <div class="col-xl-2 col-md-6">
-                    <label class="form-label">Semana</label>
-                    <input type="week" name="semana" class="form-control" value="{{ filtros.semana }}">
+                    <label for="semana-picker" class="form-label">Semana</label>
+                    <input type="hidden" name="semana" id="semana" value="{{ filtros.semana }}">
+                    <input type="text" id="semana-picker" class="form-control" value="{{ semana_filtro_label }}" placeholder="Selecione uma semana" title="Selecione uma semana" autocomplete="off">
                 </div>
                 <div class="col-xl-2 col-md-6">
-                    <label class="form-label">Impacto</label>
-                    <select name="impacto" class="form-select">
+                    <label for="filtro-impacto" class="form-label">Impacto</label>
+                    <select id="filtro-impacto" name="impacto" class="form-select" title="Filtrar por impacto">
                         <option value="">Todos</option>
                         {% for codigo, nome in impacto_choices %}
                         <option value="{{ codigo }}" {% if filtros.impacto == codigo %}selected{% endif %}>{{ nome }}</option>
@@ -43,20 +45,20 @@
                     </select>
                 </div>
                 <div class="col-xl-2 col-md-6">
-                    <label class="form-label">Status</label>
-                    <select name="status" class="form-select">
+                    <label for="filtro-status" class="form-label">Status</label>
+                    <select id="filtro-status" name="status" class="form-select" title="Filtrar por status">
                         <option value="">Todos</option>
                         <option value="abertas" {% if filtros.status == 'abertas' %}selected{% endif %}>Abertas</option>
                         <option value="encerradas" {% if filtros.status == 'encerradas' %}selected{% endif %}>Encerradas</option>
                     </select>
                 </div>
                 <div class="col-xl-2 col-md-6">
-                    <label class="form-label">Abertura inicial</label>
-                    <input type="date" name="inicio" class="form-control" value="{{ filtros.inicio }}">
+                    <label for="filtro-inicio" class="form-label">Abertura inicial</label>
+                    <input type="date" id="filtro-inicio" name="inicio" class="form-control" value="{{ filtros.inicio }}" placeholder="aaaa-mm-dd" title="Filtrar por abertura inicial">
                 </div>
                 <div class="col-xl-2 col-md-6">
-                    <label class="form-label">Abertura final</label>
-                    <input type="date" name="fim" class="form-control" value="{{ filtros.fim }}">
+                    <label for="filtro-fim" class="form-label">Abertura final</label>
+                    <input type="date" id="filtro-fim" name="fim" class="form-control" value="{{ filtros.fim }}" placeholder="aaaa-mm-dd" title="Filtrar por abertura final">
                 </div>
                 <div class="col-xl-2 col-md-6 d-grid">
                     <button type="submit" class="btn btn-outline-primary">Filtrar</button>
@@ -128,3 +130,104 @@
     </div>
 </div>
 {% endblock content %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const hiddenWeekInput = document.getElementById('semana');
+    const visibleWeekInput = document.getElementById('semana-picker');
+
+    if (!hiddenWeekInput || !visibleWeekInput || typeof flatpickr === 'undefined') {
+        return;
+    }
+
+    const pad = (value) => String(value).padStart(2, '0');
+
+    const getStartOfIsoWeek = (selectedDate) => {
+        const date = new Date(selectedDate);
+        date.setHours(12, 0, 0, 0);
+        const day = date.getDay() || 7;
+        date.setDate(date.getDate() - day + 1);
+        return date;
+    };
+
+    const getIsoWeekValue = (selectedDate) => {
+        const date = getStartOfIsoWeek(selectedDate);
+        const target = new Date(date.valueOf());
+        target.setDate(target.getDate() + 3);
+        const firstThursday = new Date(target.getFullYear(), 0, 4);
+        firstThursday.setHours(12, 0, 0, 0);
+        firstThursday.setDate(firstThursday.getDate() - ((firstThursday.getDay() || 7) - 4));
+        const weekNumber = 1 + Math.round((target - firstThursday) / 604800000);
+        return `${target.getFullYear()}-W${pad(weekNumber)}`;
+    };
+
+    const formatPtBr = (selectedDate) => new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    }).format(selectedDate);
+
+    const buildWeekLabel = (selectedDate) => {
+        const weekStart = getStartOfIsoWeek(selectedDate);
+        const weekEnd = new Date(weekStart.valueOf());
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const [, week] = getIsoWeekValue(selectedDate).split('-W');
+        return `Semana ${week}/${weekStart.getFullYear()} (${formatPtBr(weekStart)} a ${formatPtBr(weekEnd)})`;
+    };
+
+    const parseIsoWeek = (weekValue) => {
+        if (!weekValue || !/^\d{4}-W\d{2}$/.test(weekValue)) {
+            return null;
+        }
+
+        const [yearPart, weekPart] = weekValue.split('-W');
+        const year = Number(yearPart);
+        const week = Number(weekPart);
+        const jan4 = new Date(year, 0, 4);
+        const jan4Day = jan4.getDay() || 7;
+        jan4.setDate(jan4.getDate() - jan4Day + 1 + ((week - 1) * 7));
+        return jan4;
+    };
+
+    const updateWeekSelection = (selectedDate) => {
+        if (!selectedDate) {
+            hiddenWeekInput.value = '';
+            visibleWeekInput.value = '';
+            return;
+        }
+
+        hiddenWeekInput.value = getIsoWeekValue(selectedDate);
+        visibleWeekInput.value = buildWeekLabel(selectedDate);
+    };
+
+    const initialDate = parseIsoWeek(hiddenWeekInput.value);
+    const picker = flatpickr(visibleWeekInput, {
+        allowInput: false,
+        clickOpens: true,
+        disableMobile: true,
+        defaultDate: initialDate,
+        locale: { firstDayOfWeek: 1 },
+        onChange: ([selectedDate]) => {
+            updateWeekSelection(selectedDate);
+            picker.close();
+        },
+        onReady: (_, __, instance) => {
+            if (initialDate) {
+                updateWeekSelection(initialDate);
+                instance.jumpToDate(initialDate);
+            }
+        }
+    });
+
+    visibleWeekInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Backspace' || event.key === 'Delete') {
+            hiddenWeekInput.value = '';
+            visibleWeekInput.value = '';
+            picker.clear();
+            event.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

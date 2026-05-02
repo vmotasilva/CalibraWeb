@@ -213,6 +213,8 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, "Ocorrencia da categoria parada")
         self.assertNotContains(response, "Ocorrencia da categoria colaborador")
         self.assertEqual(response.context["filtros"]["categoria"], str(categoria_parada.pk))
+        self.assertEqual(response.context["total_filtrados"], 1)
+        self.assertEqual(response.context["total_registros"], 2)
 
     def test_listagem_filtra_por_semana_considerando_abertura_ou_encerramento_na_semana(self):
         semana_referencia = date.fromisocalendar(2026, 18, 1)
@@ -260,6 +262,8 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, "Aberta durante a semana")
         self.assertNotContains(response, "Fora da semana")
         self.assertEqual(response.context["filtros"]["semana"], "2026-W18")
+        self.assertContains(response, 'id="semana-picker"')
+        self.assertContains(response, "Semana 18/2026 (27/04/2026 a 03/05/2026)")
 
     def test_detail_view_registra_anotacoes_por_modal_com_autor_e_historico(self):
         ocorrencia = OcorrenciaLaboratorio.objects.create(
