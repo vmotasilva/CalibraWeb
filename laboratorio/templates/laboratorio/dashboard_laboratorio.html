@@ -48,84 +48,41 @@
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Total no periodo</div>
-                    <div class="display-6 fw-semibold">{{ total }}</div>
-                </div>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-body py-2 px-3">
+                <div class="text-muted small text-uppercase">Total no periodo</div>
+                <div class="h3 fw-semibold mb-0">{{ total }}</div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Taxa de encerramento</div>
-                    <div class="display-6 fw-semibold text-primary">{{ taxa_encerramento|floatformat:1 }}%</div>
-                </div>
+        <div class="card shadow-sm border-0">
+            <div class="card-body py-2 px-3">
+                <div class="text-muted small text-uppercase">Taxa de encerramento</div>
+                <div class="h3 fw-semibold text-primary mb-0">{{ taxa_encerramento|floatformat:1 }}%</div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Abertas</div>
-                    <div class="display-6 fw-semibold text-danger">{{ abertas }}</div>
-                </div>
+        <div class="card shadow-sm border-0">
+            <div class="card-body py-2 px-3">
+                <div class="text-muted small text-uppercase">Abertas</div>
+                <div class="h3 fw-semibold text-danger mb-0">{{ abertas }}</div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Encerradas</div>
-                    <div class="display-6 fw-semibold text-success">{{ encerradas }}</div>
-                </div>
+        <div class="card shadow-sm border-0">
+            <div class="card-body py-2 px-3">
+                <div class="text-muted small text-uppercase">Encerradas</div>
+                <div class="h3 fw-semibold text-success mb-0">{{ encerradas }}</div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Duracao media</div>
-                    <div class="h3 fw-semibold mb-0">{{ media_duracao }}</div>
-                </div>
+        <div class="card shadow-sm border-0">
+            <div class="card-body py-2 px-3">
+                <div class="text-muted small text-uppercase">Duracao media</div>
+                <div class="h3 fw-semibold mb-0">{{ media_duracao }}</div>
             </div>
         </div>
-    </div>
-
-    <div class="row g-3 mb-4">
-        <div class="col-md-4 col-lg-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Impactos registrados</div>
-                    <div class="display-6 fw-semibold">{{ impactos_registrados }}</div>
-                    <div class="small text-muted mt-2">Ocorrencias com perda, indisponibilidade, custo ou observacao final registrada.</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 col-lg-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Horas indisponiveis</div>
-                    <div class="display-6 fw-semibold">{{ total_horas_indisponibilidade|floatformat:2 }}</div>
-                    <div class="small text-muted mt-2">Horas acumuladas de indisponibilidade registradas no periodo.</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 col-lg-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Impacto financeiro</div>
-                    <div class="h3 fw-semibold mb-0">R$ {{ total_impacto_financeiro|floatformat:2 }}</div>
-                    <div class="small text-muted mt-2">Estimativa consolidada do impacto financeiro informado nos encerramentos.</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="text-muted small text-uppercase">Acompanhamento imediato</div>
-                    <div class="display-6 fw-semibold text-danger">{{ ocorrencias_prioritarias|length }}</div>
-                    <div class="small text-muted mt-2">Ocorrencias abertas com impacto alto ou critico.</div>
-                </div>
+        <div class="card shadow-sm border-0">
+            <div class="card-body py-2 px-3">
+                <div class="text-muted small text-uppercase">Absenteismo (h)</div>
+                <div class="h3 fw-semibold mb-0">{{ total_absenteismo_horas|floatformat:2 }}</div>
             </div>
         </div>
     </div>
@@ -181,52 +138,21 @@
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-lg-7">
+        <div class="col-12">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white fw-semibold">Detalhamento por periodo</div>
                 <div class="card-body">
-                    <canvas id="chartPeriodo" height="120"></canvas>
+                    <canvas id="chartPeriodo" height="110"></canvas>
                     {% if not por_periodo %}
                     <div class="text-muted small mt-3">Sem dados no periodo selecionado.</div>
                     {% endif %}
                 </div>
             </div>
         </div>
-        <div class="col-lg-5">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white fw-semibold">Distribuicao por impacto</div>
-                <div class="card-body">
-                    <canvas id="chartImpacto" height="120"></canvas>
-                </div>
-            </div>
-        </div>
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-lg-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white fw-semibold">Impactos</div>
-                <div class="table-responsive">
-                    <table class="table mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Impacto</th>
-                                <th class="text-end">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in por_impacto %}
-                            <tr>
-                                <td>{{ item.nome }}</td>
-                                <td class="text-end">{{ item.total }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4">
+        <div class="col-lg-6">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white fw-semibold">Categorias mais recorrentes</div>
                 <div class="table-responsive">
@@ -253,7 +179,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-4">
+        <div class="col-lg-6">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white fw-semibold">Assuntos mais recorrentes</div>
                 <div class="table-responsive">
@@ -283,27 +209,7 @@
     </div>
 
     <div class="row g-3">
-        <div class="col-lg-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white fw-semibold">Ocorrencias prioritarias em aberto</div>
-                <div class="list-group list-group-flush">
-                    {% for ocorrencia in ocorrencias_prioritarias %}
-                    <a href="{% url 'laboratorio:ocorrencia_detail' ocorrencia.pk %}" class="list-group-item list-group-item-action">
-                        <div class="d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                                <div class="fw-semibold">{{ ocorrencia.assunto }}</div>
-                                <div class="small text-muted">{{ ocorrencia.categoria|default:'Sem categoria definida' }}</div>
-                            </div>
-                            <span class="badge text-bg-{{ ocorrencia.impacto_badge_class }}">{{ ocorrencia.get_impacto_display }}</span>
-                        </div>
-                    </a>
-                    {% empty %}
-                    <div class="list-group-item text-muted">Nenhuma ocorrencia aberta de alta prioridade no recorte selecionado.</div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-8">
+        <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white fw-semibold">Ocorrencias recentes no periodo filtrado</div>
                 <div class="table-responsive">
@@ -465,31 +371,10 @@
             });
         }
 
-        const impactoLabels = {{ chart_impacto_labels|safe }};
-        const impactoValues = {{ chart_impacto_values|safe }};
         const periodoLabels = {{ chart_periodo_labels|safe }};
         const periodoValues = {{ chart_periodo_values|safe }};
 
-        const chartImpacto = document.getElementById('chartImpacto');
         const chartPeriodo = document.getElementById('chartPeriodo');
-
-        if (chartImpacto) {
-            new Chart(chartImpacto, {
-                type: 'doughnut',
-                data: {
-                    labels: impactoLabels,
-                    datasets: [{
-                        data: impactoValues,
-                        backgroundColor: ['#2e7d32', '#f9a825', '#c62828', '#263238'],
-                    }],
-                },
-                options: {
-                    plugins: {
-                        legend: { position: 'bottom' },
-                    },
-                },
-            });
-        }
 
         if (chartPeriodo) {
             new Chart(chartPeriodo, {

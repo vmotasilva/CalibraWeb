@@ -148,9 +148,55 @@ class LaboratorioModuleTests(TestCase):
             ocorrencia_encerrada.assunto,
             [item["nome"] for item in response.context["por_assunto"]],
         )
-        self.assertEqual(response.context["total_impacto_financeiro"], Decimal("1200.00"))
+        self.assertEqual(response.context["total_absenteismo_horas"], Decimal("0"))
         self.assertContains(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia_encerrada.pk]))
         self.assertContains(response, "modal=encerramento")
+
+    def test_dashboard_calcula_absenteismo_a_partir_de_faltas_de_colaborador(self):
+        categoria_falta = CategoriaLaboratorio.objects.create(
+            nome="Falta de colaborador",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+        )
+        categoria_outros = CategoriaLaboratorio.objects.create(
+            nome="Parada de maquina",
+            impacto=CategoriaLaboratorio.IMPACTO_ALTO,
+        )
+        abertura = timezone.now().replace(second=0, microsecond=0)
+
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria_falta,
+            assunto="Falta de colaborador no turno A",
+            detalhamento="Ausencia durante o primeiro turno.",
+            consequencias="Redistribuicao da equipe.",
+            impacto=categoria_falta.impacto,
+            responsavel=self.user,
+            data_abertura=abertura,
+            data_encerramento=abertura + timedelta(hours=8),
+            horas_indisponibilidade=Decimal("1.50"),
+        )
+        OcorrenciaLaboratorio.objects.create(
+            categoria=categoria_outros,
+            assunto="Parada de equipamento",
+            detalhamento="Falha mecanica no equipamento.",
+            consequencias="Interrupcao parcial da bancada.",
+            impacto=categoria_outros.impacto,
+            responsavel=self.user,
+            data_abertura=abertura,
+            data_encerramento=abertura + timedelta(hours=4),
+            horas_indisponibilidade=Decimal("10.00"),
+        )
+
+        response = self.client.get(
+            reverse("laboratorio:dashboard"),
+            {
+                "inicio": abertura.date().strftime("%Y-%m-%d"),
+                "fim": abertura.date().strftime("%Y-%m-%d"),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["total_absenteismo_horas"], Decimal("8"))
+        self.assertContains(response, "Absenteismo (h)")
 
     def test_dashboard_filtra_por_semana_com_sobreposicao_de_encerramento(self):
         categoria = CategoriaLaboratorio.objects.create(

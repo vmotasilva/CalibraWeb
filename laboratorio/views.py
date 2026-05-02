@@ -47,6 +47,21 @@ def _format_week_label(week_start):
     return f"Semana {iso_week:02d}/{iso_year} ({week_start.strftime('%d/%m/%Y')} a {week_end.strftime('%d/%m/%Y')})"
 
 
+def _is_absenteismo_ocorrencia(ocorrencia):
+    categoria_nome = (ocorrencia.categoria.nome if ocorrencia.categoria else "")
+    texto = f"{categoria_nome} {ocorrencia.assunto or ''}".lower()
+    return "falta de colaborador" in texto or "absenteismo" in texto or "absente\u00edsmo" in texto
+
+
+def _duracao_em_horas(ocorrencia):
+    duracao = ocorrencia.duracao
+    if not duracao and ocorrencia.data_abertura and not ocorrencia.data_encerramento:
+        duracao = timezone.now() - ocorrencia.data_abertura
+    if not duracao:
+        return Decimal("0")
+    return Decimal(str(duracao.total_seconds())) / Decimal("3600")
+
+
 def _calcular_media_duracao(ocorrencias):
     duracoes = [ocorrencia.duracao for ocorrencia in ocorrencias if ocorrencia.duracao]
     if not duracoes:
@@ -480,21 +495,10 @@ def dashboard_laboratorio(request):
     encerradas = total - abertas
     media_duracao = _calcular_media_duracao(ocorrencias_lista)
     taxa_encerramento = (encerradas / total * 100) if total else 0
-    total_horas_indisponibilidade = sum(
-        (ocorrencia.horas_indisponibilidade or Decimal("0"))
-        for ocorrencia in ocorrencias_lista
+    total_absenteismo_horas = sum(
+        (_duracao_em_horas(ocorrencia) for ocorrencia in ocorrencias_lista if _is_absenteismo_ocorrencia(ocorrencia)),
+        Decimal("0"),
     )
-    total_impacto_financeiro = sum(
-        (ocorrencia.impacto_financeiro or Decimal("0"))
-        for ocorrencia in ocorrencias_lista
-    )
-    impactos_registrados = sum(1 for ocorrencia in ocorrencias_lista if ocorrencia.possui_impacto_registrado)
-
-    impacto_counter = Counter(ocorrencia.impacto for ocorrencia in ocorrencias_lista)
-    por_impacto = [
-        {"codigo": codigo, "nome": nome, "total": impacto_counter.get(codigo, 0)}
-        for codigo, nome in CategoriaLaboratorio.IMPACTO_CHOICES
-    ]
 
     categoria_counter = Counter(
         ocorrencia.categoria.nome for ocorrencia in ocorrencias_lista if ocorrencia.categoria
@@ -531,16 +535,6 @@ def dashboard_laboratorio(request):
         )
     ]
 
-    ocorrencias_prioritarias = [
-        ocorrencia
-        for ocorrencia in ocorrencias_lista
-        if not ocorrencia.data_encerramento
-        and ocorrencia.impacto in (
-            CategoriaLaboratorio.IMPACTO_ALTO,
-            CategoriaLaboratorio.IMPACTO_CRITICO,
-        )
-    ][:5]
-
     resumo_executivo = []
     if total:
         resumo_executivo.append(
@@ -553,14 +547,6 @@ def dashboard_laboratorio(request):
         if por_assunto:
             resumo_executivo.append(
                 f"O assunto mais recorrente foi {por_assunto[0]['nome']} ({por_assunto[0]['total']} registros)."
-            )
-        if total_impacto_financeiro:
-            resumo_executivo.append(
-                f"O impacto financeiro estimado acumulado no recorte foi de R$ {total_impacto_financeiro:.2f}."
-            )
-        if ocorrencias_prioritarias:
-            resumo_executivo.append(
-                f"Existem {len(ocorrencias_prioritarias)} ocorrencias abertas com prioridade alta ou critica exigindo acompanhamento gerencial."
             )
     else:
         resumo_executivo.append("Nao ha ocorrencias no periodo selecionado para compor o relatorio gerencial.")
@@ -589,19 +575,13 @@ def dashboard_laboratorio(request):
         "encerradas": encerradas,
         "taxa_encerramento": taxa_encerramento,
         "media_duracao": OcorrenciaLaboratorio.formatar_duracao(media_duracao),
-        "impactos_registrados": impactos_registrados,
-        "total_horas_indisponibilidade": total_horas_indisponibilidade,
-        "total_impacto_financeiro": total_impacto_financeiro,
+        "total_absenteismo_horas": total_absenteismo_horas,
         "perdas_por_unidade": perdas_por_unidade,
-        "por_impacto": por_impacto,
         "por_categoria": por_categoria,
         "por_assunto": por_assunto,
         "por_periodo": por_periodo,
         "resumo_executivo": resumo_executivo,
-        "ocorrencias_prioritarias": ocorrencias_prioritarias,
         "ocorrencias_recentes": ocorrencias_lista[:10],
-        "chart_impacto_labels": json.dumps([item["nome"] for item in por_impacto]),
-        "chart_impacto_values": json.dumps([item["total"] for item in por_impacto]),
         "chart_periodo_labels": json.dumps([item["periodo"] for item in por_periodo]),
         "chart_periodo_values": json.dumps([item["total"] for item in por_periodo]),
     }
