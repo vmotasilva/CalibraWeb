@@ -21,12 +21,12 @@
                 {% endif %}
             </div>
             <div class="col-md-8 mb-3">
-                <label class="form-label">Máquinas associadas</label>
-                {{ form.maquinas }}
-                {% if form.maquinas.errors %}
-                    <div class="text-danger">{{ form.maquinas.errors }}</div>
+                <label class="form-label">Tipo de máquina</label>
+                {{ form.tipo_maquina }}
+                {% if form.tipo_maquina.errors %}
+                    <div class="text-danger">{{ form.tipo_maquina.errors }}</div>
                 {% endif %}
-                <small class="form-text text-muted">Selecione as máquinas que utilizam, consomem ou dependem deste insumo.</small>
+                <small class="form-text text-muted">Informe o tipo de máquina ao qual este insumo se aplica, quando houver.</small>
             </div>
         </div>
         <div class="mb-3">

@@ -1,5 +1,7 @@
 from django import forms
 
+from maquinas.models import CategoriaMaquina
+
 from .models import CategoriaInsumo, ComentarioInsumos, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
 
 
@@ -20,8 +22,8 @@ class ModeloAuditoriaForm(forms.ModelForm):
         fields = [
             "nome",
             "categoria",
+            "tipo_maquina",
             "objeto_auditoria",
-            "maquinas",
             "responsaveis",
             "periodicidade",
             "dia_semana",
@@ -37,8 +39,8 @@ class ModeloAuditoriaForm(forms.ModelForm):
         widgets = {
             "nome": forms.TextInput(attrs={"class": "form-control"}),
             "categoria": forms.Select(attrs={"class": "form-select"}),
+            "tipo_maquina": forms.Select(attrs={"class": "form-select"}),
             "objeto_auditoria": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
-            "maquinas": forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
             "responsaveis": forms.SelectMultiple(attrs={"class": "form-select"}),
             "periodicidade": forms.Select(attrs={"class": "form-select", "id": "id_periodicidade"}),
             "dia_semana": forms.Select(attrs={"class": "form-select", "id": "id_dia_semana"}),
@@ -81,10 +83,7 @@ class ModeloAuditoriaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["categoria"].queryset = CategoriaInsumo.objects.order_by("nome")
-        self.fields["maquinas"].queryset = self.fields["maquinas"].queryset.select_related(
-            "categoria",
-            "setor",
-        ).order_by("codigo")
+        self.fields["tipo_maquina"].queryset = CategoriaMaquina.objects.filter(ativo=True).order_by("nome")
 
     def clean(self):
         cleaned_data = super().clean()

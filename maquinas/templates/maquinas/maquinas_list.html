@@ -2,9 +2,6 @@
 {% load nav_access %}
 
 {% can_nav_block user 'laboratorio' 'maquinas' as can_lab_maquinas %}
-{% can_nav_view user 'maquinas:maquina_create' 'laboratorio' as can_maquina_create %}
-{% can_nav_view user 'maquinas:maquina_update' 'laboratorio' as can_maquina_update %}
-{% can_nav_view user 'maquinas:maquina_delete' 'laboratorio' as can_maquina_delete %}
 {% can_nav_view user 'maquinas:categorias_list' 'laboratorio' as can_categoria_list %}
 
 {% block content %}
@@ -120,9 +117,8 @@
                             </td>
                             <td class="text-end">
                                 <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
-                                    {% if can_maquina_update %}<a href="{% url 'maquinas:maquina_update' maquina.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>{% endif %}
-                                    {% if can_maquina_delete %}<a href="{% url 'maquinas:maquina_delete' maquina.pk %}" class="btn btn-sm btn-outline-danger">Excluir</a>{% endif %}
-                                    {% if not can_maquina_update and not can_maquina_delete %}<span class="text-muted small">Sem acoes</span>{% endif %}
+                                    <a href="{% url 'maquinas:maquina_update' maquina.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
+                                    <a href="{% url 'maquinas:maquina_delete' maquina.pk %}" class="btn btn-sm btn-outline-danger">Excluir</a>
                                 </div>
                             </td>
                         </tr>

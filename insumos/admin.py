@@ -19,10 +19,11 @@ class CategoriaInsumoAdmin(admin.ModelAdmin):
 
 @admin.register(ModeloAuditoria)
 class ModeloAuditoriaAdmin(admin.ModelAdmin):
-    list_display = ("nome", "categoria", "periodicidade", "ativo", "criado_em")
-    list_filter = ("categoria", "periodicidade", "ativo")
+    list_display = ("nome", "categoria", "tipo_maquina", "periodicidade", "ativo", "criado_em")
+    list_filter = ("categoria", "tipo_maquina", "periodicidade", "ativo")
     search_fields = ("nome", "objeto_auditoria")
-    filter_horizontal = ("maquinas", "responsaveis")
+    filter_horizontal = ("responsaveis",)
+    exclude = ("maquinas",)
 
 
 @admin.register(PerguntaAuditoria)

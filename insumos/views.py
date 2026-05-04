@@ -222,15 +222,13 @@ def api_next_pergunta_ordem(request):
 def modulo_insumos_view(request):
     modelos_qs = _filter_modelos_para_usuario(
         request.user,
-        ModeloAuditoria.objects.select_related("categoria").prefetch_related("maquinas"),
+        ModeloAuditoria.objects.select_related("categoria", "tipo_maquina"),
     )
     total_modelos = modelos_qs.count()
     total_perguntas = PerguntaAuditoria.objects.filter(modelo__in=modelos_qs).count()
     total_registros = RegistroAuditoria.objects.filter(modelo__in=modelos_qs).count()
     total_categorias = CategoriaInsumo.objects.filter(ativo=True).count()
-    total_maquinas_associadas = (
-        modelos_qs.filter(maquinas__isnull=False).values("maquinas").distinct().count()
-    )
+    total_cadastros_com_tipo_maquina = modelos_qs.filter(tipo_maquina__isnull=False).count()
     registros_recentes = (
         _filter_registros_para_usuario(
             request.user,
@@ -245,7 +243,7 @@ def modulo_insumos_view(request):
         "total_perguntas": total_perguntas,
         "total_registros": total_registros,
         "total_categorias": total_categorias,
-        "total_maquinas_associadas": total_maquinas_associadas,
+        "total_cadastros_com_tipo_maquina": total_cadastros_com_tipo_maquina,
         "registros_recentes": registros_recentes,
     }
     return render(request, "insumos/modulo_auditoria.html", context)
@@ -313,7 +311,7 @@ def modelos_list(request):
     fim = request.GET.get("fim")
     categoria_id = (request.GET.get("categoria") or "").strip()
 
-    modelos = ModeloAuditoria.objects.select_related("categoria").prefetch_related("maquinas").annotate(
+    modelos = ModeloAuditoria.objects.select_related("categoria", "tipo_maquina").annotate(
         total_perguntas=Count("perguntas", distinct=True),
         total_registros=Count("registros", distinct=True),
     )
@@ -442,13 +440,14 @@ def _unique_modelo_nome(base_nome: str) -> str:
 def modelo_duplicate(request, pk):
     modelo = get_object_or_404(ModeloAuditoria, pk=pk)
     if not _auditoria_is_admin(request.user):
-        messages.error(request, "Apenas usuários Staff/Superuser podem duplicar modelos de insumos.")
+        messages.error(request, "Apenas usuários Staff/Superuser podem duplicar cadastros de insumos.")
         return redirect("insumos:modelos_list")
 
     with transaction.atomic():
         novo = ModeloAuditoria.objects.create(
             nome=_unique_modelo_nome(modelo.nome),
             categoria=modelo.categoria,
+            tipo_maquina=modelo.tipo_maquina,
             objeto_auditoria=modelo.objeto_auditoria,
             link_sharepoint=modelo.link_sharepoint,
             periodicidade=modelo.periodicidade,
@@ -463,7 +462,6 @@ def modelo_duplicate(request, pk):
         )
 
         novo.responsaveis.set(modelo.responsaveis.all())
-        novo.maquinas.set(modelo.maquinas.all())
 
         perguntas_src = list(PerguntaAuditoria.objects.filter(modelo=modelo).order_by("ordem", "id"))
         perguntas_new = [
@@ -484,7 +482,7 @@ def modelo_duplicate(request, pk):
             PerguntaAuditoria.objects.bulk_create(perguntas_new)
             _normalize_perguntas_ordem(novo.id)
 
-    messages.success(request, "Modelo duplicado com sucesso (incluindo perguntas).")
+    messages.success(request, "Cadastro de insumo duplicado com sucesso.")
     return redirect("insumos:modelo_edit", pk=novo.id)
 
 
@@ -702,7 +700,7 @@ def selecionar_modelo_preenchimento(request):
 
     modelos = _filter_modelos_para_usuario(
         request.user,
-        ModeloAuditoria.objects.select_related("categoria").prefetch_related("maquinas").filter(ativo=True),
+        ModeloAuditoria.objects.select_related("categoria", "tipo_maquina").filter(ativo=True),
     )
     if q:
         modelos = modelos.filter(models.Q(nome__icontains=q) | models.Q(objeto_auditoria__icontains=q))

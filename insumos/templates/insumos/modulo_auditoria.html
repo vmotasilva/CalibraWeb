@@ -5,7 +5,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
         <div>
             <h2 class="mb-1">Controle de Insumos</h2>
-            <p class="text-muted mb-0">Central de cadastros, categorias, associações com máquinas e acompanhamentos periódicos.</p>
+            <p class="text-muted mb-0">Central de cadastros por categoria, tipo de máquina aplicável e acompanhamentos periódicos.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'insumos:dashboard' %}" class="btn btn-outline-primary">Dashboard</a>
@@ -49,8 +49,8 @@
         <div class="col-md-6 col-xl-3">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h6 class="text-muted">Máquinas associadas</h6>
-                    <h3>{{ total_maquinas_associadas }}</h3>
+                    <h6 class="text-muted">Cadastros com tipo de máquina</h6>
+                    <h3>{{ total_cadastros_com_tipo_maquina }}</h3>
                 </div>
             </div>
         </div>

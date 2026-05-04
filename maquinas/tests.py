@@ -56,6 +56,16 @@ class MaquinasViewsTests(TestCase):
         self.assertContains(response, "MQ-IN")
         self.assertNotContains(response, "MQ-AT")
 
+    def test_machine_list_shows_action_buttons(self):
+        maquina = Maquina.objects.create(codigo="MQ-EDIT", fabricante="Dosadora", categoria=self.categoria, status=True)
+
+        response = self.client.get(reverse("maquinas:maquinas_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse("maquinas:maquina_update", args=[maquina.pk]))
+        self.assertContains(response, reverse("maquinas:maquina_delete", args=[maquina.pk]))
+        self.assertNotContains(response, "Sem acoes")
+
     def test_category_list_shows_machine_count(self):
         Maquina.objects.create(nome="Agitador", codigo="MQ-002", categoria=self.categoria, status=True)
 

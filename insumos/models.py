@@ -49,6 +49,15 @@ class ModeloAuditoria(models.Model):
         related_name="modelos",
         verbose_name="Categoria do insumo",
     )
+    tipo_maquina = models.ForeignKey(
+        "maquinas.CategoriaMaquina",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cadastros_insumos",
+        verbose_name="Tipo de maquina",
+        help_text="Tipo de maquina ao qual este insumo se aplica, quando houver.",
+    )
     objeto_auditoria = models.TextField(verbose_name="Objeto do Insumo")
     link_sharepoint = models.URLField(blank=True, verbose_name="Link SharePoint")
     periodicidade = models.CharField(max_length=20, choices=PERIODICIDADE_CHOICES, default="MENSAL")

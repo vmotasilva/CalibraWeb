@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from maquinas.models import CategoriaMaquina, Maquina
+from maquinas.models import CategoriaMaquina
 
 from .models import CategoriaInsumo, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
 
@@ -41,33 +41,31 @@ class InsumosModuleTests(TestCase):
         list_response = self.client.get(reverse("insumos:categorias_list"))
         self.assertContains(list_response, "Lubrificantes")
 
-    def test_formulario_de_cadastro_exibe_categoria_e_maquinas(self):
+    def test_formulario_de_cadastro_exibe_categoria_e_tipo_maquina(self):
         categoria = CategoriaInsumo.objects.create(nome="Consumíveis")
         categoria_maquina = CategoriaMaquina.objects.create(nome="Misturadores")
-        maquina = Maquina.objects.create(codigo="MX-01", categoria=categoria_maquina)
 
         response = self.client.get(reverse("insumos:modelo_create"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Novo Cadastro de Insumo")
         self.assertContains(response, 'id="id_categoria"', html=False)
-        self.assertContains(response, 'id="id_maquinas"', html=False)
+        self.assertContains(response, 'id="id_tipo_maquina"', html=False)
         self.assertContains(response, categoria.nome)
-        self.assertContains(response, maquina.codigo)
+        self.assertContains(response, categoria_maquina.nome)
 
-    def test_listagem_de_cadastros_exibe_categoria_maquinas_e_contadores(self):
+    def test_listagem_de_cadastros_exibe_categoria_tipo_maquina_e_contadores(self):
         categoria = CategoriaInsumo.objects.create(nome="Lubrificantes")
         categoria_maquina = CategoriaMaquina.objects.create(nome="Linha de moagem")
-        maquina = Maquina.objects.create(codigo="LM-01", categoria=categoria_maquina)
         modelo = ModeloAuditoria.objects.create(
             nome="Controle de óleo hidráulico",
             categoria=categoria,
+            tipo_maquina=categoria_maquina,
             objeto_auditoria="Monitoramento do óleo utilizado na prensa hidráulica.",
             periodicidade="MENSAL",
             dia_mes=10,
             ativo=True,
         )
-        modelo.maquinas.add(maquina)
         PerguntaAuditoria.objects.create(
             modelo=modelo,
             pergunta="Nível dentro do padrão?",
@@ -88,7 +86,7 @@ class InsumosModuleTests(TestCase):
         self.assertContains(response, "Cadastros de Insumos")
         self.assertContains(response, modelo.nome)
         self.assertContains(response, categoria.nome)
-        self.assertContains(response, maquina.codigo)
+        self.assertContains(response, categoria_maquina.nome)
 
         modelo_contexto = next(item for item in response.context["modelos"] if item.pk == modelo.pk)
         self.assertEqual(modelo_contexto.total_perguntas, 1)
