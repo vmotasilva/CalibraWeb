@@ -546,3 +546,19 @@ class LaboratorioModuleTests(TestCase):
         delete_response = self.client.post(reverse("laboratorio:ocorrencia_delete", args=[ocorrencia.pk]))
         self.assertRedirects(delete_response, reverse("laboratorio:ocorrencias_list"))
         self.assertFalse(OcorrenciaLaboratorio.objects.filter(pk=ocorrencia.pk).exists())
+
+    def test_update_view_exibe_botao_excluir(self):
+        ocorrencia = OcorrenciaLaboratorio.objects.create(
+            assunto="Teste botao excluir na edicao",
+            detalhamento="Ocorrencia criada para validar o botao de exclusao na tela de edicao.",
+            consequencias="Sem consequencias adicionais.",
+            impacto=CategoriaLaboratorio.IMPACTO_BAIXO,
+            responsavel=self.user,
+            data_abertura=timezone.now().replace(second=0, microsecond=0),
+        )
+
+        response = self.client.get(reverse("laboratorio:ocorrencia_update", args=[ocorrencia.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse("laboratorio:ocorrencia_delete", args=[ocorrencia.pk]), count=2)
+        self.assertContains(response, "Excluir ocorrencia", count=2)
