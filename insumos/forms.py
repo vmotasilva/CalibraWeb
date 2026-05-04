@@ -1,6 +1,17 @@
 from django import forms
 
-from .models import ComentarioInsumos, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
+from .models import CategoriaInsumo, ComentarioInsumos, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
+
+
+class CategoriaInsumoForm(forms.ModelForm):
+    class Meta:
+        model = CategoriaInsumo
+        fields = ["nome", "descricao", "ativo"]
+        widgets = {
+            "nome": forms.TextInput(attrs={"class": "form-control"}),
+            "descricao": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
 
 
 class ModeloAuditoriaForm(forms.ModelForm):
@@ -8,7 +19,9 @@ class ModeloAuditoriaForm(forms.ModelForm):
         model = ModeloAuditoria
         fields = [
             "nome",
+            "categoria",
             "objeto_auditoria",
+            "maquinas",
             "responsaveis",
             "periodicidade",
             "dia_semana",
@@ -23,7 +36,9 @@ class ModeloAuditoriaForm(forms.ModelForm):
         ]
         widgets = {
             "nome": forms.TextInput(attrs={"class": "form-control"}),
+            "categoria": forms.Select(attrs={"class": "form-select"}),
             "objeto_auditoria": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "maquinas": forms.SelectMultiple(attrs={"class": "form-select", "size": 8}),
             "responsaveis": forms.SelectMultiple(attrs={"class": "form-select"}),
             "periodicidade": forms.Select(attrs={"class": "form-select", "id": "id_periodicidade"}),
             "dia_semana": forms.Select(attrs={"class": "form-select", "id": "id_dia_semana"}),
@@ -62,6 +77,14 @@ class ModeloAuditoriaForm(forms.ModelForm):
             ),
             "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["categoria"].queryset = CategoriaInsumo.objects.order_by("nome")
+        self.fields["maquinas"].queryset = self.fields["maquinas"].queryset.select_related(
+            "categoria",
+            "setor",
+        ).order_by("codigo")
 
     def clean(self):
         cleaned_data = super().clean()

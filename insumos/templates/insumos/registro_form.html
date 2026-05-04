@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{% if edicao %}Editar{% else %}Novo{% endif %} Registro - Insumos{% endblock %}
+{% block title %}{% if edicao %}Editar{% else %}Novo{% endif %} Acompanhamento - Insumos{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -64,7 +64,7 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'insumos:modulo' %}">Insumos</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'insumos:registros_list' %}">Registros</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'insumos:registros_list' %}">Acompanhamentos</a></li>
             <li class="breadcrumb-item active" aria-current="page">{% if edicao %}Editar{% else %}Novo{% endif %}</li>
         </ol>
     </nav>
@@ -73,15 +73,16 @@
         <div class="card-header bg-primary text-white">
             <h4 class="mb-0">
                 <i class="bi bi-clipboard-data"></i> 
-                {% if edicao %}Editar Registro de Insumos{% else %}Novo Registro de Insumos{% endif %}
+                {% if edicao %}Editar Acompanhamento de Insumos{% else %}Novo Acompanhamento de Insumos{% endif %}
             </h4>
         </div>
         <div class="card-body">
             {% if modelo %}
             <div class="alert alert-info mb-4">
                 <i class="bi bi-info-circle"></i>
-                <strong>Modelo:</strong> {{ modelo.nome }} | 
-                <strong>Objeto:</strong> {{ modelo.objeto_auditoria }} | 
+                <strong>Cadastro:</strong> {{ modelo.nome }} | 
+                <strong>Categoria:</strong> {{ modelo.categoria|default:'Sem categoria' }} | 
+                <strong>Descrição:</strong> {{ modelo.objeto_auditoria }} | 
                 <strong>Periodicidade:</strong> {{ modelo.get_periodicidade_completa }}
                 {% if modelo.link_sharepoint %}
                 | <a href="{{ modelo.link_sharepoint }}" target="_blank" class="alert-link"><i class="bi bi-link-45deg"></i> Documentação</a>
@@ -95,7 +96,7 @@
 
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
-                        <label class="form-label fw-bold">Data do Insumo <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold">Data do acompanhamento <span class="text-danger">*</span></label>
                         <div class="input-group">
                             {{ form.data_auditoria }}
                             <button
@@ -146,7 +147,7 @@
                 <hr class="my-4">
 
                 <h5 class="mb-3">
-                    <i class="bi bi-question-circle"></i> Perguntas do Modelo
+                    <i class="bi bi-list-check"></i> Critérios do cadastro
                     <span class="badge bg-secondary">{{ perguntas|length }}</span>
                 </h5>
 

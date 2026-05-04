@@ -3,14 +3,17 @@
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h2 class="mb-0">Dashboard - Dados dos Insumos</h2>
+        <div>
+            <h2 class="mb-1">Dashboard - Controle de Insumos</h2>
+            <p class="text-muted mb-0">Visão consolidada dos acompanhamentos lançados por cadastro, periodicidade e responsáveis.</p>
+        </div>
         <a href="{% url 'insumos:modulo' %}" class="btn btn-outline-secondary">Módulo Insumos</a>
     </div>
 
     <form method="get" class="row g-2 mb-3">
         <div class="col-md-3">
-            <label class="form-label">Modelo</label>
-            <select name="modelo" class="form-select">
+            <label class="form-label">Cadastro</label>
+            <select name="modelo" class="form-select" title="Filtrar por cadastro de insumo">
                 <option value="">Todos os modelos</option>
                 {% for m in todos_modelos %}
                 <option value="{{ m.id }}" {% if modelo_id == m.id|stringformat:"s" %}selected{% endif %}>{{ m.nome }}</option>
@@ -19,7 +22,7 @@
         </div>
         <div class="col-md-3">
             <label class="form-label">Responsável</label>
-            <select name="responsavel" class="form-select">
+            <select name="responsavel" class="form-select" title="Filtrar por responsável do cadastro">
                 <option value="">Todos</option>
                 {% for u in responsaveis %}
                 <option value="{{ u.id }}" {% if responsavel_id == u.id|stringformat:"s" %}selected{% endif %}>
@@ -30,11 +33,11 @@
         </div>
         <div class="col-md-2">
             <label class="form-label">Período inicial</label>
-            <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}">
+            <input type="date" name="inicio" class="form-control" value="{{ inicio|default:'' }}" title="Filtrar por período inicial" placeholder="aaaa-mm-dd">
         </div>
         <div class="col-md-2">
             <label class="form-label">Período final</label>
-            <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}">
+            <input type="date" name="fim" class="form-control" value="{{ fim|default:'' }}" title="Filtrar por período final" placeholder="aaaa-mm-dd">
         </div>
         <div class="col-md-2 d-flex flex-wrap align-items-end gap-2">
             <button type="submit" class="btn btn-outline-primary">Aplicar Filtro</button>
@@ -64,7 +67,7 @@
         <div class="col-md-6">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h6 class="text-muted">Total de Modelos</h6>
+                    <h6 class="text-muted">Cadastros com acompanhamento</h6>
                     <h3>{{ total_modelos }}</h3>
                 </div>
             </div>
@@ -72,7 +75,7 @@
         <div class="col-md-6">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h6 class="text-muted">Total de Registros</h6>
+                    <h6 class="text-muted">Acompanhamentos lançados</h6>
                     <h3>{{ total_registros }}</h3>
                 </div>
             </div>
@@ -82,7 +85,7 @@
     <div class="row g-3 mb-4">
         <div class="col-lg-8">
             <div class="card shadow-sm h-100">
-                <div class="card-header">Gráfico - Registros por Modelo</div>
+                <div class="card-header">Gráfico - Acompanhamentos por Cadastro</div>
                 <div class="card-body">
                     <canvas id="chartRegistrosModelo" height="110"></canvas>
                     <div id="chartRegistrosModeloFallback" class="text-center text-muted py-2 d-none">
@@ -107,13 +110,13 @@
     <div class="row g-3">
         <div class="col-lg-6">
             <div class="card shadow-sm h-100">
-                <div class="card-header">Registros por Modelo</div>
+                <div class="card-header">Acompanhamentos por Cadastro</div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-striped mb-0">
                         <thead>
                             <tr>
-                                <th>Modelo</th>
+                                <th>Cadastro</th>
                                 <th class="text-center">Total</th>
                                 <th class="text-center">Ação</th>
                             </tr>
@@ -125,7 +128,7 @@
                                 <td class="text-center">{{ item.total }}</td>
                                 <td class="text-center">
                                     <a href="{% url 'insumos:registros_por_modelo' item.modelo__id %}" class="btn btn-sm btn-info" title="Ver registros">
-                                        <i class="bi bi-eye"></i> Ver
+                                        <i class="bi bi-eye"></i> Histórico
                                     </a>
                                 </td>
                             </tr>
@@ -140,7 +143,7 @@
         </div>
         <div class="col-lg-6">
             <div class="card shadow-sm h-100">
-                <div class="card-header">Modelos por Periodicidade</div>
+                <div class="card-header">Cadastros por Periodicidade</div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-striped mb-0">

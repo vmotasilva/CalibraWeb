@@ -2,6 +2,22 @@ from django.conf import settings
 from django.db import models
 
 
+class CategoriaInsumo(models.Model):
+    nome = models.CharField(max_length=120, unique=True, verbose_name="Categoria")
+    descricao = models.TextField(blank=True, default="", verbose_name="Descricao")
+    ativo = models.BooleanField(default=True, verbose_name="Ativa")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["nome"]
+        verbose_name = "Categoria de Insumo"
+        verbose_name_plural = "Categorias de Insumos"
+
+    def __str__(self):
+        return self.nome
+
+
 class ModeloAuditoria(models.Model):
     PERIODICIDADE_CHOICES = [
         ("UNICA", "Aplicação Única"),
@@ -25,9 +41,24 @@ class ModeloAuditoria(models.Model):
     ]
 
     nome = models.CharField(max_length=150, unique=True)
+    categoria = models.ForeignKey(
+        "CategoriaInsumo",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="modelos",
+        verbose_name="Categoria do insumo",
+    )
     objeto_auditoria = models.TextField(verbose_name="Objeto do Insumo")
     link_sharepoint = models.URLField(blank=True, verbose_name="Link SharePoint")
     periodicidade = models.CharField(max_length=20, choices=PERIODICIDADE_CHOICES, default="MENSAL")
+    maquinas = models.ManyToManyField(
+        "maquinas.Maquina",
+        blank=True,
+        related_name="modelos_insumos",
+        verbose_name="Maquinas associadas",
+        help_text="Maquinas que utilizam ou consomem este insumo.",
+    )
 
     # Campos de referência para periodicidade
     dia_semana = models.CharField(

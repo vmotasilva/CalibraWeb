@@ -2,18 +2,35 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>{% if modo == 'edicao' %}Editar Modelo{% else %}Novo Modelo de Insumos{% endif %}</h2>
+    <h2>{% if modo == 'edicao' %}Editar Cadastro de Insumo{% else %}Novo Cadastro de Insumo{% endif %}</h2>
     <form method="post" class="card shadow-sm p-3 mt-3">
         {% csrf_token %}
         <div class="mb-3">
-            <label class="form-label">Nome</label>
+            <label class="form-label">Nome do cadastro</label>
             {{ form.nome }}
             {% if form.nome.errors %}
                 <div class="text-danger">{{ form.nome.errors }}</div>
             {% endif %}
         </div>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Categoria</label>
+                {{ form.categoria }}
+                {% if form.categoria.errors %}
+                    <div class="text-danger">{{ form.categoria.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-8 mb-3">
+                <label class="form-label">Máquinas associadas</label>
+                {{ form.maquinas }}
+                {% if form.maquinas.errors %}
+                    <div class="text-danger">{{ form.maquinas.errors }}</div>
+                {% endif %}
+                <small class="form-text text-muted">Selecione as máquinas que utilizam, consomem ou dependem deste insumo.</small>
+            </div>
+        </div>
         <div class="mb-3">
-            <label class="form-label">Objeto de Insumos</label>
+            <label class="form-label">Descrição do insumo e escopo de controle</label>
             {{ form.objeto_auditoria }}
             {% if form.objeto_auditoria.errors %}
                 <div class="text-danger">{{ form.objeto_auditoria.errors }}</div>

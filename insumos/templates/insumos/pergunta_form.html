@@ -2,15 +2,15 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>{% if modo == 'edicao' %}Editar Pergunta{% else %}Nova Pergunta{% endif %}</h2>
+    <h2>{% if modo == 'edicao' %}Editar Critério de Acompanhamento{% else %}Novo Critério de Acompanhamento{% endif %}</h2>
     <form method="post" class="card shadow-sm p-3 mt-3">
         {% csrf_token %}
         <div class="mb-3">
-            <label class="form-label">Modelo</label>
+            <label class="form-label">Cadastro</label>
             {{ form.modelo }}
         </div>
         <div class="mb-3">
-            <label class="form-label">Pergunta</label>
+            <label class="form-label">Critério</label>
             {{ form.pergunta }}
         </div>
         <div class="mb-3">

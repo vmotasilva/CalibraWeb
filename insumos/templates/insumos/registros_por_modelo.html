@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Registros - {{ modelo.nome }} - Insumos{% endblock %}
+{% block title %}Acompanhamentos - {{ modelo.nome }} - Insumos{% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
@@ -17,13 +17,14 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0">
-                        <i class="bi bi-file-earmark-text"></i> Registros Preenchidos: {{ modelo.nome }}
+                        <i class="bi bi-file-earmark-text"></i> Histórico de Acompanhamentos: {{ modelo.nome }}
                     </h4>
                 </div>
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <p class="mb-2"><strong>Objeto de Insumos:</strong> {{ modelo.objeto_auditoria }}</p>
+                            <p class="mb-2"><strong>Categoria:</strong> {{ modelo.categoria|default:'Sem categoria' }}</p>
+                            <p class="mb-2"><strong>Descrição do insumo:</strong> {{ modelo.objeto_auditoria }}</p>
                             <p class="mb-2"><strong>Periodicidade:</strong> {{ modelo.get_periodicidade_completa }}</p>
                             {% if modelo.responsaveis.all %}
                             <p class="mb-2"><strong>Responsáveis:</strong>
@@ -46,14 +47,14 @@
                                     <i class="bi bi-file-earmark-excel"></i> Exportar Excel
                                 </a>
                                 <a href="{% url 'insumos:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
-                                    <i class="bi bi-plus-circle"></i> Novo Registro
+                                    <i class="bi bi-plus-circle"></i> Novo Acompanhamento
                                 </a>
                             </div>
                         </div>
                     </div>
 
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> Total de registros preenchidos: <strong>{{ registros_count }}</strong>
+                        <i class="bi bi-info-circle"></i> Total de acompanhamentos lançados: <strong>{{ registros_count }}</strong>
                     </div>
 
                     {% if estatisticas_perguntas %}

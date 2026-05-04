@@ -1,13 +1,28 @@
 from django.contrib import admin
 
-from .models import ComentarioInsumos, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria, RespostaAuditoria
+from .models import (
+    CategoriaInsumo,
+    ComentarioInsumos,
+    ModeloAuditoria,
+    PerguntaAuditoria,
+    RegistroAuditoria,
+    RespostaAuditoria,
+)
+
+
+@admin.register(CategoriaInsumo)
+class CategoriaInsumoAdmin(admin.ModelAdmin):
+    list_display = ("nome", "ativo", "atualizado_em")
+    list_filter = ("ativo",)
+    search_fields = ("nome", "descricao")
 
 
 @admin.register(ModeloAuditoria)
 class ModeloAuditoriaAdmin(admin.ModelAdmin):
-    list_display = ("nome", "periodicidade", "ativo", "criado_em")
-    list_filter = ("periodicidade", "ativo")
+    list_display = ("nome", "categoria", "periodicidade", "ativo", "criado_em")
+    list_filter = ("categoria", "periodicidade", "ativo")
     search_fields = ("nome", "objeto_auditoria")
+    filter_horizontal = ("maquinas", "responsaveis")
 
 
 @admin.register(PerguntaAuditoria)

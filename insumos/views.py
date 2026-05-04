@@ -14,8 +14,15 @@ from io import BytesIO
 import json
 from shared.permissions import has_view_access
 
-from .forms import ComentarioInsumosForm, ModeloAuditoriaForm, PerguntaAuditoriaForm, RegistroAuditoriaForm
+from .forms import (
+    CategoriaInsumoForm,
+    ComentarioInsumosForm,
+    ModeloAuditoriaForm,
+    PerguntaAuditoriaForm,
+    RegistroAuditoriaForm,
+)
 from .models import (
+    CategoriaInsumo,
     ComentarioInsumos,
     ComentarioRespostaInsumos,
     ModeloAuditoria,
@@ -212,53 +219,131 @@ def api_next_pergunta_ordem(request):
 
 
 @login_required
-def modulo_auditoria_view(request):
-    modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
+def modulo_insumos_view(request):
+    modelos_qs = _filter_modelos_para_usuario(
+        request.user,
+        ModeloAuditoria.objects.select_related("categoria").prefetch_related("maquinas"),
+    )
     total_modelos = modelos_qs.count()
     total_perguntas = PerguntaAuditoria.objects.filter(modelo__in=modelos_qs).count()
     total_registros = RegistroAuditoria.objects.filter(modelo__in=modelos_qs).count()
+    total_categorias = CategoriaInsumo.objects.filter(ativo=True).count()
+    total_maquinas_associadas = (
+        modelos_qs.filter(maquinas__isnull=False).values("maquinas").distinct().count()
+    )
     registros_recentes = (
         _filter_registros_para_usuario(
             request.user,
-            RegistroAuditoria.objects.select_related("modelo"),
+            RegistroAuditoria.objects.select_related("modelo", "modelo__categoria", "avaliador"),
         )
         .order_by("-data_auditoria")[:5]
     )
 
     context = {
         "total_modelos": total_modelos,
+        "total_cadastros": modelos_qs.filter(ativo=True).count(),
         "total_perguntas": total_perguntas,
         "total_registros": total_registros,
+        "total_categorias": total_categorias,
+        "total_maquinas_associadas": total_maquinas_associadas,
         "registros_recentes": registros_recentes,
     }
     return render(request, "insumos/modulo_auditoria.html", context)
 
 
 @login_required
+def categorias_list(request):
+    categorias = CategoriaInsumo.objects.annotate(total_cadastros=Count("modelos", distinct=True)).order_by("nome")
+    return render(request, "insumos/categorias_list.html", {"categorias": categorias})
+
+
+@login_required
+def categoria_create(request):
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem criar categorias de insumos.")
+        return redirect("insumos:categorias_list")
+    if request.method == "POST":
+        form = CategoriaInsumoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Categoria de insumo criada com sucesso.")
+            return redirect("insumos:categorias_list")
+    else:
+        form = CategoriaInsumoForm()
+    return render(request, "insumos/categoria_form.html", {"form": form, "modo": "novo"})
+
+
+@login_required
+def categoria_edit(request, pk):
+    categoria = get_object_or_404(CategoriaInsumo, pk=pk)
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem editar categorias de insumos.")
+        return redirect("insumos:categorias_list")
+    if request.method == "POST":
+        form = CategoriaInsumoForm(request.POST, instance=categoria)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Categoria de insumo atualizada com sucesso.")
+            return redirect("insumos:categorias_list")
+    else:
+        form = CategoriaInsumoForm(instance=categoria)
+    return render(
+        request,
+        "insumos/categoria_form.html",
+        {"form": form, "modo": "edicao", "categoria": categoria},
+    )
+
+
+@login_required
+def categoria_delete(request, pk):
+    categoria = get_object_or_404(CategoriaInsumo, pk=pk)
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem remover categorias de insumos.")
+        return redirect("insumos:categorias_list")
+    if request.method == "POST":
+        categoria.delete()
+        messages.success(request, "Categoria de insumo removida com sucesso.")
+        return redirect("insumos:categorias_list")
+    return render(request, "insumos/categoria_confirm_delete.html", {"categoria": categoria})
+
+
+@login_required
 def modelos_list(request):
     inicio = request.GET.get("inicio")
     fim = request.GET.get("fim")
+    categoria_id = (request.GET.get("categoria") or "").strip()
 
-    modelos = ModeloAuditoria.objects.annotate(total_perguntas=Count("perguntas"))
+    modelos = ModeloAuditoria.objects.select_related("categoria").prefetch_related("maquinas").annotate(
+        total_perguntas=Count("perguntas", distinct=True),
+        total_registros=Count("registros", distinct=True),
+    )
     if inicio:
         modelos = modelos.filter(criado_em__date__gte=inicio)
     if fim:
         modelos = modelos.filter(criado_em__date__lte=fim)
+    if categoria_id:
+        modelos = modelos.filter(categoria_id=categoria_id)
 
-    context = {"modelos": modelos.order_by("nome"), "inicio": inicio, "fim": fim}
+    context = {
+        "modelos": modelos.order_by("nome"),
+        "inicio": inicio,
+        "fim": fim,
+        "categoria_id": categoria_id,
+        "categorias": CategoriaInsumo.objects.filter(ativo=True).order_by("nome"),
+    }
     return render(request, "insumos/modelos_list.html", context)
 
 
 @login_required
 def modelo_create(request):
     if not _auditoria_is_admin(request.user):
-        messages.error(request, "Apenas usuários Staff/Superuser podem criar modelos de insumos.")
+        messages.error(request, "Apenas usuários Staff/Superuser podem criar cadastros de insumos.")
         return redirect("insumos:modelos_list")
     if request.method == "POST":
         form = ModeloAuditoriaForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, "Modelo de insumos criado com sucesso.")
+            messages.success(request, "Cadastro de insumo criado com sucesso.")
             return redirect("insumos:modelos_list")
     else:
         form = ModeloAuditoriaForm()
@@ -269,13 +354,13 @@ def modelo_create(request):
 def modelo_edit(request, pk):
     modelo = get_object_or_404(ModeloAuditoria, pk=pk)
     if not _auditoria_can_update_modelo(request.user, modelo):
-        messages.error(request, "Você não tem permissão para atualizar este modelo de insumos.")
+        messages.error(request, "Você não tem permissão para atualizar este cadastro de insumo.")
         return redirect("insumos:modelos_list")
     if request.method == "POST":
         form = ModeloAuditoriaForm(request.POST, instance=modelo)
         if form.is_valid():
             form.save()
-            messages.success(request, "Modelo de insumos atualizado com sucesso.")
+            messages.success(request, "Cadastro de insumo atualizado com sucesso.")
             return redirect("insumos:modelos_list")
     else:
         form = ModeloAuditoriaForm(instance=modelo)
@@ -286,11 +371,11 @@ def modelo_edit(request, pk):
 def modelo_delete(request, pk):
     modelo = get_object_or_404(ModeloAuditoria, pk=pk)
     if not _auditoria_can_update_modelo(request.user, modelo):
-        messages.error(request, "Você não tem permissão para remover este modelo de insumos.")
+        messages.error(request, "Você não tem permissão para remover este cadastro de insumo.")
         return redirect("insumos:modelos_list")
     if request.method == "POST":
         modelo.delete()
-        messages.success(request, "Modelo removido com sucesso.")
+        messages.success(request, "Cadastro de insumo removido com sucesso.")
         return redirect("insumos:modelos_list")
     return render(request, "insumos/modelo_confirm_delete.html", {"modelo": modelo})
 
@@ -363,6 +448,7 @@ def modelo_duplicate(request, pk):
     with transaction.atomic():
         novo = ModeloAuditoria.objects.create(
             nome=_unique_modelo_nome(modelo.nome),
+            categoria=modelo.categoria,
             objeto_auditoria=modelo.objeto_auditoria,
             link_sharepoint=modelo.link_sharepoint,
             periodicidade=modelo.periodicidade,
@@ -377,6 +463,7 @@ def modelo_duplicate(request, pk):
         )
 
         novo.responsaveis.set(modelo.responsaveis.all())
+        novo.maquinas.set(modelo.maquinas.all())
 
         perguntas_src = list(PerguntaAuditoria.objects.filter(modelo=modelo).order_by("ordem", "id"))
         perguntas_new = [
@@ -484,13 +571,13 @@ def pergunta_move_down(request, pk):
 @login_required
 def pergunta_create(request):
     if not _auditoria_is_admin(request.user):
-        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
+        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar critérios de acompanhamento.")
         return redirect("insumos:perguntas_list")
     if request.method == "POST":
         form = PerguntaAuditoriaForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, "Pergunta cadastrada com sucesso.")
+            messages.success(request, "Critério de acompanhamento cadastrado com sucesso.")
             return redirect("insumos:perguntas_list")
     else:
         initial = {}
@@ -506,14 +593,14 @@ def pergunta_create(request):
 @login_required
 def pergunta_edit(request, pk):
     if not _auditoria_is_admin(request.user):
-        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
+        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar critérios de acompanhamento.")
         return redirect("insumos:perguntas_list")
     pergunta = get_object_or_404(PerguntaAuditoria, pk=pk)
     if request.method == "POST":
         form = PerguntaAuditoriaForm(request.POST, instance=pergunta)
         if form.is_valid():
             form.save()
-            messages.success(request, "Pergunta atualizada com sucesso.")
+            messages.success(request, "Critério de acompanhamento atualizado com sucesso.")
             return redirect("insumos:perguntas_list")
     else:
         form = PerguntaAuditoriaForm(instance=pergunta)
@@ -523,12 +610,12 @@ def pergunta_edit(request, pk):
 @login_required
 def pergunta_delete(request, pk):
     if not _auditoria_is_admin(request.user):
-        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
+        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar critérios de acompanhamento.")
         return redirect("insumos:perguntas_list")
     pergunta = get_object_or_404(PerguntaAuditoria, pk=pk)
     if request.method == "POST":
         pergunta.delete()
-        messages.success(request, "Pergunta removida com sucesso.")
+        messages.success(request, "Critério de acompanhamento removido com sucesso.")
         return redirect("insumos:perguntas_list")
     return render(request, "insumos/pergunta_confirm_delete.html", {"pergunta": pergunta})
 
@@ -537,7 +624,7 @@ def pergunta_delete(request, pk):
 @require_POST
 def pergunta_duplicate(request, pk):
     if not _auditoria_is_admin(request.user):
-        messages.error(request, "Apenas usuários Staff/Superuser podem duplicar perguntas.")
+        messages.error(request, "Apenas usuários Staff/Superuser podem duplicar critérios de acompanhamento.")
         return redirect("insumos:perguntas_list")
 
     return_to = _safe_return_to(request.POST.get("return_to"))
@@ -563,7 +650,7 @@ def pergunta_duplicate(request, pk):
     )
     _normalize_perguntas_ordem(pergunta.modelo_id)
 
-    messages.success(request, "Pergunta duplicada com sucesso.")
+    messages.success(request, "Critério de acompanhamento duplicado com sucesso.")
     return redirect(return_to)
 
 
@@ -572,10 +659,11 @@ def registros_list(request):
     inicio = request.GET.get("inicio")
     fim = request.GET.get("fim")
     modelo_id = request.GET.get("modelo")
+    categoria_id = (request.GET.get("categoria") or "").strip()
 
     registros = _filter_registros_para_usuario(
         request.user,
-        RegistroAuditoria.objects.select_related("modelo", "avaliador"),
+        RegistroAuditoria.objects.select_related("modelo", "modelo__categoria", "avaliador"),
     )
     if inicio:
         registros = registros.filter(data_auditoria__gte=inicio)
@@ -583,16 +671,20 @@ def registros_list(request):
         registros = registros.filter(data_auditoria__lte=fim)
     if modelo_id:
         registros = registros.filter(modelo_id=modelo_id)
+    if categoria_id:
+        registros = registros.filter(modelo__categoria_id=categoria_id)
 
     context = {
         "registros": registros.order_by("-data_auditoria", "-id"),
         "modelos": _filter_modelos_para_usuario(
             request.user,
-            ModeloAuditoria.objects.filter(ativo=True),
+            ModeloAuditoria.objects.select_related("categoria").filter(ativo=True),
         ).order_by("nome"),
+        "categorias": CategoriaInsumo.objects.filter(ativo=True).order_by("nome"),
         "inicio": inicio,
         "fim": fim,
         "modelo_id": modelo_id,
+        "categoria_id": categoria_id,
     }
     return render(request, "insumos/registros_list.html", context)
 
@@ -603,11 +695,15 @@ def selecionar_modelo_preenchimento(request):
     q = (request.GET.get("q") or "").strip()
     responsavel_id = (request.GET.get("responsavel") or "").strip()
     periodicidade = (request.GET.get("periodicidade") or "").strip()
+    categoria_id = (request.GET.get("categoria") or "").strip()
 
     if not _auditoria_is_admin(request.user):
         responsavel_id = str(request.user.pk)
 
-    modelos = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.filter(ativo=True))
+    modelos = _filter_modelos_para_usuario(
+        request.user,
+        ModeloAuditoria.objects.select_related("categoria").prefetch_related("maquinas").filter(ativo=True),
+    )
     if q:
         modelos = modelos.filter(models.Q(nome__icontains=q) | models.Q(objeto_auditoria__icontains=q))
     if responsavel_id:
@@ -616,6 +712,8 @@ def selecionar_modelo_preenchimento(request):
         ).distinct()
     if periodicidade:
         modelos = modelos.filter(periodicidade=periodicidade)
+    if categoria_id:
+        modelos = modelos.filter(categoria_id=categoria_id)
 
     modelos = modelos.annotate(
         total_perguntas=Count("perguntas", filter=models.Q(perguntas__ativo=True))
@@ -640,8 +738,10 @@ def selecionar_modelo_preenchimento(request):
         "q": q,
         "responsavel_id": responsavel_id,
         "periodicidade": periodicidade,
+        "categoria_id": categoria_id,
         "periodicidade_choices": ModeloAuditoria.PERIODICIDADE_CHOICES,
         "responsaveis": responsaveis,
+        "categorias": CategoriaInsumo.objects.filter(ativo=True).order_by("nome"),
     }
     return render(request, "insumos/selecionar_modelo.html", context)
 
@@ -1094,7 +1194,7 @@ def registro_delete(request, pk):
 
 
 @login_required
-def dashboard_auditoria(request):
+def dashboard_insumos(request):
     inicio = request.GET.get("inicio")
     fim = request.GET.get("fim")
     modelo_id = request.GET.get("modelo")
@@ -1102,7 +1202,7 @@ def dashboard_auditoria(request):
 
     registros = _filter_registros_para_usuario(
         request.user,
-        RegistroAuditoria.objects.select_related("modelo"),
+        RegistroAuditoria.objects.select_related("modelo", "modelo__categoria"),
     )
 
     if modelo_id:

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm border-danger">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">Excluir categoria de insumo</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-3">Tem certeza que deseja excluir a categoria <strong>{{ categoria.nome }}</strong>?</p>
+            <form method="post" class="d-flex gap-2">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Excluir</button>
+                <a href="{% url 'insumos:categorias_list' %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

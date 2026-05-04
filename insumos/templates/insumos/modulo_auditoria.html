@@ -2,33 +2,55 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h2 class="mb-0">Insumos</h2>
-        <a href="{% url 'insumos:dashboard' %}" class="btn btn-outline-primary">Dashboard</a>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h2 class="mb-1">Controle de Insumos</h2>
+            <p class="text-muted mb-0">Central de cadastros, categorias, associações com máquinas e acompanhamentos periódicos.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'insumos:dashboard' %}" class="btn btn-outline-primary">Dashboard</a>
+            <a href="{% url 'insumos:selecionar_modelo_preenchimento' %}" class="btn btn-primary">Novo acompanhamento</a>
+        </div>
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-md-4">
+        <div class="col-md-6 col-xl-2">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h6 class="text-muted">Modelos</h6>
-                    <h3>{{ total_modelos }}</h3>
+                    <h6 class="text-muted">Categorias ativas</h6>
+                    <h3>{{ total_categorias }}</h3>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-xl-2">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h6 class="text-muted">Perguntas</h6>
+                    <h6 class="text-muted">Cadastros ativos</h6>
+                    <h3>{{ total_cadastros }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-2">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Critérios ativos</h6>
                     <h3>{{ total_perguntas }}</h3>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6 col-xl-3">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h6 class="text-muted">Registros de Insumos</h6>
+                    <h6 class="text-muted">Acompanhamentos lançados</h6>
                     <h3>{{ total_registros }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Máquinas associadas</h6>
+                    <h3>{{ total_maquinas_associadas }}</h3>
                 </div>
             </div>
         </div>
@@ -36,50 +58,41 @@
 
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-list-check"></i> Ações Rápidas</h5>
+            <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Estrutura do Controle de Insumos</h5>
         </div>
         <div class="card-body">
-            <div class="row g-3 mb-3">
-                <div class="col-12">
-                    <div class="alert alert-success mb-0 d-flex align-items-center justify-content-between">
-                        <div>
-                            <i class="bi bi-clipboard-check fs-3 me-3"></i>
-                            <strong>Preencher Formulário de Insumos</strong>
-                            <p class="mb-0 text-muted small">Selecione um modelo e preencha uma nova avaliação</p>
-                        </div>
-                        <a href="{% url 'insumos:selecionar_modelo_preenchimento' %}" class="btn btn-success btn-lg">
-                            <i class="bi bi-pencil-square"></i> Preencher Agora
-                        </a>
-                    </div>
-                </div>
-            </div>
+            <p class="text-muted">Organize o módulo em quatro frentes: categorias, cadastros de insumos, critérios de acompanhamento e registros periódicos.</p>
             <div class="d-flex flex-wrap gap-2">
                 <a href="{% url 'insumos:modelos_list' %}" class="btn btn-outline-primary">
-                    <i class="bi bi-folder"></i> Gerenciar Modelos
+                    <i class="bi bi-box-seam"></i> Cadastros de insumos
+                </a>
+                <a href="{% url 'insumos:categorias_list' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-tags"></i> Categorias
                 </a>
                 <a href="{% url 'insumos:perguntas_list' %}" class="btn btn-outline-primary">
-                    <i class="bi bi-question-circle"></i> Gerenciar Perguntas
+                    <i class="bi bi-list-check"></i> Critérios de acompanhamento
                 </a>
                 <a href="{% url 'insumos:registros_list' %}" class="btn btn-outline-secondary">
-                    <i class="bi bi-file-earmark-text"></i> Ver Todos os Registros
+                    <i class="bi bi-clipboard-data"></i> Acompanhamentos lançados
                 </a>
                 <a href="{% url 'insumos:dashboard' %}" class="btn btn-outline-info">
-                    <i class="bi bi-graph-up"></i> Dashboard
+                    <i class="bi bi-graph-up"></i> Visão gerencial
                 </a>
             </div>
         </div>
     </div>
 
     <div class="card shadow-sm">
-        <div class="card-header">Últimos Registros</div>
+        <div class="card-header">Últimos acompanhamentos</div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table mb-0">
                 <thead>
                     <tr>
                         <th>Data</th>
-                        <th>Modelo</th>
-                        <th>Avaliador</th>
+                        <th>Cadastro</th>
+                        <th>Categoria</th>
+                        <th>Responsável</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -88,13 +101,14 @@
                     <tr>
                         <td>{{ registro.data_auditoria|date:'d/m/Y' }}</td>
                         <td>{{ registro.modelo.nome }}</td>
-                        <td>{{ registro.avaliador|default:'-' }}</td>
+                        <td>{{ registro.modelo.categoria|default:'Sem categoria' }}</td>
+                        <td>{{ registro.avaliador.get_full_name|default:registro.avaliador.username|default:'-' }}</td>
                         <td>
                             <a href="{% url 'insumos:registro_detail' registro.id %}" class="btn btn-sm btn-outline-primary">Detalhes</a>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" class="text-center py-3">Nenhum registro cadastrado.</td></tr>
+                    <tr><td colspan="5" class="text-center py-3">Nenhum acompanhamento cadastrado.</td></tr>
                     {% endfor %}
                 </tbody>
                 </table>

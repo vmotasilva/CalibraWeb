@@ -5,7 +5,11 @@ from . import views
 app_name = "insumos"
 
 urlpatterns = [
-    path("", views.modulo_auditoria_view, name="modulo"),
+    path("", views.modulo_insumos_view, name="modulo"),
+    path("categorias/", views.categorias_list, name="categorias_list"),
+    path("categorias/nova/", views.categoria_create, name="categoria_create"),
+    path("categorias/<int:pk>/editar/", views.categoria_edit, name="categoria_edit"),
+    path("categorias/<int:pk>/remover/", views.categoria_delete, name="categoria_delete"),
     path("modelos/", views.modelos_list, name="modelos_list"),
     path("modelos/novo/", views.modelo_create, name="modelo_create"),
     path("modelos/<int:pk>/editar/", views.modelo_edit, name="modelo_edit"),
@@ -46,6 +50,6 @@ urlpatterns = [
         views.exportar_respostas_excel,
         name="exportar_respostas_excel",
     ),
-    path("dashboard/", views.dashboard_auditoria, name="dashboard"),
+    path("dashboard/", views.dashboard_insumos, name="dashboard"),
 ]
 
