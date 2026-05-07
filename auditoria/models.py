@@ -192,6 +192,11 @@ class PerguntaAuditoria(models.Model):
         verbose_name="Cores das opções",
         help_text="Mapa de cores por opção (hex), usado em tipo Lista e Sim/Não.",
     )
+    exibir_grafico = models.BooleanField(
+        default=True,
+        verbose_name="Exibir gráfico",
+        help_text="Controla se esta pergunta pode aparecer em relatórios com gráfico.",
+    )
 
     aplicar_no_grid = models.BooleanField(
         default=True,
