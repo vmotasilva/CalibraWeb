@@ -2,7 +2,15 @@ import json
 
 from django import forms
 
-from .models import ComentarioAuditoria, ModeloAuditoria, PerguntaAuditoria, RegistroAuditoria
+from .models import (
+    ComentarioAuditoria,
+    ModeloAuditoria,
+    PerguntaAuditoria,
+    RegistroAuditoria,
+    get_pergunta_resposta_preset,
+    get_pergunta_resposta_preset_choices,
+    list_pergunta_resposta_presets,
+)
 
 
 class ModeloAuditoriaForm(forms.ModelForm):
@@ -84,6 +92,11 @@ class ModeloAuditoriaForm(forms.ModelForm):
 
 
 class PerguntaAuditoriaForm(forms.ModelForm):
+    conjunto_resposta_padrao = forms.ChoiceField(
+        required=False,
+        choices=[("", "—")] + get_pergunta_resposta_preset_choices(),
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
     opcoes_resposta_cores = forms.CharField(required=False, widget=forms.HiddenInput())
 
     class Meta:
@@ -133,6 +146,22 @@ class PerguntaAuditoriaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        if not self.is_bound and getattr(self.instance, "pk", None):
+            instance_colors = getattr(self.instance, "opcoes_resposta_cores", {})
+            for preset in list_pergunta_resposta_presets():
+                if getattr(self.instance, "tipo_resposta", "") != preset["tipo_resposta"]:
+                    continue
+                if getattr(self.instance, "opcoes_resposta_list", []) != preset["opcoes_resposta"]:
+                    continue
+                if dict(instance_colors or {}) != preset["opcoes_resposta_cores"]:
+                    continue
+                if bool(getattr(self.instance, "exibir_grafico", True)) != preset["exibir_grafico"]:
+                    continue
+                if bool(getattr(self.instance, "aplicar_no_grid", True)) != preset["aplicar_no_grid"]:
+                    continue
+                self.initial["conjunto_resposta_padrao"] = preset["key"]
+                break
+
         if not self.is_bound:
             current_colors = getattr(self.instance, "opcoes_resposta_cores", {})
             if isinstance(current_colors, dict):
@@ -175,9 +204,23 @@ class PerguntaAuditoriaForm(forms.ModelForm):
         cleaned_data = super().clean()
         modelo = cleaned_data.get("modelo")
         subcategoria = (cleaned_data.get("subcategoria") or "").strip()
+        conjunto_resposta_padrao = (cleaned_data.get("conjunto_resposta_padrao") or "").strip()
+
+        preset = None
+        if conjunto_resposta_padrao:
+            preset = get_pergunta_resposta_preset(conjunto_resposta_padrao)
+            if not preset:
+                self.add_error("conjunto_resposta_padrao", "Conjunto padrão inválido.")
+            else:
+                cleaned_data["tipo_resposta"] = preset["tipo_resposta"]
+                cleaned_data["opcoes_resposta"] = preset["opcoes_resposta_texto"]
+                cleaned_data["opcoes_resposta_cores"] = dict(preset["opcoes_resposta_cores"])
+                cleaned_data["exibir_grafico"] = preset["exibir_grafico"]
+                cleaned_data["aplicar_no_grid"] = preset["aplicar_no_grid"]
+
         tipo_resposta = cleaned_data.get("tipo_resposta")
         opcoes_resposta = (cleaned_data.get("opcoes_resposta") or "").strip()
-        opcoes_resposta_cores_raw = (cleaned_data.get("opcoes_resposta_cores") or "").strip()
+        opcoes_resposta_cores_value = cleaned_data.get("opcoes_resposta_cores") or ""
 
         if modelo and subcategoria:
             allowed = getattr(modelo, "subcategorias_list", []) or []
@@ -195,13 +238,17 @@ class PerguntaAuditoriaForm(forms.ModelForm):
                 self.add_error("opcoes_resposta", "Informe pelo menos 1 opção para o tipo 'Lista (opções)'.")
 
         parsed_colors = {}
-        if opcoes_resposta_cores_raw:
-            try:
-                raw_map = json.loads(opcoes_resposta_cores_raw)
-                if isinstance(raw_map, dict):
-                    parsed_colors = raw_map
-            except Exception:
-                self.add_error("opcoes_resposta", "Falha ao processar as cores das opções.")
+        if isinstance(opcoes_resposta_cores_value, dict):
+            parsed_colors = dict(opcoes_resposta_cores_value)
+        else:
+            opcoes_resposta_cores_raw = str(opcoes_resposta_cores_value or "").strip()
+            if opcoes_resposta_cores_raw:
+                try:
+                    raw_map = json.loads(opcoes_resposta_cores_raw)
+                    if isinstance(raw_map, dict):
+                        parsed_colors = raw_map
+                except Exception:
+                    self.add_error("opcoes_resposta", "Falha ao processar as cores das opções.")
 
         if tipo_resposta == "SIM_NAO":
             cleaned_data["opcoes_resposta_cores"] = {

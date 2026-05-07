@@ -29,6 +29,8 @@ from .models import (
     RelatorioCompartilhadoAuditoria,
     RegistroAuditoria,
     RespostaAuditoria,
+    get_pergunta_resposta_preset,
+    list_pergunta_resposta_presets,
 )
 
 
@@ -693,6 +695,7 @@ def perguntas_list(request):
         "modelo_id": modelo_id,
         "subcategoria": subcategoria,
         "subcategorias": subcategorias,
+        "resposta_presets": list_pergunta_resposta_presets(),
     }
     return render(request, "auditoria/perguntas_list.html", context)
 
@@ -756,6 +759,74 @@ def perguntas_bulk_set_subcategoria(request):
 
 
 @login_required
+def perguntas_bulk_apply_resposta(request):
+    if not _auditoria_is_admin(request.user):
+        messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
+        return redirect("auditoria:perguntas_list")
+    if request.method != "POST":
+        return redirect("auditoria:perguntas_list")
+
+    modelo_id = (request.POST.get("modelo") or "").strip()
+    subcategoria = (request.POST.get("filtro_subcategoria") or "").strip()
+    conjunto_resposta_padrao = (request.POST.get("conjunto_resposta_padrao") or "").strip()
+    pergunta_ids = request.POST.getlist("pergunta_ids")
+
+    if not (modelo_id and modelo_id.isdigit()):
+        messages.error(request, "Selecione um modelo para aplicar o tipo de resposta em lote.")
+        return redirect("auditoria:perguntas_list")
+
+    if not pergunta_ids:
+        messages.error(request, "Selecione pelo menos 1 pergunta.")
+        params = {"modelo": modelo_id}
+        if subcategoria:
+            params["subcategoria"] = subcategoria
+        url = reverse("auditoria:perguntas_list")
+        return redirect(f"{url}?{urlencode(params)}")
+
+    preset = get_pergunta_resposta_preset(conjunto_resposta_padrao)
+    if not preset:
+        messages.error(request, "Selecione um conjunto de respostas válido.")
+        params = {"modelo": modelo_id}
+        if subcategoria:
+            params["subcategoria"] = subcategoria
+        url = reverse("auditoria:perguntas_list")
+        return redirect(f"{url}?{urlencode(params)}")
+
+    ids_int: list[int] = []
+    for raw in pergunta_ids:
+        s = str(raw).strip()
+        if not s.isdigit():
+            continue
+        ids_int.append(int(s))
+
+    if not ids_int:
+        messages.error(request, "Selecione pelo menos 1 pergunta válida.")
+        params = {"modelo": modelo_id}
+        if subcategoria:
+            params["subcategoria"] = subcategoria
+        url = reverse("auditoria:perguntas_list")
+        return redirect(f"{url}?{urlencode(params)}")
+
+    updated = (
+        PerguntaAuditoria.objects.filter(id__in=ids_int, modelo_id=int(modelo_id))
+        .update(
+            tipo_resposta=preset["tipo_resposta"],
+            opcoes_resposta=preset["opcoes_resposta_texto"],
+            opcoes_resposta_cores=preset["opcoes_resposta_cores"],
+            exibir_grafico=preset["exibir_grafico"],
+            aplicar_no_grid=preset["aplicar_no_grid"],
+        )
+    )
+
+    messages.success(request, f"Conjunto de respostas '{preset['label']}' aplicado em {updated} pergunta(s).")
+    params = {"modelo": modelo_id}
+    if subcategoria:
+        params["subcategoria"] = subcategoria
+    url = reverse("auditoria:perguntas_list")
+    return redirect(f"{url}?{urlencode(params)}")
+
+
+@login_required
 def pergunta_create(request):
     if not _auditoria_is_admin(request.user):
         messages.error(request, "Apenas usuários Staff/Superuser podem gerenciar perguntas.")
@@ -787,7 +858,15 @@ def pergunta_create(request):
             if str(modelo_id).isdigit():
                 initial["ordem"] = _get_next_pergunta_ordem(int(modelo_id))
         form = PerguntaAuditoriaForm(initial=initial)
-    return render(request, "auditoria/pergunta_form.html", {"form": form, "modo": "novo"})
+    return render(
+        request,
+        "auditoria/pergunta_form.html",
+        {
+            "form": form,
+            "modo": "novo",
+            "resposta_presets": list_pergunta_resposta_presets(),
+        },
+    )
 
 
 @login_required
@@ -924,7 +1003,16 @@ def pergunta_edit(request, pk):
             return redirect(url)
     else:
         form = PerguntaAuditoriaForm(instance=pergunta)
-    return render(request, "auditoria/pergunta_form.html", {"form": form, "modo": "edicao", "pergunta": pergunta})
+    return render(
+        request,
+        "auditoria/pergunta_form.html",
+        {
+            "form": form,
+            "modo": "edicao",
+            "pergunta": pergunta,
+            "resposta_presets": list_pergunta_resposta_presets(),
+        },
+    )
 
 
 @login_required

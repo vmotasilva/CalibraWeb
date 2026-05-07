@@ -253,6 +253,148 @@ class PerguntaCreateTests(TestCase):
         pergunta = PerguntaAuditoria.objects.get(modelo=self.modelo, pergunta="Pergunta criada via teste")
         self.assertFalse(pergunta.exibir_grafico)
 
+    def test_pergunta_create_with_iso_preset_applies_official_options(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("auditoria:pergunta_create"),
+            data={
+                "modelo": str(self.modelo.pk),
+                "subcategoria": "",
+                "pergunta": "Pergunta com preset ISO",
+                "descricao_detalhada": "",
+                "conjunto_resposta_padrao": "ISO",
+                "tipo_resposta": "SIM_NAO",
+                "preenchimento_semanal": "UNICO",
+                "opcoes_resposta": "",
+                "opcoes_resposta_cores": "",
+                "ordem": "1",
+                "obrigatoria": "on",
+                "ativo": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        pergunta = PerguntaAuditoria.objects.get(modelo=self.modelo, pergunta="Pergunta com preset ISO")
+        self.assertEqual(pergunta.tipo_resposta, "LISTA")
+        self.assertEqual(
+            pergunta.opcoes_resposta_list,
+            ["Conforme", "Não Conforme", "Não Se Aplica", "Oportunidade de Melhoria"],
+        )
+        self.assertEqual(
+            pergunta.opcoes_resposta_cores,
+            {
+                "Conforme": "#198754",
+                "Não Conforme": "#ff0000",
+                "Não Se Aplica": "#d9d9d9",
+                "Oportunidade de Melhoria": "#fd7e14",
+            },
+        )
+        self.assertTrue(pergunta.exibir_grafico)
+        self.assertTrue(pergunta.aplicar_no_grid)
+
+
+class PerguntaBulkRespostaPresetTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="auditoria_admin_bulk_resposta",
+            email="auditoria_admin_bulk_resposta@example.com",
+            password="senha-forte-123",
+            is_staff=True,
+        )
+        try:
+            from django_otp.plugins.otp_static.models import StaticDevice
+
+            StaticDevice.objects.create(user=self.user, name="test-device", confirmed=True)
+        except Exception:
+            pass
+
+        self.modelo = ModeloAuditoria.objects.create(
+            nome="MODELO BULK RESPOSTA",
+            objeto_auditoria="Objeto do teste em lote",
+            periodicidade="MENSAL",
+        )
+        self.outro_modelo = ModeloAuditoria.objects.create(
+            nome="MODELO BULK RESPOSTA EXTERNO",
+            objeto_auditoria="Objeto externo ao lote",
+            periodicidade="MENSAL",
+        )
+        self.pergunta_1 = PerguntaAuditoria.objects.create(
+            modelo=self.modelo,
+            pergunta="Pergunta 1",
+            ordem=1,
+            tipo_resposta="SIM_NAO",
+            exibir_grafico=False,
+            aplicar_no_grid=False,
+            ativo=True,
+        )
+        self.pergunta_2 = PerguntaAuditoria.objects.create(
+            modelo=self.modelo,
+            pergunta="Pergunta 2",
+            ordem=2,
+            tipo_resposta="NUMERO",
+            exibir_grafico=False,
+            aplicar_no_grid=False,
+            ativo=True,
+        )
+        self.pergunta_outro_modelo = PerguntaAuditoria.objects.create(
+            modelo=self.outro_modelo,
+            pergunta="Pergunta externa",
+            ordem=1,
+            tipo_resposta="DECIMAL",
+            exibir_grafico=False,
+            aplicar_no_grid=False,
+            ativo=True,
+        )
+
+    def test_bulk_apply_iso_preset_updates_only_selected_questions_from_model(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("auditoria:perguntas_bulk_apply_resposta"),
+            data={
+                "modelo": str(self.modelo.pk),
+                "filtro_subcategoria": "",
+                "conjunto_resposta_padrao": "ISO",
+                "pergunta_ids": [
+                    str(self.pergunta_1.pk),
+                    str(self.pergunta_2.pk),
+                    str(self.pergunta_outro_modelo.pk),
+                ],
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        self.pergunta_1.refresh_from_db()
+        self.pergunta_2.refresh_from_db()
+        self.pergunta_outro_modelo.refresh_from_db()
+
+        for pergunta in (self.pergunta_1, self.pergunta_2):
+            self.assertEqual(pergunta.tipo_resposta, "LISTA")
+            self.assertEqual(
+                pergunta.opcoes_resposta_list,
+                ["Conforme", "Não Conforme", "Não Se Aplica", "Oportunidade de Melhoria"],
+            )
+            self.assertEqual(
+                pergunta.opcoes_resposta_cores,
+                {
+                    "Conforme": "#198754",
+                    "Não Conforme": "#ff0000",
+                    "Não Se Aplica": "#d9d9d9",
+                    "Oportunidade de Melhoria": "#fd7e14",
+                },
+            )
+            self.assertTrue(pergunta.exibir_grafico)
+            self.assertTrue(pergunta.aplicar_no_grid)
+
+        self.assertEqual(self.pergunta_outro_modelo.tipo_resposta, "DECIMAL")
+        self.assertEqual(self.pergunta_outro_modelo.opcoes_resposta, "")
+        self.assertEqual(self.pergunta_outro_modelo.opcoes_resposta_cores, {})
+        self.assertFalse(self.pergunta_outro_modelo.exibir_grafico)
+        self.assertFalse(self.pergunta_outro_modelo.aplicar_no_grid)
+
 
 class ComentarioPerguntaDeleteTests(TestCase):
     def setUp(self):

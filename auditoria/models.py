@@ -6,6 +6,71 @@ import unicodedata
 import uuid
 
 
+PERGUNTA_RESPOSTA_PRESETS = {
+    "ISO": {
+        "label": "ISO",
+        "tipo_resposta": "LISTA",
+        "opcoes_resposta": [
+            "Conforme",
+            "Não Conforme",
+            "Não Se Aplica",
+            "Oportunidade de Melhoria",
+        ],
+        "opcoes_resposta_cores": {
+            "Conforme": "#198754",
+            "Não Conforme": "#ff0000",
+            "Não Se Aplica": "#d9d9d9",
+            "Oportunidade de Melhoria": "#fd7e14",
+        },
+        "exibir_grafico": True,
+        "aplicar_no_grid": True,
+    },
+}
+
+
+def list_pergunta_resposta_presets() -> list[dict]:
+    presets: list[dict] = []
+    for key, data in PERGUNTA_RESPOSTA_PRESETS.items():
+        options = list(data.get("opcoes_resposta") or [])
+        colors = dict(data.get("opcoes_resposta_cores") or {})
+        presets.append(
+            {
+                "key": key,
+                "label": str(data.get("label") or key),
+                "tipo_resposta": str(data.get("tipo_resposta") or "SIM_NAO"),
+                "opcoes_resposta": options,
+                "opcoes_resposta_texto": "\n".join(options),
+                "opcoes_resposta_cores": colors,
+                "exibir_grafico": bool(data.get("exibir_grafico", True)),
+                "aplicar_no_grid": bool(data.get("aplicar_no_grid", True)),
+            }
+        )
+    return presets
+
+
+def get_pergunta_resposta_preset_choices() -> list[tuple[str, str]]:
+    return [(preset["key"], preset["label"]) for preset in list_pergunta_resposta_presets()]
+
+
+def get_pergunta_resposta_preset(key: str) -> dict | None:
+    lookup = str(key or "").strip().upper()
+    raw = PERGUNTA_RESPOSTA_PRESETS.get(lookup)
+    if not raw:
+        return None
+
+    options = list(raw.get("opcoes_resposta") or [])
+    return {
+        "key": lookup,
+        "label": str(raw.get("label") or lookup),
+        "tipo_resposta": str(raw.get("tipo_resposta") or "SIM_NAO"),
+        "opcoes_resposta": options,
+        "opcoes_resposta_texto": "\n".join(options),
+        "opcoes_resposta_cores": dict(raw.get("opcoes_resposta_cores") or {}),
+        "exibir_grafico": bool(raw.get("exibir_grafico", True)),
+        "aplicar_no_grid": bool(raw.get("aplicar_no_grid", True)),
+    }
+
+
 class ModeloAuditoria(models.Model):
     PERIODICIDADE_CHOICES = [
         ("UNICA", "Aplicação Única"),

@@ -54,12 +54,60 @@
                 </div>
                 <div class="col-md-4 d-flex flex-wrap gap-2">
                     <button type="submit" class="btn btn-outline-primary" id="bulkApplyBtn" {% if not modelo_id %}disabled{% endif %}>Aplicar</button>
+                    <button type="button" class="btn btn-primary" id="bulkRespostaOpenBtn" data-bs-toggle="modal" data-bs-target="#bulkRespostaModal" {% if not modelo_id %}disabled{% endif %}>Aplicar tipo de resposta</button>
                     <button type="button" class="btn btn-outline-secondary" id="bulkClearSelectionBtn">Limpar seleção</button>
                 </div>
             </div>
             <div class="form-text mt-2">Marque as perguntas na tabela abaixo e clique em “Aplicar”.</div>
         </div>
     </form>
+
+    <div class="modal fade" id="bulkRespostaModal" tabindex="-1" aria-labelledby="bulkRespostaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <form method="post" action="{% url 'auditoria:perguntas_bulk_apply_resposta' %}" class="modal-content" id="bulkRespostaForm">
+                {% csrf_token %}
+                <input type="hidden" name="modelo" value="{{ modelo_id|default:'' }}">
+                <input type="hidden" name="filtro_subcategoria" value="{{ subcategoria|default:'' }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bulkRespostaModalLabel">Aplicar tipo de resposta em massa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-light border mb-3">
+                        <div class="fw-semibold">Perguntas selecionadas</div>
+                        <div id="bulkRespostaSelectedCount">0 pergunta(s) selecionada(s).</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="bulkRespostaPresetSelect" class="form-label">Conjunto de respostas</label>
+                        <select class="form-select" id="bulkRespostaPresetSelect" name="conjunto_resposta_padrao">
+                            <option value="">Selecione...</option>
+                            {% for preset in resposta_presets %}
+                            <option value="{{ preset.key }}">{{ preset.label }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">O conjunto oficial ISO aplica automaticamente o tipo, as opções, as cores e as flags de gráfico/GRID.</div>
+                    </div>
+
+                    <div class="border rounded p-3 bg-light-subtle">
+                        <div class="fw-semibold mb-2">Prévia do conjunto</div>
+                        <div id="bulkRespostaPreviewEmpty" class="text-muted">Selecione um conjunto para ver as opções que serão aplicadas.</div>
+                        <div id="bulkRespostaPreview" class="d-none">
+                            <div class="mb-2"><strong>Tipo:</strong> <span id="bulkRespostaPreviewTipo"></span></div>
+                            <div class="mb-2"><strong>Exibir gráfico:</strong> <span id="bulkRespostaPreviewGrafico"></span></div>
+                            <div class="mb-3"><strong>Aplicar no GRID:</strong> <span id="bulkRespostaPreviewGrid"></span></div>
+                            <div class="fw-semibold mb-1">Opções</div>
+                            <ul class="list-group" id="bulkRespostaPreviewList"></ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="bulkRespostaSubmitBtn">Aplicar conjunto</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="card shadow-sm">
         <div class="card-body p-0">
@@ -170,16 +218,95 @@
         const selectAll = document.getElementById('selectAllPerguntas');
         const bulkForm = document.getElementById('bulkSubcategoriaForm');
         const applyBtn = document.getElementById('bulkApplyBtn');
+        const bulkRespostaOpenBtn = document.getElementById('bulkRespostaOpenBtn');
         const clearBtn = document.getElementById('bulkClearSelectionBtn');
-        if (!table || !bulkForm || !applyBtn || !clearBtn) return;
+        const bulkRespostaForm = document.getElementById('bulkRespostaForm');
+        const bulkRespostaPresetSelect = document.getElementById('bulkRespostaPresetSelect');
+        const bulkRespostaSubmitBtn = document.getElementById('bulkRespostaSubmitBtn');
+        const bulkRespostaSelectedCount = document.getElementById('bulkRespostaSelectedCount');
+        const bulkRespostaPreviewEmpty = document.getElementById('bulkRespostaPreviewEmpty');
+        const bulkRespostaPreview = document.getElementById('bulkRespostaPreview');
+        const bulkRespostaPreviewTipo = document.getElementById('bulkRespostaPreviewTipo');
+        const bulkRespostaPreviewGrafico = document.getElementById('bulkRespostaPreviewGrafico');
+        const bulkRespostaPreviewGrid = document.getElementById('bulkRespostaPreviewGrid');
+        const bulkRespostaPreviewList = document.getElementById('bulkRespostaPreviewList');
+        if (!table || !bulkForm || !applyBtn || !clearBtn || !bulkRespostaOpenBtn || !bulkRespostaForm || !bulkRespostaPresetSelect || !bulkRespostaSubmitBtn || !bulkRespostaSelectedCount || !bulkRespostaPreviewEmpty || !bulkRespostaPreview || !bulkRespostaPreviewTipo || !bulkRespostaPreviewGrafico || !bulkRespostaPreviewGrid || !bulkRespostaPreviewList) return;
 
         const serverDisabled = applyBtn.disabled;
+        const serverDisabledResposta = bulkRespostaOpenBtn.disabled;
+        const respostaPresets = {
+            {% for preset in resposta_presets %}
+            '{{ preset.key }}': {
+                label: '{{ preset.label|escapejs }}',
+                tipo_resposta: '{{ preset.tipo_resposta|escapejs }}',
+                exibir_grafico: {% if preset.exibir_grafico %}true{% else %}false{% endif %},
+                aplicar_no_grid: {% if preset.aplicar_no_grid %}true{% else %}false{% endif %},
+                opcoes_resposta: [{% for opcao in preset.opcoes_resposta %}'{{ opcao|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+                opcoes_resposta_cores: {
+                    {% for label, color in preset.opcoes_resposta_cores.items %}
+                    '{{ label|escapejs }}': '{{ color|escapejs }}'{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                }
+            }{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+        };
 
         const getCheckboxes = () => Array.from(table.querySelectorAll('input.pergunta-checkbox'));
         const getChecked = () => getCheckboxes().filter(cb => cb.checked);
 
         function clearHiddenIds() {
             Array.from(bulkForm.querySelectorAll('input[name="pergunta_ids"]')).forEach(el => el.remove());
+        }
+
+        function clearBulkRespostaHiddenIds() {
+            Array.from(bulkRespostaForm.querySelectorAll('input[name="pergunta_ids"]')).forEach(el => el.remove());
+        }
+
+        function syncBulkRespostaSelection() {
+            clearBulkRespostaHiddenIds();
+            getChecked().forEach(cb => {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'pergunta_ids';
+                hidden.value = cb.value;
+                bulkRespostaForm.appendChild(hidden);
+            });
+        }
+
+        function renderRespostaPreview() {
+            const preset = respostaPresets[String(bulkRespostaPresetSelect.value || '').trim()];
+            bulkRespostaPreviewList.innerHTML = '';
+
+            if (!preset) {
+                bulkRespostaPreview.classList.add('d-none');
+                bulkRespostaPreviewEmpty.classList.remove('d-none');
+                return;
+            }
+
+            bulkRespostaPreviewTipo.textContent = preset.tipo_resposta === 'LISTA' ? 'Lista (opções)' : preset.tipo_resposta;
+            bulkRespostaPreviewGrafico.textContent = preset.exibir_grafico ? 'Sim' : 'Não';
+            bulkRespostaPreviewGrid.textContent = preset.aplicar_no_grid ? 'Sim' : 'Não';
+
+            (preset.opcoes_resposta || []).forEach(function(opcao) {
+                const item = document.createElement('li');
+                item.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+                const label = document.createElement('span');
+                label.textContent = opcao;
+
+                const color = document.createElement('span');
+                color.className = 'badge rounded-pill';
+                color.textContent = (preset.opcoes_resposta_cores || {})[opcao] || 'Sem cor';
+                color.style.backgroundColor = (preset.opcoes_resposta_cores || {})[opcao] || '#6c757d';
+                color.style.color = '#fff';
+
+                item.appendChild(label);
+                item.appendChild(color);
+                bulkRespostaPreviewList.appendChild(item);
+            });
+
+            bulkRespostaPreviewEmpty.classList.add('d-none');
+            bulkRespostaPreview.classList.remove('d-none');
         }
 
         function sync() {
@@ -194,6 +321,12 @@
             if (!serverDisabled) {
                 applyBtn.disabled = checked.length === 0;
             }
+            if (!serverDisabledResposta) {
+                bulkRespostaOpenBtn.disabled = checked.length === 0;
+            }
+
+            bulkRespostaSelectedCount.textContent = `${checked.length} pergunta(s) selecionada(s).`;
+            bulkRespostaSubmitBtn.disabled = checked.length === 0 || !String(bulkRespostaPresetSelect.value || '').trim();
         }
 
         if (selectAll) {
@@ -237,6 +370,30 @@
                 bulkForm.appendChild(hidden);
             });
         });
+
+        bulkRespostaPresetSelect.addEventListener('change', function() {
+            renderRespostaPreview();
+            sync();
+        });
+
+        bulkRespostaForm.addEventListener('submit', function(e) {
+            const checked = getChecked();
+            syncBulkRespostaSelection();
+            if (!checked.length || !String(bulkRespostaPresetSelect.value || '').trim()) {
+                e.preventDefault();
+                sync();
+                return;
+            }
+        });
+
+        const modalEl = document.getElementById('bulkRespostaModal');
+        if (modalEl) {
+            modalEl.addEventListener('show.bs.modal', function() {
+                syncBulkRespostaSelection();
+                renderRespostaPreview();
+                sync();
+            });
+        }
 
         sync();
     })();
