@@ -45,6 +45,15 @@
     color: #0d2f63 !important;
 }
 
+.calibra-topbar .dropdown-menu {
+    max-height: calc(100vh - 88px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+}
+
 .calibra-topbar .dropdown-header {
     display: block;
     margin: 0.35rem 0.5rem;
@@ -54,4 +63,17 @@
     color: #24364d !important;
     font-weight: 700;
     letter-spacing: 0.02em;
+}
+
+.calibra-topbar .dropdown-menu::-webkit-scrollbar {
+    width: 8px;
+}
+
+.calibra-topbar .dropdown-menu::-webkit-scrollbar-thumb {
+    background-color: rgba(13, 47, 99, 0.35);
+    border-radius: 999px;
+}
+
+.calibra-topbar .dropdown-menu::-webkit-scrollbar-track {
+    background: transparent;
 }
