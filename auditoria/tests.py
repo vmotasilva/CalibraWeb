@@ -88,6 +88,7 @@ class ModeloDuplicateTests(TestCase):
             pergunta="Pergunta com descrição",
             descricao_detalhada="Descrição detalhada importante para instrução.",
             tipo_resposta="SIM_NAO",
+            exibir_grafico=False,
             ordem=1,
             obrigatoria=True,
             ativo=True,
@@ -105,6 +106,7 @@ class ModeloDuplicateTests(TestCase):
             pergunta_duplicada.descricao_detalhada,
             "Descrição detalhada importante para instrução.",
         )
+        self.assertFalse(pergunta_duplicada.exibir_grafico)
 
     def test_modelo_duplicate_uses_custom_target_name(self):
         self.client.force_login(self.user)
@@ -202,6 +204,54 @@ class ComentarioPerguntaSemRegistroTests(TestCase):
         content = response.content.decode("utf-8")
         self.assertIn("comentarios-dados", content)
         self.assertIn("Coment\\u00e1rio pr\\u00e9-registro para exibir no formul\\u00e1rio", content)
+
+
+class PerguntaCreateTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="auditoria_admin_pergunta_create",
+            email="auditoria_admin_pergunta_create@example.com",
+            password="senha-forte-123",
+            is_staff=True,
+        )
+        try:
+            from django_otp.plugins.otp_static.models import StaticDevice
+
+            StaticDevice.objects.create(user=self.user, name="test-device", confirmed=True)
+        except Exception:
+            pass
+
+        self.modelo = ModeloAuditoria.objects.create(
+            nome="MODELO CREATE PERGUNTA",
+            objeto_auditoria="Objeto base do teste de criação",
+            periodicidade="MENSAL",
+        )
+
+    def test_pergunta_create_handles_missing_checkbox_and_saves_false(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("auditoria:pergunta_create"),
+            data={
+                "modelo": str(self.modelo.pk),
+                "subcategoria": "",
+                "pergunta": "Pergunta criada via teste",
+                "descricao_detalhada": "",
+                "tipo_resposta": "SIM_NAO",
+                "preenchimento_semanal": "UNICO",
+                "opcoes_resposta": "",
+                "opcoes_resposta_cores": "",
+                "aplicar_no_grid": "on",
+                "ordem": "1",
+                "obrigatoria": "on",
+                "ativo": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        pergunta = PerguntaAuditoria.objects.get(modelo=self.modelo, pergunta="Pergunta criada via teste")
+        self.assertFalse(pergunta.exibir_grafico)
 
 
 class ComentarioPerguntaDeleteTests(TestCase):

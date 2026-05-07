@@ -89,6 +89,13 @@
             {% endif %}
         </div>
         <div class="form-check mb-2">
+            {{ form.exibir_grafico }}
+            <label class="form-check-label">Exibir gráfico</label>
+            {% if form.exibir_grafico.help_text %}
+                <div class="form-text">{{ form.exibir_grafico.help_text }}</div>
+            {% endif %}
+        </div>
+        <div class="form-check mb-2">
             {{ form.aplicar_no_grid }}
             <label class="form-check-label">Aplicar no GRID</label>
             {% if form.aplicar_no_grid.help_text %}

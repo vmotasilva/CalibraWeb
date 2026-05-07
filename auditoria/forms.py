@@ -97,6 +97,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
             "preenchimento_semanal",
             "opcoes_resposta",
             "opcoes_resposta_cores",
+            "exibir_grafico",
             "aplicar_no_grid",
             "ordem",
             "obrigatoria",
@@ -122,6 +123,7 @@ class PerguntaAuditoriaForm(forms.ModelForm):
                     "placeholder": "Uma opção por linha (ex.: Conforme)\nNão conforme\nN/A",
                 }
             ),
+            "exibir_grafico": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "aplicar_no_grid": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "ordem": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "obrigatoria": forms.CheckboxInput(attrs={"class": "form-check-input"}),
