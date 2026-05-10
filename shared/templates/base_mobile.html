@@ -482,7 +482,11 @@
                         </a>
                     {% endif %}
 
-                    <a href="{% url 'home' %}#cobrancas" class="btn btn-sm btn-outline-light position-relative" title="Notificações">
+                    <a href="{% url 'hub' %}" class="btn btn-sm btn-primary" title="Abrir HUB">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                    </a>
+
+                    <a href="{% url 'hub' %}#pendencias" class="btn btn-sm btn-outline-light position-relative" title="Notificações">
                         <i class="bi bi-bell"></i>
                         {% if nav_notifications_total and nav_notifications_total|add:0 > 0 %}
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">

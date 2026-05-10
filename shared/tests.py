@@ -12,6 +12,7 @@ from django.test import RequestFactory
 from django.urls import NoReverseMatch
 
 from shared.middleware import AuthNoCacheMiddleware
+from shared.views import hub_view
 
 
 class SharedViewsTests(TestCase):
@@ -47,6 +48,34 @@ class SharedViewsTests(TestCase):
 
         response = self.client.get(url)
         self.assertIn(response.status_code, [200, 404])
+
+
+class SharedHubViewTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.factory = RequestFactory()
+        self.user = User.objects.create_user(
+            username='hub_user',
+            password='testpass123',
+            is_staff=True,
+        )
+
+    def test_hub_requires_authentication(self):
+        response = self.client.get(reverse('hub'))
+        self.assertEqual(response.status_code, 302)
+
+    def test_hub_renders_core_sections_for_authenticated_user(self):
+        request = self.factory.get(reverse('hub'))
+        request.user = self.user
+
+        response = hub_view(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Calibra HUB')
+        self.assertContains(response, 'Favoritos')
+        self.assertContains(response, 'Ações rápidas')
+        self.assertContains(response, 'Pendências prioritárias')
+        self.assertContains(response, 'Abrir hub do módulo')
 
 
 class SharedImportsTests(TestCase):

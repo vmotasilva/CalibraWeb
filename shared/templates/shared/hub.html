@@ -1,0 +1,571 @@
+{% extends 'base.html' %}
+
+{% block title %}Calibra HUB{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --hub-ink: #16353b;
+        --hub-surface: #fffdf9;
+        --hub-border: #d7e2de;
+        --hub-muted: #607176;
+        --hub-shadow: 0 22px 40px rgba(22, 53, 59, 0.12);
+    }
+
+    .hub-shell {
+        position: relative;
+        overflow: hidden;
+        padding: 1.5rem 0 2rem;
+    }
+
+    .hub-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 28px;
+        padding: clamp(1.5rem, 3vw, 3rem);
+        background:
+            radial-gradient(circle at top right, rgba(239, 246, 164, 0.35), transparent 32%),
+            linear-gradient(135deg, #16353b 0%, #22695c 48%, #d9e6bd 100%);
+        color: #fff;
+        box-shadow: var(--hub-shadow);
+    }
+
+    .hub-hero::before,
+    .hub-hero::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        pointer-events: none;
+    }
+
+    .hub-hero::before {
+        width: 220px;
+        height: 220px;
+        right: -60px;
+        top: -80px;
+    }
+
+    .hub-hero::after {
+        width: 160px;
+        height: 160px;
+        left: -50px;
+        bottom: -80px;
+    }
+
+    .hub-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.4rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .hub-stat {
+        height: 100%;
+        min-height: 112px;
+        padding: 1rem;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(6px);
+    }
+
+    .hub-section {
+        margin-top: 1.5rem;
+    }
+
+    .hub-section-header {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .hub-section-header p {
+        color: var(--hub-muted);
+        margin-bottom: 0;
+    }
+
+    .hub-card,
+    .quick-card,
+    .favorite-card,
+    .pending-card,
+    .module-card {
+        border: 1px solid var(--hub-border);
+        border-radius: 22px;
+        background: var(--hub-surface);
+        box-shadow: 0 12px 26px rgba(22, 53, 59, 0.08);
+    }
+
+    .favorite-card,
+    .quick-card,
+    .pending-card,
+    .module-card {
+        height: 100%;
+    }
+
+    .favorite-card,
+    .quick-card,
+    .module-card {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .favorite-card .stretched-link,
+    .quick-card .stretched-link {
+        position: relative;
+        z-index: 2;
+    }
+
+    .favorite-badge,
+    .module-icon,
+    .quick-icon {
+        width: 52px;
+        height: 52px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        background: rgba(22, 53, 59, 0.08);
+        color: var(--hub-ink);
+        font-size: 1.25rem;
+    }
+
+    .quick-card .card-body,
+    .module-card .card-body,
+    .pending-card .card-body,
+    .favorite-card .card-body {
+        padding: 1.15rem;
+    }
+
+    .quick-card::before,
+    .module-card::before {
+        content: "";
+        position: absolute;
+        inset: auto -30% -35% auto;
+        width: 180px;
+        height: 180px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, color-mix(in srgb, var(--module-color, #16353b) 32%, white), transparent 72%);
+        opacity: 0.8;
+    }
+
+    .module-chip,
+    .pending-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.3rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .module-chip {
+        background: rgba(22, 53, 59, 0.08);
+        color: var(--hub-ink);
+    }
+
+    .pending-chip {
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+
+    .hub-favorite-toggle {
+        position: relative;
+        z-index: 2;
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        border: 1px solid rgba(22, 53, 59, 0.14);
+        background: #fff;
+        color: var(--hub-ink);
+        transition: all 0.2s ease;
+    }
+
+    .hub-favorite-toggle.active {
+        background: #ffe7a8;
+        border-color: #f2c94c;
+        color: #8a5b00;
+    }
+
+    .hub-favorite-toggle:hover {
+        transform: translateY(-1px);
+    }
+
+    .hub-empty-state {
+        padding: 1.5rem;
+        border: 2px dashed var(--hub-border);
+        border-radius: 20px;
+        background: rgba(22, 53, 59, 0.03);
+        color: var(--hub-muted);
+        text-align: center;
+    }
+
+    .hub-primary-btn,
+    .hub-secondary-btn {
+        min-height: 44px;
+    }
+
+    .hub-secondary-btn {
+        border-radius: 12px;
+    }
+
+    .module-status {
+        padding: 0.85rem 0.95rem;
+        border-radius: 16px;
+        background: rgba(22, 53, 59, 0.05);
+        color: var(--hub-ink);
+    }
+
+    .pending-card {
+        text-decoration: none;
+        color: inherit;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .pending-card:hover,
+    .module-card:hover,
+    .quick-card:hover,
+    .favorite-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 34px rgba(22, 53, 59, 0.12);
+    }
+
+    @media (max-width: 767.98px) {
+        .hub-hero {
+            border-radius: 22px;
+        }
+
+        .hub-section-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+<div class="hub-shell">
+    <section class="hub-hero">
+        <div class="row g-4 align-items-end">
+            <div class="col-12 col-lg-7 position-relative">
+                <span class="hub-eyebrow">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                    Central de operação
+                </span>
+                <h1 class="display-6 fw-bold mt-3 mb-3">Calibra HUB</h1>
+                <p class="lead mb-4">Uma entrada única para navegar pelos módulos, atacar pendências, abrir ações rápidas e fixar os atalhos mais usados no seu dia.</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-light btn-lg hub-primary-btn" href="#modulos">Explorar módulos</a>
+                    <a class="btn btn-outline-light btn-lg hub-primary-btn" href="#pendencias">Ver pendências</a>
+                </div>
+            </div>
+            <div class="col-12 col-lg-5 position-relative">
+                <div class="row g-3">
+                    {% for stat in hub_stats %}
+                    <div class="col-6">
+                        <div class="hub-stat">
+                            <div class="small text-uppercase opacity-75 mb-2">{{ stat.label }}</div>
+                            <div class="display-6 fw-bold mb-1"{% if stat.dynamic_id %} id="{{ stat.dynamic_id }}"{% endif %}>{{ stat.value }}</div>
+                            <div class="small opacity-75">{{ stat.detail }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="favoritos" class="hub-section">
+        <div class="hub-section-header">
+            <div>
+                <h2 class="h4 mb-1">Favoritos</h2>
+                <p>Fixe módulos e atalhos para montar seu HUB pessoal.</p>
+            </div>
+        </div>
+        <div id="hub-favorites-empty" class="hub-empty-state">Marque as estrelas dos cards abaixo para manter os itens mais usados sempre no topo.</div>
+        <div id="hub-favorites-list" class="row g-3 d-none"></div>
+    </section>
+
+    <section id="acoes-rapidas" class="hub-section">
+        <div class="hub-section-header">
+            <div>
+                <h2 class="h4 mb-1">Ações rápidas</h2>
+                <p>Atalhos prontos para acelerar as rotinas mais frequentes.</p>
+            </div>
+            <span class="module-chip">{{ quick_actions|length }} atalhos</span>
+        </div>
+        <div class="row g-3">
+            {% for action in quick_actions %}
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card quick-card" style="--module-color: {{ action.color|default:'#16353b' }};">
+                    <div class="card-body d-flex flex-column gap-3">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
+                            <div class="quick-icon">
+                                <i class="bi {{ action.icon }}"></i>
+                            </div>
+                            <button
+                                type="button"
+                                class="hub-favorite-toggle"
+                                aria-label="Favoritar {{ action.label }}"
+                                aria-pressed="false"
+                                data-hub-favorite-id="action:{{ action.id }}"
+                                data-hub-favorite-label="{{ action.label }}"
+                                data-hub-favorite-url="{{ action.url }}"
+                                data-hub-favorite-kind="Ação rápida"
+                                data-hub-favorite-icon="{{ action.icon }}"
+                                data-hub-favorite-module="{{ action.module_title }}"
+                            >
+                                <i class="bi bi-star"></i>
+                            </button>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="pending-chip mb-2">{{ action.module_title }}</div>
+                            <h3 class="h5 mb-2">{{ action.label }}</h3>
+                            <p class="text-muted mb-0">{{ action.description }}</p>
+                        </div>
+                        <a href="{{ action.url }}" class="btn btn-dark hub-secondary-btn">Abrir ação</a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="hub-empty-state">Nenhuma ação rápida está disponível para o seu perfil neste momento.</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section id="pendencias" class="hub-section">
+        <div class="hub-section-header">
+            <div>
+                <h2 class="h4 mb-1">Pendências prioritárias</h2>
+                <p>O que já está exigindo atenção agora, por módulo.</p>
+            </div>
+            <span class="module-chip">Radar do dia</span>
+        </div>
+        <div class="row g-3">
+            {% for item in pending_items %}
+            <div class="col-12 col-md-6 col-xl-4">
+                <a href="{{ item.url }}" class="card pending-card">
+                    <div class="card-body d-flex flex-column gap-3">
+                        <div class="d-flex align-items-center justify-content-between gap-3">
+                            <span class="pending-chip">{{ item.section }}</span>
+                            <span class="display-6 fw-bold text-danger mb-0">{{ item.count }}</span>
+                        </div>
+                        <div>
+                            <h3 class="h5 mb-2">{{ item.label }}</h3>
+                            <p class="text-muted mb-0">Abrir a visão filtrada dessa pendência.</p>
+                        </div>
+                        <div class="small fw-semibold text-primary">Abrir agora</div>
+                    </div>
+                </a>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="hub-empty-state">Nenhuma pendência prioritária foi identificada para o seu perfil.</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section id="modulos" class="hub-section">
+        <div class="hub-section-header">
+            <div>
+                <h2 class="h4 mb-1">Hubs dos módulos</h2>
+                <p>Cada card abre a área principal do módulo e já oferece atalhos locais.</p>
+            </div>
+            <span class="module-chip">{{ modules|length }} módulos</span>
+        </div>
+        <div class="row g-3">
+            {% for module in modules %}
+            <div class="col-12 col-md-6 col-xl-4">
+                <div class="card module-card" style="--module-color: {{ module.color }};">
+                    <div class="card-body d-flex flex-column gap-3">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
+                            <div class="module-icon" style="background: color-mix(in srgb, {{ module.color }} 14%, white); color: {{ module.color }};">
+                                <i class="bi {{ module.icon }}"></i>
+                            </div>
+                            <button
+                                type="button"
+                                class="hub-favorite-toggle"
+                                aria-label="Favoritar {{ module.title }}"
+                                aria-pressed="false"
+                                data-hub-favorite-id="module:{{ module.id }}"
+                                data-hub-favorite-label="{{ module.title }}"
+                                data-hub-favorite-url="{{ module.url }}"
+                                data-hub-favorite-kind="Módulo"
+                                data-hub-favorite-icon="{{ module.icon }}"
+                                data-hub-favorite-module="Hub principal"
+                            >
+                                <i class="bi bi-star"></i>
+                            </button>
+                        </div>
+
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                                <h3 class="h5 mb-0">{{ module.title }}</h3>
+                                {% if module.pending_count %}
+                                <span class="badge rounded-pill" style="background: {{ module.color }};">{{ module.pending_count }}</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted mb-0">{{ module.description }}</p>
+                        </div>
+
+                        <div class="module-status">
+                            <div class="small text-uppercase text-muted mb-1">Radar do módulo</div>
+                            <div class="fw-semibold">{{ module.status_text }}</div>
+                        </div>
+
+                        {% if module.actions %}
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for action in module.actions %}
+                            <a href="{{ action.url }}" class="btn btn-outline-secondary btn-sm hub-secondary-btn">{{ action.label }}</a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <a href="{{ module.url }}" class="btn btn-dark hub-primary-btn">Abrir hub do módulo</a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="hub-empty-state">Nenhum módulo foi liberado para o seu perfil. Consulte a administração do sistema.</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const storageKey = 'calibra-hub-favorites-v1';
+        const toggles = Array.from(document.querySelectorAll('.hub-favorite-toggle'));
+        const favoritesList = document.getElementById('hub-favorites-list');
+        const emptyState = document.getElementById('hub-favorites-empty');
+        const countTarget = document.getElementById('hub-favorites-count');
+
+        const readFavorites = () => {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                return [];
+            }
+        };
+
+        let favorites = readFavorites();
+        const catalog = {};
+
+        toggles.forEach((toggle) => {
+            const itemId = toggle.dataset.hubFavoriteId;
+            if (!itemId || catalog[itemId]) {
+                return;
+            }
+
+            catalog[itemId] = {
+                id: itemId,
+                label: toggle.dataset.hubFavoriteLabel || 'Favorito',
+                url: toggle.dataset.hubFavoriteUrl || '#',
+                kind: toggle.dataset.hubFavoriteKind || 'Atalho',
+                icon: toggle.dataset.hubFavoriteIcon || 'bi-star',
+                module: toggle.dataset.hubFavoriteModule || 'Acesso rápido',
+            };
+        });
+
+        const saveFavorites = () => {
+            localStorage.setItem(storageKey, JSON.stringify(favorites));
+        };
+
+        const isFavorite = (itemId) => favorites.includes(itemId);
+
+        const syncToggleState = () => {
+            toggles.forEach((toggle) => {
+                const icon = toggle.querySelector('i');
+                const active = isFavorite(toggle.dataset.hubFavoriteId || '');
+                toggle.classList.toggle('active', active);
+                toggle.setAttribute('aria-pressed', active ? 'true' : 'false');
+
+                if (icon) {
+                    icon.classList.remove('bi-star', 'bi-star-fill');
+                    icon.classList.add(active ? 'bi-star-fill' : 'bi-star');
+                }
+            });
+
+            if (countTarget) {
+                countTarget.textContent = String(favorites.length);
+            }
+        };
+
+        const renderFavorites = () => {
+            if (!favoritesList || !emptyState) {
+                return;
+            }
+
+            favoritesList.innerHTML = '';
+            const favoriteItems = favorites.map((itemId) => catalog[itemId]).filter(Boolean);
+
+            if (!favoriteItems.length) {
+                favoritesList.classList.add('d-none');
+                emptyState.classList.remove('d-none');
+                return;
+            }
+
+            favoritesList.classList.remove('d-none');
+            emptyState.classList.add('d-none');
+
+            favoriteItems.forEach((item) => {
+                const column = document.createElement('div');
+                column.className = 'col-12 col-md-6 col-xl-4';
+                column.innerHTML = `
+                    <div class="card favorite-card">
+                        <div class="card-body d-flex align-items-center justify-content-between gap-3">
+                            <div>
+                                <div class="small text-uppercase text-muted mb-1">${item.kind}</div>
+                                <a href="${item.url}" class="stretched-link text-decoration-none fw-semibold text-dark">${item.label}</a>
+                                <div class="small text-muted">${item.module}</div>
+                            </div>
+                            <span class="favorite-badge">
+                                <i class="bi ${item.icon}"></i>
+                            </span>
+                        </div>
+                    </div>
+                `;
+                favoritesList.appendChild(column);
+            });
+        };
+
+        toggles.forEach((toggle) => {
+            toggle.addEventListener('click', function () {
+                const itemId = toggle.dataset.hubFavoriteId;
+                if (!itemId) {
+                    return;
+                }
+
+                favorites = isFavorite(itemId)
+                    ? favorites.filter((currentId) => currentId !== itemId)
+                    : [...favorites, itemId];
+
+                saveFavorites();
+                syncToggleState();
+                renderFavorites();
+            });
+        });
+
+        syncToggleState();
+        renderFavorites();
+    });
+</script>
+{% endblock %}

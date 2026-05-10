@@ -17,7 +17,7 @@ from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.core.management import call_command
 from django.db.models import Q
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 import pandas as pd
@@ -48,6 +48,8 @@ except Exception:
 
 # Imports dos helpers
 from qms.views_helpers import dl_df, dl_generic, parse_date
+from shared.notifications import get_user_cobrancas_counts, get_user_cobrancas_items
+from shared.permissions import has_module_access, has_view_access
 
 
 # ==============================================================================
@@ -118,6 +120,430 @@ def home_view(request):
             "total_cobrancas": total_cobrancas,
             "recebidos_relatorios": recebidos_relatorios,
             "pendentes_compartilhamento": pendentes_compartilhamento,
+        },
+    )
+
+
+def _hub_safe_reverse(view_name):
+    try:
+        return reverse(view_name)
+    except NoReverseMatch:
+        return ""
+
+
+def _hub_can_access(user, module_key, view_name=None):
+    if not getattr(user, "is_authenticated", False):
+        return False
+
+    if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
+        return True
+
+    if not has_module_access(user, module_key):
+        return False
+
+    if view_name and not has_view_access(user, view_name):
+        return False
+
+    return True
+
+
+def _hub_get_laboratorio_open_count():
+    try:
+        from laboratorio.models import OcorrenciaLaboratorio
+
+        return OcorrenciaLaboratorio.objects.filter(data_encerramento__isnull=True).count()
+    except Exception:
+        return 0
+
+
+def _hub_build_action(user, module_key, module_title, action_config):
+    view_name = action_config["view_name"]
+    if not _hub_can_access(user, module_key, view_name):
+        return None
+
+    url = _hub_safe_reverse(view_name)
+    if not url:
+        return None
+
+    return {
+        "id": action_config["id"],
+        "label": action_config["label"],
+        "description": action_config["description"],
+        "icon": action_config["icon"],
+        "url": url,
+        "module_title": module_title,
+    }
+
+
+@login_required
+def hub_view(request):
+    laboratorio_open_count = _hub_get_laboratorio_open_count()
+    counts = {
+        **get_user_cobrancas_counts(request.user),
+        "laboratorio_abertas": laboratorio_open_count,
+    }
+
+    pending_items = [
+        {
+            "key": item.key,
+            "label": item.label,
+            "count": int(item.count or 0),
+            "url": item.url,
+            "section": item.section,
+        }
+        for item in get_user_cobrancas_items(request.user)
+        if int(item.count or 0) > 0
+    ]
+
+    if laboratorio_open_count and _hub_can_access(request.user, "laboratorio", "laboratorio:modulo"):
+        pending_items.append(
+            {
+                "key": "laboratorio_abertas",
+                "label": "Laboratório (ocorrências abertas)",
+                "count": laboratorio_open_count,
+                "url": _hub_safe_reverse("laboratorio:modulo"),
+                "section": "Laboratório",
+            }
+        )
+
+    pending_items = sorted(
+        pending_items,
+        key=lambda item: (-item["count"], item["section"], item["label"]),
+    )[:8]
+
+    module_configs = [
+        {
+            "id": "laboratorio",
+            "title": "Laboratório",
+            "module_key": "laboratorio",
+            "description": "Ocorrências, dashboards e visão operacional das máquinas do laboratório.",
+            "icon": "bi-flask",
+            "color": "#1f7a66",
+            "hub_view_name": "laboratorio:modulo",
+            "pending_keys": ["laboratorio_abertas"],
+            "pending_label": "ocorrências abertas",
+            "quick_actions": [
+                {
+                    "id": "laboratorio-nova-ocorrencia",
+                    "label": "Nova ocorrência",
+                    "description": "Registrar uma ocorrência geral do laboratório.",
+                    "icon": "bi-plus-square",
+                    "view_name": "laboratorio:ocorrencia_create",
+                },
+                {
+                    "id": "laboratorio-dashboard",
+                    "label": "Dashboard do laboratório",
+                    "description": "Acompanhar os principais indicadores do módulo.",
+                    "icon": "bi-speedometer2",
+                    "view_name": "laboratorio:dashboard",
+                },
+                {
+                    "id": "laboratorio-maquinas",
+                    "label": "Máquinas",
+                    "description": "Consultar o cadastro e histórico das máquinas.",
+                    "icon": "bi-gear-wide-connected",
+                    "view_name": "maquinas:maquinas_list",
+                },
+            ],
+        },
+        {
+            "id": "metrologia",
+            "title": "Metrologia",
+            "module_key": "metrologia",
+            "description": "Instrumentos, calibrações e fluxo de solicitações de cotação.",
+            "icon": "bi-rulers",
+            "color": "#0d6efd",
+            "hub_view_name": "modulo_metrologia",
+            "pending_keys": ["metrologia", "cotacoes"],
+            "pending_label": "alertas operacionais",
+            "quick_actions": [
+                {
+                    "id": "metrologia-lista-instrumentos",
+                    "label": "Lista de instrumentos",
+                    "description": "Abrir a visão geral de instrumentos e calibrações.",
+                    "icon": "bi-list-check",
+                    "view_name": "modulo_metrologia",
+                },
+                {
+                    "id": "metrologia-nova-solicitacao",
+                    "label": "Nova solicitação",
+                    "description": "Iniciar uma nova solicitação de cotação.",
+                    "icon": "bi-clipboard-plus",
+                    "view_name": "metrologia:solicitacao_create",
+                },
+                {
+                    "id": "metrologia-cotacoes",
+                    "label": "Cotações",
+                    "description": "Acompanhar solicitações e seus prazos.",
+                    "icon": "bi-cash-stack",
+                    "view_name": "metrologia:solicitacao_list",
+                },
+            ],
+        },
+        {
+            "id": "acoes",
+            "title": "Ações",
+            "module_key": "acoes",
+            "description": "Gerenciamento de ações corretivas, soluções e acompanhamento de prazos.",
+            "icon": "bi-check2-square",
+            "color": "#bf6b04",
+            "hub_view_name": "acoes:dashboard",
+            "pending_keys": ["acoes"],
+            "pending_label": "ações vencidas",
+            "quick_actions": [
+                {
+                    "id": "acoes-dashboard",
+                    "label": "Painel de ações",
+                    "description": "Ver o panorama consolidado do módulo.",
+                    "icon": "bi-kanban",
+                    "view_name": "acoes:dashboard",
+                },
+                {
+                    "id": "acoes-registradas",
+                    "label": "Ações registradas",
+                    "description": "Listar e filtrar as ações em andamento.",
+                    "icon": "bi-card-checklist",
+                    "view_name": "acoes:acoes_registradas",
+                },
+                {
+                    "id": "acoes-cadastro",
+                    "label": "Cadastro base",
+                    "description": "Acessar o cadastro principal do módulo.",
+                    "icon": "bi-folder2-open",
+                    "view_name": "acoes:listar_acoes",
+                },
+            ],
+        },
+        {
+            "id": "auditoria",
+            "title": "Auditoria",
+            "module_key": "auditoria",
+            "description": "Execução de auditorias, modelos e acompanhamento mensal das rotinas.",
+            "icon": "bi-clipboard-data",
+            "color": "#8b5cf6",
+            "hub_view_name": "auditoria:dashboard",
+            "pending_keys": ["auditoria"],
+            "pending_label": "auditorias pendentes",
+            "quick_actions": [
+                {
+                    "id": "auditoria-dashboard",
+                    "label": "Dashboard de auditoria",
+                    "description": "Visualizar os indicadores e o calendário do módulo.",
+                    "icon": "bi-bar-chart-line",
+                    "view_name": "auditoria:dashboard",
+                },
+                {
+                    "id": "auditoria-preencher",
+                    "label": "Preencher auditoria",
+                    "description": "Iniciar um novo registro a partir de um modelo.",
+                    "icon": "bi-journal-plus",
+                    "view_name": "auditoria:selecionar_modelo_preenchimento",
+                },
+            ],
+        },
+        {
+            "id": "insumos",
+            "title": "Insumos",
+            "module_key": "insumos",
+            "description": "Rotinas de checklist, controle de modelos e pendências de inspeção.",
+            "icon": "bi-box-seam",
+            "color": "#d9485f",
+            "hub_view_name": "insumos:dashboard",
+            "pending_keys": ["insumos"],
+            "pending_label": "rotinas pendentes",
+            "quick_actions": [
+                {
+                    "id": "insumos-dashboard",
+                    "label": "Dashboard de insumos",
+                    "description": "Acompanhar o panorama do módulo de insumos.",
+                    "icon": "bi-grid-3x3-gap",
+                    "view_name": "insumos:dashboard",
+                },
+                {
+                    "id": "insumos-preencher",
+                    "label": "Preencher checklist",
+                    "description": "Selecionar um modelo e lançar um novo registro.",
+                    "icon": "bi-clipboard2-pulse",
+                    "view_name": "insumos:selecionar_modelo_preenchimento",
+                },
+            ],
+        },
+        {
+            "id": "rh",
+            "title": "Pessoas",
+            "module_key": "rh",
+            "description": "Equipe, férias, lideranças e visão central do quadro de colaboradores.",
+            "icon": "bi-people",
+            "color": "#0f766e",
+            "hub_view_name": "modulo_rh",
+            "pending_keys": [],
+            "pending_label": "rotinas críticas no radar",
+            "quick_actions": [
+                {
+                    "id": "rh-dashboard",
+                    "label": "Quadro de colaboradores",
+                    "description": "Abrir a visão principal da equipe.",
+                    "icon": "bi-people-fill",
+                    "view_name": "modulo_rh",
+                },
+                {
+                    "id": "rh-ferias",
+                    "label": "Gestão de férias",
+                    "description": "Consultar e programar férias do time.",
+                    "icon": "bi-calendar-check",
+                    "view_name": "rh:gestao_ferias",
+                },
+                {
+                    "id": "rh-usuarios",
+                    "label": "Usuários do sistema",
+                    "description": "Administrar acessos e permissões.",
+                    "icon": "bi-person-gear",
+                    "view_name": "rh:listar_usuarios",
+                },
+            ],
+        },
+        {
+            "id": "treinamentos",
+            "title": "Treinamentos",
+            "module_key": "procedures",
+            "description": "Matriz de habilidade, demandas e planejamento de treinamentos.",
+            "icon": "bi-mortarboard",
+            "color": "#2563eb",
+            "hub_view_name": "procedures:dashboard_treinamentos",
+            "pending_keys": ["trein_matriz", "trein_demanda", "trein_planejamentos"],
+            "pending_label": "pendências de treinamento",
+            "quick_actions": [
+                {
+                    "id": "treinamentos-dashboard",
+                    "label": "Dashboard de treinamentos",
+                    "description": "Visualizar o desempenho e as pendências da equipe.",
+                    "icon": "bi-easel2",
+                    "view_name": "procedures:dashboard_treinamentos",
+                },
+                {
+                    "id": "treinamentos-validacoes",
+                    "label": "Validações pendentes",
+                    "description": "Atuar nas validações da matriz de habilidade.",
+                    "icon": "bi-patch-check",
+                    "view_name": "procedures:validacoes_pendentes",
+                },
+                {
+                    "id": "treinamentos-planejamentos",
+                    "label": "Planejamentos",
+                    "description": "Acompanhar os treinamentos agendados e atrasados.",
+                    "icon": "bi-calendar3",
+                    "view_name": "procedures:planejamentos_list",
+                },
+            ],
+        },
+        {
+            "id": "fornecedores",
+            "title": "Fornecedores",
+            "module_key": "fornecedores",
+            "description": "Cadastro, documentos e avaliações da base de fornecedores.",
+            "icon": "bi-truck",
+            "color": "#7c3aed",
+            "hub_view_name": "fornecedores:fornecedor_list",
+            "pending_keys": [],
+            "pending_label": "itens acompanhados no hub",
+            "quick_actions": [
+                {
+                    "id": "fornecedores-lista",
+                    "label": "Lista de fornecedores",
+                    "description": "Consultar a base atual de fornecedores.",
+                    "icon": "bi-building",
+                    "view_name": "fornecedores:fornecedor_list",
+                },
+                {
+                    "id": "fornecedores-novo",
+                    "label": "Novo fornecedor",
+                    "description": "Cadastrar um novo fornecedor na base.",
+                    "icon": "bi-building-add",
+                    "view_name": "fornecedores:fornecedor_create",
+                },
+            ],
+        },
+    ]
+
+    modules = []
+    quick_actions = []
+    seen_action_ids = set()
+
+    for module_config in module_configs:
+        if not _hub_can_access(request.user, module_config["module_key"], module_config["hub_view_name"]):
+            continue
+
+        module_url = _hub_safe_reverse(module_config["hub_view_name"])
+        if not module_url:
+            continue
+
+        module_actions = []
+        for action_config in module_config["quick_actions"]:
+            action = _hub_build_action(
+                request.user,
+                module_config["module_key"],
+                module_config["title"],
+                action_config,
+            )
+            if not action:
+                continue
+
+            module_actions.append(action)
+            if action["id"] not in seen_action_ids:
+                seen_action_ids.add(action["id"])
+                quick_actions.append(action)
+
+        pending_count = sum(int(counts.get(key, 0) or 0) for key in module_config["pending_keys"])
+        modules.append(
+            {
+                "id": module_config["id"],
+                "title": module_config["title"],
+                "description": module_config["description"],
+                "icon": module_config["icon"],
+                "color": module_config["color"],
+                "url": module_url,
+                "pending_count": pending_count,
+                "status_text": (
+                    f"{pending_count} {module_config['pending_label']}"
+                    if pending_count
+                    else "Sem pendências críticas mapeadas neste momento"
+                ),
+                "actions": module_actions[:3],
+            }
+        )
+
+    hub_stats = [
+        {
+            "label": "Módulos liberados",
+            "value": len(modules),
+            "detail": "áreas disponíveis para o seu perfil",
+        },
+        {
+            "label": "Pendências ativas",
+            "value": int(counts.get("total", 0) or 0) + laboratorio_open_count,
+            "detail": "itens que já exigem alguma ação",
+        },
+        {
+            "label": "Ações rápidas",
+            "value": len(quick_actions),
+            "detail": "atalhos operacionais no hub",
+        },
+        {
+            "label": "Favoritos",
+            "value": 0,
+            "detail": "atalhos fixados neste navegador",
+            "dynamic_id": "hub-favorites-count",
+        },
+    ]
+
+    return render(
+        request,
+        "shared/hub.html",
+        {
+            "hub_stats": hub_stats,
+            "pending_items": pending_items,
+            "quick_actions": quick_actions,
+            "modules": modules,
         },
     )
 

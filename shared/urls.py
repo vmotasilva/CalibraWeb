@@ -15,6 +15,7 @@ urlpatterns = [
     # path('acesso-negado/', views.access_denied_view, name='access_denied'),
     
     # Shared URLs
+    path('hub/', views.hub_view, name='hub'),
     # path('', views.dashboard_view, name='dashboard'),
     # path('health/', views.health_check, name='health_check'),
     # Mais URLs serão adicionadas na Fase 3
