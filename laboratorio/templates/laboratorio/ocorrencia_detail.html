@@ -10,8 +10,10 @@
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'laboratorio:ocorrencias_list' %}" class="btn btn-outline-secondary">Voltar para listagem</a>
             <button type="button" class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#anotacoesModal">Anotacoes</button>
-            {% if not ocorrencia.data_encerramento %}
+            {% if not ocorrencia.data_encerramento and can_close_occurrence %}
             <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#encerramentoModal">Encerrar agora</button>
+            {% elif not ocorrencia.data_encerramento %}
+            <span class="text-muted small align-self-center">Encerramento disponivel apenas para o criador da ocorrencia ou usuarios staff/superuser.</span>
             {% endif %}
             <form method="post" action="{% url 'laboratorio:ocorrencia_delete' ocorrencia.pk %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir esta ocorrencia?');">
                 {% csrf_token %}
@@ -252,6 +254,7 @@
     </div>
 </div>
 
+{% if can_close_occurrence %}
 <div class="modal fade" id="encerramentoModal" tabindex="-1" aria-labelledby="encerramentoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -331,6 +334,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

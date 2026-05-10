@@ -1,9 +1,15 @@
 from datetime import timedelta
+import unicodedata
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+
+
+def _normalizar_texto_categoria(valor):
+    texto = unicodedata.normalize("NFKD", valor or "")
+    return "".join(caractere for caractere in texto if not unicodedata.combining(caractere)).lower().strip()
 
 
 class CategoriaLaboratorio(models.Model):
@@ -38,6 +44,18 @@ class CategoriaLaboratorio(models.Model):
 
     def __str__(self):
         return self.nome
+
+    @property
+    def nome_normalizado(self):
+        return _normalizar_texto_categoria(self.nome)
+
+    @property
+    def exige_colaborador(self):
+        return self.nome_normalizado.startswith("falta de colaborador")
+
+    @property
+    def exige_maquina(self):
+        return self.nome_normalizado.startswith("parada de maquina") or self.nome_normalizado.startswith("parada de manutencao")
 
 
 from rh.models import Colaborador
@@ -84,6 +102,14 @@ class OcorrenciaLaboratorio(models.Model):
         blank=True,
         related_name="ocorrencias_laboratorio",
         verbose_name="Responsavel",
+    )
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ocorrencias_laboratorio_criadas",
+        verbose_name="Criado por",
     )
     data_abertura = models.DateTimeField(
         default=timezone.now,
@@ -146,19 +172,28 @@ class OcorrenciaLaboratorio(models.Model):
         return self.assunto
 
     def clean(self):
+        errors = {}
+
         if not self.assunto and self.categoria:
             self.assunto = self.categoria.nome
 
         if not self.assunto:
-            raise ValidationError({"assunto": "Informe um assunto ou selecione uma categoria."})
+            errors["assunto"] = "Informe um assunto ou selecione uma categoria."
 
         if self.data_encerramento and self.data_encerramento <= self.data_abertura:
-            raise ValidationError(
-                {"data_encerramento": "O encerramento deve ser posterior a abertura."}
-            )
+            errors["data_encerramento"] = "O encerramento deve ser posterior a abertura."
 
         if not self.impacto and self.categoria:
             self.impacto = self.categoria.impacto
+
+        if self.categoria and self.categoria.exige_colaborador and not self.colaborador:
+            errors["colaborador"] = "Selecione o colaborador vinculado a esta ocorrencia."
+
+        if self.categoria and self.categoria.exige_maquina and not self.maquina:
+            errors["maquina"] = "Selecione a maquina vinculada a esta ocorrencia."
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         if self.categoria and not self.assunto:

@@ -71,6 +71,7 @@ class LaboratorioModuleTests(TestCase):
         self.assertEqual(ocorrencia.assunto, categoria.nome)
         self.assertEqual(ocorrencia.impacto, categoria.impacto)
         self.assertEqual(ocorrencia.responsavel, self.user)
+        self.assertEqual(ocorrencia.criado_por, self.user)
 
     def test_formulario_exibe_modais_para_selecao_de_maquina_e_colaborador(self):
         setor = Setor.objects.create(nome="Laboratorio")
@@ -95,6 +96,7 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, 'id="maquina-categoria-filtro"', html=False)
         self.assertContains(response, 'id="colaborador-setor-filtro"', html=False)
         self.assertContains(response, 'Deseja alterar o assunto para', html=False)
+        self.assertContains(response, 'O assunto parece coerente com a categoria', html=False)
         self.assertContains(response, categoria_maquina.nome)
         self.assertContains(response, maquina.display_name)
         self.assertContains(response, setor.nome)
@@ -116,6 +118,52 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, 'id="maquina-resumo"', html=False)
         self.assertContains(response, maquina.display_name)
         self.assertContains(response, categoria_maquina.nome)
+
+    def test_create_view_exige_colaborador_para_categoria_de_falta(self):
+        categoria = CategoriaLaboratorio.objects.create(
+            nome="Falta de Colaborador",
+            impacto=CategoriaLaboratorio.IMPACTO_ALTO,
+        )
+
+        response = self.client.post(
+            reverse("laboratorio:ocorrencia_create"),
+            {
+                "data_abertura": timezone.localtime(timezone.now()).replace(second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M"),
+                "responsavel": self.user.pk,
+                "categoria": categoria.pk,
+                "assunto": "Ausencia no turno A",
+                "impacto": categoria.impacto,
+                "detalhamento": "Nao houve substituicao imediata.",
+                "consequencias": "Atraso no fluxo.",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Selecione o colaborador vinculado a esta ocorrencia.")
+        self.assertFalse(OcorrenciaLaboratorio.objects.filter(assunto="Ausencia no turno A").exists())
+
+    def test_create_view_exige_maquina_para_categoria_de_parada(self):
+        categoria = CategoriaLaboratorio.objects.create(
+            nome="Parada de Maquina",
+            impacto=CategoriaLaboratorio.IMPACTO_ALTO,
+        )
+
+        response = self.client.post(
+            reverse("laboratorio:ocorrencia_create"),
+            {
+                "data_abertura": timezone.localtime(timezone.now()).replace(second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M"),
+                "responsavel": self.user.pk,
+                "categoria": categoria.pk,
+                "assunto": "Parada da prensa 02",
+                "impacto": categoria.impacto,
+                "detalhamento": "Sem equipamento alternativo.",
+                "consequencias": "Aguardando manutencao.",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Selecione a maquina vinculada a esta ocorrencia.")
+        self.assertFalse(OcorrenciaLaboratorio.objects.filter(assunto="Parada da prensa 02").exists())
 
     def test_dashboard_exibe_ocorrencias_filtradas(self):
         categoria = CategoriaLaboratorio.objects.create(
@@ -466,6 +514,7 @@ class LaboratorioModuleTests(TestCase):
             detalhamento="Parada para ajuste de configuracao.",
             consequencias="Fila de processamento reorganizada.",
             impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+            criado_por=self.user,
             responsavel=self.user,
             data_abertura=abertura,
         )
@@ -500,6 +549,7 @@ class LaboratorioModuleTests(TestCase):
             detalhamento="Ocorrencia para validar fechamento minimo.",
             consequencias="Sem perdas numericas.",
             impacto=CategoriaLaboratorio.IMPACTO_BAIXO,
+            criado_por=self.user,
             responsavel=self.user,
             data_abertura=abertura,
         )
@@ -529,6 +579,7 @@ class LaboratorioModuleTests(TestCase):
             detalhamento="Ocorrencia para validar encerramento posterior.",
             consequencias="Sem consequencias.",
             impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+            criado_por=self.user,
             responsavel=self.user,
             data_abertura=abertura,
         )
@@ -546,6 +597,89 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, "O encerramento deve ser posterior a abertura.")
         ocorrencia.refresh_from_db()
         self.assertIsNone(ocorrencia.data_encerramento)
+
+    def test_encerramento_so_aparece_para_criador_ou_staff(self):
+        criador = get_user_model().objects.create_user(
+            username="lab.criador",
+            password="senha-forte-456",
+        )
+        intruso = get_user_model().objects.create_user(
+            username="lab.intruso",
+            password="senha-forte-789",
+        )
+        ocorrencia = OcorrenciaLaboratorio.objects.create(
+            assunto="Bloqueio de encerramento",
+            detalhamento="Ocorrencia aberta para validar permissao de encerramento.",
+            consequencias="Sem consequencias.",
+            impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
+            criado_por=criador,
+            responsavel=criador,
+            data_abertura=timezone.now().replace(second=0, microsecond=0),
+        )
+
+        self.client.force_login(intruso)
+        detail_response = self.client.get(reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        self.assertNotContains(detail_response, "Encerrar agora")
+
+        response = self.client.post(
+            reverse("laboratorio:ocorrencia_close", args=[ocorrencia.pk]),
+            {
+                "next": reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]),
+                "data_encerramento": (timezone.localtime(timezone.now()) + timedelta(minutes=10)).replace(second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M"),
+                "observacoes_encerramento": "Tentativa sem permissao.",
+            },
+        )
+
+        self.assertRedirects(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        ocorrencia.refresh_from_db()
+        self.assertIsNone(ocorrencia.data_encerramento)
+
+    def test_criador_regular_pode_encerrar_e_staff_pode_sobrescrever(self):
+        criador = get_user_model().objects.create_user(
+            username="lab.autor",
+            password="senha-forte-456",
+        )
+        ocorrencia = OcorrenciaLaboratorio.objects.create(
+            assunto="Encerramento pelo criador",
+            detalhamento="Ocorrencia aberta para validar criador.",
+            consequencias="Sem consequencias.",
+            impacto=CategoriaLaboratorio.IMPACTO_BAIXO,
+            criado_por=criador,
+            responsavel=criador,
+            data_abertura=timezone.now().replace(second=0, microsecond=0) - timedelta(minutes=30),
+        )
+
+        self.client.force_login(criador)
+        response = self.client.post(
+            reverse("laboratorio:ocorrencia_close", args=[ocorrencia.pk]),
+            {
+                "next": reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]),
+                "data_encerramento": timezone.localtime(timezone.now()).replace(second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M"),
+                "observacoes_encerramento": "Fechamento pelo proprio criador.",
+            },
+        )
+
+        self.assertRedirects(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        ocorrencia.refresh_from_db()
+        self.assertIsNotNone(ocorrencia.data_encerramento)
+
+        ocorrencia.data_encerramento = None
+        ocorrencia.observacoes_encerramento = ""
+        ocorrencia.save(update_fields=["data_encerramento", "observacoes_encerramento", "duracao", "atualizado_em"])
+
+        self.client.force_login(self.user)
+        staff_response = self.client.post(
+            reverse("laboratorio:ocorrencia_close", args=[ocorrencia.pk]),
+            {
+                "next": reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]),
+                "data_encerramento": timezone.localtime(timezone.now()).replace(second=0, microsecond=0).strftime("%Y-%m-%dT%H:%M"),
+                "observacoes_encerramento": "Fechamento por staff.",
+            },
+        )
+
+        self.assertRedirects(staff_response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk]))
+        ocorrencia.refresh_from_db()
+        self.assertIsNotNone(ocorrencia.data_encerramento)
 
     def test_detail_view_exibe_botao_excluir_e_remove_ocorrencia(self):
         ocorrencia = OcorrenciaLaboratorio.objects.create(

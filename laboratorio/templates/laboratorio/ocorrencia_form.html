@@ -233,6 +233,7 @@
         const porId = {};
         const maquinasPorId = {};
         const colaboradoresPorId = {};
+        let ultimaSugestaoCategoria = '';
 
         categorias.forEach((categoria) => {
             porId[String(categoria.id)] = categoria;
@@ -344,8 +345,95 @@
             bootstrap.Modal.getOrCreateInstance(modalElement).hide();
         }
 
+        function normalizarTexto(value) {
+            return (value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .trim();
+        }
+
+        function aplicarCategoria(categoria, confirmarAtualizacaoAssunto) {
+            if (!categoria) {
+                toggleCamposExtras();
+                return;
+            }
+
+            categoriaSelect.value = String(categoria.id);
+            const assuntoAtual = assuntoInput.value.trim();
+            if (confirmarAtualizacaoAssunto && categoria.nome !== assuntoAtual) {
+                const desejaAtualizarAssunto = window.confirm('Deseja alterar o assunto para "' + categoria.nome + '"?');
+                if (desejaAtualizarAssunto) {
+                    assuntoInput.value = categoria.nome;
+                }
+            }
+
+            if (!impactoSelect.value) {
+                impactoSelect.value = categoria.impacto;
+            }
+            toggleCamposExtras();
+        }
+
+        function encontrarCategoriaCompativel(assunto) {
+            const assuntoNormalizado = normalizarTexto(assunto);
+            if (!assuntoNormalizado || categoriaSelect.value) {
+                return null;
+            }
+
+            const tokensAssunto = assuntoNormalizado.split(/[^a-z0-9]+/).filter((token) => token.length > 2);
+            let melhorCategoria = null;
+            let melhorPontuacao = 0;
+
+            categorias.forEach((categoria) => {
+                const categoriaNormalizada = normalizarTexto(categoria.nome);
+                const tokensCategoria = categoriaNormalizada.split(/[^a-z0-9]+/).filter((token) => token.length > 2);
+                let pontuacao = 0;
+
+                if (assuntoNormalizado === categoriaNormalizada) {
+                    pontuacao = 100;
+                } else if (assuntoNormalizado.includes(categoriaNormalizada) || categoriaNormalizada.includes(assuntoNormalizado)) {
+                    pontuacao = 80;
+                } else if (tokensAssunto.length && tokensCategoria.length) {
+                    const sobreposicao = tokensCategoria.filter((token) => tokensAssunto.includes(token)).length;
+                    pontuacao = (sobreposicao / tokensCategoria.length) * 60;
+                }
+
+                if (pontuacao > melhorPontuacao) {
+                    melhorPontuacao = pontuacao;
+                    melhorCategoria = categoria;
+                }
+            });
+
+            return melhorPontuacao >= 45 ? melhorCategoria : null;
+        }
+
+        function sugerirCategoriaPeloAssunto() {
+            const assuntoAtual = assuntoInput.value.trim();
+            if (!assuntoAtual || categoriaSelect.value) {
+                ultimaSugestaoCategoria = '';
+                return;
+            }
+
+            const categoriaSugerida = encontrarCategoriaCompativel(assuntoAtual);
+            if (!categoriaSugerida) {
+                ultimaSugestaoCategoria = '';
+                return;
+            }
+
+            const chaveSugestao = normalizarTexto(assuntoAtual) + ':' + categoriaSugerida.id;
+            if (ultimaSugestaoCategoria === chaveSugestao) {
+                return;
+            }
+            ultimaSugestaoCategoria = chaveSugestao;
+
+            const desejaVincularCategoria = window.confirm('O assunto parece coerente com a categoria "' + categoriaSugerida.nome + '". Deseja acrescentar essa categoria?');
+            if (desejaVincularCategoria) {
+                aplicarCategoria(categoriaSugerida, false);
+            }
+        }
+
         function toggleCamposExtras() {
-            let categoria = porId[categoriaSelect.value];
+            const categoria = porId[categoriaSelect.value];
             const colaboradorSelecionado = Boolean(colaboradorSelect.value);
             const maquinaSelecionada = Boolean(maquinaSelect.value);
             if (!categoria) {
@@ -353,13 +441,12 @@
                 divMaquina.style.display = maquinaSelecionada ? '' : 'none';
                 return;
             }
-            let nome = categoria.nome.toLowerCase();
-            if (nome.startsWith('falta de colaborador') || colaboradorSelecionado) {
+            if (categoria.exige_colaborador || colaboradorSelecionado) {
                 divColaborador.style.display = '';
             } else {
                 divColaborador.style.display = 'none';
             }
-            if (nome.startsWith('parada de máquina') || nome.startsWith('parada de manutencao') || nome.startsWith('parada de manutenção') || maquinaSelecionada) {
+            if (categoria.exige_maquina || maquinaSelecionada) {
                 divMaquina.style.display = '';
             } else {
                 divMaquina.style.display = 'none';
@@ -376,19 +463,15 @@
                 toggleCamposExtras();
                 return;
             }
+            aplicarCategoria(categoria, true);
+        });
 
-            const assuntoAtual = assuntoInput.value.trim();
-            if (categoria.nome !== assuntoAtual) {
-                const desejaAtualizarAssunto = window.confirm('Deseja alterar o assunto para "' + categoria.nome + '"?');
-                if (desejaAtualizarAssunto) {
-                    assuntoInput.value = categoria.nome;
-                }
-            }
+        assuntoInput.addEventListener('input', function() {
+            ultimaSugestaoCategoria = '';
+        });
 
-            if (!impactoSelect.value) {
-                impactoSelect.value = categoria.impacto;
-            }
-            toggleCamposExtras();
+        assuntoInput.addEventListener('blur', function() {
+            sugerirCategoriaPeloAssunto();
         });
 
         maquinaCategoriaFiltro.addEventListener('change', function() {

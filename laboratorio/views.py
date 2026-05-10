@@ -84,9 +84,17 @@ def _calcular_media_duracao(ocorrencias):
 
 
 def _get_ocorrencia_detail_queryset():
-    return OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel").prefetch_related(
+    return OcorrenciaLaboratorio.objects.select_related("categoria", "responsavel", "criado_por").prefetch_related(
         "anotacoes_registradas__usuario"
     )
+
+
+def _can_user_close_occurrence(user, ocorrencia):
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    return ocorrencia.criado_por_id == user.id
 
 
 def _build_ocorrencia_detail_context(
@@ -101,6 +109,7 @@ def _build_ocorrencia_detail_context(
     return {
         "ocorrencia": ocorrencia,
         "current_path": detail_url,
+        "can_close_occurrence": _can_user_close_occurrence(request.user, ocorrencia),
         "close_next": close_next or request.GET.get("next") or detail_url,
         "notes_form": notes_form or OcorrenciaAnotacaoForm(),
         "close_form": close_form or OcorrenciaEncerramentoForm(instance=ocorrencia),
@@ -178,7 +187,16 @@ def _build_ocorrencia_form_context(form):
 
     return {
         "categorias_sugestoes": categorias_sugestoes,
-        "categorias_json": list(categorias_sugestoes.values("id", "nome", "impacto")),
+        "categorias_json": [
+            {
+                "id": categoria.id,
+                "nome": categoria.nome,
+                "impacto": categoria.impacto,
+                "exige_colaborador": categoria.exige_colaborador,
+                "exige_maquina": categoria.exige_maquina,
+            }
+            for categoria in categorias_sugestoes
+        ],
         "maquinas_modal": maquinas_modal,
         "maquinas_categorias_modal": maquinas_categorias_modal,
         "colaboradores_modal": colaboradores_modal,
@@ -298,7 +316,10 @@ def ocorrencia_create(request):
     if request.method == "POST":
         form = OcorrenciaLaboratorioForm(request.POST, user=request.user)
         if form.is_valid():
-            ocorrencia = form.save()
+            ocorrencia = form.save(commit=False)
+            if not ocorrencia.criado_por_id:
+                ocorrencia.criado_por = request.user
+            ocorrencia.save()
             messages.success(request, f"Ocorrencia '{ocorrencia.assunto}' registrada com sucesso.")
             return redirect("laboratorio:ocorrencias_list")
     else:
@@ -386,6 +407,13 @@ def ocorrencia_close(request, pk):
     )
     detail_url = reverse("laboratorio:ocorrencia_detail", args=[ocorrencia.pk])
     if request.method != "POST":
+        return redirect(detail_url)
+
+    if not _can_user_close_occurrence(request.user, ocorrencia):
+        messages.error(
+            request,
+            "Apenas quem criou a ocorrencia ou um usuario staff/superuser pode encerra-la.",
+        )
         return redirect(detail_url)
 
     close_next = request.POST.get("next") or detail_url

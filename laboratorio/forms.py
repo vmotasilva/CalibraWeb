@@ -95,9 +95,9 @@ class OcorrenciaLaboratorioForm(forms.ModelForm):
         if categoria:
             cat_obj = CategoriaLaboratorio.objects.filter(pk=categoria).first()
             if cat_obj:
-                if cat_obj.nome.lower().startswith("falta de colaborador"):
+                if cat_obj.exige_colaborador:
                     self.fields["colaborador"].widget.attrs.pop("style", None)
-                if cat_obj.nome.lower().startswith("parada de máquina") or cat_obj.nome.lower().startswith("parada de manutencao"):
+                if cat_obj.exige_maquina:
                     self.fields["maquina"].widget.attrs.pop("style", None)
 
     def clean(self):
