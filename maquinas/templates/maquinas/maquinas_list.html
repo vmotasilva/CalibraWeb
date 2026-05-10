@@ -103,7 +103,7 @@
                     <tbody>
                         {% for maquina in maquinas %}
                         <tr>
-                            <td class="fw-semibold">{{ maquina.codigo }}</td>
+                            <td class="fw-semibold"><a href="{% url 'maquinas:maquina_detail' maquina.pk %}" class="text-decoration-none">{{ maquina.codigo }}</a></td>
                             <td>{{ maquina.numero_serie|default:'Nao informado' }}</td>
                             <td>{{ maquina.fabricante|default:maquina.nome|default:'Nao informado' }}</td>
                             <td>{{ maquina.setor.nome|default:'Sem setor' }}</td>
@@ -117,6 +117,7 @@
                             </td>
                             <td class="text-end">
                                 <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
+                                    <a href="{% url 'maquinas:maquina_detail' maquina.pk %}" class="btn btn-sm btn-outline-dark">Detalhes</a>
                                     <a href="{% url 'maquinas:maquina_update' maquina.pk %}" class="btn btn-sm btn-outline-primary">Editar</a>
                                     <a href="{% url 'maquinas:maquina_delete' maquina.pk %}" class="btn btn-sm btn-outline-danger">Excluir</a>
                                 </div>

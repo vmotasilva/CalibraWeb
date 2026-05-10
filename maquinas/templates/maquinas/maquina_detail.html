@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-1">{{ maquina.display_name }}</h2>
+            <p class="text-muted mb-0">Detalhamento completo da maquina e historico das ocorrencias relacionadas no laboratorio.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'maquinas:maquinas_list' %}" class="btn btn-outline-secondary">Voltar para listagem</a>
+            <a href="{% url 'laboratorio:ocorrencia_create' %}?maquina_id={{ maquina.pk }}" class="btn btn-primary">Nova ocorrencia</a>
+            <a href="{% url 'maquinas:maquina_update' maquina.pk %}" class="btn btn-outline-primary">Editar maquina</a>
+            <a href="{% url 'maquinas:maquina_delete' maquina.pk %}" class="btn btn-outline-danger">Excluir</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Codigo</div>
+                    <div class="h4 mb-0">{{ maquina.codigo }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Status</div>
+                    {% if maquina.status %}
+                    <div class="h4 mb-0 text-success">Ativa</div>
+                    {% else %}
+                    <div class="h4 mb-0 text-secondary">Inativa</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Ocorrencias</div>
+                    <div class="h4 mb-0">{{ total_ocorrencias }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Abertas</div>
+                    <div class="h4 mb-0 text-danger">{{ ocorrencias_abertas }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-semibold">Ficha da maquina</div>
+                <div class="card-body">
+                    <div class="row g-3 row-cols-1 row-cols-sm-2">
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Numero de serie</div>
+                                <div class="fw-semibold">{{ maquina.numero_serie|default:'Nao informado' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Fabricante</div>
+                                <div class="fw-semibold">{{ maquina.fabricante|default:maquina.nome|default:'Nao informado' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Categoria</div>
+                                <div class="fw-semibold">{{ maquina.categoria.nome|default:'Sem categoria' }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase mb-1">Setor</div>
+                                <div class="fw-semibold">{{ maquina.setor.nome|default:'Sem setor' }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if maquina.descricao %}
+                    <div class="mt-4">
+                        <div class="text-muted small text-uppercase mb-2">Descricao</div>
+                        <div class="border rounded-3 p-3 bg-light-subtle">{{ maquina.descricao|linebreaks }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white fw-semibold">Resumo de ocorrencias</div>
+                <div class="card-body">
+                    <div class="row g-3 row-cols-1 row-cols-sm-2 row-cols-lg-1">
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase">Encerradas</div>
+                                <div class="display-6 fw-semibold text-success">{{ ocorrencias_encerradas }}</div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="text-muted small text-uppercase">Situacao</div>
+                                <div class="fw-semibold mt-2">
+                                    {% if total_ocorrencias %}
+                                    Historico disponivel para auditoria e rastreabilidade do equipamento.
+                                    {% else %}
+                                    Nenhuma ocorrencia vinculada ate o momento.
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span class="fw-semibold">Ocorrencias relacionadas</span>
+            <span class="badge text-bg-dark">{{ total_ocorrencias }}</span>
+        </div>
+        <div class="card-body p-0">
+            {% if ocorrencias %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Assunto</th>
+                            <th>Categoria</th>
+                            <th>Abertura</th>
+                            <th>Responsavel</th>
+                            <th>Status</th>
+                            <th>Impacto</th>
+                            <th class="text-end">Acao</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ocorrencia in ocorrencias %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ ocorrencia.assunto }}</div>
+                                <div class="small text-muted">{{ ocorrencia.detalhamento|truncatewords:12 }}</div>
+                            </td>
+                            <td>{{ ocorrencia.categoria.nome|default:'Assunto livre' }}</td>
+                            <td>{{ ocorrencia.data_abertura|date:'d/m/Y H:i' }}</td>
+                            <td>{{ ocorrencia.responsavel.get_full_name|default:ocorrencia.responsavel.username|default:'-' }}</td>
+                            <td>
+                                {% if ocorrencia.data_encerramento %}
+                                <span class="badge text-bg-success">Encerrada</span>
+                                {% else %}
+                                <span class="badge text-bg-danger">Aberta</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge text-bg-{{ ocorrencia.impacto_badge_class }}">{{ ocorrencia.get_impacto_display }}</span></td>
+                            <td class="text-end"><a href="{% url 'laboratorio:ocorrencia_detail' ocorrencia.pk %}" class="btn btn-sm btn-outline-primary">Abrir</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-muted">Nenhuma ocorrencia do laboratorio foi vinculada a esta maquina.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock content %}

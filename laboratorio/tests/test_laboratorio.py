@@ -99,6 +99,23 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, setor.nome)
         self.assertContains(response, colaborador.nome_completo)
 
+    def test_formulario_preseleciona_maquina_via_query_string(self):
+        setor = Setor.objects.create(nome="Laboratorio")
+        categoria_maquina = CategoriaMaquina.objects.create(nome="Misturador")
+        maquina = Maquina.objects.create(
+            codigo="MIX-01",
+            fabricante="IKA",
+            categoria=categoria_maquina,
+            setor=setor,
+        )
+
+        response = self.client.get(reverse("laboratorio:ocorrencia_create"), {"maquina_id": maquina.pk})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="maquina-resumo"', html=False)
+        self.assertContains(response, maquina.display_name)
+        self.assertContains(response, categoria_maquina.nome)
+
     def test_dashboard_exibe_ocorrencias_filtradas(self):
         categoria = CategoriaLaboratorio.objects.create(
             nome="Controle ambiental",

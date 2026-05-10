@@ -69,6 +69,25 @@ def maquina_create(request):
 
 
 @login_required
+def maquina_detail(request, pk):
+    maquina = get_object_or_404(Maquina.objects.select_related("categoria", "setor"), pk=pk)
+    ocorrencias = maquina.ocorrencias_laboratorio_maquina.select_related(
+        "categoria",
+        "responsavel",
+    ).order_by("-data_abertura")
+    ocorrencias_abertas = ocorrencias.filter(data_encerramento__isnull=True).count()
+
+    context = {
+        "maquina": maquina,
+        "ocorrencias": ocorrencias,
+        "total_ocorrencias": ocorrencias.count(),
+        "ocorrencias_abertas": ocorrencias_abertas,
+        "ocorrencias_encerradas": ocorrencias.count() - ocorrencias_abertas,
+    }
+    return render(request, "maquinas/maquina_detail.html", context)
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def maquina_delete(request, pk):
     maquina = get_object_or_404(Maquina.objects.select_related("categoria", "setor"), pk=pk)

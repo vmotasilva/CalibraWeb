@@ -346,18 +346,20 @@
 
         function toggleCamposExtras() {
             let categoria = porId[categoriaSelect.value];
+            const colaboradorSelecionado = Boolean(colaboradorSelect.value);
+            const maquinaSelecionada = Boolean(maquinaSelect.value);
             if (!categoria) {
-                divColaborador.style.display = 'none';
-                divMaquina.style.display = 'none';
+                divColaborador.style.display = colaboradorSelecionado ? '' : 'none';
+                divMaquina.style.display = maquinaSelecionada ? '' : 'none';
                 return;
             }
             let nome = categoria.nome.toLowerCase();
-            if (nome.startsWith('falta de colaborador')) {
+            if (nome.startsWith('falta de colaborador') || colaboradorSelecionado) {
                 divColaborador.style.display = '';
             } else {
                 divColaborador.style.display = 'none';
             }
-            if (nome.startsWith('parada de máquina') || nome.startsWith('parada de manutencao') || nome.startsWith('parada de manutenção')) {
+            if (nome.startsWith('parada de máquina') || nome.startsWith('parada de manutencao') || nome.startsWith('parada de manutenção') || maquinaSelecionada) {
                 divMaquina.style.display = '';
             } else {
                 divMaquina.style.display = 'none';
@@ -407,12 +409,14 @@
         confirmarMaquinaBtn.addEventListener('click', function() {
             maquinaSelect.value = maquinaModalSelect.value;
             atualizarResumoMaquina();
+            toggleCamposExtras();
             fecharModal(maquinaModal);
         });
 
         confirmarColaboradorBtn.addEventListener('click', function() {
             colaboradorSelect.value = colaboradorModalSelect.value;
             atualizarResumoColaborador();
+            toggleCamposExtras();
             fecharModal(colaboradorModal);
         });
 
@@ -421,6 +425,7 @@
             maquinaCategoriaFiltro.value = '';
             atualizarMaquinasDoFiltro();
             atualizarResumoMaquina();
+            toggleCamposExtras();
         });
 
         limparColaboradorBtn.addEventListener('click', function() {
@@ -428,6 +433,7 @@
             colaboradorSetorFiltro.value = '';
             atualizarColaboradoresDoFiltro();
             atualizarResumoColaborador();
+            toggleCamposExtras();
         });
 
         if (maquinaModal) {

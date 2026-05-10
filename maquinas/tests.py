@@ -62,9 +62,51 @@ class MaquinasViewsTests(TestCase):
         response = self.client.get(reverse("maquinas:maquinas_list"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse("maquinas:maquina_detail", args=[maquina.pk]))
         self.assertContains(response, reverse("maquinas:maquina_update", args=[maquina.pk]))
         self.assertContains(response, reverse("maquinas:maquina_delete", args=[maquina.pk]))
         self.assertNotContains(response, "Sem acoes")
+
+    def test_machine_detail_shows_related_occurrences(self):
+        maquina = Maquina.objects.create(
+            codigo="MQ-DET",
+            numero_serie="SER-DET-01",
+            fabricante="Buhler",
+            categoria=self.categoria,
+            setor=self.setor,
+            status=True,
+        )
+        ocorrencia_aberta = OcorrenciaLaboratorio.objects.create(
+            assunto="Parada por ajuste",
+            detalhamento="Equipamento pausado para calibracao.",
+            maquina=maquina,
+            responsavel=self.user,
+        )
+        ocorrencia_encerrada = OcorrenciaLaboratorio.objects.create(
+            assunto="Falha eletrica",
+            detalhamento="Fonte substituida apos interrupcao.",
+            maquina=maquina,
+            responsavel=self.user,
+            data_encerramento=ocorrencia_aberta.data_abertura,
+        )
+
+        response = self.client.get(reverse("maquinas:maquina_detail", args=[maquina.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, maquina.codigo)
+        self.assertContains(response, maquina.fabricante)
+        self.assertContains(response, "Ocorrencias relacionadas")
+        self.assertContains(response, "Parada por ajuste")
+        self.assertContains(response, "Falha eletrica")
+        self.assertContains(
+            response,
+            reverse("laboratorio:ocorrencia_create") + f"?maquina_id={maquina.pk}",
+        )
+        self.assertContains(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia_aberta.pk]))
+        self.assertContains(response, reverse("laboratorio:ocorrencia_detail", args=[ocorrencia_encerrada.pk]))
+        self.assertEqual(response.context["total_ocorrencias"], 2)
+        self.assertEqual(response.context["ocorrencias_abertas"], 1)
+        self.assertEqual(response.context["ocorrencias_encerradas"], 1)
 
     def test_category_list_shows_machine_count(self):
         Maquina.objects.create(nome="Agitador", codigo="MQ-002", categoria=self.categoria, status=True)
@@ -126,6 +168,7 @@ class MaquinasViewsTests(TestCase):
     def test_view_permission_map_includes_machine_routes(self):
         expected_permissions = {
             "maquinas:maquinas_list": "core.nav_laboratorio_maquinas_lista",
+            "maquinas:maquina_detail": "core.nav_laboratorio_maquinas_lista",
             "maquinas:maquina_create": "core.nav_laboratorio_maquina_create",
             "maquinas:maquina_update": "core.nav_laboratorio_maquina_update",
             "maquinas:maquina_delete": "core.nav_laboratorio_maquina_delete",

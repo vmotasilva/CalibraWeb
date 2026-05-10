@@ -302,7 +302,11 @@ def ocorrencia_create(request):
             messages.success(request, f"Ocorrencia '{ocorrencia.assunto}' registrada com sucesso.")
             return redirect("laboratorio:ocorrencias_list")
     else:
-        form = OcorrenciaLaboratorioForm(user=request.user)
+        initial = {}
+        maquina_id = (request.GET.get("maquina_id") or "").strip()
+        if maquina_id:
+            initial["maquina"] = maquina_id
+        form = OcorrenciaLaboratorioForm(initial=initial, user=request.user)
 
     context = {
         "form": form,
