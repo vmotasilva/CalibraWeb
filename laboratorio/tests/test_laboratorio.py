@@ -94,6 +94,7 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(response, 'data-bs-target="#colaboradorModal"', html=False)
         self.assertContains(response, 'id="maquina-categoria-filtro"', html=False)
         self.assertContains(response, 'id="colaborador-setor-filtro"', html=False)
+        self.assertContains(response, 'Deseja alterar o assunto para', html=False)
         self.assertContains(response, categoria_maquina.nome)
         self.assertContains(response, maquina.display_name)
         self.assertContains(response, setor.nome)

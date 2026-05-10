@@ -373,11 +373,18 @@
         categoriaSelect.addEventListener('change', function() {
             const categoria = porId[this.value];
             if (!categoria) {
+                toggleCamposExtras();
                 return;
             }
-            if (!assuntoInput.value.trim()) {
-                assuntoInput.value = categoria.nome;
+
+            const assuntoAtual = assuntoInput.value.trim();
+            if (categoria.nome !== assuntoAtual) {
+                const desejaAtualizarAssunto = window.confirm('Deseja alterar o assunto para "' + categoria.nome + '"?');
+                if (desejaAtualizarAssunto) {
+                    assuntoInput.value = categoria.nome;
+                }
             }
+
             if (!impactoSelect.value) {
                 impactoSelect.value = categoria.impacto;
             }
