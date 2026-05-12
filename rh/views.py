@@ -169,11 +169,8 @@ def atualizar_liderancas_em_massa(request):
     # Listar colaboradores que podem ser líderes, supervisores ou gerentes
     pessoas = Colaborador.objects.filter(is_active=True, afastado=False).order_by('nome_completo')
     
-    # Colaboradores que serão atualizados
-    colaboradores_afetados = Colaborador.objects.filter(
-        is_active=True,
-        afastado=False
-    )
+    # Colaboradores que serão atualizados (independente de status ativo/afastado)
+    colaboradores_afetados = Colaborador.objects.all()
     
     # Aplicar filtros
     if setor_id:
