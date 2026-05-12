@@ -221,6 +221,13 @@ def atualizar_liderancas_em_massa(request):
                     'atualizado_count': updated_count,
                     'setor_nome': Setor.objects.get(id=setor_id).nome if setor_id else '',
                     'turno_label': dict(turnos).get(turno, ''),
+                    'setor_id': setor_id,
+                    'turno': turno,
+                    'lider_id': lider_id,
+                    'supervisor_id': supervisor_id,
+                    'gerente_id': gerente_id,
+                    'preview_colaboradores': colaboradores_afetados[:20],
+                    'total_atualizacoes': updated_count,
                 })
     
     # Mostrar preview se há filtros
