@@ -535,5 +535,12 @@ CACHES = CACHES
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_CACHE_ALIAS = 'default'
 
-# Store CSRF token in session instead of cookie for better security and compatibility
-CSRF_USE_SESSIONS = True
+# CSRF strategy:
+# - Cookie-based token (default) is more resilient in distributed deployments,
+#   especially during login flows behind proxies/load balancers.
+# - Set CSRF_USE_SESSIONS=true only when you explicitly need session-backed CSRF.
+CSRF_USE_SESSIONS = os.environ.get("CSRF_USE_SESSIONS", "false").lower() in (
+    "1",
+    "true",
+    "yes",
+)
