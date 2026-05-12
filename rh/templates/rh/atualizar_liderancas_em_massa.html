@@ -76,16 +76,15 @@
                                 <label class="form-label fw-bold">
                                     <i class="bi bi-person-badge text-success me-1"></i>Líder
                                 </label>
-                                <select name="lider_id" id="lider_id" class="form-select d-none" title="Selecionar líder">
-                                    <option value="">-- Não alterar --</option>
-                                    {% for pessoa in pessoas %}
-                                    <option value="{{ pessoa.id }}" data-nome="{{ pessoa.nome_completo }}" data-matricula="{{ pessoa.matricula }}" {% if lider_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
-                                        {{ pessoa.nome_completo }} ({{ pessoa.matricula }})
-                                    </option>
-                                    {% endfor %}
-                                </select>
                                 <div class="input-group">
-                                    <input type="text" id="lider_id_display" class="form-control" title="Líder selecionado" placeholder="-- Não alterar --" value="-- Não alterar --" readonly>
+                                    <select name="lider_id" id="lider_id" class="form-select" title="Selecionar líder">
+                                        <option value="">-- Não alterar --</option>
+                                        {% for pessoa in pessoas %}
+                                        <option value="{{ pessoa.id }}" data-nome="{{ pessoa.nome_completo }}" data-matricula="{{ pessoa.matricula }}" {% if lider_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ pessoa.nome_completo }} ({{ pessoa.matricula }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
                                     <button type="button" class="btn btn-outline-primary" onclick="openRolePicker('lider_id', 'Líder')">
                                         <i class="bi bi-search me-1"></i>Buscar
                                     </button>
@@ -99,16 +98,15 @@
                                 <label class="form-label fw-bold">
                                     <i class="bi bi-person-check text-info me-1"></i>Supervisor
                                 </label>
-                                <select name="supervisor_id" id="supervisor_id" class="form-select d-none" title="Selecionar supervisor">
-                                    <option value="">-- Não alterar --</option>
-                                    {% for pessoa in pessoas %}
-                                    <option value="{{ pessoa.id }}" data-nome="{{ pessoa.nome_completo }}" data-matricula="{{ pessoa.matricula }}" {% if supervisor_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
-                                        {{ pessoa.nome_completo }} ({{ pessoa.matricula }})
-                                    </option>
-                                    {% endfor %}
-                                </select>
                                 <div class="input-group">
-                                    <input type="text" id="supervisor_id_display" class="form-control" title="Supervisor selecionado" placeholder="-- Não alterar --" value="-- Não alterar --" readonly>
+                                    <select name="supervisor_id" id="supervisor_id" class="form-select" title="Selecionar supervisor">
+                                        <option value="">-- Não alterar --</option>
+                                        {% for pessoa in pessoas %}
+                                        <option value="{{ pessoa.id }}" data-nome="{{ pessoa.nome_completo }}" data-matricula="{{ pessoa.matricula }}" {% if supervisor_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ pessoa.nome_completo }} ({{ pessoa.matricula }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
                                     <button type="button" class="btn btn-outline-primary" onclick="openRolePicker('supervisor_id', 'Supervisor')">
                                         <i class="bi bi-search me-1"></i>Buscar
                                     </button>
@@ -122,16 +120,15 @@
                                 <label class="form-label fw-bold">
                                     <i class="bi bi-crown text-warning me-1"></i>Gerente
                                 </label>
-                                <select name="gerente_id" id="gerente_id" class="form-select d-none" title="Selecionar gerente">
-                                    <option value="">-- Não alterar --</option>
-                                    {% for pessoa in pessoas %}
-                                    <option value="{{ pessoa.id }}" data-nome="{{ pessoa.nome_completo }}" data-matricula="{{ pessoa.matricula }}" {% if gerente_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
-                                        {{ pessoa.nome_completo }} ({{ pessoa.matricula }})
-                                    </option>
-                                    {% endfor %}
-                                </select>
                                 <div class="input-group">
-                                    <input type="text" id="gerente_id_display" class="form-control" title="Gerente selecionado" placeholder="-- Não alterar --" value="-- Não alterar --" readonly>
+                                    <select name="gerente_id" id="gerente_id" class="form-select" title="Selecionar gerente">
+                                        <option value="">-- Não alterar --</option>
+                                        {% for pessoa in pessoas %}
+                                        <option value="{{ pessoa.id }}" data-nome="{{ pessoa.nome_completo }}" data-matricula="{{ pessoa.matricula }}" {% if gerente_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ pessoa.nome_completo }} ({{ pessoa.matricula }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
                                     <button type="button" class="btn btn-outline-primary" onclick="openRolePicker('gerente_id', 'Gerente')">
                                         <i class="bi bi-search me-1"></i>Buscar
                                     </button>
@@ -244,15 +241,6 @@ function normalizeText(value) {
         .replace(/[\u0300-\u036f]/g, '');
 }
 
-function updateSelectDisplay(selectId) {
-    const select = document.getElementById(selectId);
-    const display = document.getElementById(`${selectId}_display`);
-    if (!select || !display) return;
-
-    const selected = select.options[select.selectedIndex];
-    display.value = selected ? selected.text : '-- Não alterar --';
-}
-
 function getRoleOptions(selectId) {
     const select = document.getElementById(selectId);
     if (!select) return [];
@@ -306,7 +294,6 @@ function applyRoleSelection(value) {
     if (!select) return;
 
     select.value = value;
-    updateSelectDisplay(rolePickerTargetSelectId);
     previewChanges();
     if (rolePickerModalInstance) rolePickerModalInstance.hide();
 }
@@ -398,10 +385,8 @@ document.getElementById('turno').addEventListener('change', previewChanges);
     const select = document.getElementById(id);
     if (!select) return;
     select.addEventListener('change', function() {
-        updateSelectDisplay(id);
         previewChanges();
     });
-    updateSelectDisplay(id);
 });
 
 document.getElementById('rolePickerSearch').addEventListener('input', renderRolePickerOptions);
