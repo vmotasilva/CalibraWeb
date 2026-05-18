@@ -112,6 +112,23 @@
         right: 15px;
         top: 15px;
     }
+
+    .dashboard-chart-shell {
+        position: relative;
+        min-height: clamp(320px, 48vh, 680px);
+    }
+
+    .dashboard-chart-canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+    }
+
+    @media (max-width: 767.98px) {
+        .dashboard-chart-shell {
+            min-height: 420px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -200,8 +217,8 @@
                     <div class="card-body">
                         {{ chart_status_por_registro|json_script:"chartStatusPorSolucaoData" }}
                         {% if chart_status_por_registro.labels %}
-                        <div style="height: 320px;">
-                            <canvas id="statusPorSolucaoChart"></canvas>
+                        <div class="dashboard-chart-shell">
+                            <canvas id="statusPorSolucaoChart" class="dashboard-chart-canvas"></canvas>
                         </div>
                         {% else %}
                         <div class="text-muted small">Sem dados para exibir.</div>
@@ -626,6 +643,117 @@
         const canvas = document.getElementById('statusPorSolucaoChart');
         if (!dataEl || !canvas || typeof Chart === 'undefined') return;
 
+        function getChartProfile(targetCanvas) {
+            const width = targetCanvas?.parentElement?.clientWidth || window.innerWidth;
+
+            if (width <= 420) {
+                return {
+                    labelCharsPerLine: 16,
+                    axisFontSize: 10,
+                    legendFontSize: 10,
+                    barThickness: 10,
+                    rowHeight: 34,
+                    extraLineHeight: 14,
+                    minHeight: 420,
+                };
+            }
+
+            if (width <= 768) {
+                return {
+                    labelCharsPerLine: 20,
+                    axisFontSize: 11,
+                    legendFontSize: 11,
+                    barThickness: 11,
+                    rowHeight: 30,
+                    extraLineHeight: 12,
+                    minHeight: 400,
+                };
+            }
+
+            return {
+                labelCharsPerLine: 24,
+                axisFontSize: 12,
+                legendFontSize: 12,
+                barThickness: 12,
+                rowHeight: 28,
+                extraLineHeight: 12,
+                minHeight: 360,
+            };
+        }
+
+        function wrapLabel(label, maxChars) {
+            const normalized = String(label || '').replace(/\s+/g, ' ').trim();
+            if (!normalized || normalized.length <= maxChars) {
+                return normalized;
+            }
+
+            const words = normalized.split(' ');
+            const lines = [];
+            let currentLine = '';
+
+            words.forEach(function(word) {
+                const candidate = currentLine ? `${currentLine} ${word}` : word;
+                if (candidate.length <= maxChars) {
+                    currentLine = candidate;
+                    return;
+                }
+
+                if (currentLine) {
+                    lines.push(currentLine);
+                }
+                currentLine = word;
+            });
+
+            if (currentLine) {
+                lines.push(currentLine);
+            }
+
+            return lines.length > 1 ? lines : lines[0];
+        }
+
+        function configureStatusChart(chart, targetCanvas, rawLabels) {
+            const profile = getChartProfile(targetCanvas);
+            const wrappedLabels = rawLabels.map(function(label) {
+                return wrapLabel(label, profile.labelCharsPerLine);
+            });
+            const extraLines = wrappedLabels.reduce(function(total, label) {
+                const lineCount = Array.isArray(label) ? label.length : 1;
+                return total + Math.max(lineCount - 1, 0);
+            }, 0);
+            const targetHeight = Math.max(
+                profile.minHeight,
+                (wrappedLabels.length * profile.rowHeight) + (extraLines * profile.extraLineHeight) + 70
+            );
+
+            targetCanvas.parentElement.style.height = `${targetHeight}px`;
+            chart.data.labels = wrappedLabels;
+            chart.options.plugins.legend = {
+                ...(chart.options.plugins.legend || {}),
+                position: 'top',
+                labels: {
+                    ...((chart.options.plugins.legend || {}).labels || {}),
+                    font: { size: profile.legendFontSize },
+                    boxWidth: 12,
+                    padding: 12,
+                }
+            };
+            chart.options.scales.x.ticks = {
+                ...(chart.options.scales.x.ticks || {}),
+                precision: 0,
+                font: { size: profile.axisFontSize }
+            };
+            chart.options.scales.y.ticks = {
+                ...(chart.options.scales.y.ticks || {}),
+                autoSkip: false,
+                font: { size: profile.axisFontSize }
+            };
+            chart.data.datasets.forEach(function(dataset) {
+                dataset.barThickness = profile.barThickness;
+                dataset.maxBarThickness = profile.barThickness;
+            });
+            chart.update('none');
+        }
+
         let payload;
         try {
             payload = JSON.parse(dataEl.textContent);
@@ -655,7 +783,7 @@
             stack: 'stack-1',
         }));
 
-        new Chart(canvas, {
+        const statusChart = new Chart(canvas, {
             type: 'bar',
             data: {
                 labels: payload.labels,
@@ -664,6 +792,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                indexAxis: 'y',
                 plugins: {
                     legend: { position: 'top' },
                     tooltip: { mode: 'index', intersect: false },
@@ -673,6 +802,18 @@
                     y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
                 },
             },
+        });
+
+        configureStatusChart(statusChart, canvas, payload.labels);
+        let resizeFrame = null;
+        window.addEventListener('resize', function() {
+            if (resizeFrame) {
+                cancelAnimationFrame(resizeFrame);
+            }
+            resizeFrame = requestAnimationFrame(function() {
+                configureStatusChart(statusChart, canvas, payload.labels);
+                resizeFrame = null;
+            });
         });
     })();
 

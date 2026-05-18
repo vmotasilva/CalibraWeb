@@ -1,5 +1,26 @@
 {% extends 'base.html' %}
 
+{% block extra_css %}
+<style>
+    .dashboard-chart-shell {
+        position: relative;
+        min-height: clamp(260px, 36vh, 360px);
+    }
+
+    .dashboard-chart-canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+    }
+
+    @media (max-width: 767.98px) {
+        .dashboard-chart-shell {
+            min-height: 300px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
@@ -143,7 +164,9 @@
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white fw-semibold">Detalhamento por periodo</div>
                 <div class="card-body">
-                    <canvas id="chartPeriodo" height="110"></canvas>
+                    <div class="dashboard-chart-shell">
+                        <canvas id="chartPeriodo" class="dashboard-chart-canvas"></canvas>
+                    </div>
                     {% if not por_periodo %}
                     <div class="text-muted small mt-3">Sem dados no periodo selecionado.</div>
                     {% endif %}
@@ -387,8 +410,59 @@
 
         const chartPeriodo = document.getElementById('chartPeriodo');
 
+        function getChartProfile(canvas) {
+            const width = canvas?.parentElement?.clientWidth || window.innerWidth;
+
+            if (width <= 420) {
+                return {
+                    axisFontSize: 10,
+                    maxRotation: 50,
+                    maxBarThickness: 18,
+                    height: 300,
+                };
+            }
+
+            if (width <= 768) {
+                return {
+                    axisFontSize: 11,
+                    maxRotation: 40,
+                    maxBarThickness: 22,
+                    height: 290,
+                };
+            }
+
+            return {
+                axisFontSize: 12,
+                maxRotation: 0,
+                maxBarThickness: 28,
+                height: 280,
+            };
+        }
+
+        function configurePeriodoChart(chart, canvas) {
+            const profile = getChartProfile(canvas);
+
+            canvas.parentElement.style.height = `${profile.height}px`;
+            chart.options.scales.x.ticks = {
+                ...(chart.options.scales.x.ticks || {}),
+                autoSkip: false,
+                maxRotation: profile.maxRotation,
+                minRotation: profile.maxRotation,
+                font: { size: profile.axisFontSize }
+            };
+            chart.options.scales.y.ticks = {
+                ...(chart.options.scales.y.ticks || {}),
+                precision: 0,
+                font: { size: profile.axisFontSize }
+            };
+            chart.data.datasets.forEach(function (dataset) {
+                dataset.maxBarThickness = profile.maxBarThickness;
+            });
+            chart.update('none');
+        }
+
         if (chartPeriodo) {
-            new Chart(chartPeriodo, {
+            const periodoChart = new Chart(chartPeriodo, {
                 type: 'bar',
                 data: {
                     labels: periodoLabels,
@@ -400,6 +474,8 @@
                     }],
                 },
                 options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: { beginAtZero: true, ticks: { precision: 0 } },
                     },
@@ -407,6 +483,18 @@
                         legend: { display: false },
                     },
                 },
+            });
+
+            configurePeriodoChart(periodoChart, chartPeriodo);
+            let resizeFrame = null;
+            window.addEventListener('resize', function () {
+                if (resizeFrame) {
+                    cancelAnimationFrame(resizeFrame);
+                }
+                resizeFrame = requestAnimationFrame(function () {
+                    configurePeriodoChart(periodoChart, chartPeriodo);
+                    resizeFrame = null;
+                });
             });
         }
     })();

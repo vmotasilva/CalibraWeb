@@ -1,5 +1,34 @@
 {% extends 'base.html' %}
 
+{% block extra_css %}
+<style>
+    .dashboard-chart-shell {
+        position: relative;
+        min-height: clamp(260px, 38vh, 420px);
+    }
+
+    .dashboard-chart-shell--donut {
+        min-height: clamp(240px, 32vh, 320px);
+    }
+
+    .dashboard-chart-canvas {
+        width: 100% !important;
+        height: 100% !important;
+        display: block;
+    }
+
+    @media (max-width: 767.98px) {
+        .dashboard-chart-shell {
+            min-height: 320px;
+        }
+
+        .dashboard-chart-shell--donut {
+            min-height: 280px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -87,7 +116,9 @@
             <div class="card shadow-sm h-100">
                 <div class="card-header">Gráfico - Acompanhamentos por Cadastro</div>
                 <div class="card-body">
-                    <canvas id="chartRegistrosModelo" height="110"></canvas>
+                    <div class="dashboard-chart-shell">
+                        <canvas id="chartRegistrosModelo" class="dashboard-chart-canvas"></canvas>
+                    </div>
                     <div id="chartRegistrosModeloFallback" class="text-center text-muted py-2 d-none">
                         Nenhum dado para exibir.
                     </div>
@@ -98,7 +129,9 @@
             <div class="card shadow-sm h-100">
                 <div class="card-header">Gráfico - Periodicidade</div>
                 <div class="card-body">
-                    <canvas id="chartPeriodicidade" height="110"></canvas>
+                    <div class="dashboard-chart-shell dashboard-chart-shell--donut">
+                        <canvas id="chartPeriodicidade" class="dashboard-chart-canvas"></canvas>
+                    </div>
                     <div id="chartPeriodicidadeFallback" class="text-center text-muted py-2 d-none">
                         Nenhum dado para exibir.
                     </div>
@@ -180,34 +213,179 @@
 {{ chart_periodicidade_values|json_script:"chart-periodicidade-values" }}
 <script>
     (function () {
+        Chart.defaults.color = '#6c757d';
+
         const modeloLabels = JSON.parse(document.getElementById('chart-modelo-labels').textContent || '[]');
         const modeloValues = JSON.parse(document.getElementById('chart-modelo-values').textContent || '[]');
         const periodicidadeLabels = JSON.parse(document.getElementById('chart-periodicidade-labels').textContent || '[]');
         const periodicidadeValues = JSON.parse(document.getElementById('chart-periodicidade-values').textContent || '[]');
+        const responsiveUpdaters = [];
+
+        function getChartProfile(canvas) {
+            const width = canvas?.parentElement?.clientWidth || window.innerWidth;
+
+            if (width <= 420) {
+                return {
+                    labelCharsPerLine: 18,
+                    axisFontSize: 10,
+                    legendFontSize: 10,
+                    barThickness: 12,
+                    doughnutHeight: 280,
+                    rowHeight: 38,
+                    extraLineHeight: 14,
+                    minHorizontalHeight: 300,
+                };
+            }
+
+            if (width <= 768) {
+                return {
+                    labelCharsPerLine: 24,
+                    axisFontSize: 11,
+                    legendFontSize: 11,
+                    barThickness: 13,
+                    doughnutHeight: 290,
+                    rowHeight: 34,
+                    extraLineHeight: 12,
+                    minHorizontalHeight: 290,
+                };
+            }
+
+            return {
+                labelCharsPerLine: 30,
+                axisFontSize: 12,
+                legendFontSize: 12,
+                barThickness: 14,
+                doughnutHeight: 300,
+                rowHeight: 30,
+                extraLineHeight: 12,
+                minHorizontalHeight: 280,
+            };
+        }
+
+        function wrapLabel(label, maxChars) {
+            const normalized = String(label || '').replace(/\s+/g, ' ').trim();
+            if (!normalized || normalized.length <= maxChars) {
+                return normalized;
+            }
+
+            const words = normalized.split(' ');
+            const lines = [];
+            let currentLine = '';
+
+            words.forEach(function (word) {
+                const candidate = currentLine ? `${currentLine} ${word}` : word;
+                if (candidate.length <= maxChars) {
+                    currentLine = candidate;
+                    return;
+                }
+
+                if (currentLine) {
+                    lines.push(currentLine);
+                }
+                currentLine = word;
+            });
+
+            if (currentLine) {
+                lines.push(currentLine);
+            }
+
+            return lines.length > 1 ? lines : lines[0];
+        }
+
+        function configureHorizontalChart(chart, canvas, labels) {
+            const profile = getChartProfile(canvas);
+            const wrappedLabels = labels.map(function (label) {
+                return wrapLabel(label, profile.labelCharsPerLine);
+            });
+            const extraLines = wrappedLabels.reduce(function (total, label) {
+                const lineCount = Array.isArray(label) ? label.length : 1;
+                return total + Math.max(lineCount - 1, 0);
+            }, 0);
+            const targetHeight = Math.max(
+                profile.minHorizontalHeight,
+                (wrappedLabels.length * profile.rowHeight) + (extraLines * profile.extraLineHeight) + 48
+            );
+
+            canvas.parentElement.style.height = `${targetHeight}px`;
+            chart.data.labels = wrappedLabels;
+            chart.options.scales.x.ticks = {
+                ...(chart.options.scales.x.ticks || {}),
+                precision: 0,
+                font: { size: profile.axisFontSize }
+            };
+            chart.options.scales.y.ticks = {
+                ...(chart.options.scales.y.ticks || {}),
+                autoSkip: false,
+                font: { size: profile.axisFontSize }
+            };
+            chart.data.datasets.forEach(function (dataset) {
+                dataset.barThickness = profile.barThickness;
+                dataset.maxBarThickness = profile.barThickness;
+            });
+            chart.update('none');
+        }
+
+        function configureDoughnutChart(chart, canvas) {
+            const profile = getChartProfile(canvas);
+            canvas.parentElement.style.height = `${profile.doughnutHeight}px`;
+            chart.options.plugins.legend = {
+                ...(chart.options.plugins.legend || {}),
+                position: 'bottom',
+                labels: {
+                    ...((chart.options.plugins.legend || {}).labels || {}),
+                    font: { size: profile.legendFontSize },
+                    boxWidth: 12,
+                    padding: 12,
+                }
+            };
+            chart.update('none');
+        }
+
+        let resizeFrame = null;
+        window.addEventListener('resize', function () {
+            if (resizeFrame) {
+                cancelAnimationFrame(resizeFrame);
+            }
+            resizeFrame = requestAnimationFrame(function () {
+                responsiveUpdaters.forEach(function (updater) {
+                    updater();
+                });
+                resizeFrame = null;
+            });
+        });
 
         const ctxModelo = document.getElementById('chartRegistrosModelo');
         const fallbackModelo = document.getElementById('chartRegistrosModeloFallback');
         if (ctxModelo && modeloLabels.length > 0) {
-            new Chart(ctxModelo, {
+            const chartModelo = new Chart(ctxModelo, {
                 type: 'bar',
                 data: {
                     labels: modeloLabels,
                     datasets: [{
                         label: 'Registros',
                         data: modeloValues,
-                        borderWidth: 1
+                        borderWidth: 1,
+                        borderRadius: 4,
                     }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
                     plugins: {
                         legend: { display: false }
                     },
                     scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                        x: { beginAtZero: true, ticks: { precision: 0 } },
+                        y: { ticks: { autoSkip: false } }
                     }
                 }
             });
+            const updateModeloChart = function () {
+                configureHorizontalChart(chartModelo, ctxModelo, modeloLabels);
+            };
+            updateModeloChart();
+            responsiveUpdaters.push(updateModeloChart);
         } else if (ctxModelo && fallbackModelo) {
             ctxModelo.classList.add('d-none');
             fallbackModelo.classList.remove('d-none');
@@ -216,7 +394,7 @@
         const ctxPeriodicidade = document.getElementById('chartPeriodicidade');
         const fallbackPeriodicidade = document.getElementById('chartPeriodicidadeFallback');
         if (ctxPeriodicidade && periodicidadeLabels.length > 0) {
-            new Chart(ctxPeriodicidade, {
+            const chartPeriodicidade = new Chart(ctxPeriodicidade, {
                 type: 'doughnut',
                 data: {
                     labels: periodicidadeLabels,
@@ -228,11 +406,17 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: { position: 'bottom' }
                     }
                 }
             });
+            const updatePeriodicidadeChart = function () {
+                configureDoughnutChart(chartPeriodicidade, ctxPeriodicidade);
+            };
+            updatePeriodicidadeChart();
+            responsiveUpdaters.push(updatePeriodicidadeChart);
         } else if (ctxPeriodicidade && fallbackPeriodicidade) {
             ctxPeriodicidade.classList.add('d-none');
             fallbackPeriodicidade.classList.remove('d-none');
