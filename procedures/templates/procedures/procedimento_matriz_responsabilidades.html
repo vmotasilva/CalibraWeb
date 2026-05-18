@@ -55,6 +55,55 @@
         min-height: 44px;
     }
 
+    .responsabilidade-picker {
+        display: flex;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+
+    .responsabilidade-picker .picker-select {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .responsabilidade-picker .picker-action {
+        flex: 0 0 auto;
+        min-height: 44px;
+        white-space: nowrap;
+    }
+
+    .search-results {
+        max-height: 340px;
+        overflow-y: auto;
+    }
+
+    .search-result-item {
+        width: 100%;
+        text-align: left;
+        border: 0;
+        border-bottom: 1px solid #eef1f4;
+        background: #fff;
+        padding: 0.85rem 1rem;
+    }
+
+    .search-result-item:hover,
+    .search-result-item:focus {
+        background: #f8f9fa;
+    }
+
+    .search-result-name {
+        display: block;
+        font-weight: 600;
+        color: #212529;
+    }
+
+    .search-result-meta {
+        display: block;
+        margin-top: 0.2rem;
+        font-size: 0.82rem;
+        color: #6c757d;
+    }
+
     .helper-text {
         display: block;
         margin-top: 0.4rem;
@@ -92,7 +141,7 @@
         <div class="summary-card">
             <span class="summary-label">Como usar</span>
             <span class="helper-text mt-0">Cada coluna representa um turno. Em cada celula, selecione o colaborador responsavel pelos treinamentos daquela matriz no respectivo turno.</span>
-            <span class="helper-text">As opcoes exibidas em cada coluna respeitam o turno do colaborador cadastrado no RH.</span>
+            <span class="helper-text">As opcoes exibidas em cada coluna usam toda a base de colaboradores cadastrados no RH.</span>
             <span class="helper-text">O mesmo colaborador pode ser definido em mais de uma celula quando ele responder por mais de uma matriz ou turno.</span>
         </div>
     </div>
@@ -131,14 +180,25 @@
                             </td>
                             {% for cell in linha.cells %}
                             <td class="turno-cell">
-                                {{ cell.field }}
+                                <div class="responsabilidade-picker">
+                                    <div class="picker-select">{{ cell.field }}</div>
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-secondary btn-sm picker-action js-open-colaborador-modal"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#colaboradorSearchModal"
+                                        data-field-id="{{ cell.field.auto_id }}"
+                                        data-matriz="{{ linha.matriz.nome|escape }}"
+                                        data-turno-label="{{ cell.turno_label|escape }}"
+                                    >Buscar</button>
+                                </div>
                                 {% if cell.field.errors %}
                                 <div class="text-danger small mt-1">{{ cell.field.errors|join:', ' }}</div>
                                 {% endif %}
                                 {% if cell.total_opcoes == 0 %}
-                                <span class="helper-text">Sem colaboradores cadastrados neste turno.</span>
+                                <span class="helper-text">Nenhum colaborador com perfil ativo e treinamentos desta matriz neste turno.</span>
                                 {% else %}
-                                <span class="helper-text">{{ cell.total_opcoes }} colaborador(es) disponiveis neste turno.</span>
+                                <span class="helper-text">{{ cell.total_opcoes }} colaborador(es) com perfil ativo e treinamentos desta matriz neste turno.</span>
                                 {% endif %}
                             </td>
                             {% endfor %}
@@ -162,4 +222,133 @@
         </form>
     </div>
 </div>
+
+<div class="modal fade" id="colaboradorSearchModal" tabindex="-1" aria-labelledby="colaboradorSearchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title" id="colaboradorSearchModalLabel">Buscar colaborador</h5>
+                    <small class="text-muted" id="colaboradorSearchModalContext">Selecione um colaborador para aplicar ao campo.</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-8">
+                        <input type="text" class="form-control" id="colaboradorSearchInput" placeholder="Digite o nome, cargo ou status do colaborador">
+                    </div>
+                    <div class="col-md-4 d-grid">
+                        <button type="button" class="btn btn-outline-danger" id="clearColaboradorSelection">Limpar campo selecionado</button>
+                    </div>
+                </div>
+                <div class="search-results border rounded" id="colaboradorSearchResults"></div>
+                <div class="text-muted small mt-2" id="colaboradorSearchEmpty">Nenhum colaborador encontrado para este termo.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modalElement = document.getElementById('colaboradorSearchModal');
+    const searchInput = document.getElementById('colaboradorSearchInput');
+    const resultsContainer = document.getElementById('colaboradorSearchResults');
+    const emptyState = document.getElementById('colaboradorSearchEmpty');
+    const contextLabel = document.getElementById('colaboradorSearchModalContext');
+    const clearSelectionButton = document.getElementById('clearColaboradorSelection');
+    let activeSelect = null;
+    let availableOptions = [];
+
+    function extractOptions(selectElement) {
+        return Array.from(selectElement.options)
+            .filter(option => option.value)
+            .map(option => ({
+                value: option.value,
+                label: option.text,
+                searchable: option.text.toLowerCase(),
+            }));
+    }
+
+    function renderOptions(query) {
+        const normalizedQuery = (query || '').trim().toLowerCase();
+        const filteredOptions = availableOptions.filter(option => {
+            if (!normalizedQuery) {
+                return true;
+            }
+            return option.searchable.includes(normalizedQuery);
+        }).slice(0, 80);
+
+        resultsContainer.innerHTML = '';
+        emptyState.classList.toggle('d-none', filteredOptions.length > 0);
+
+        filteredOptions.forEach(option => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'search-result-item';
+            button.dataset.colaboradorValue = option.value;
+
+            const name = document.createElement('span');
+            name.className = 'search-result-name';
+            name.textContent = option.label.split(' (')[0];
+
+            const meta = document.createElement('span');
+            meta.className = 'search-result-meta';
+            meta.textContent = option.label;
+
+            button.appendChild(name);
+            button.appendChild(meta);
+            resultsContainer.appendChild(button);
+        });
+    }
+
+    document.querySelectorAll('.js-open-colaborador-modal').forEach(button => {
+        button.addEventListener('click', function() {
+            const fieldId = button.dataset.fieldId;
+            activeSelect = fieldId ? document.getElementById(fieldId) : null;
+            if (!activeSelect) {
+                return;
+            }
+
+            availableOptions = extractOptions(activeSelect);
+            const matriz = button.dataset.matriz || 'Matriz';
+            const turno = button.dataset.turnoLabel || 'Turno';
+            contextLabel.textContent = `Selecionando para ${matriz} / ${turno}.`;
+            searchInput.value = '';
+            renderOptions('');
+        });
+    });
+
+    searchInput?.addEventListener('input', function() {
+        renderOptions(searchInput.value);
+    });
+
+    resultsContainer?.addEventListener('click', function(event) {
+        const button = event.target.closest('[data-colaborador-value]');
+        if (!button || !activeSelect) {
+            return;
+        }
+
+        activeSelect.value = button.dataset.colaboradorValue;
+        activeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        modalInstance?.hide();
+    });
+
+    clearSelectionButton?.addEventListener('click', function() {
+        if (!activeSelect) {
+            return;
+        }
+
+        activeSelect.value = '';
+        activeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        modalInstance?.hide();
+    });
+
+    modalElement?.addEventListener('shown.bs.modal', function() {
+        searchInput?.focus();
+    });
+});
+</script>
 {% endblock %}

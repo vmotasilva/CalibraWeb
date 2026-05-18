@@ -86,12 +86,7 @@ class ResponsavelTreinamentoMatriz(models.Model):
     atualizado_em = models.DateTimeField(auto_now=True)
 
     def clean(self):
-        from django.core.exceptions import ValidationError
-
-        if self.colaborador_id and self.colaborador.turno != self.turno:
-            raise ValidationError({
-                'colaborador': 'O colaborador selecionado precisa pertencer ao mesmo turno da responsabilidade.'
-            })
+        return super().clean()
 
     def __str__(self):
         return f"{self.matriz.nome} - {self.get_turno_display()}: {self.colaborador.nome_completo}"

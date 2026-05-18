@@ -545,6 +545,8 @@ def procedimento_matriz_detalhe_view(request, matriz_id):
 @login_required
 def procedimento_responsabilidades_treinamento_view(request):
     """Matriz de responsaveis de treinamento por matriz e turno."""
+    from procedures.models import ColaboradorPerfil
+
     if not has_view_access(request.user, 'procedures:procedimento_responsabilidades_treinamento'):
         messages.error(request, 'Sem permissao para gerenciar responsaveis de treinamento por matriz.')
         return redirect('procedures:procedimento_matrizes_list')
@@ -604,7 +606,34 @@ def procedimento_responsabilidades_treinamento_view(request):
             responsabilidades=responsabilidades,
         )
 
-    linhas_matriz = form.build_rows()
+    colaboradores_qualificados = {}
+    colaboradores_por_chave = {}
+    nomes_matrizes = {matriz.nome for matriz in matrizes}
+    colaboradores_perfil = ColaboradorPerfil.objects.filter(
+        ativo=True,
+        colaborador__isnull=False,
+    ).select_related('colaborador')
+
+    for colaborador_perfil in colaboradores_perfil:
+        colaborador = colaborador_perfil.colaborador
+        if not colaborador or not colaborador.turno:
+            continue
+
+        matrizes_do_perfil = set(
+            colaborador_perfil.get_procedimentos_necessarios()
+            .exclude(matriz__isnull=True)
+            .exclude(matriz__exact='')
+            .filter(matriz__in=nomes_matrizes)
+            .values_list('matriz', flat=True)
+        )
+        for matriz_nome in matrizes_do_perfil:
+            chave = (matriz_nome, colaborador.turno)
+            colaboradores_por_chave.setdefault(chave, set()).add(colaborador.id)
+
+    for chave, colaboradores_ids in colaboradores_por_chave.items():
+        colaboradores_qualificados[chave] = len(colaboradores_ids)
+
+    linhas_matriz = form.build_rows(colaboradores_qualificados=colaboradores_qualificados)
     for linha in linhas_matriz:
         linha['total_procedimentos'] = total_procedimentos_por_matriz.get(linha['matriz'].nome, 0)
 

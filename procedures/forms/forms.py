@@ -78,23 +78,20 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
         colaboradores = list(
             Colaborador.objects.select_related('setor').order_by('nome_completo')
         )
-        self.colaboradores_por_turno = {turno: [] for turno, _ in self.turnos}
-        for colaborador in colaboradores:
-            if colaborador.turno in self.colaboradores_por_turno:
-                self.colaboradores_por_turno[colaborador.turno].append(colaborador)
+        self.colaboradores = colaboradores
+        self.colaborador_choices = [('', 'Sem responsavel')]
+        self.colaborador_choices.extend(
+            (str(colaborador.id), self.format_colaborador_label(colaborador))
+            for colaborador in self.colaboradores
+        )
 
         for matriz in self.matrizes:
             for turno, _ in self.turnos:
                 field_name = self.get_field_name(matriz.id, turno)
                 atual = self.responsabilidades.get((matriz.id, turno))
-                choices = [('', 'Sem responsavel')]
-                choices.extend(
-                    (str(colaborador.id), self.format_colaborador_label(colaborador))
-                    for colaborador in self.colaboradores_por_turno.get(turno, [])
-                )
                 self.fields[field_name] = forms.ChoiceField(
                     required=False,
-                    choices=choices,
+                    choices=self.colaborador_choices,
                     initial=str(atual.colaborador_id) if atual else '',
                     label='',
                     widget=forms.Select(attrs={'class': 'form-select form-select-sm'}),
@@ -119,7 +116,8 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
             return f"{colaborador.nome_completo} ({' | '.join(sufixos)})"
         return colaborador.nome_completo
 
-    def build_rows(self):
+    def build_rows(self, colaboradores_qualificados=None):
+        colaboradores_qualificados = colaboradores_qualificados or {}
         rows = []
         for matriz in self.matrizes:
             cells = []
@@ -130,7 +128,7 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
                     'turno': turno,
                     'turno_label': turno_label,
                     'field': field,
-                    'total_opcoes': max(len(field.field.choices) - 1, 0),
+                    'total_opcoes': colaboradores_qualificados.get((matriz.nome, turno), 0),
                     'responsabilidade': self.responsabilidades.get((matriz.id, turno)),
                 })
             rows.append({'matriz': matriz, 'cells': cells})
@@ -153,10 +151,6 @@ class MatrizResponsabilidadeTreinamentoForm(forms.Form):
                 colaborador = colaboradores.get(int(colaborador_id))
                 if not colaborador:
                     self.add_error(field_name, 'Colaborador invalido.')
-                    continue
-
-                if colaborador.turno != turno:
-                    self.add_error(field_name, 'Selecione um colaborador do mesmo turno da coluna.')
 
         return cleaned_data
 
