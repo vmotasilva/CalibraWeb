@@ -995,10 +995,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleBtn = document.getElementById('toggleSidebar');
     const expandBtn = document.getElementById('expandSidebar');
     const sidebarCol = document.getElementById('sidebarCol');
+    const hasSidebarToggleControls = Boolean(sidebar && toggleBtn && expandBtn && sidebarCol);
     
     // Carregar estado salvo
     const sidebarCollapsed = localStorage.getItem('dashboardSidebarCollapsed') === 'true';
-    if (sidebarCollapsed) {
+    if (!hasSidebarToggleControls) {
+        localStorage.removeItem('dashboardSidebarCollapsed');
+    } else if (sidebarCollapsed) {
         collapseSidebar();
     }
     
@@ -1011,6 +1014,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function collapseSidebar() {
+        if (!hasSidebarToggleControls) {
+            return;
+        }
         sidebar.classList.add('collapsed');
         expandBtn.classList.remove('d-none');
         sidebarCol.style.width = '0';
@@ -1020,6 +1026,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function expandSidebar() {
+        if (!hasSidebarToggleControls) {
+            return;
+        }
         sidebar.classList.remove('collapsed');
         expandBtn.classList.add('d-none');
         sidebarCol.style.width = '';
@@ -1032,6 +1041,7 @@ document.addEventListener('DOMContentLoaded', function() {
     Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial';
     Chart.defaults.color = '#6c757d';
     const responsiveCharts = [];
+    const rawLabelsByChart = new WeakMap();
 
     function requestResponsiveChartsRefresh() {
         scheduleResponsiveChartRefresh();
@@ -1175,27 +1185,33 @@ document.addEventListener('DOMContentLoaded', function() {
         return { profile, wrappedLabels, height };
     }
 
-    function applyLegendSizing(chart, profile, position, align) {
-        chart.options.plugins = chart.options.plugins || {};
-        const currentLegend = chart.options.plugins.legend || {};
+    function ensureOptionObject(target, key) {
+        const current = target[key];
+        if (!current || typeof current !== 'object') {
+            target[key] = {};
+        }
+        return target[key];
+    }
 
-        chart.options.plugins.legend = {
-            ...currentLegend,
-            position,
-            align,
-            labels: {
-                ...(currentLegend.labels || {}),
-                boxWidth: profile.legendBoxWidth,
-                boxHeight: profile.legendBoxHeight,
-                padding: profile.legendPadding,
-                font: { size: profile.legendFontSize }
-            }
-        };
+    function applyLegendSizing(chart, profile, position, align) {
+        const plugins = ensureOptionObject(chart.options, 'plugins');
+        const legend = ensureOptionObject(plugins, 'legend');
+        const labels = ensureOptionObject(legend, 'labels');
+        const font = ensureOptionObject(labels, 'font');
+
+        legend.position = position;
+        legend.align = align;
+        labels.boxWidth = profile.legendBoxWidth;
+        labels.boxHeight = profile.legendBoxHeight;
+        labels.padding = profile.legendPadding;
+        font.size = profile.legendFontSize;
     }
 
     function resolveRawLabelTooltip(context) {
         const firstItem = Array.isArray(context) ? context[0] : context;
-        const rawLabel = firstItem?.chart?.$rawLabels?.[firstItem?.dataIndex];
+        const chart = firstItem?.chart;
+        const rawLabels = chart ? rawLabelsByChart.get(chart) : null;
+        const rawLabel = rawLabels?.[firstItem?.dataIndex];
 
         if (rawLabel) {
             return rawLabel;
@@ -1209,12 +1225,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function registerResponsiveChart(chart, canvas, config) {
-        chart.$rawLabels = Array.isArray(config.rawLabels) ? config.rawLabels.slice() : [];
+        const rawLabels = Array.isArray(config.rawLabels) ? config.rawLabels.slice() : [];
+        rawLabelsByChart.set(chart, rawLabels);
         responsiveCharts.push({
             chart,
             canvas,
             kind: config.kind,
-            rawLabels: chart.$rawLabels,
+            rawLabels,
             legendPosition: config.legendPosition || 'bottom',
             legendAlign: config.legendAlign || 'center',
         });
@@ -1231,27 +1248,21 @@ document.addEventListener('DOMContentLoaded', function() {
             chart.data.labels = sizing.wrappedLabels;
             applyLegendSizing(chart, sizing.profile, legendPosition, legendAlign);
 
-            chart.options.layout = {
-                ...(chart.options.layout || {}),
-                padding: { top: 4, right: 8, bottom: 0, left: 0 }
-            };
+            const layout = ensureOptionObject(chart.options, 'layout');
+            layout.padding = { top: 4, right: 8, bottom: 0, left: 0 };
 
-            chart.options.scales.x = {
-                ...(chart.options.scales.x || {}),
-                ticks: {
-                    ...((chart.options.scales.x && chart.options.scales.x.ticks) || {}),
-                    font: { size: sizing.profile.axisFontSize },
-                    precision: 0
-                }
-            };
-            chart.options.scales.y = {
-                ...(chart.options.scales.y || {}),
-                ticks: {
-                    ...((chart.options.scales.y && chart.options.scales.y.ticks) || {}),
-                    autoSkip: false,
-                    font: { size: sizing.profile.labelFontSize }
-                }
-            };
+            const scales = ensureOptionObject(chart.options, 'scales');
+            const xScale = ensureOptionObject(scales, 'x');
+            const xTicks = ensureOptionObject(xScale, 'ticks');
+            const xFont = ensureOptionObject(xTicks, 'font');
+            xFont.size = sizing.profile.axisFontSize;
+            xTicks.precision = 0;
+
+            const yScale = ensureOptionObject(scales, 'y');
+            const yTicks = ensureOptionObject(yScale, 'ticks');
+            const yFont = ensureOptionObject(yTicks, 'font');
+            yTicks.autoSkip = false;
+            yFont.size = sizing.profile.labelFontSize;
 
             chart.data.datasets.forEach(dataset => {
                 dataset.barThickness = sizing.profile.horizontalBarThickness;
@@ -1263,24 +1274,20 @@ document.addEventListener('DOMContentLoaded', function() {
             setCanvasHeight(canvas, profile.wideHeight);
             applyLegendSizing(chart, profile, legendPosition, legendAlign);
 
-            chart.options.scales.x = {
-                ...(chart.options.scales.x || {}),
-                ticks: {
-                    ...((chart.options.scales.x && chart.options.scales.x.ticks) || {}),
-                    autoSkip: false,
-                    maxRotation: profile.viewportWidth <= 576 ? 45 : 0,
-                    minRotation: profile.viewportWidth <= 576 ? 45 : 0,
-                    font: { size: profile.axisFontSize }
-                }
-            };
-            chart.options.scales.y = {
-                ...(chart.options.scales.y || {}),
-                ticks: {
-                    ...((chart.options.scales.y && chart.options.scales.y.ticks) || {}),
-                    precision: 0,
-                    font: { size: profile.axisFontSize }
-                }
-            };
+            const scales = ensureOptionObject(chart.options, 'scales');
+            const xScale = ensureOptionObject(scales, 'x');
+            const xTicks = ensureOptionObject(xScale, 'ticks');
+            const xFont = ensureOptionObject(xTicks, 'font');
+            xTicks.autoSkip = false;
+            xTicks.maxRotation = profile.viewportWidth <= 576 ? 45 : 0;
+            xTicks.minRotation = profile.viewportWidth <= 576 ? 45 : 0;
+            xFont.size = profile.axisFontSize;
+
+            const yScale = ensureOptionObject(scales, 'y');
+            const yTicks = ensureOptionObject(yScale, 'ticks');
+            const yFont = ensureOptionObject(yTicks, 'font');
+            yTicks.precision = 0;
+            yFont.size = profile.axisFontSize;
 
             chart.data.datasets.forEach(dataset => {
                 delete dataset.barThickness;
